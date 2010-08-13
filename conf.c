@@ -1,13 +1,57 @@
-#include "conf.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <limits.h>
+
+#include "conf.h"
 
 static int parse_config(FILE *fp, struct peer **head)
 {
-	
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	struct peer *new = NULL;
+	struct peer *tmp = NULL;
+
+	while ((read = getline(&line, &len, fp)) != -1) {
+		/* clear newline */
+		if ((read) && (line[read - 1] == '\n')) {
+			line[read - 1] = '\0';
+			read--;
+		}
+		if ((read) && (line[read - 1] == '\r')) {
+			line[read - 1] = '\0';
+			read--;
+		}
+
+		if ((!read) || ((read) && (line[0] == '#')))
+			continue;
+
+		new = malloc(sizeof(struct peer));
+		if (!new) {
+			fprintf(stderr, "Unable to allocate memory for peer list!!\n");
+			return -1;
+		}
+
+		new->line=strdup(line);
+		if(new->line == NULL) {
+			fprintf(stderr, "Unable to allocate memory for peer line entry\n");
+			return -1;
+		}
+
+		if (tmp == NULL)
+			tmp = new;
+		else
+			tmp->tail->next = new;
+
+		tmp->tail = new;
+	}
+
+	if (line)
+		free(line);
+
+	*head = tmp;
 
 	return 0;
 }
