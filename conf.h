@@ -4,9 +4,10 @@
 struct peer {
 	struct peer *next;
 	struct peer *tail;
+	const char *line;
 };
 
-int readconf(char *conffile, struct peer **head);
+int readconf(const char *conffile, struct peer **head);
 void freeconf(struct peer *head);
 
 #endif
