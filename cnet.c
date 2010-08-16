@@ -15,7 +15,7 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
-int tun_open(char *dev, size_t dev_size)
+int cnet_open(char *dev, size_t dev_size)
 {
 	struct ifreq ifr;
 	int fd, err;
@@ -48,17 +48,19 @@ int tun_open(char *dev, size_t dev_size)
 	return fd;
 }
 
-int tun_close(int fd)
+int cnet_close(int fd)
 {
 	return close(fd);
 }
 
-int tun_read(int fd, char *buf, int len)
+/* TODO: implement loopy read/write here */
+
+int cnet_read(int fd, char *buf, int len)
 {
 	return read(fd, buf, len);
 }
 
-int tun_write(int fd, char *buf, int len)
+int cnet_write(int fd, char *buf, int len)
 {
 	return write(fd, buf, len);
 }

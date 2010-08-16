@@ -3,9 +3,9 @@
 
 #include <stdlib.h>
 
-int tun_open(char *dev, size_t dev_size);
-int tun_close(int fd);
-int tun_read(int fd, char *buf, int len);
-int tun_write(int fd, char *buf, int len);
+int cnet_open(char *dev, size_t dev_size);
+int cnet_close(int fd);
+int cnet_read(int fd, char *buf, int len);
+int cnet_write(int fd, char *buf, int len);
 
 #endif
