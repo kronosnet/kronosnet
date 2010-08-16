@@ -14,6 +14,7 @@
 
 #include "conf.h"
 #include "logging.h"
+#include "nodes.h"
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
@@ -239,7 +240,12 @@ int main(int argc, char **argv)
 	if (confdb_handle == 0)
 		exit(EXIT_FAILURE);
 
-	parse_global_config(confdb_handle);
+	if (configure_logging(confdb_handle, 0) < 0) {
+		fprintf(stderr, "Unable to initialize logging subsystem\n");
+		exit(EXIT_FAILURE);
+	}
+	logt_print(LOG_INFO, PACKAGE " version " VERSION "\n");
+	logt_exit();
 
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
@@ -248,14 +254,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (configure_logging(confdb_handle, 0) < 0) {
-		fprintf(stderr, "Unable to initialize logging subsystem\n");
-		return -1;
-	}
+	logt_reinit();
 
 	signal(SIGTERM, sigterm_handler);
 
-	logt_print(LOG_INFO, PACKAGE " version " VERSION "\n");
+	parse_global_config(confdb_handle);
+	parse_nodes_config(confdb_handle);
+
 	if (statistics)
 		logt_print(LOG_DEBUG, "statistics collector enabled\n");
 	if (rerouting)
@@ -266,6 +271,8 @@ int main(int argc, char **argv)
 
 	logt_print(LOG_DEBUG, "Set RR scheduler\n");
 	set_scheduler();
+
+	/* do stuff here, should we */
 
 	free(conffile);
 
