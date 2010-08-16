@@ -144,5 +144,10 @@ int configure_logging(confdb_handle_t handle, int reconf)
 
 void close_logging(void)
 {
+	if (conf)
+		free(conf);
+
+	conf = NULL;
+
 	logt_exit();
 }
