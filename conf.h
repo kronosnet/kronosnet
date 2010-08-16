@@ -1,13 +1,12 @@
 #ifndef __CONF_H__
 #define __CONF_H__
 
-struct peer {
-	struct peer *next;
-	struct peer *tail;
-	const char *line;
-};
+#include <corosync/corotypes.h>
+#include <corosync/confdb.h>
 
-int readconf(const char *conffile, struct peer **head);
-void freeconf(struct peer *head);
+confdb_handle_t readconf(const char *conffile);
+void freeconf(confdb_handle_t handle);
+
+int parse_global_config(confdb_handle_t handle);
 
 #endif

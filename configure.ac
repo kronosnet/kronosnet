@@ -66,6 +66,7 @@ check_lib_no_libs() {
 
 # Checks for libraries.
 PKG_CHECK_MODULES([logt],[liblogthread])
+PKG_CHECK_MODULES([confdb],[libconfdb])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/ioctl.h sys/socket.h unistd.h netinet/in.h])

@@ -19,9 +19,12 @@ clusternetd_SOURCES	= main.c \
 clusternetd_CPPFLAGS	=
 
 clusternetd_CFLAGS	= -fPIC \
+			  $(confdb_CFLAGS) \
 			  $(logt_CFLAGS)
 
-clusternetd_LDFLAGS	= $(logt_LIBS)
+clusternetd_LDFLAGS	= \
+			  $(confdb_LIBS) \
+			  $(logt_LIBS)
 
 clusternetd_LDADD	= 
 

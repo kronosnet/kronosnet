@@ -221,10 +221,10 @@ static void sigterm_handler(int sig)
 
 int main(int argc, char **argv)
 {
-	struct peer *conf = NULL;
+	confdb_handle_t confdb_handle = 0;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
-		return -1;
+		exit(EXIT_FAILURE);
 
 	atexit(remove_lockfile);
 
@@ -233,8 +233,9 @@ int main(int argc, char **argv)
 	if (!conffile)
 		conffile = strdup(CONFFILE);
 
-	if (readconf(conffile, &conf))
-		return -1;
+	confdb_handle = readconf(conffile);
+	if (confdb_handle == 0)
+		exit(EXIT_FAILURE);
 
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
@@ -243,7 +244,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (init_logging(debug, daemonize) < 0) {
+	if (configure_logging(confdb_handle, 0) < 0) {
 		fprintf(stderr, "Unable to initialize logging subsystem\n");
 		return -1;
 	}
@@ -260,7 +261,7 @@ int main(int argc, char **argv)
 
 	free(conffile);
 
-	freeconf(conf);
+	freeconf(confdb_handle);
 
 	close_logging();
 

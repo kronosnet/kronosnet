@@ -6,84 +6,36 @@
 
 #include "conf.h"
 
-static int parse_config(FILE *fp, struct peer **head)
+static confdb_callbacks_t callbacks = {};
+
+int parse_global_config(confdb_handle_t handle)
 {
-	char *line = NULL;
-	size_t len = 0;
-	ssize_t read;
-	struct peer *new = NULL;
-	struct peer *tmp = NULL;
-
-	while ((read = getline(&line, &len, fp)) != -1) {
-		/* clear newline */
-		if ((read) && (line[read - 1] == '\n')) {
-			line[read - 1] = '\0';
-			read--;
-		}
-		if ((read) && (line[read - 1] == '\r')) {
-			line[read - 1] = '\0';
-			read--;
-		}
-
-		if ((!read) || ((read) && (line[0] == '#')))
-			continue;
-
-		new = malloc(sizeof(struct peer));
-		if (!new) {
-			fprintf(stderr, "Unable to allocate memory for peer list!!\n");
-			return -1;
-		}
-
-		new->line=strdup(line);
-		if(new->line == NULL) {
-			fprintf(stderr, "Unable to allocate memory for peer line entry\n");
-			return -1;
-		}
-
-		if (tmp == NULL)
-			tmp = new;
-		else
-			tmp->tail->next = new;
-
-		tmp->tail = new;
-	}
-
-	if (line)
-		free(line);
-
-	*head = tmp;
-
 	return 0;
 }
 
-int readconf(const char *conffile, struct peer **head)
+confdb_handle_t readconf(const char *conffile)
 {
-	FILE *fp;
-	int res = 0;
+	confdb_handle_t handle = 0;
 
-	fp = fopen (conffile, "r");
-	if (fp == NULL) {
-		fprintf(stderr, "Unable to open config file [%s] reason [%s]\n",
-			conffile, strerror(errno));
-		return -1;
+	if (setenv("COROSYNC_DEFAULT_CONFIG_IFACE", "corosync_parser", 1)) {
+		fprintf(stderr, "Unable to set COROSYNC_DEFAULT_CONFIG_IFACE reason [%s]\n", strerror(errno));
+		return 0;
+	}
+	if (setenv("COROSYNC_MAIN_CONFIG_FILE", conffile, 1)) {
+		fprintf(stderr, "Unable to set COROSYNC_MAIN_CONFIG_FILE reason [%s]\n", strerror(errno));
+		return 0;
 	}
 
-	res = parse_config(fp, head);
+	if (confdb_initialize(&handle, &callbacks) != CS_OK) {
+		fprintf(stderr, "Error reading config file\n");
+		return 0;
+	}
 
-	fclose(fp);
-
-	return res;
+	return handle;
 }
 
-void freeconf(struct peer *head)
+void freeconf(confdb_handle_t handle)
 {
-	struct peer *next;
-
-	while(head) {
-		next = head->next;
-		free(head);
-		head = next;
-	}
-
+	confdb_finalize(handle);
 	return;
 }
