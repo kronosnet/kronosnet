@@ -7,6 +7,7 @@
 #include <limits.h>
 
 #include "conf.h"
+#include "logging.h"
 
 static confdb_callbacks_t callbacks = {};
 
@@ -23,18 +24,24 @@ int parse_global_config(confdb_handle_t handle)
 	size_t key_value_len;
 
 	res = confdb_object_find_start(handle, OBJECT_PARENT_HANDLE);
-	if (res != CS_OK)
+	if (res != CS_OK) {
+		logt_print(LOG_INFO, "Unable to access objdb parent\n");
 		return -1;
+	}
 
 	res = confdb_object_find(handle, OBJECT_PARENT_HANDLE, "global", strlen("global"), &global_handle);
-	if (res != CS_OK)
+	if (res != CS_OK) {
+		logt_print(LOG_DEBUG, "No global section defined in config file\n");
 		return 0;
+	}
 
 	confdb_object_find_destroy(handle, OBJECT_PARENT_HANDLE);
 
 	res = confdb_key_iter_start(handle, global_handle);
-	if (res != CS_OK)
+	if (res != CS_OK) {
+		logt_print(LOG_INFO, "Unable to iterate through global config keys?\n");
 		return -1;
+	}
 
 	while ( (res = confdb_key_iter(handle, global_handle, key_name, &key_name_len,
 					key_value, &key_value_len)) == CS_OK) {
