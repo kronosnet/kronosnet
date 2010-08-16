@@ -58,10 +58,10 @@ static int parse_logging_config(confdb_handle_t handle)
 		return -1;
 
 	res = confdb_object_find(handle, OBJECT_PARENT_HANDLE, "logging", strlen("logging"), &logging_handle);
-	if (res != CS_OK)
-		return 0;
 
 	confdb_object_find_destroy(handle, OBJECT_PARENT_HANDLE);
+	if (res != CS_OK)
+		return 0;
 
 	res = confdb_key_iter_start(handle, logging_handle);
 	if (res != CS_OK)
