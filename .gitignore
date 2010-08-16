@@ -19,3 +19,4 @@ ltmain.sh
 m4
 missing
 libtool
+clusternetd
