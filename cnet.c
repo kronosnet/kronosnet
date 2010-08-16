@@ -1,6 +1,6 @@
 #include "config.h"
 
-#include "tun.h"
+#include "cnet.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

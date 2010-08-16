@@ -8,13 +8,13 @@ ACLOCAL_AMFLAGS		= -I m4
 
 noinst_HEADERS		= \
 			  conf.h logging.h \
-			  tun.h
+			  cnet.h
 
 sbin_PROGRAMS		= clusternetd
 
 clusternetd_SOURCES	= main.c \
 			  conf.c logging.c \
-			  tun.c
+			  cnet.c
 
 clusternetd_CPPFLAGS	=
 
