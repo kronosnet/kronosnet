@@ -257,9 +257,9 @@ int main(int argc, char **argv)
 
 	logt_print(LOG_INFO, PACKAGE " version " VERSION "\n");
 	if (statistics)
-		logt_print(LOG_INFO, "statistics collector enabled\n");
+		logt_print(LOG_DEBUG, "statistics collector enabled\n");
 	if (rerouting)
-		logt_print(LOG_INFO, "rerouting engine enabled\n");
+		logt_print(LOG_DEBUG, "rerouting engine enabled\n");
 
 	logt_print(LOG_DEBUG, "Adjust OOM to -16\n");
 	set_oom_adj(-16);
