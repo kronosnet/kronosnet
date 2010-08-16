@@ -23,6 +23,8 @@ int daemonize = 1;
 int debug = 0;
 int daemon_quit = 0;
 char *conffile = NULL;
+int statistics = 0;
+int rerouting = 0;
 
 static void print_usage(void)
 {
@@ -237,6 +239,8 @@ int main(int argc, char **argv)
 	if (confdb_handle == 0)
 		exit(EXIT_FAILURE);
 
+	parse_global_config(confdb_handle);
+
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
 			perror("Unable to daemonize");
@@ -252,6 +256,10 @@ int main(int argc, char **argv)
 	signal(SIGTERM, sigterm_handler);
 
 	logt_print(LOG_INFO, PACKAGE " version " VERSION "\n");
+	if (statistics)
+		logt_print(LOG_INFO, "statistics collector enabled\n");
+	if (rerouting)
+		logt_print(LOG_INFO, "rerouting engine enabled\n");
 
 	logt_print(LOG_DEBUG, "Adjust OOM to -16\n");
 	set_oom_adj(-16);

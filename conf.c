@@ -10,8 +10,44 @@
 
 static confdb_callbacks_t callbacks = {};
 
+extern int statistics;
+extern int rerouting;
+
 int parse_global_config(confdb_handle_t handle)
 {
+	int res;
+	hdb_handle_t global_handle;
+	char key_name[PATH_MAX];
+	size_t key_name_len;
+	char key_value[PATH_MAX];
+	size_t key_value_len;
+
+	res = confdb_object_find_start(handle, OBJECT_PARENT_HANDLE);
+	if (res != CS_OK)
+		return -1;
+
+	res = confdb_object_find(handle, OBJECT_PARENT_HANDLE, "global", strlen("global"), &global_handle);
+	if (res != CS_OK)
+		return 0;
+
+	confdb_object_find_destroy(handle, OBJECT_PARENT_HANDLE);
+
+	res = confdb_key_iter_start(handle, global_handle);
+	if (res != CS_OK)
+		return -1;
+
+	while ( (res = confdb_key_iter(handle, global_handle, key_name, &key_name_len,
+					key_value, &key_value_len)) == CS_OK) {
+		key_name[key_name_len] = '\0';
+		key_value[key_value_len] = '\0';
+
+		if (!strncmp(key_name, "statistics",  strlen("statistics"))) {
+			statistics = 1;
+		} else if (!strncmp(key_name, "rerouting",  strlen("rerouting"))) {
+			rerouting = 1;
+		}
+	}
+
 	return 0;
 }
 
