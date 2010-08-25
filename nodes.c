@@ -8,10 +8,15 @@
 #include "logging.h"
 #include "nodes.h"
 
+static int add_ip(struct node *new, char* curip)
+{
+	return 0;
+}
+
 static int convert_ip(struct node *new, char* iptemp)
 {
 	char *tmp1 = iptemp, *tmp2 = iptemp;
-	char tempip[256];
+	char curip[256];
 	int i;
 
 	/* Clear out white space and tabs */
@@ -31,24 +36,26 @@ static int convert_ip(struct node *new, char* iptemp)
 	}
 
 	while (tmp1) {
-		memset(tempip, 0, sizeof(tempip));
+		memset(curip, 0, sizeof(curip));
 
 		tmp2 = strchr(tmp1, ' ');
 		if (tmp2) {
-			strncpy(tempip, tmp1, tmp2 - tmp1);
+			strncpy(curip, tmp1, tmp2 - tmp1);
 			tmp1 = tmp2 + 1;
-			if (!strlen(tempip))
+			if (!strlen(curip))
 				continue;
 		} else {
 			if (tmp1) {
-				strcpy(tempip, tmp1);
+				strcpy(curip, tmp1);
 				tmp1 = tmp2;
 			} else {
 				break;
 			}
 		}
 
-		logt_print(LOG_DEBUG, "tempip: %s\n", tempip);
+		if (add_ip(new, curip) < 0)
+			return -1;
+
 	}
 
 	return 0;
