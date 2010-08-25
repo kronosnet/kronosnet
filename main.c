@@ -225,6 +225,7 @@ static void sigterm_handler(int sig)
 int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
+	struct node *mainconf;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -259,7 +260,7 @@ int main(int argc, char **argv)
 	signal(SIGTERM, sigterm_handler);
 
 	parse_global_config(confdb_handle);
-	parse_nodes_config(confdb_handle);
+	mainconf = parse_nodes_config(confdb_handle);
 
 	if (statistics)
 		logt_print(LOG_DEBUG, "statistics collector enabled\n");
@@ -273,6 +274,8 @@ int main(int argc, char **argv)
 	set_scheduler();
 
 	/* do stuff here, should we */
+
+	free_nodes_config(mainconf);
 
 	free(conffile);
 
