@@ -29,7 +29,7 @@ static void print_conn_ainfo(struct addrinfo *ainfo)
 
 	inet_ntop(ainfo->ai_family, (void *)saddr, buf, sizeof(buf));
 
-	logt_print(LOG_DEBUG, "print_conn_ainfo: %s\n", buf);
+	logt_print(LOG_DEBUG, "print_conn_ainfo: %s %d\n", buf, ainfo->ai_family);
 }
 */
 
@@ -47,8 +47,8 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 	int ret;
 
 	memset(&ahints, 0, sizeof(ahints));
-	ahints.ai_socktype = 0;
-	ahints.ai_protocol = 0;
+	ahints.ai_socktype = SOCK_DGRAM;
+	ahints.ai_protocol = IPPROTO_UDP;
 	ahints.ai_family = AF_UNSPEC;
 
 	ret = getaddrinfo(curip, NULL, &ahints, &ainfo);
@@ -58,6 +58,7 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 	}
 
 	while (ainfo) {
+		//print_conn_ainfo(ainfo);
 		conn = malloc(sizeof(struct conn));
 		if (!conn) {
 			logt_print(LOG_INFO, "Unable to allocate memory for connection data\n");
