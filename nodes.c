@@ -2,14 +2,55 @@
 
 #include <stdio.h>
 #include <limits.h>
+#include <string.h>
 
 #include "conf.h"
 #include "logging.h"
 #include "nodes.h"
 
-static int convert_ip(struct node *new, const char* iptemp)
+static int convert_ip(struct node *new, char* iptemp)
 {
-	logt_print(LOG_DEBUG, "This is convert_ip: %s\n", iptemp);
+	char *tmp1 = iptemp, *tmp2 = iptemp;
+	char tempip[256];
+	int i;
+
+	/* Clear out white space and tabs */
+	for (i = strlen (iptemp) - 1; i > -1; i--) {
+		if (iptemp[i] == '\t' || iptemp[i] == ' ') {
+			iptemp[i] = '\0';
+		} else {
+			break;
+		}
+	}
+
+	/* convert tabs in spaces */
+	for (i = 0; i <= strlen (iptemp); i++) {
+		if (iptemp[i] == '\t') {
+			iptemp[i] = ' ';
+		}
+	}
+
+	while (tmp1) {
+		memset(tempip, 0, sizeof(tempip));
+
+		tmp2 = strchr(tmp1, ' ');
+		if (tmp2) {
+			strncpy(tempip, tmp1, tmp2 - tmp1);
+			tmp1 = tmp2 + 1;
+			if (!strlen(tempip))
+				continue;
+		} else {
+			if (tmp1) {
+				strcpy(tempip, tmp1);
+				tmp1 = tmp2;
+			} else {
+				break;
+			}
+		}
+
+		logt_print(LOG_DEBUG, "tempip: %s\n", tempip);
+	}
+
 	return 0;
 }
 

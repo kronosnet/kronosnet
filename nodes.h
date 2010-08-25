@@ -6,11 +6,10 @@
 
 #include "conf.h"
 
-
 struct conn_info {
 	int fd;
-	// latency;
 	int status;
+	// latency;
 };
 
 struct conn {
