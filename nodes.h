@@ -6,18 +6,13 @@
 
 #include "conf.h"
 
-struct conn_info {
-	int fd;
-	int status;
-	// latency;
-};
-
 struct conn {
 	struct conn *next;
 	struct conn *tail;
-	struct conn_info *in;
-	struct conn_info *out;
-	struct sockaddr_storage *ip_addr;
+	struct addrinfo *ainfo;
+	int seq_num;
+	int fd;
+	int status;
 };
 
 struct node {

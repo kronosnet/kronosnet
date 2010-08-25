@@ -4,20 +4,88 @@
 #include <limits.h>
 #include <string.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
 #include "conf.h"
 #include "logging.h"
 #include "nodes.h"
 
-static int add_ip(struct node *new, char* curip)
+/*
+static void print_conn_ainfo(struct addrinfo *ainfo)
 {
+	char buf[INET6_ADDRSTRLEN];
+	struct sockaddr_storage *ss = (struct sockaddr_storage *)ainfo->ai_addr;
+	struct sockaddr_in *sin = (struct sockaddr_in *)ainfo->ai_addr;
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ainfo->ai_addr;
+	void *saddr;
+
+	if (ss->ss_family == AF_INET6)
+		saddr = &sin6->sin6_addr;
+	else
+		saddr = &sin->sin_addr;
+
+	inet_ntop(ainfo->ai_family, (void *)saddr, buf, sizeof(buf));
+
+	logt_print(LOG_DEBUG, "print_conn_ainfo: %s\n", buf);
+}
+*/
+
+/*
+ * this is delicate
+ * return -1 if getaddrinfo fails as it might not be completely fatal
+ * -2 for other fatal errors.
+ */
+
+static int add_ip(struct node *node, const char* curip, int seq_num)
+{
+	struct addrinfo *ainfo;
+	struct addrinfo ahints;
+	struct conn *conn;
+	int ret;
+
+	memset(&ahints, 0, sizeof(ahints));
+	ahints.ai_socktype = 0;
+	ahints.ai_protocol = 0;
+	ahints.ai_family = AF_UNSPEC;
+
+	ret = getaddrinfo(curip, NULL, &ahints, &ainfo);
+	if (ret < 0) {
+		logt_print(LOG_INFO, "Unable to get addrinfo for [%s]: %s\n", curip, gai_strerror(ret));
+		return -1;
+	}
+
+	while (ainfo) {
+		conn = malloc(sizeof(struct conn));
+		if (!conn) {
+			logt_print(LOG_INFO, "Unable to allocate memory for connection data\n");
+			return -2;
+		}
+
+		memset(conn, 0, sizeof(struct conn));
+		conn->ainfo=ainfo;
+		conn->seq_num=seq_num;
+
+		if (!node->conn)
+			node->conn = conn;
+		else
+			node->conn->tail->next = conn;
+
+		node->conn->tail = conn;
+
+		ainfo = ainfo->ai_next;
+	}
+
 	return 0;
 }
 
-static int convert_ip(struct node *new, char* iptemp)
+static int convert_ip(struct node *node, char* iptemp)
 {
 	char *tmp1 = iptemp, *tmp2 = iptemp;
 	char curip[256];
-	int i;
+	int i, seq_num;
 
 	/* Clear out white space and tabs */
 	for (i = strlen (iptemp) - 1; i > -1; i--) {
@@ -35,6 +103,7 @@ static int convert_ip(struct node *new, char* iptemp)
 		}
 	}
 
+	seq_num = 0;
 	while (tmp1) {
 		memset(curip, 0, sizeof(curip));
 
@@ -53,9 +122,10 @@ static int convert_ip(struct node *new, char* iptemp)
 			}
 		}
 
-		if (add_ip(new, curip) < 0)
+		if (add_ip(node, curip, seq_num) < -1) 
 			return -1;
 
+		seq_num++;
 	}
 
 	return 0;
@@ -233,10 +303,22 @@ out:
 
 static void free_nodes_conn(struct conn *conn)
 {
-	if (!conn)
-		return;
+	struct conn *next;
+	int seq_num = 0, next_seq = -1;
 
-	free(conn);
+	while(conn) {
+		next = conn->next;
+
+		if ((seq_num != next_seq) && (conn->ainfo))
+			freeaddrinfo(conn->ainfo);
+
+		seq_num = conn->seq_num;
+		if (next) 
+			next_seq = next->seq_num;
+
+		free(conn);
+		conn = next;
+	}
 	return;
 }
 
@@ -246,7 +328,8 @@ void free_nodes_config(struct node *head)
 
 	while (head) {
 		next = head->next;
-		free_nodes_conn(head->conn);
+		if (head->conn)
+			free_nodes_conn(head->conn);
 		if (head->nodename)
 			free(head->nodename);
 		if (head->preup)
