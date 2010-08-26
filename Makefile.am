@@ -17,7 +17,7 @@ noinst_HEADERS		= \
 			  cnet.h nodes.h \
 			  utils.h controlt.h controlt_comm.h
 
-sbin_PROGRAMS		= clusternetd
+sbin_PROGRAMS		= clusternetd cnet_tool
 
 clusternetd_SOURCES	= main.c \
 			  conf.c logging.c \
@@ -36,6 +36,15 @@ clusternetd_LDFLAGS	= \
 			  -lpthread
 
 clusternetd_LDADD	= 
+
+cnet_tool_SOURCES	= cnet_tool.c \
+			  utils.c
+
+cnet_tool_CFLAGS	= -fPIC
+
+cnet_tool_LDFLAGS	=
+
+cnet_tool_LDADD		=
 
 maintainer-clean-local:
 	rm -rf m4
