@@ -111,20 +111,53 @@ static int do_connect(void)
 		fprintf(stderr, "Unable to connect to socket %s error: %s\n",
 				CLUSTERNETD_SOCKNAME, strerror(errno));
 		close(s);
+		s = rv;
 	}
+
+	return s;
+}
+
+static void init_header(struct ctrl_header *h, int cmd, int extra_len)
+{
+	memset(h, 0, sizeof(struct ctrl_header));
+
+	h->magic = CNETD_MAGIC;
+	h->version = CNETD_VERSION;
+	h->len = sizeof(struct ctrl_header) + extra_len;
+	h->command = cmd;
+}
+
+static int send_quit(int fd)
+{
+	struct ctrl_header h;
+	int rv;
+
+	init_header(&h, CNETD_CMD_QUIT,0);
+
+	rv = do_write(fd, &h, sizeof(h));
+	close(fd);
 
 	return rv;
 }
 
 int main(int argc, char **argv)
 {
+	int out = 0,fd;
+
 	read_arguments(argc, argv);
 
 	if (!command)
 		command = strdup("status");
 
-	if (do_connect() < 0)
+	fd = do_connect();
+	if (fd < 0)
 		return -1;
 
-	return 0;
+	if (!strncmp(command, "quit", strlen("quit")))
+		out = send_quit(fd);
+
+	if (command)
+		free(command);
+
+	return out;
 }
