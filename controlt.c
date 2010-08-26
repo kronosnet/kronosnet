@@ -16,6 +16,8 @@ static pthread_t ctrl_thread;
 static pthread_mutex_t ctrl_mutex;
 int control_thread_active = 0;
 
+extern int daemon_quit;
+
 static int setup_listener(void)
 {
 	struct sockaddr_un addr;
@@ -93,7 +95,6 @@ static void *control_thread(void *arg)
 	control_thread_active = 1;
 
 	for (;;) {
-		logt_print(LOG_DEBUG, "Waiting for connections on ctrl socket\n");
 		ctrl_fd = accept(ctrl_socket, NULL, NULL);
 		if (ctrl_fd < 0) {
 			logt_print(LOG_INFO, "Error accepting connections on socket %s error: %s\n",
@@ -116,7 +117,7 @@ static void *control_thread(void *arg)
 
 		switch(h.command) {
 		case CNETD_CMD_QUIT:
-			logt_print(LOG_DEBUG, "Received CNETD_CMD_QUIT on control socket\n");
+			daemon_quit = 1;
 			break;
 		default:
 			logt_print(LOG_DEBUG, "Unknown command received on control socket\n");
