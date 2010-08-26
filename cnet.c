@@ -1,19 +1,18 @@
 #include "config.h"
 
-#include "cnet.h"
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-
 #include <errno.h>
-
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+
+#include "cnet.h"
+#include "utils.h"
 
 int cnet_open(char *dev, size_t dev_size)
 {
@@ -53,14 +52,12 @@ int cnet_close(int fd)
 	return close(fd);
 }
 
-/* TODO: implement loopy read/write here */
-
 int cnet_read(int fd, char *buf, int len)
 {
-	return read(fd, buf, len);
+	return do_read(fd, buf, len);
 }
 
 int cnet_write(int fd, char *buf, int len)
 {
-	return write(fd, buf, len);
+	return do_write(fd, buf, len);
 }
