@@ -69,6 +69,16 @@ static int setup_listener(void)
 	return s;
 }
 
+static void ctrl_lock(void)
+{
+	pthread_mutex_lock(&ctrl_mutex);
+}
+
+static void ctrl_unlock(void)
+{
+	pthread_mutex_unlock(&ctrl_mutex);
+}
+
 static void *control_thread(void *arg)
 {
 	int ctrl_socket, ctrl_fd, rv;
@@ -95,6 +105,25 @@ static void *control_thread(void *arg)
 		rv = do_read(ctrl_fd, &h, sizeof(h));
 		if (rv < 0)
 			goto out;
+
+		if (h.magic != CNETD_MAGIC)
+			goto out;
+
+		if ((h.version & 0xFFFF0000) != (CNETD_VERSION & 0xFFFF0000))
+			goto out;
+
+		ctrl_lock();
+
+		switch(h.command) {
+		case CNETD_CMD_QUIT:
+			logt_print(LOG_DEBUG, "Received CNETD_CMD_QUIT on control socket\n");
+			break;
+		default:
+			logt_print(LOG_DEBUG, "Unknown command received on control socket\n");
+			break;
+		}
+
+		ctrl_unlock();
 
 out:
 		close(ctrl_fd);
