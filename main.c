@@ -15,6 +15,7 @@
 #include "conf.h"
 #include "logging.h"
 #include "nodes.h"
+#include "controlt.h"
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
@@ -274,6 +275,12 @@ int main(int argc, char **argv)
 	set_scheduler();
 
 	/* do stuff here, should we */
+	logt_print(LOG_DEBUG, "Starting daemon control thread\n");
+	if (start_control_thread() < 0)
+		goto out;
+
+out:
+	stop_control_thread();
 
 	free_nodes_config(mainconf);
 

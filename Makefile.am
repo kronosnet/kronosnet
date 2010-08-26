@@ -6,17 +6,23 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
+dist_doc_DATA		= example.conf \
+			  COPYING.applications \
+			  COPYING.libraries \
+			  COPYRIGHT \
+			  README.licence
+
 noinst_HEADERS		= \
 			  conf.h logging.h \
 			  cnet.h nodes.h \
-			  utils.h
+			  utils.h controlt.h
 
 sbin_PROGRAMS		= clusternetd
 
 clusternetd_SOURCES	= main.c \
 			  conf.c logging.c \
 			  cnet.c nodes.c \
-			  utils.c
+			  utils.c controlt.c
 
 clusternetd_CPPFLAGS	=
 
@@ -26,7 +32,8 @@ clusternetd_CFLAGS	= -fPIC \
 
 clusternetd_LDFLAGS	= \
 			  $(confdb_LIBS) \
-			  $(logt_LIBS)
+			  $(logt_LIBS) \
+			  -lpthread
 
 clusternetd_LDADD	= 
 
