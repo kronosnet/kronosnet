@@ -3,12 +3,13 @@
 
 #include "config.h"
 
-const char CLUSTERNETD_SOCKNAME[] = RUNDIR "/clusternetd.sock";
+#define	CLUSTERNETD_SOCKNAME	RUNDIR "/clusternetd.sock"
 
 #define CNETD_MAGIC	0x12344321
 #define CNETD_VERSION	0x00000001
 
-#define CNETD_CMD_QUIT	1
+#define CNETD_CMD_QUIT		1
+#define CNETD_CMD_STATUS	2
 
 struct ctrl_header {
 	unsigned int magic;
@@ -20,5 +21,7 @@ struct ctrl_header {
 	int unused1;
 	int unsued2;
 };
+
+void init_header(struct ctrl_header *h, int cmd, int extra_len);
 
 #endif

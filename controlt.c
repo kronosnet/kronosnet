@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <stdio.h>
 
 #include "controlt.h"
 #include "controlt_comm.h"
@@ -81,6 +82,20 @@ static void ctrl_unlock(void)
 	pthread_mutex_unlock(&ctrl_mutex);
 }
 
+static int send_status(int ctrl_fd)
+{
+	char status_reply[PATH_MAX];
+
+	memset(status_reply, 0, PATH_MAX);
+
+	init_header((struct ctrl_header *)&status_reply, CNETD_CMD_STATUS, PATH_MAX);
+
+	snprintf(status_reply + sizeof(struct ctrl_header),
+		 PATH_MAX - sizeof(struct ctrl_header), "ADD SOME USEFUL INFO HERE");
+
+	return do_write(ctrl_fd, status_reply, PATH_MAX);
+}
+
 static void *control_thread(void *arg)
 {
 	int ctrl_socket, ctrl_fd, rv;
@@ -118,6 +133,10 @@ static void *control_thread(void *arg)
 		switch(h.command) {
 		case CNETD_CMD_QUIT:
 			daemon_quit = 1;
+			break;
+		case CNETD_CMD_STATUS:
+			if (send_status(ctrl_fd) < 0)
+				logt_print(LOG_INFO, "Unable to reply to a status request\n");
 			break;
 		default:
 			logt_print(LOG_DEBUG, "Unknown command received on control socket\n");

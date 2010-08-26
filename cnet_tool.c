@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <sys/un.h>
+#include <limits.h>
 
 #include "utils.h"
 #include "controlt.h"
@@ -117,25 +118,43 @@ static int do_connect(void)
 	return s;
 }
 
-static void init_header(struct ctrl_header *h, int cmd, int extra_len)
-{
-	memset(h, 0, sizeof(struct ctrl_header));
-
-	h->magic = CNETD_MAGIC;
-	h->version = CNETD_VERSION;
-	h->len = sizeof(struct ctrl_header) + extra_len;
-	h->command = cmd;
-}
-
 static int send_quit(int fd)
 {
 	struct ctrl_header h;
 	int rv;
 
-	init_header(&h, CNETD_CMD_QUIT,0);
+	init_header(&h, CNETD_CMD_QUIT, 0);
 
 	rv = do_write(fd, &h, sizeof(h));
 	close(fd);
+
+	return rv;
+}
+
+static int get_status(int fd)
+{
+	struct ctrl_header h, *hs;
+	int rv;
+	char status[PATH_MAX];
+
+	init_header(&h, CNETD_CMD_STATUS, 0);
+
+	rv = do_write(fd, &h, sizeof(h));
+	if (rv < 0)
+		goto out;
+
+	memset(status, 0, PATH_MAX);
+
+	do_read(fd, status, PATH_MAX);
+
+	hs = (struct ctrl_header *)status;
+	rv = hs->data;
+	if (rv < 0)
+		goto out;
+
+	printf("%s\n", (char *)status + sizeof(struct ctrl_header));
+out:
+	close(fd); 
 
 	return rv;
 }
@@ -155,6 +174,9 @@ int main(int argc, char **argv)
 
 	if (!strncmp(command, "quit", strlen("quit")))
 		out = send_quit(fd);
+
+	if (!strncmp(command, "status", strlen("status")))
+		out = get_status(fd);
 
 	if (command)
 		free(command);
