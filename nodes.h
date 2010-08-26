@@ -25,6 +25,7 @@ struct node {
 	char *down;
 	char *postdown;
 	int nodeid;
+	int af_family;
 };
 
 struct node *parse_nodes_config(confdb_handle_t handle);

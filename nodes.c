@@ -49,7 +49,7 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 	memset(&ahints, 0, sizeof(ahints));
 	ahints.ai_socktype = SOCK_DGRAM;
 	ahints.ai_protocol = IPPROTO_UDP;
-	ahints.ai_family = AF_UNSPEC;
+	ahints.ai_family = node->af_family;
 
 	ret = getaddrinfo(curip, NULL, &ahints, &ainfo);
 	if (ret < 0) {
@@ -168,6 +168,14 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
+			}
+		} else if (!strncmp(key_name, "inet", strlen("inet"))) {
+			if (strlen(key_value)) {
+				new->af_family = AF_UNSPEC;
+				if (!strncmp(key_value, "ipv4", strlen("ipv4")))
+					new->af_family = AF_INET;
+				if (!strncmp(key_value, "ipv6", strlen("ipv6"))) 
+					new->af_family = AF_INET6;
 			}
 		} else if (!strncmp(key_name, "preup", strlen("preup"))) {
 			if (strlen(key_value)) {
