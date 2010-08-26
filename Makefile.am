@@ -15,7 +15,7 @@ dist_doc_DATA		= example.conf \
 noinst_HEADERS		= \
 			  conf.h logging.h \
 			  cnet.h nodes.h \
-			  utils.h controlt.h
+			  utils.h controlt.h controlt_comm.h
 
 sbin_PROGRAMS		= clusternetd
 

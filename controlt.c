@@ -8,7 +8,9 @@
 #include <sys/un.h>
 
 #include "controlt.h"
+#include "controlt_comm.h"
 #include "logging.h"
+#include "utils.h"
 
 static pthread_t ctrl_thread;
 static pthread_mutex_t ctrl_mutex;
@@ -69,13 +71,13 @@ static int setup_listener(void)
 
 static void *control_thread(void *arg)
 {
-	int ctrl_socket;
-	int ctrl_fd;
+	int ctrl_socket, ctrl_fd, rv;
+	struct ctrl_header h;
 
 	ctrl_socket = setup_listener();
 	if (ctrl_socket < 0) {
 		control_thread_active = -1;
-		goto out;
+		goto thread_out;
 	}
 
 	control_thread_active = 1;
@@ -86,12 +88,19 @@ static void *control_thread(void *arg)
 		if (ctrl_fd < 0) {
 			logt_print(LOG_INFO, "Error accepting connections on socket %s error: %s\n",
 				   CLUSTERNETD_SOCKNAME, strerror(errno));
-			// what now?
-			return NULL;
+			// what now? doesn't look ok to kill the control thread.. try again?
+			goto thread_out;
 		}
-	}
+
+		rv = do_read(ctrl_fd, &h, sizeof(h));
+		if (rv < 0)
+			goto out;
 
 out:
+		close(ctrl_fd);
+	}
+
+thread_out:
 	unlink(CLUSTERNETD_SOCKNAME);
 	return NULL;
 }
