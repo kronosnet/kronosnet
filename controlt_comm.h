@@ -1,6 +1,10 @@
 #ifndef __CONTROLT_COMM_H__
 #define __CONTROLT_COMM_H__
 
+#include "config.h"
+
+const char CLUSTERNETD_SOCKNAME[] = RUNDIR "/clusternetd.sock";
+
 #define CNETD_MAGIC	0x12344321
 #define CNETD_VERSION	0x00000001
 

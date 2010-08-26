@@ -2,11 +2,17 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <errno.h>
+#include <sys/un.h>
 
 #include "utils.h"
 #include "controlt.h"
+#include "controlt_comm.h"
 
 #define OPTION_STRING "hdVc:"
 
@@ -68,12 +74,57 @@ static void read_arguments(int argc, char **argv)
 	}
 }
 
+static int do_connect(void)
+{
+	struct sockaddr_un addr;
+	int s, rv, value;
+
+	s = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (s < 0) {
+		fprintf(stderr, "Unable to open socket %s error: %s\n",
+				CLUSTERNETD_SOCKNAME, strerror(errno));
+		return s;
+	}
+
+	value = fcntl(s, F_GETFD, 0);
+	if (value < 0) {
+		fprintf(stderr, "Unable to  get close-on-exec flag from socket %s error: %s\n",
+				CLUSTERNETD_SOCKNAME, strerror(errno));
+		close(s);
+		return value;
+	}
+	value |= FD_CLOEXEC;
+	rv = fcntl(s, F_SETFD, value);
+	if (rv < 0) {
+		fprintf(stderr, "Unable to set close-on-exec flag from socket %s error: %s\n",
+				CLUSTERNETD_SOCKNAME, strerror(errno));
+		close(s);
+		return rv;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	memcpy(addr.sun_path, CLUSTERNETD_SOCKNAME, strlen(CLUSTERNETD_SOCKNAME));
+
+	rv = connect(s, (struct sockaddr *) &addr, sizeof(addr));
+	if (rv < 0) {
+		fprintf(stderr, "Unable to connect to socket %s error: %s\n",
+				CLUSTERNETD_SOCKNAME, strerror(errno));
+		close(s);
+	}
+
+	return rv;
+}
+
 int main(int argc, char **argv)
 {
 	read_arguments(argc, argv);
 
 	if (!command)
 		command = strdup("status");
+
+	if (do_connect() < 0)
+		return -1;
 
 	return 0;
 }

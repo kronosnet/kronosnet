@@ -15,12 +15,11 @@
 static pthread_t ctrl_thread;
 static pthread_mutex_t ctrl_mutex;
 int control_thread_active = 0;
-const char CLUSTERNETD_SOCKNAME[] = RUNDIR "/clusternetd.sock";
 
 static int setup_listener(void)
 {
 	struct sockaddr_un addr;
-	int rv, s;
+	int rv, s, value;
 
 	unlink(CLUSTERNETD_SOCKNAME);
 
@@ -31,15 +30,16 @@ static int setup_listener(void)
 		return s;
 	}
 
-	rv = fcntl(s, F_GETFD, 0);
-	if (rv < 0) {
+	value = fcntl(s, F_GETFD, 0);
+	if (value < 0) {
 		logt_print(LOG_INFO, "Unable to get close-on-exec flag from socket %s error: %s\n",
 				     CLUSTERNETD_SOCKNAME, strerror(errno));
 		close(s);
-		return rv;
+		return value;
 	}
-	rv |= FD_CLOEXEC;
-	if (fcntl(s, F_SETFD, rv) < 0) {
+	value |= FD_CLOEXEC;
+	rv = fcntl(s, F_SETFD, value);
+	if (rv < 0) {
 		logt_print(LOG_INFO, "Unable to set close-on-exec flag from socket %s error: %s\n",
 					CLUSTERNETD_SOCKNAME, strerror(errno));
 		close(s);
