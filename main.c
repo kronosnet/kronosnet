@@ -223,6 +223,11 @@ static void sigterm_handler(int sig)
 	daemon_quit = 1;
 }
 
+static void loop(void) {
+	while(!daemon_quit)
+		sleep(1);
+}
+
 int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
@@ -278,6 +283,8 @@ int main(int argc, char **argv)
 	logt_print(LOG_DEBUG, "Starting daemon control thread\n");
 	if (start_control_thread() < 0)
 		goto out;
+
+	loop();
 
 out:
 	stop_control_thread();
