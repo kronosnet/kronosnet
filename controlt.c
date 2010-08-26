@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -26,6 +27,21 @@ static int setup_listener(void)
 		logt_print(LOG_INFO, "Unable to open socket %s error: %s\n",
 				     CLUSTERNETD_SOCKNAME, strerror(errno));
 		return s;
+	}
+
+	rv = fcntl(s, F_GETFD, 0);
+	if (rv < 0) {
+		logt_print(LOG_INFO, "Unable to get close-on-exec flag from socket %s error: %s\n",
+				     CLUSTERNETD_SOCKNAME, strerror(errno));
+		close(s);
+		return rv;
+	}
+	rv |= FD_CLOEXEC;
+	if (fcntl(s, F_SETFD, rv) < 0) {
+		logt_print(LOG_INFO, "Unable to set close-on-exec flag from socket %s error: %s\n",
+					CLUSTERNETD_SOCKNAME, strerror(errno));
+		close(s);
+		return rv;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -54,6 +70,7 @@ static int setup_listener(void)
 static void *control_thread(void *arg)
 {
 	int ctrl_socket;
+	int ctrl_fd;
 
 	ctrl_socket = setup_listener();
 	if (ctrl_socket < 0) {
@@ -64,8 +81,14 @@ static void *control_thread(void *arg)
 	control_thread_active = 1;
 
 	for (;;) {
-		sleep(1);
-		logt_print(LOG_DEBUG, "I AM A THREAD!\n");
+		logt_print(LOG_DEBUG, "Waiting for connections on ctrl socket\n");
+		ctrl_fd = accept(ctrl_socket, NULL, NULL);
+		if (ctrl_fd < 0) {
+			logt_print(LOG_INFO, "Error accepting connections on socket %s error: %s\n",
+				   CLUSTERNETD_SOCKNAME, strerror(errno));
+			// what now?
+			return NULL;
+		}
 	}
 
 out:
