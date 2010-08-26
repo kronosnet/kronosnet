@@ -69,14 +69,15 @@ PKG_CHECK_MODULES([logt],[liblogthread])
 PKG_CHECK_MODULES([confdb],[libconfdb])
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/ioctl.h sys/socket.h unistd.h netinet/in.h])
+AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/ioctl.h sys/socket.h unistd.h netinet/in.h arpa/inet.h netdb.h syslog.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([atexit ftruncate memset strdup strtol])
+AC_CHECK_FUNCS([atexit ftruncate memset strdup strtol setenv strcasecmp strchr strerror])
 
 # local options
 AC_ARG_ENABLE([debug],
