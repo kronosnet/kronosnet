@@ -16,7 +16,8 @@ noinst_HEADERS		= \
 			  conf.h logging.h \
 			  cnet.h nodes.h \
 			  utils.h controlt.h \
-			  controlt_comm.h
+			  controlt_comm.h \
+			  netsocket.h
 
 sbin_PROGRAMS		= clusternetd cnet_tool
 
@@ -24,7 +25,8 @@ clusternetd_SOURCES	= main.c \
 			  conf.c logging.c \
 			  cnet.c nodes.c \
 			  utils.c controlt.c \
-			  controlt_comm.c
+			  controlt_comm.c \
+			  netsocket.c
 
 clusternetd_CPPFLAGS	=
 

@@ -16,6 +16,9 @@
 #include "logging.h"
 #include "nodes.h"
 #include "controlt.h"
+#include "netsocket.h"
+#include "utils.h"
+#include "cnet.h"
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
@@ -27,6 +30,8 @@ int daemon_quit = 0;
 char *conffile = NULL;
 int statistics = 0;
 int rerouting = 0;
+int net_sock;
+int eth_fd;
 
 static void print_usage(void)
 {
@@ -224,14 +229,37 @@ static void sigterm_handler(int sig)
 }
 
 static void loop(void) {
-	while(!daemon_quit)
-		sleep(1);
+	int net_fd, rv;
+	char buf[10];
+
+	while(!daemon_quit) {
+		net_fd = accept(net_sock, NULL, NULL);
+		if (net_fd < 0) {
+			logt_print(LOG_INFO, "Error accepting connections on netsocket error: %s\n", strerror(errno));
+			continue;
+		}
+
+		memset(buf, 0, sizeof(buf));
+
+		rv = do_read(net_fd, buf, sizeof(buf));
+		if (rv < 0)
+			goto out;
+
+		logt_print(LOG_DEBUG, "%s\n", buf);
+
+		if (strncmp(buf, "quit", strlen("quit")))
+			daemon_quit = 1;
+
+out:
+		close(net_fd);
+	}
 }
 
 int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
 	struct node *mainconf;
+	char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -284,9 +312,30 @@ int main(int argc, char **argv)
 	if (start_control_thread() < 0)
 		goto out;
 
+	logt_print(LOG_DEBUG, "Initializing local ethernet\n");
+	strncpy(localnet, "clusternet", 16);
+	eth_fd = cnet_open(localnet, 16);
+	if (eth_fd < 0) {
+		logt_print(LOG_INFO, "Unable to inizialize local tap device: %s\n",
+			   strerror(errno));
+		goto out;
+	}
+
+	logt_print(LOG_DEBUG, "Starting network socket listener\n");
+	net_sock = setup_net_listener();
+	if (net_sock < 0)
+		goto out;
+
+	logt_print(LOG_DEBUG, "Entering main loop\n");
 	loop();
 
 out:
+	if (eth_fd >= 0)
+		close(eth_fd);
+
+	if (net_sock >= 0)
+		close(net_sock);
+
 	stop_control_thread();
 
 	free_nodes_config(mainconf);
