@@ -230,7 +230,7 @@ static void sigterm_handler(int sig)
 }
 
 static void loop(void) {
-	int net_fd, se_result;
+	int net_fd, se_result, rv;
 	char *read_buf = NULL;
 	ssize_t read_len = 0;
 	fd_set rfds;
@@ -294,10 +294,10 @@ static void loop(void) {
 				goto out_net;
 			}
 
-			logt_print(LOG_DEBUG, "%s\n", read_buf);
+			/* strip and process our internal header here */
 
-			if (strncmp(read_buf, "quit", strlen("quit")))
-				daemon_quit = 1;
+			/* and write starting from read_buf+sizeof(our header) */
+			rv = do_write(eth_fd, read_buf, read_len);
 out_net:
 			close(net_fd);
 		} 
