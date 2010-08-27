@@ -32,6 +32,7 @@ int statistics = 0;
 int rerouting = 0;
 int net_sock;
 int eth_fd;
+char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 
 static void print_usage(void)
 {
@@ -229,10 +230,12 @@ static void sigterm_handler(int sig)
 }
 
 static void loop(void) {
-	int net_fd, rv, se_result;
-	char buf[10];
+	int net_fd, se_result;
+	char *read_buf = NULL;
+	ssize_t read_len = 0;
 	fd_set rfds;
 	struct timeval tv;
+	int mtu = 0, newmtu = 0;
 
 	do {
 		FD_ZERO (&rfds);
@@ -255,14 +258,28 @@ static void loop(void) {
 		if (se_result == 0)
 			continue;
 
-		if (FD_ISSET(eth_fd, &rfds)) {
-			logt_print(LOG_DEBUG, "Got data on localnet\n");
-			rv = do_read(eth_fd, buf, sizeof(buf));
-			if (rv >= 0) {
-				logt_print(LOG_DEBUG, "%s\n", buf);
-				//dispatch_buf();
-			}
+		newmtu = cnet_get_mtu(localnet);
+		if (newmtu < 0) {
+			logt_print(LOG_DEBUG, "ERROR getting MTU\n");
+			mtu = 1500;
 		}
+		if (mtu != newmtu) {
+			logt_print(LOG_DEBUG, "Reallocating MTU buffers\n");
+			read_buf = realloc(read_buf, newmtu);
+			mtu = newmtu;
+		}
+
+		if (FD_ISSET(eth_fd, &rfds)) {
+			read_len = read(eth_fd, read_buf, mtu);
+			if (read_len > 0) {
+				logt_print(LOG_DEBUG, "Read %zu\n", read_len);
+				//dispatch_buf(read_buf, read_len);
+			} else if (read_len < 0) {
+				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
+			} else
+				logt_print(LOG_DEBUG, "Read 0?\n");
+		}
+
 		if (FD_ISSET(net_sock, &rfds)) {
 
 			net_fd = accept(net_sock, NULL, NULL);
@@ -271,15 +288,15 @@ static void loop(void) {
 				continue;
 			}
 
-			memset(buf, 0, sizeof(buf));
-
-			rv = do_read(net_fd, buf, sizeof(buf));
-			if (rv < 0)
+			read_len = read(net_fd, read_buf, mtu);
+			if (read_len < 0) {
+				logt_print(LOG_INFO, "Error reading from netsocket error: %s\n", strerror(errno));
 				goto out_net;
+			}
 
-			logt_print(LOG_DEBUG, "%s\n", buf);
+			logt_print(LOG_DEBUG, "%s\n", read_buf);
 
-			if (strncmp(buf, "quit", strlen("quit")))
+			if (strncmp(read_buf, "quit", strlen("quit")))
 				daemon_quit = 1;
 out_net:
 			close(net_fd);
@@ -294,7 +311,6 @@ int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
 	struct node *mainconf;
-	char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -348,7 +364,7 @@ int main(int argc, char **argv)
 		goto out;
 
 	logt_print(LOG_DEBUG, "Initializing local ethernet\n");
-	strncpy(localnet, "clusternet", 16);
+	strncpy(localnet, PACKAGE, 16);
 	eth_fd = cnet_open(localnet, 16);
 	if (eth_fd < 0) {
 		logt_print(LOG_INFO, "Unable to inizialize local tap device: %s\n",

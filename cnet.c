@@ -47,6 +47,26 @@ int cnet_open(char *dev, size_t dev_size)
 	return fd;
 }
 
+int cnet_get_mtu(char *dev)
+{
+	struct ifreq ifr;
+	int sockfd, err;
+
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
+		return sockfd;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+
+	err = ioctl(sockfd, SIOCGIFMTU, (void *)&ifr);
+	close(sockfd);
+	if (err < 0)
+		return err;
+
+	return ifr.ifr_mtu;
+}
+
 int cnet_close(int fd)
 {
 	return close(fd);
