@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <pthread.h>
+#include <sys/time.h>
 
 #include "conf.h"
 #include "logging.h"
@@ -229,30 +229,65 @@ static void sigterm_handler(int sig)
 }
 
 static void loop(void) {
-	int net_fd, rv;
+	int net_fd, rv, se_result;
 	char buf[10];
+	fd_set rfds;
+	struct timeval tv;
 
-	while(!daemon_quit) {
-		net_fd = accept(net_sock, NULL, NULL);
-		if (net_fd < 0) {
-			logt_print(LOG_INFO, "Error accepting connections on netsocket error: %s\n", strerror(errno));
-			continue;
-		}
+	do {
+		FD_ZERO (&rfds);
+		FD_SET (net_sock, &rfds);
+		FD_SET (eth_fd, &rfds);
 
-		memset(buf, 0, sizeof(buf));
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
-		rv = do_read(net_fd, buf, sizeof(buf));
-		if (rv < 0)
+		se_result = select((eth_fd + 1), &rfds, 0, 0, &tv);
+
+		if (daemon_quit)
 			goto out;
 
-		logt_print(LOG_DEBUG, "%s\n", buf);
+		if (se_result == -1) {
+			logt_print(LOG_CRIT, "Unable to select: %s\n", strerror(errno));
+			goto out;
+		}
 
-		if (strncmp(buf, "quit", strlen("quit")))
-			daemon_quit = 1;
+		if (se_result == 0)
+			continue;
 
+		if (FD_ISSET(eth_fd, &rfds)) {
+			logt_print(LOG_DEBUG, "Got data on localnet\n");
+			rv = do_read(eth_fd, buf, sizeof(buf));
+			if (rv >= 0) {
+				logt_print(LOG_DEBUG, "%s\n", buf);
+				//dispatch_buf();
+			}
+		}
+		if (FD_ISSET(net_sock, &rfds)) {
+
+			net_fd = accept(net_sock, NULL, NULL);
+			if (net_fd < 0) {
+				logt_print(LOG_INFO, "Error accepting connections on netsocket error: %s\n", strerror(errno));
+				continue;
+			}
+
+			memset(buf, 0, sizeof(buf));
+
+			rv = do_read(net_fd, buf, sizeof(buf));
+			if (rv < 0)
+				goto out_net;
+
+			logt_print(LOG_DEBUG, "%s\n", buf);
+
+			if (strncmp(buf, "quit", strlen("quit")))
+				daemon_quit = 1;
+out_net:
+			close(net_fd);
+		} 
 out:
-		close(net_fd);
-	}
+		if (se_result <0 || daemon_quit)
+			logt_print(LOG_DEBUG, "End of mail loop\n");
+	} while (se_result >= 0 && !daemon_quit);
 }
 
 int main(int argc, char **argv)
