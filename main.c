@@ -35,7 +35,16 @@ int net_sock;
 int eth_fd;
 char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 static pthread_t eth_thread;
+static pthread_t cnet_thread;
 struct node *mainconf;
+
+#define MAX_FDS 1024
+
+static int fd_array[MAX_FDS];
+static int fd_array_count = 0;
+static int fd_highest = 0;
+
+static pthread_mutex_t cnet_mutex;
 
 static void print_usage(void)
 {
@@ -276,16 +285,91 @@ static void *eth_to_cnet_thread(void *arg)
 	return NULL;
 }
 
-//static void *cnet_to_eth_thread(void *arg)
-//{
+static void *cnet_to_eth_thread(void *arg)
+{
+	fd_set rfds;
+	int se_result;
+	char read_buf[131072];
+	ssize_t read_len = 0;
+	struct timeval tv;
+	int count;
+	int rv;
 
-	/* strip and process our internal header here */
+	do {
+		FD_ZERO (&rfds);
 
-	/* and write starting from read_buf+sizeof(our header) */
-//	rv = do_write(eth_fd, read_buf, read_len);
-//	close(net_fd);
+		pthread_mutex_lock(&cnet_mutex);
+		count = 0;
+		while (count <= fd_array_count) {
+			FD_SET(fd_array[count], &rfds);
+			count++;
+		}
+		pthread_mutex_unlock(&cnet_mutex);
 
-//}
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+
+		se_result = select((fd_highest + 1), &rfds, 0, 0, &tv);
+		if (se_result == -1) {
+			logt_print(LOG_CRIT, "Unable to select in cnet thread: %s\n", strerror(errno));
+			daemon_quit = 1;
+		}
+
+		if (se_result == 0)
+			continue;
+
+		count = 0;
+		while (count <= fd_array_count) {
+			if (FD_ISSET(fd_array[count], &rfds)) {
+				read_len = read(fd_array[count], read_buf, sizeof(read_buf));
+				if (read_len > 0) {
+					logt_print(LOG_DEBUG, "CNET: Read %zu\n", read_len);
+					rv = do_write(eth_fd, read_buf, read_len);
+				} else if (read_len < 0) {
+					logt_print(LOG_INFO, "Error reading from CNET error %d: %s\n", fd_array[count], strerror(errno));
+				} else
+					logt_print(LOG_DEBUG, "Read 0?\n");
+			}
+			count++;
+		}
+	} while (se_result >= 0 && !daemon_quit);
+
+	return NULL;
+}
+
+static void refresh_incoming_fds(struct node *next)
+{
+	int new_fd_array[MAX_FDS];
+	int new_fd_array_count = 0;
+	int new_fd_highest = 0;
+
+	memset(new_fd_array, 0, sizeof(int) * MAX_FDS);
+
+	while (next) {
+		struct conn *conn;
+		conn = next->conn;
+		while (conn) {
+			if (conn->fdin) {
+				logt_print(LOG_DEBUG, "Adding %s fd %d\n", next->nodename, conn->fdin);
+				new_fd_array[new_fd_array_count] = conn->fdin;
+				if (conn->fdin > new_fd_highest)
+					new_fd_highest = conn->fdin;
+
+				new_fd_array_count++;
+			}
+			conn = conn->next;
+		}
+		next = next->next;
+	}
+
+	pthread_mutex_lock(&cnet_mutex);
+	memcpy(fd_array, new_fd_array, sizeof(int) * MAX_FDS);
+	fd_array_count = new_fd_array_count;
+	fd_highest = new_fd_highest;
+	pthread_mutex_unlock(&cnet_mutex);
+
+	return;
+}
 
 static void loop(void) {
 	int net_sock_new, se_result;
@@ -328,7 +412,7 @@ static void loop(void) {
 
 			add_incoming_connection_to_nodes(mainconf, net_sock_new, &addr, addrlen);
 
-			/* create a thread that we can signal to reload the fd entries for read */
+			refresh_incoming_fds(mainconf);
 		} 
 out:
 		if (se_result <0 || daemon_quit)
@@ -339,7 +423,8 @@ out:
 int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
-	int rv, eth_thread_started = 1;
+	int rv;
+	int cnet_thread_started = 1, eth_thread_started = 1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -411,6 +496,20 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
+	if (pthread_mutex_init(&cnet_mutex, NULL) < 0) {
+		logt_print(LOG_INFO, "Unable to initialize cnet mutex: %s\n", strerror(errno));
+		goto out;
+	}
+
+	logt_print(LOG_DEBUG, "Initializing remote delivery thread\n");
+	rv = pthread_create(&cnet_thread, NULL, cnet_to_eth_thread, NULL);
+	if (rv < 0) {
+		cnet_thread_started = 0;
+		logt_print(LOG_INFO, "Unable to inizialize local TX thread. error: %s\n",
+			  strerror(errno));
+		goto out;
+	}
+
 	logt_print(LOG_DEBUG, "Starting network socket listener\n");
 	net_sock = setup_net_listener();
 	if (net_sock < 0)
@@ -420,10 +519,13 @@ int main(int argc, char **argv)
 	loop();
 
 out:
-	disconnect_from_nodes(mainconf);
+	if (cnet_thread_started > 0)
+		pthread_cancel(cnet_thread);
 
 	if (eth_thread_started > 0)
 		pthread_cancel(eth_thread);
+
+	disconnect_from_nodes(mainconf);
 
 	if (eth_fd >= 0)
 		close(eth_fd);
