@@ -41,7 +41,7 @@ int setup_net_listener(void)
 	/* IPv6 */
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_port = ntohs(50000);
+	addr.sin_port = ntohs(DEFAULT_PORT);
 	//addr.sin_addr = INADDR_ANY;
 	//memcpy(&addr.sin_addr, &inaddr_any, sizeof(struct in_addr));
 

@@ -15,6 +15,7 @@
 #include "logging.h"
 #include "nodes.h"
 #include "utils.h"
+#include "netsocket.h"
 
 static void print_conn_ainfo(struct sockaddr *in)
 {
@@ -430,9 +431,9 @@ void connect_to_nodes(struct node *next)
 				struct sockaddr_in *sin = (struct sockaddr_in *)conn->ainfo->ai_addr;
 
 				if (conn->ainfo->ai_family == AF_INET6)
-					sin6->sin6_port = ntohs(50000);
+					sin6->sin6_port = ntohs(DEFAULT_PORT);
 				else
-					sin->sin_port = ntohs(50000);
+					sin->sin_port = ntohs(DEFAULT_PORT);
 
 				conn->fd = socket(conn->ainfo->ai_family, conn->ainfo->ai_socktype, conn->ainfo->ai_protocol);
 
