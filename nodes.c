@@ -358,12 +358,9 @@ void free_nodes_config(struct node *head)
 
 void connect_to_nodes(struct node *next)
 {
-	logt_print(LOG_DEBUG, "Start connecting to nodes\n");
-
 	while (next) {
 		struct conn *conn;
 
-		logt_print(LOG_DEBUG, "Connecting to %s\n", next->nodename);
 		conn = next->conn;
 		while (conn) {
 			print_conn_ainfo(conn->ainfo);
@@ -376,7 +373,6 @@ void connect_to_nodes(struct node *next)
 				else
 					sin->sin_port = ntohs(50000);
 
-				logt_print(LOG_DEBUG, "Socketing\n");
 				conn->fdout = socket(conn->ainfo->ai_family, conn->ainfo->ai_socktype, conn->ainfo->ai_protocol);
 
 				if (conn->fdout < 0) {
@@ -386,15 +382,11 @@ void connect_to_nodes(struct node *next)
 					goto next_conn;
 				}
 
-				logt_print(LOG_DEBUG, "Connecting\n");
-
 				if (connect(conn->fdout, conn->ainfo->ai_addr, conn->ainfo->ai_addrlen) < 0) {
 					logt_print(LOG_DEBUG, "Unable to connect! Error: %s\n", strerror(errno));
 					close(conn->fdout);
 					conn->fdout = 0;
 				}
-
-				logt_print(LOG_DEBUG, "fd: %d\n", conn->fdout);
 
 			}
 next_conn:
