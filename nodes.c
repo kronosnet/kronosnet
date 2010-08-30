@@ -209,7 +209,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 					goto out;
 				}
 			}
-		} else if (!strncmp(key_name, "ip", strlen("ip"))) {
+		} else if (!strncmp(key_name, "nodeips", strlen("nodeips"))) {
 			if (strlen(key_value)) {
 				iptemp = strdup(key_value);
 				if (!iptemp) {
