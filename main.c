@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #include "conf.h"
 #include "logging.h"
@@ -33,6 +34,7 @@ int rerouting = 0;
 int net_sock;
 int eth_fd;
 char localnet[16]; /* match IFNAMSIZ from linux/if.h */
+static pthread_t eth_thread;
 
 static void print_usage(void)
 {
@@ -229,29 +231,25 @@ static void sigterm_handler(int sig)
 	daemon_quit = 1;
 }
 
-static void loop(void) {
-	int net_fd, se_result, rv;
+static void *eth_to_cnet_thread(void *arg)
+{
+	fd_set rfds;
+	int se_result;
 	char read_buf[131072];
 	ssize_t read_len = 0;
-	fd_set rfds;
 	struct timeval tv;
 
 	do {
 		FD_ZERO (&rfds);
-		FD_SET (net_sock, &rfds);
 		FD_SET (eth_fd, &rfds);
 
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
 		se_result = select((eth_fd + 1), &rfds, 0, 0, &tv);
-
-		if (daemon_quit)
-			goto out;
-
 		if (se_result == -1) {
-			logt_print(LOG_CRIT, "Unable to select: %s\n", strerror(errno));
-			goto out;
+			logt_print(LOG_CRIT, "Unable to select in eth thread: %s\n", strerror(errno));
+			daemon_quit = 1;
 		}
 
 		if (se_result == 0)
@@ -267,6 +265,37 @@ static void loop(void) {
 			} else
 				logt_print(LOG_DEBUG, "Read 0?\n");
 		}
+	} while (se_result >= 0 && !daemon_quit);
+
+	return NULL;
+}
+
+static void loop(void) {
+	int net_fd, se_result, rv;
+	char read_buf[131072];
+	ssize_t read_len = 0;
+	fd_set rfds;
+	struct timeval tv;
+
+	do {
+		FD_ZERO (&rfds);
+		FD_SET (net_sock, &rfds);
+
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+
+		se_result = select((net_sock + 1), &rfds, 0, 0, &tv);
+
+		if (daemon_quit)
+			goto out;
+
+		if (se_result == -1) {
+			logt_print(LOG_CRIT, "Unable to select: %s\n", strerror(errno));
+			goto out;
+		}
+
+		if (se_result == 0)
+			continue;
 
 		if (FD_ISSET(net_sock, &rfds)) {
 
@@ -299,6 +328,7 @@ int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
 	struct node *mainconf;
+	int rv, eth_thread_started = 1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -360,6 +390,15 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
+	logt_print(LOG_DEBUG, "Initializing local ethernet delivery thread\n");
+	rv = pthread_create(&eth_thread, NULL, eth_to_cnet_thread, NULL);
+	if (rv < 0) {
+		eth_thread_started = 0;
+		logt_print(LOG_INFO, "Unable to inizialize local RX thread. error: %s\n",
+			   strerror(errno));
+		goto out;
+	}
+
 	logt_print(LOG_DEBUG, "Starting network socket listener\n");
 	net_sock = setup_net_listener();
 	if (net_sock < 0)
@@ -369,6 +408,9 @@ int main(int argc, char **argv)
 	loop();
 
 out:
+	if (eth_thread_started > 0)
+		pthread_cancel(eth_thread);
+
 	if (eth_fd >= 0)
 		close(eth_fd);
 
