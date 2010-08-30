@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 
 #include "conf.h"
 #include "logging.h"
@@ -31,6 +32,66 @@ static void print_conn_ainfo(struct sockaddr *in)
 	inet_ntop(ss->ss_family, (void *)saddr, buf, sizeof(buf));
 
 	logt_print(LOG_DEBUG, "print_conn_ainfo: %s\n", buf);
+}
+
+static int ipaddr_equal(struct sockaddr *addr1, struct sockaddr *addr2)
+{
+	int addrlen = 0;
+
+	if (addr1->sa_family != addr2->sa_family)
+		return 0;
+
+	if (addr1->sa_family == AF_INET) {
+		struct sockaddr_in *addr_in1 = (struct sockaddr_in *)addr1;
+		struct sockaddr_in *addr_in2 = (struct sockaddr_in *)addr2;
+
+		addrlen = sizeof(struct in_addr);
+		if (memcmp((const void *)&addr_in1->sin_addr, (const void *)&addr_in2->sin_addr, addrlen) == 0)
+			return 1;
+	}
+
+	if (addr1->sa_family == AF_INET6) {
+		struct sockaddr_in6 *addr_in61 = (struct sockaddr_in6 *)addr1;
+		struct sockaddr_in6 *addr_in62 = (struct sockaddr_in6 *)addr2;
+
+		addrlen = sizeof(struct in6_addr);
+		if (memcmp((const void *)&addr_in61->sin6_addr, (const void *)&addr_in62->sin6_addr, addrlen) == 0)
+			return 1;
+
+	}
+
+	return 0;
+}
+
+/*
+ * return 1 if the ip is local to the node
+ * XXX: optimize to avoid N calls to getifaddrs
+ */
+static int is_local_ip(struct sockaddr *addr)
+{
+	struct ifaddrs *ifap = NULL;
+	struct ifaddrs *ifa;
+	int found = 0;
+
+	if (getifaddrs(&ifap) < 0) {
+		logt_print(LOG_INFO, "Unable to get list of interfaces! Error: %s:\n", strerror(errno));
+		return 1;
+	}
+
+	ifa = ifap;
+
+	while (ifa) {
+		if (ipaddr_equal(ifa->ifa_addr, addr) > 0) {
+			found = 1;
+			break;
+		}
+
+		ifa = ifa->ifa_next;
+	}
+
+	freeifaddrs(ifap);
+
+	return found;
 }
 
 /*
@@ -68,6 +129,7 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 		memset(conn, 0, sizeof(struct conn));
 		conn->ainfo=ainfo;
 		conn->seq_num=seq_num;
+		conn->local = is_local_ip(ainfo->ai_addr);
 
 		if (!node->conn)
 			node->conn = conn;
@@ -363,7 +425,7 @@ void connect_to_nodes(struct node *next)
 
 		conn = next->conn;
 		while (conn) {
-			if (!conn->fdout) {
+			if ((!conn->fdout) && (!conn->local)) {
 				struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)conn->ainfo->ai_addr;
 				struct sockaddr_in *sin = (struct sockaddr_in *)conn->ainfo->ai_addr;
 
@@ -437,35 +499,6 @@ void dispatch_buf(struct node *next, char *read_buf, ssize_t len)
 	}
 
 	return;
-}
-
-static int ipaddr_equal(struct sockaddr *addr1, struct sockaddr *addr2)
-{
-	int addrlen = 0;
-
-	if (addr1->sa_family != addr2->sa_family)
-		return 0;
-
-	if (addr1->sa_family == AF_INET) {
-		struct sockaddr_in *addr_in1 = (struct sockaddr_in *)addr1;
-		struct sockaddr_in *addr_in2 = (struct sockaddr_in *)addr2;
-
-		addrlen = sizeof(struct in_addr);
-		if (memcmp((const void *)&addr_in1->sin_addr, (const void *)&addr_in2->sin_addr, addrlen) == 0)
-			return 1;
-	}
-
-	if (addr1->sa_family == AF_INET6) {
-		struct sockaddr_in6 *addr_in61 = (struct sockaddr_in6 *)addr1;
-		struct sockaddr_in6 *addr_in62 = (struct sockaddr_in6 *)addr2;
-
-		addrlen = sizeof(struct in6_addr);
-		if (memcmp((const void *)&addr_in61->sin6_addr, (const void *)&addr_in62->sin6_addr, addrlen) == 0)
-			return 1;
-
-	}
-
-	return 0;
 }
 
 void add_incoming_connection_to_nodes(struct node *next, int sockfd, struct sockaddr *peer, socklen_t peerlen)

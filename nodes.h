@@ -14,6 +14,7 @@ struct conn {
 	int fdin;
 	int fdout;
 	int status;
+	int local;
 };
 
 struct node {
