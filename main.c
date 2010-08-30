@@ -231,11 +231,10 @@ static void sigterm_handler(int sig)
 
 static void loop(void) {
 	int net_fd, se_result, rv;
-	char *read_buf = NULL;
+	char read_buf[131072];
 	ssize_t read_len = 0;
 	fd_set rfds;
 	struct timeval tv;
-	int mtu = 0, newmtu = 0;
 
 	do {
 		FD_ZERO (&rfds);
@@ -258,19 +257,8 @@ static void loop(void) {
 		if (se_result == 0)
 			continue;
 
-		newmtu = cnet_get_mtu(localnet);
-		if (newmtu < 0) {
-			logt_print(LOG_DEBUG, "ERROR getting MTU\n");
-			mtu = 1500;
-		}
-		if (mtu != newmtu) {
-			logt_print(LOG_DEBUG, "Reallocating MTU buffers\n");
-			read_buf = realloc(read_buf, newmtu);
-			mtu = newmtu;
-		}
-
 		if (FD_ISSET(eth_fd, &rfds)) {
-			read_len = read(eth_fd, read_buf, mtu);
+			read_len = read(eth_fd, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
 				logt_print(LOG_DEBUG, "Read %zu\n", read_len);
 				//dispatch_buf(read_buf, read_len);
@@ -288,7 +276,7 @@ static void loop(void) {
 				continue;
 			}
 
-			read_len = read(net_fd, read_buf, mtu);
+			read_len = read(net_fd, read_buf, sizeof(read_buf));
 			if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from netsocket error: %s\n", strerror(errno));
 				goto out_net;
@@ -364,7 +352,7 @@ int main(int argc, char **argv)
 		goto out;
 
 	logt_print(LOG_DEBUG, "Initializing local ethernet\n");
-	strncpy(localnet, PACKAGE, 16);
+	strncpy(localnet, "clusternet", 16);
 	eth_fd = cnet_open(localnet, 16);
 	if (eth_fd < 0) {
 		logt_print(LOG_INFO, "Unable to inizialize local tap device: %s\n",
