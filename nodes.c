@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,8 +13,8 @@
 #include "conf.h"
 #include "logging.h"
 #include "nodes.h"
+#include "utils.h"
 
-/*
 static void print_conn_ainfo(struct addrinfo *ainfo)
 {
 	char buf[INET6_ADDRSTRLEN];
@@ -31,7 +32,6 @@ static void print_conn_ainfo(struct addrinfo *ainfo)
 
 	logt_print(LOG_DEBUG, "print_conn_ainfo: %s %d\n", buf, ainfo->ai_family);
 }
-*/
 
 /*
  * this is delicate
@@ -47,8 +47,8 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 	int ret;
 
 	memset(&ahints, 0, sizeof(ahints));
-	ahints.ai_socktype = SOCK_DGRAM;
-	ahints.ai_protocol = IPPROTO_UDP;
+	ahints.ai_socktype = SOCK_STREAM;
+	ahints.ai_protocol = IPPROTO_TCP;
 	ahints.ai_family = node->af_family;
 
 	ret = getaddrinfo(curip, NULL, &ahints, &ainfo);
@@ -351,6 +351,83 @@ void free_nodes_config(struct node *head)
 			free(head->postdown);
 		free(head);
 		head = next;
+	}
+
+	return;
+}
+
+void connect_to_nodes(struct node *next)
+{
+	logt_print(LOG_DEBUG, "Start connecting to nodes\n");
+
+	while (next) {
+		struct conn *conn;
+
+		logt_print(LOG_DEBUG, "Connecting to %s\n", next->nodename);
+		conn = next->conn;
+		while (conn) {
+			print_conn_ainfo(conn->ainfo);
+			if (!conn->fdout) {
+				struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)conn->ainfo->ai_addr;
+				struct sockaddr_in *sin = (struct sockaddr_in *)conn->ainfo->ai_addr;
+
+				if (conn->ainfo->ai_family == AF_INET6)
+					sin6->sin6_port = ntohs(50000);
+				else
+					sin->sin_port = ntohs(50000);
+
+				logt_print(LOG_DEBUG, "Socketing\n");
+				conn->fdout = socket(conn->ainfo->ai_family, conn->ainfo->ai_socktype, conn->ainfo->ai_protocol);
+
+				if (conn->fdout < 0) {
+					logt_print(LOG_DEBUG, "Unable to open socket for. Error: %s\n", strerror(errno));
+					print_conn_ainfo(conn->ainfo);
+					conn->fdout = 0;
+					goto next_conn;
+				}
+
+				logt_print(LOG_DEBUG, "Connecting\n");
+
+				if (connect(conn->fdout, conn->ainfo->ai_addr, conn->ainfo->ai_addrlen) < 0) {
+					logt_print(LOG_DEBUG, "Unable to connect! Error: %s\n", strerror(errno));
+					close(conn->fdout);
+					conn->fdout = 0;
+				}
+
+				logt_print(LOG_DEBUG, "fd: %d\n", conn->fdout);
+
+			}
+next_conn:
+			conn = conn->next;
+		}
+		next = next->next;
+	}
+
+	return;
+}
+
+void disconnect_from_nodes(struct node *head)
+{
+	logt_print(LOG_DEBUG, "Disconnecting from nodes\n");
+	return;
+}
+
+void dispatch_buf(struct node *next, char *read_buf, ssize_t len)
+{
+	logt_print(LOG_DEBUG, "Dispatching buffers\n");
+	while (next) {
+		struct conn *conn;
+		conn = next->conn;
+		while (conn) {
+			print_conn_ainfo(conn->ainfo);
+			if (conn->fdout) {
+				if (do_write(conn->fdout, read_buf, len) < 0) {
+					logt_print(LOG_INFO, "Unable to dispatch buf\n");
+				}
+			}
+			conn = conn->next;
+		}
+		next = next->next;
 	}
 
 	return;

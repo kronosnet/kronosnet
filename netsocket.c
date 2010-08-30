@@ -51,6 +51,7 @@ int setup_net_listener(void)
 		return rv;
 	}
 
+
 	rv = listen(s, SOMAXCONN);
 	if (rv < 0) {
 		logt_print(LOG_INFO, "Unable to listen to netsocket error: %s\n",

@@ -35,6 +35,7 @@ int net_sock;
 int eth_fd;
 char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 static pthread_t eth_thread;
+struct node *mainconf;
 
 static void print_usage(void)
 {
@@ -231,6 +232,11 @@ static void sigterm_handler(int sig)
 	daemon_quit = 1;
 }
 
+static void sigpipe_handler(int sig)
+{
+	return;
+}
+
 static void *eth_to_cnet_thread(void *arg)
 {
 	fd_set rfds;
@@ -259,7 +265,7 @@ static void *eth_to_cnet_thread(void *arg)
 			read_len = read(eth_fd, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
 				logt_print(LOG_DEBUG, "Read %zu\n", read_len);
-				//dispatch_buf(read_buf, read_len);
+				dispatch_buf(mainconf, read_buf, read_len);
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
@@ -270,14 +276,25 @@ static void *eth_to_cnet_thread(void *arg)
 	return NULL;
 }
 
+//static void *cnet_to_eth_thread(void *arg)
+//{
+
+	/* strip and process our internal header here */
+
+	/* and write starting from read_buf+sizeof(our header) */
+//	rv = do_write(eth_fd, read_buf, read_len);
+//	close(net_fd);
+
+//}
+
 static void loop(void) {
-	int net_fd, se_result, rv;
-	char read_buf[131072];
-	ssize_t read_len = 0;
+	int net_fd, se_result;
 	fd_set rfds;
 	struct timeval tv;
 
 	do {
+		connect_to_nodes(mainconf);
+
 		FD_ZERO (&rfds);
 		FD_SET (net_sock, &rfds);
 
@@ -305,18 +322,8 @@ static void loop(void) {
 				continue;
 			}
 
-			read_len = read(net_fd, read_buf, sizeof(read_buf));
-			if (read_len < 0) {
-				logt_print(LOG_INFO, "Error reading from netsocket error: %s\n", strerror(errno));
-				goto out_net;
-			}
-
-			/* strip and process our internal header here */
-
-			/* and write starting from read_buf+sizeof(our header) */
-			rv = do_write(eth_fd, read_buf, read_len);
-out_net:
-			close(net_fd);
+			/* XXXXXX: need to add net_fd to the right node entry */
+			/* create a thread that we can signal to reload the fd entries for read */
 		} 
 out:
 		if (se_result <0 || daemon_quit)
@@ -327,7 +334,6 @@ out:
 int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
-	struct node *mainconf;
 	int rv, eth_thread_started = 1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
@@ -361,6 +367,7 @@ int main(int argc, char **argv)
 	logt_reinit();
 
 	signal(SIGTERM, sigterm_handler);
+	signal(SIGPIPE, sigpipe_handler);
 
 	parse_global_config(confdb_handle);
 	mainconf = parse_nodes_config(confdb_handle);
@@ -408,6 +415,8 @@ int main(int argc, char **argv)
 	loop();
 
 out:
+	disconnect_from_nodes(mainconf);
+
 	if (eth_thread_started > 0)
 		pthread_cancel(eth_thread);
 

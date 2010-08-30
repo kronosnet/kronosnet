@@ -11,7 +11,8 @@ struct conn {
 	struct conn *tail;
 	struct addrinfo *ainfo;
 	int seq_num;
-	int fd;
+	int fdin;
+	int fdout;
 	int status;
 };
 
@@ -30,5 +31,8 @@ struct node {
 
 struct node *parse_nodes_config(confdb_handle_t handle);
 void free_nodes_config(struct node *head);
+void connect_to_nodes(struct node *head);
+void disconnect_from_nodes(struct node *head);
+void dispatch_buf(struct node *head, char *read_buf, ssize_t len);
 
 #endif
