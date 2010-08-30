@@ -288,7 +288,7 @@ static void *eth_to_cnet_thread(void *arg)
 //}
 
 static void loop(void) {
-	int net_fd, se_result;
+	int net_sock_new, se_result;
 	fd_set rfds;
 	struct timeval tv;
 
@@ -316,8 +316,8 @@ static void loop(void) {
 
 		if (FD_ISSET(net_sock, &rfds)) {
 
-			net_fd = accept(net_sock, NULL, NULL);
-			if (net_fd < 0) {
+			net_sock_new = accept(net_sock, NULL, NULL);
+			if (net_sock_new < 0) {
 				logt_print(LOG_INFO, "Error accepting connections on netsocket error: %s\n", strerror(errno));
 				continue;
 			}

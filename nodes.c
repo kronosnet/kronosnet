@@ -422,7 +422,7 @@ void dispatch_buf(struct node *next, char *read_buf, ssize_t len)
 			print_conn_ainfo(conn->ainfo);
 			if (conn->fdout) {
 				if (do_write(conn->fdout, read_buf, len) < 0) {
-					logt_print(LOG_INFO, "Unable to dispatch buf\n");
+					logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
 				}
 			}
 			conn = conn->next;
