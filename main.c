@@ -315,14 +315,19 @@ static void loop(void) {
 			continue;
 
 		if (FD_ISSET(net_sock, &rfds)) {
+			struct sockaddr addr;
+			socklen_t addrlen;
 
-			net_sock_new = accept(net_sock, NULL, NULL);
+			addrlen = sizeof(struct sockaddr);
+
+			net_sock_new = accept(net_sock, &addr, &addrlen);
 			if (net_sock_new < 0) {
 				logt_print(LOG_INFO, "Error accepting connections on netsocket error: %s\n", strerror(errno));
 				continue;
 			}
 
-			/* XXXXXX: need to add net_fd to the right node entry */
+			add_incoming_connection_to_nodes(mainconf, net_sock_new, &addr, addrlen);
+
 			/* create a thread that we can signal to reload the fd entries for read */
 		} 
 out:
