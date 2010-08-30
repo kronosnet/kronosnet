@@ -363,7 +363,6 @@ void connect_to_nodes(struct node *next)
 
 		conn = next->conn;
 		while (conn) {
-			print_conn_ainfo(conn->ainfo);
 			if (!conn->fdout) {
 				struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)conn->ainfo->ai_addr;
 				struct sockaddr_in *sin = (struct sockaddr_in *)conn->ainfo->ai_addr;
