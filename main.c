@@ -38,14 +38,6 @@ static pthread_t eth_thread;
 static pthread_t cnet_thread;
 struct node *mainconf;
 
-#define MAX_FDS 1024
-
-static int fd_array[MAX_FDS];
-static int fd_array_count = 0;
-static int fd_highest = 0;
-
-static pthread_mutex_t cnet_mutex;
-
 static void print_usage(void)
 {
 	printf("Usage:\n\n");
@@ -273,8 +265,20 @@ static void *eth_to_cnet_thread(void *arg)
 		if (FD_ISSET(eth_fd, &rfds)) {
 			read_len = read(eth_fd, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
-				logt_print(LOG_DEBUG, "Read %zu\n", read_len);
-				dispatch_buf(mainconf, read_buf, read_len);
+				struct node *next = mainconf;
+				while (next) {
+					struct conn *conn;
+					conn = next->conn;
+					while (conn) {
+						if (conn->fd) {
+							if (do_write(conn->fd, read_buf, read_len) < 0) {
+								logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
+							}
+						}
+						conn = conn->next;
+					}
+					next = next->next;
+				}
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
@@ -285,96 +289,13 @@ static void *eth_to_cnet_thread(void *arg)
 	return NULL;
 }
 
-static void *cnet_to_eth_thread(void *arg)
-{
-	fd_set rfds;
+static void loop(void) {
 	int se_result;
+	fd_set rfds;
+	struct timeval tv;
 	char read_buf[131072];
 	ssize_t read_len = 0;
-	struct timeval tv;
-	int count;
 	int rv;
-
-	do {
-		FD_ZERO (&rfds);
-
-		pthread_mutex_lock(&cnet_mutex);
-		count = 0;
-		while (count <= fd_array_count) {
-			FD_SET(fd_array[count], &rfds);
-			count++;
-		}
-		pthread_mutex_unlock(&cnet_mutex);
-
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-
-		se_result = select((fd_highest + 1), &rfds, 0, 0, &tv);
-		if (se_result == -1) {
-			logt_print(LOG_CRIT, "Unable to select in cnet thread: %s\n", strerror(errno));
-			daemon_quit = 1;
-		}
-
-		if (se_result == 0)
-			continue;
-
-		count = 0;
-		while (count <= fd_array_count) {
-			if (FD_ISSET(fd_array[count], &rfds)) {
-				read_len = read(fd_array[count], read_buf, sizeof(read_buf));
-				if (read_len > 0) {
-					logt_print(LOG_DEBUG, "CNET: Read %zu\n", read_len);
-					rv = do_write(eth_fd, read_buf, read_len);
-				} else if (read_len < 0) {
-					logt_print(LOG_INFO, "Error reading from CNET error %d: %s\n", fd_array[count], strerror(errno));
-				} else
-					logt_print(LOG_DEBUG, "Read 0?\n");
-			}
-			count++;
-		}
-	} while (se_result >= 0 && !daemon_quit);
-
-	return NULL;
-}
-
-static void refresh_incoming_fds(struct node *next)
-{
-	int new_fd_array[MAX_FDS];
-	int new_fd_array_count = 0;
-	int new_fd_highest = 0;
-
-	memset(new_fd_array, 0, sizeof(int) * MAX_FDS);
-
-	while (next) {
-		struct conn *conn;
-		conn = next->conn;
-		while (conn) {
-			if (conn->fdin) {
-				logt_print(LOG_DEBUG, "Adding %s fd %d\n", next->nodename, conn->fdin);
-				new_fd_array[new_fd_array_count] = conn->fdin;
-				if (conn->fdin > new_fd_highest)
-					new_fd_highest = conn->fdin;
-
-				new_fd_array_count++;
-			}
-			conn = conn->next;
-		}
-		next = next->next;
-	}
-
-	pthread_mutex_lock(&cnet_mutex);
-	memcpy(fd_array, new_fd_array, sizeof(int) * MAX_FDS);
-	fd_array_count = new_fd_array_count;
-	fd_highest = new_fd_highest;
-	pthread_mutex_unlock(&cnet_mutex);
-
-	return;
-}
-
-static void loop(void) {
-	int net_sock_new, se_result;
-	fd_set rfds;
-	struct timeval tv;
 
 	do {
 		connect_to_nodes(mainconf);
@@ -399,20 +320,16 @@ static void loop(void) {
 			continue;
 
 		if (FD_ISSET(net_sock, &rfds)) {
-			struct sockaddr addr;
-			socklen_t addrlen;
-
-			addrlen = sizeof(struct sockaddr);
-
-			net_sock_new = accept(net_sock, &addr, &addrlen);
-			if (net_sock_new < 0) {
-				logt_print(LOG_INFO, "Error accepting connections on netsocket error: %s\n", strerror(errno));
-				continue;
-			}
-
-			add_incoming_connection_to_nodes(mainconf, net_sock_new, &addr, addrlen);
-
-			refresh_incoming_fds(mainconf);
+			read_len = read(net_sock, read_buf, sizeof(read_buf));
+			if (read_len > 0) {
+				logt_print(LOG_DEBUG, "CNET: Read %zu\n", read_len);
+				rv = do_write(eth_fd, read_buf, read_len);
+				if (rv < 0)
+					logt_print(LOG_DEBUG, "Error writing to eth_fd\n");
+			} else if (read_len < 0) {
+				logt_print(LOG_INFO, "Error reading from CNET error %d: %s\n", net_sock, strerror(errno));
+			} else
+				logt_print(LOG_DEBUG, "Read 0?\n");
 		} 
 out:
 		if (se_result <0 || daemon_quit)
@@ -493,20 +410,6 @@ int main(int argc, char **argv)
 		eth_thread_started = 0;
 		logt_print(LOG_INFO, "Unable to inizialize local RX thread. error: %s\n",
 			   strerror(errno));
-		goto out;
-	}
-
-	if (pthread_mutex_init(&cnet_mutex, NULL) < 0) {
-		logt_print(LOG_INFO, "Unable to initialize cnet mutex: %s\n", strerror(errno));
-		goto out;
-	}
-
-	logt_print(LOG_DEBUG, "Initializing remote delivery thread\n");
-	rv = pthread_create(&cnet_thread, NULL, cnet_to_eth_thread, NULL);
-	if (rv < 0) {
-		cnet_thread_started = 0;
-		logt_print(LOG_INFO, "Unable to inizialize local TX thread. error: %s\n",
-			  strerror(errno));
 		goto out;
 	}
 

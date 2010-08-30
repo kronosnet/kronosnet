@@ -11,8 +11,7 @@ struct conn {
 	struct conn *tail;
 	struct addrinfo *ainfo;
 	int seq_num;
-	int fdin;
-	int fdout;
+	int fd;
 	int status;
 	int local;
 };
@@ -34,7 +33,5 @@ struct node *parse_nodes_config(confdb_handle_t handle);
 void free_nodes_config(struct node *head);
 void connect_to_nodes(struct node *head);
 void disconnect_from_nodes(struct node *head);
-void dispatch_buf(struct node *head, char *read_buf, ssize_t len);
-void add_incoming_connection_to_nodes(struct node *head, int net_sock_new, struct sockaddr *peer, socklen_t peerlen);
 
 #endif

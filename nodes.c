@@ -108,8 +108,8 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 	int ret;
 
 	memset(&ahints, 0, sizeof(ahints));
-	ahints.ai_socktype = SOCK_STREAM;
-	ahints.ai_protocol = IPPROTO_TCP;
+	ahints.ai_socktype = SOCK_DGRAM;
+	ahints.ai_protocol = IPPROTO_UDP;
 	ahints.ai_family = node->af_family;
 
 	ret = getaddrinfo(curip, NULL, &ahints, &ainfo);
@@ -425,7 +425,7 @@ void connect_to_nodes(struct node *next)
 
 		conn = next->conn;
 		while (conn) {
-			if ((!conn->fdout) && (!conn->local)) {
+			if ((!conn->fd) && (!conn->local)) {
 				struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)conn->ainfo->ai_addr;
 				struct sockaddr_in *sin = (struct sockaddr_in *)conn->ainfo->ai_addr;
 
@@ -434,20 +434,21 @@ void connect_to_nodes(struct node *next)
 				else
 					sin->sin_port = ntohs(50000);
 
-				conn->fdout = socket(conn->ainfo->ai_family, conn->ainfo->ai_socktype, conn->ainfo->ai_protocol);
+				conn->fd = socket(conn->ainfo->ai_family, conn->ainfo->ai_socktype, conn->ainfo->ai_protocol);
 
-				if (conn->fdout < 0) {
+				if (conn->fd < 0) {
 					logt_print(LOG_DEBUG, "Unable to open socket for. Error: %s\n", strerror(errno));
 					print_conn_ainfo(conn->ainfo->ai_addr);
-					conn->fdout = 0;
+					conn->fd = 0;
 					goto next_conn;
 				}
 
-				if (connect(conn->fdout, conn->ainfo->ai_addr, conn->ainfo->ai_addrlen) < 0) {
+				if (connect(conn->fd, conn->ainfo->ai_addr, conn->ainfo->ai_addrlen) < 0) {
 					logt_print(LOG_DEBUG, "Unable to connect! Error: %s\n", strerror(errno));
-					close(conn->fdout);
-					conn->fdout = 0;
+					close(conn->fd);
+					conn->fd = 0;
 				}
+				logt_print(LOG_DEBUG, "node: %s fd: %d\n", next->nodename, conn->fd);
 
 			}
 next_conn:
@@ -465,70 +466,13 @@ void disconnect_from_nodes(struct node *next)
 		struct conn *conn;
 		conn = next->conn;
 		while (conn) {
-			if (conn->fdout) {
-				close(conn->fdout);
-				conn->fdout = 0;
-			}
-			if (conn->fdin) {
-				close(conn->fdin);
-				conn->fdin = 0;
+			if (conn->fd) {
+				close(conn->fd);
+				conn->fd = 0;
 			}
 			conn = conn->next;
 		}
 		next = next->next;
 	}
-	return;
-}
-
-void dispatch_buf(struct node *next, char *read_buf, ssize_t len)
-{
-	logt_print(LOG_DEBUG, "Dispatching buffers\n");
-	while (next) {
-		struct conn *conn;
-		conn = next->conn;
-		while (conn) {
-			print_conn_ainfo(conn->ainfo->ai_addr);
-			if (conn->fdout) {
-				if (do_write(conn->fdout, read_buf, len) < 0) {
-					logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
-				}
-			}
-			conn = conn->next;
-		}
-		next = next->next;
-	}
-
-	return;
-}
-
-void add_incoming_connection_to_nodes(struct node *next, int sockfd, struct sockaddr *peer, socklen_t peerlen)
-{
-	int found = 0;
-
-	if (getpeername(sockfd, peer, &peerlen) < 0) {
-		logt_print(LOG_INFO, "Unable to get peername\n");
-		close(sockfd);
-	}
-
-	while (next) {
-		struct conn *conn;
-		conn = next->conn;
-		while (conn) {
-			if (ipaddr_equal(conn->ainfo->ai_addr, peer) > 0) {
-				found = 1;
-				conn->fdin = sockfd;
-			}
-
-			conn = conn->next;
-		}
-		next = next->next;
-	}
-
-	if (!found) {
-		logt_print(LOG_INFO, "Rejecting connection from\n");
-		print_conn_ainfo(peer);
-		close(sockfd);
-	}
-
 	return;
 }

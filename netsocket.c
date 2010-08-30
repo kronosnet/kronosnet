@@ -15,7 +15,7 @@ int setup_net_listener(void)
 	struct sockaddr_in addr; /* IPv6 */
 	int rv, s, value;
 
-	s = socket(AF_INET, SOCK_STREAM, 0); /* IPv6 */
+	s = socket(AF_INET, SOCK_DGRAM, 0); /* IPv6 */
 	if (s < 0) {
 		logt_print(LOG_INFO, "Unable to open netsocket error: %s\n",
 				     strerror(errno));
@@ -54,6 +54,7 @@ int setup_net_listener(void)
 	}
 
 
+/*
 	rv = listen(s, SOMAXCONN);
 	if (rv < 0) {
 		logt_print(LOG_INFO, "Unable to listen to netsocket error: %s\n",
@@ -61,6 +62,7 @@ int setup_net_listener(void)
 		close(s);
 		return rv;
 	}
+*/
 
 	return s;
 }
