@@ -35,7 +35,6 @@ int net_sock;
 int eth_fd;
 char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 static pthread_t eth_thread;
-static pthread_t cnet_thread;
 struct node *mainconf;
 
 static void print_usage(void)
@@ -341,7 +340,7 @@ int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
 	int rv;
-	int cnet_thread_started = 1, eth_thread_started = 1;
+	int eth_thread_started = 1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -422,9 +421,6 @@ int main(int argc, char **argv)
 	loop();
 
 out:
-	if (cnet_thread_started > 0)
-		pthread_cancel(cnet_thread);
-
 	if (eth_thread_started > 0)
 		pthread_cancel(eth_thread);
 

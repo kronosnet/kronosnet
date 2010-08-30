@@ -12,10 +12,10 @@
 
 int setup_net_listener(void)
 {
-	struct sockaddr_in addr; /* IPv6 */
+	struct sockaddr_in6 addr;
 	int rv, s, value;
 
-	s = socket(AF_INET, SOCK_DGRAM, 0); /* IPv6 */
+	s = socket(AF_INET6, SOCK_DGRAM, 0);
 	if (s < 0) {
 		logt_print(LOG_INFO, "Unable to open netsocket error: %s\n",
 				     strerror(errno));
@@ -38,12 +38,10 @@ int setup_net_listener(void)
 		return rv;
 	}
 
-	/* IPv6 */
 	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = ntohs(DEFAULT_PORT);
-	//addr.sin_addr = INADDR_ANY;
-	//memcpy(&addr.sin_addr, &inaddr_any, sizeof(struct in_addr));
+	addr.sin6_family = AF_INET6;
+	addr.sin6_port = ntohs(DEFAULT_PORT);
+	memcpy(&addr.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
 
 	rv = bind(s, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv < 0) {
@@ -52,17 +50,6 @@ int setup_net_listener(void)
 		close(s);
 		return rv;
 	}
-
-
-/*
-	rv = listen(s, SOMAXCONN);
-	if (rv < 0) {
-		logt_print(LOG_INFO, "Unable to listen to netsocket error: %s\n",
-				     strerror(errno));
-		close(s);
-		return rv;
-	}
-*/
 
 	return s;
 }
