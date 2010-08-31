@@ -252,6 +252,7 @@ static void *eth_to_cnet_thread(void *arg)
 	memset(cnet_h, 0, sizeof(struct cnet_header));
 	cnet_h->magic = CNETD_MAGIC;
 	cnet_h->nodeid = our_nodeid;
+	cnet_h->seq_num = 0;
 	cnet_h->pckt_type = CNETD_PKCT_TYPE_DATA;
 	cnet_h->compress = CNETD_COMPRESS_OFF;
 	cnet_h->encryption = CNETD_ENCRYPTION_OFF;
@@ -281,6 +282,7 @@ static void *eth_to_cnet_thread(void *arg)
 					conn = next->conn;
 					while (conn) {
 						if (conn->fd) {
+							cnet_h->seq_num++;
 							if (do_write(conn->fd, read_buf, read_len + sizeof(struct cnet_header)) < 0) {
 								logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
 							}
@@ -306,7 +308,7 @@ static void loop(void) {
 	char read_buf[131072 + sizeof(struct cnet_header)];
 	ssize_t read_len = 0;
 	int rv;
-	//struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
+	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
 
 	do {
 		connect_to_nodes(mainconf);
@@ -334,6 +336,11 @@ static void loop(void) {
 			read_len = read(net_sock, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
 				//logt_print(LOG_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", cnet_h->magic, cnet_h->nodeid, cnet_h->seq_num, cnet_h->pckt_type, cnet_h->compress, cnet_h->encryption, cnet_h->padding);
+
+				if (cnet_h->magic != CNETD_MAGIC) {
+					logt_print(LOG_DEBUG, "no magic?\n");
+					continue;
+				}
 
 				rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
 				if (rv < 0)
