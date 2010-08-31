@@ -17,6 +17,8 @@
 #include "utils.h"
 #include "netsocket.h"
 
+extern int our_nodeid;
+
 static void print_conn_ainfo(struct sockaddr *in)
 {
 	char buf[INET6_ADDRSTRLEN];
@@ -131,6 +133,9 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 		conn->ainfo=ainfo;
 		conn->seq_num=seq_num;
 		conn->local = is_local_ip(ainfo->ai_addr);
+
+		if (conn->local)
+			our_nodeid = node->nodeid;
 
 		if (!node->conn)
 			node->conn = conn;

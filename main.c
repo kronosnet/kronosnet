@@ -338,7 +338,12 @@ static void loop(void) {
 				//logt_print(LOG_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", cnet_h->magic, cnet_h->nodeid, cnet_h->seq_num, cnet_h->pckt_type, cnet_h->compress, cnet_h->encryption, cnet_h->padding);
 
 				if (cnet_h->magic != CNETD_MAGIC) {
-					logt_print(LOG_DEBUG, "no magic?\n");
+					logt_print(LOG_DEBUG, "no magic? print peer info for fun and profit\n");
+					continue;
+				}
+
+				if (cnet_h->nodeid == our_nodeid) {
+					logt_print(LOG_DEBUG, "Are we really sending pckts to our selves?\n");
 					continue;
 				}
 
