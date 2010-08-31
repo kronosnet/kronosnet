@@ -20,6 +20,7 @@
 #include "netsocket.h"
 #include "utils.h"
 #include "cnet.h"
+#include "controlt_comm.h"
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
@@ -36,6 +37,7 @@ int eth_fd;
 char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 static pthread_t eth_thread;
 struct node *mainconf;
+uint32_t our_nodeid;
 
 static void print_usage(void)
 {
@@ -241,9 +243,18 @@ static void *eth_to_cnet_thread(void *arg)
 {
 	fd_set rfds;
 	int se_result;
-	char read_buf[131072];
+	char read_buf[131072+sizeof(struct cnet_header)];
 	ssize_t read_len = 0;
 	struct timeval tv;
+	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
+
+	/* we need to prepare the header only once for now */
+	memset(cnet_h, 0, sizeof(struct cnet_header));
+	cnet_h->magic = CNETD_MAGIC;
+	cnet_h->nodeid = our_nodeid;
+	cnet_h->pckt_type = CNETD_PKCT_TYPE_DATA;
+	cnet_h->compress = CNETD_COMPRESS_OFF;
+	cnet_h->encryption = CNETD_ENCRYPTION_OFF;
 
 	do {
 		FD_ZERO (&rfds);
@@ -262,7 +273,7 @@ static void *eth_to_cnet_thread(void *arg)
 			continue;
 
 		if (FD_ISSET(eth_fd, &rfds)) {
-			read_len = read(eth_fd, read_buf, sizeof(read_buf));
+			read_len = read(eth_fd, read_buf + sizeof(struct cnet_header), sizeof(read_buf) - sizeof(struct cnet_header));
 			if (read_len > 0) {
 				struct node *next = mainconf;
 				while (next) {
@@ -270,7 +281,7 @@ static void *eth_to_cnet_thread(void *arg)
 					conn = next->conn;
 					while (conn) {
 						if (conn->fd) {
-							if (do_write(conn->fd, read_buf, read_len) < 0) {
+							if (do_write(conn->fd, read_buf, read_len + sizeof(struct cnet_header)) < 0) {
 								logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
 							}
 						}
@@ -292,9 +303,10 @@ static void loop(void) {
 	int se_result;
 	fd_set rfds;
 	struct timeval tv;
-	char read_buf[131072];
+	char read_buf[131072 + sizeof(struct cnet_header)];
 	ssize_t read_len = 0;
 	int rv;
+	//struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
 
 	do {
 		connect_to_nodes(mainconf);
@@ -321,10 +333,11 @@ static void loop(void) {
 		if (FD_ISSET(net_sock, &rfds)) {
 			read_len = read(net_sock, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
-				logt_print(LOG_DEBUG, "CNET: Read %zu\n", read_len);
-				rv = do_write(eth_fd, read_buf, read_len);
+				//logt_print(LOG_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", cnet_h->magic, cnet_h->nodeid, cnet_h->seq_num, cnet_h->pckt_type, cnet_h->compress, cnet_h->encryption, cnet_h->padding);
+
+				rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
 				if (rv < 0)
-					logt_print(LOG_DEBUG, "Error writing to eth_fd\n");
+					logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from CNET error %d: %s\n", net_sock, strerror(errno));
 			} else

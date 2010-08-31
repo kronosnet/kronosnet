@@ -2,6 +2,7 @@
 #define __CONTROLT_COMM_H__
 
 #include "config.h"
+#include <stdint.h>
 
 #define	CLUSTERNETD_SOCKNAME	RUNDIR "/clusternetd.sock"
 
@@ -12,11 +13,11 @@
 #define CNETD_CMD_STATUS	2
 
 struct ctrl_header {
-	unsigned int magic;
-	unsigned int version;
-	unsigned int command;
-	unsigned int option;
-	unsigned int len;
+	uint32_t magic;
+	uint32_t version;
+	uint32_t command;
+	uint32_t option;
+	uint32_t len;
 	int data;		/* embedded command-specific data, for convenience */
 	int unused1;
 	int unsued2;

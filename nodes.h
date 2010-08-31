@@ -25,7 +25,7 @@ struct node {
 	char *up;
 	char *down;
 	char *postdown;
-	int nodeid;
+	uint32_t nodeid;
 	int af_family;
 };
 
