@@ -75,10 +75,12 @@ static int parse_logging_config(confdb_handle_t handle)
 		key_value[key_value_len] = '\0';
 
 		if (!strncmp(key_name, "debug", strlen("debug"))) {
-			if (!strncmp(key_value, "on", 2))
-				debug=1;
-			if (!strncmp(key_value, "off", 3))
-				debug=0;
+			if (!debug) {
+				if (!strncmp(key_value, "on", 2))
+					debug=1;
+				if (!strncmp(key_value, "off", 3))
+					debug=0;
+			}
 		} else if (!strncmp(key_name, "to_logfile", strlen("to_logfile"))) {
 			if (!strncmp(key_value, "yes", 3))
 				conf->mode |= LOG_MODE_OUTPUT_FILE;
