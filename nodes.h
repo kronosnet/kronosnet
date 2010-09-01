@@ -10,7 +10,7 @@ struct conn {
 	struct conn *next;
 	struct conn *tail;
 	struct addrinfo *ainfo;
-	int seq_num;
+	int serial_num;
 	int fd;
 	int status;
 	int local;
@@ -26,6 +26,7 @@ struct node {
 	char *down;
 	char *postdown;
 	uint32_t nodeid;
+	uint32_t seq_num;
 	int af_family;
 };
 

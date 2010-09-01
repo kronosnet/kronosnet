@@ -103,7 +103,7 @@ static int is_local_ip(struct sockaddr *addr)
  * -2 for other fatal errors.
  */
 
-static int add_ip(struct node *node, const char* curip, int seq_num)
+static int add_ip(struct node *node, const char* curip, int serial_num)
 {
 	struct addrinfo *ainfo;
 	struct addrinfo ahints;
@@ -131,7 +131,7 @@ static int add_ip(struct node *node, const char* curip, int seq_num)
 
 		memset(conn, 0, sizeof(struct conn));
 		conn->ainfo=ainfo;
-		conn->seq_num=seq_num;
+		conn->serial_num=serial_num;
 		conn->local = is_local_ip(ainfo->ai_addr);
 
 		if (conn->local)
@@ -154,7 +154,7 @@ static int convert_ip(struct node *node, char* iptemp)
 {
 	char *tmp1 = iptemp, *tmp2 = iptemp;
 	char curip[256];
-	int i, seq_num;
+	int i, serial_num;
 
 	/* Clear out white space and tabs */
 	for (i = strlen (iptemp) - 1; i > -1; i--) {
@@ -172,7 +172,7 @@ static int convert_ip(struct node *node, char* iptemp)
 		}
 	}
 
-	seq_num = 0;
+	serial_num = 0;
 	while (tmp1) {
 		memset(curip, 0, sizeof(curip));
 
@@ -191,10 +191,10 @@ static int convert_ip(struct node *node, char* iptemp)
 			}
 		}
 
-		if (add_ip(node, curip, seq_num) < -1) 
+		if (add_ip(node, curip, serial_num) < -1) 
 			return -1;
 
-		seq_num++;
+		serial_num++;
 	}
 
 	return 0;
@@ -217,6 +217,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 	}
 	memset(new, 0, sizeof(struct node));
 	new->nodeid = -1;
+	new->seq_num = 0;
 
 	res = confdb_key_iter_start(handle, node_handle);
 	if (res != CS_OK) {
@@ -381,17 +382,17 @@ out:
 static void free_nodes_conn(struct conn *conn)
 {
 	struct conn *next;
-	int seq_num = 0, next_seq = -1;
+	int serial_num = 0, next_seq = -1;
 
 	while(conn) {
 		next = conn->next;
 
-		if ((seq_num != next_seq) && (conn->ainfo))
+		if ((serial_num != next_seq) && (conn->ainfo))
 			freeaddrinfo(conn->ainfo);
 
-		seq_num = conn->seq_num;
+		serial_num = conn->serial_num;
 		if (next) 
-			next_seq = next->seq_num;
+			next_seq = next->serial_num;
 
 		free(conn);
 		conn = next;
