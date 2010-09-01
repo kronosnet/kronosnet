@@ -240,11 +240,16 @@ static void sigpipe_handler(int sig)
 	return;
 }
 
-
-static void dispatch_buffer(struct node *next, char *read_buf, ssize_t read_len)
+static void dispatch_buffer(struct node *next, uint32_t nodeid, char *read_buf, ssize_t read_len)
 {
 	while (next) {
 		struct conn *conn;
+
+		if ((nodeid) && (next->nodeid != nodeid)) {
+			logt_print(LOG_INFO, "Requested nodeid: %u current: %u\n", nodeid, next->nodeid);
+			goto next;
+		}
+
 		conn = next->conn;
 		while (conn) {
 			if (conn->fd) {
@@ -254,6 +259,7 @@ static void dispatch_buffer(struct node *next, char *read_buf, ssize_t read_len)
 			}
 			conn = conn->next;
 		}
+next:
 		next = next->next;
 	}
 }
@@ -271,8 +277,9 @@ static void *heartbeat_thread(void *arg)
 	cnet_h.encryption = CNETD_ENCRYPTION_OFF;
 
 	for (;;) {
-		sleep(1);
-		dispatch_buffer(mainconf, (char *)&cnet_h, sizeof(struct cnet_header));
+		sleep(100);
+		cnet_h.seq_num++;
+		//dispatch_buffer(mainconf, 1, (char *)&cnet_h, sizeof(struct cnet_header));
 	}
 	return NULL;
 }
@@ -315,7 +322,7 @@ static void *eth_to_cnet_thread(void *arg)
 			read_len = read(eth_fd, read_buf + sizeof(struct cnet_header), sizeof(read_buf) - sizeof(struct cnet_header));
 			if (read_len > 0) {
 				cnet_h->seq_num++;
-				dispatch_buffer(mainconf, read_buf, read_len + sizeof(struct cnet_header));
+				dispatch_buffer(mainconf, 0, read_buf, read_len + sizeof(struct cnet_header));
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
@@ -333,7 +340,9 @@ static void loop(void) {
 	char read_buf[131072 + sizeof(struct cnet_header)];
 	ssize_t read_len = 0;
 	int rv;
+	uint32_t peer_nodeid;
 	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
+	struct node *peer;
 
 	do {
 		FD_ZERO (&rfds);
@@ -372,19 +381,35 @@ static void loop(void) {
 
 				switch(cnet_h->pckt_type) {
 					case CNETD_PKCT_TYPE_DATA:
-						rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
-						if (rv < 0)
-							logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
+						/* optimize this to do faster lookups and handle rollover */
+						peer = mainconf;
+						while (peer) {
+							if (peer->nodeid == cnet_h->nodeid)
+								break;
+							peer = peer->next;
+						}
+						logt_print(LOG_DEBUG, "Got pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+						if (cnet_h->seq_num > peer->seq_num) {
+							logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+							rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
+							if (rv < 0)
+								logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
+							peer->seq_num = cnet_h->seq_num;
+						} else
+							logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
 						break;
 					case CNETD_PKCT_TYPE_PING:
-						logt_print(LOG_DEBUG, "Got a PING request\n");
+						logt_print(LOG_DEBUG, "Got a PING request %u\n", cnet_h->nodeid);
+						peer_nodeid = cnet_h->nodeid;
+
 						/* reply */
 						cnet_h->pckt_type = CNETD_PKCT_TYPE_PONG;
 						cnet_h->nodeid = our_nodeid;
-						dispatch_buffer(mainconf, read_buf, read_len);
+						dispatch_buffer(mainconf, peer_nodeid, read_buf, read_len);
 						break;
 					case CNETD_PKCT_TYPE_PONG:
 						logt_print(LOG_DEBUG, "Got a PONG reply\n");
+						/* need to correlate this with a PING */
 						break;
 					default:
 						logt_print(LOG_INFO, "Error: received unknown packet type on network socket\n");
