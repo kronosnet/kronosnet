@@ -36,6 +36,7 @@ int net_sock;
 int eth_fd;
 char localnet[16]; /* match IFNAMSIZ from linux/if.h */
 static pthread_t eth_thread;
+static pthread_t hb_thread;
 struct node *mainconf;
 uint32_t our_nodeid;
 
@@ -239,6 +240,11 @@ static void sigpipe_handler(int sig)
 	return;
 }
 
+static void *heartbeat_thread(void *arg)
+{
+	return NULL;
+}
+
 static void *eth_to_cnet_thread(void *arg)
 {
 	fd_set rfds;
@@ -311,8 +317,6 @@ static void loop(void) {
 	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
 
 	do {
-		connect_to_nodes(mainconf);
-
 		FD_ZERO (&rfds);
 		FD_SET (net_sock, &rfds);
 
@@ -347,9 +351,22 @@ static void loop(void) {
 					continue;
 				}
 
-				rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
-				if (rv < 0)
-					logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
+				switch(cnet_h->pckt_type) {
+					case CNETD_PKCT_TYPE_DATA:
+						rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
+						if (rv < 0)
+							logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
+						break;
+					case CNETD_PKCT_TYPE_PING:
+						logt_print(LOG_DEBUG, "Got a PING request\n");
+						break;
+					case CNETD_PKCT_TYPE_PONG:
+						logt_print(LOG_DEBUG, "Got a PONG reply\n");
+						break;
+					default:
+						logt_print(LOG_INFO, "Error: received unknown packet type on network socket\n");
+						break;
+				}
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from CNET error %d: %s\n", net_sock, strerror(errno));
 			} else
@@ -365,7 +382,7 @@ int main(int argc, char **argv)
 {
 	confdb_handle_t confdb_handle = 0;
 	int rv;
-	int eth_thread_started = 1;
+	int eth_thread_started = 1, hb_thread_started = 1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0)
 		exit(EXIT_FAILURE);
@@ -437,15 +454,32 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
+	logt_print(LOG_DEBUG, "Opening sockets to other nodes\n");
+	connect_to_nodes(mainconf);
+
+	logt_print(LOG_DEBUG, "Here we need to configure the ethernet ip/pre/post/stuff\n");
+
 	logt_print(LOG_DEBUG, "Starting network socket listener\n");
 	net_sock = setup_net_listener();
 	if (net_sock < 0)
 		goto out;
 
+	logt_print(LOG_DEBUG, "Starting heartbeat thread\n");
+	rv = pthread_create(&hb_thread, NULL, heartbeat_thread, NULL);
+	if (rv < 0) {
+		hb_thread_started = 0;
+		logt_print(LOG_INFO, "Unable to inizialize heartbeat thread. error: %s\n",
+			   strerror(errno));
+		goto out;
+	}
+
 	logt_print(LOG_DEBUG, "Entering main loop\n");
 	loop();
 
 out:
+	if (hb_thread_started > 0)
+		pthread_cancel(hb_thread);
+
 	if (eth_thread_started > 0)
 		pthread_cancel(eth_thread);
 
