@@ -240,8 +240,40 @@ static void sigpipe_handler(int sig)
 	return;
 }
 
+
+static void dispatch_buffer(struct node *next, char *read_buf, ssize_t read_len)
+{
+	while (next) {
+		struct conn *conn;
+		conn = next->conn;
+		while (conn) {
+			if (conn->fd) {
+				if (do_write(conn->fd, read_buf, read_len + sizeof(struct cnet_header)) < 0) {
+						logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
+				}
+			}
+			conn = conn->next;
+		}
+		next = next->next;
+	}
+}
+
 static void *heartbeat_thread(void *arg)
 {
+	struct cnet_header cnet_h;
+
+	memset(&cnet_h, 0, sizeof(struct cnet_header));
+	cnet_h.magic = CNETD_MAGIC;
+	cnet_h.nodeid = our_nodeid;
+	cnet_h.seq_num = 0;
+	cnet_h.pckt_type = CNETD_PKCT_TYPE_PING;
+	cnet_h.compress = CNETD_COMPRESS_OFF;
+	cnet_h.encryption = CNETD_ENCRYPTION_OFF;
+
+	for (;;) {
+		sleep(1);
+		dispatch_buffer(mainconf, (char *)&cnet_h, sizeof(struct cnet_header));
+	}
 	return NULL;
 }
 
@@ -282,21 +314,8 @@ static void *eth_to_cnet_thread(void *arg)
 		if (FD_ISSET(eth_fd, &rfds)) {
 			read_len = read(eth_fd, read_buf + sizeof(struct cnet_header), sizeof(read_buf) - sizeof(struct cnet_header));
 			if (read_len > 0) {
-				struct node *next = mainconf;
-				while (next) {
-					struct conn *conn;
-					conn = next->conn;
-					while (conn) {
-						if (conn->fd) {
-							cnet_h->seq_num++;
-							if (do_write(conn->fd, read_buf, read_len + sizeof(struct cnet_header)) < 0) {
-								logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
-							}
-						}
-						conn = conn->next;
-					}
-					next = next->next;
-				}
+				cnet_h->seq_num++;
+				dispatch_buffer(mainconf, read_buf, read_len + sizeof(struct cnet_header));
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
@@ -359,6 +378,10 @@ static void loop(void) {
 						break;
 					case CNETD_PKCT_TYPE_PING:
 						logt_print(LOG_DEBUG, "Got a PING request\n");
+						/* reply */
+						cnet_h->pckt_type = CNETD_PKCT_TYPE_PONG;
+						cnet_h->nodeid = our_nodeid;
+						dispatch_buffer(mainconf, read_buf, read_len);
 						break;
 					case CNETD_PKCT_TYPE_PONG:
 						logt_print(LOG_DEBUG, "Got a PONG reply\n");
