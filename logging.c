@@ -9,7 +9,7 @@
 #include <syslog.h>
 #include "logging.h"
 
-struct logging_conf *conf = NULL;
+static struct logging_conf *conf = NULL;
 extern int debug;
 extern int daemonize;
 
@@ -99,13 +99,13 @@ static int parse_logging_config(confdb_handle_t handle)
 			val = priority_id_get(key_value);
 			if (val >= 0)
 				conf->syslog_priority = val;
-		} else if (!strncmp(key_name, "logfile", strlen("logfile"))) {
-			if (strlen(key_value))
-				snprintf(conf->logfile, PATH_MAX, "%s", key_value);
 		} else if (!strncmp(key_name, "logfile_priority", strlen("logfile_priority"))) {
 			val = priority_id_get(key_value);
 			if (val >= 0)
 				conf->logfile_priority = val;
+		} else if (!strncmp(key_name, "logfile", strlen("logfile"))) {
+			if (strlen(key_value))
+				snprintf(conf->logfile, PATH_MAX, "%s", key_value);
 		}
 	}
 
