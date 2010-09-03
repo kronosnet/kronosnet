@@ -25,9 +25,10 @@ struct node {
 	char *up;
 	char *down;
 	char *postdown;
+	int af_family;
+/* size of nodeid and seq_num _MUST_ match the ones in netsocket.h */
 	uint32_t nodeid;
 	uint32_t seq_num;
-	int af_family;
 };
 
 struct node *parse_nodes_config(confdb_handle_t handle);
