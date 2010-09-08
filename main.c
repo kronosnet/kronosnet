@@ -270,7 +270,7 @@ static void *heartbeat_thread(void *arg)
 
 	memset(&cnet_h, 0, sizeof(struct cnet_header));
 	cnet_h.magic = CNETD_MAGIC;
-	cnet_h.nodeid = our_nodeid;
+	cnet_h.src_nodeid = our_nodeid;
 	cnet_h.seq_num = 0;
 	cnet_h.pckt_type = CNETD_PKCT_TYPE_PING;
 	cnet_h.compress = CNETD_COMPRESS_OFF;
@@ -296,7 +296,7 @@ static void *eth_to_cnet_thread(void *arg)
 	/* we need to prepare the header only once for now */
 	memset(cnet_h, 0, sizeof(struct cnet_header));
 	cnet_h->magic = CNETD_MAGIC;
-	cnet_h->nodeid = our_nodeid;
+	cnet_h->src_nodeid = our_nodeid;
 	cnet_h->seq_num = 0;
 	cnet_h->pckt_type = CNETD_PKCT_TYPE_DATA;
 	cnet_h->compress = CNETD_COMPRESS_OFF;
@@ -374,7 +374,7 @@ static void loop(void) {
 					continue;
 				}
 
-				if (cnet_h->nodeid == our_nodeid) {
+				if (cnet_h->src_nodeid == our_nodeid) {
 					logt_print(LOG_DEBUG, "Are we really sending pckts to our selves?\n");
 					continue;
 				}
@@ -385,7 +385,7 @@ static void loop(void) {
 						/* optimize this to do faster lookups */
 						peer = mainconf;
 						while (peer) {
-							if (peer->nodeid == cnet_h->nodeid)
+							if (peer->nodeid == cnet_h->src_nodeid)
 								break;
 							peer = peer->next;
 						}
@@ -420,12 +420,12 @@ static void loop(void) {
 							logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
 						break;
 					case CNETD_PKCT_TYPE_PING:
-						logt_print(LOG_DEBUG, "Got a PING request %u\n", cnet_h->nodeid);
-						peer_nodeid = cnet_h->nodeid;
+						logt_print(LOG_DEBUG, "Got a PING request %u\n", cnet_h->src_nodeid);
+						peer_nodeid = cnet_h->src_nodeid;
 
 						/* reply */
 						cnet_h->pckt_type = CNETD_PKCT_TYPE_PONG;
-						cnet_h->nodeid = our_nodeid;
+						cnet_h->src_nodeid = our_nodeid;
 						dispatch_buffer(mainconf, peer_nodeid, read_buf, read_len);
 						break;
 					case CNETD_PKCT_TYPE_PONG:

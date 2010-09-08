@@ -17,7 +17,9 @@
 
 struct cnet_header {
 	uint32_t magic;
-	uint32_t nodeid;
+	uint32_t version;
+	uint32_t dst_nodeid;
+	uint32_t src_nodeid;
 	uint32_t seq_num;
 	uint32_t pckt_type:4;
 	uint32_t compress:1;
