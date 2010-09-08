@@ -391,8 +391,11 @@ static void loop(void) {
 						}
 						logt_print(LOG_DEBUG, "Got pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
 
+						if (cnet_h->seq_num != peer->seq_num + 1)
+							logt_print(LOG_INFO, "Got %u, expected %u from node %s\n", cnet_h->seq_num, peer->seq_num + 1, peer->nodename);
+
 						/* we are rolling over */
-						if ((cnet_h->seq_num == 0) && (peer->seq_num == 255)) {
+						if ((cnet_h->seq_num == 0) && (peer->seq_num == UINT32_MAX)) {
 							logt_print(LOG_DEBUG, "Rolling over node: %s[%u]\n", peer->nodename, peer->nodeid);
 							rollover = 1;
 						}
