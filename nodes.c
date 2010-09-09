@@ -514,17 +514,16 @@ if ((cnet_h->seq_num > peer->seq_num) || (rollover > 0)) {
 static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 {
 	uint32_t new_offset = seq_num % CBUFFER_SIZE;
-	uint32_t old_offset = node->seq_num % CBUFFER_SIZE;
+	uint32_t idx_offset = (node->seq_num + 1) % CBUFFER_SIZE;
 
-	if (new_offset > old_offset) {
-		logt_print(LOG_DEBUG, "clearing from %u for %u\n", old_offset+1, new_offset - old_offset);
-		memset(&node->circular_buffer[old_offset+1], 0, new_offset - old_offset);
-	}
-	if (new_offset < old_offset) {
-		logt_print(LOG_DEBUG, "clearing from %u to end of buffer (for %u)\n", old_offset+1, CBUFFER_SIZE - old_offset);
-		memset(&node->circular_buffer[old_offset+1], 0, CBUFFER_SIZE - old_offset);
-		logt_print(LOG_DEBUG, "clearing from 0 to %u (for %u)\n", new_offset, new_offset + 1);
-		memset(&node->circular_buffer[0], 0, new_offset + 1);
+	if (idx_offset == new_offset)
+		return;
+
+	logt_print(LOG_DEBUG, "clearing from %u to %u\n", idx_offset, new_offset);
+
+	while (idx_offset != new_offset) {
+		node->circular_buffer[idx_offset] = 0;
+		idx_offset = (idx_offset + 1) % CBUFFER_SIZE;
 	}
 
 	return;
