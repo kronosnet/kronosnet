@@ -5,6 +5,9 @@
 #include <sys/socket.h>
 
 #include "conf.h"
+#include "netsocket.h"
+
+#define CBUFFER_SIZE	2048
 
 struct conn {
 	struct conn *next;
@@ -26,14 +29,19 @@ struct node {
 	char *down;
 	char *postdown;
 	int af_family;
-/* size of nodeid and seq_num _MUST_ match the ones in netsocket.h */
+/* size of nodeid _MUST_ match the ones in netsocket.h */
 	uint32_t nodeid;
-	uint32_t seq_num;
+	seq_num_t seq_num;
+	char circular_buffer[CBUFFER_SIZE];
+	int start;
+	int end;
 };
 
 struct node *parse_nodes_config(confdb_handle_t handle);
 void free_nodes_config(struct node *head);
 void connect_to_nodes(struct node *head);
 void disconnect_from_nodes(struct node *head);
+int should_deliver(struct node *node, seq_num_t seq_num);
+void has_been_delivered(struct node *node, seq_num_t seq_num);
 
 #endif

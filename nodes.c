@@ -483,3 +483,93 @@ void disconnect_from_nodes(struct node *next)
 	}
 	return;
 }
+
+/*** CHUNK OF CRAP ***/
+/*
+if (cnet_h->seq_num != peer->seq_num + 1)
+	logt_print(LOG_INFO, "Got %u, expected %u from node %s\n", cnet_h->seq_num, peer->seq_num + 1, peer->nodename);
+
+if ((cnet_h->seq_num == 0) && (peer->seq_num == SEQ_MAX)) {
+	logt_print(LOG_DEBUG, "Rolling over node: %s[%u]\n", peer->nodename, peer->nodeid);
+	rollover = 1;
+}
+
+if (cnet_h->seq_num > peer->seq_num + (SEQ_MAX / 2)) {
+	logt_print(LOG_DEBUG, "This doesn't look right\n");
+	break;
+}
+
+if (cnet_h->seq_num == 1) {
+	logt_print(LOG_DEBUG, "Restarting sequence\n");
+	peer->seq_num = 0;
+}
+
+if ((cnet_h->seq_num > peer->seq_num) || (rollover > 0)) {
+	logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+...
+} else
+	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+*/
+
+static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
+{
+	uint32_t new_offset = seq_num % CBUFFER_SIZE;
+	uint32_t old_offset = node->seq_num % CBUFFER_SIZE;
+
+	if (new_offset > old_offset) {
+		logt_print(LOG_DEBUG, "clearing from %u for %u\n", old_offset+1, new_offset - old_offset);
+		memset(&node->circular_buffer[old_offset+1], 0, new_offset - old_offset);
+	}
+	if (new_offset < old_offset) {
+		logt_print(LOG_DEBUG, "clearing from %u to end of buffer (for %u)\n", old_offset+1, CBUFFER_SIZE - old_offset);
+		memset(&node->circular_buffer[old_offset+1], 0, CBUFFER_SIZE - old_offset);
+		logt_print(LOG_DEBUG, "clearing from 0 to %u (for %u)\n", new_offset, new_offset + 1);
+		memset(&node->circular_buffer[0], 0, new_offset + 1);
+	}
+
+	return;
+}
+
+/*
+ * check if a packet has been seen before
+ * if not, return 1 and deliver
+ * if yes, then return 0 and drop
+ */
+int should_deliver(struct node *node, seq_num_t seq_num)
+{
+	int rollover = 0;
+
+	logt_print(LOG_DEBUG, "should_deliver for: %s[%u]: %u\n", node->nodename, node->seq_num, seq_num);
+	logt_print(LOG_DEBUG, "modulo: %u %u\n", seq_num % CBUFFER_SIZE, node->seq_num % CBUFFER_SIZE);
+
+	/*
+	 * rollover definition:
+	 * new_seq < old_seq - SEQ_MAX ?
+	 */
+
+	if (seq_num < (node->seq_num - (SEQ_MAX / 2))) {
+		logt_print(LOG_INFO, "Doing a rollover?\n");
+		rollover = 1;
+	}
+
+	if ((seq_num > node->seq_num) || (rollover > 0))
+		clear_ring_buffer(node, seq_num);
+
+	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 1) {
+		logt_print(LOG_DEBUG, "Packet has been seen before\n");
+		return 0;
+	}
+
+	return 1;
+}
+
+/*
+ * update ring buffer _after_ a packet has been written
+ * to make sure it's been delivered
+ */
+void has_been_delivered(struct node *node, seq_num_t seq_num)
+{
+	node->circular_buffer[seq_num % CBUFFER_SIZE] = 1;
+	node->seq_num = seq_num;
+	return;
+}

@@ -339,7 +339,7 @@ static void loop(void) {
 	struct timeval tv;
 	char read_buf[131072 + sizeof(struct cnet_header)];
 	ssize_t read_len = 0;
-	int rv, rollover;
+	int rv;
 	uint32_t peer_nodeid;
 	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
 	struct node *peer;
@@ -379,48 +379,24 @@ static void loop(void) {
 					continue;
 				}
 
+				/* optimize this to do faster lookups */
+				peer = mainconf;
+				while (peer) {
+					if (peer->nodeid == cnet_h->src_nodeid)
+						break;
+					peer = peer->next;
+				}
 				switch(cnet_h->pckt_type) {
 					case CNETD_PKCT_TYPE_DATA:
-						rollover = 0;
-						/* optimize this to do faster lookups */
-						peer = mainconf;
-						while (peer) {
-							if (peer->nodeid == cnet_h->src_nodeid)
-								break;
-							peer = peer->next;
-						}
-						logt_print(LOG_DEBUG, "Got pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
-
-						if (cnet_h->seq_num != peer->seq_num + 1)
-							logt_print(LOG_INFO, "Got %u, expected %u from node %s\n", cnet_h->seq_num, peer->seq_num + 1, peer->nodename);
-
-						/* we are rolling over */
-						if ((cnet_h->seq_num == 0) && (peer->seq_num == UINT32_MAX)) {
-							logt_print(LOG_DEBUG, "Rolling over node: %s[%u]\n", peer->nodename, peer->nodeid);
-							rollover = 1;
-						}
-
-						if (cnet_h->seq_num > peer->seq_num + (UINT32_MAX / 2)) {
-							logt_print(LOG_DEBUG, "This doesn't look right\n");
-							break;
-						}
-
-						/* this can be a restart for now, move this check to auth */
-						/*
-						if (cnet_h->seq_num == 1) {
-							logt_print(LOG_DEBUG, "Restarting sequence\n");
-							peer->seq_num = 0;
-						}
-						*/
-
-						if ((cnet_h->seq_num > peer->seq_num) || (rollover > 0)) {
-							logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+						if (should_deliver(peer, cnet_h->seq_num) > 0) {
+							//logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
 							rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
 							if (rv < 0)
 								logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
-							peer->seq_num = cnet_h->seq_num;
-						} else
-							logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+							else
+								has_been_delivered(peer, cnet_h->seq_num);
+						} //else
+						//	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
 						break;
 					case CNETD_PKCT_TYPE_PING:
 						logt_print(LOG_DEBUG, "Got a PING request %u\n", cnet_h->src_nodeid);
