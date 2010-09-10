@@ -26,6 +26,8 @@
 
 #define OPTION_STRING "hdfVc:"
 
+#define DEFAULT_NET_NAME	"clusternet%d"
+
 int daemonize = 1;
 int debug = 0;
 int daemon_quit = 0;
@@ -439,6 +441,8 @@ int main(int argc, char **argv)
 
 	read_arguments(argc, argv);
 
+	strncpy(localnet, DEFAULT_NET_NAME, sizeof(DEFAULT_NET_NAME));
+
 	if (!conffile)
 		conffile = strdup(CONFFILE);
 
@@ -465,7 +469,7 @@ int main(int argc, char **argv)
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
-	parse_global_config(confdb_handle);
+	parse_global_config(confdb_handle, localnet);
 	mainconf = parse_nodes_config(confdb_handle);
 
 	if (statistics)
@@ -485,7 +489,6 @@ int main(int argc, char **argv)
 		goto out;
 
 	logt_print(LOG_DEBUG, "Initializing local ethernet\n");
-	strncpy(localnet, "clusternet", 16);
 	eth_fd = cnet_open(localnet, 16);
 	if (eth_fd < 0) {
 		logt_print(LOG_INFO, "Unable to inizialize local tap device: %s\n",
