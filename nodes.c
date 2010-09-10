@@ -513,7 +513,7 @@ if ((cnet_h->seq_num > peer->seq_num) || (rollover > 0)) {
 
 static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 {
-	uint32_t new_offset = seq_num % CBUFFER_SIZE;
+	uint32_t new_offset = (seq_num + 1) % CBUFFER_SIZE;
 	uint32_t idx_offset = (node->seq_num + 1) % CBUFFER_SIZE;
 
 	if (idx_offset == new_offset)
