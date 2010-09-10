@@ -14,42 +14,42 @@ dist_doc_DATA		= example.conf \
 
 noinst_HEADERS		= \
 			  conf.h logging.h \
-			  cnet.h nodes.h \
+			  knet.h nodes.h \
 			  utils.h controlt.h \
 			  controlt_comm.h \
 			  netsocket.h
 
-sbin_PROGRAMS		= clusternetd cnet_tool
+sbin_PROGRAMS		= kronosnetd knet_tool
 
-clusternetd_SOURCES	= main.c \
+kronosnetd_SOURCES	= main.c \
 			  conf.c logging.c \
-			  cnet.c nodes.c \
+			  knet.c nodes.c \
 			  utils.c controlt.c \
 			  controlt_comm.c \
 			  netsocket.c
 
-clusternetd_CPPFLAGS	=
+kronosnetd_CPPFLAGS	=
 
-clusternetd_CFLAGS	= -fPIC \
+kronosnetd_CFLAGS	= -fPIC \
 			  $(confdb_CFLAGS) \
 			  $(logt_CFLAGS)
 
-clusternetd_LDFLAGS	= \
+kronosnetd_LDFLAGS	= \
 			  $(confdb_LIBS) \
 			  $(logt_LIBS) \
 			  -lpthread
 
-clusternetd_LDADD	= 
+kronosnetd_LDADD	=
 
-cnet_tool_SOURCES	= cnet_tool.c \
+knet_tool_SOURCES	= knet_tool.c \
 			  utils.c \
 			  controlt_comm.c
 
-cnet_tool_CFLAGS	= -fPIC
+knet_tool_CFLAGS	= -fPIC
 
-cnet_tool_LDFLAGS	=
+knet_tool_LDFLAGS	=
 
-cnet_tool_LDADD		=
+knet_tool_LDADD		=
 
 maintainer-clean-local:
 	rm -rf m4

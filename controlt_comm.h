@@ -4,13 +4,13 @@
 #include "config.h"
 #include <stdint.h>
 
-#define	CLUSTERNETD_SOCKNAME	RUNDIR "/clusternetd.sock"
+#define	KRONOSNETD_SOCKNAME	RUNDIR "/kronosnetd.sock"
 
-#define CNETD_MAGIC	0x12344321
-#define CNETD_VERSION	0x00000001
+#define KNETD_MAGIC	0x12344321
+#define KNETD_VERSION	0x00000001
 
-#define CNETD_CMD_QUIT		1
-#define CNETD_CMD_STATUS	2
+#define KNETD_CMD_QUIT		1
+#define KNETD_CMD_STATUS	2
 
 struct ctrl_header {
 	uint32_t magic;

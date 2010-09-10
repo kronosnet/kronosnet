@@ -5,15 +5,15 @@
 
 #define DEFAULT_PORT 50000
 
-#define CNETD_PKCT_TYPE_DATA	0
-#define CNETD_PKCT_TYPE_PING	1
-#define CNETD_PKCT_TYPE_PONG	2
+#define KNETD_PKCT_TYPE_DATA	0
+#define KNETD_PKCT_TYPE_PING	1
+#define KNETD_PKCT_TYPE_PONG	2
 
-#define CNETD_COMPRESS_OFF	0
-#define CNETD_COMPRESS_ON	1
+#define KNETD_COMPRESS_OFF	0
+#define KNETD_COMPRESS_ON	1
 
-#define CNETD_ENCRYPTION_OFF	0
-#define CNETD_ENCRYPTION_ON	1
+#define KNETD_ENCRYPTION_OFF	0
+#define KNETD_ENCRYPTION_ON	1
 
 /* change those to uint8 and UINT8_MAX to test rollover */
 /*
@@ -23,7 +23,7 @@ typedef uint32_t seq_num_t;
 typedef uint16_t seq_num_t;
 #define SEQ_MAX	UINT16_MAX
 
-struct cnet_header {
+struct knet_header {
 	uint32_t magic;
 	uint32_t version;
 	uint32_t dst_nodeid;

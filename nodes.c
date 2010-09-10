@@ -486,29 +486,29 @@ void disconnect_from_nodes(struct node *next)
 
 /*** CHUNK OF CRAP ***/
 /*
-if (cnet_h->seq_num != peer->seq_num + 1)
-	logt_print(LOG_INFO, "Got %u, expected %u from node %s\n", cnet_h->seq_num, peer->seq_num + 1, peer->nodename);
+if (knet_h->seq_num != peer->seq_num + 1)
+	logt_print(LOG_INFO, "Got %u, expected %u from node %s\n", knet_h->seq_num, peer->seq_num + 1, peer->nodename);
 
-if ((cnet_h->seq_num == 0) && (peer->seq_num == SEQ_MAX)) {
+if ((knet_h->seq_num == 0) && (peer->seq_num == SEQ_MAX)) {
 	logt_print(LOG_DEBUG, "Rolling over node: %s[%u]\n", peer->nodename, peer->nodeid);
 	rollover = 1;
 }
 
-if (cnet_h->seq_num > peer->seq_num + (SEQ_MAX / 2)) {
+if (knet_h->seq_num > peer->seq_num + (SEQ_MAX / 2)) {
 	logt_print(LOG_DEBUG, "This doesn't look right\n");
 	break;
 }
 
-if (cnet_h->seq_num == 1) {
+if (knet_h->seq_num == 1) {
 	logt_print(LOG_DEBUG, "Restarting sequence\n");
 	peer->seq_num = 0;
 }
 
-if ((cnet_h->seq_num > peer->seq_num) || (rollover > 0)) {
-	logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+if ((knet_h->seq_num > peer->seq_num) || (rollover > 0)) {
+	logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 ...
 } else
-	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 */
 
 static void clear_ring_buffer(struct node *node, seq_num_t seq_num)

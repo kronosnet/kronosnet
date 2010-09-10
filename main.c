@@ -19,14 +19,14 @@
 #include "controlt.h"
 #include "netsocket.h"
 #include "utils.h"
-#include "cnet.h"
+#include "knet.h"
 #include "controlt_comm.h"
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
 #define OPTION_STRING "hdfVc:"
 
-#define DEFAULT_NET_NAME	"clusternet%d"
+#define DEFAULT_NET_NAME	"kronosnet%d"
 
 int daemonize = 1;
 int debug = 0;
@@ -255,7 +255,7 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, char *read_buf, 
 		conn = next->conn;
 		while (conn) {
 			if (conn->fd) {
-				if (do_write(conn->fd, read_buf, read_len + sizeof(struct cnet_header)) < 0) {
+				if (do_write(conn->fd, read_buf, read_len + sizeof(struct knet_header)) < 0) {
 						logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
 				}
 			}
@@ -268,41 +268,41 @@ next:
 
 static void *heartbeat_thread(void *arg)
 {
-	struct cnet_header cnet_h;
+	struct knet_header knet_h;
 
-	memset(&cnet_h, 0, sizeof(struct cnet_header));
-	cnet_h.magic = CNETD_MAGIC;
-	cnet_h.src_nodeid = our_nodeid;
-	cnet_h.seq_num = 0;
-	cnet_h.pckt_type = CNETD_PKCT_TYPE_PING;
-	cnet_h.compress = CNETD_COMPRESS_OFF;
-	cnet_h.encryption = CNETD_ENCRYPTION_OFF;
+	memset(&knet_h, 0, sizeof(struct knet_header));
+	knet_h.magic = KNETD_MAGIC;
+	knet_h.src_nodeid = our_nodeid;
+	knet_h.seq_num = 0;
+	knet_h.pckt_type = KNETD_PKCT_TYPE_PING;
+	knet_h.compress = KNETD_COMPRESS_OFF;
+	knet_h.encryption = KNETD_ENCRYPTION_OFF;
 
 	for (;;) {
 		sleep(100);
-		cnet_h.seq_num++;
-		//dispatch_buffer(mainconf, 1, (char *)&cnet_h, sizeof(struct cnet_header));
+		knet_h.seq_num++;
+		//dispatch_buffer(mainconf, 1, (char *)&knet_h, sizeof(struct knet_header));
 	}
 	return NULL;
 }
 
-static void *eth_to_cnet_thread(void *arg)
+static void *eth_to_knet_thread(void *arg)
 {
 	fd_set rfds;
 	int se_result;
-	char read_buf[131072+sizeof(struct cnet_header)];
+	char read_buf[131072+sizeof(struct knet_header)];
 	ssize_t read_len = 0;
 	struct timeval tv;
-	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
+	struct knet_header *knet_h = (struct knet_header *)read_buf;
 
 	/* we need to prepare the header only once for now */
-	memset(cnet_h, 0, sizeof(struct cnet_header));
-	cnet_h->magic = CNETD_MAGIC;
-	cnet_h->src_nodeid = our_nodeid;
-	cnet_h->seq_num = 0;
-	cnet_h->pckt_type = CNETD_PKCT_TYPE_DATA;
-	cnet_h->compress = CNETD_COMPRESS_OFF;
-	cnet_h->encryption = CNETD_ENCRYPTION_OFF;
+	memset(knet_h, 0, sizeof(struct knet_header));
+	knet_h->magic = KNETD_MAGIC;
+	knet_h->src_nodeid = our_nodeid;
+	knet_h->seq_num = 0;
+	knet_h->pckt_type = KNETD_PKCT_TYPE_DATA;
+	knet_h->compress = KNETD_COMPRESS_OFF;
+	knet_h->encryption = KNETD_ENCRYPTION_OFF;
 
 	do {
 		FD_ZERO (&rfds);
@@ -321,10 +321,10 @@ static void *eth_to_cnet_thread(void *arg)
 			continue;
 
 		if (FD_ISSET(eth_fd, &rfds)) {
-			read_len = read(eth_fd, read_buf + sizeof(struct cnet_header), sizeof(read_buf) - sizeof(struct cnet_header));
+			read_len = read(eth_fd, read_buf + sizeof(struct knet_header), sizeof(read_buf) - sizeof(struct knet_header));
 			if (read_len > 0) {
-				cnet_h->seq_num++;
-				dispatch_buffer(mainconf, 0, read_buf, read_len + sizeof(struct cnet_header));
+				knet_h->seq_num++;
+				dispatch_buffer(mainconf, 0, read_buf, read_len + sizeof(struct knet_header));
 			} else if (read_len < 0) {
 				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
@@ -339,11 +339,11 @@ static void loop(void) {
 	int se_result;
 	fd_set rfds;
 	struct timeval tv;
-	char read_buf[131072 + sizeof(struct cnet_header)];
+	char read_buf[131072 + sizeof(struct knet_header)];
 	ssize_t read_len = 0;
 	int rv;
 	uint32_t peer_nodeid;
-	struct cnet_header *cnet_h = (struct cnet_header *)read_buf;
+	struct knet_header *knet_h = (struct knet_header *)read_buf;
 	struct node *peer;
 
 	do {
@@ -369,14 +369,14 @@ static void loop(void) {
 		if (FD_ISSET(net_sock, &rfds)) {
 			read_len = read(net_sock, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
-				//logt_print(LOG_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", cnet_h->magic, cnet_h->nodeid, cnet_h->seq_num, cnet_h->pckt_type, cnet_h->compress, cnet_h->encryption, cnet_h->padding);
+				//logt_print(LOG_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", knet_h->magic, knet_h->nodeid, knet_h->seq_num, knet_h->pckt_type, knet_h->compress, knet_h->encryption, knet_h->padding);
 
-				if (cnet_h->magic != CNETD_MAGIC) {
+				if (knet_h->magic != KNETD_MAGIC) {
 					logt_print(LOG_DEBUG, "no magic? print peer info for fun and profit\n");
 					continue;
 				}
 
-				if (cnet_h->src_nodeid == our_nodeid) {
+				if (knet_h->src_nodeid == our_nodeid) {
 					logt_print(LOG_DEBUG, "Are we really sending pckts to our selves?\n");
 					continue;
 				}
@@ -384,32 +384,32 @@ static void loop(void) {
 				/* optimize this to do faster lookups */
 				peer = mainconf;
 				while (peer) {
-					if (peer->nodeid == cnet_h->src_nodeid)
+					if (peer->nodeid == knet_h->src_nodeid)
 						break;
 					peer = peer->next;
 				}
-				switch(cnet_h->pckt_type) {
-					case CNETD_PKCT_TYPE_DATA:
-						if (should_deliver(peer, cnet_h->seq_num) > 0) {
-							//logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
-							rv = do_write(eth_fd, read_buf + sizeof(struct cnet_header), read_len - sizeof(struct cnet_header));
+				switch(knet_h->pckt_type) {
+					case KNETD_PKCT_TYPE_DATA:
+						if (should_deliver(peer, knet_h->seq_num) > 0) {
+							//logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
+							rv = do_write(eth_fd, read_buf + sizeof(struct knet_header), read_len - sizeof(struct knet_header));
 							if (rv < 0)
 								logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
 							else
-								has_been_delivered(peer, cnet_h->seq_num);
+								has_been_delivered(peer, knet_h->seq_num);
 						} //else
-						//	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, cnet_h->seq_num);
+						//	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 						break;
-					case CNETD_PKCT_TYPE_PING:
-						logt_print(LOG_DEBUG, "Got a PING request %u\n", cnet_h->src_nodeid);
-						peer_nodeid = cnet_h->src_nodeid;
+					case KNETD_PKCT_TYPE_PING:
+						logt_print(LOG_DEBUG, "Got a PING request %u\n", knet_h->src_nodeid);
+						peer_nodeid = knet_h->src_nodeid;
 
 						/* reply */
-						cnet_h->pckt_type = CNETD_PKCT_TYPE_PONG;
-						cnet_h->src_nodeid = our_nodeid;
+						knet_h->pckt_type = KNETD_PKCT_TYPE_PONG;
+						knet_h->src_nodeid = our_nodeid;
 						dispatch_buffer(mainconf, peer_nodeid, read_buf, read_len);
 						break;
-					case CNETD_PKCT_TYPE_PONG:
+					case KNETD_PKCT_TYPE_PONG:
 						logt_print(LOG_DEBUG, "Got a PONG reply\n");
 						/* need to correlate this with a PING */
 						break;
@@ -418,7 +418,7 @@ static void loop(void) {
 						break;
 				}
 			} else if (read_len < 0) {
-				logt_print(LOG_INFO, "Error reading from CNET error %d: %s\n", net_sock, strerror(errno));
+				logt_print(LOG_INFO, "Error reading from KNET error %d: %s\n", net_sock, strerror(errno));
 			} else
 				logt_print(LOG_DEBUG, "Read 0?\n");
 		} 
@@ -489,7 +489,7 @@ int main(int argc, char **argv)
 		goto out;
 
 	logt_print(LOG_DEBUG, "Initializing local ethernet\n");
-	eth_fd = cnet_open(localnet, 16);
+	eth_fd = knet_open(localnet, 16);
 	if (eth_fd < 0) {
 		logt_print(LOG_INFO, "Unable to inizialize local tap device: %s\n",
 			   strerror(errno));
@@ -497,7 +497,7 @@ int main(int argc, char **argv)
 	}
 
 	logt_print(LOG_DEBUG, "Initializing local ethernet delivery thread\n");
-	rv = pthread_create(&eth_thread, NULL, eth_to_cnet_thread, NULL);
+	rv = pthread_create(&eth_thread, NULL, eth_to_knet_thread, NULL);
 	if (rv < 0) {
 		eth_thread_started = 0;
 		logt_print(LOG_INFO, "Unable to inizialize local RX thread. error: %s\n",

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([clusternetd], [0.1], [fdinitto@redhat.com])
+AC_INIT([kronosnetd], [0.1], [fdinitto@redhat.com])
 AM_INIT_AUTOMAKE([-Wno-portability])
 LT_PREREQ([2.2.6])
 LT_INIT
@@ -102,7 +102,7 @@ RUNDIR=${localstatedir}/run/
 
 ## do subst
 
-AC_DEFINE_UNQUOTED([CONFFILE], "$(eval echo ${sysconfdir}/clusternetd.conf)",
+AC_DEFINE_UNQUOTED([CONFFILE], "$(eval echo ${sysconfdir}/kronosnetd.conf)",
 		   [Default config file])
 
 AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",

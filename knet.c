@@ -11,10 +11,10 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
-#include "cnet.h"
+#include "knet.h"
 #include "utils.h"
 
-int cnet_open(char *dev, size_t dev_size)
+int knet_open(char *dev, size_t dev_size)
 {
 	struct ifreq ifr;
 	int fd, err;
@@ -47,7 +47,7 @@ int cnet_open(char *dev, size_t dev_size)
 	return fd;
 }
 
-int cnet_get_mtu(char *dev)
+int knet_get_mtu(char *dev)
 {
 	struct ifreq ifr;
 	int sockfd, err;
@@ -67,17 +67,17 @@ int cnet_get_mtu(char *dev)
 	return ifr.ifr_mtu;
 }
 
-int cnet_close(int fd)
+int knet_close(int fd)
 {
 	return close(fd);
 }
 
-int cnet_read(int fd, char *buf, int len)
+int knet_read(int fd, char *buf, int len)
 {
 	return do_read(fd, buf, len);
 }
 
-int cnet_write(int fd, char *buf, int len)
+int knet_write(int fd, char *buf, int len)
 {
 	return do_write(fd, buf, len);
 }

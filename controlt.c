@@ -24,19 +24,19 @@ static int setup_listener(void)
 	struct sockaddr_un addr;
 	int rv, s, value;
 
-	unlink(CLUSTERNETD_SOCKNAME);
+	unlink(KRONOSNETD_SOCKNAME);
 
 	s = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (s < 0) {
 		logt_print(LOG_INFO, "Unable to open socket %s error: %s\n",
-				     CLUSTERNETD_SOCKNAME, strerror(errno));
+				     KRONOSNETD_SOCKNAME, strerror(errno));
 		return s;
 	}
 
 	value = fcntl(s, F_GETFD, 0);
 	if (value < 0) {
 		logt_print(LOG_INFO, "Unable to get close-on-exec flag from socket %s error: %s\n",
-				     CLUSTERNETD_SOCKNAME, strerror(errno));
+				     KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return value;
 	}
@@ -44,19 +44,19 @@ static int setup_listener(void)
 	rv = fcntl(s, F_SETFD, value);
 	if (rv < 0) {
 		logt_print(LOG_INFO, "Unable to set close-on-exec flag from socket %s error: %s\n",
-					CLUSTERNETD_SOCKNAME, strerror(errno));
+					KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
 	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	memcpy(addr.sun_path, CLUSTERNETD_SOCKNAME, strlen(CLUSTERNETD_SOCKNAME));
+	memcpy(addr.sun_path, KRONOSNETD_SOCKNAME, strlen(KRONOSNETD_SOCKNAME));
 
 	rv = bind(s, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv < 0) {
 		logt_print(LOG_INFO, "Unable to bind to socket %s error: %s\n",
-				     CLUSTERNETD_SOCKNAME, strerror(errno));
+				     KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
 	}
@@ -64,7 +64,7 @@ static int setup_listener(void)
 	rv = listen(s, SOMAXCONN);
 	if (rv < 0) {
 		logt_print(LOG_INFO, "Unable to listen to socket %s error: %s\n",
-				     CLUSTERNETD_SOCKNAME, strerror(errno));
+				     KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
 	}
@@ -88,7 +88,7 @@ static int send_status(int ctrl_fd)
 
 	memset(status_reply, 0, PATH_MAX);
 
-	init_header((struct ctrl_header *)&status_reply, CNETD_CMD_STATUS, PATH_MAX);
+	init_header((struct ctrl_header *)&status_reply, KNETD_CMD_STATUS, PATH_MAX);
 
 	snprintf(status_reply + sizeof(struct ctrl_header),
 		 PATH_MAX - sizeof(struct ctrl_header), "ADD SOME USEFUL INFO HERE");
@@ -113,7 +113,7 @@ static void *control_thread(void *arg)
 		ctrl_fd = accept(ctrl_socket, NULL, NULL);
 		if (ctrl_fd < 0) {
 			logt_print(LOG_INFO, "Error accepting connections on socket %s error: %s\n",
-				   CLUSTERNETD_SOCKNAME, strerror(errno));
+				   KRONOSNETD_SOCKNAME, strerror(errno));
 			// what now? doesn't look ok to kill the control thread.. try again?
 			goto thread_out;
 		}
@@ -122,19 +122,19 @@ static void *control_thread(void *arg)
 		if (rv < 0)
 			goto out;
 
-		if (h.magic != CNETD_MAGIC)
+		if (h.magic != KNETD_MAGIC)
 			goto out;
 
-		if ((h.version & 0xFFFF0000) != (CNETD_VERSION & 0xFFFF0000))
+		if ((h.version & 0xFFFF0000) != (KNETD_VERSION & 0xFFFF0000))
 			goto out;
 
 		ctrl_lock();
 
 		switch(h.command) {
-		case CNETD_CMD_QUIT:
+		case KNETD_CMD_QUIT:
 			daemon_quit = 1;
 			break;
-		case CNETD_CMD_STATUS:
+		case KNETD_CMD_STATUS:
 			if (send_status(ctrl_fd) < 0)
 				logt_print(LOG_INFO, "Unable to reply to a status request\n");
 			break;
@@ -150,7 +150,7 @@ out:
 	}
 
 thread_out:
-	unlink(CLUSTERNETD_SOCKNAME);
+	unlink(KRONOSNETD_SOCKNAME);
 	return NULL;
 }
 
@@ -179,7 +179,7 @@ int stop_control_thread(void)
 	int rv;
 
 	rv = pthread_cancel(ctrl_thread);
-	unlink(CLUSTERNETD_SOCKNAME);
+	unlink(KRONOSNETD_SOCKNAME);
 
 	return rv;
 }

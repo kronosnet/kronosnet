@@ -23,7 +23,7 @@ char *command = NULL;
 static void print_usage(void)
 {
 	printf("Usage:\n\n");
-	printf("cnet_tool [options]\n\n");
+	printf("knet_tool [options]\n\n");
 	printf("Options:\n\n");
 	printf("  -c <command> Execute command\n");
 	printf("  -d           Enable debugging output\n");
@@ -83,14 +83,14 @@ static int do_connect(void)
 	s = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (s < 0) {
 		fprintf(stderr, "Unable to open socket %s error: %s\n",
-				CLUSTERNETD_SOCKNAME, strerror(errno));
+				KRONOSNETD_SOCKNAME, strerror(errno));
 		return s;
 	}
 
 	value = fcntl(s, F_GETFD, 0);
 	if (value < 0) {
 		fprintf(stderr, "Unable to  get close-on-exec flag from socket %s error: %s\n",
-				CLUSTERNETD_SOCKNAME, strerror(errno));
+				KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return value;
 	}
@@ -98,19 +98,19 @@ static int do_connect(void)
 	rv = fcntl(s, F_SETFD, value);
 	if (rv < 0) {
 		fprintf(stderr, "Unable to set close-on-exec flag from socket %s error: %s\n",
-				CLUSTERNETD_SOCKNAME, strerror(errno));
+				KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
 	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	memcpy(addr.sun_path, CLUSTERNETD_SOCKNAME, strlen(CLUSTERNETD_SOCKNAME));
+	memcpy(addr.sun_path, KRONOSNETD_SOCKNAME, strlen(KRONOSNETD_SOCKNAME));
 
 	rv = connect(s, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv < 0) {
 		fprintf(stderr, "Unable to connect to socket %s error: %s\n",
-				CLUSTERNETD_SOCKNAME, strerror(errno));
+				KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		s = rv;
 	}
@@ -123,7 +123,7 @@ static int send_quit(int fd)
 	struct ctrl_header h;
 	int rv;
 
-	init_header(&h, CNETD_CMD_QUIT, 0);
+	init_header(&h, KNETD_CMD_QUIT, 0);
 
 	rv = do_write(fd, &h, sizeof(h));
 	close(fd);
@@ -137,7 +137,7 @@ static int get_status(int fd)
 	int rv;
 	char status[PATH_MAX];
 
-	init_header(&h, CNETD_CMD_STATUS, 0);
+	init_header(&h, KNETD_CMD_STATUS, 0);
 
 	rv = do_write(fd, &h, sizeof(h));
 	if (rv < 0)
