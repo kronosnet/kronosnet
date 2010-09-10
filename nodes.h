@@ -7,7 +7,7 @@
 #include "conf.h"
 #include "netsocket.h"
 
-#define CBUFFER_SIZE	2048
+#define CBUFFER_SIZE	4096
 
 struct conn {
 	struct conn *next;

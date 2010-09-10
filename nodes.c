@@ -509,22 +509,22 @@ if ((knet_h->seq_num > peer->seq_num) || (rollover > 0)) {
 ...
 } else
 	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
+
+improved rollover check? :
+	if ((node->seq_num > (SEQ_MAX / 2)) && (seq_num < node->seq_num - (SEQ_MAX / 2)))
+
 */
 
 static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 {
-	uint32_t new_offset = (seq_num + 1) % CBUFFER_SIZE;
-	uint32_t idx_offset = (node->seq_num + 1) % CBUFFER_SIZE;
+	seq_num_t seq_idx;
 
-	if (idx_offset == new_offset)
-		return;
-
-	logt_print(LOG_DEBUG, "clearing from %u to %u\n", idx_offset, new_offset);
-
-	while (idx_offset != new_offset) {
-		node->circular_buffer[idx_offset] = 0;
-		idx_offset = (idx_offset + 1) % CBUFFER_SIZE;
+	for (seq_idx = (node->seq_num + 1); seq_idx != seq_num; seq_idx++) {
+		/* logt_print(LOG_DEBUG, "clearing offset(%u -> %u): %u\n", node->seq_num, seq_num, seq_idx); */
+		node->circular_buffer[seq_idx % CBUFFER_SIZE] = 0;
 	}
+
+	node->circular_buffer[seq_num % CBUFFER_SIZE] = 1;
 
 	return;
 }
@@ -538,8 +538,10 @@ int should_deliver(struct node *node, seq_num_t seq_num)
 {
 	int rollover = 0;
 
+/*
 	logt_print(LOG_DEBUG, "should_deliver for: %s[%u]: %u\n", node->nodename, node->seq_num, seq_num);
 	logt_print(LOG_DEBUG, "modulo: %u %u\n", seq_num % CBUFFER_SIZE, node->seq_num % CBUFFER_SIZE);
+*/
 
 	/*
 	 * rollover definition:
@@ -551,11 +553,22 @@ int should_deliver(struct node *node, seq_num_t seq_num)
 		rollover = 1;
 	}
 
-	if ((seq_num > node->seq_num) || (rollover > 0))
+	if ((seq_num > node->seq_num) || (rollover > 0)) {
 		clear_ring_buffer(node, seq_num);
+		node->seq_num = seq_num;
+		return 1;
+	}
+
+	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 0) {
+		logt_print(LOG_DEBUG, "Receiving late packet (%s[%u]): %u\n", node->nodename, node->seq_num, seq_num);
+	}
 
 	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 1) {
-		logt_print(LOG_DEBUG, "Packet has been seen before\n");
+		logt_print(LOG_DEBUG, "Packet has been seen before but not delivered\n");
+		return 1;
+	}
+
+	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 2) {
 		return 0;
 	}
 
@@ -568,7 +581,6 @@ int should_deliver(struct node *node, seq_num_t seq_num)
  */
 void has_been_delivered(struct node *node, seq_num_t seq_num)
 {
-	node->circular_buffer[seq_num % CBUFFER_SIZE] = 1;
-	node->seq_num = seq_num;
+	node->circular_buffer[seq_num % CBUFFER_SIZE] = 2;
 	return;
 }
