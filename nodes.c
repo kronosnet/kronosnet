@@ -517,14 +517,39 @@ improved rollover check? :
 
 static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 {
-	seq_num_t seq_idx;
+	seq_num_t seq_count;
+	size_t clr_bgn, clr_end;
 
-	for (seq_idx = (node->seq_num + 1); seq_idx != seq_num; seq_idx++) {
-		/* logt_print(LOG_DEBUG, "clearing offset(%u -> %u): %u\n", node->seq_num, seq_num, seq_idx); */
-		node->circular_buffer[seq_idx % CBUFFER_SIZE] = 0;
+	if (seq_num < node->seq_num) 
+		seq_count = (SEQ_MAX - node->seq_num) + seq_num;
+	else 
+		seq_count = seq_num - node->seq_num;
+
+	/* let's keep 4 bytes unused to avoid overwrites in one shot
+ 	 * 1 bytes should be enough
+ 	 */
+	if (seq_count > (CBUFFER_SIZE - 4)) {
+		logt_print(LOG_INFO, "WARNING: circular buffer not big enough!\n");
+		exit(-1); /* resize buffer? */
 	}
 
-	node->circular_buffer[seq_num % CBUFFER_SIZE] = 1;
+	if (seq_count > 1) {
+		logt_print(LOG_INFO, "clearing offset for %s: %u -> %u = %u\n",
+			node->nodename, node->seq_num, seq_num, seq_count);
+	}
+
+	clr_bgn = (node->seq_num + 1) % CBUFFER_SIZE;
+	clr_end = (seq_num + 1) % CBUFFER_SIZE;
+
+	if (clr_bgn > clr_end) {
+		memset(node->circular_buffer + clr_bgn, 0, CBUFFER_SIZE - clr_bgn);
+		memset(node->circular_buffer, 0, clr_end);
+	}
+	else {
+		memset(node->circular_buffer + clr_bgn, 0, clr_end - clr_bgn);
+	}
+
+	node->seq_num = seq_num;
 
 	return;
 }
@@ -536,39 +561,24 @@ static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
  */
 int should_deliver(struct node *node, seq_num_t seq_num)
 {
-	int rollover = 0;
+	seq_num_t seq_lim;
 
-/*
-	logt_print(LOG_DEBUG, "should_deliver for: %s[%u]: %u\n", node->nodename, node->seq_num, seq_num);
-	logt_print(LOG_DEBUG, "modulo: %u %u\n", seq_num % CBUFFER_SIZE, node->seq_num % CBUFFER_SIZE);
-*/
+	seq_lim = (node->seq_num + (SEQ_MAX / 2)) % SEQ_MAX;
 
-	/*
-	 * rollover definition:
-	 * new_seq < old_seq - SEQ_MAX ?
-	 */
-
-	if (seq_num < (node->seq_num - (SEQ_MAX / 2))) {
-		logt_print(LOG_INFO, "Doing a rollover?\n");
-		rollover = 1;
+	if (seq_lim < node->seq_num) {
+		if (seq_num > node->seq_num || seq_num < seq_lim) {
+			/* seq_num is newer */
+			clear_ring_buffer(node, seq_num);
+		}
+	}
+	else {
+		if (seq_num > node->seq_num && seq_num < seq_lim) {
+			/* seq_num is newer */
+			clear_ring_buffer(node, seq_num);
+		}
 	}
 
-	if ((seq_num > node->seq_num) || (rollover > 0)) {
-		clear_ring_buffer(node, seq_num);
-		node->seq_num = seq_num;
-		return 1;
-	}
-
-	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 0) {
-		logt_print(LOG_DEBUG, "Receiving late packet (%s[%u]): %u\n", node->nodename, node->seq_num, seq_num);
-	}
-
-	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 1) {
-		logt_print(LOG_DEBUG, "Packet has been seen before but not delivered\n");
-		return 1;
-	}
-
-	if (node->circular_buffer[seq_num % CBUFFER_SIZE] == 2) {
+	if (node->circular_buffer[seq_num % CBUFFER_SIZE] != 0) {
 		return 0;
 	}
 
@@ -581,6 +591,6 @@ int should_deliver(struct node *node, seq_num_t seq_num)
  */
 void has_been_delivered(struct node *node, seq_num_t seq_num)
 {
-	node->circular_buffer[seq_num % CBUFFER_SIZE] = 2;
+	node->circular_buffer[seq_num % CBUFFER_SIZE] = 1;
 	return;
 }
