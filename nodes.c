@@ -522,15 +522,20 @@ static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 
 	if (seq_num < node->seq_num) 
 		seq_count = (SEQ_MAX - node->seq_num) + seq_num;
-	else 
+	else
 		seq_count = seq_num - node->seq_num;
 
 	/* let's keep 4 bytes unused to avoid overwrites in one shot
  	 * 1 bytes should be enough
  	 */
 	if (seq_count > (CBUFFER_SIZE - 4)) {
+		/* better options for this case would be dropping the connection
+		 * or to increase the buffer size
+		 * FIXME: we also hit this part when a node is restarted
+		 */
 		logt_print(LOG_INFO, "WARNING: circular buffer not big enough!\n");
-		exit(-1); /* resize buffer? */
+		memset(node->circular_buffer, 0, CBUFFER_SIZE);
+		goto exit_clean;
 	}
 
 	if (seq_count > 1) {
@@ -549,9 +554,30 @@ static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 		memset(node->circular_buffer + clr_bgn, 0, clr_end - clr_bgn);
 	}
 
+exit_clean:
+
 	node->seq_num = seq_num;
 
 	return;
+}
+
+/* checks if a seq num is newer than the last seen */
+static int is_seq_new(struct node *node, seq_num_t seq_num)
+{
+	seq_num_t seq_lim;
+
+	seq_lim = (node->seq_num + (SEQ_MAX / 2)) % SEQ_MAX;
+
+	if (seq_lim < node->seq_num) {
+		if (seq_num > node->seq_num || seq_num < seq_lim)
+			return 1;
+	}
+	else {
+		if (seq_num > node->seq_num && seq_num < seq_lim)
+			return 1;
+	}
+
+	return 0;
 }
 
 /*
@@ -561,26 +587,16 @@ static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
  */
 int should_deliver(struct node *node, seq_num_t seq_num)
 {
-	seq_num_t seq_lim;
+	if (is_seq_new(node, seq_num))
+		clear_ring_buffer(node, seq_num);
+	
+	/* we should check if the distance between seq_num and
+	 * node->seq_num is higher than CBUFFER_SIZE
+	 * if the packet is too old we can't continue
+	 */
 
-	seq_lim = (node->seq_num + (SEQ_MAX / 2)) % SEQ_MAX;
-
-	if (seq_lim < node->seq_num) {
-		if (seq_num > node->seq_num || seq_num < seq_lim) {
-			/* seq_num is newer */
-			clear_ring_buffer(node, seq_num);
-		}
-	}
-	else {
-		if (seq_num > node->seq_num && seq_num < seq_lim) {
-			/* seq_num is newer */
-			clear_ring_buffer(node, seq_num);
-		}
-	}
-
-	if (node->circular_buffer[seq_num % CBUFFER_SIZE] != 0) {
+	if (node->circular_buffer[seq_num % CBUFFER_SIZE] != 0)
 		return 0;
-	}
 
 	return 1;
 }
