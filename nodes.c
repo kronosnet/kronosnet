@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <linux/if.h>
 
 #include "conf.h"
 #include "logging.h"
@@ -265,6 +266,19 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				new->nodeid = atoi(key_value);
 			}
+		} else if (!strncmp(key_name, "netdevname", strlen("netdevname"))) {
+			if (strlen(key_value)) {
+				if (strlen(key_value) > IFNAMSIZ) {
+					logt_print(LOG_INFO, "Network device name (netdevname) option too long\n");
+					goto out;
+				}
+
+				new->netdevname = strdup(key_value);
+				if (!new->netdevname) {
+					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					goto out;
+				}
+			}
 		}
 
 	}
@@ -354,6 +368,34 @@ out:
 	return head;
 }
 
+static struct node *find_local_node(struct node *mainconf)
+{
+	struct node *local_node;
+
+	for (local_node = mainconf; local_node != NULL && !local_node->conn->local; local_node = local_node->next) ;
+
+	if (local_node == NULL) {
+		logt_print(LOG_INFO, "Unable to find local node\n");
+		return NULL;
+	}
+
+	return local_node;
+}
+
+int process_local_node_config_preup(struct node *mainconf, char *netdevname)
+{
+	struct node *local_node;
+
+	if ((local_node = find_local_node(mainconf)) == NULL) {
+		return -1;
+	}
+
+	if (local_node->netdevname != NULL)
+		strcpy(netdevname, local_node->netdevname);
+
+	return 0;
+}
+
 static void free_nodes_conn(struct conn *conn)
 {
 	struct conn *next;
@@ -393,6 +435,8 @@ void free_nodes_config(struct node *head)
 			free(head->down);
 		if (head->postdown)
 			free(head->postdown);
+		if (head->netdevname)
+			free(head->netdevname);
 		free(head);
 		head = next;
 	}

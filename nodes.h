@@ -28,6 +28,7 @@ struct node {
 	char *up;
 	char *down;
 	char *postdown;
+	char *netdevname;
 	int af_family;
 /* size of nodeid _MUST_ match the ones in netsocket.h */
 	uint32_t nodeid;
@@ -43,5 +44,6 @@ void connect_to_nodes(struct node *head);
 void disconnect_from_nodes(struct node *head);
 int should_deliver(struct node *node, seq_num_t seq_num);
 void has_been_delivered(struct node *node, seq_num_t seq_num);
+extern int process_local_node_config_preup(struct node *mainconf, char *netdevname);
 
 #endif

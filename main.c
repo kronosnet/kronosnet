@@ -469,8 +469,13 @@ int main(int argc, char **argv)
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
-	parse_global_config(confdb_handle, localnet);
+	parse_global_config(confdb_handle);
 	mainconf = parse_nodes_config(confdb_handle);
+
+	if (process_local_node_config_preup(mainconf, localnet) != 0) {
+		logt_print(LOG_INFO, "Unable to process local node config\n");
+		goto out;
+	}
 
 	if (statistics)
 		logt_print(LOG_DEBUG, "statistics collector enabled\n");
@@ -495,6 +500,7 @@ int main(int argc, char **argv)
 			   strerror(errno));
 		goto out;
 	}
+	logt_print(LOG_INFO, "Using local net device %s\n", localnet);
 
 	logt_print(LOG_DEBUG, "Initializing local ethernet delivery thread\n");
 	rv = pthread_create(&eth_thread, NULL, eth_to_knet_thread, NULL);

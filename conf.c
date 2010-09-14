@@ -14,7 +14,7 @@ static confdb_callbacks_t callbacks = {};
 extern int statistics;
 extern int rerouting;
 
-int parse_global_config(confdb_handle_t handle, char *netname)
+int parse_global_config(confdb_handle_t handle)
 {
 	int res;
 	hdb_handle_t global_handle;
@@ -52,8 +52,6 @@ int parse_global_config(confdb_handle_t handle, char *netname)
 			statistics = 1;
 		} else if (!strncmp(key_name, "rerouting",  strlen("rerouting"))) {
 			rerouting = 1;
-		} else if (strncmp(key_name, "netname", strlen("netname")) == 0) {
-			strncpy(netname, key_value, 16);
 		}
 	}
 
