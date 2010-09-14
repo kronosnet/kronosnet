@@ -152,49 +152,24 @@ static int add_ip(struct node *node, const char* curip, int serial_num)
 
 static int convert_ip(struct node *node, char* iptemp)
 {
-	char *tmp1 = iptemp, *tmp2 = iptemp;
-	char curip[256];
-	int i, serial_num;
-
-	/* Clear out white space and tabs */
-	for (i = strlen (iptemp) - 1; i > -1; i--) {
-		if (iptemp[i] == '\t' || iptemp[i] == ' ') {
-			iptemp[i] = '\0';
-		} else {
-			break;
-		}
-	}
-
-	/* convert tabs in spaces */
-	for (i = 0; i <= strlen (iptemp); i++) {
-		if (iptemp[i] == '\t') {
-			iptemp[i] = ' ';
-		}
-	}
+	char *curip;
+	int i;
+	int res;
+	int serial_num;
 
 	serial_num = 0;
-	while (tmp1) {
-		memset(curip, 0, sizeof(curip));
+	curip = NULL;
+	i = 0;
 
-		tmp2 = strchr(tmp1, ' ');
-		if (tmp2) {
-			strncpy(curip, tmp1, tmp2 - tmp1);
-			tmp1 = tmp2 + 1;
-			if (!strlen(curip))
-				continue;
-		} else {
-			if (tmp1) {
-				strcpy(curip, tmp1);
-				tmp1 = tmp2;
-			} else {
-				break;
-			}
-		}
-
+	while ((res = str_explode(iptemp, &curip, &i)) == 0) {
 		if (add_ip(node, curip, serial_num) < -1) 
 			return -1;
 
 		serial_num++;
+	}
+
+	if (res == -2) {
+		logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
 	}
 
 	return 0;
