@@ -502,6 +502,11 @@ int main(int argc, char **argv)
 	}
 	logt_print(LOG_INFO, "Using local net device %s\n", localnet);
 
+	if (process_local_node_config_postup(mainconf, localnet) != 0) {
+		logt_print(LOG_INFO, "Unable to process post up config\n");
+		goto out;
+	}
+
 	logt_print(LOG_DEBUG, "Initializing local ethernet delivery thread\n");
 	rv = pthread_create(&eth_thread, NULL, eth_to_knet_thread, NULL);
 	if (rv < 0) {

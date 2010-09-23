@@ -13,6 +13,7 @@
 #include <linux/if.h>
 
 #include "conf.h"
+#include "knet.h"
 #include "logging.h"
 #include "nodes.h"
 #include "utils.h"
@@ -279,6 +280,18 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 					goto out;
 				}
 			}
+		} else if (!strncmp(key_name, "knet_ips", strlen("knet_ips"))) {
+			if (strlen(key_value)) {
+				new->net_ips = strdup(key_value);
+				if (!new->net_ips) {
+					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					goto out;
+				}
+			}
+		} else if (!strncmp(key_name, "knet_mtu", strlen("knet_mtu"))) {
+			if (strlen(key_value)) {
+				new->mtu = atoi(key_value);
+			}
 		}
 
 	}
@@ -392,6 +405,39 @@ int process_local_node_config_preup(struct node *mainconf, char *netdevname)
 
 	if (local_node->netdevname != NULL)
 		strcpy(netdevname, local_node->netdevname);
+
+	return 0;
+}
+
+int process_local_node_config_postup(struct node *mainconf, const char *netdevname)
+{
+	struct node *local_node;
+	char *net_ip;
+	int pos;
+	int res;
+
+	if ((local_node = find_local_node(mainconf)) == NULL) {
+		return -1;
+	}
+
+	if (local_node->net_ips != NULL) {
+		net_ip = NULL;
+		pos = 0;
+
+		if (knet_up(netdevname, local_node->mtu) != 0) {
+			return -1;
+		}
+
+		while ((res = str_explode(local_node->net_ips, &net_ip, &pos)) == 0) {
+			if (knet_add_ip(netdevname, net_ip) != 0)
+				return -1;
+		}
+
+		if (res == -2) {
+			logt_print(LOG_INFO, "Unable to allocate memory for ips\n");
+			return -1;
+		}
+	}
 
 	return 0;
 }

@@ -3,10 +3,17 @@
 
 #include <stdlib.h>
 
+/*
+ * TODO: Make this configurable
+ */
+#define IPROUTE_CMD	"/sbin/ip"
+
 int knet_open(char *dev, size_t dev_size);
 int knet_get_mtu(char *dev);
 int knet_close(int fd);
 int knet_read(int fd, char *buf, int len);
 int knet_write(int fd, char *buf, int len);
+extern int knet_up(const char *dev_name, int mtu);
+extern int knet_add_ip(const char *dev_name, const char *ip);
 
 #endif

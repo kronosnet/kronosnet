@@ -4,14 +4,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
 #include "knet.h"
+#include "logging.h"
 #include "utils.h"
 
 int knet_open(char *dev, size_t dev_size)
@@ -81,3 +85,78 @@ int knet_write(int fd, char *buf, int len)
 {
 	return do_write(fd, buf, len);
 }
+
+/*
+ * TODO:
+ * - knet_up + add_ip - add one function to run /sbin/ip
+ * - use fork + dup2 + exec?? to redirect stderr
+ * - correctly handle broadcast address (only for ipv4)
+ */
+
+/*
+ * Bring tun interface up and set mtu. If mtu is 0, system default is used.
+ */
+int knet_up(const char *dev_name, int mtu)
+{
+	char cmd[512];
+	int res;
+
+	snprintf(cmd, sizeof(cmd), "%s link set %s up", IPROUTE_CMD, dev_name);
+
+	if (mtu != 0) {
+		snprintf(cmd + strlen(cmd), sizeof(cmd) - strlen(cmd), " mtu %d", mtu);
+	}
+	logt_print(LOG_DEBUG, "Spawning %s\n", cmd);
+
+	res = system(cmd);
+
+	if (res == -1 || res == 127) {
+		logt_print(LOG_INFO, "Unable to spawn shell\n");
+		return -1;
+	}
+
+	if (!WIFEXITED(res)) {
+		logt_print(LOG_INFO, "Shell not exited properly\n");
+		return -1;
+	}
+
+	if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
+		logt_print(LOG_INFO, "Shell return code %d is not 0\n", WEXITSTATUS(res));
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Add IP to tun interface.
+ */
+int knet_add_ip(const char *dev_name, const char *ip)
+{
+	char cmd[512];
+	int res;
+
+	snprintf(cmd, sizeof(cmd), "%s addr add %s dev %s", IPROUTE_CMD, ip, dev_name);
+
+	logt_print(LOG_DEBUG, "Spawning %s\n", cmd);
+
+	res = system(cmd);
+
+	if (res == -1 || res == 127) {
+		logt_print(LOG_INFO, "Unable to spawn shell\n");
+		return -1;
+	}
+
+	if (!WIFEXITED(res)) {
+		logt_print(LOG_INFO, "Shell not exited properly\n");
+		return -1;
+	}
+
+	if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
+		logt_print(LOG_INFO, "Shell return code %d is not 0\n", WEXITSTATUS(res));
+		return -1;
+	}
+
+	return 0;
+}
+
