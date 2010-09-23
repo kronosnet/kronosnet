@@ -124,11 +124,11 @@ static void set_scheduler(void)
 		sched_param.sched_priority = err;
 		err = sched_setscheduler(0, SCHED_RR, &sched_param);
 		if (err == -1)
-			logt_print(LOG_WARNING,
+			log_printf(LOGSYS_LEVEL_WARNING,
 				   "could not set SCHED_RR priority %d err %d",
 				   sched_param.sched_priority, errno);
 	} else {
-		logt_print(LOG_WARNING,
+		log_printf(LOGSYS_LEVEL_WARNING,
 			   "could not get maximum scheduler priority err %d",
 			   errno);
 	}
@@ -248,7 +248,7 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, char *read_buf, 
 		struct conn *conn;
 
 		if ((nodeid) && (next->nodeid != nodeid)) {
-			logt_print(LOG_INFO, "Requested nodeid: %u current: %u\n", nodeid, next->nodeid);
+			log_printf(LOGSYS_LEVEL_INFO, "Requested nodeid: %u current: %u\n", nodeid, next->nodeid);
 			goto next;
 		}
 
@@ -256,7 +256,7 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, char *read_buf, 
 		while (conn) {
 			if (conn->fd) {
 				if (do_write(conn->fd, read_buf, read_len + sizeof(struct knet_header)) < 0) {
-						logt_print(LOG_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
+						log_printf(LOGSYS_LEVEL_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
 				}
 			}
 			conn = conn->next;
@@ -313,7 +313,7 @@ static void *eth_to_knet_thread(void *arg)
 
 		se_result = select((eth_fd + 1), &rfds, 0, 0, &tv);
 		if (se_result == -1) {
-			logt_print(LOG_CRIT, "Unable to select in eth thread: %s\n", strerror(errno));
+			log_printf(LOGSYS_LEVEL_CRIT, "Unable to select in eth thread: %s\n", strerror(errno));
 			daemon_quit = 1;
 		}
 
@@ -326,9 +326,9 @@ static void *eth_to_knet_thread(void *arg)
 				knet_h->seq_num++;
 				dispatch_buffer(mainconf, 0, read_buf, read_len + sizeof(struct knet_header));
 			} else if (read_len < 0) {
-				logt_print(LOG_INFO, "Error reading from localnet error: %s\n", strerror(errno));
+				log_printf(LOGSYS_LEVEL_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
-				logt_print(LOG_DEBUG, "Read 0?\n");
+				log_printf(LOGSYS_LEVEL_DEBUG, "Read 0?\n");
 		}
 	} while (se_result >= 0 && !daemon_quit);
 
@@ -359,7 +359,7 @@ static void loop(void) {
 			goto out;
 
 		if (se_result == -1) {
-			logt_print(LOG_CRIT, "Unable to select: %s\n", strerror(errno));
+			log_printf(LOGSYS_LEVEL_CRIT, "Unable to select: %s\n", strerror(errno));
 			goto out;
 		}
 
@@ -369,15 +369,15 @@ static void loop(void) {
 		if (FD_ISSET(net_sock, &rfds)) {
 			read_len = read(net_sock, read_buf, sizeof(read_buf));
 			if (read_len > 0) {
-				//logt_print(LOG_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", knet_h->magic, knet_h->nodeid, knet_h->seq_num, knet_h->pckt_type, knet_h->compress, knet_h->encryption, knet_h->padding);
+				//log_printf(LOGSYS_LEVEL_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", knet_h->magic, knet_h->nodeid, knet_h->seq_num, knet_h->pckt_type, knet_h->compress, knet_h->encryption, knet_h->padding);
 
 				if (knet_h->magic != KNETD_MAGIC) {
-					logt_print(LOG_DEBUG, "no magic? print peer info for fun and profit\n");
+					log_printf(LOGSYS_LEVEL_DEBUG, "no magic? print peer info for fun and profit\n");
 					continue;
 				}
 
 				if (knet_h->src_nodeid == our_nodeid) {
-					logt_print(LOG_DEBUG, "Are we really sending pckts to our selves?\n");
+					log_printf(LOGSYS_LEVEL_DEBUG, "Are we really sending pckts to our selves?\n");
 					continue;
 				}
 
@@ -391,17 +391,17 @@ static void loop(void) {
 				switch(knet_h->pckt_type) {
 					case KNETD_PKCT_TYPE_DATA:
 						if (should_deliver(peer, knet_h->seq_num) > 0) {
-							//logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
+							//log_printf(LOGSYS_LEVEL_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 							rv = do_write(eth_fd, read_buf + sizeof(struct knet_header), read_len - sizeof(struct knet_header));
 							if (rv < 0)
-								logt_print(LOG_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
+								log_printf(LOGSYS_LEVEL_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
 							else
 								has_been_delivered(peer, knet_h->seq_num);
 						} //else
-						//	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
+						//	log_printf(LOGSYS_LEVEL_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 						break;
 					case KNETD_PKCT_TYPE_PING:
-						logt_print(LOG_DEBUG, "Got a PING request %u\n", knet_h->src_nodeid);
+						log_printf(LOGSYS_LEVEL_DEBUG, "Got a PING request %u\n", knet_h->src_nodeid);
 						peer_nodeid = knet_h->src_nodeid;
 
 						/* reply */
@@ -410,21 +410,21 @@ static void loop(void) {
 						dispatch_buffer(mainconf, peer_nodeid, read_buf, read_len);
 						break;
 					case KNETD_PKCT_TYPE_PONG:
-						logt_print(LOG_DEBUG, "Got a PONG reply\n");
+						log_printf(LOGSYS_LEVEL_DEBUG, "Got a PONG reply\n");
 						/* need to correlate this with a PING */
 						break;
 					default:
-						logt_print(LOG_INFO, "Error: received unknown packet type on network socket\n");
+						log_printf(LOGSYS_LEVEL_INFO, "Error: received unknown packet type on network socket\n");
 						break;
 				}
 			} else if (read_len < 0) {
-				logt_print(LOG_INFO, "Error reading from KNET error %d: %s\n", net_sock, strerror(errno));
+				log_printf(LOGSYS_LEVEL_INFO, "Error reading from KNET error %d: %s\n", net_sock, strerror(errno));
 			} else
-				logt_print(LOG_DEBUG, "Read 0?\n");
+				log_printf(LOGSYS_LEVEL_DEBUG, "Read 0?\n");
 		} 
 out:
 		if (se_result <0 || daemon_quit)
-			logt_print(LOG_DEBUG, "End of mail loop\n");
+			log_printf(LOGSYS_LEVEL_DEBUG, "End of mail loop\n");
 	} while (se_result >= 0 && !daemon_quit);
 }
 
@@ -450,12 +450,11 @@ int main(int argc, char **argv)
 	if (confdb_handle == 0)
 		exit(EXIT_FAILURE);
 
-	if (configure_logging(confdb_handle, 0) < 0) {
+	if (configure_logging(confdb_handle) < 0) {
 		fprintf(stderr, "Unable to initialize logging subsystem\n");
 		exit(EXIT_FAILURE);
 	}
-	logt_print(LOG_INFO, PACKAGE " version " VERSION "\n");
-	logt_exit();
+	log_printf(LOGSYS_LEVEL_INFO, PACKAGE " version " VERSION "\n");
 
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
@@ -464,8 +463,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	logt_reinit();
-
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
@@ -473,69 +470,70 @@ int main(int argc, char **argv)
 	mainconf = parse_nodes_config(confdb_handle);
 
 	if (process_local_node_config_preup(mainconf, localnet) != 0) {
-		logt_print(LOG_INFO, "Unable to process local node config\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to process local node config\n");
 		goto out;
 	}
 
 	if (statistics)
-		logt_print(LOG_DEBUG, "statistics collector enabled\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "statistics collector enabled\n");
 	if (rerouting)
-		logt_print(LOG_DEBUG, "rerouting engine enabled\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "rerouting engine enabled\n");
 
-	logt_print(LOG_DEBUG, "Adjust OOM to -16\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Adjust OOM to -16\n");
 	set_oom_adj(-16);
 
-	logt_print(LOG_DEBUG, "Set RR scheduler\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Set RR scheduler\n");
 	set_scheduler();
 
 	/* do stuff here, should we */
-	logt_print(LOG_DEBUG, "Starting daemon control thread\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Starting daemon control thread\n");
 	if (start_control_thread() < 0)
 		goto out;
 
-	logt_print(LOG_DEBUG, "Initializing local ethernet\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Initializing local ethernet\n");
 	eth_fd = knet_open(localnet, 16);
 	if (eth_fd < 0) {
-		logt_print(LOG_INFO, "Unable to inizialize local tap device: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to inizialize local tap device: %s\n",
 			   strerror(errno));
 		goto out;
 	}
-	logt_print(LOG_INFO, "Using local net device %s\n", localnet);
+	log_printf(LOGSYS_LEVEL_INFO, "Using local net device %s\n", localnet);
 
 	if (process_local_node_config_postup(mainconf, localnet) != 0) {
-		logt_print(LOG_INFO, "Unable to process post up config\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to process post up config\n");
 		goto out;
 	}
 
-	logt_print(LOG_DEBUG, "Initializing local ethernet delivery thread\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Initializing local ethernet delivery thread\n");
+
 	rv = pthread_create(&eth_thread, NULL, eth_to_knet_thread, NULL);
 	if (rv < 0) {
 		eth_thread_started = 0;
-		logt_print(LOG_INFO, "Unable to inizialize local RX thread. error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to inizialize local RX thread. error: %s\n",
 			   strerror(errno));
 		goto out;
 	}
 
-	logt_print(LOG_DEBUG, "Opening sockets to other nodes\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Opening sockets to other nodes\n");
 	connect_to_nodes(mainconf);
 
-	logt_print(LOG_DEBUG, "Here we need to configure the ethernet ip/pre/post/stuff\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Here we need to configure the ethernet ip/pre/post/stuff\n");
 
-	logt_print(LOG_DEBUG, "Starting network socket listener\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Starting network socket listener\n");
 	net_sock = setup_net_listener();
 	if (net_sock < 0)
 		goto out;
 
-	logt_print(LOG_DEBUG, "Starting heartbeat thread\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Starting heartbeat thread\n");
 	rv = pthread_create(&hb_thread, NULL, heartbeat_thread, NULL);
 	if (rv < 0) {
 		hb_thread_started = 0;
-		logt_print(LOG_INFO, "Unable to inizialize heartbeat thread. error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to inizialize heartbeat thread. error: %s\n",
 			   strerror(errno));
 		goto out;
 	}
 
-	logt_print(LOG_DEBUG, "Entering main loop\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Entering main loop\n");
 	loop();
 
 out:

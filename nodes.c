@@ -36,7 +36,7 @@ static void print_conn_ainfo(struct sockaddr *in)
 
 	inet_ntop(ss->ss_family, (void *)saddr, buf, sizeof(buf));
 
-	logt_print(LOG_DEBUG, "print_conn_ainfo: %s\n", buf);
+	log_printf(LOGSYS_LEVEL_DEBUG, "print_conn_ainfo: %s\n", buf);
 }
 
 static int ipaddr_equal(struct sockaddr *addr1, struct sockaddr *addr2)
@@ -79,7 +79,7 @@ static int is_local_ip(struct sockaddr *addr)
 	int found = 0;
 
 	if (getifaddrs(&ifap) < 0) {
-		logt_print(LOG_INFO, "Unable to get list of interfaces! Error: %s:\n", strerror(errno));
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to get list of interfaces! Error: %s:\n", strerror(errno));
 		return 1;
 	}
 
@@ -119,7 +119,7 @@ static int add_ip(struct node *node, const char* curip, int serial_num)
 
 	ret = getaddrinfo(curip, NULL, &ahints, &ainfo);
 	if (ret < 0) {
-		logt_print(LOG_INFO, "Unable to get addrinfo for [%s]: %s\n", curip, gai_strerror(ret));
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to get addrinfo for [%s]: %s\n", curip, gai_strerror(ret));
 		return -1;
 	}
 
@@ -127,7 +127,7 @@ static int add_ip(struct node *node, const char* curip, int serial_num)
 		//print_conn_ainfo(ainfo->ai_addr);
 		conn = malloc(sizeof(struct conn));
 		if (!conn) {
-			logt_print(LOG_INFO, "Unable to allocate memory for connection data\n");
+			log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for connection data\n");
 			return -2;
 		}
 
@@ -171,7 +171,7 @@ static int convert_ip(struct node *node, char* iptemp)
 	}
 
 	if (res == -2) {
-		logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 	}
 
 	return 0;
@@ -189,7 +189,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 
 	new = malloc(sizeof(struct node));
 	if (!new) {
-		logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 		goto out;
 	}
 	memset(new, 0, sizeof(struct node));
@@ -198,7 +198,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 
 	res = confdb_key_iter_start(handle, node_handle);
 	if (res != CS_OK) {
-		logt_print(LOG_INFO, "Unable to iterate through node config keys?\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to iterate through node config keys?\n");
 		goto out;
 	}
 
@@ -211,7 +211,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				new->nodename = strdup(key_value);
 				if (!new->nodename) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -227,7 +227,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				new->preup = strdup(key_value);
 				if (!new->preup) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -235,7 +235,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) { 
 				new->up = strdup(key_value);
 				if (!new->up) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -243,7 +243,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				new->down = strdup(key_value);
 				if (!new->down) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -251,7 +251,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				new->postdown = strdup(key_value);
 				if (!new->postdown) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -259,7 +259,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				iptemp = strdup(key_value);
 				if (!iptemp) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -270,13 +270,13 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 		} else if (!strncmp(key_name, "netdevname", strlen("netdevname"))) {
 			if (strlen(key_value)) {
 				if (strlen(key_value) > IFNAMSIZ) {
-					logt_print(LOG_INFO, "Network device name (netdevname) option too long\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Network device name (netdevname) option too long\n");
 					goto out;
 				}
 
 				new->netdevname = strdup(key_value);
 				if (!new->netdevname) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -284,7 +284,7 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 			if (strlen(key_value)) {
 				new->net_ips = strdup(key_value);
 				if (!new->net_ips) {
-					logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+					log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 					goto out;
 				}
 			}
@@ -298,18 +298,18 @@ static struct node *parse_node(confdb_handle_t handle, hdb_handle_t node_handle)
 
 	/* add sanity checks here */
 	if (new->nodename == NULL) {
-		logt_print(LOG_INFO, "No nodename specified\n");
+		log_printf(LOGSYS_LEVEL_INFO, "No nodename specified\n");
 		goto out;
 	}
 	if (new->nodeid < 0) {
-		logt_print(LOG_INFO, "No nodeid or invalid nodeid specified\n");
+		log_printf(LOGSYS_LEVEL_INFO, "No nodeid or invalid nodeid specified\n");
 		goto out;
 	}
 
 	if (!iptemp) {
 		iptemp = strdup(new->nodename);
 		if (!iptemp) {
-			logt_print(LOG_INFO, "Unable to allocate memory for node structures\n");
+			log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for node structures\n");
 			goto out;
 		}
 	}
@@ -343,13 +343,13 @@ struct node *parse_nodes_config(confdb_handle_t handle)
 
 	res = confdb_object_find_start(handle, OBJECT_PARENT_HANDLE);
 	if (res != CS_OK) {
-		logt_print(LOG_INFO, "Unable to access objdb parent\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to access objdb parent\n");
 		return NULL;
 	}
 
 	res = confdb_object_iter_start(handle, OBJECT_PARENT_HANDLE);
 	if (res != CS_OK) {
-		logt_print(LOG_INFO, "Unable to iterate through nodes config objects?\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to iterate through nodes config objects?\n");
 		confdb_object_find_destroy(handle, OBJECT_PARENT_HANDLE);
 		return NULL;
 	}
@@ -388,7 +388,7 @@ static struct node *find_local_node(struct node *mainconf)
 	for (local_node = mainconf; local_node != NULL && !local_node->conn->local; local_node = local_node->next) ;
 
 	if (local_node == NULL) {
-		logt_print(LOG_INFO, "Unable to find local node\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to find local node\n");
 		return NULL;
 	}
 
@@ -434,7 +434,7 @@ int process_local_node_config_postup(struct node *mainconf, const char *netdevna
 		}
 
 		if (res == -2) {
-			logt_print(LOG_INFO, "Unable to allocate memory for ips\n");
+			log_printf(LOGSYS_LEVEL_INFO, "Unable to allocate memory for ips\n");
 			return -1;
 		}
 	}
@@ -509,18 +509,18 @@ void connect_to_nodes(struct node *next)
 				conn->fd = socket(conn->ainfo->ai_family, conn->ainfo->ai_socktype, conn->ainfo->ai_protocol);
 
 				if (conn->fd < 0) {
-					logt_print(LOG_DEBUG, "Unable to open socket for. Error: %s\n", strerror(errno));
+					log_printf(LOGSYS_LEVEL_DEBUG, "Unable to open socket for. Error: %s\n", strerror(errno));
 					print_conn_ainfo(conn->ainfo->ai_addr);
 					conn->fd = 0;
 					goto next_conn;
 				}
 
 				if (connect(conn->fd, conn->ainfo->ai_addr, conn->ainfo->ai_addrlen) < 0) {
-					logt_print(LOG_DEBUG, "Unable to connect! Error: %s\n", strerror(errno));
+					log_printf(LOGSYS_LEVEL_DEBUG, "Unable to connect! Error: %s\n", strerror(errno));
 					close(conn->fd);
 					conn->fd = 0;
 				}
-				logt_print(LOG_DEBUG, "node: %s fd: %d\n", next->nodename, conn->fd);
+				log_printf(LOGSYS_LEVEL_DEBUG, "node: %s fd: %d\n", next->nodename, conn->fd);
 
 			}
 next_conn:
@@ -552,28 +552,28 @@ void disconnect_from_nodes(struct node *next)
 /*** CHUNK OF CRAP ***/
 /*
 if (knet_h->seq_num != peer->seq_num + 1)
-	logt_print(LOG_INFO, "Got %u, expected %u from node %s\n", knet_h->seq_num, peer->seq_num + 1, peer->nodename);
+	log_printf(LOGSYS_LEVEL_INFO, "Got %u, expected %u from node %s\n", knet_h->seq_num, peer->seq_num + 1, peer->nodename);
 
 if ((knet_h->seq_num == 0) && (peer->seq_num == SEQ_MAX)) {
-	logt_print(LOG_DEBUG, "Rolling over node: %s[%u]\n", peer->nodename, peer->nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Rolling over node: %s[%u]\n", peer->nodename, peer->nodeid);
 	rollover = 1;
 }
 
 if (knet_h->seq_num > peer->seq_num + (SEQ_MAX / 2)) {
-	logt_print(LOG_DEBUG, "This doesn't look right\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "This doesn't look right\n");
 	break;
 }
 
 if (knet_h->seq_num == 1) {
-	logt_print(LOG_DEBUG, "Restarting sequence\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Restarting sequence\n");
 	peer->seq_num = 0;
 }
 
 if ((knet_h->seq_num > peer->seq_num) || (rollover > 0)) {
-	logt_print(LOG_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 ...
 } else
-	logt_print(LOG_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Discarding duplicated package from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
 
 improved rollover check? :
 	if ((node->seq_num > (SEQ_MAX / 2)) && (seq_num < node->seq_num - (SEQ_MAX / 2)))
@@ -598,13 +598,13 @@ static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
 		 * or to increase the buffer size
 		 * FIXME: we also hit this part when a node is restarted
 		 */
-		logt_print(LOG_INFO, "WARNING: circular buffer not big enough!\n");
+		log_printf(LOGSYS_LEVEL_INFO, "WARNING: circular buffer not big enough!\n");
 		memset(node->circular_buffer, 0, CBUFFER_SIZE);
 		goto exit_clean;
 	}
 
 	if (seq_count > 1) {
-		logt_print(LOG_INFO, "clearing offset for %s: %u -> %u = %u\n",
+		log_printf(LOGSYS_LEVEL_INFO, "clearing offset for %s: %u -> %u = %u\n",
 			node->nodename, node->seq_num, seq_num, seq_count);
 	}
 

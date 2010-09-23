@@ -65,7 +65,7 @@ check_lib_no_libs() {
 }
 
 # Checks for libraries.
-PKG_CHECK_MODULES([logt],[liblogthread])
+PKG_CHECK_MODULES([logsys],[liblogsys])
 PKG_CHECK_MODULES([confdb],[libconfdb])
 
 # Checks for header files.

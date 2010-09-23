@@ -17,14 +17,14 @@ int setup_net_listener(void)
 
 	s = socket(AF_INET6, SOCK_DGRAM, 0);
 	if (s < 0) {
-		logt_print(LOG_INFO, "Unable to open netsocket error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to open netsocket error: %s\n",
 				     strerror(errno));
 		return s;
 	}
 
 	value = fcntl(s, F_GETFD, 0);
 	if (value < 0) {
-		logt_print(LOG_INFO, "Unable to get close-on-exec flag from netsocket error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to get close-on-exec flag from netsocket error: %s\n",
 				     strerror(errno));
 		close(s);
 		return value;
@@ -32,7 +32,7 @@ int setup_net_listener(void)
 	value |= FD_CLOEXEC;
 	rv = fcntl(s, F_SETFD, value);
 	if (rv < 0) {
-		logt_print(LOG_INFO, "Unable to set close-on-exec flag from netsocket error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to set close-on-exec flag from netsocket error: %s\n",
 					strerror(errno));
 		close(s);
 		return rv;
@@ -45,7 +45,7 @@ int setup_net_listener(void)
 
 	rv = bind(s, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv < 0) {
-		logt_print(LOG_INFO, "Unable to bind to netsocket error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to bind to netsocket error: %s\n",
 				     strerror(errno));
 		close(s);
 		return rv;

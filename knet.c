@@ -106,22 +106,22 @@ int knet_up(const char *dev_name, int mtu)
 	if (mtu != 0) {
 		snprintf(cmd + strlen(cmd), sizeof(cmd) - strlen(cmd), " mtu %d", mtu);
 	}
-	logt_print(LOG_DEBUG, "Spawning %s\n", cmd);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Spawning %s\n", cmd);
 
 	res = system(cmd);
 
 	if (res == -1 || res == 127) {
-		logt_print(LOG_INFO, "Unable to spawn shell\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to spawn shell\n");
 		return -1;
 	}
 
 	if (!WIFEXITED(res)) {
-		logt_print(LOG_INFO, "Shell not exited properly\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Shell not exited properly\n");
 		return -1;
 	}
 
 	if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
-		logt_print(LOG_INFO, "Shell return code %d is not 0\n", WEXITSTATUS(res));
+		log_printf(LOGSYS_LEVEL_INFO, "Shell return code %d is not 0\n", WEXITSTATUS(res));
 		return -1;
 	}
 
@@ -138,22 +138,22 @@ int knet_add_ip(const char *dev_name, const char *ip)
 
 	snprintf(cmd, sizeof(cmd), "%s addr add %s dev %s", IPROUTE_CMD, ip, dev_name);
 
-	logt_print(LOG_DEBUG, "Spawning %s\n", cmd);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Spawning %s\n", cmd);
 
 	res = system(cmd);
 
 	if (res == -1 || res == 127) {
-		logt_print(LOG_INFO, "Unable to spawn shell\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to spawn shell\n");
 		return -1;
 	}
 
 	if (!WIFEXITED(res)) {
-		logt_print(LOG_INFO, "Shell not exited properly\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Shell not exited properly\n");
 		return -1;
 	}
 
 	if (WIFEXITED(res) && WEXITSTATUS(res) != 0) {
-		logt_print(LOG_INFO, "Shell return code %d is not 0\n", WEXITSTATUS(res));
+		log_printf(LOGSYS_LEVEL_INFO, "Shell return code %d is not 0\n", WEXITSTATUS(res));
 		return -1;
 	}
 

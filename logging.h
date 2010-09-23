@@ -2,7 +2,7 @@
 #define __LOGGING_H__
 
 #include <limits.h>
-#include <liblogthread.h>
+#include <corosync/engine/logsys.h>
 
 #include "conf.h"
 
@@ -15,7 +15,7 @@ struct logging_conf {
 	char logfile[PATH_MAX];
 };
 
-int configure_logging(confdb_handle_t handle, int reconf);
+int configure_logging(confdb_handle_t handle);
 void close_logging(void);
 
 #endif

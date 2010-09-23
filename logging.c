@@ -9,6 +9,18 @@
 #include <syslog.h>
 #include "logging.h"
 
+#define SUBSYSNAME PACKAGE
+
+LOGSYS_DECLARE_SYSTEM (PACKAGE,	/* name */
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK, /* mode */
+	0,			/* debug */
+	NULL,			/* logfile path */
+	LOGSYS_LEVEL_INFO,	/* logfile_priority */
+	LOG_DAEMON,		/* syslog facility */
+	LOGSYS_LEVEL_INFO,	/* syslog level */
+	NULL,			/* use default format */
+	1000000);		/* flight recorder size */
+
 static struct logging_conf *conf = NULL;
 extern int debug;
 extern int daemonize;
@@ -44,7 +56,7 @@ static int parse_logging_config(confdb_handle_t handle)
 	char key_value[PATH_MAX];
 	size_t key_value_len;
 
-	conf->mode = LOG_MODE_OUTPUT_FILE | LOG_MODE_OUTPUT_SYSLOG;
+	conf->mode = LOGSYS_MODE_OUTPUT_FILE | LOGSYS_MODE_OUTPUT_SYSLOG;
 	conf->syslog_priority = SYSLOGLEVEL;
 	conf->syslog_facility = SYSLOGFACILITY;
 	conf->logfile_priority = SYSLOGLEVEL;
@@ -83,14 +95,14 @@ static int parse_logging_config(confdb_handle_t handle)
 			}
 		} else if (!strncmp(key_name, "to_logfile", strlen("to_logfile"))) {
 			if (!strncmp(key_value, "yes", 3))
-				conf->mode |= LOG_MODE_OUTPUT_FILE;
+				conf->mode |= LOGSYS_MODE_OUTPUT_FILE;
 			if (!strncmp(key_value, "no", 2))
-				conf->mode &= ~LOG_MODE_OUTPUT_FILE;
+				conf->mode &= ~LOGSYS_MODE_OUTPUT_FILE;
 		} else if (!strncmp(key_name, "to_syslog", strlen("to_syslog"))) {
 			if (!strncmp(key_value, "yes", 3))
-				conf->mode |= LOG_MODE_OUTPUT_SYSLOG;
+				conf->mode |= LOGSYS_MODE_OUTPUT_SYSLOG;
 			if (!strncmp(key_value, "no", 2))
-				conf->mode &= ~LOG_MODE_OUTPUT_SYSLOG;
+				conf->mode &= ~LOGSYS_MODE_OUTPUT_SYSLOG;
 		} else if (!strncmp(key_name, "syslog_facility", strlen("syslog_facility"))) {
 			val = facility_id_get(key_value);
 			if (val >= 0)
@@ -113,15 +125,15 @@ static int parse_logging_config(confdb_handle_t handle)
 		conf->debug = 1;
 
 	if (conf->debug)
-		conf->logfile_priority = LOG_DEBUG;
+		conf->logfile_priority = LOGSYS_LEVEL_DEBUG;
 
 	if (!daemonize)
-		conf->mode |= LOG_MODE_OUTPUT_STDERR;
+		conf->mode |= LOGSYS_MODE_OUTPUT_STDERR;
 
 	return 0;
 }
 
-int configure_logging(confdb_handle_t handle, int reconf)
+int configure_logging(confdb_handle_t handle)
 {
 	if (conf == NULL) {
 		conf = malloc(sizeof(struct logging_conf));
@@ -136,12 +148,35 @@ int configure_logging(confdb_handle_t handle, int reconf)
 		return -1;
 	}
 
-	if (!reconf)
-		return logt_init(PACKAGE, conf->mode, conf->syslog_facility, conf->syslog_priority,
-				 conf->logfile_priority, conf->logfile);
+	if (logsys_config_mode_set(SUBSYSNAME, conf->mode) < 0) {
+		fprintf(stderr, "Unable to set logging mode to %i", conf->mode);
+		return -1;
+	}
 
-	logt_conf(PACKAGE, conf->mode, conf->syslog_facility, conf->syslog_priority,
-				 conf->logfile_priority, conf->logfile);
+	if (logsys_config_debug_set(SUBSYSNAME, conf->debug) < 0) {
+		fprintf(stderr, "Unable to set logging debug flag to %i", conf->debug);
+		return -1;
+	}
+
+	if (logsys_config_file_set(SUBSYSNAME, NULL, conf->logfile) < 0) {
+		fprintf(stderr, "Unable to set log file to %s", conf->logfile);
+		return -1;
+	}
+
+	if (logsys_config_logfile_priority_set(SUBSYSNAME, conf->logfile_priority) < 0) {
+		fprintf(stderr, "Unable to set logfile priority to %i", conf->logfile_priority);
+		return -1;
+	}
+
+	if (logsys_config_syslog_facility_set(SUBSYSNAME, conf->syslog_facility) < 0) {
+		fprintf(stderr, "Unable to set syslog facility to %i", conf->syslog_facility);
+		return -1;
+	}
+
+	if (logsys_config_syslog_priority_set(SUBSYSNAME, conf->syslog_priority) < 0) {
+		fprintf(stderr, "Unable to set syslog priority to %i", conf->syslog_priority);
+		return -1;
+	}
 
 	return 0;
 }
@@ -153,5 +188,5 @@ void close_logging(void)
 
 	conf = NULL;
 
-	logt_exit();
+	logsys_atexit();
 }

@@ -28,14 +28,14 @@ static int setup_listener(void)
 
 	s = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (s < 0) {
-		logt_print(LOG_INFO, "Unable to open socket %s error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to open socket %s error: %s\n",
 				     KRONOSNETD_SOCKNAME, strerror(errno));
 		return s;
 	}
 
 	value = fcntl(s, F_GETFD, 0);
 	if (value < 0) {
-		logt_print(LOG_INFO, "Unable to get close-on-exec flag from socket %s error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to get close-on-exec flag from socket %s error: %s\n",
 				     KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return value;
@@ -43,7 +43,7 @@ static int setup_listener(void)
 	value |= FD_CLOEXEC;
 	rv = fcntl(s, F_SETFD, value);
 	if (rv < 0) {
-		logt_print(LOG_INFO, "Unable to set close-on-exec flag from socket %s error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to set close-on-exec flag from socket %s error: %s\n",
 					KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
@@ -55,7 +55,7 @@ static int setup_listener(void)
 
 	rv = bind(s, (struct sockaddr *) &addr, sizeof(addr));
 	if (rv < 0) {
-		logt_print(LOG_INFO, "Unable to bind to socket %s error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to bind to socket %s error: %s\n",
 				     KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
@@ -63,7 +63,7 @@ static int setup_listener(void)
 
 	rv = listen(s, SOMAXCONN);
 	if (rv < 0) {
-		logt_print(LOG_INFO, "Unable to listen to socket %s error: %s\n",
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to listen to socket %s error: %s\n",
 				     KRONOSNETD_SOCKNAME, strerror(errno));
 		close(s);
 		return rv;
@@ -112,7 +112,7 @@ static void *control_thread(void *arg)
 	for (;;) {
 		ctrl_fd = accept(ctrl_socket, NULL, NULL);
 		if (ctrl_fd < 0) {
-			logt_print(LOG_INFO, "Error accepting connections on socket %s error: %s\n",
+			log_printf(LOGSYS_LEVEL_INFO, "Error accepting connections on socket %s error: %s\n",
 				   KRONOSNETD_SOCKNAME, strerror(errno));
 			// what now? doesn't look ok to kill the control thread.. try again?
 			goto thread_out;
@@ -136,10 +136,10 @@ static void *control_thread(void *arg)
 			break;
 		case KNETD_CMD_STATUS:
 			if (send_status(ctrl_fd) < 0)
-				logt_print(LOG_INFO, "Unable to reply to a status request\n");
+				log_printf(LOGSYS_LEVEL_INFO, "Unable to reply to a status request\n");
 			break;
 		default:
-			logt_print(LOG_DEBUG, "Unknown command received on control socket\n");
+			log_printf(LOGSYS_LEVEL_DEBUG, "Unknown command received on control socket\n");
 			break;
 		}
 
@@ -159,11 +159,11 @@ int start_control_thread(void)
 	int rv;
 
 	if (pthread_mutex_init(&ctrl_mutex, NULL) < 0)
-		logt_print(LOG_INFO, "Unable to initialize control mutex: %s\n", strerror(errno));
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to initialize control mutex: %s\n", strerror(errno));
 
 	rv = pthread_create(&ctrl_thread, NULL, control_thread, NULL);
 	if (rv < 0)
-		logt_print(LOG_INFO, "Unable to create control thread: %s\n", strerror(errno));
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to create control thread: %s\n", strerror(errno));
 
 	while (control_thread_active == 0)
 		sleep(1);

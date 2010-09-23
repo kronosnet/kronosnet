@@ -25,13 +25,13 @@ int parse_global_config(confdb_handle_t handle)
 
 	res = confdb_object_find_start(handle, OBJECT_PARENT_HANDLE);
 	if (res != CS_OK) {
-		logt_print(LOG_INFO, "Unable to access objdb parent\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to access objdb parent\n");
 		return -1;
 	}
 
 	res = confdb_object_find(handle, OBJECT_PARENT_HANDLE, "global", strlen("global"), &global_handle);
 	if (res != CS_OK) {
-		logt_print(LOG_DEBUG, "No global section defined in config file\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "No global section defined in config file\n");
 		return 0;
 	}
 
@@ -39,7 +39,7 @@ int parse_global_config(confdb_handle_t handle)
 
 	res = confdb_key_iter_start(handle, global_handle);
 	if (res != CS_OK) {
-		logt_print(LOG_INFO, "Unable to iterate through global config keys?\n");
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to iterate through global config keys?\n");
 		return -1;
 	}
 

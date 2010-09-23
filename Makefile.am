@@ -32,11 +32,11 @@ kronosnetd_CPPFLAGS	=
 
 kronosnetd_CFLAGS	= -fPIC \
 			  $(confdb_CFLAGS) \
-			  $(logt_CFLAGS)
+			  $(logsys_CFLAGS)
 
 kronosnetd_LDFLAGS	= \
 			  $(confdb_LIBS) \
-			  $(logt_LIBS) \
+			  $(logsys_LIBS) \
 			  -lpthread
 
 kronosnetd_LDADD	=
