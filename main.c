@@ -255,7 +255,7 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, char *read_buf, 
 		conn = next->conn;
 		while (conn) {
 			if (conn->fd) {
-				if (do_write(conn->fd, read_buf, read_len + sizeof(struct knet_header)) < 0) {
+				if (do_write(conn->fd, read_buf, read_len) < 0) {
 						log_printf(LOGSYS_LEVEL_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
 				}
 			}
