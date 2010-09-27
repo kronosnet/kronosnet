@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define DEFAULT_PORT 50000
+#define DEFAULT_RCVBUFF 8192
 
 #define KNETD_PKCT_TYPE_DATA	0
 #define KNETD_PKCT_TYPE_PING	1

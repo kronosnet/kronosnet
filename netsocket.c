@@ -13,13 +13,18 @@
 int setup_net_listener(void)
 {
 	struct sockaddr_in6 addr;
-	int rv, s, value;
+	int rv, s, value, rmem = DEFAULT_RCVBUFF;
 
 	s = socket(AF_INET6, SOCK_DGRAM, 0);
 	if (s < 0) {
 		log_printf(LOGSYS_LEVEL_INFO, "Unable to open netsocket error: %s\n",
 				     strerror(errno));
 		return s;
+	}
+
+	rv = setsockopt(s, SOL_SOCKET, SO_RCVBUFFORCE, &rmem, sizeof(rmem));
+	if (rv != 0) {
+		log_printf(LOGSYS_LEVEL_INFO, "Unable to set receive buffer to: %i\n", rmem);
 	}
 
 	value = fcntl(s, F_GETFD, 0);
