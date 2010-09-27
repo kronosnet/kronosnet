@@ -580,71 +580,6 @@ improved rollover check? :
 
 */
 
-static void clear_ring_buffer(struct node *node, seq_num_t seq_num)
-{
-	seq_num_t seq_count;
-	size_t clr_bgn, clr_end;
-
-	if (seq_num < node->seq_num) 
-		seq_count = (SEQ_MAX - node->seq_num) + seq_num;
-	else
-		seq_count = seq_num - node->seq_num;
-
-	/* let's keep 4 bytes unused to avoid overwrites in one shot
- 	 * 1 bytes should be enough
- 	 */
-	if (seq_count > (CBUFFER_SIZE - 4)) {
-		/* better options for this case would be dropping the connection
-		 * or to increase the buffer size
-		 * FIXME: we also hit this part when a node is restarted
-		 */
-		log_printf(LOGSYS_LEVEL_INFO, "WARNING: circular buffer not big enough!\n");
-		memset(node->circular_buffer, 0, CBUFFER_SIZE);
-		goto exit_clean;
-	}
-
-	if (seq_count > 1) {
-		log_printf(LOGSYS_LEVEL_INFO, "clearing offset for %s: %u -> %u = %u\n",
-			node->nodename, node->seq_num, seq_num, seq_count);
-	}
-
-	clr_bgn = (node->seq_num + 1) % CBUFFER_SIZE;
-	clr_end = (seq_num + 1) % CBUFFER_SIZE;
-
-	if (clr_bgn > clr_end) {
-		memset(node->circular_buffer + clr_bgn, 0, CBUFFER_SIZE - clr_bgn);
-		memset(node->circular_buffer, 0, clr_end);
-	}
-	else {
-		memset(node->circular_buffer + clr_bgn, 0, clr_end - clr_bgn);
-	}
-
-exit_clean:
-
-	node->seq_num = seq_num;
-
-	return;
-}
-
-/* checks if a seq num is newer than the last seen */
-static int is_seq_new(struct node *node, seq_num_t seq_num)
-{
-	seq_num_t seq_lim;
-
-	seq_lim = (node->seq_num + (SEQ_MAX / 2)) % SEQ_MAX;
-
-	if (seq_lim < node->seq_num) {
-		if (seq_num > node->seq_num || seq_num < seq_lim)
-			return 1;
-	}
-	else {
-		if (seq_num > node->seq_num && seq_num < seq_lim)
-			return 1;
-	}
-
-	return 0;
-}
-
 /*
  * check if a packet has been seen before
  * if not, return 1 and deliver
@@ -652,16 +587,39 @@ static int is_seq_new(struct node *node, seq_num_t seq_num)
  */
 int should_deliver(struct node *node, seq_num_t seq_num)
 {
-	if (is_seq_new(node, seq_num))
-		clear_ring_buffer(node, seq_num);
-	
-	/* we should check if the distance between seq_num and
-	 * node->seq_num is higher than CBUFFER_SIZE
-	 * if the packet is too old we can't continue
-	 */
+	size_t i, j; /* circular buffer indexes */
+	seq_num_t seq_dist;
 
-	if (node->circular_buffer[seq_num % CBUFFER_SIZE] != 0)
-		return 0;
+	seq_dist = (seq_num < node->seq_num) ?
+		(SEQ_MAX - seq_num) + node->seq_num : node->seq_num - seq_num;
+
+	j = seq_num % CBUFFER_SIZE;
+
+	if (seq_dist < CBUFFER_SIZE) { /* seq num is in ring buffer */
+		return (node->circular_buffer[j] == 0) ? 1 : 0;
+	} else if (seq_dist <= SEQ_MAX - CBUFFER_SIZE) {
+		log_printf(LOGSYS_LEVEL_ERROR,
+			"circular buffer is not large enough: %u\n", seq_dist);
+		exit(EXIT_FAILURE); /* should we recover? buffer resize? */
+	}
+
+	/* cleaning up circular buffer */
+	i = (node->seq_num + 1) % CBUFFER_SIZE;
+
+	if (seq_dist < SEQ_MAX - 1) { /* just for debug purpose, remove later */
+		log_printf(LOGSYS_LEVEL_DEBUG,
+			"cleaning buffer offset for %s: %u -> %u = %u (%lu -> %lu)\n",
+			node->nodename, node->seq_num, seq_num, SEQ_MAX - seq_dist, i, j);
+	}
+
+	if (i > j) {
+		memset(node->circular_buffer + i, 0, CBUFFER_SIZE - i);
+		memset(node->circular_buffer, 0, j + 1);
+	} else {
+		memset(node->circular_buffer + i, 0, j - i + 1);
+	}
+
+	node->seq_num = seq_num;
 
 	return 1;
 }
