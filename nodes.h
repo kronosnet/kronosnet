@@ -9,6 +9,9 @@
 
 #define CBUFFER_SIZE	4096
 
+#define NODE_STATUS_OFFLINE 0
+#define NODE_STATUS_ONLINE 1
+
 struct conn {
 	struct conn *next;
 	struct conn *tail;
@@ -38,6 +41,7 @@ struct node {
 	char circular_buffer[CBUFFER_SIZE];
 	int start;
 	int end;
+	int status;
 };
 
 struct node *parse_nodes_config(confdb_handle_t handle);
