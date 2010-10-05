@@ -253,7 +253,7 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, struct knet_head
 		if ((read_buf->pckt_type == KNETD_PKCT_TYPE_DATA) && (next->status == NODE_STATUS_OFFLINE)) goto next;
 
 		if ((nodeid) && (next->nodeid != nodeid)) {
-			log_printf(LOGSYS_LEVEL_INFO, "Requested nodeid: %u current: %u\n", nodeid, next->nodeid);
+			log_printf(LOGSYS_LEVEL_DEBUG, "Requested nodeid: %u current: %u\n", nodeid, next->nodeid);
 			goto next;
 		}
 
@@ -261,7 +261,8 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, struct knet_head
 		while (conn) {
 			if (conn->fd) {
 				if (do_write(conn->fd, read_buf, read_len) < 0) {
-						log_printf(LOGSYS_LEVEL_INFO, "Unable to dispatch buf: %s\n", strerror(errno));
+						/* need to handle errors properly */
+						log_printf(LOGSYS_LEVEL_DEBUG, "Unable to dispatch buf: %s\n", strerror(errno));
 				}
 			}
 			conn = conn->next;
