@@ -2,7 +2,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 docbook			= Kronosnet
 
-DOCBOOK_FORMATS := html
+DOCBOOK_FORMATS := pdf,html,html-single,txt
 
 %.txt: $(wildcard %/en-US/*.xml)
 	@echo Building $*
@@ -16,3 +16,8 @@ all-local: $(docbook_txt) */publican.cfg
 clean-local:
 	@rm -rf $(docbook_txt)
 	@for book in $(docbook); do rm -rf $$book/tmp $$book/publish; done
+
+push:
+	@for book in $(docbook); do \
+		rsync -rtz --progress $$book/publish/* fabbione@kronosnet.org:kronosnet/docs; \
+	done
