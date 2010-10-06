@@ -31,30 +31,31 @@ char bcast6_req[] = {
 
 int main(int argc, char *argv[])
 {
-	struct node n1, *target;
+	struct node n1;
+	uint32_t nodeid;
+
 	memset(&n1, 0, sizeof(struct node));
 
+	n1.nodeid = 1;
 	memset(n1.hwaddress, 0x01, ETH_ALEN);
 
-	target = pckt_target(node_req, &n1);
-	if (target != &n1)
+	nodeid = packet_to_nodeid(node_req, &n1);
+	if (nodeid != n1.nodeid)
 		error(EXIT_FAILURE, -EINVAL, "node_req test1 failed");
 
 	memset(n1.hwaddress, 0x02, ETH_ALEN);
 
-	target = pckt_target(node_req, &n1);
-	if (target != 0)
+	nodeid = packet_to_nodeid(node_req, &n1);
+	if (nodeid != 0)
 		error(EXIT_FAILURE, -EINVAL, "node_req test2 failed");
 
-	target = pckt_target(bcast4_req, &n1);
-	if (target != 0)
+	nodeid = packet_to_nodeid(bcast4_req, &n1);
+	if (nodeid != 0)
                 error(EXIT_FAILURE, -EINVAL, "bcast4_req failed");
 
-
-	target = pckt_target(bcast6_req, &n1);
-	if (target != 0)
+	nodeid = packet_to_nodeid(bcast6_req, &n1);
+	if (nodeid != 0)
                 error(EXIT_FAILURE, -EINVAL, "bcast6_req failed");
-
 
 	return 0;
 }

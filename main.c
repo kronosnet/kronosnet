@@ -363,6 +363,7 @@ static void *eth_to_knet_thread(void *arg)
 	ssize_t read_len = 0;
 	struct timeval tv;
 	struct knet_header *knet_h = alloca(TX_KNET_SIZE);
+	uint32_t dst_nodeid = 0;
 
 	/* we need to prepare the header only once for now */
 	memset(knet_h, 0, sizeof(struct knet_header));
@@ -393,8 +394,9 @@ static void *eth_to_knet_thread(void *arg)
 			read_len = read(eth_fd, knet_h + 1, TX_KNET_DATASIZE);
 			if (read_len > 0) {
 				decode_pckt(knet_h + 1);
+				// dst_nodeid = packet_to_nodeid(knet_h + 1);
 				knet_h->seq_num++;
-				dispatch_buffer(mainconf, 0, knet_h, read_len + sizeof(struct knet_header));
+				dispatch_buffer(mainconf, dst_nodeid, knet_h, read_len + sizeof(struct knet_header));
 			} else if (read_len < 0) {
 				log_printf(LOGSYS_LEVEL_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
