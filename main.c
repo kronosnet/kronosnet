@@ -13,6 +13,22 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#include <netinet/ether.h>
+#include <netinet/if_ether.h>
+#include <endian.h>
+#include <byteswap.h>
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define swap16(x) bswap_16(x)
+#define swap32(x) bswap_32(x)
+#define swap64(x) bswap_64(x)
+#endif
+#if __BYTE_ORDER == _BIG_ENDIAN
+#define swap16(x) (x)
+#define swap32(x) (x)
+#define swap64(x) (x)
+#endif
+
 #include "conf.h"
 #include "logging.h"
 #include "nodes.h"
@@ -292,6 +308,56 @@ static void *heartbeat_thread(void *arg)
 	return NULL;
 }
 
+#define IEEE_802_3_MAX_LEN 1500
+#define ETHERTYPE_UNK 0x0000
+
+static void decode_pckt(struct knet_header *buf)
+{
+	struct ether_header *ether = (struct ether_header *)buf;
+	char *data = (char *)buf;
+	uint16_t ether_type;
+	uint16_t lenght;
+	struct ether_addr *src_mac = (struct ether_addr *)ether->ether_shost;
+	struct ether_addr *dst_mac = (struct ether_addr *)ether->ether_dhost;
+
+	ether_type = swap16(ether->ether_type);
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "START DECODING\n");
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "ether type: %x\n", ether_type);
+
+	if (ether_type <= IEEE_802_3_MAX_LEN && ether_type != ETHERTYPE_UNK) {
+		lenght = ether_type;
+		if (data[14] == 0xff && data[15] == 0xff)
+			log_printf(LOGSYS_LEVEL_DEBUG, "ETHERNET_802_3 ?\n");
+		else
+			log_printf(LOGSYS_LEVEL_DEBUG, "ETHERNET_802_2 ?\n");
+	} else {
+		log_printf(LOGSYS_LEVEL_DEBUG, "ETHERNET_II \n");
+		
+	}
+
+	switch(ether_type) {
+		case ETHERTYPE_IP:
+			log_printf(LOGSYS_LEVEL_DEBUG, "ether type: IP\n");
+			break;
+		case ETHERTYPE_ARP:
+			log_printf(LOGSYS_LEVEL_DEBUG, "ether type: ARP\n");
+			break;
+		case ETHERTYPE_IPV6:
+			log_printf(LOGSYS_LEVEL_DEBUG, "ether type: IP6\n");
+			break;
+		default:
+			log_printf(LOGSYS_LEVEL_DEBUG, "ether type: unknown\n");
+			break;
+	}
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "src mac: %s ", ether_ntoa(src_mac));
+	log_printf(LOGSYS_LEVEL_DEBUG, "dst mac: %s\n", ether_ntoa(dst_mac));
+	log_printf(LOGSYS_LEVEL_DEBUG, "END  DECODING\n");
+
+}
+
 static void *eth_to_knet_thread(void *arg)
 {
 	fd_set rfds;
@@ -327,6 +393,7 @@ static void *eth_to_knet_thread(void *arg)
 		if (FD_ISSET(eth_fd, &rfds)) {
 			read_len = read(eth_fd, tx_knet_h + 1, TX_KNET_DATASIZE);
 			if (read_len > 0) {
+				decode_pckt(tx_knet_h + 1);
 				tx_knet_h->seq_num++;
 				dispatch_buffer(mainconf, 0, tx_knet_h, read_len + sizeof(struct knet_header));
 			} else if (read_len < 0) {
