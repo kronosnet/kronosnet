@@ -393,8 +393,8 @@ static void *eth_to_knet_thread(void *arg)
 		if (FD_ISSET(eth_fd, &rfds)) {
 			read_len = read(eth_fd, knet_h + 1, TX_KNET_DATASIZE);
 			if (read_len > 0) {
-				decode_pckt(knet_h + 1);
 				// dst_nodeid = packet_to_nodeid(knet_h + 1);
+				decode_pckt(knet_h + 1);
 				knet_h->seq_num++;
 				dispatch_buffer(mainconf, dst_nodeid, knet_h, read_len + sizeof(struct knet_header));
 			} else if (read_len < 0) {
@@ -597,6 +597,9 @@ int main(int argc, char **argv)
 		goto out;
 	}
 	log_printf(LOGSYS_LEVEL_INFO, "Using local net device %s\n", localnet);
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "Setting %s device mac address\n", localnet);
+	knet_set_hwid(localnet, our_nodeid);
 
 	if (process_local_node_config_postup(mainconf, localnet) != 0) {
 		log_printf(LOGSYS_LEVEL_INFO, "Unable to process post up config\n");

@@ -6,8 +6,10 @@
 #include "packet.h"
 #include "netsocket.h"
 
+
 static uint8_t ipv4_bcast[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 static uint8_t ipv6_bcast[] = { 0x33, 0x33 };
+
 
 inline uint32_t packet_to_nodeid(void *packet, struct node *node)
 {

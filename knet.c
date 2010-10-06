@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <arpa/inet.h>
 
 #include "knet.h"
 #include "logging.h"
@@ -49,6 +50,35 @@ int knet_open(char *dev, size_t dev_size)
 	}
 	strcpy(dev, ifr.ifr_name);
 	return fd;
+}
+
+int knet_set_hwid(char *dev, uint32_t nodeid)
+{
+	struct ifreq ifr;
+	int sockfd, ret;
+	uint32_t machwid;
+
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sockfd < 0)
+		return sockfd;
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+
+	ret = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
+	if (ret != 0) goto exit_clean;
+
+	ifr.ifr_hwaddr.sa_data[0] = 0x16;
+	ifr.ifr_hwaddr.sa_data[1] = 0x07;
+
+	machwid = htonl(nodeid);
+	memmove(ifr.ifr_hwaddr.sa_data + 2, &machwid, ETH_ALEN - 2);
+
+	ret = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
+
+exit_clean:
+	close(sockfd);
+	return ret;
 }
 
 int knet_get_mtu(char *dev)

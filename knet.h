@@ -9,6 +9,7 @@
 #define IPROUTE_CMD	"/sbin/ip"
 
 int knet_open(char *dev, size_t dev_size);
+int knet_set_hwid(char *dev, uint32_t nodeid);
 int knet_get_mtu(char *dev);
 int knet_close(int fd);
 int knet_read(int fd, char *buf, int len);
