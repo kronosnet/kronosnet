@@ -45,6 +45,7 @@
 #define DEFAULT_NET_NAME	"kronosnet%d"
 
 #define TX_KNET_DATASIZE 131072
+#define TX_KNET_SIZE (TX_KNET_DATASIZE + sizeof(struct knet_header))
 
 int daemonize = 1;
 int debug = 0;
@@ -59,7 +60,6 @@ static pthread_t eth_thread;
 static pthread_t hb_thread;
 struct node *mainconf;
 uint32_t our_nodeid;
-struct knet_header *tx_knet_h;
 
 static void print_usage(void)
 {
@@ -266,8 +266,6 @@ static void dispatch_buffer(struct node *next, uint32_t nodeid, struct knet_head
 	while (next) {
 		struct conn *conn;
 
-		if ((read_buf->pckt_type == KNETD_PKCT_TYPE_DATA) && (next->status == NODE_STATUS_OFFLINE)) goto next;
-
 		if ((nodeid) && (next->nodeid != nodeid)) {
 			log_printf(LOGSYS_LEVEL_DEBUG, "Requested nodeid: %u current: %u\n", nodeid, next->nodeid);
 			goto next;
@@ -364,15 +362,16 @@ static void *eth_to_knet_thread(void *arg)
 	int se_result;
 	ssize_t read_len = 0;
 	struct timeval tv;
+	struct knet_header *knet_h = alloca(TX_KNET_SIZE);
 
 	/* we need to prepare the header only once for now */
-	memset(tx_knet_h, 0, sizeof(struct knet_header));
-	tx_knet_h->magic = KNETD_MAGIC;
-	tx_knet_h->src_nodeid = our_nodeid;
-	tx_knet_h->seq_num = 0;
-	tx_knet_h->pckt_type = KNETD_PKCT_TYPE_DATA;
-	tx_knet_h->compress = KNETD_COMPRESS_OFF;
-	tx_knet_h->encryption = KNETD_ENCRYPTION_OFF;
+	memset(knet_h, 0, sizeof(struct knet_header));
+	knet_h->magic = KNETD_MAGIC;
+	knet_h->src_nodeid = our_nodeid;
+	knet_h->seq_num = 0;
+	knet_h->pckt_type = KNETD_PKCT_TYPE_DATA;
+	knet_h->compress = KNETD_COMPRESS_OFF;
+	knet_h->encryption = KNETD_ENCRYPTION_OFF;
 
 	do {
 		FD_ZERO (&rfds);
@@ -391,11 +390,11 @@ static void *eth_to_knet_thread(void *arg)
 			continue;
 
 		if (FD_ISSET(eth_fd, &rfds)) {
-			read_len = read(eth_fd, tx_knet_h + 1, TX_KNET_DATASIZE);
+			read_len = read(eth_fd, knet_h + 1, TX_KNET_DATASIZE);
 			if (read_len > 0) {
-				decode_pckt(tx_knet_h + 1);
-				tx_knet_h->seq_num++;
-				dispatch_buffer(mainconf, 0, tx_knet_h, read_len + sizeof(struct knet_header));
+				decode_pckt(knet_h + 1);
+				knet_h->seq_num++;
+				dispatch_buffer(mainconf, 0, knet_h, read_len + sizeof(struct knet_header));
 			} else if (read_len < 0) {
 				log_printf(LOGSYS_LEVEL_INFO, "Error reading from localnet error: %s\n", strerror(errno));
 			} else
@@ -406,6 +405,8 @@ static void *eth_to_knet_thread(void *arg)
 	return NULL;
 }
 
+/* unused for now, just a test */
+/*
 static void knet_send_synack(struct node *next, uint32_t nodeid, uint32_t type)
 {
 	struct knet_header knet_h;
@@ -420,16 +421,16 @@ static void knet_send_synack(struct node *next, uint32_t nodeid, uint32_t type)
 
 	dispatch_buffer(next, nodeid, &knet_h, sizeof(struct knet_header));
 }
+*/
 
 static void loop(void) {
 	int se_result;
 	fd_set rfds;
 	struct timeval tv;
-	char read_buf[131072 + sizeof(struct knet_header)];
 	ssize_t read_len = 0;
 	int rv;
 	uint32_t peer_nodeid;
-	struct knet_header *knet_h = (struct knet_header *)read_buf;
+	struct knet_header *knet_h = alloca(TX_KNET_SIZE);
 	struct node *peer;
 
 	do {
@@ -453,7 +454,7 @@ static void loop(void) {
 			continue;
 
 		if (FD_ISSET(net_sock, &rfds)) {
-			read_len = read(net_sock, read_buf, sizeof(read_buf));
+			read_len = read(net_sock, knet_h, TX_KNET_SIZE);
 			if (read_len > 0) {
 				//log_printf(LOGSYS_LEVEL_DEBUG, "Magic: %u\nnodeid: %u\nseq_num: %u\npckt_type: %i\ncompress: %i\nencryption: %i\npadding: %i\n", knet_h->magic, knet_h->nodeid, knet_h->seq_num, knet_h->pckt_type, knet_h->compress, knet_h->encryption, knet_h->padding);
 
@@ -475,6 +476,7 @@ static void loop(void) {
 					peer = peer->next;
 				}
 				switch(knet_h->pckt_type) {
+/*
 					case KNETD_PKCT_TYPE_SYN:
 						knet_send_synack(mainconf, peer->nodeid, KNETD_PKCT_TYPE_ACK);
 					case KNETD_PKCT_TYPE_ACK:
@@ -483,10 +485,11 @@ static void loop(void) {
 						peer->status = NODE_STATUS_ONLINE;
 						memset(peer->circular_buffer, 0, CBUFFER_SIZE);
 						break;
+*/
 					case KNETD_PKCT_TYPE_DATA:
 						if (should_deliver(peer, knet_h->seq_num) > 0) {
 							//log_printf(LOGSYS_LEVEL_DEBUG, "Act pkct from node %s[%u]: %u\n", peer->nodename, peer->nodeid, knet_h->seq_num);
-							rv = do_write(eth_fd, read_buf + sizeof(struct knet_header), read_len - sizeof(struct knet_header));
+							rv = do_write(eth_fd, knet_h + 1, read_len - sizeof(struct knet_header));
 							if (rv < 0)
 								log_printf(LOGSYS_LEVEL_INFO, "Error writing to eth_fd: %s\n", strerror(errno));
 							else
@@ -599,7 +602,6 @@ int main(int argc, char **argv)
 	}
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Initializing local ethernet delivery thread\n");
-	tx_knet_h = malloc(sizeof(struct knet_header) + TX_KNET_DATASIZE);
 
 	rv = pthread_create(&eth_thread, NULL, eth_to_knet_thread, NULL);
 	if (rv < 0) {
@@ -628,8 +630,10 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
+/*
 	log_printf(LOGSYS_LEVEL_DEBUG, "Sending syn packet\n");
 	knet_send_synack(mainconf, 0, KNETD_PKCT_TYPE_SYN);
+*/
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Entering main loop\n");
 	loop();

@@ -600,7 +600,8 @@ int should_deliver(struct node *node, seq_num_t seq_num)
 	} else if (seq_dist <= SEQ_MAX - CBUFFER_SIZE) {
 		log_printf(LOGSYS_LEVEL_ERROR,
 			"circular buffer is not large enough: %u\n", seq_dist);
-		exit(EXIT_FAILURE); /* should we recover? buffer resize? */
+		memset(node->circular_buffer, 0, CBUFFER_SIZE);
+		node->seq_num = seq_num;
 	}
 
 	/* cleaning up circular buffer */
