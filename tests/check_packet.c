@@ -3,59 +3,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <alloca.h>
 #include <error.h>
 
 #include "nodes.h"
 #include "packet.h"
 
-char node_req[] = {
-	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, /* ether_dhost */
-	0x02, 0x02, 0x02, 0x02, 0x02, 0x02, /* ether_shost */
-	0x08, 0x00, /*ether_type */
+
+char eth_frame[] = {
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* ether_dhost */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ether_shost */
+	0x08, 0x00, /* ether_type */
 };
 
-char bcast4_req[] = {
+char bcast4_mac[] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, /* ether_dhost */
-	0x02, 0x02, 0x02, 0x02, 0x02, 0x02, /* ether_shost */
-	0x08, 0x00, /*ether_type */
 };
 
-char bcast6_req[] = {
-	0x33, 0x33, 0x00, 0x00, 0x00, 0x01, /* ether_dhost */
-	0x02, 0x02, 0x02, 0x02, 0x02, 0x02, /* ether_shost */
-	0x08, 0x00, /*ether_type */
+char bcast6_mac[] = {
+	0x33, 0x33, /* ether_dhost */
 };
 
-#define KNET_DATASIZE 1024
 
 int main(int argc, char *argv[])
 {
-	struct node n1;
-	uint32_t nodeid;
+	uint32_t nid;
+	struct node n;
 
-	memset(&n1, 0, sizeof(struct node));
+	memset(&n, 0, sizeof(struct node));
+	n.nodeid = 1;
+	memmove(n.hwaddress, eth_frame, sizeof(n.hwaddress));
 
-	n1.nodeid = 1;
-	memset(n1.hwaddress, 0x01, ETH_ALEN);
+	nid = packet_to_nodeid(eth_frame, &n);
+	if (nid != n.nodeid)
+		error(EXIT_FAILURE, -EINVAL, "eth_frame1 failed");
 
-	nodeid = packet_to_nodeid(node_req, &n1);
-	if (nodeid != n1.nodeid)
-		error(EXIT_FAILURE, -EINVAL, "node_req test1 failed");
+	memset(eth_frame, 0x00, ETH_ALEN);
 
-	memset(n1.hwaddress, 0x02, ETH_ALEN);
+	nid = packet_to_nodeid(eth_frame, &n);
+	if (nid != 0)
+		error(EXIT_FAILURE, -EINVAL, "eth_frame2 failed");
 
-	nodeid = packet_to_nodeid(node_req, &n1);
-	if (nodeid != 0)
-		error(EXIT_FAILURE, -EINVAL, "node_req test2 failed");
+	memmove(eth_frame, bcast4_mac, sizeof(bcast4_mac));
 
-	nodeid = packet_to_nodeid(bcast4_req, &n1);
-	if (nodeid != 0)
-                error(EXIT_FAILURE, -EINVAL, "bcast4_req failed");
+	nid = packet_to_nodeid(eth_frame, &n);
+	if (nid != 0)
+                error(EXIT_FAILURE, -EINVAL, "bcast4_mac failed");
 
-	nodeid = packet_to_nodeid(bcast6_req, &n1);
-	if (nodeid != 0)
-                error(EXIT_FAILURE, -EINVAL, "bcast6_req failed");
+	memmove(eth_frame, bcast6_mac, sizeof(bcast6_mac));
+
+	nid = packet_to_nodeid(eth_frame, &n);
+	if (nid != 0)
+                error(EXIT_FAILURE, -EINVAL, "bcast6_mac failed");
 
 	return 0;
 }
