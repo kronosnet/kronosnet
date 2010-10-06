@@ -8,7 +8,7 @@
 #include "logging.h"
 
 static uint8_t ipv4_bcast[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-static uint8_t ipv6_bcast[] = { 0x33, 0x33, 0x33 };
+static uint8_t ipv6_bcast[] = { 0x33, 0x33 };
 
 struct node *pckt_target(void *packet, struct node *node)
 {
