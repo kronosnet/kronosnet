@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/if_ether.h>
 
 #include "conf.h"
 #include "netsocket.h"
@@ -37,6 +38,7 @@ struct node {
 	int af_family;
 /* size of nodeid _MUST_ match the ones in netsocket.h */
 	uint32_t nodeid;
+	uint8_t hwaddress[ETH_ALEN];
 	seq_num_t seq_num;
 	char circular_buffer[CBUFFER_SIZE];
 	int start;

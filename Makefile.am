@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= docs
+SUBDIRS			= docs tests
 
 dist_doc_DATA		= example.conf \
 			  COPYING.applications \

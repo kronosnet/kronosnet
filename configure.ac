@@ -177,6 +177,7 @@ LDFLAGS="$ENV_LDFLAGS"
 AC_CONFIG_FILES([
 		Makefile
 		docs/Makefile
+		tests/Makefile
 		])
 
 AC_OUTPUT
