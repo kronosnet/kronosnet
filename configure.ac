@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([kronosnetd], [0.1], [fdinitto@redhat.com])
+AC_INIT([kronosnetd], [0.1], [fabbione@kronosnet.org])
 AM_INIT_AUTOMAKE([-Wno-portability])
 LT_PREREQ([2.2.6])
 LT_INIT
@@ -66,23 +66,20 @@ check_lib_no_libs() {
 }
 
 # Checks for libraries.
-PKG_CHECK_MODULES([logsys],[liblogsys])
-PKG_CHECK_MODULES([confdb],[libconfdb])
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/ioctl.h sys/socket.h unistd.h netinet/in.h arpa/inet.h netdb.h syslog.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
 
 # Checks for library functions.
-AC_FUNC_MALLOC
-AC_CHECK_FUNCS([atexit ftruncate memset strdup strtol setenv strcasecmp strchr strerror])
 
 # local options
 AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],
+	[ default="no" ])
+
+AC_ARG_ENABLE([publicandocs],
+	[  --enable-publicandocs   enable docs build. ],
 	[ default="no" ])
 
 AC_ARG_WITH([syslogfacility],
@@ -102,6 +99,8 @@ LOGDIR=${localstatedir}/log/
 RUNDIR=${localstatedir}/run/
 
 ## do subst
+
+AM_CONDITIONAL(BUILD_DOCS, test "x${enable_publicandocs}" = xyes)
 
 AC_DEFINE_UNQUOTED([CONFFILE], "$(eval echo ${sysconfdir}/kronosnetd.conf)",
 		   [Default config file])
