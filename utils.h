@@ -2,9 +2,12 @@
 #define __UTILS_H__
 
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #include <syslog.h>
 
 extern int utils_debug;
+extern int utils_syslog;
 
 #ifndef TEST
 #define STATIC static
@@ -21,13 +24,13 @@ if (utils_debug) { \
 #define log_info(fmt, args...) \
 do { \
 	fprintf(stderr, "Notice: " fmt "\n", ##args); \
-	syslog(LOG_INFO, fmt, ##args); \
+	if (utils_syslog) syslog(LOG_INFO, fmt, ##args); \
 } while (0);
 
 #define log_error(fmt, args...) \
 do { \
-	fprintf(stderr, "Error: " fmt "\n", ##args); \
-	syslog(LOG_ERR, fmt, ##args); \
+	fprintf(stderr, "Error: " fmt " (%s)\n", ##args, strerror(errno)); \
+	if (utils_syslog) syslog(LOG_ERR, fmt, ##args); \
 } while (0);
 
 #endif
