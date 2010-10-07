@@ -5,12 +5,22 @@ VALGRIND = valgrind -q --error-exitcode=127 --leak-check=full
 check-valgrind: $(check_PROGRAMS)
 	$(MAKE) TESTS_ENVIRONMENT="$(VALGRIND)" check
 
-check_PROGRAMS = knet_test
+check_PROGRAMS = \
+		  knet_test \
+		  ring_test
 
 TESTS = $(check_PROGRAMS)
 
 knet_test_SOURCES	= \
 			  knet_test.c \
-			  ../knet.c
+			  ../knet.c \
+			  ../utils.c
 
 knet_test_CFLAGS	= -DTEST
+
+ring_test_SOURCES	= \
+			  ring_test.c \
+			  ../ring.c \
+			  ../utils.c
+
+ring_test_CFLAGS	= -DTEST
