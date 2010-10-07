@@ -68,10 +68,20 @@ check_lib_no_libs() {
 # Checks for libraries.
 
 # Checks for header files.
+AC_CHECK_HEADERS([fcntl.h])
+AC_CHECK_HEADERS([stdlib.h])
+AC_CHECK_HEADERS([string.h])
+AC_CHECK_HEADERS([sys/ioctl.h])
+AC_CHECK_HEADERS([syslog.h])
+AC_CHECK_HEADERS([unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIZE_T
 
 # Checks for library functions.
+AC_CHECK_FUNCS([memset])
+AC_CHECK_FUNCS([strdup])
+AC_CHECK_FUNCS([strerror])
 
 # local options
 AC_ARG_ENABLE([debug],
