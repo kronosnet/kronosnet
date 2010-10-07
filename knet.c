@@ -67,3 +67,34 @@ int knet_close(int fd)
 	knet_sockfd = 0;
 	return close(fd);
 }
+
+int knet_get_mtu(void)
+{
+	int err;
+
+	err = ioctl(knet_sockfd, SIOCGIFMTU, (void *)&ifr);
+	if (err)
+		return err;
+
+	return ifr.ifr_mtu;
+}
+
+int knet_set_mtu(int mtu)
+{
+	if (mtu <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * 65521 found by pure testing.. weird
+	 */
+	if (mtu > 65521) {
+		errno = E2BIG;
+		return -1;
+	}
+
+	ifr.ifr_mtu = mtu;
+
+	return ioctl(knet_sockfd, SIOCSIFMTU, (void *)&ifr);
+}

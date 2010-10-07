@@ -130,9 +130,89 @@ static int check_knet_open_close(void)
 	return 0;
 }
 
+static int check_knet_mtu(void)
+{
+	char device_name[IFNAMSIZ];
+	size_t size = IFNAMSIZ;
+	int knet_fd, err=0;
+
+	int current_mtu = 0;
+	int expected_mtu = 1500;
+
+	log_info("Testing get/set MTU");
+
+	memset(device_name, 0, size);
+	strncpy(device_name, "kronostest", size);
+	knet_fd = knet_open(device_name, size);
+	if (knet_fd < 0) {
+		log_error("Unable to init %s: %s", device_name, strerror(errno));
+		return -1;
+	}
+
+	log_info("Comparing default MTU");
+	current_mtu = knet_get_mtu();
+	if (current_mtu != expected_mtu) {
+		log_error("current mtu [%d] does not match expected default [%d]", current_mtu, expected_mtu);
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Setting MTU to 9000");
+	expected_mtu = 9000;
+	if (knet_set_mtu(expected_mtu) < 0) {
+		log_error("Unable to set MTU to %d: %s", expected_mtu, strerror(errno));
+		err = -1;
+		goto out_clean;
+	}
+
+	current_mtu = knet_get_mtu();
+	if (current_mtu != expected_mtu) {
+		log_error("current mtu [%d] does not match expected value [%d]", current_mtu, expected_mtu);
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Testing ERROR conditions");
+
+	log_info("Setting MTU to -1");
+	expected_mtu = -1;
+	errno = 0;
+	if ((knet_set_mtu(expected_mtu) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_set_mtu sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Setting MTU to 0");
+	expected_mtu = 0;
+	errno = 0;
+	if ((knet_set_mtu(expected_mtu) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_set_mtu sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Setting MTU to 65522 (max is 65521)");
+	expected_mtu = 65522;
+	errno = 0;
+	if ((knet_set_mtu(expected_mtu) >= 0) || (errno != E2BIG)) {
+		log_error("Something is wrong in knet_set_mtu sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+out_clean:
+	knet_close(knet_fd);
+
+	return err;
+}
+
 int main(void)
 {
 	if (check_knet_open_close() < 0)
+		return -1;
+
+	if (check_knet_mtu() < 0)
 		return -1;
 
 	return 0;
