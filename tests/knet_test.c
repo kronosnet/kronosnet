@@ -9,6 +9,9 @@
 #include "knet.h"
 #include "utils.h"
 
+extern int knet_sockfd;
+extern struct ifreq ifr;
+
 static int is_if_in_system(char *name)
 {
 	struct ifaddrs *ifap = NULL;
@@ -49,6 +52,8 @@ static int test_iface(char *name, size_t size)
 
 	knet_fd=knet_open(name, size);
 	if (knet_fd < 0) {
+		if (knet_sockfd < 0)
+			log_error("Unable to open knet_socket");
 		log_error("Unable to open knet: %s", strerror(errno));
 		if (oldname)
 			free(oldname);

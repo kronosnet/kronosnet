@@ -6,6 +6,12 @@
 
 extern int utils_debug;
 
+#ifndef TEST
+#define STATIC static
+#else
+#define STATIC
+#endif
+
 #define log_debug(fmt, args...)	\
 if (utils_debug) { \
 	printf("DEBUG(%s:%i|%s): " fmt "\n", \

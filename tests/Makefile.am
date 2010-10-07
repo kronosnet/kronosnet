@@ -12,3 +12,5 @@ TESTS = $(check_PROGRAMS)
 knet_test_SOURCES	= \
 			  knet_test.c \
 			  ../knet.c
+
+knet_test_CFLAGS	= -DTEST
