@@ -20,7 +20,11 @@ dist_doc_DATA		= \
 
 noinst_HEADERS		=
 
-sbin_PROGRAMS		=
+sbin_PROGRAMS		= kronosnetd
+
+kronosnetd_SOURCES	= \
+			  main.c \
+			  utils.c
 
 maintainer-clean-local:
 	rm -rf m4
