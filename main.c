@@ -393,7 +393,7 @@ static void *eth_to_knet_thread(void *arg)
 		if (FD_ISSET(eth_fd, &rfds)) {
 			read_len = read(eth_fd, knet_h + 1, TX_KNET_DATASIZE);
 			if (read_len > 0) {
-				// dst_nodeid = packet_to_nodeid(knet_h + 1);
+				// dst_nodeid = knet_hwtoid(knet_h + 1);
 				decode_pckt(knet_h + 1);
 				knet_h->seq_num++;
 				dispatch_buffer(mainconf, dst_nodeid, knet_h, read_len + sizeof(struct knet_header));

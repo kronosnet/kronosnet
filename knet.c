@@ -14,10 +14,16 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <arpa/inet.h>
+#include <net/ethernet.h>
 
 #include "knet.h"
 #include "logging.h"
 #include "utils.h"
+
+
+/* make this configurable */
+uint8_t knet_hwvend[2] = { 0x16, 0x07 };
+
 
 int knet_open(char *dev, size_t dev_size)
 {
@@ -68,17 +74,33 @@ int knet_set_hwid(char *dev, uint32_t nodeid)
 	ret = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
 	if (ret != 0) goto exit_clean;
 
-	ifr.ifr_hwaddr.sa_data[0] = 0x16;
-	ifr.ifr_hwaddr.sa_data[1] = 0x07;
-
 	machwid = htonl(nodeid);
-	memmove(ifr.ifr_hwaddr.sa_data + 2, &machwid, ETH_ALEN - 2);
+
+	memmove(ifr.ifr_hwaddr.sa_data, knet_hwvend, sizeof(knet_hwvend));
+	memmove(ifr.ifr_hwaddr.sa_data + sizeof(knet_hwvend),
+			&machwid, ETH_ALEN - sizeof(knet_hwvend));
 
 	ret = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
 
 exit_clean:
 	close(sockfd);
 	return ret;
+}
+
+uint32_t knet_hwtoid(void *packet)
+{
+	uint32_t nodeid;
+	struct ether_header *eth_h = packet;
+
+	if (memcmp(eth_h->ether_dhost, knet_hwvend, sizeof(knet_hwvend)) != 0)
+		return 0;
+
+	memmove(&nodeid, eth_h->ether_dhost + sizeof(knet_hwvend),
+			ETH_ALEN - sizeof(knet_hwvend));
+
+	nodeid = ntohl(nodeid);
+
+	return nodeid;
 }
 
 int knet_get_mtu(char *dev)

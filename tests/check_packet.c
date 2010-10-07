@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <error.h>
 
-#include "nodes.h"
-#include "packet.h"
+#include "knet.h"
 
 
 char eth_frame[] = {
-	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* ether_dhost */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ether_dhost */
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* ether_shost */
 	0x08, 0x00, /* ether_type */
 };
@@ -27,31 +27,30 @@ char bcast6_mac[] = {
 int main(int argc, char *argv[])
 {
 	uint32_t nid;
-	struct node n;
 
-	memset(&n, 0, sizeof(struct node));
-	n.nodeid = 1;
-	memmove(n.hwaddress, eth_frame, sizeof(n.hwaddress));
+	memmove(eth_frame, knet_hwvend, sizeof(knet_hwvend));
 
-	nid = packet_to_nodeid(eth_frame, &n);
-	if (nid != n.nodeid)
+	eth_frame[5] = 0x01;
+
+	nid = knet_hwtoid(eth_frame);
+	if (nid != 0x01)
 		error(EXIT_FAILURE, -EINVAL, "eth_frame1 failed");
 
-	memset(eth_frame, 0x00, ETH_ALEN);
+	eth_frame[5] = 0x02;
 
-	nid = packet_to_nodeid(eth_frame, &n);
-	if (nid != 0)
+	nid = knet_hwtoid(eth_frame);
+	if (nid != 0x02)
 		error(EXIT_FAILURE, -EINVAL, "eth_frame2 failed");
 
 	memmove(eth_frame, bcast4_mac, sizeof(bcast4_mac));
 
-	nid = packet_to_nodeid(eth_frame, &n);
+	nid = knet_hwtoid(eth_frame);
 	if (nid != 0)
                 error(EXIT_FAILURE, -EINVAL, "bcast4_mac failed");
 
 	memmove(eth_frame, bcast6_mac, sizeof(bcast6_mac));
 
-	nid = packet_to_nodeid(eth_frame, &n);
+	nid = knet_hwtoid(eth_frame);
 	if (nid != 0)
                 error(EXIT_FAILURE, -EINVAL, "bcast6_mac failed");
 
