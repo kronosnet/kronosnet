@@ -9,27 +9,26 @@
 #include "ring.h"
 #include "utils.h"
 
-
 int knet_ring_listen(const struct sockaddr *addr_info, const size_t addr_len)
 {
-	int err, sock, value;
+	int err, sockfd, value;
 
-	sock = socket(addr_info->sa_family, SOCK_DGRAM, 0);
+	sockfd = socket(addr_info->sa_family, SOCK_DGRAM, 0);
 
-	if (sock < 0) {
+	if (sockfd < 0) {
 		log_error("Unable to open netsocket error");
-		return sock;
+		return sockfd;
 	}
 
 	value = KNET_RING_RCVBUFF;
-	err = setsockopt(sock,
+	err = setsockopt(sockfd,
 			SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
 	if (err != 0) {
 		log_error("Unable to set receive buffer");
 	}
 
-	value = fcntl(sock, F_GETFD, 0);
+	value = fcntl(sockfd, F_GETFD, 0);
 
 	if (value < 0) {
 		log_error("Unable to get close-on-exec flag");
@@ -37,55 +36,55 @@ int knet_ring_listen(const struct sockaddr *addr_info, const size_t addr_len)
 	}
 
 	value |= FD_CLOEXEC;
-	err = fcntl(sock, F_SETFD, value);
+	err = fcntl(sockfd, F_SETFD, value);
 
 	if (err < 0) {
 		log_error("Unable to set close-on-exec flag");
 		goto exit_fail;
 	}
 
-	err = bind(sock, (struct sockaddr *) addr_info, addr_len);
+	err = bind(sockfd, (struct sockaddr *) addr_info, addr_len);
 
 	if (err < 0) {
 		log_error("Unable to bind to ring socket");
 		goto exit_fail;
 	}
 
-	return sock;
+	return sockfd;
 
 exit_fail:
-	close(sock);
+	close(sockfd);
 	return -1;
 }
 
 int knet_ring_connect(struct knet_ring *ring)
 {
-	ring->sock = socket(ring->info.ss_family, SOCK_DGRAM, 0);
+	ring->sockfd = socket(ring->info.ss_family, SOCK_DGRAM, 0);
 
-	if (ring->sock < 0) {
+	if (ring->sockfd < 0) {
 		log_error("Unable create ring socket");
-		return ring->sock;
+		return ring->sockfd;
 	}
 
-	if (connect(ring->sock, (struct sockaddr *) &ring->info,
+	if (connect(ring->sockfd, (struct sockaddr *) &ring->info,
 						sizeof(ring->info)) != 0) {
 		log_error("Unable to connect ring socket");
 		goto exit_fail;
 	}
 
-	return ring->sock;
+	return ring->sockfd;
 
 exit_fail:
-	close(ring->sock);
-	ring->sock = -1;
+	close(ring->sockfd);
+	ring->sockfd = -1;
 
-	return ring->sock;
+	return ring->sockfd;
 }
 
 void knet_ring_disconnect(struct knet_ring *ring)
 {
-	if (ring->sock > 0) {
-		close(ring->sock);
-		ring->sock = -1;
+	if (ring->sockfd > 0) {
+		close(ring->sockfd);
+		ring->sockfd = -1;
 	}
 }

@@ -7,9 +7,7 @@
 #include "ring.h"
 #include "utils.h"
 
-
 static char test_msg[] = "HelloWorld01234567890";
-
 
 static int wait_data(int sock, time_t sec)
 {
@@ -32,6 +30,7 @@ static int wait_data(int sock, time_t sec)
 		return 0;
 	}
 
+	errno = ENODATA;
 	return -1;
 }
 
@@ -44,7 +43,7 @@ int main(void)
 
 	ring_listen.sin_family = AF_INET;
 	ring_listen.sin_port = htons(KNET_RING_DEFPORT);
-	ring_listen.sin_addr.s_addr = INADDR_ANY;
+	ring_listen.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	log_info("Opening ring socket");
 	sock_srv = knet_ring_listen(
@@ -87,7 +86,7 @@ int main(void)
 	}
 
 	log_info("Waiting data from socket");
-	err = wait_data(sock_srv, 5); /* 5 seconds timeout */
+	err = wait_data(sock_srv, 2); /* 2 seconds timeout */
 
 	if (err != 0) {
 		log_error("Unable to deliver data over ring socket");
