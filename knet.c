@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -17,6 +18,10 @@
 
 STATIC int knet_sockfd = 0;
 STATIC struct ifreq ifr;
+
+/* forward declarations */
+STATIC int knet_execute_shell(const char *command);
+STATIC int knet_read_pipe(int fd, char **file, size_t *length);
 
 int knet_open(char *dev, size_t dev_size)
 {
@@ -113,4 +118,122 @@ int knet_set_mac(const struct ether_addr *mac)
 	memcpy(ifr.ifr_hwaddr.sa_data, mac->ether_addr_octet, ETH_ALEN);
 
 	return ioctl(knet_sockfd, SIOCSIFHWADDR, &ifr);
+}
+
+STATIC int knet_read_pipe(int fd, char **file, size_t *length)
+{
+	char buf[4096];
+	int n;
+	int done = 0;
+
+	*file = NULL;
+	*length = 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	while (!done) {
+
+		n = read(fd, buf, sizeof(buf));
+
+		if (n < 0) {
+			if (errno == EINTR)
+				continue;
+
+			if (*file)
+				free(*file);
+
+			return n;
+		}
+
+		if (n == 0 && (!*length))
+			return 0;
+
+		if (n == 0)
+			done = 1;
+
+		if (*file)
+			*file = realloc(*file, (*length) + n + done);
+		else
+			*file = malloc(n + done);
+
+		if (!*file)
+			return -1;
+
+		memcpy((*file) + (*length), buf, n);
+		*length += (done + n);
+	}
+
+	/* Null terminator */
+	(*file)[(*length) - 1] = 0;
+
+	return 0;
+}
+
+STATIC int knet_execute_shell(const char *command)
+{
+	pid_t pid;
+	int status, err = 0;
+	int fd[2];
+	char *data = NULL;
+	size_t size = 0;
+
+	if (command == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	err = pipe(fd);
+	if (err)
+		goto out_clean;
+
+	pid = fork();
+	if (pid < 0) {
+		err = pid;
+		goto out_clean;
+	}
+
+	if (pid) { /* parent */
+
+		close(fd[1]);
+		err = knet_read_pipe(fd[0], &data, &size);
+		if (err)
+			goto out_clean;
+
+		waitpid(pid, &status, 0);
+		if (!WIFEXITED(status)) {
+			log_error("shell: child did not terminate normally");
+			err = -1;
+			goto out_clean;
+		}
+		if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+			log_error("shell: child returned %d", WEXITSTATUS(status));
+			err = -1;
+			goto out_clean;
+		}
+	} else { /* child */
+		close(0);
+		close(1);
+		close(2);
+
+		close(fd[0]);
+		if(dup2(fd[1], 1) < 0)
+			log_error("Unable to redirect stdout: %s", strerror(errno));
+		if(dup2(fd[1], 2) < 0)
+			log_error("Unable to redirect stderr: %s", strerror(errno));
+		close(fd[1]);
+
+		execlp("/bin/sh", "/bin/sh", "-c", command, NULL);
+		exit(EXIT_FAILURE);
+	}
+
+out_clean:
+	close(fd[0]);
+	close(fd[1]);
+
+	if ((size) && (err)) {
+		log_error("%s", data);
+		free(data);
+	}
+
+	return err;
 }

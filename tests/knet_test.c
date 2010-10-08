@@ -14,6 +14,7 @@
 
 extern int knet_sockfd;
 extern struct ifreq ifr;
+int knet_execute_shell(const char *);
 
 static int is_if_in_system(char *name)
 {
@@ -258,6 +259,59 @@ out_clean:
 	return err;
 }
 
+static int check_knet_execute_shell(void)
+{
+	int err = 0;
+	char command[4096];
+
+	memset(command, 0, sizeof(command));
+
+	log_info("Testing knet_execute_shell");
+
+	log_info("command /bin/true");
+
+	if (knet_execute_shell("/bin/true") < 0) {
+		log_error("Unable to execute /bin/true ?!?!");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Testing ERROR conditions");
+
+	log_info("command /bin/false");
+
+	if (!knet_execute_shell("/bin/false")) {
+		log_error("Can we really execute /bin/false successfully?!?!");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("command that outputs to stdout (enforcing redirect)");
+	if (!knet_execute_shell("/bin/grep -h 2>&1")) {
+		log_error("Can we really execute /bin/grep -h successfully?!?");
+		err = -1;
+		goto out_clean;
+	} 
+
+	log_info("command that outputs to stderr");
+	if (!knet_execute_shell("/bin/grep -h")) {
+		log_error("Can we really execute /bin/grep -h successfully?!?");
+		err = -1;
+		goto out_clean;
+	} 
+
+	log_info("empty command");
+	if (!knet_execute_shell(NULL)) {
+		log_error("Can we really execute (nil) successfully?!?!");
+		err = -1;
+		goto out_clean;
+	}
+
+out_clean:
+
+	return err;
+}
+
 int main(void)
 {
 	if (check_knet_open_close() < 0)
@@ -267,6 +321,9 @@ int main(void)
 		return -1;
 
 	if (check_knet_mac() < 0)
+		return -1;
+
+	if (check_knet_execute_shell() < 0)
 		return -1;
 
 	return 0;
