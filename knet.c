@@ -80,21 +80,8 @@ int knet_get_mtu(void)
 	return ifr.ifr_mtu;
 }
 
-int knet_set_mtu(int mtu)
+int knet_set_mtu(const int mtu)
 {
-	if (mtu <= 0) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	/*
-	 * 65521 found by pure testing.. weird
-	 */
-	if (mtu > 65521) {
-		errno = E2BIG;
-		return -1;
-	}
-
 	ifr.ifr_mtu = mtu;
 
 	return ioctl(knet_sockfd, SIOCSIFMTU, (void *)&ifr);

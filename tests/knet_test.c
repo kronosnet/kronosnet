@@ -175,35 +175,6 @@ static int check_knet_mtu(void)
 		goto out_clean;
 	}
 
-	log_info("Testing ERROR conditions");
-
-	log_info("Setting MTU to -1");
-	expected_mtu = -1;
-	errno = 0;
-	if ((knet_set_mtu(expected_mtu) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_set_mtu sanity checks");
-		err = -1;
-		goto out_clean;
-	}
-
-	log_info("Setting MTU to 0");
-	expected_mtu = 0;
-	errno = 0;
-	if ((knet_set_mtu(expected_mtu) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_set_mtu sanity checks");
-		err = -1;
-		goto out_clean;
-	}
-
-	log_info("Setting MTU to 65522 (max is 65521)");
-	expected_mtu = 65522;
-	errno = 0;
-	if ((knet_set_mtu(expected_mtu) >= 0) || (errno != E2BIG)) {
-		log_error("Something is wrong in knet_set_mtu sanity checks");
-		err = -1;
-		goto out_clean;
-	}
-
 out_clean:
 	knet_close(knet_fd);
 
