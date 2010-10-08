@@ -336,7 +336,7 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	if (knet_execute_shell("ifconfig kronostest | grep -q UP") < 0) {
+	if (knet_execute_shell("ip addr show dev kronostest | grep -q UP") < 0) {
 		log_error("Unable to verify inteface UP");
 		err = -1;
 		goto out_clean;
