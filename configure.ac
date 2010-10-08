@@ -74,14 +74,24 @@ AC_CHECK_HEADERS([string.h])
 AC_CHECK_HEADERS([sys/ioctl.h])
 AC_CHECK_HEADERS([syslog.h])
 AC_CHECK_HEADERS([unistd.h])
+AC_CHECK_HEADERS([netinet/in.h])
+AC_CHECK_HEADERS([sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
+AC_TYPE_PID_T
 
 # Checks for library functions.
+AC_FUNC_ALLOCA
+AC_FUNC_FORK
+AC_FUNC_MALLOC
+AC_FUNC_REALLOC
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([strdup])
 AC_CHECK_FUNCS([strerror])
+AC_CHECK_FUNCS([dup2])
+AC_CHECK_FUNCS([select])
+AC_CHECK_FUNCS([socket])
 
 # local options
 AC_ARG_ENABLE([debug],
