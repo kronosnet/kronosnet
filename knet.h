@@ -13,4 +13,7 @@ int knet_set_mtu(const int mtu);
 int knet_get_mac(struct ether_addr *);
 int knet_set_mac(const struct ether_addr *);
 
+int knet_set_up(void);
+int knet_set_down(void);
+
 #endif
