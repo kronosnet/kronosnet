@@ -1,5 +1,5 @@
 #ifndef __RING_H__
-#define __RING_H_
+#define __RING_H__
 
 #include <netinet/in.h>
 

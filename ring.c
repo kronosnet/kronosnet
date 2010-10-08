@@ -10,7 +10,7 @@
 #include "utils.h"
 
 
-int knet_ring_listen(in_port_t port)
+int knet_ring_listen(const in_port_t port)
 {
 	int err, sock, value;
 	struct sockaddr_in6 addr;
@@ -18,7 +18,7 @@ int knet_ring_listen(in_port_t port)
 	sock = socket(AF_INET6, SOCK_DGRAM, 0);
 
 	if (sock < 0) {
-		log_error("unable to open netsocket error");
+		log_error("Unable to open netsocket error");
 		return sock;
 	}
 
@@ -27,13 +27,13 @@ int knet_ring_listen(in_port_t port)
 			SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
 	if (err != 0) {
-		log_error("unable to set receive buffer");
+		log_error("Unable to set receive buffer");
 	}
 
 	value = fcntl(sock, F_GETFD, 0);
 
 	if (value < 0) {
-		log_error("unable to get close-on-exec flag");
+		log_error("Unable to get close-on-exec flag");
 		goto clean_fail;
 	}
 
@@ -41,7 +41,7 @@ int knet_ring_listen(in_port_t port)
 	err = fcntl(sock, F_SETFD, value);
 
 	if (err < 0) {
-		log_error("unable to set close-on-exec flag");
+		log_error("Unable to set close-on-exec flag");
 		goto clean_fail;
 	}
 
@@ -54,7 +54,7 @@ int knet_ring_listen(in_port_t port)
 	err = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 
 	if (err < 0) {
-		log_error("unable to bind to netsocket");
+		log_error("Unable to bind to netsocket");
 		goto clean_fail;
 	}
 
@@ -70,13 +70,13 @@ int knet_ring_connect(struct knet_ring *ring)
 	ring->sock = socket(ring->info.sa_family, SOCK_DGRAM, 0);
 
 	if (ring->sock < 0) {
-		log_error("unable create ring socket");
+		log_error("Unable create ring socket");
 		return ring->sock;
 	}
 
 	if (connect(ring->sock, (struct sockaddr *) &ring->info,
 						sizeof(ring->info)) != 0) {
-		log_error("unable to connect ring socket");
+		log_error("Unable to connect ring socket");
 		goto clean_fail;
 	}
 
@@ -93,6 +93,6 @@ void knet_ring_disconnect(struct knet_ring *ring)
 {
 	if (ring->sock > 0) {
 		close(ring->sock);
+		ring->sock = -1;
 	}
 }
-

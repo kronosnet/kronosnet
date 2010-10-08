@@ -26,7 +26,7 @@ static int wait_data(int sock, time_t sec)
 	err = select(sock + 1, &rfds, NULL, NULL, &tv);
 
 	if (err == -1) {
-		log_error("unable to wait for data");
+		log_error("Unable to wait for data");
 		exit(-1);
 	} else if (FD_ISSET(sock, &rfds)) {
 		return 0;
@@ -41,53 +41,66 @@ int main(void)
 	char recv_buf[64];
 	struct knet_ring *test_ring;
 
+	log_info("Opening ring socket");
 	sock_srv = knet_ring_listen(KNET_RING_DEFPORT);
 
 	if (sock_srv < 0) {
-		log_error("unable to open ring socket");
+		log_error("Unable to open ring socket");
 		exit(-1);
 	}
 
+	log_info("Allocating new ring");
 	test_ring = alloca(sizeof(struct knet_ring));
+
+	if (test_ring == 0) {
+		log_error("Unable to allocate ring");
+		exit(-1);
+	}
 
 	test_ring->info.sa_family = AF_INET;
 	test_ring->info.in.sin_port = htons(KNET_RING_DEFPORT);
 	test_ring->info.in.sin_addr.s_addr = 0x0100007f; /*localhost */
 
+	log_info("Connecting ring socket");
 	sock_cli = knet_ring_connect(test_ring);
 
 	if (sock_cli < 0) {
-		log_error("unable to connect ring socket");
+		log_error("Unable to connect ring socket");
 		exit(-1);
 	}
 
+	log_info("Writing to socket");
 	err = write(sock_cli, test_msg, sizeof(test_msg));
 
 	if (err != sizeof(test_msg)) {
-		log_error("unable to write to ring socket");
+		log_error("Unable to write to ring socket");
 		exit(-1);
 	}
 
+	log_info("Waiting data from socket");
 	err = wait_data(sock_srv, 5); /* 5 seconds timeout */
 
 	if (err != 0) {
-		log_error("unable to deliver data over ring socket");
+		log_error("Unable to deliver data over ring socket");
 		exit(-1);
 	}
 
+	log_info("Reading data from socket");
 	err = read(sock_srv, recv_buf, sizeof(recv_buf));
 
 	if (err != sizeof(test_msg)) {
-		log_error("unable to read from ring socket");
+		log_error("Unable to read from ring socket");
 		exit(-1);
 	}
 
+	log_info("Comparing sent data and received data");
 	if (memcmp(test_msg, recv_buf, sizeof(test_msg)) != 0) {
 		errno = EINVAL;
-		log_error("received message mismatch");
+		log_error("Received message mismatch");
 		exit(-1);
 	}
 
+	log_info("Closing sockets");
 	close(sock_srv);
 	knet_ring_disconnect(test_ring);
 
