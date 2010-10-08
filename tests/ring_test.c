@@ -68,7 +68,7 @@ int main(void)
 
 	ring_in->sin_family = AF_INET;
 	ring_in->sin_port = htons(KNET_RING_DEFPORT);
-	ring_in->sin_addr.s_addr = 0x0100007f; /*localhost */
+	ring_in->sin_addr.s_addr = htonl(INADDR_LOOPBACK); /*localhost */
 
 	log_info("Connecting ring socket");
 	sock_cli = knet_ring_connect(test_ring);
