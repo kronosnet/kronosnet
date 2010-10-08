@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <linux/if_tun.h>
+#include <net/ethernet.h>
 
 #include "utils.h"
 #include "knet.h"
@@ -97,4 +98,32 @@ int knet_set_mtu(int mtu)
 	ifr.ifr_mtu = mtu;
 
 	return ioctl(knet_sockfd, SIOCSIFMTU, (void *)&ifr);
+}
+
+int knet_get_mac(struct ether_addr *mac)
+{
+	int err;
+
+	if (!mac) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	err = ioctl(knet_sockfd, SIOCGIFHWADDR, &ifr);
+
+	memcpy(mac->ether_addr_octet, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+
+	return err;
+}
+
+int knet_set_mac(const struct ether_addr *mac)
+{
+	if (!mac) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	memcpy(ifr.ifr_hwaddr.sa_data, mac->ether_addr_octet, ETH_ALEN);
+
+	return ioctl(knet_sockfd, SIOCSIFHWADDR, &ifr);
 }

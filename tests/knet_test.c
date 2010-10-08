@@ -5,6 +5,9 @@
 #include <net/if.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
+#include <netinet/ether.h>
+#include <stdint.h>
+#include <unistd.h>
 
 #include "knet.h"
 #include "utils.h"
@@ -96,8 +99,8 @@ static int check_knet_open_close(void)
 		return -1;
 	}
 
-	log_info("Creating kronosnet tap interface:");
-	strncpy(device_name, "kronosnet", IFNAMSIZ);
+	log_info("Creating kronostest tap interface:");
+	strncpy(device_name, "kronostest", IFNAMSIZ);
 	if (test_iface(device_name, size) < 0) {
 		log_error("Unable to create kronosnet interface");
 		return -1;
@@ -207,12 +210,92 @@ out_clean:
 	return err;
 }
 
+static int check_knet_mac(void)
+{
+	char device_name[IFNAMSIZ];
+	size_t size = IFNAMSIZ;
+	int knet_fd, err=0;
+	struct ether_addr mac;
+	struct ether_addr tempmac;
+
+	log_info("Testing get/set MAC");
+
+	memset(device_name, 0, size);
+	strncpy(device_name, "kronostest", size);
+	knet_fd = knet_open(device_name, size);
+	if (knet_fd < 0) {
+		log_error("Unable to init %s: %s", device_name, strerror(errno));
+		return -1;
+	}
+
+	log_info("Get current MAC");
+
+	if (knet_get_mac(&mac) < 0) {
+		log_error("Unable to get current MAC address: %s", strerror(errno));
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Current MAC: %s", ether_ntoa(&mac));
+
+	mac.ether_addr_octet[3] = 0;
+
+	log_info("Setting MAC: %s", ether_ntoa(&mac));
+
+	if (knet_set_mac(&mac) < 0) {
+		log_error("Unable to set current MAC address: %s", strerror(errno));
+		err = -1;
+		goto out_clean;
+	}
+
+	if (knet_get_mac(&tempmac) < 0) {
+		log_error("Unable to get current MAC address: %s", strerror(errno));
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Current MAC: %s", ether_ntoa(&tempmac));
+
+	if (memcmp(mac.ether_addr_octet, tempmac.ether_addr_octet, ETH_ALEN)) {
+		log_error("MAC adddress are not matching");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Testing ERROR conditions");
+
+	log_info("Pass NULL to get_mac");
+	errno = 0;
+	if ((knet_get_mac(NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_get_mac sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Pass NULL to set_mac");
+	errno = 0;
+	if ((knet_set_mac(NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_set_mac sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+out_clean:
+
+	knet_close(knet_fd);
+
+	return err;
+}
+
 int main(void)
 {
 	if (check_knet_open_close() < 0)
 		return -1;
 
 	if (check_knet_mtu() < 0)
+		return -1;
+
+	if (check_knet_mac() < 0)
 		return -1;
 
 	return 0;
