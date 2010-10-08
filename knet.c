@@ -217,9 +217,9 @@ STATIC int knet_execute_shell(const char *command)
 
 		close(fd[0]);
 		if(dup2(fd[1], 1) < 0)
-			log_error("Unable to redirect stdout: %s", strerror(errno));
+			log_error("Unable to redirect stdout");
 		if(dup2(fd[1], 2) < 0)
-			log_error("Unable to redirect stderr: %s", strerror(errno));
+			log_error("Unable to redirect stderr");
 		close(fd[1]);
 
 		execlp("/bin/sh", "/bin/sh", "-c", command, NULL);

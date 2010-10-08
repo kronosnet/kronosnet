@@ -23,7 +23,7 @@ static int is_if_in_system(char *name)
 	int found = 0;
 
 	if (getifaddrs(&ifap) < 0) {
-		log_error("Unable to get interface list: %s", strerror(errno));
+		log_error("Unable to get interface list.");
 		return -1;
 	}
 
@@ -58,7 +58,7 @@ static int test_iface(char *name, size_t size)
 	if (knet_fd < 0) {
 		if (knet_sockfd < 0)
 			log_error("Unable to open knet_socket");
-		log_error("Unable to open knet: %s", strerror(errno));
+		log_error("Unable to open knet.");
 		if (oldname)
 			free(oldname);
 		return -1;
@@ -149,7 +149,7 @@ static int check_knet_mtu(void)
 	strncpy(device_name, "kronostest", size);
 	knet_fd = knet_open(device_name, size);
 	if (knet_fd < 0) {
-		log_error("Unable to init %s: %s", device_name, strerror(errno));
+		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
@@ -164,7 +164,7 @@ static int check_knet_mtu(void)
 	log_info("Setting MTU to 9000");
 	expected_mtu = 9000;
 	if (knet_set_mtu(expected_mtu) < 0) {
-		log_error("Unable to set MTU to %d: %s", expected_mtu, strerror(errno));
+		log_error("Unable to set MTU to %d.", expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
@@ -196,14 +196,14 @@ static int check_knet_mac(void)
 	strncpy(device_name, "kronostest", size);
 	knet_fd = knet_open(device_name, size);
 	if (knet_fd < 0) {
-		log_error("Unable to init %s: %s", device_name, strerror(errno));
+		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Get current MAC");
 
 	if (knet_get_mac(&mac) < 0) {
-		log_error("Unable to get current MAC address: %s", strerror(errno));
+		log_error("Unable to get current MAC address.");
 		err = -1;
 		goto out_clean;
 	}
@@ -215,13 +215,13 @@ static int check_knet_mac(void)
 	log_info("Setting MAC: %s", ether_ntoa(&mac));
 
 	if (knet_set_mac(&mac) < 0) {
-		log_error("Unable to set current MAC address: %s", strerror(errno));
+		log_error("Unable to set current MAC address.");
 		err = -1;
 		goto out_clean;
 	}
 
 	if (knet_get_mac(&tempmac) < 0) {
-		log_error("Unable to get current MAC address: %s", strerror(errno));
+		log_error("Unable to get current MAC address.");
 		err = -1;
 		goto out_clean;
 	}
