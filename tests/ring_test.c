@@ -36,7 +36,7 @@ static int wait_data(int sock, time_t sec)
 
 int main(void)
 {
-	int sock_srv, sock_cli, err;
+	int sock_srv, err;
 	char recv_buff[64];
 	struct knet_ring *test_ring;
 	struct sockaddr_in *ring_in, ring_listen;
@@ -62,23 +62,15 @@ int main(void)
 		exit(-1);
 	}
 
-	memset(test_ring, 0, sizeof(struct knet_ring));
+	knet_ring_init(test_ring, AF_INET);
+
 	ring_in = (struct sockaddr_in *) &test_ring->info;
 
-	ring_in->sin_family = AF_INET;
 	ring_in->sin_port = htons(KNET_RING_DEFPORT);
 	ring_in->sin_addr.s_addr = htonl(INADDR_LOOPBACK); /*localhost */
 
-	log_info("Connecting ring socket");
-	sock_cli = knet_ring_connect(test_ring);
-
-	if (sock_cli < 0) {
-		log_error("Unable to connect ring socket");
-		exit(-1);
-	}
-
 	log_info("Writing to socket");
-	err = write(sock_cli, test_msg, sizeof(test_msg));
+	err = knet_ring_send(test_ring, test_msg, sizeof(test_msg));
 
 	if (err != sizeof(test_msg)) {
 		log_error("Unable to write to ring socket");
@@ -110,7 +102,7 @@ int main(void)
 
 	log_info("Closing sockets");
 	close(sock_srv);
-	knet_ring_disconnect(test_ring);
+	knet_ring_free(test_ring);
 
 	return 0;
 }

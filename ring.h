@@ -16,7 +16,8 @@ struct knet_ring {
 };
 
 int knet_ring_listen(const struct sockaddr *addr_info, const size_t addr_len);
-int knet_ring_connect(struct knet_ring *ring);
-void knet_ring_disconnect(struct knet_ring *ring);
+int knet_ring_init(struct knet_ring *ring, sa_family_t family);
+void knet_ring_free(struct knet_ring *ring);
+ssize_t knet_ring_send(struct knet_ring *ring, const void *buf, size_t len);
 
 #endif

@@ -21,8 +21,7 @@ int knet_ring_listen(const struct sockaddr *addr_info, const size_t addr_len)
 	}
 
 	value = KNET_RING_RCVBUFF;
-	err = setsockopt(sockfd,
-			SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
+	err = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
 	if (err != 0) {
 		log_error("Unable to set receive buffer");
@@ -57,34 +56,27 @@ exit_fail:
 	return -1;
 }
 
-int knet_ring_connect(struct knet_ring *ring)
+int knet_ring_init(struct knet_ring *ring, sa_family_t family)
 {
+	memset(ring, 0, sizeof(struct knet_ring));
+
+	ring->info.ss_family = family;
 	ring->sockfd = socket(ring->info.ss_family, SOCK_DGRAM, 0);
 
-	if (ring->sockfd < 0) {
+	if (ring->sockfd < 0)
 		log_error("Unable create ring socket");
-		return ring->sockfd;
-	}
-
-	if (connect(ring->sockfd, (struct sockaddr *) &ring->info,
-						sizeof(ring->info)) != 0) {
-		log_error("Unable to connect ring socket");
-		goto exit_fail;
-	}
-
-	return ring->sockfd;
-
-exit_fail:
-	close(ring->sockfd);
-	ring->sockfd = -1;
 
 	return ring->sockfd;
 }
 
-void knet_ring_disconnect(struct knet_ring *ring)
+void knet_ring_free(struct knet_ring *ring)
 {
-	if (ring->sockfd > 0) {
-		close(ring->sockfd);
-		ring->sockfd = -1;
-	}
+	if (ring->sockfd >= 0) close(ring->sockfd);
+	ring->sockfd = -1;
+}
+
+ssize_t knet_ring_send(struct knet_ring *ring, const void *buf, size_t len)
+{
+	return sendto(ring->sockfd, buf,
+		len, 0, (struct sockaddr *) &ring->info, sizeof(ring->info));
 }
