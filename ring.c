@@ -10,12 +10,11 @@
 #include "utils.h"
 
 
-int knet_ring_listen(const in_port_t port)
+int knet_ring_listen(const struct sockaddr *addr_info, const size_t addr_len)
 {
 	int err, sock, value;
-	struct sockaddr_in6 addr;
 
-	sock = socket(AF_INET6, SOCK_DGRAM, 0);
+	sock = socket(addr_info->sa_family, SOCK_DGRAM, 0);
 
 	if (sock < 0) {
 		log_error("Unable to open netsocket error");
@@ -34,7 +33,7 @@ int knet_ring_listen(const in_port_t port)
 
 	if (value < 0) {
 		log_error("Unable to get close-on-exec flag");
-		goto clean_fail;
+		goto exit_fail;
 	}
 
 	value |= FD_CLOEXEC;
@@ -42,32 +41,26 @@ int knet_ring_listen(const in_port_t port)
 
 	if (err < 0) {
 		log_error("Unable to set close-on-exec flag");
-		goto clean_fail;
+		goto exit_fail;
 	}
 
-	memset(&addr, 0, sizeof(addr));
-
-	addr.sin6_family = AF_INET6;
-	addr.sin6_port = ntohs(port);
-	memcpy(&addr.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
-
-	err = bind(sock, (struct sockaddr *) &addr, sizeof(addr));
+	err = bind(sock, (struct sockaddr *) addr_info, addr_len);
 
 	if (err < 0) {
-		log_error("Unable to bind to netsocket");
-		goto clean_fail;
+		log_error("Unable to bind to ring socket");
+		goto exit_fail;
 	}
 
 	return sock;
 
-clean_fail:
+exit_fail:
 	close(sock);
 	return -1;
 }
 
 int knet_ring_connect(struct knet_ring *ring)
 {
-	ring->sock = socket(ring->info.sa_family, SOCK_DGRAM, 0);
+	ring->sock = socket(ring->info.ss_family, SOCK_DGRAM, 0);
 
 	if (ring->sock < 0) {
 		log_error("Unable create ring socket");
@@ -77,12 +70,12 @@ int knet_ring_connect(struct knet_ring *ring)
 	if (connect(ring->sock, (struct sockaddr *) &ring->info,
 						sizeof(ring->info)) != 0) {
 		log_error("Unable to connect ring socket");
-		goto clean_fail;
+		goto exit_fail;
 	}
 
 	return ring->sock;
 
-clean_fail:
+exit_fail:
 	close(ring->sock);
 	ring->sock = -1;
 

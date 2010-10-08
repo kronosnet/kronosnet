@@ -38,11 +38,17 @@ static int wait_data(int sock, time_t sec)
 int main(void)
 {
 	int sock_srv, sock_cli, err;
-	char recv_buf[64];
+	char recv_buff[64];
 	struct knet_ring *test_ring;
+	struct sockaddr_in *ring_in, ring_listen;
+
+	ring_listen.sin_family = AF_INET;
+	ring_listen.sin_port = htons(KNET_RING_DEFPORT);
+	ring_listen.sin_addr.s_addr = INADDR_ANY;
 
 	log_info("Opening ring socket");
-	sock_srv = knet_ring_listen(KNET_RING_DEFPORT);
+	sock_srv = knet_ring_listen(
+			(struct sockaddr *) &ring_listen, sizeof(ring_listen));
 
 	if (sock_srv < 0) {
 		log_error("Unable to open ring socket");
@@ -57,9 +63,12 @@ int main(void)
 		exit(-1);
 	}
 
-	test_ring->info.sa_family = AF_INET;
-	test_ring->info.in.sin_port = htons(KNET_RING_DEFPORT);
-	test_ring->info.in.sin_addr.s_addr = 0x0100007f; /*localhost */
+	memset(test_ring, 0, sizeof(struct knet_ring));
+	ring_in = (struct sockaddr_in *) &test_ring->info;
+
+	ring_in->sin_family = AF_INET;
+	ring_in->sin_port = htons(KNET_RING_DEFPORT);
+	ring_in->sin_addr.s_addr = 0x0100007f; /*localhost */
 
 	log_info("Connecting ring socket");
 	sock_cli = knet_ring_connect(test_ring);
@@ -86,7 +95,7 @@ int main(void)
 	}
 
 	log_info("Reading data from socket");
-	err = read(sock_srv, recv_buf, sizeof(recv_buf));
+	err = read(sock_srv, recv_buff, sizeof(recv_buff));
 
 	if (err != sizeof(test_msg)) {
 		log_error("Unable to read from ring socket");
@@ -94,7 +103,7 @@ int main(void)
 	}
 
 	log_info("Comparing sent data and received data");
-	if (memcmp(test_msg, recv_buf, sizeof(test_msg)) != 0) {
+	if (memcmp(test_msg, recv_buff, sizeof(test_msg)) != 0) {
 		errno = EINVAL;
 		log_error("Received message mismatch");
 		exit(-1);
