@@ -77,5 +77,6 @@ void knet_ring_free(struct knet_ring *ring)
 
 inline ssize_t knet_ring_send(struct knet_ring *ring, struct knet_frame *frame, size_t len)
 {
-	return sendto(ring->sockfd, frame, len, 0, (struct sockaddr *) &ring->info, len);
+	return sendto(ring->sockfd, frame, len,	MSG_DONTWAIT,
+		(struct sockaddr *) &ring->info, sizeof(ring->info));
 }

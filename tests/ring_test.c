@@ -7,48 +7,22 @@
 #include "ring.h"
 #include "utils.h"
 
-/*
-static int wait_data(int sock, time_t sec)
-{
-	int err;
-	fd_set rfds;
-	struct timeval tv;
-
-	tv.tv_sec = sec;
-	tv.tv_usec = 0;
-
-	FD_ZERO(&rfds);
-	FD_SET(sock, &rfds);
-
-	err = select(sock + 1, &rfds, NULL, NULL, &tv);
-
-	if (err == -1) {
-		log_error("Unable to wait for data");
-		exit(-1);
-	} else if (FD_ISSET(sock, &rfds)) {
-		return 0;
-	}
-
-	errno = ENODATA;
-	return -1;
-}
-*/
 int main(void)
 {
-	int sock_srv, err;
+	int srv_sockfd, err;
+	struct sockaddr_in *ring_in, srv_sa;
 	struct knet_ring *test_ring;
 	struct knet_frame *send_frame, *recv_frame;
-	struct sockaddr_in *ring_in, ring_listen;
 
-	ring_listen.sin_family = AF_INET;
-	ring_listen.sin_port = htons(KNET_RING_DEFPORT);
-	ring_listen.sin_addr.s_addr = htonl(INADDR_ANY);
+	srv_sa.sin_family = AF_INET;
+	srv_sa.sin_port = htons(KNET_RING_DEFPORT );
+	srv_sa.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	log_info("Opening ring socket");
-	sock_srv = knet_ring_listen(
-			(struct sockaddr *) &ring_listen, sizeof(ring_listen));
+	srv_sockfd = knet_ring_listen(
+			(struct sockaddr *) &srv_sa, sizeof(srv_sa));
 
-	if (sock_srv < 0) {
+	if (srv_sockfd < 0) {
 		log_error("Unable to open ring socket");
 		exit(-1);
 	}
@@ -92,9 +66,12 @@ int main(void)
 		exit(-1);
 	}
 
+	log_info("Waiting for delivery");
+	usleep(100000); /* wait 0.1 seconds */
+
 	log_info("Reading data from socket");
-	err = recvfrom(sock_srv, recv_frame,
-			sizeof(struct knet_frame), MSG_DONTWAIT, 0, 0);
+	err = recv(srv_sockfd,
+			recv_frame, sizeof(struct knet_frame), MSG_DONTWAIT);
 
 	if (err != sizeof(struct knet_frame)) {
 		log_error("Unable to read from ring socket");
@@ -109,7 +86,7 @@ int main(void)
 	}
 
 	log_info("Closing sockets");
-	close(sock_srv);
+	close(srv_sockfd);
 	knet_ring_free(test_ring);
 
 	return 0;
