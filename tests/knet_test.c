@@ -312,6 +312,59 @@ out_clean:
 	return err;
 }
 
+static int check_knet_up_down(void)
+{
+	char device_name[IFNAMSIZ];
+	size_t size = IFNAMSIZ;
+	int knet_fd, err=0;
+
+	log_info("Testing interface up/down");
+
+	memset(device_name, 0, size);
+	strncpy(device_name, "kronostest", size);
+	knet_fd = knet_open(device_name, size);
+	if (knet_fd < 0) {
+		log_error("Unable to init %s.", device_name);
+		return -1;
+	}
+
+	log_info("Put the interface up");
+
+	if (knet_set_up() < 0) {
+		log_error("Unable to set interface up");
+		err = -1;
+		goto out_clean;
+	}
+
+	if (knet_execute_shell("ip addr show dev kronostest | grep -q UP") < 0) {
+		log_error("Unable to verify inteface UP");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Put the interface down");
+
+	if (knet_set_down() < 0) {
+		log_error("Unable to put the interface down");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("A shell error here is NORMAL");
+
+	if (!knet_execute_shell("ifconfig kronostest | grep -q UP")) {
+		log_error("Unable to verify inteface DOWN");
+		err = -1;
+		goto out_clean;
+	}
+
+out_clean:
+
+	knet_close(knet_fd);
+
+	return err;
+}
+
 int main(void)
 {
 	if (check_knet_open_close() < 0)
@@ -324,6 +377,9 @@ int main(void)
 		return -1;
 
 	if (check_knet_execute_shell() < 0)
+		return -1;
+
+	if (check_knet_up_down() < 0)
 		return -1;
 
 	return 0;

@@ -120,6 +120,18 @@ int knet_set_mac(const struct ether_addr *mac)
 	return ioctl(knet_sockfd, SIOCSIFHWADDR, &ifr);
 }
 
+int knet_set_up(void)
+{
+	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+	return ioctl(knet_sockfd, SIOCSIFFLAGS, &ifr);
+}
+
+int knet_set_down(void)
+{
+	ifr.ifr_flags &= ~IFF_UP;
+	return ioctl(knet_sockfd, SIOCSIFFLAGS, &ifr);
+}
+
 STATIC int knet_read_pipe(int fd, char **file, size_t *length)
 {
 	char buf[4096];
