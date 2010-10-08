@@ -7,8 +7,7 @@
 #include "ring.h"
 #include "utils.h"
 
-static char test_msg[] = "HelloWorld01234567890";
-
+/*
 static int wait_data(int sock, time_t sec)
 {
 	int err;
@@ -33,12 +32,12 @@ static int wait_data(int sock, time_t sec)
 	errno = ENODATA;
 	return -1;
 }
-
+*/
 int main(void)
 {
 	int sock_srv, err;
-	char recv_buff[64];
 	struct knet_ring *test_ring;
+	struct knet_frame *send_frame, *recv_frame;
 	struct sockaddr_in *ring_in, ring_listen;
 
 	ring_listen.sin_family = AF_INET;
@@ -67,34 +66,43 @@ int main(void)
 	ring_in = (struct sockaddr_in *) &test_ring->info;
 
 	ring_in->sin_port = htons(KNET_RING_DEFPORT);
-	ring_in->sin_addr.s_addr = htonl(INADDR_LOOPBACK); /*localhost */
+	ring_in->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+	log_info("Allocating new send/recv knet frames");
+	send_frame = alloca(sizeof(struct knet_frame));
+	recv_frame = alloca(sizeof(struct knet_frame));
+
+	if ((send_frame == 0) || (recv_frame == 0)) {
+		log_error("Unable to allocate knet frames");
+		exit(-1);
+	}
+
+	memset(recv_frame, 0, sizeof(struct knet_frame));
+	memset(send_frame, 0, sizeof(struct knet_frame));
+
+	send_frame->magic = KNET_FRAME_MAGIC;
+	send_frame->version = KNET_FRAME_VERSION;
+	send_frame->type = KNET_FRAME_PING;
 
 	log_info("Writing to socket");
-	err = knet_ring_send(test_ring, test_msg, sizeof(test_msg));
+	err = knet_ring_send(test_ring, send_frame, sizeof(struct knet_frame));
 
-	if (err != sizeof(test_msg)) {
+	if (err != sizeof(struct knet_frame)) {
 		log_error("Unable to write to ring socket");
 		exit(-1);
 	}
 
-	log_info("Waiting data from socket");
-	err = wait_data(sock_srv, 2); /* 2 seconds timeout */
-
-	if (err != 0) {
-		log_error("Unable to deliver data over ring socket");
-		exit(-1);
-	}
-
 	log_info("Reading data from socket");
-	err = read(sock_srv, recv_buff, sizeof(recv_buff));
+	err = recvfrom(sock_srv, recv_frame,
+			sizeof(struct knet_frame), MSG_DONTWAIT, 0, 0);
 
-	if (err != sizeof(test_msg)) {
+	if (err != sizeof(struct knet_frame)) {
 		log_error("Unable to read from ring socket");
 		exit(-1);
 	}
 
 	log_info("Comparing sent data and received data");
-	if (memcmp(test_msg, recv_buff, sizeof(test_msg)) != 0) {
+	if (memcmp(send_frame, recv_frame, sizeof(struct knet_frame)) != 0) {
 		errno = EINVAL;
 		log_error("Received message mismatch");
 		exit(-1);
