@@ -34,27 +34,6 @@ static int tok_inaddrport(char *str, struct sockaddr_in *addr)
 	return inet_aton(strhost, &addr->sin_addr);
 }
 
-static int server_start(in_port_t port)
-{
-	int sockfd;
-	struct sockaddr_in srv_sa;
-
-	srv_sa.sin_family = AF_INET;
-	srv_sa.sin_port = htons(port);
-	srv_sa.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	log_info("Opening ring socket on port %u", port);
-	sockfd =
-	    knet_ring_listen((struct sockaddr *) &srv_sa, sizeof(srv_sa));
-
-	if (sockfd < 0) {
-		log_error("Unable to open ring socket");
-		exit(EXIT_FAILURE);
-	}
-
-	return sockfd;
-}
-
 static void wait_data_loop(int sockfd, time_t timeout)
 {
 	int err;
@@ -94,31 +73,60 @@ static void wait_data_loop(int sockfd, time_t timeout)
 
 static void print_usage(char *name)
 {
-	printf("usage: %s <port> <remoteip>[:port]\n", name);
+	printf("usage: %s <port> <remoteip>[:port] [...]\n", name);
 }
 
 int main(int argc, char *argv[])
 {
-	int srv_sockfd, err;
+	int err, i;
 	struct knet_ring ring;
-	struct sockaddr_in *ring_in;
+	struct knet_host *host;
 	struct knet_frame send_frame;
+	struct sockaddr_in *addrtmp;
 
-	if (argc != 3) {
+	if (argc < 3) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	srv_sockfd = server_start(tok_inport(argv[1]));
+	addrtmp = (struct sockaddr_in *) &ring.address;
 
-	ring_in = (struct sockaddr_in *) &ring.info;
-	ring.info.ss_family = AF_INET;
+	addrtmp->sin_family = AF_INET;
+	addrtmp->sin_addr.s_addr = htonl(INADDR_ANY);
+	addrtmp->sin_port = htons(tok_inport(argv[1]));
 
-	err = tok_inaddrport(argv[2], ring_in);
+	err = knet_ring_start(&ring);
 
 	if (err < 0) {
-		log_error("Unable to convert ip address: %s", argv[2]);
+		log_error("Unable to prepare server");
 		exit(EXIT_FAILURE);
+	}
+
+	ring.host = NULL;
+
+	for (i = 2; i < argc; i++) {
+		host = malloc(sizeof(struct knet_host));
+
+		if (host == NULL) {
+			log_error("Unable to allocate new knet_host");
+			exit(EXIT_FAILURE);
+		}
+
+		memset(host, 0, sizeof(struct knet_host));
+
+		/* push new host to the front */
+		host->next = ring.host;
+		ring.host = host;
+
+		addrtmp = (struct sockaddr_in *) &ring.host->address;
+		addrtmp->sin_family = AF_INET;
+
+		err = tok_inaddrport(argv[i], addrtmp);
+
+		if (err < 0) {
+			log_error("Unable to convert ip address: %s", argv[i]);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	send_frame.magic = KNET_FRAME_MAGIC;
@@ -128,20 +136,20 @@ int main(int argc, char *argv[])
 	while (1) {
 		log_info("Sending ping");
 
-		err =
-		    knet_ring_send(srv_sockfd, &ring, &send_frame,
-				   sizeof(send_frame));
+		err = knet_ring_send(&ring, &send_frame, sizeof(send_frame));
 
 		if (err != sizeof(struct knet_frame)) {
 			log_error("Unable to send ping");
 			exit(EXIT_FAILURE);
 		}
 
-		wait_data_loop(srv_sockfd, 5);	/* wait data for 5 seconds */
+		wait_data_loop(ring.sockfd, 5); /* wait data for 5 seconds */
 	}
 
+	/* FIXME: allocated hosts should be free'd */
+
 	log_info("Closing sockets");
-	close(srv_sockfd);
+	knet_ring_stop(&ring);
 
 	return 0;
 }

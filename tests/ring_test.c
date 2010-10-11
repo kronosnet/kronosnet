@@ -9,58 +9,50 @@
 
 int main(int argc, char *argv[])
 {
-	int srv_sockfd, err;
-	struct sockaddr_in *ring_in, srv_sa;
-	struct knet_ring *test_ring;
-	struct knet_frame *send_frame, *recv_frame;
+	int err;
+	struct sockaddr_in *addrtmp;
+	struct knet_ring ring;
+	struct knet_frame send_frame, recv_frame;
 
-	srv_sa.sin_family = AF_INET;
-	srv_sa.sin_port = htons(KNET_RING_DEFPORT);
-	srv_sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	addrtmp = (struct sockaddr_in *) &ring.address;
+
+	addrtmp->sin_family = AF_INET;
+	addrtmp->sin_addr.s_addr = htonl(INADDR_ANY);
+	addrtmp->sin_port = htons(KNET_RING_DEFPORT);
 
 	log_info("Opening ring socket");
-	srv_sockfd = knet_ring_listen(
-			(struct sockaddr *) &srv_sa, sizeof(srv_sa));
+	err = knet_ring_start(&ring);
 
-	if (srv_sockfd < 0) {
+	if (err < 0) {
 		log_error("Unable to open ring socket");
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Allocating new ring");
-	test_ring = alloca(sizeof(struct knet_ring));
+	log_info("Allocating new knet_host");
+	ring.host = malloc(sizeof(struct knet_host));
 
-	if (test_ring == NULL) {
+	if (ring.host == NULL) {
 		log_error("Unable to allocate ring");
 		exit(EXIT_FAILURE);
 	}
 
-	memset(test_ring, 0, sizeof(struct knet_ring));
-	ring_in = (struct sockaddr_in *) &test_ring->info;
+	memset(ring.host, 0, sizeof(struct knet_host));
 
-	ring_in->sin_family = AF_INET;
-	ring_in->sin_port = htons(KNET_RING_DEFPORT);
-	ring_in->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	addrtmp = (struct sockaddr_in *) &ring.host->address;
 
-	log_info("Allocating new send/recv knet frames");
-	send_frame = alloca(sizeof(struct knet_frame));
-	recv_frame = alloca(sizeof(struct knet_frame));
+	addrtmp->sin_family = AF_INET;
+	addrtmp->sin_port = htons(KNET_RING_DEFPORT);
+	addrtmp->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	if ((send_frame == NULL) || (recv_frame == NULL)) {
-		log_error("Unable to allocate knet frames");
-		exit(EXIT_FAILURE);
-	}
+	memset(&recv_frame, 0, sizeof(struct knet_frame));
+	memset(&send_frame, 0, sizeof(struct knet_frame));
 
-	memset(recv_frame, 0, sizeof(struct knet_frame));
-	memset(send_frame, 0, sizeof(struct knet_frame));
-
-	send_frame->magic = KNET_FRAME_MAGIC;
-	send_frame->version = KNET_FRAME_VERSION;
-	send_frame->type = KNET_FRAME_PING;
+	send_frame.magic = KNET_FRAME_MAGIC;
+	send_frame.version = KNET_FRAME_VERSION;
+	send_frame.type = KNET_FRAME_PING;
 
 	log_info("Writing to socket");
-	err = knet_ring_send(srv_sockfd,
-			test_ring, send_frame, sizeof(struct knet_frame));
+	err = knet_ring_send(&ring, &send_frame, sizeof(struct knet_frame));
 
 	if (err != sizeof(struct knet_frame)) {
 		log_error("Unable to write to ring socket");
@@ -71,8 +63,8 @@ int main(int argc, char *argv[])
 	usleep(100000); /* wait 0.1 seconds */
 
 	log_info("Reading data from socket");
-	err = recv(srv_sockfd,
-			recv_frame, sizeof(struct knet_frame), MSG_DONTWAIT);
+	err = recv(ring.sockfd,
+			&recv_frame, sizeof(struct knet_frame), MSG_DONTWAIT);
 
 	if (err != sizeof(struct knet_frame)) {
 		log_error("Unable to read from ring socket");
@@ -80,14 +72,17 @@ int main(int argc, char *argv[])
 	}
 
 	log_info("Comparing sent data and received data");
-	if (memcmp(send_frame, recv_frame, sizeof(struct knet_frame)) != 0) {
+	if (memcmp(&send_frame, &recv_frame, sizeof(struct knet_frame)) != 0) {
 		errno = EINVAL;
 		log_error("Received message mismatch");
 		exit(EXIT_FAILURE);
 	}
 
 	log_info("Closing sockets");
-	close(srv_sockfd);
+	knet_ring_stop(&ring);
+
+	free(ring.host);
+	ring.host = NULL;
 
 	return 0;
 }
