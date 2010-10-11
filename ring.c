@@ -56,27 +56,8 @@ exit_fail:
 	return -1;
 }
 
-int knet_ring_init(struct knet_ring *ring, sa_family_t family)
+inline ssize_t knet_ring_send(int sockfd, struct knet_ring *ring, struct knet_frame *frame, size_t len)
 {
-	memset(ring, 0, sizeof(struct knet_ring));
-
-	ring->info.ss_family = family;
-	ring->sockfd = socket(ring->info.ss_family, SOCK_DGRAM, 0);
-
-	if (ring->sockfd < 0)
-		log_error("Unable create ring socket");
-
-	return ring->sockfd;
-}
-
-void knet_ring_free(struct knet_ring *ring)
-{
-	if (ring->sockfd >= 0) close(ring->sockfd);
-	ring->sockfd = -1;
-}
-
-inline ssize_t knet_ring_send(struct knet_ring *ring, struct knet_frame *frame, size_t len)
-{
-	return sendto(ring->sockfd, frame, len,	MSG_DONTWAIT,
+	return sendto(sockfd, frame, len, MSG_DONTWAIT,
 		(struct sockaddr *) &ring->info, sizeof(ring->info));
 }

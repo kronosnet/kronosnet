@@ -11,7 +11,6 @@
 #define KNET_RING_FLOAT   0x02
 
 struct knet_ring {
-	int sockfd;
 	int flags;
 	struct sockaddr_storage info;
 	struct knet_ring *next;
@@ -30,9 +29,7 @@ struct knet_frame {
 	uint32_t __pad;
 } __attribute__((packed));
 
-int knet_ring_listen(const struct sockaddr *addr_info, const size_t addr_len);
-int knet_ring_init(struct knet_ring *ring, sa_family_t family);
-void knet_ring_free(struct knet_ring *ring);
-inline ssize_t knet_ring_send(struct knet_ring *ring, struct knet_frame *frame, size_t len);
+int knet_ring_listen(const struct sockaddr *addr_info, size_t addr_len);
+inline ssize_t knet_ring_send(int sockfd, struct knet_ring *ring, struct knet_frame *frame, size_t len);
 
 #endif
