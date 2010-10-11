@@ -6,7 +6,8 @@ check-valgrind: $(check_PROGRAMS)
 	$(MAKE) TESTS_ENVIRONMENT="$(VALGRIND)" check
 
 noinst_PROGRAMS = \
-		  ping_test
+		  ping_test \
+		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
 		  knet_test \
