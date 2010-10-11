@@ -65,6 +65,9 @@ check_lib_no_libs() {
         LIBS=$ac_check_lib_save_LIBS
 }
 
+# Checks for C features
+AC_C_INLINE
+
 # Checks for libraries.
 
 # Checks for header files.
@@ -76,10 +79,14 @@ AC_CHECK_HEADERS([syslog.h])
 AC_CHECK_HEADERS([unistd.h])
 AC_CHECK_HEADERS([netinet/in.h])
 AC_CHECK_HEADERS([sys/socket.h])
+AC_CHECK_HEADERS([arpa/inet.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 AC_TYPE_PID_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
 
 # Checks for library functions.
 AC_FUNC_ALLOCA
