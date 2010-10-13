@@ -9,127 +9,184 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <net/if.h>
 #include <linux/if_tun.h>
 #include <net/ethernet.h>
+#include <netinet/ether.h>
 
 #include "utils.h"
 #include "knet.h"
 
 STATIC int knet_sockfd = 0;
-STATIC struct ifreq ifr;
+STATIC int knet_sockfd6 = 0;
 
 /* forward declarations */
 STATIC int knet_execute_shell(const char *command);
 STATIC int knet_read_pipe(int fd, char **file, size_t *length);
 
-int knet_open(char *dev, size_t dev_size)
+struct knet_eth *knet_open(char *dev, size_t dev_size)
 {
-	int fd, err;
+	int err;
+	struct knet_eth *knet_eth;
 
 	if (dev == NULL) {
 		errno = EINVAL;
-		return -1;
+		return NULL;
 	}
 
 	if (dev_size < IFNAMSIZ) {
 		errno = EINVAL;
-		return -1;
+		return NULL;
 	}
 
 	if (strlen(dev) > IFNAMSIZ) {
 		errno = E2BIG;
-		return -1;
+		return NULL;
 	}
 
-	if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
+	knet_eth = malloc(sizeof(struct knet_eth));
+	if (!knet_eth)
+		return NULL;
+
+	memset(knet_eth, 0, sizeof(struct knet_eth));
+
+	if ((knet_eth->knet_etherfd = open("/dev/net/tun", O_RDWR)) < 0) {
 		errno = ENOENT;
-		return -1;
+		free(knet_eth);
+		return NULL;
 	}
 
-	memset(&ifr, 0, sizeof(ifr));
+	strncpy(knet_eth->ifr.ifr_name, dev, IFNAMSIZ);
+	knet_eth->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-
-	strncpy(ifr.ifr_name, dev, IFNAMSIZ);
-
-	if ((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0) {
-		close(fd);
-		return err;
+	if ((err = ioctl(knet_eth->knet_etherfd, TUNSETIFF, (void *)&knet_eth->ifr)) < 0) {
+		close(knet_eth->knet_etherfd);
+		free(knet_eth);
+		return NULL;
 	}
 
-	strcpy(dev, ifr.ifr_name);
+	strcpy(dev, knet_eth->ifr.ifr_name);
 
-	knet_sockfd =  socket(AF_INET, SOCK_STREAM, 0);
-	if (knet_sockfd < 0)
-		return knet_sockfd;
+	if (!knet_sockfd)
+		knet_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+			if (knet_sockfd < 0)
+				return NULL;
 
-	return fd;
+	if (!knet_sockfd6)
+		knet_sockfd6 = socket(AF_INET6, SOCK_STREAM, 0);
+			if (knet_sockfd6 < 0)
+				return NULL; 
+
+	return knet_eth;
 }
 
-int knet_close(int fd)
+void knet_close(struct knet_eth *knet_eth)
 {
-	close(knet_sockfd);
-	knet_sockfd = 0;
-	return close(fd);
+	if (!knet_eth)
+		return;
+
+	close(knet_eth->knet_etherfd);
+	free(knet_eth);
+	return;
 }
 
-int knet_get_mtu(void)
+int knet_get_mtu(const struct knet_eth *knet_eth)
 {
 	int err;
 
-	err = ioctl(knet_sockfd, SIOCGIFMTU, (void *)&ifr);
-	if (err)
-		return err;
-
-	return ifr.ifr_mtu;
-}
-
-int knet_set_mtu(const int mtu)
-{
-	ifr.ifr_mtu = mtu;
-
-	return ioctl(knet_sockfd, SIOCSIFMTU, (void *)&ifr);
-}
-
-int knet_get_mac(struct ether_addr *mac)
-{
-	int err;
-
-	if (!mac) {
+	if (!knet_eth) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	err = ioctl(knet_sockfd, SIOCGIFHWADDR, &ifr);
+	err = ioctl(knet_sockfd, SIOCGIFMTU, (void *)&knet_eth->ifr);
+	if (err)
+		return err;
 
-	memcpy(mac->ether_addr_octet, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+	return knet_eth->ifr.ifr_mtu;
+}
+
+int knet_set_mtu(struct knet_eth *knet_eth, const int mtu)
+{
+	int err, oldmtu;
+
+	if (!knet_eth) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	oldmtu = knet_eth->ifr.ifr_mtu;
+	knet_eth->ifr.ifr_mtu = mtu;
+
+	err = ioctl(knet_sockfd, SIOCSIFMTU, (void *)&knet_eth->ifr);
+	if (err)
+		knet_eth->ifr.ifr_mtu = oldmtu;
 
 	return err;
 }
 
-int knet_set_mac(const struct ether_addr *mac)
+int knet_get_mac(const struct knet_eth *knet_eth, char **ether_addr)
 {
-	if (!mac) {
+	int err;
+	char mac[18];
+
+	if ((!knet_eth) || (!ether_addr)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	memcpy(ifr.ifr_hwaddr.sa_data, mac->ether_addr_octet, ETH_ALEN);
+	err = ioctl(knet_sockfd, SIOCGIFHWADDR, &knet_eth->ifr);
+	if (err)
+		return err;
 
-	return ioctl(knet_sockfd, SIOCSIFHWADDR, &ifr);
+	ether_ntoa_r((struct ether_addr *)knet_eth->ifr.ifr_hwaddr.sa_data, mac);
+
+	*ether_addr = strdup(mac);
+	if (!*ether_addr)
+		return -1;
+
+	return 0;
 }
 
-int knet_set_up(void)
+int knet_set_mac(struct knet_eth *knet_eth, const char *ether_addr)
 {
-	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	return ioctl(knet_sockfd, SIOCSIFFLAGS, &ifr);
+	struct ether_addr oldmac;
+	int err;
+
+	if ((!knet_eth) || (!ether_addr)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	memcpy(&oldmac, knet_eth->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+	memcpy(knet_eth->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
+
+	err = ioctl(knet_sockfd, SIOCSIFHWADDR, &knet_eth->ifr);
+	if (err)
+		memcpy(knet_eth->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
+
+	return err;
 }
 
-int knet_set_down(void)
+int knet_set_up(struct knet_eth *knet_eth)
 {
-	ifr.ifr_flags &= ~IFF_UP;
-	return ioctl(knet_sockfd, SIOCSIFFLAGS, &ifr);
+	if (!knet_eth) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	knet_eth->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+	return ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
+}
+
+int knet_set_down(struct knet_eth *knet_eth)
+{
+	if (!knet_eth) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	knet_eth->ifr.ifr_flags &= ~IFF_UP;
+	return ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
 }
 
 STATIC int knet_read_pipe(int fd, char **file, size_t *length)
