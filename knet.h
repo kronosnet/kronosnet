@@ -23,4 +23,7 @@ int knet_set_mac(struct knet_eth *knet_eth, const char *ether_addr);
 int knet_set_up(struct knet_eth *knet_eth);
 int knet_set_down(struct knet_eth *knet_eth);
 
+int knet_set_ip(struct knet_eth *knet_eth, char *ip_addr);
+int knet_del_ip(struct knet_eth *knet_eth, char *ip_addr);
+
 #endif

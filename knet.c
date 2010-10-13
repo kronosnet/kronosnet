@@ -25,7 +25,6 @@ STATIC int knet_read_pipe(int fd, char **file, size_t *length);
 
 struct knet_eth *knet_open(char *dev, size_t dev_size)
 {
-	int err;
 	struct knet_eth *knet_eth;
 
 	if (dev == NULL) {
@@ -51,16 +50,15 @@ struct knet_eth *knet_open(char *dev, size_t dev_size)
 
 	if ((knet_eth->knet_etherfd = open("/dev/net/tun", O_RDWR)) < 0) {
 		errno = ENOENT;
-		free(knet_eth);
+		knet_close(knet_eth);
 		return NULL;
 	}
 
 	strncpy(knet_eth->ifr.ifr_name, dev, IFNAMSIZ);
 	knet_eth->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	if ((err = ioctl(knet_eth->knet_etherfd, TUNSETIFF, (void *)&knet_eth->ifr)) < 0) {
-		close(knet_eth->knet_etherfd);
-		free(knet_eth);
+	if (ioctl(knet_eth->knet_etherfd, TUNSETIFF, &knet_eth->ifr) < 0) {
+		knet_close(knet_eth);
 		return NULL;
 	}
 
@@ -76,6 +74,13 @@ struct knet_eth *knet_open(char *dev, size_t dev_size)
 			if (knet_sockfd6 < 0)
 				return NULL; 
 
+	if (ioctl(knet_sockfd, SIOGIFINDEX, &knet_eth->ifr) < 0) {
+		knet_close(knet_eth);
+		return NULL;
+	}
+
+	knet_eth->ifr6.ifr6_ifindex = knet_eth->ifr.ifr_ifindex;
+
 	return knet_eth;
 }
 
@@ -84,7 +89,9 @@ void knet_close(struct knet_eth *knet_eth)
 	if (!knet_eth)
 		return;
 
-	close(knet_eth->knet_etherfd);
+	if (knet_eth->knet_etherfd)
+		close(knet_eth->knet_etherfd);
+
 	free(knet_eth);
 	return;
 }
@@ -98,7 +105,7 @@ int knet_get_mtu(const struct knet_eth *knet_eth)
 		return -1;
 	}
 
-	err = ioctl(knet_sockfd, SIOCGIFMTU, (void *)&knet_eth->ifr);
+	err = ioctl(knet_sockfd, SIOCGIFMTU, &knet_eth->ifr);
 	if (err)
 		return err;
 
@@ -117,7 +124,7 @@ int knet_set_mtu(struct knet_eth *knet_eth, const int mtu)
 	oldmtu = knet_eth->ifr.ifr_mtu;
 	knet_eth->ifr.ifr_mtu = mtu;
 
-	err = ioctl(knet_sockfd, SIOCSIFMTU, (void *)&knet_eth->ifr);
+	err = ioctl(knet_sockfd, SIOCSIFMTU, &knet_eth->ifr);
 	if (err)
 		knet_eth->ifr.ifr_mtu = oldmtu;
 
@@ -187,6 +194,16 @@ int knet_set_down(struct knet_eth *knet_eth)
 
 	knet_eth->ifr.ifr_flags &= ~IFF_UP;
 	return ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
+}
+
+int knet_set_ip(struct knet_eth *knet_eth, char *ip_addr)
+{
+	return 0;
+}
+
+int knet_del_ip(struct knet_eth *knet_eth, char *ip_addr)
+{
+	return 0;
 }
 
 STATIC int knet_read_pipe(int fd, char **file, size_t *length)
