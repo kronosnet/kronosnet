@@ -3,30 +3,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/epoll.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 #include "ring.h"
 #include "utils.h"
 
-int knet_ring_start(struct knet_ring *ring)
+int knet_bind(struct sockaddr *address, socklen_t addrlen)
 {
-	int err, value;
+	int sockfd, err, value;
 
-	ring->sockfd = socket(ring->address.ss_family, SOCK_DGRAM, 0);
+	sockfd = socket(address->sa_family, SOCK_DGRAM, 0);
 
-	if (ring->sockfd < 0) {
+	if (sockfd < 0) {
 		log_error("Unable to open netsocket error");
-		return ring->sockfd;
+		return sockfd;
 	}
 
 	value = KNET_RING_RCVBUFF;
-	err = setsockopt(ring->sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
+	err = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
 	if (err != 0)
 		log_error("Unable to set receive buffer");
 
-	value = fcntl(ring->sockfd, F_GETFD, 0);
+	value = fcntl(sockfd, F_GETFD, 0);
 
 	if (value < 0) {
 		log_error("Unable to get close-on-exec flag");
@@ -34,50 +35,88 @@ int knet_ring_start(struct knet_ring *ring)
 	}
 
 	value |= FD_CLOEXEC;
-	err = fcntl(ring->sockfd, F_SETFD, value);
+	err = fcntl(sockfd, F_SETFD, value);
 
 	if (err < 0) {
 		log_error("Unable to set close-on-exec flag");
 		goto exit_fail;
 	}
 
-	err = bind(ring->sockfd, (struct sockaddr *) &ring->address, sizeof(ring->address));
+	err = bind(sockfd, address, addrlen);
 
 	if (err < 0) {
 		log_error("Unable to bind to ring socket");
 		goto exit_fail;
 	}
 
-	return ring->sockfd;
+	return sockfd;
 
 exit_fail:
-	knet_ring_stop(ring);
+	close(sockfd);
 	return -1;
 }
 
-void knet_ring_stop(struct knet_ring *ring)
+ssize_t knet_dispatch(int sockfd, struct knet_frame *frame, size_t len)
 {
-	if (ring->sockfd < 0)
-		return;
+	ssize_t ret;
+	struct sockaddr_storage address;
+	socklen_t addrlen;
 
-	close(ring->sockfd);
-	ring->sockfd = -1;
-}
+	addrlen = sizeof(struct sockaddr_storage);
 
-inline ssize_t knet_ring_send(struct knet_ring *ring, struct knet_frame *frame, size_t len)
-{
-	ssize_t err, retval;
-	struct knet_host *host;
+	ret = recvfrom(sockfd, frame,
+		len, MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
 
-	retval = len;
+	if (ret <= 0)
+		return ret;
 
-	for (host = ring->host; host != NULL; host = host->next) {
-		err = sendto(ring->sockfd, frame, len, 0,
-			(struct sockaddr *) &host->address, sizeof(struct sockaddr_storage));
-
-		if (err != len)
-			retval = err;
+	if (ret < sizeof(struct knet_frame)) {
+		errno = EBADMSG;
+		return -1;
 	}
 
-	return retval;
+	if (frame->magic != KNET_FRAME_MAGIC) {
+		errno = EBADMSG;
+		return -1;
+	}
+
+	if (frame->version != KNET_FRAME_VERSION) { /* TODO: versioning */
+		errno = EBADMSG;
+		return -1;
+	}
+
+	switch (frame->type) {
+	case KNET_FRAME_DATA:
+		return ret;
+	case KNET_FRAME_PING:
+		frame->type = KNET_FRAME_PONG;
+		sendto(sockfd, frame, ret, MSG_DONTWAIT, (struct sockaddr *) &address, addrlen);
+		return 0;
+	case KNET_FRAME_PONG:
+		/* TODO: find the link and mark enabled */
+		return ret;
+	}
+
+	errno = EBADMSG;
+	return -1;
+}
+
+void knet_send(struct knet_host *host, struct knet_frame *frame, size_t len)
+{
+	ssize_t err;
+	struct knet_host *khp;
+	struct knet_link *klp;
+
+	for (khp = host; khp != NULL; khp = khp->next) {
+		for (klp = khp->link; klp != NULL; klp = klp->next) {
+			if ((frame->type == KNET_FRAME_DATA) && (!klp->enabled))
+				continue;
+
+			err = sendto(klp->sock, frame, len, MSG_DONTWAIT,
+				(struct sockaddr *) &klp->address, sizeof(struct sockaddr_storage));
+
+			if ((frame->type == KNET_FRAME_DATA) && (!khp->active) && (err == len))
+				break;
+		}
+	}
 }

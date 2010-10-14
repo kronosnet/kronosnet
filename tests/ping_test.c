@@ -9,6 +9,8 @@
 #include "ring.h"
 #include "utils.h"
 
+struct knet_host *host_head = NULL;
+
 static in_port_t tok_inport(char *str)
 {
 	int value = atoi(str);
@@ -39,6 +41,7 @@ static void wait_data_loop(int sockfd, time_t timeout)
 	int err;
 	fd_set rfds;
 	struct timeval tv;
+	ssize_t len;
 	struct knet_frame recv_frame;
 
 	tv.tv_sec = timeout;
@@ -57,54 +60,49 @@ static void wait_data_loop(int sockfd, time_t timeout)
 			continue;
 		}
 
-		err =
-		    recv(sockfd, &recv_frame, sizeof(recv_frame),
-			 MSG_DONTWAIT);
+		len = knet_dispatch(sockfd, &recv_frame, sizeof(struct knet_frame));
 
-		if (err != sizeof(recv_frame)) {
-			if (errno == 0)
-				errno = EBADMSG;
-			log_error("Received ping was too short");
-		} else {
-			log_info("Ping successfully received!");
+		if ((len > 0) && (recv_frame.type == KNET_FRAME_PONG)) {
+			log_info("Pong received!");
 		}
 	}
 }
 
 static void print_usage(char *name)
 {
-	printf("usage: %s <port> <remoteip>[:port] [...]\n", name);
+	printf("usage: %s <localip>[:<port>] <remoteip>[:port] [...]\n", name);
+	printf("example: %s 0.0.0.0 192.168.0.2\n", name);
 }
 
-int main(int argc, char *argv[])
+static int start_server(char *addrstring)
 {
-	int err, i;
-	struct knet_ring ring;
-	struct knet_host *host;
-	struct knet_frame send_frame;
-	struct sockaddr_in *addrtmp;
+	int err, sockfd;
+	struct sockaddr_in address;
 
-	if (argc < 3) {
-		print_usage(argv[0]);
-		exit(EXIT_FAILURE);
-	}
-
-	addrtmp = (struct sockaddr_in *) &ring.address;
-
-	addrtmp->sin_family = AF_INET;
-	addrtmp->sin_addr.s_addr = htonl(INADDR_ANY);
-	addrtmp->sin_port = htons(tok_inport(argv[1]));
-
-	err = knet_ring_start(&ring);
+	address.sin_family = AF_INET;
+	err = tok_inaddrport(addrstring, &address);
 
 	if (err < 0) {
-		log_error("Unable to prepare server");
+		log_error("Unable to convert ip address: %s", addrstring);
 		exit(EXIT_FAILURE);
 	}
 
-	ring.host = NULL;
+	sockfd = knet_bind((struct sockaddr *) &address, sizeof(struct sockaddr_in));
 
-	for (i = 2; i < argc; i++) {
+	if (sockfd < 0) {
+		log_error("Unable to bind knet");
+		exit(EXIT_FAILURE);
+	}
+
+	return sockfd;
+}
+
+static void create_hosts(int sockfd, int hostnum, char *hoststring[])
+{
+	int err, i;
+	struct knet_host *host;
+
+	for (i = 0; i < hostnum; i++) {
 		host = malloc(sizeof(struct knet_host));
 
 		if (host == NULL) {
@@ -114,42 +112,55 @@ int main(int argc, char *argv[])
 
 		memset(host, 0, sizeof(struct knet_host));
 
-		/* push new host to the front */
-		host->next = ring.host;
-		ring.host = host;
+		host->link = malloc(sizeof(struct knet_link));
 
-		addrtmp = (struct sockaddr_in *) &ring.host->address;
-		addrtmp->sin_family = AF_INET;
-
-		err = tok_inaddrport(argv[i], addrtmp);
-
-		if (err < 0) {
-			log_error("Unable to convert ip address: %s", argv[i]);
+		if (host->link == NULL) {
+			log_error("Unable to allocate new knet_link");
 			exit(EXIT_FAILURE);
 		}
+
+		memset(host->link, 0, sizeof(struct knet_link));
+
+		host->link->sock = sockfd;
+		host->link->address.ss_family = AF_INET;
+
+		err = tok_inaddrport(hoststring[i], (struct sockaddr_in *) &host->link->address);
+
+		if (err < 0) {
+			log_error("Unable to convert ip address: %s", hoststring[i]);
+			exit(EXIT_FAILURE);
+		}
+
+		host->next = host_head;
+		host_head = host;
 	}
+}
+
+int main(int argc, char *argv[])
+{
+	int sockfd;
+	struct knet_frame send_frame;
+
+	if (argc < 3) {
+		print_usage(argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	sockfd = start_server(argv[1]);
+	create_hosts(sockfd, argc - 2, &argv[2]);
 
 	send_frame.magic = KNET_FRAME_MAGIC;
 	send_frame.version = KNET_FRAME_VERSION;
 	send_frame.type = KNET_FRAME_PING;
 
 	while (1) {
-		log_info("Sending ping");
+		log_info("Sending pings");
 
-		err = knet_ring_send(&ring, &send_frame, sizeof(send_frame));
-
-		if (err != sizeof(struct knet_frame)) {
-			log_error("Unable to send ping");
-			exit(EXIT_FAILURE);
-		}
-
-		wait_data_loop(ring.sockfd, 5); /* wait data for 5 seconds */
+		knet_send(host_head, &send_frame, sizeof(struct knet_frame));
+		wait_data_loop(sockfd, 5); /* wait data for 5 seconds */
 	}
 
 	/* FIXME: allocated hosts should be free'd */
-
-	log_info("Closing sockets");
-	knet_ring_stop(&ring);
 
 	return 0;
 }
