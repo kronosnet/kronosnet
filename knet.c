@@ -12,16 +12,19 @@
 #include <linux/if_tun.h>
 #include <net/ethernet.h>
 #include <netinet/ether.h>
+#include <arpa/inet.h>
 
 #include "utils.h"
 #include "knet.h"
 
 STATIC int knet_sockfd = 0;
-STATIC int knet_sockfd6 = 0;
 
 /* forward declarations */
 STATIC int knet_execute_shell(const char *command);
 STATIC int knet_read_pipe(int fd, char **file, size_t *length);
+STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix);
+STATIC int knet_set_ip(struct knet_eth *knet_eth, const char *command,
+		       const char *ip_addr, const char *prefix);
 
 struct knet_eth *knet_open(char *dev, size_t dev_size)
 {
@@ -69,17 +72,10 @@ struct knet_eth *knet_open(char *dev, size_t dev_size)
 			if (knet_sockfd < 0)
 				return NULL;
 
-	if (!knet_sockfd6)
-		knet_sockfd6 = socket(AF_INET6, SOCK_STREAM, 0);
-			if (knet_sockfd6 < 0)
-				return NULL; 
-
 	if (ioctl(knet_sockfd, SIOGIFINDEX, &knet_eth->ifr) < 0) {
 		knet_close(knet_eth);
 		return NULL;
 	}
-
-	knet_eth->ifr6.ifr6_ifindex = knet_eth->ifr.ifr_ifindex;
 
 	return knet_eth;
 }
@@ -196,14 +192,74 @@ int knet_set_down(struct knet_eth *knet_eth)
 	return ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
 }
 
-int knet_set_ip(struct knet_eth *knet_eth, char *ip_addr)
+STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix)
 {
-	return 0;
+	int prefix_len;
+	struct in_addr mask;
+	struct in_addr broadcast;
+	struct in_addr address;
+
+	prefix_len = atoi(prefix);
+
+	if ((prefix_len > 32) || (prefix_len < 0))
+		return NULL;
+
+	if (inet_pton(AF_INET, ip_addr, &address) <= 0)
+		return NULL;
+
+	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
+
+	memset(&broadcast, 0, sizeof(broadcast));
+	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
+
+	return strdup(inet_ntoa(broadcast));
 }
 
-int knet_del_ip(struct knet_eth *knet_eth, char *ip_addr)
+STATIC int knet_set_ip(struct knet_eth *knet_eth, const char *command,
+		       const char *ip_addr, const char *prefix)
 {
-	return 0;
+	char *broadcast = NULL;
+	char cmdline[4096];
+
+	if ((!knet_eth) || (!ip_addr) || (!prefix) || (!command)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!strchr(ip_addr, ':')) {
+		broadcast = knet_get_v4_broadcast(ip_addr, prefix);
+		if (!broadcast) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+
+	memset(cmdline, 0, sizeof(cmdline));
+
+	if (broadcast) {
+		snprintf(cmdline, sizeof(cmdline)-1,
+			"ip addr %s %s/%s dev %s broadcast %s",
+			 command, ip_addr, prefix,
+			 knet_eth->ifr.ifr_name, broadcast);
+		free(broadcast);
+	} else {
+		snprintf(cmdline, sizeof(cmdline)-1,
+			"ip addr %s %s/%s dev %s",
+			command, ip_addr, prefix,
+			knet_eth->ifr.ifr_name);
+	}
+
+	return knet_execute_shell(cmdline);
+}
+
+int knet_add_ip(struct knet_eth *knet_eth, const char *ip_addr, const char *prefix)
+{
+	return knet_set_ip(knet_eth, "add", ip_addr, prefix);
+}
+
+int knet_del_ip(struct knet_eth *knet_eth, const char *ip_addr, const char *prefix)
+{
+	return knet_set_ip(knet_eth, "del", ip_addr, prefix);
 }
 
 STATIC int knet_read_pipe(int fd, char **file, size_t *length)

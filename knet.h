@@ -3,11 +3,9 @@
 
 #include <stdlib.h>
 #include <net/if.h>
-#include <linux/ipv6.h>
 
 struct knet_eth {
 	struct ifreq ifr;
-	struct in6_ifreq ifr6;
 	int knet_etherfd;
 };
 
@@ -23,7 +21,9 @@ int knet_set_mac(struct knet_eth *knet_eth, const char *ether_addr);
 int knet_set_up(struct knet_eth *knet_eth);
 int knet_set_down(struct knet_eth *knet_eth);
 
-int knet_set_ip(struct knet_eth *knet_eth, char *ip_addr);
-int knet_del_ip(struct knet_eth *knet_eth, char *ip_addr);
+int knet_add_ip(struct knet_eth *knet_eth, const char *ip_addr,
+		const char *prefix);
+int knet_del_ip(struct knet_eth *knet_eth, const char *ip_addr,
+		const char *prefix);
 
 #endif

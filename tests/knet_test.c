@@ -13,7 +13,6 @@
 #include "utils.h"
 
 extern int knet_sockfd;
-extern int knet_sockfd6;
 int knet_execute_shell(const char *);
 
 static int is_if_in_system(char *name)
@@ -58,8 +57,6 @@ static int test_iface(char *name, size_t size)
 	if (!knet_eth) {
 		if (knet_sockfd < 0)
 			log_error("Unable to open knet_socket");
-		if (knet_sockfd6 < 0)
-			log_error("Unable to open knet_socket6");
 		log_error("Unable to open knet.");
 		if (oldname)
 			free(oldname);
@@ -493,6 +490,90 @@ out_clean:
 	return err;
 }
 
+static int check_knet_set_del_ip(void)
+{
+	char device_name[IFNAMSIZ];
+	size_t size = IFNAMSIZ;
+	int err=0;
+	struct knet_eth *knet_eth;
+
+	log_info("Testing interface add/remove ip");
+
+	memset(device_name, 0, size);
+	strncpy(device_name, "kronostest", size);
+	knet_eth = knet_open(device_name, size);
+	if (!knet_eth) {
+		log_error("Unable to init %s.", device_name);
+		return -1;
+	}
+
+	log_info("Adding ip: 192.168.168.168/24");
+
+	if (knet_add_ip(knet_eth, "192.168.168.168", "24") < 0) {
+		log_error("Unable to assign IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Checking ip: 192.168.168.168/24");
+
+	if (knet_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24")) {
+		log_error("Unable to verify IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Deleting ip: 192.168.168.168/24");
+
+	if (knet_del_ip(knet_eth, "192.168.168.168", "24") < 0) {
+		log_error("Unable to delete IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("A shell error here is NORMAL");
+	if (!knet_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24")) {
+		log_error("Unable to verify IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Adding ip: 3ffe::1/64");
+
+	if (knet_add_ip(knet_eth, "3ffe::1", "64") < 0) {
+		log_error("Unable to assign IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	if (knet_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64")) {
+		log_error("Unable to verify IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Deleting ip: 3ffe::1/64");
+
+	if (knet_del_ip(knet_eth, "3ffe::1", "64") < 0) {
+		log_error("Unable to delete IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("A shell error here is NORMAL");
+	if (!knet_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64")) {
+		log_error("Unable to verify IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+out_clean:
+
+	knet_close(knet_eth);
+
+	return err;
+}
+
 int main(void)
 {
 	if (check_knet_open_close() < 0)
@@ -511,6 +592,9 @@ int main(void)
 		return -1;
 
 	if (check_knet_up_down() < 0)
+		return -1;
+
+	if (check_knet_set_del_ip() < 0)
 		return -1;
 
 	return 0;
