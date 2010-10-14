@@ -13,18 +13,20 @@
 #include <net/ethernet.h>
 #include <netinet/ether.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "utils.h"
 #include "knet.h"
 
 STATIC int knet_sockfd = 0;
+STATIC pthread_mutex_t knet_eth_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
-STATIC int knet_execute_shell(const char *command);
 STATIC int knet_read_pipe(int fd, char **file, size_t *length);
 STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix);
 STATIC int knet_set_ip(struct knet_eth *knet_eth, const char *command,
 		       const char *ip_addr, const char *prefix);
+STATIC void knet_close_unsafe(struct knet_eth *knet_eth);
 
 struct knet_eth *knet_open(char *dev, size_t dev_size)
 {
@@ -45,42 +47,43 @@ struct knet_eth *knet_open(char *dev, size_t dev_size)
 		return NULL;
 	}
 
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	knet_eth = malloc(sizeof(struct knet_eth));
 	if (!knet_eth)
 		return NULL;
 
 	memset(knet_eth, 0, sizeof(struct knet_eth));
 
-	if ((knet_eth->knet_etherfd = open("/dev/net/tun", O_RDWR)) < 0) {
-		errno = ENOENT;
-		knet_close(knet_eth);
-		return NULL;
-	}
+	if ((knet_eth->knet_etherfd = open("/dev/net/tun", O_RDWR)) < 0)
+		goto out_error;
 
 	strncpy(knet_eth->ifr.ifr_name, dev, IFNAMSIZ);
 	knet_eth->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	if (ioctl(knet_eth->knet_etherfd, TUNSETIFF, &knet_eth->ifr) < 0) {
-		knet_close(knet_eth);
-		return NULL;
-	}
+	if (ioctl(knet_eth->knet_etherfd, TUNSETIFF, &knet_eth->ifr) < 0)
+		goto out_error;
 
 	strcpy(dev, knet_eth->ifr.ifr_name);
 
 	if (!knet_sockfd)
 		knet_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 			if (knet_sockfd < 0)
-				return NULL;
+				goto out_error;
 
-	if (ioctl(knet_sockfd, SIOGIFINDEX, &knet_eth->ifr) < 0) {
-		knet_close(knet_eth);
-		return NULL;
-	}
+	if (ioctl(knet_sockfd, SIOGIFINDEX, &knet_eth->ifr) < 0)
+		goto out_error;
 
+	pthread_mutex_unlock(&knet_eth_mutex);
 	return knet_eth;
+
+out_error:
+	knet_close_unsafe(knet_eth);
+	pthread_mutex_unlock(&knet_eth_mutex);
+	return NULL;
 }
 
-void knet_close(struct knet_eth *knet_eth)
+STATIC void knet_close_unsafe(struct knet_eth *knet_eth)
 {
 	if (!knet_eth)
 		return;
@@ -89,6 +92,18 @@ void knet_close(struct knet_eth *knet_eth)
 		close(knet_eth->knet_etherfd);
 
 	free(knet_eth);
+
+	return;
+}
+
+void knet_close(struct knet_eth *knet_eth)
+{
+	pthread_mutex_lock(&knet_eth_mutex);
+
+	knet_close_unsafe(knet_eth);
+
+	pthread_mutex_unlock(&knet_eth_mutex);
+
 	return;
 }
 
@@ -96,25 +111,36 @@ int knet_get_mtu(const struct knet_eth *knet_eth)
 {
 	int err;
 
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	if (!knet_eth) {
 		errno = EINVAL;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	err = ioctl(knet_sockfd, SIOCGIFMTU, &knet_eth->ifr);
 	if (err)
-		return err;
+		goto out;
 
-	return knet_eth->ifr.ifr_mtu;
+	err = knet_eth->ifr.ifr_mtu;
+
+out:
+	pthread_mutex_unlock(&knet_eth_mutex);
+
+	return err;
 }
 
 int knet_set_mtu(struct knet_eth *knet_eth, const int mtu)
 {
 	int err, oldmtu;
 
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	if (!knet_eth) {
 		errno = EINVAL;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	oldmtu = knet_eth->ifr.ifr_mtu;
@@ -124,6 +150,9 @@ int knet_set_mtu(struct knet_eth *knet_eth, const int mtu)
 	if (err)
 		knet_eth->ifr.ifr_mtu = oldmtu;
 
+out:
+	pthread_mutex_unlock(&knet_eth_mutex);
+
 	return err;
 }
 
@@ -132,22 +161,28 @@ int knet_get_mac(const struct knet_eth *knet_eth, char **ether_addr)
 	int err;
 	char mac[18];
 
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	if ((!knet_eth) || (!ether_addr)) {
 		errno = EINVAL;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	err = ioctl(knet_sockfd, SIOCGIFHWADDR, &knet_eth->ifr);
 	if (err)
-		return err;
+		goto out;
 
 	ether_ntoa_r((struct ether_addr *)knet_eth->ifr.ifr_hwaddr.sa_data, mac);
 
 	*ether_addr = strdup(mac);
 	if (!*ether_addr)
-		return -1;
+		err = -1;
 
-	return 0;
+out:
+	pthread_mutex_unlock(&knet_eth_mutex);
+
+	return err;
 }
 
 int knet_set_mac(struct knet_eth *knet_eth, const char *ether_addr)
@@ -155,9 +190,12 @@ int knet_set_mac(struct knet_eth *knet_eth, const char *ether_addr)
 	struct ether_addr oldmac;
 	int err;
 
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	if ((!knet_eth) || (!ether_addr)) {
 		errno = EINVAL;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	memcpy(&oldmac, knet_eth->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
@@ -167,29 +205,62 @@ int knet_set_mac(struct knet_eth *knet_eth, const char *ether_addr)
 	if (err)
 		memcpy(knet_eth->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
 
+out:
+	pthread_mutex_unlock(&knet_eth_mutex);
+
 	return err;
 }
 
 int knet_set_up(struct knet_eth *knet_eth)
 {
+	int err;
+	short int oldflags;
+
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	if (!knet_eth) {
 		errno = EINVAL;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
+	oldflags = knet_eth->ifr.ifr_flags;
 	knet_eth->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	return ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
+	err=ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
+
+	if (err)
+		knet_eth->ifr.ifr_flags = oldflags;
+
+out:
+	pthread_mutex_unlock(&knet_eth_mutex);
+
+	return err;
 }
 
 int knet_set_down(struct knet_eth *knet_eth)
 {
+	int err;
+	short int oldflags;
+
+	pthread_mutex_lock(&knet_eth_mutex);
+
 	if (!knet_eth) {
 		errno = EINVAL;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
+	oldflags = knet_eth->ifr.ifr_flags;
 	knet_eth->ifr.ifr_flags &= ~IFF_UP;
-	return ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
+	err=ioctl(knet_sockfd, SIOCSIFFLAGS, &knet_eth->ifr);
+
+	if (err)
+		knet_eth->ifr.ifr_flags = oldflags;
+
+out:
+	pthread_mutex_unlock(&knet_eth_mutex);
+
+	return err;
 }
 
 STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix)
@@ -254,12 +325,24 @@ STATIC int knet_set_ip(struct knet_eth *knet_eth, const char *command,
 
 int knet_add_ip(struct knet_eth *knet_eth, const char *ip_addr, const char *prefix)
 {
-	return knet_set_ip(knet_eth, "add", ip_addr, prefix);
+	int err;
+
+	pthread_mutex_lock(&knet_eth_mutex);
+	err = knet_set_ip(knet_eth, "add", ip_addr, prefix);
+	pthread_mutex_unlock(&knet_eth_mutex);
+
+	return err;
 }
 
 int knet_del_ip(struct knet_eth *knet_eth, const char *ip_addr, const char *prefix)
 {
-	return knet_set_ip(knet_eth, "del", ip_addr, prefix);
+	int err;
+
+	pthread_mutex_lock(&knet_eth_mutex);
+	err = knet_set_ip(knet_eth, "del", ip_addr, prefix);
+	pthread_mutex_unlock(&knet_eth_mutex);
+
+	return err;
 }
 
 STATIC int knet_read_pipe(int fd, char **file, size_t *length)
@@ -311,7 +394,7 @@ STATIC int knet_read_pipe(int fd, char **file, size_t *length)
 	return 0;
 }
 
-STATIC int knet_execute_shell(const char *command)
+int knet_execute_shell(const char *command)
 {
 	pid_t pid;
 	int status, err = 0;

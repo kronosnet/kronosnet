@@ -22,6 +22,8 @@ knet_test_SOURCES	= \
 
 knet_test_CFLAGS	= -DTEST
 
+knet_test_LDFLAGS	= -lpthread
+
 ring_test_SOURCES	= \
 			  ring_test.c \
 			  ../ring.c \

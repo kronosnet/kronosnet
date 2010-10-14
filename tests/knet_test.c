@@ -13,7 +13,6 @@
 #include "utils.h"
 
 extern int knet_sockfd;
-int knet_execute_shell(const char *);
 
 static int is_if_in_system(char *name)
 {
