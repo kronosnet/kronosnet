@@ -108,6 +108,10 @@ void knet_send(struct knet_host *host, struct knet_frame *frame, size_t len)
 	struct knet_link *klp;
 
 	for (khp = host; khp != NULL; khp = khp->next) {
+		if (frame->type == KNET_FRAME_DATA) {
+			/* TODO: packet inspection, might continue */
+		}
+
 		for (klp = khp->link; klp != NULL; klp = klp->next) {
 			if ((frame->type == KNET_FRAME_DATA) && (!klp->enabled))
 				continue;
