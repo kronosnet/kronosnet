@@ -6,9 +6,109 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "ring.h"
 #include "utils.h"
+
+struct __knet_handle {
+	struct knet_host *host_head;
+	pthread_rwlock_t host_rwlock;	
+};
+
+knet_handle_t knet_handle_new(void)
+{
+	int err;
+	knet_handle_t khandle;
+
+	khandle = malloc(sizeof(struct __knet_handle));
+
+	if (khandle == NULL)
+		return NULL;
+
+	memset(khandle, 0, sizeof(struct __knet_handle));
+
+	err = pthread_rwlock_init(&khandle->host_rwlock, NULL);
+
+	if (err != 0) {
+		free(khandle);
+		return NULL;
+	}
+
+	return khandle;
+}
+
+int knet_host_add(knet_handle_t khandle, struct knet_host *host)
+{
+	int err;
+
+	err = pthread_rwlock_wrlock(&khandle->host_rwlock);
+
+	if (err != 0)
+		return err;
+
+	/* pushing new host to the front */
+	host->next = khandle->host_head;
+	khandle->host_head = host;
+
+	pthread_rwlock_unlock(&khandle->host_rwlock);
+	return err;
+}
+
+int knet_host_remove(knet_handle_t khandle, struct knet_host *host)
+{
+	int err;
+	struct knet_host *i, **j;
+
+	err = pthread_rwlock_rdlock(&khandle->host_rwlock);
+
+	if (err != 0)
+		return err;
+
+	j = &khandle->host_head;
+
+	for (i = *j; i != NULL; i = i->next) {
+		if (i == host) {
+			err = pthread_rwlock_unlock(&khandle->host_rwlock);
+
+			if (err != 0)
+				return err;
+
+			err = pthread_rwlock_wrlock(&khandle->host_rwlock);
+
+			if (err == 0) { /* removing host */
+				*j = i->next;
+				free(i); /* FIXME: destroy everything */
+			}
+
+			break;
+		}
+
+		j = &i->next;
+	}
+
+	pthread_rwlock_unlock(&khandle->host_rwlock);
+	return err;
+}
+
+int knet_host_foreach(knet_handle_t khandle, int (*action)(struct knet_host *, void *), void *data)
+{
+	int err;
+	struct knet_host *i;
+
+	err = pthread_rwlock_rdlock(&khandle->host_rwlock);
+
+	if (err != 0)
+		return err;
+
+	for (i = khandle->host_head; i != NULL; i = i->next) {
+		if (action(i, data) != 0)
+			break;
+	}
+
+	pthread_rwlock_unlock(&khandle->host_rwlock);
+	return 0;
+}
 
 int knet_bind(struct sockaddr *address, socklen_t addrlen)
 {

@@ -7,6 +7,7 @@ check-valgrind: $(check_PROGRAMS)
 
 noinst_PROGRAMS = \
 		  ping_test \
+		  khandle_test \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
@@ -29,7 +30,18 @@ ring_test_SOURCES	= \
 			  ../ring.c \
 			  ../utils.c
 
+ring_test_LDFLAGS	= -lpthread
+
 ping_test_SOURCES	= \
 			  ping_test.c \
 			  ../ring.c \
 			  ../utils.c
+
+ping_test_LDFLAGS	= -lpthread
+
+khandle_test_SOURCES	= \
+			  khandle_test.c \
+			  ../ring.c \
+			  ../utils.c
+
+khandle_test_LDFLAGS	= -lpthread
