@@ -19,94 +19,75 @@ struct __knet_handle {
 knet_handle_t knet_handle_new(void)
 {
 	int err;
-	knet_handle_t khandle;
+	knet_handle_t knet_h;
 
-	khandle = malloc(sizeof(struct __knet_handle));
+	knet_h = malloc(sizeof(struct __knet_handle));
 
-	if (khandle == NULL)
+	if (knet_h == NULL)
 		return NULL;
 
-	memset(khandle, 0, sizeof(struct __knet_handle));
+	memset(knet_h, 0, sizeof(struct __knet_handle));
 
-	err = pthread_rwlock_init(&khandle->host_rwlock, NULL);
+	err = pthread_rwlock_init(&knet_h->host_rwlock, NULL);
 
 	if (err != 0) {
-		free(khandle);
+		free(knet_h);
 		return NULL;
 	}
 
-	return khandle;
+	return knet_h;
 }
 
-int knet_host_add(knet_handle_t khandle, struct knet_host *host)
+int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 {
-	int err;
-
-	err = pthread_rwlock_wrlock(&khandle->host_rwlock);
-
-	if (err != 0)
-		return err;
+	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
+		return -1;
 
 	/* pushing new host to the front */
-	host->next = khandle->host_head;
-	khandle->host_head = host;
+	host->next = knet_h->host_head;
+	knet_h->host_head = host;
 
-	pthread_rwlock_unlock(&khandle->host_rwlock);
-	return err;
+	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	return 0;
 }
 
-int knet_host_remove(knet_handle_t khandle, struct knet_host *host)
+int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 {
-	int err;
-	struct knet_host *i, **j;
+	struct knet_host *khp;
 
-	err = pthread_rwlock_rdlock(&khandle->host_rwlock);
+	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
+		return -1;
 
-	if (err != 0)
-		return err;
-
-	j = &khandle->host_head;
-
-	for (i = *j; i != NULL; i = i->next) {
-		if (i == host) {
-			err = pthread_rwlock_unlock(&khandle->host_rwlock);
-
-			if (err != 0)
-				return err;
-
-			err = pthread_rwlock_wrlock(&khandle->host_rwlock);
-
-			if (err == 0) { /* removing host */
-				*j = i->next;
-				free(i); /* FIXME: destroy everything */
+	/* TODO: use a doubly-linked list? */
+	if (host == knet_h->host_head) {
+		knet_h->host_head = host->next;
+	}
+	else {
+		for (khp = knet_h->host_head; khp != NULL; khp = khp->next) {
+			if (host == khp->next) {
+				khp->next = khp->next->next;
+				break;
 			}
-
-			break;
 		}
-
-		j = &i->next;
 	}
 
-	pthread_rwlock_unlock(&khandle->host_rwlock);
-	return err;
+	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	return 0;
 }
 
-int knet_host_foreach(knet_handle_t khandle, int (*action)(struct knet_host *, void *), void *data)
+int knet_host_foreach(knet_handle_t knet_h, int (*action)(struct knet_host *, void *), void *data)
 {
-	int err;
 	struct knet_host *i;
 
-	err = pthread_rwlock_rdlock(&khandle->host_rwlock);
+	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
+		return -1;
 
-	if (err != 0)
-		return err;
-
-	for (i = khandle->host_head; i != NULL; i = i->next) {
+	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		if (action(i, data) != 0)
 			break;
 	}
 
-	pthread_rwlock_unlock(&khandle->host_rwlock);
+	pthread_rwlock_unlock(&knet_h->host_rwlock);
 	return 0;
 }
 
