@@ -12,7 +12,8 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  knet_test \
-		  ring_test
+		  ring_test \
+		  vty_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -45,3 +46,8 @@ khandle_test_SOURCES	= \
 			  ../utils.c
 
 khandle_test_LDFLAGS	= -lpthread
+
+vty_test_SOURCES	= \
+			  vty_test.c \
+			  ../vty.c \
+			  ../utils.c
