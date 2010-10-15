@@ -6,16 +6,15 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <errno.h>
-
-#include <unistd.h>
+#include <fcntl.h>
 
 #include "utils.h"
 #include "vty.h"
 
 int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 {
-	int sockfd = -1, sockopt = 1;
-	int socktype = SOCK_STREAM | SOCK_CLOEXEC;
+	int sockfd = -1, sockopt = 1, sockflags;
+	int socktype = SOCK_STREAM;
 	int af_family = AF_INET6;
 	int salen = 0, err = 0;
 	struct sockaddr sa;
@@ -48,6 +47,17 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 	err = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
 			 (void *)&sockopt, sizeof(sockopt));
 	if (err)
+		goto out_clean;
+
+	sockflags = fcntl(sockfd, F_GETFD, 0);
+	if (sockflags < 0) {
+		err = sockflags;
+		goto out_clean;
+	}
+
+	sockflags |= FD_CLOEXEC;
+	err = fcntl(sockfd, F_SETFD, sockflags);
+	if (err < 0)
 		goto out_clean;
 
 	memset(&sa, 0, sizeof(struct sockaddr));
