@@ -17,7 +17,6 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 	int socktype = SOCK_STREAM;
 	int af_family = AF_INET6;
 	int salen = 0, err = 0;
-	struct sockaddr sa;
 	struct sockaddr_in sin;
 	struct sockaddr_in6 sin6;
 
@@ -60,11 +59,11 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 	if (err < 0)
 		goto out_clean;
 
-	memset(&sa, 0, sizeof(struct sockaddr));
 	if (af_family == AF_INET) {
 		salen = sizeof(struct sockaddr_in);
-		memset(&sin, 0, sizeof(struct sockaddr_in));
+		memset(&sin, 0, salen);
 		sin.sin_family = af_family;
+		sin.sin_port = htons(port);
 		if ((!ip_addr) || (!strlen(ip_addr)))
 			sin.sin_addr.s_addr = htonl(INADDR_ANY);
 		else
@@ -73,10 +72,10 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 				goto out_clean;
 			}
 		sin.sin_port = htons(port);
-		memcpy(&sa, &sin, sizeof(struct sockaddr_in));
+		err = bind(sockfd, (struct sockaddr *)&sin, salen);
 	} else {
 		salen = sizeof(struct sockaddr_in6);
-		memset(&sin6, 0, sizeof(struct sockaddr_in6));
+		memset(&sin6, 0, salen);
 		sin6.sin6_family = af_family;
 		sin6.sin6_port = htons(port);
 		if ((!ip_addr) || (!strlen(ip_addr)))
@@ -86,10 +85,9 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 				err = -1;
 				goto out_clean;
 			}
-		memcpy(&sa, &sin6, sizeof(struct sockaddr_in6));
+		err = bind(sockfd, (struct sockaddr *)&sin6, salen);
 	}
 
-	err = bind(sockfd, &sa, salen);
 	if (err)
 		goto out_clean;
 

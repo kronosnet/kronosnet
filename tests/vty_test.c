@@ -11,6 +11,15 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing knet_vty_init");
 
+	log_info("Testing bind to all default port");
+
+	sock = knet_vty_init_listener(NULL, KNET_VTY_DEFAULT_PORT);
+	if (sock < 0) {
+		log_error("Unable to init vty");
+		return -1;
+	}
+	close(sock);
+
 	log_info("Testing bind to localhost v4 default port");
 
 	sock = knet_vty_init_listener("127.0.0.1", KNET_VTY_DEFAULT_PORT);
