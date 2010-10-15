@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		host_list[i] = NULL;
 	}
 
-	printf("loop count: %lu times\n", loopnum);
+	printf("loop count: %zu times\n", loopnum);
 
 	return 0;
 }

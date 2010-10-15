@@ -13,12 +13,11 @@
 
 struct __knet_handle {
 	struct knet_host *host_head;
-	pthread_rwlock_t host_rwlock;	
+	pthread_rwlock_t host_rwlock;
 };
 
 knet_handle_t knet_handle_new(void)
 {
-	int err;
 	knet_handle_t knet_h;
 
 	knet_h = malloc(sizeof(struct __knet_handle));
@@ -28,9 +27,7 @@ knet_handle_t knet_handle_new(void)
 
 	memset(knet_h, 0, sizeof(struct __knet_handle));
 
-	err = pthread_rwlock_init(&knet_h->host_rwlock, NULL);
-
-	if (err != 0) {
+	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0) {
 		free(knet_h);
 		return NULL;
 	}
@@ -61,8 +58,7 @@ int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 	/* TODO: use a doubly-linked list? */
 	if (host == knet_h->host_head) {
 		knet_h->host_head = host->next;
-	}
-	else {
+	} else {
 		for (khp = knet_h->host_head; khp != NULL; khp = khp->next) {
 			if (host == khp->next) {
 				khp->next = khp->next->next;
