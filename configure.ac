@@ -85,6 +85,7 @@ AC_CHECK_HEADERS([arpa/inet.h])
 AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_SSIZE_T
+AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 
@@ -99,6 +100,9 @@ AC_CHECK_FUNCS([strerror])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([select])
 AC_CHECK_FUNCS([socket])
+AC_CHECK_FUNCS([inet_ntoa])
+AC_CHECK_FUNCS([memmove])
+AC_CHECK_FUNCS([strchr])
 
 # local options
 AC_ARG_ENABLE([debug],
