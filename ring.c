@@ -175,7 +175,7 @@ ssize_t knet_dispatch(int sockfd, struct knet_frame *frame, size_t len)
 		return -1;
 	}
 
-	if (frame->magic != KNET_FRAME_MAGIC) {
+	if (ntohl(frame->magic) != KNET_FRAME_MAGIC) {
 		errno = EBADMSG;
 		return -1;
 	}
