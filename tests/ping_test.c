@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 	sockfd = start_server(argv[1]);
 	create_hosts(sockfd, argc - 2, &argv[2]);
 
-	send_frame.magic = KNET_FRAME_MAGIC;
+	send_frame.magic = htonl(KNET_FRAME_MAGIC);
 	send_frame.version = KNET_FRAME_VERSION;
 	send_frame.type = KNET_FRAME_PING;
 
