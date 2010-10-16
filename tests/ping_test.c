@@ -23,7 +23,7 @@ static in_port_t tok_inport(char *str)
 
 static int tok_inaddrport(char *str, struct sockaddr_in *addr)
 {
-	char *strhost, *strport, *tmp;
+	char *strhost, *strport, *tmp = NULL;
 
 	strhost = strtok_r(str, ":", &tmp);
 	strport = strtok_r(NULL, ":", &tmp);
