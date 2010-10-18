@@ -49,10 +49,13 @@ knet_handle_t knet_handle_new(void)
 	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
 		goto exit_fail3;
 
-	knet_h->epollfd = epoll_create1(EPOLL_CLOEXEC);
+	knet_h->epollfd = epoll_create(0);
 
 	if (knet_h->epollfd < 0)
 		goto exit_fail4;
+
+	if (knet_fdset_cloexec(knet_h->epollfd) != 0)
+		goto exit_fail5;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -181,18 +184,10 @@ int knet_bind(struct sockaddr *address, socklen_t addrlen)
 	if (err != 0)
 		log_error("Unable to set receive buffer");
 
-	value = fcntl(sockfd, F_GETFD, 0);
+	err = knet_fdset_cloexec(sockfd)
 
-	if (value < 0) {
+	if (err != 0) {
 		log_error("Unable to get close-on-exec flag");
-		goto exit_fail;
-	}
-
-	value |= FD_CLOEXEC;
-	err = fcntl(sockfd, F_SETFD, value);
-
-	if (err < 0) {
-		log_error("Unable to set close-on-exec flag");
 		goto exit_fail;
 	}
 
@@ -257,6 +252,9 @@ static void knet_send_data(knet_handle_t knet_h)
 
 	/* TODO: packet inspection */
 
+	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
+		return;
+
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = i->link; j != NULL; j = j->next) {
 			snt = sendto(j->sock, knet_h->buff, len, MSG_DONTWAIT,
@@ -266,6 +264,8 @@ static void knet_send_data(knet_handle_t knet_h)
 				break;
 		}
 	}
+
+	pthread_rwlock_unlock(&knet_h->host_rwlock);
 }
 
 static void knet_recv_frame(knet_handle_t knet_h, struct knet_link *hlnk)
