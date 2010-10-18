@@ -17,35 +17,29 @@ check_PROGRAMS = \
 
 TESTS = $(check_PROGRAMS)
 
+CFLAGS			+= -DTEST
+
+LDFLAGS			+= -lpthread
+
 knet_test_SOURCES	= \
 			  knet_test.c \
 			  ../knet.c \
 			  ../utils.c
-
-knet_test_CFLAGS	= -DTEST
-
-knet_test_LDFLAGS	= -lpthread
 
 ring_test_SOURCES	= \
 			  ring_test.c \
 			  ../ring.c \
 			  ../utils.c
 
-ring_test_LDFLAGS	= -lpthread
-
 ping_test_SOURCES	= \
 			  ping_test.c \
 			  ../ring.c \
 			  ../utils.c
 
-ping_test_LDFLAGS	= -lpthread
-
 khandle_test_SOURCES	= \
 			  khandle_test.c \
 			  ../ring.c \
 			  ../utils.c
-
-khandle_test_LDFLAGS	= -lpthread
 
 vty_test_SOURCES	= \
 			  vty_test.c \
