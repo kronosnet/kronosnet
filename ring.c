@@ -49,7 +49,7 @@ knet_handle_t knet_handle_new(void)
 	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
 		goto exit_fail3;
 
-	knet_h->epollfd = epoll_create(0);
+	knet_h->epollfd = epoll_create(KNET_MAX_EVENTS);
 
 	if (knet_h->epollfd < 0)
 		goto exit_fail4;
