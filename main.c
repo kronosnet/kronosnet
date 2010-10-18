@@ -18,6 +18,8 @@
 static int daemonize = 1;
 static int daemon_quit = 0;
 static char *conffile = NULL;
+static char *vty_ip_addr = NULL;
+static unsigned short vty_port = KNET_VTY_DEFAULT_PORT;
 
 extern int utils_debug;
 
@@ -37,10 +39,11 @@ static void print_usage(void)
 	return;
 }
 
-static void read_arguments(int argc, char **argv)
+static int read_arguments(int argc, char **argv)
 {
 	int cont = 1;
 	int optchar;
+	int int_port = KNET_VTY_DEFAULT_PORT;
 
 	while (cont) {
 		optchar = getopt(argc, argv, OPTION_STRING);
@@ -48,15 +51,24 @@ static void read_arguments(int argc, char **argv)
 		switch (optchar) {
 
 		case 'b':
-			// ip addr
+			vty_ip_addr = strdup(optarg);
+			if (!vty_ip_addr)
+				return -1;
 			break;
 
 		case 'p':
-			// port
+			int_port = atoi(optarg);
+			if ((int_port < 0) || (int_port > 65535)) {
+				errno = EINVAL;
+				return -1;
+			}
+			vty_port = int_port;
 			break;
 
 		case 'c':
 			conffile = strdup(optarg);
+			if (!conffile)
+				return -1;
 			break;
 
 		case 'd':
@@ -90,6 +102,7 @@ static void read_arguments(int argc, char **argv)
 
 		}
 	}
+	return 0;
 }
 
 static int set_oom_adj(int val)
@@ -244,10 +257,15 @@ int main(int argc, char **argv)
 {
 	int err;
 
-	if (create_lockfile(LOCKFILE_NAME) < 0)
+	if (create_lockfile(LOCKFILE_NAME) < 0) {
+		log_error("Unable to create lockfile");
 		exit(EXIT_FAILURE);
+	}
 
-	read_arguments(argc, argv);
+	if (read_arguments(argc, argv) < 0) {
+		log_error("Unable to parse options");
+		exit(EXIT_FAILURE);
+	}
 
 	if (!conffile)
 		conffile = strdup(CONFFILE);
