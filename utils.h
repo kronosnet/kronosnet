@@ -33,4 +33,6 @@ do { \
 	if (utils_syslog) syslog(LOG_ERR, fmt, ##args); \
 } while (0);
 
+int knet_fdset_cloexec(int fd);
+
 #endif

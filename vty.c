@@ -6,7 +6,6 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 
@@ -120,7 +119,7 @@ void knet_vty_set_max_connections(const int max_connections)
 
 int knet_vty_init_listener(const char *ip_addr, const unsigned short port)
 {
-	int sockfd = -1, sockopt = 1, sockflags;
+	int sockfd = -1, sockopt = 1;
 	int socktype = SOCK_STREAM;
 	int af_family = AF_INET6;
 	int salen = 0, err = 0;
@@ -159,16 +158,10 @@ int knet_vty_init_listener(const char *ip_addr, const unsigned short port)
 	if (err)
 		goto out_clean;
 
-	sockflags = fcntl(sockfd, F_GETFD, 0);
-	if (sockflags < 0) {
-		err = sockflags;
+	if (knet_fdset_cloexec(sockfd) < 0) {
+		err = -1;
 		goto out_clean;
 	}
-
-	sockflags |= FD_CLOEXEC;
-	err = fcntl(sockfd, F_SETFD, sockflags);
-	if (err < 0)
-		goto out_clean;
 
 	if (af_family == AF_INET) {
 		salen = sizeof(struct sockaddr_in);
