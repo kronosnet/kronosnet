@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <signal.h>
 
 #include "vty.h"
 #include "utils.h"
@@ -16,7 +15,6 @@
 #define OPTION_STRING "hdfVc:b:p:"
 
 static int daemonize = 1;
-static int daemon_quit = 0;
 static char *conffile = NULL;
 static char *vty_ip_addr = NULL;
 static unsigned short vty_port = KNET_VTY_DEFAULT_PORT;
@@ -243,16 +241,6 @@ fail_close:
 	return -1;
 }
 
-static void sigterm_handler(int sig)
-{
-	daemon_quit = 1;
-}
-
-static void sigpipe_handler(int sig)
-{
-	return;
-}
-
 int main(int argc, char **argv)
 {
 	int err;
@@ -283,9 +271,6 @@ int main(int argc, char **argv)
 
 	log_info(PACKAGE " version " VERSION);
 
-	signal(SIGTERM, sigterm_handler);
-	signal(SIGPIPE, sigpipe_handler);
-
 	log_debug("Adjust OOM to -16");
 	err = set_oom_adj(-16);
 	if (err < 0)
@@ -295,6 +280,8 @@ int main(int argc, char **argv)
 	err = set_scheduler();
 	if (err < 0)
 		goto out;
+
+	knet_vty_main_loop(conffile, vty_ip_addr, vty_port);
 
 out:
 	free(conffile);

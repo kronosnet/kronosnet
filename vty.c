@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "utils.h"
 #include "vty.h"
@@ -17,23 +18,95 @@ STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
 STATIC int vty_current_connections = 0;
 
-int knet_vty_accept_connections(const int sockfd)
+STATIC int daemon_quit = 0;
+
+static void sigterm_handler(int sig)
 {
-	int err;
+	daemon_quit = 1;
+}
 
-	pthread_mutex_lock(&knet_vty_mutex);
-	if (vty_current_connections == vty_max_connections) {
-		errno = ECONNREFUSED;
-		err = -1;
-		goto out_clean;
+static void sigpipe_handler(int sig)
+{
+	return;
+}
+
+/*
+ * mainloop is not thread safe as there should only be one
+ */
+int knet_vty_main_loop(const char *configfile, const char *ip_addr,
+		       const unsigned short port)
+{
+	int vty_listener_fd;
+	int vty_accept_fd;
+	struct sockaddr incoming_sa;
+	socklen_t salen;
+	fd_set rfds;
+	int se_result = 0;
+	struct timeval tv;
+
+	signal(SIGTERM, sigterm_handler);
+	signal(SIGPIPE, sigpipe_handler);
+
+	// read and process config file here
+
+	vty_listener_fd = knet_vty_init_listener(ip_addr, port);
+	if (vty_listener_fd < 0) {
+		log_error("Unable to setup vty listener");
+		return -1;
 	}
-	vty_current_connections++;
 
-	// bind to vty
+	while (se_result >= 0 && !daemon_quit) {
+		FD_ZERO (&rfds);
+		FD_SET (vty_listener_fd, &rfds);
 
-out_clean:
-	pthread_mutex_unlock(&knet_vty_mutex);
-	return err;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+
+		se_result = select((vty_listener_fd + 1), &rfds, 0, 0, &tv);
+
+		if ((se_result == -1) && (daemon_quit)) {
+			log_info("Got a SIGTERM, goodbye");
+			goto out;
+		}
+
+		if (se_result == -1) {
+			log_error("Unable to select on vty listener socket!");
+			goto out;
+		}
+
+		if ((se_result == 0) || (!FD_ISSET(vty_listener_fd, &rfds)))
+			continue;
+
+		vty_accept_fd = accept(vty_listener_fd, &incoming_sa, &salen);
+		if (vty_accept_fd < 0) {
+			log_error("Unable to accept connection to vty");
+			continue;
+		}
+
+		// check for ip address access list here against incoming_sa
+
+		pthread_mutex_lock(&knet_vty_mutex);
+		if (vty_current_connections == vty_max_connections) {
+			errno = ECONNREFUSED;
+			log_error("Too many connections to VTY");
+			close(vty_accept_fd);
+			pthread_mutex_unlock(&knet_vty_mutex);
+			continue;
+		}
+
+		// start vty thread here
+		// vty_current_connections++; should be incremented once
+		// the thread is started and operating
+
+		pthread_mutex_unlock(&knet_vty_mutex);
+	}
+
+out:
+	knet_vty_close_listener(vty_listener_fd);
+
+	// reverse running config to close/release resources;
+
+	return 0;
 }
 
 void knet_vty_set_max_connections(const int max_connections)

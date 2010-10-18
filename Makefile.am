@@ -24,7 +24,8 @@ sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
 			  main.c \
-			  utils.c
+			  utils.c \
+			  vty.c
 
 maintainer-clean-local:
 	rm -rf m4
