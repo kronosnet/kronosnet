@@ -7,9 +7,12 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "utils.h"
 #include "vty.h"
+
+STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 {
@@ -19,6 +22,8 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 	int salen = 0, err = 0;
 	struct sockaddr_in sin;
 	struct sockaddr_in6 sin6;
+
+	pthread_mutex_lock(&knet_vty_mutex);
 
 	/* handle sigpipe if we decide to use KEEPALIVE */
 
@@ -40,8 +45,10 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 		af_family = AF_INET;
 		sockfd = socket(af_family, socktype, 0);
 	}
-	if (sockfd < 0)
-		return sockfd;
+	if (sockfd < 0) {
+		err = sockfd;
+		goto out_clean;
+	}
 
 	err = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
 			 (void *)&sockopt, sizeof(sockopt));
@@ -95,21 +102,32 @@ int knet_vty_init_listener(const char *ip_addr, unsigned short port)
 	if (err)
 		goto out_clean;
 
+	pthread_mutex_unlock(&knet_vty_mutex);
+
 	return sockfd;
 
 out_clean:
 	if (sockfd >= 0)
 		close(sockfd);
 
+	pthread_mutex_unlock(&knet_vty_mutex);
+
 	return err;
 }
 
 void knet_vty_close_listener(int listener_fd)
 {
-	if (listener_fd > 0)
-		close(listener_fd);
+	pthread_mutex_lock(&knet_vty_mutex);
 
+	if (listener_fd <= 0)
+		goto out_clean;
+
+	close(listener_fd);
 	listener_fd = 0;
+
+out_clean:
+
+	pthread_mutex_unlock(&knet_vty_mutex);
 
 	return;
 }
