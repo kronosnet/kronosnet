@@ -184,7 +184,7 @@ int knet_bind(struct sockaddr *address, socklen_t addrlen)
 	if (err != 0)
 		log_error("Unable to set receive buffer");
 
-	err = knet_fdset_cloexec(sockfd)
+	err = knet_fdset_cloexec(sockfd);
 
 	if (err != 0) {
 		log_error("Unable to get close-on-exec flag");
