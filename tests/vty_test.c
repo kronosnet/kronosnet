@@ -18,7 +18,7 @@ static int knet_vty_init_check(void)
 		log_error("Unable to init vty");
 		return -1;
 	}
-	close(sock);
+	knet_vty_close_listener(sock);
 
 	log_info("Testing bind to localhost v4 default port");
 
@@ -27,7 +27,7 @@ static int knet_vty_init_check(void)
 		log_error("Unable to init vty");
 		return -1;
 	}
-	close(sock);
+	knet_vty_close_listener(sock);
 
 	log_info("Testing bind to localhost v6 default port");
 
@@ -36,7 +36,7 @@ static int knet_vty_init_check(void)
 		log_error("Unable to init vty");
 		return -1;
 	}
-	close(sock);
+	knet_vty_close_listener(sock);
 
 	log_info("Testing bind to all v6 default port");
 
@@ -45,7 +45,7 @@ static int knet_vty_init_check(void)
 		log_error("Unable to init vty");
 		return -1;
 	}
-	close(sock);
+	knet_vty_close_listener(sock);
 
 	log_info("Testing bind to all v4 default port");
 
@@ -54,7 +54,7 @@ static int knet_vty_init_check(void)
 		log_error("Unable to init vty");
 		return -1;
 	}
-	close(sock);
+	knet_vty_close_listener(sock);
 
 	log_info("Testing ERROR conditions");
 

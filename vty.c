@@ -103,3 +103,13 @@ out_clean:
 
 	return err;
 }
+
+void knet_vty_close_listener(int listener_fd)
+{
+	if (listener_fd > 0)
+		close(listener_fd);
+
+	listener_fd = 0;
+
+	return;
+}
