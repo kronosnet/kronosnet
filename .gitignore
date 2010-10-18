@@ -11,7 +11,7 @@ autom4te.cache
 automake
 compile
 config.*
-configure
+configure*
 depcomp
 install-sh
 libtoolize
@@ -19,5 +19,7 @@ ltmain.sh
 m4
 missing
 libtool
-clusternetd
-cnet_tool
+autoscan.log
+kronosnetd
+*.swp
+tests/*_test
