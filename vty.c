@@ -14,7 +14,36 @@
 
 STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int knet_vty_init_listener(const char *ip_addr, unsigned short port)
+STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
+STATIC int vty_current_connections = 0;
+
+int knet_vty_accept_connections(const int sockfd)
+{
+	int err;
+
+	pthread_mutex_lock(&knet_vty_mutex);
+	if (vty_current_connections == vty_max_connections) {
+		errno = ECONNREFUSED;
+		err = -1;
+		goto out_clean;
+	}
+	vty_current_connections++;
+
+	// bind to vty
+
+out_clean:
+	pthread_mutex_unlock(&knet_vty_mutex);
+	return err;
+}
+
+void knet_vty_set_max_connections(const int max_connections)
+{
+	pthread_mutex_lock(&knet_vty_mutex);
+	vty_max_connections = max_connections;
+	pthread_mutex_unlock(&knet_vty_mutex);
+}
+
+int knet_vty_init_listener(const char *ip_addr, const unsigned short port)
 {
 	int sockfd = -1, sockopt = 1, sockflags;
 	int socktype = SOCK_STREAM;

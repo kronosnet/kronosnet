@@ -103,6 +103,8 @@ AC_CHECK_FUNCS([socket])
 AC_CHECK_FUNCS([inet_ntoa])
 AC_CHECK_FUNCS([memmove])
 AC_CHECK_FUNCS([strchr])
+AC_CHECK_FUNCS([atexit])
+AC_CHECK_FUNCS([ftruncate])
 
 # local options
 AC_ARG_ENABLE([debug],

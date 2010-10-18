@@ -5,6 +5,26 @@
 #include "utils.h"
 #include "vty.h"
 
+extern int vty_max_connections;
+
+static int knet_vty_set_max_check(void)
+{
+	int max_conn = vty_max_connections;
+
+	log_info("Testing knet_vty_set_max_connections");
+
+	knet_vty_set_max_connections(8);
+
+	if (vty_max_connections != 8) {
+		log_error("Unable to set max connections");
+		return -1;
+	}
+
+	knet_vty_set_max_connections(max_conn);
+
+	return 0;
+}
+
 static int knet_vty_init_check(void)
 {
 	int sock;
@@ -80,6 +100,9 @@ static int knet_vty_init_check(void)
 int main(void)
 {
 	if (knet_vty_init_check() < 0)
+		return -1;
+
+	if (knet_vty_set_max_check() < 0)
 		return -1;
 
 	return 0;
