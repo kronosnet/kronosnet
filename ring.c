@@ -12,83 +12,75 @@
 #include "utils.h"
 
 #define KNET_MAX_EVENTS 8
+#define KNET_PING_TIMERES 5000
+#define KNET_BUFSIZE 2048
 
 struct __knet_handle {
 	int sock[2];
 	int epollfd;
 	struct knet_host *host_head;
+	struct knet_frame *buff;
 	pthread_t control_thread;
 	pthread_rwlock_t host_rwlock;
 };
 
-static void *knet_control_thread(void *data)
-{
-	int i, nev;
-	knet_handle_t knet_h;
-	struct epoll_event events[KNET_MAX_EVENTS];
-
-	knet_h = (knet_handle_t) data;
-
-	while(1) {
-		nev = epoll_wait(knet_h->epollfd, events, KNET_MAX_EVENTS, 500);
-
-		for (i = 0; i < nev; i++) {
-			if (events[i].data.fd == knet_h->sock[0]) {
-				/* TODO: read data, inspect and deliver */
-			}
-			else {
-				/* TODO: read frame, porcess or dispatch */
-			}
-		}
-	}
-
-	return NULL;
-}
+static void *knet_control_thread(void *data);
+static void knet_send_data(knet_handle_t knet_h);
+static void knet_recv_frame(knet_handle_t knet_h, struct knet_link *link);
 
 knet_handle_t knet_handle_new(void)
 {
 	knet_handle_t knet_h;
 	struct epoll_event ev;
 
-	knet_h = malloc(sizeof(struct __knet_handle));
-
-	if (knet_h == NULL)
+	if ((knet_h = malloc(sizeof(struct __knet_handle))) == NULL)
 		return NULL;
 
 	memset(knet_h, 0, sizeof(struct __knet_handle));
 
-	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0)
+	if ((knet_h->buff = malloc(KNET_BUFSIZE)) == NULL)
 		goto exit_fail1;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
+	memset(knet_h->buff, 0, KNET_BUFSIZE);
+
+	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0)
 		goto exit_fail2;
 
-	knet_h->epollfd = epoll_create1(FD_CLOEXEC);
-
-	if (knet_h->epollfd < 0)
+	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
 		goto exit_fail3;
 
-	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->sock[0];
+	knet_h->epollfd = epoll_create1(EPOLL_CLOEXEC);
 
-	if (epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, knet_h->sock[0], &ev) != 0)
-               goto exit_fail4;
-
-	if (pthread_create(&knet_h->control_thread,
-			0, knet_control_thread, (void *) knet_h) != 0)
+	if (knet_h->epollfd < 0)
 		goto exit_fail4;
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	ev.events	= EPOLLIN;
+	ev.data.ptr	= knet_h;
+
+	if (epoll_ctl(knet_h->epollfd,
+				EPOLL_CTL_ADD, knet_h->sock[0], &ev) != 0)
+		goto exit_fail5;
+
+	if (pthread_create(&knet_h->control_thread, 0,
+				knet_control_thread, (void *) knet_h) != 0)
+		goto exit_fail5;
 
 	return knet_h;
 
-exit_fail4:
+exit_fail5:
 	close(knet_h->epollfd);
 
-exit_fail3:
+exit_fail4:
 	close(knet_h->sock[0]);
 	close(knet_h->sock[1]);
 
-exit_fail2:
+exit_fail3:
 	pthread_rwlock_destroy(&knet_h->host_rwlock);
+
+exit_fail2:
+	free(knet_h->buff);
 
 exit_fail1:
 	free(knet_h);
@@ -112,15 +104,14 @@ int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 		return -1;
 
 	for (lp = host->link; lp != NULL; lp = lp->next) {
-		ev.data.fd = lp->sock;
 		ev.data.ptr = lp;
 		/* TODO: check for errors? */
 		epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, lp->sock, &ev);
 	}
 
 	/* pushing new host to the front */
-	host->next = knet_h->host_head;
-	knet_h->host_head = host;
+	host->next		= knet_h->host_head;
+	knet_h->host_head	= host;
 
 	pthread_rwlock_unlock(&knet_h->host_rwlock);
 	return 0;
@@ -155,7 +146,8 @@ int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 	return 0;
 }
 
-int knet_host_foreach(knet_handle_t knet_h, int (*action)(struct knet_host *, void *), void *data)
+int knet_host_foreach(knet_handle_t knet_h,
+			int (*action)(struct knet_host *, void *), void *data)
 {
 	struct knet_host *i;
 
@@ -183,7 +175,8 @@ int knet_bind(struct sockaddr *address, socklen_t addrlen)
 	}
 
 	value = KNET_RING_RCVBUFF;
-	err = setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
+	err = setsockopt(sockfd,
+			SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
 	if (err != 0)
 		log_error("Unable to set receive buffer");
@@ -217,71 +210,93 @@ exit_fail:
 	return -1;
 }
 
-ssize_t knet_dispatch(int sockfd, struct knet_frame *frame, size_t len)
+static void *knet_control_thread(void *data)
 {
-	ssize_t ret;
-	struct sockaddr_storage address;
-	socklen_t addrlen;
+	int i, nev;
+	knet_handle_t knet_h;
+	struct epoll_event events[KNET_MAX_EVENTS];
 
-	addrlen = sizeof(struct sockaddr_storage);
+	knet_h = (knet_handle_t) data;
 
-	ret = recvfrom(sockfd, frame,
-		len, MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
+	while (1) {
+		nev = epoll_wait(knet_h->epollfd,
+				events, KNET_MAX_EVENTS, KNET_PING_TIMERES);
 
-	if (ret <= 0)
-		return ret;
-
-	if (ret < sizeof(struct knet_frame)) {
-		errno = EBADMSG;
-		return -1;
+		for (i = 0; i < nev; i++) {
+			if (events[i].data.ptr == knet_h) {
+				knet_send_data(knet_h);
+			} else {
+				knet_recv_frame(knet_h, events[i].data.ptr);
+			}
+		}
 	}
 
-	if (ntohl(frame->magic) != KNET_FRAME_MAGIC) {
-		errno = EBADMSG;
-		return -1;
-	}
-
-	if (frame->version != KNET_FRAME_VERSION) { /* TODO: versioning */
-		errno = EBADMSG;
-		return -1;
-	}
-
-	switch (frame->type) {
-	case KNET_FRAME_DATA:
-		return ret;
-	case KNET_FRAME_PING:
-		frame->type = KNET_FRAME_PONG;
-		sendto(sockfd, frame, ret, MSG_DONTWAIT, (struct sockaddr *) &address, addrlen);
-		return 0;
-	case KNET_FRAME_PONG:
-		/* TODO: find the link and mark enabled */
-		return ret;
-	}
-
-	errno = EBADMSG;
-	return -1;
+	return NULL;
 }
 
-void knet_send(struct knet_host *host, struct knet_frame *frame, size_t len)
+static void knet_send_data(knet_handle_t knet_h)
 {
-	ssize_t err;
-	struct knet_host *khp;
-	struct knet_link *klp;
+	ssize_t len, snt;
+	struct knet_host *i;
+	struct knet_link *j;
 
-	for (khp = host; khp != NULL; khp = khp->next) {
-		if (frame->type == KNET_FRAME_DATA) {
-			/* TODO: packet inspection, might continue */
-		}
+	len = read(knet_h->sock[0], knet_h->buff + 1,
+				KNET_BUFSIZE - sizeof(struct knet_frame));
 
-		for (klp = khp->link; klp != NULL; klp = klp->next) {
-			if ((frame->type == KNET_FRAME_DATA) && (!klp->enabled))
-				continue;
+	if (len == 0) {
+		/* TODO: disconnection, should never happen! */
+		close(knet_h->sock[0]); /* FIXME: from here is downhill :) */
+		return;
+	}
 
-			err = sendto(klp->sock, frame, len, MSG_DONTWAIT,
-				(struct sockaddr *) &klp->address, sizeof(struct sockaddr_storage));
+	len += sizeof(struct knet_frame);
 
-			if ((frame->type == KNET_FRAME_DATA) && (!khp->active) && (err == len))
+	knet_h->buff->magic	= htonl(KNET_FRAME_MAGIC);
+	knet_h->buff->version 	= KNET_FRAME_VERSION;
+	knet_h->buff->type	= KNET_FRAME_DATA;
+
+	/* TODO: packet inspection */
+
+	for (i = knet_h->host_head; i != NULL; i = i->next) {
+		for (j = i->link; j != NULL; j = j->next) {
+			snt = sendto(j->sock, knet_h->buff, len, MSG_DONTWAIT,
+					(struct sockaddr *) &j->address,
+					sizeof(struct sockaddr_storage));
+			if ((i->active == 0) && (snt == len))
 				break;
 		}
 	}
 }
+
+static void knet_recv_frame(knet_handle_t knet_h, struct knet_link *hlnk)
+{
+	ssize_t len;
+	struct sockaddr_storage address;
+	socklen_t addrlen;
+
+	len = recvfrom(hlnk->sock, knet_h->buff, KNET_BUFSIZE,
+		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
+
+	if (len < sizeof(struct knet_frame))
+		return;
+
+	if (ntohl(knet_h->buff->magic) != KNET_FRAME_MAGIC)
+		return;
+
+	if (knet_h->buff->version != KNET_FRAME_VERSION)
+		return;
+
+	switch (knet_h->buff->type) {
+	case KNET_FRAME_DATA:
+		write(knet_h->sock[0],
+			knet_h->buff + 1, len - sizeof(struct knet_frame));
+		break;
+	case KNET_FRAME_PING:
+		/* TODO: reply using KNET_FRAME_PONG */
+		break;
+	case KNET_FRAME_PONG:
+		/* TODO: find the link and mark enabled */
+		break;
+	}
+}
+

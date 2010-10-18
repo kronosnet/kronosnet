@@ -44,7 +44,5 @@ int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 int knet_host_foreach(knet_handle_t khandle, int (*action)(struct knet_host *, void *), void *data);
 
 int knet_bind(struct sockaddr *address, socklen_t addrlen);
-ssize_t knet_dispatch(int sockfd, struct knet_frame *frame, size_t len);
-void knet_send(struct knet_host *host, struct knet_frame *frame, size_t len);
 
 #endif

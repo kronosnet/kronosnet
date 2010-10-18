@@ -12,7 +12,6 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  knet_test \
-		  ring_test \
 		  vty_test
 
 TESTS = $(check_PROGRAMS)
@@ -24,11 +23,6 @@ LDFLAGS			+= -lpthread
 knet_test_SOURCES	= \
 			  knet_test.c \
 			  ../knet.c \
-			  ../utils.c
-
-ring_test_SOURCES	= \
-			  ring_test.c \
-			  ../ring.c \
 			  ../utils.c
 
 ping_test_SOURCES	= \

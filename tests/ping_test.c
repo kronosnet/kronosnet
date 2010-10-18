@@ -9,7 +9,8 @@
 #include "ring.h"
 #include "utils.h"
 
-struct knet_host *host_head = NULL;
+static int knet_sock;
+static knet_handle_t knet_h;
 
 static in_port_t tok_inport(char *str)
 {
@@ -36,54 +37,23 @@ static int tok_inaddrport(char *str, struct sockaddr_in *addr)
 	return inet_aton(strhost, &addr->sin_addr);
 }
 
-static void wait_data_loop(int sockfd, time_t timeout)
-{
-	int err;
-	fd_set rfds;
-	struct timeval tv;
-	ssize_t len;
-	struct knet_frame recv_frame;
-
-	tv.tv_sec = timeout;
-	tv.tv_usec = 0;
-
-	while ((tv.tv_sec > 0) || (tv.tv_usec > 0)) {
-		FD_ZERO(&rfds);
-		FD_SET(sockfd, &rfds);
-
-		err = select(sockfd + 1, &rfds, NULL, NULL, &tv);
-
-		if (err == -1) {
-			log_error("Unable to wait for ping messages");
-			exit(EXIT_FAILURE);
-		} else if (!FD_ISSET(sockfd, &rfds)) {
-			continue;
-		}
-
-		len = knet_dispatch(sockfd, &recv_frame, sizeof(struct knet_frame));
-
-		if ((len > 0) && (recv_frame.type == KNET_FRAME_PONG)) {
-			log_info("Pong received!");
-		}
-	}
-}
-
 static void print_usage(char *name)
 {
 	printf("usage: %s <localip>[:<port>] <remoteip>[:port] [...]\n", name);
 	printf("example: %s 0.0.0.0 192.168.0.2\n", name);
 }
 
-static int start_server(char *addrstring)
+static void argv_to_hosts(int argc, char *argv[])
 {
-	int err, sockfd;
+	int err, i, sockfd;
 	struct sockaddr_in address;
+	struct knet_host *host;
 
 	address.sin_family = AF_INET;
-	err = tok_inaddrport(addrstring, &address);
+	err = tok_inaddrport(argv[1], &address);
 
 	if (err < 0) {
-		log_error("Unable to convert ip address: %s", addrstring);
+		log_error("Unable to convert ip address: %s", argv[1]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -94,15 +64,7 @@ static int start_server(char *addrstring)
 		exit(EXIT_FAILURE);
 	}
 
-	return sockfd;
-}
-
-static void create_hosts(int sockfd, int hostnum, char *hoststring[])
-{
-	int err, i;
-	struct knet_host *host;
-
-	for (i = 0; i < hostnum; i++) {
+	for (i = 2; i < argc; i++) {
 		host = malloc(sizeof(struct knet_host));
 
 		if (host == NULL) {
@@ -124,40 +86,61 @@ static void create_hosts(int sockfd, int hostnum, char *hoststring[])
 		host->link->sock = sockfd;
 		host->link->address.ss_family = AF_INET;
 
-		err = tok_inaddrport(hoststring[i], (struct sockaddr_in *) &host->link->address);
+		err = tok_inaddrport(argv[i], (struct sockaddr_in *) &host->link->address);
 
 		if (err < 0) {
-			log_error("Unable to convert ip address: %s", hoststring[i]);
+			log_error("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
 
-		host->next = host_head;
-		host_head = host;
+		knet_host_add(knet_h, host);
 	}
 }
 
 int main(int argc, char *argv[])
 {
-	int sockfd;
-	struct knet_frame send_frame;
+	char buff[1024];
+	size_t len;
+	fd_set rfds;
+	struct timeval tv;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	sockfd = start_server(argv[1]);
-	create_hosts(sockfd, argc - 2, &argv[2]);
+	if ((knet_h = knet_handle_new()) == NULL) {
+		log_error("Unable to create new knet_handle_t");
+		exit(EXIT_FAILURE);
+	}
 
-	send_frame.magic = htonl(KNET_FRAME_MAGIC);
-	send_frame.version = KNET_FRAME_VERSION;
-	send_frame.type = KNET_FRAME_PING;
+	argv_to_hosts(argc, argv);
+
+	knet_sock = knet_handle_getfd(knet_h);
 
 	while (1) {
-		log_info("Sending pings");
+		log_info("Sending 'Hello World!' frames");
+		write(knet_sock, "Hello World!", 13);
 
-		knet_send(host_head, &send_frame, sizeof(struct knet_frame));
-		wait_data_loop(sockfd, 5); /* wait data for 5 seconds */
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+
+select_loop:
+		FD_ZERO(&rfds);
+		FD_SET(knet_sock, &rfds);
+
+		len = select(knet_sock + 1, &rfds, NULL, NULL, &tv);
+
+		if (len < 0) {
+			log_error("Unable select over knet_handle_t");
+			exit(EXIT_FAILURE);
+		} else if (FD_ISSET(knet_sock, &rfds)) {
+			read(knet_sock, buff, sizeof(buff));
+			printf("Received data: '%s'\n", buff);
+		}
+
+		if ((tv.tv_sec > 0) || (tv.tv_usec > 0))
+			goto select_loop;
 	}
 
 	/* FIXME: allocated hosts should be free'd */
