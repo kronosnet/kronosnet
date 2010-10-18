@@ -37,6 +37,8 @@ struct knet_frame {
 } __attribute__((packed));
 
 knet_handle_t knet_handle_new(void);
+int knet_handle_getfd(knet_handle_t knet_h);
+
 int knet_host_add(knet_handle_t khandle, struct knet_host *host);
 int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 int knet_host_foreach(knet_handle_t khandle, int (*action)(struct knet_host *, void *), void *data);

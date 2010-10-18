@@ -11,14 +11,44 @@
 #include "ring.h"
 #include "utils.h"
 
+#define KNET_MAX_EVENTS 8
+
 struct __knet_handle {
+	int sock[2];
+	int epollfd;
 	struct knet_host *host_head;
+	pthread_t control_thread;
 	pthread_rwlock_t host_rwlock;
 };
+
+static void *knet_control_thread(void *data)
+{
+	int i, nev;
+	knet_handle_t knet_h;
+	struct epoll_event events[KNET_MAX_EVENTS];
+
+	knet_h = (knet_handle_t) data;
+
+	while(1) {
+		nev = epoll_wait(knet_h->epollfd, events, KNET_MAX_EVENTS, 500);
+
+		for (i = 0; i < nev; i++) {
+			if (events[i].data.fd == knet_h->sock[0]) {
+				/* TODO: read data, inspect and deliver */
+			}
+			else {
+				/* TODO: read frame, porcess or dispatch */
+			}
+		}
+	}
+
+	return NULL;
+}
 
 knet_handle_t knet_handle_new(void)
 {
 	knet_handle_t knet_h;
+	struct epoll_event ev;
 
 	knet_h = malloc(sizeof(struct __knet_handle));
 
@@ -27,18 +57,66 @@ knet_handle_t knet_handle_new(void)
 
 	memset(knet_h, 0, sizeof(struct __knet_handle));
 
-	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0) {
-		free(knet_h);
-		return NULL;
-	}
+	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0)
+		goto exit_fail1;
+
+	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
+		goto exit_fail2;
+
+	knet_h->epollfd = epoll_create1(FD_CLOEXEC);
+
+	if (knet_h->epollfd < 0)
+		goto exit_fail3;
+
+	ev.events = EPOLLIN;
+	ev.data.fd = knet_h->sock[0];
+
+	if (epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, knet_h->sock[0], &ev) != 0)
+               goto exit_fail4;
+
+	if (pthread_create(&knet_h->control_thread,
+			0, knet_control_thread, (void *) knet_h) != 0)
+		goto exit_fail4;
 
 	return knet_h;
+
+exit_fail4:
+	close(knet_h->epollfd);
+
+exit_fail3:
+	close(knet_h->sock[0]);
+	close(knet_h->sock[1]);
+
+exit_fail2:
+	pthread_rwlock_destroy(&knet_h->host_rwlock);
+
+exit_fail1:
+	free(knet_h);
+	return NULL;
+}
+
+int knet_handle_getfd(knet_handle_t knet_h)
+{
+	return knet_h->sock[1];
 }
 
 int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 {
+	struct knet_link *lp;
+	struct epoll_event ev;
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+	ev.events = EPOLLIN;
+
 	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
 		return -1;
+
+	for (lp = host->link; lp != NULL; lp = lp->next) {
+		ev.data.fd = lp->sock;
+		ev.data.ptr = lp;
+		/* TODO: check for errors? */
+		epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, lp->sock, &ev);
+	}
 
 	/* pushing new host to the front */
 	host->next = knet_h->host_head;
@@ -50,7 +128,8 @@ int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 
 int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 {
-	struct knet_host *khp;
+	struct knet_host *hp;
+	struct knet_link *lp;
 
 	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
 		return -1;
@@ -59,13 +138,18 @@ int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 	if (host == knet_h->host_head) {
 		knet_h->host_head = host->next;
 	} else {
-		for (khp = knet_h->host_head; khp != NULL; khp = khp->next) {
-			if (host == khp->next) {
-				khp->next = khp->next->next;
+		for (hp = knet_h->host_head; hp != NULL; hp = hp->next) {
+			if (host == hp->next) {
+				hp->next = hp->next->next;
 				break;
 			}
 		}
 	}
+
+	/* NOTE: kernel versions before 2.6.9 required a non-NULL pointer
+	 * TODO: check for EPOLL_CTL_DEL errors? */
+	for (lp = host->link; lp != NULL; lp = lp->next)
+		epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, lp->sock, 0);
 
 	pthread_rwlock_unlock(&knet_h->host_rwlock);
 	return 0;
@@ -79,7 +163,7 @@ int knet_host_foreach(knet_handle_t knet_h, int (*action)(struct knet_host *, vo
 		return -1;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		if (action(i, data) != 0)
+		if (action && action(i, data) != 0)
 			break;
 	}
 
