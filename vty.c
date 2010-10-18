@@ -43,6 +43,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 	fd_set rfds;
 	int se_result = 0;
 	struct timeval tv;
+	int err = 0;
 
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
@@ -70,6 +71,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		}
 
 		if (se_result == -1) {
+			err = se_result;
 			log_error("Unable to select on vty listener socket!");
 			goto out;
 		}
@@ -106,7 +108,7 @@ out:
 
 	// reverse running config to close/release resources;
 
-	return 0;
+	return err;
 }
 
 void knet_vty_set_max_connections(const int max_connections)

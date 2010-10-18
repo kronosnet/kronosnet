@@ -281,7 +281,8 @@ int main(int argc, char **argv)
 	if (err < 0)
 		goto out;
 
-	knet_vty_main_loop(conffile, vty_ip_addr, vty_port);
+	if (knet_vty_main_loop(conffile, vty_ip_addr, vty_port) < 0)
+		log_error("Detected fatal error in main loop");
 
 out:
 	free(conffile);
