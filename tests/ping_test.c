@@ -57,7 +57,7 @@ static void argv_to_hosts(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	sockfd = knet_bind((struct sockaddr *) &address, sizeof(struct sockaddr_in));
+	sockfd = knet_handle_bind(knet_h, (struct sockaddr *) &address, sizeof(struct sockaddr_in));
 
 	if (sockfd < 0) {
 		log_error("Unable to bind knet");

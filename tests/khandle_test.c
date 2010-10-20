@@ -13,10 +13,20 @@
 
 struct knet_host *host_list[HOST_LIST_SIZE];
 
-static int my_action(struct knet_host *host, void *data)
+static int host_loop(knet_handle_t knet_h, size_t *loopnum)
 {
-	host->active = 1;
-	*(size_t *) data += 1;
+	struct knet_host *kh;
+
+	knet_host_acquire(knet_h, &kh, 1);
+
+	while (kh != NULL) {
+		kh->active = 1;
+		kh = kh->next;
+		(*loopnum)++;
+	}
+
+	knet_host_release(knet_h);
+
 	return 0;
 }
 
@@ -25,6 +35,7 @@ int main(int argc, char *argv[])
 	int i, j;
 	size_t loopnum;
 	knet_handle_t knet_h;
+	
 
 	knet_h = knet_handle_new();
 
@@ -36,8 +47,9 @@ int main(int argc, char *argv[])
 	loopnum = 0;
 
 	for (i = 0; i < HOST_LIST_SIZE; i++) {
-		for (j = 0; j < HOST_LIST_LOOP; j++)
-			knet_host_foreach(knet_h, my_action, &loopnum);
+		for (j = 0; j < HOST_LIST_LOOP; j++) {
+			host_loop(knet_h, &loopnum);
+		}
 		knet_host_remove(knet_h, host_list[i]);
 	}
 
