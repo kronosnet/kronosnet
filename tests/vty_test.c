@@ -13,12 +13,27 @@ static int knet_vty_set_max_check(void)
 
 	log_info("Testing knet_vty_set_max_connections");
 
-	knet_vty_set_max_connections(8);
-
-	if (vty_max_connections != 8) {
+	if (knet_vty_set_max_connections(8) < 0) {
 		log_error("Unable to set max connections");
 		return -1;
 	}
+
+	log_info("Testing ERROR conditions");
+
+	log_info("Setting max_connections to 0");
+
+	if (!knet_vty_set_max_connections(0)) {
+		log_error("Check knet_vty_set_max_connections filters");
+		return -1;
+	}
+
+	log_info("Setting max_connections to %d", KNET_VTY_TOTAL_MAX_CONN+1);
+
+	if (!knet_vty_set_max_connections(KNET_VTY_TOTAL_MAX_CONN+1)) {
+		log_error("Check knet_vty_set_max_connections filters");
+		return -1;
+	}
+
 
 	knet_vty_set_max_connections(max_conn);
 

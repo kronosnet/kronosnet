@@ -141,11 +141,20 @@ out:
 	return err;
 }
 
-void knet_vty_set_max_connections(const int max_connections)
+int knet_vty_set_max_connections(const int max_connections)
 {
+	int err = 0;
+
 	pthread_mutex_lock(&knet_vty_mutex);
-	vty_max_connections = max_connections;
+	if ((max_connections > KNET_VTY_TOTAL_MAX_CONN) ||
+	    (max_connections < 1)) {
+		errno = EINVAL;
+		err = -1;
+	} else {
+		vty_max_connections = max_connections;
+	}
 	pthread_mutex_unlock(&knet_vty_mutex);
+	return err;
 }
 
 int knet_vty_init_listener(const char *ip_addr, const unsigned short port)

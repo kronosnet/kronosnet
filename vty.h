@@ -12,6 +12,6 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 int knet_vty_init_listener(const char *address, const unsigned short port);
 void knet_vty_close_listener(int listener_fd);
 
-void knet_vty_set_max_connections(const int max_connections);
+int knet_vty_set_max_connections(const int max_connections);
 
 #endif
