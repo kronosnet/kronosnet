@@ -12,7 +12,8 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  knet_test \
-		  vty_test
+		  vty_test \
+		  netutils_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -38,4 +39,9 @@ khandle_test_SOURCES	= \
 vty_test_SOURCES	= \
 			  vty_test.c \
 			  ../vty.c \
+			  ../utils.c
+
+netutils_test_SOURCES	= \
+			  netutils_test.c \
+			  ../netutils.c \
 			  ../utils.c
