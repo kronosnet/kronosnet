@@ -11,11 +11,15 @@
 
 #include "utils.h"
 #include "vty.h"
+#include "vty_auth.h"
+#include "vty_utils.h"
 
 STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
 STATIC int vty_current_connections = 0;
+
+STATIC pthread_t vty_thread[KNET_VTY_TOTAL_MAX_CONN];
 
 STATIC int daemon_quit = 0;
 
@@ -27,6 +31,24 @@ static void sigterm_handler(int sig)
 static void sigpipe_handler(int sig)
 {
 	return;
+}
+
+static void *vty_accept_thread(void *arg)
+{
+	int vty_sock = *(int *)arg;
+
+	knet_vty_print_banner(vty_sock);
+
+	if (knet_vty_auth_user(vty_sock) < 0)
+		goto out_clean;
+
+out_clean:
+	pthread_mutex_lock(&knet_vty_mutex);
+	close(vty_sock);
+	vty_current_connections--;
+	pthread_mutex_unlock(&knet_vty_mutex);
+
+	return NULL;
 }
 
 /*
@@ -78,6 +100,9 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		if ((se_result == 0) || (!FD_ISSET(vty_listener_fd, &rfds)))
 			continue;
 
+		memset(&incoming_sa, 0, sizeof(struct sockaddr));
+		salen = 0;
+
 		vty_accept_fd = accept(vty_listener_fd, &incoming_sa, &salen);
 		if (vty_accept_fd < 0) {
 			log_error("Unable to accept connection to vty");
@@ -87,6 +112,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		// check for ip address access list here against incoming_sa
 
 		pthread_mutex_lock(&knet_vty_mutex);
+
 		if (vty_current_connections == vty_max_connections) {
 			errno = ECONNREFUSED;
 			log_error("Too many connections to VTY");
@@ -95,9 +121,14 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 			continue;
 		}
 
-		// start vty thread here
-		// vty_current_connections++; should be incremented once
-		// the thread is started and operating
+		vty_current_connections++;
+		err = pthread_create(&vty_thread[vty_current_connections],
+				     NULL, vty_accept_thread,
+				     (void *)&vty_accept_fd);
+		if (err < 0) {
+			log_error("Unable to spawn vty thread");
+			vty_current_connections--;
+		}
 
 		pthread_mutex_unlock(&knet_vty_mutex);
 	}

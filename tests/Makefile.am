@@ -39,6 +39,8 @@ khandle_test_SOURCES	= \
 vty_test_SOURCES	= \
 			  vty_test.c \
 			  ../vty.c \
+			  ../vty_auth.c \
+			  ../vty_utils.c \
 			  ../utils.c
 
 netutils_test_SOURCES	= \

@@ -106,6 +106,15 @@ AC_CHECK_FUNCS([strchr])
 AC_CHECK_FUNCS([atexit])
 AC_CHECK_FUNCS([ftruncate])
 
+# PAM check
+AC_CHECK_HEADERS([security/pam_appl.h],
+		 [AC_CHECK_LIB([pam], [pam_start])],
+		 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
+
+AC_CHECK_HEADERS([security/pam_misc.h],
+		 [AC_CHECK_LIB([pam_misc], [misc_conv])],
+		 [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+
 # local options
 AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],

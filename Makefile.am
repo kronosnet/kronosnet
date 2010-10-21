@@ -18,14 +18,23 @@ dist_doc_DATA		= \
 			  COPYRIGHT \
 			  README.licence
 
-noinst_HEADERS		=
+noinst_HEADERS		= knet.h \
+			  ring.h \
+			  utils.h \
+			  vty.h \
+			  vty_auth.h \
+			  vty_utils.h
 
 sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
 			  main.c \
 			  utils.c \
-			  vty.c
+			  vty.c \
+			  vty_auth.c \
+			  vty_utils.c
+
+kronosnetd_LDFLAGS	= -lpthread
 
 maintainer-clean-local:
 	rm -rf m4
