@@ -18,7 +18,7 @@ static int knet_pam_misc_conv(int num_msg, const struct pam_message **msgm,
 {
 	int count = 0;
 	struct pam_response *reply;
-	int vty_sock = *(int *)appdata_ptr;
+	struct knet_vty *vty = (struct knet_vty *)appdata_ptr;
 
 	if (num_msg <= 0)
 		return PAM_CONV_ERR;
@@ -37,28 +37,28 @@ static int knet_pam_misc_conv(int num_msg, const struct pam_message **msgm,
 
 		switch (msgm[count]->msg_style) {
 		case PAM_PROMPT_ECHO_OFF:
-			if (knet_vty_set_echo(vty_sock, 0) < 0) {
-				knet_vty_write(vty_sock, "Unable to turn off terminal/telnet echo");
+			if (knet_vty_set_echo(vty, 0) < 0) {
+				knet_vty_write(vty, "Unable to turn off terminal/telnet echo");
 				goto failed_conversation;
 			}
-			knet_vty_write(vty_sock, "%s", msgm[count]->msg);
-			nc = knet_vty_read(vty_sock, readbuf, sizeof(readbuf));
+			knet_vty_write(vty, "%s", msgm[count]->msg);
+			nc = knet_vty_read(vty, readbuf, sizeof(readbuf));
 			if (nc < 0)
 				goto failed_conversation;
-			if (knet_vty_set_echo(vty_sock, 1) < 0) {
+			if (knet_vty_set_echo(vty, 1) < 0) {
 				/* doesn't really make a lot of sense tho.... */
-				knet_vty_write(vty_sock, "Unable to turn on terminal/telnet echo");
+				knet_vty_write(vty, "Unable to turn on terminal/telnet echo");
 				goto failed_conversation;
 			}
-			knet_vty_write(vty_sock, "\n");
+			knet_vty_write(vty, "\n");
 			readbuf[nc-2] = 0;
 			string = strdup((const char*)readbuf);
 			if (!string)
 				goto failed_conversation;
 			break;
 		case PAM_PROMPT_ECHO_ON:
-			knet_vty_write(vty_sock, "\n%s", msgm[count]->msg);
-			nc = knet_vty_read(vty_sock, readbuf, sizeof(readbuf));
+			knet_vty_write(vty, "\n%s", msgm[count]->msg);
+			nc = knet_vty_read(vty, readbuf, sizeof(readbuf));
 			if (nc < 0)
 				goto failed_conversation;
 			readbuf[nc-2] = 0;
@@ -68,15 +68,15 @@ static int knet_pam_misc_conv(int num_msg, const struct pam_message **msgm,
 			break;
 		case PAM_ERROR_MSG:
 			log_error("Received PAM error message %s", msgm[count]->msg);
-			knet_vty_write(vty_sock, "%s", msgm[count]->msg);
+			knet_vty_write(vty, "%s", msgm[count]->msg);
 			break;
 		case PAM_TEXT_INFO:
 			log_error("Received PAM text info: %s", msgm[count]->msg);
-			knet_vty_write(vty_sock, "%s", msgm[count]->msg);
+			knet_vty_write(vty, "%s", msgm[count]->msg);
 			break;
 		default:
 			log_error("Unknown PAM conversation message");
-			knet_vty_write(vty_sock, "Unknown PAM conversation message");
+			knet_vty_write(vty, "Unknown PAM conversation message");
 			goto failed_conversation;
 		}
 
@@ -94,7 +94,7 @@ static int knet_pam_misc_conv(int num_msg, const struct pam_message **msgm,
 
 failed_conversation:
 	log_error("PAM conversation error");
-	knet_vty_write(vty_sock, "PAM conversation error");
+	knet_vty_write(vty, "PAM conversation error");
 	if (reply) {
 		for (count=0; count < num_msg; ++count) {
 			if (reply[count].resp == NULL)
@@ -125,7 +125,7 @@ failed_conversation:
 
 #define AUTH_MAX_RETRY 3
 
-int knet_vty_auth_user(int vty_sock)
+int knet_vty_auth_user(struct knet_vty *vty)
 {
 	pam_handle_t *pamh=NULL;
 	struct pam_conv conv;
@@ -133,7 +133,7 @@ int knet_vty_auth_user(int vty_sock)
 	int retry = 1;
 
 	conv.conv = knet_pam_misc_conv;
-	conv.appdata_ptr = (void *)&vty_sock;
+	conv.appdata_ptr = (void *)vty;
 
 retry_auth:
 	err = pam_start("kronosnet", NULL, &conv, &pamh);
@@ -160,9 +160,9 @@ out_clean:
 	}
 
 	if ((err != PAM_SUCCESS) && (retry = AUTH_MAX_RETRY))
-		knet_vty_write(vty_sock, "%s", pam_strerror(pamh, err));
+		knet_vty_write(vty, "%s", pam_strerror(pamh, err));
 
-	knet_vty_write(vty_sock, "\n");
+	knet_vty_write(vty, "\n");
 
 	return err;
 }

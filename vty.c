@@ -35,17 +35,17 @@ static void sigpipe_handler(int sig)
 
 static void *vty_accept_thread(void *arg)
 {
-	struct knet_vty *this_vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
+	struct knet_vty *vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
 
-	knet_vty_print_banner(this_vty->vty_sock);
+	knet_vty_print_banner(vty);
 
-	if (knet_vty_auth_user(this_vty->vty_sock) < 0)
+	if (knet_vty_auth_user(vty) < 0)
 		goto out_clean;
 
 out_clean:
 	pthread_mutex_lock(&knet_vty_mutex);
-	this_vty->active = 0;
-	close(this_vty->vty_sock);
+	vty->active = 0;
+	close(vty->vty_sock);
 	vty_current_connections--;
 	pthread_mutex_unlock(&knet_vty_mutex);
 
