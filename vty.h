@@ -1,10 +1,23 @@
 #ifndef __VTY_H__
 #define __VTY_H__
 
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #define KNET_VTY_DEFAULT_PORT		50000
 
 #define KNET_VTY_DEFAULT_MAX_CONN	4
 #define KNET_VTY_TOTAL_MAX_CONN		16
+
+struct knet_vty {
+	pthread_t		vty_thread;
+	struct sockaddr_storage	src_sa;
+	socklen_t		src_sa_len;
+	int			vty_sock;
+	int			conn_num;
+	int			active;
+};
 
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		       const unsigned short port);

@@ -19,7 +19,7 @@ STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
 STATIC int vty_current_connections = 0;
 
-STATIC pthread_t vty_thread[KNET_VTY_TOTAL_MAX_CONN];
+STATIC struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
 STATIC int daemon_quit = 0;
 
@@ -35,16 +35,17 @@ static void sigpipe_handler(int sig)
 
 static void *vty_accept_thread(void *arg)
 {
-	int vty_sock = *(int *)arg;
+	struct knet_vty *this_vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
 
-	knet_vty_print_banner(vty_sock);
+	knet_vty_print_banner(this_vty->vty_sock);
 
-	if (knet_vty_auth_user(vty_sock) < 0)
+	if (knet_vty_auth_user(this_vty->vty_sock) < 0)
 		goto out_clean;
 
 out_clean:
 	pthread_mutex_lock(&knet_vty_mutex);
-	close(vty_sock);
+	this_vty->active = 0;
+	close(this_vty->vty_sock);
 	vty_current_connections--;
 	pthread_mutex_unlock(&knet_vty_mutex);
 
@@ -65,6 +66,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 	int se_result = 0;
 	struct timeval tv;
 	int err = 0;
+	int conn_index, found;
 
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
@@ -76,6 +78,8 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		log_error("Unable to setup vty listener");
 		return -1;
 	}
+
+	memset(&knet_vtys, 0, sizeof(knet_vtys));
 
 	while (se_result >= 0 && !daemon_quit) {
 		FD_ZERO (&rfds);
@@ -113,20 +117,41 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 
 		pthread_mutex_lock(&knet_vty_mutex);
 
-		if (vty_current_connections == vty_max_connections) {
+		found = 0;
+		for(conn_index = 0; conn_index <= vty_max_connections; conn_index++) {
+			if (knet_vtys[conn_index].active == 0) {
+				found = 1;
+				break;
+			}
+		}
+
+		if ((vty_current_connections == vty_max_connections) || (!found)) {
 			errno = ECONNREFUSED;
-			log_error("Too many connections to VTY");
+			log_error("Too many connections to VTY or no available slots");
 			close(vty_accept_fd);
 			pthread_mutex_unlock(&knet_vty_mutex);
 			continue;
 		}
 
 		vty_current_connections++;
-		err = pthread_create(&vty_thread[vty_current_connections],
+
+		memset(&knet_vtys[conn_index], 0,
+		       sizeof(struct knet_vty));
+
+		knet_vtys[conn_index].vty_sock = vty_accept_fd;
+		knet_vtys[conn_index].conn_num = conn_index;
+		memcpy(&knet_vtys[conn_index].src_sa, &incoming_sa, salen);
+		knet_vtys[conn_index].src_sa_len = salen;
+		knet_vtys[conn_index].active = 1;
+
+
+		err = pthread_create(&knet_vtys[conn_index].vty_thread,
 				     NULL, vty_accept_thread,
-				     (void *)&vty_accept_fd);
+				     (void *)&conn_index);
 		if (err < 0) {
 			log_error("Unable to spawn vty thread");
+			memset(&knet_vtys[conn_index], 0,
+			       sizeof(struct knet_vty));
 			vty_current_connections--;
 		}
 
