@@ -39,6 +39,10 @@ int addrtostr(const struct sockaddr *sa, socklen_t salen, char *buf[2])
 	int ret;
 
 	buf[0] = malloc(ADDRTOSTR_HOST_LEN + ADDRTOSTR_PORT_LEN);
+
+	if (buf[0] == NULL)
+		return -1;
+
 	buf[1] = buf[0] + ADDRTOSTR_HOST_LEN;
 
 	ret = getnameinfo(sa, salen, buf[0], ADDRTOSTR_HOST_LEN,
