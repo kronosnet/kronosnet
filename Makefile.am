@@ -29,6 +29,7 @@ sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
 			  main.c \
+			  netutils.c \
 			  utils.c \
 			  vty.c \
 			  vty_auth.c \

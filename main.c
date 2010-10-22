@@ -17,7 +17,7 @@
 static int daemonize = 1;
 static char *conffile = NULL;
 static char *vty_ip_addr = NULL;
-static unsigned short vty_port = KNET_VTY_DEFAULT_PORT;
+static char *vty_port = NULL;
 
 extern int utils_debug;
 
@@ -41,7 +41,7 @@ static int read_arguments(int argc, char **argv)
 {
 	int cont = 1;
 	int optchar;
-	int int_port = KNET_VTY_DEFAULT_PORT;
+	int int_port;
 
 	while (cont) {
 		optchar = getopt(argc, argv, OPTION_STRING);
@@ -60,7 +60,9 @@ static int read_arguments(int argc, char **argv)
 				errno = EINVAL;
 				return -1;
 			}
-			vty_port = int_port;
+			vty_port = strdup(optarg);
+			if (!vty_port)
+				return -1;
 			break;
 
 		case 'c':
@@ -284,6 +286,10 @@ int main(int argc, char **argv)
 
 out:
 	free(conffile);
+	if (vty_ip_addr)
+		free(vty_ip_addr);
+	if (vty_port)
+		free(vty_port);
 
 	return 0;
 }

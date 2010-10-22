@@ -48,7 +48,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to all default port");
 
-	sock = knet_vty_init_listener(NULL, KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener(NULL, "50000");
 	if (sock < 0) {
 		log_error("Unable to init vty");
 		return -1;
@@ -57,7 +57,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to localhost v4 default port");
 
-	sock = knet_vty_init_listener("127.0.0.1", KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener("127.0.0.1", "50000");
 	if (sock < 0) {
 		log_error("Unable to init vty");
 		return -1;
@@ -66,7 +66,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to localhost v6 default port");
 
-	sock = knet_vty_init_listener("::1", KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener("::1", "50000");
 	if (sock < 0) {
 		log_error("Unable to init vty");
 		return -1;
@@ -75,7 +75,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to all v6 default port");
 
-	sock = knet_vty_init_listener("::", KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener("::", "50000");
 	if (sock < 0) {
 		log_error("Unable to init vty");
 		return -1;
@@ -84,7 +84,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to all v4 default port");
 
-	sock = knet_vty_init_listener("0.0.0.0", KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener("0.0.0.0", "50000");
 	if (sock < 0) {
 		log_error("Unable to init vty");
 		return -1;
@@ -95,7 +95,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to wrong v4 default port");
 
-	sock = knet_vty_init_listener("255.255.255.255.255", KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener("255.255.255.255.255", "50000");
 	if (sock >= 0) {
 		log_error("Something is wrong with knet_vty_init_listener v4 ip handling");
 		return -1;
@@ -103,7 +103,7 @@ static int knet_vty_init_check(void)
 
 	log_info("Testing bind to wrong v6 default port");
 
-	sock = knet_vty_init_listener("fffff::1", KNET_VTY_DEFAULT_PORT);
+	sock = knet_vty_init_listener("fffff::1", "50000");
 	if (sock >= 0) {
 		log_error("Something is wrong with knet_vty_init_listener v4 ip handling");
 		return -1;
