@@ -155,6 +155,7 @@ static int knet_vty_pam_auth_user(struct knet_vty *vty, const char *user)
 retry_auth:
 	err = pam_start("kronosnet", user, &conv, &pamh);
 	if (err != PAM_SUCCESS) {
+		errno = EINVAL;
 		log_error("PAM fatal error: %s", pam_strerror(pamh, err));
 		knet_vty_write(vty, "PAM fatal error: %s",
 				pam_strerror(pamh, err));
@@ -162,8 +163,13 @@ retry_auth:
 	}
 
 	err = pam_authenticate(pamh, 0);
-	if (err != PAM_SUCCESS)
-		goto out_clean;
+	if (err != PAM_SUCCESS) {
+		errno = EINVAL;
+		log_error("PAM fatal error: %s", pam_strerror(pamh, err));
+		knet_vty_write(vty, "PAM fatal error: %s",
+				pam_strerror(pamh, err));
+		goto out_fatal;
+	}
 
 	if (knet_vty_get_pam_user(vty, pamh) != PAM_SUCCESS) {
 		log_error("PAM: unable to get PAM_USER: %s",
