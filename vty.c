@@ -38,11 +38,22 @@ static void sigpipe_handler(int sig)
 static void *vty_accept_thread(void *arg)
 {
 	struct knet_vty *vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
+	char *src_ip[2];
+	int err;
 
 	knet_vty_print_banner(vty);
 
 	if (knet_vty_auth_user(vty, NULL) < 0)
 		goto out_clean;
+
+	err = addrtostr((struct sockaddr *)&vty->src_sa,
+			vty->src_sa_len,
+			src_ip);
+	if (err) {
+		log_info("User %s connected from unknown location.", vty->username);
+	} else {
+		log_info("User %s connected from %s (%s)", vty->username, src_ip[0], src_ip[1]);
+	}
 
 out_clean:
 	pthread_mutex_lock(&knet_vty_mutex);
@@ -62,18 +73,31 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 {
 	int vty_listener_fd;
 	int vty_accept_fd;
-	struct sockaddr incoming_sa;
+	struct sockaddr_storage incoming_sa;
 	socklen_t salen;
 	fd_set rfds;
 	int se_result = 0;
 	struct timeval tv;
 	int err = 0;
 	int conn_index, found;
+	char portbuf[8];
+	char ipbuf[4];
 
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
 	// read and process config file here
+
+	if (!ip_addr) {
+		memset(&ipbuf, 0, sizeof(ipbuf));
+		snprintf(ipbuf, sizeof(ipbuf), "::");
+		ip_addr = ipbuf;
+	}
+	if (!port) {
+		memset(&portbuf, 0, sizeof(portbuf));
+		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
+		port = portbuf;
+	}
 
 	vty_listener_fd = knet_vty_init_listener(ip_addr, port);
 	if (vty_listener_fd < 0) {
@@ -106,10 +130,10 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		if ((se_result == 0) || (!FD_ISSET(vty_listener_fd, &rfds)))
 			continue;
 
-		memset(&incoming_sa, 0, sizeof(struct sockaddr));
-		salen = 0;
+		memset(&incoming_sa, 0, sizeof(struct sockaddr_storage));
+		salen = sizeof(struct sockaddr_storage);
 
-		vty_accept_fd = accept(vty_listener_fd, &incoming_sa, &salen);
+		vty_accept_fd = accept(vty_listener_fd, (struct sockaddr *)&incoming_sa, &salen);
 		if (vty_accept_fd < 0) {
 			log_error("Unable to accept connection to vty");
 			continue;
@@ -145,7 +169,6 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		memcpy(&knet_vtys[conn_index].src_sa, &incoming_sa, salen);
 		knet_vtys[conn_index].src_sa_len = salen;
 		knet_vtys[conn_index].active = 1;
-
 
 		err = pthread_create(&knet_vtys[conn_index].vty_thread,
 				     NULL, vty_accept_thread,
@@ -190,15 +213,8 @@ int knet_vty_init_listener(const char *ip_addr, const char *port)
 	int socktype = SOCK_STREAM;
 	int err = 0;
 	struct sockaddr_storage ss;
-	char portbuf[8];
 
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
-
-	if (!port) {
-		memset(&portbuf, 0, sizeof(portbuf));
-		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
-		port = portbuf;
-	}
 
 	if (strtoaddr(ip_addr, port, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage)) != 0)
 		return -1;
