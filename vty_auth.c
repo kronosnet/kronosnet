@@ -162,18 +162,14 @@ retry_auth:
 	}
 
 	err = pam_authenticate(pamh, 0);
+	if (err != PAM_SUCCESS)
+		goto out_clean;
 
 	if (knet_vty_get_pam_user(vty, pamh) != PAM_SUCCESS) {
 		log_error("PAM: unable to get PAM_USER: %s",
 			  pam_strerror(pamh, err));
 		knet_vty_write(vty, "PAM: unable to get PAM_USER: %s",
 				pam_strerror(pamh, err));
-		goto out_clean;
-	}
-
-	if (err != PAM_SUCCESS) {
-		log_info("User: %s failed to authenticate on vty(%d) attempt %d",
-			 vty->username, vty->conn_num, retry);
 		goto out_clean;
 	}
 
@@ -271,7 +267,7 @@ int knet_vty_auth_user(struct knet_vty *vty, const char *user)
 
 	err = knet_vty_pam_auth_user(vty, user);
 	if (err != PAM_SUCCESS)
-		return err;
+		return -1;
 
 	return knet_vty_group_check(vty);
 }
