@@ -127,16 +127,24 @@ AC_ARG_ENABLE([publicandocs],
 	[ default="no" ])
 
 AC_ARG_WITH([syslogfacility],
-	[  --syslogfacility=FACILITY
+	[  --with-syslogfacility=FACILITY
 			  default syslog facility. ],
 	[ SYSLOGFACILITY="$withval" ],
 	[ SYSLOGFACILITY="LOG_LOCAL4" ])
 
 AC_ARG_WITH([sysloglevel],
-	[  --sysloglevel=LEVEL
+	[  --with-sysloglevel=LEVEL
 			  default syslog level. ],
 	[ SYSLOGLEVEL="$withval" ],
 	[ SYSLOGLEVEL="LOG_INFO" ])
+
+AC_ARG_WITH([defaultadmgroup],
+	[  --with-defaultadmgroup=GROUP
+			  define PAM group. Users part of this group will be
+			  allowed to configure kronosnet. Others will only
+			  receive read-only rights. ],
+	[ DEFAULTADMGROUP="$withval" ],
+	[ DEFAULTADMGROUP="kronosnetadm" ])
 
 ## random vars
 LOGDIR=${localstatedir}/log/
@@ -155,11 +163,14 @@ AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",
 AC_DEFINE_UNQUOTED([RUNDIR], "$(eval echo ${RUNDIR})",
 		   [Default run directory])
 
-AC_DEFINE_UNQUOTED([SYSLOGFACILITY], $(eval echo ${SYSLOGFACILITY}),
+AC_DEFINE_UNQUOTED([SYSLOGFACILITY], "$(eval echo ${SYSLOGFACILITY})",
 		   [Default syslog facility])
 
-AC_DEFINE_UNQUOTED([SYSLOGLEVEL], $(eval echo ${SYSLOGLEVEL}),
+AC_DEFINE_UNQUOTED([SYSLOGLEVEL], "$(eval echo ${SYSLOGLEVEL})",
 		   [Default syslog level])
+
+AC_DEFINE_UNQUOTED([DEFAULTADMGROUP], "$(eval echo ${DEFAULTADMGROUP})",
+		   [Default admin group])
 
 ## *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
