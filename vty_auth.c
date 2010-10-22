@@ -225,8 +225,7 @@ static int knet_vty_group_check(struct knet_vty *vty)
 	if (!buf)
 		return -1;
 
-	/* TODO make default group user configurable */
-	while ((err = getgrnam_r("kronosnetadm", &grp, buf, buflen, &result)) == ERANGE) {
+	while ((err = getgrnam_r(DEFAULTADMGROUP, &grp, buf, buflen, &result)) == ERANGE) {
 		size_t newlen = 2 * buflen;
 		char *newbuf;
 
@@ -242,8 +241,8 @@ static int knet_vty_group_check(struct knet_vty *vty)
 
 	if (result == NULL) {
 		errno = EACCES;
-		log_error("No kronosnetadm group found on the system");
-		knet_vty_write(vty, "No kronosnetadm group found on the system\n");
+		log_error("No " DEFAULTADMGROUP " group found on the system");
+		knet_vty_write(vty, "No " DEFAULTADMGROUP " group found on the system\n");
 		err = -1;
 		goto out_clean;
 	}
