@@ -3,6 +3,6 @@
 
 #include <sys/socket.h>
 
-int strtoaddr(char *str, struct sockaddr *sa, socklen_t salen);
+int strtoaddr(const char *host, const char *port, struct sockaddr *sa, socklen_t salen);
 
 #endif
