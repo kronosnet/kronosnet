@@ -123,9 +123,24 @@ failed_conversation:
 	return PAM_CONV_ERR;
 }
 
-#define AUTH_MAX_RETRY 3
+static int knet_vty_get_pam_user(struct knet_vty *vty, pam_handle_t *pamh)
+{
+	const void *value;
+	int err;
 
-int knet_vty_auth_user(struct knet_vty *vty)
+	memset(vty->username, 0, sizeof(vty->username));
+
+	err = pam_get_item(pamh, PAM_USER, &value);
+
+	if (err != PAM_SUCCESS)
+		return err;
+
+	strncpy(vty->username, (const char*)value, 32);
+
+	return 0;
+}
+
+int knet_vty_auth_user(struct knet_vty *vty, const char *user)
 {
 	pam_handle_t *pamh=NULL;
 	struct pam_conv conv;
@@ -136,17 +151,36 @@ int knet_vty_auth_user(struct knet_vty *vty)
 	conv.appdata_ptr = (void *)vty;
 
 retry_auth:
-	err = pam_start("kronosnet", NULL, &conv, &pamh);
-	if (err != PAM_SUCCESS)
-		goto out_clean;
+	err = pam_start("kronosnet", user, &conv, &pamh);
+	if (err != PAM_SUCCESS) {
+		log_error("PAM fatal error: %s", pam_strerror(pamh, err));
+		knet_vty_write(vty, "PAM fatal error: %s",
+				pam_strerror(pamh, err));
+		goto out_fatal;
+	}
 
 	err = pam_authenticate(pamh, 0);
-	if (err != PAM_SUCCESS)
+
+	if (knet_vty_get_pam_user(vty, pamh) != PAM_SUCCESS) {
+		log_error("PAM: unable to get PAM_USER: %s",
+			  pam_strerror(pamh, err));
+		knet_vty_write(vty, "PAM: unable to get PAM_USER: %s",
+				pam_strerror(pamh, err));
 		goto out_clean;
+	}
+
+	if (err != PAM_SUCCESS) {
+		log_info("User: %s failed to authenticate on vty(%d) attempt %d",
+			 vty->username, vty->conn_num, retry);
+		goto out_clean;
+	}
 
 	err = pam_acct_mgmt(pamh, 0);
-	if (err != PAM_SUCCESS)
+	if (err != PAM_SUCCESS) {
+		log_info("User: %s failed to authenticate on vty(%d) attempt %d",
+			 vty->username, vty->conn_num, retry);
 		goto out_clean;
+	}
 
 out_clean:
 	if (pamh) {
@@ -159,9 +193,7 @@ out_clean:
 		goto retry_auth;
 	}
 
-	if ((err != PAM_SUCCESS) && (retry = AUTH_MAX_RETRY))
-		knet_vty_write(vty, "%s", pam_strerror(pamh, err));
-
+out_fatal:
 	knet_vty_write(vty, "\n");
 
 	return err;

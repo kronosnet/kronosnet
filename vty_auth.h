@@ -3,6 +3,8 @@
 
 #include "vty.h"
 
-int knet_vty_auth_user(struct knet_vty *vty);
+#define AUTH_MAX_RETRY 3
+
+int knet_vty_auth_user(struct knet_vty *vty, const char *user);
 
 #endif

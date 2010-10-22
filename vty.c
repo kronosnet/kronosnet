@@ -39,7 +39,7 @@ static void *vty_accept_thread(void *arg)
 
 	knet_vty_print_banner(vty);
 
-	if (knet_vty_auth_user(vty) < 0)
+	if (knet_vty_auth_user(vty, NULL) < 0)
 		goto out_clean;
 
 out_clean:

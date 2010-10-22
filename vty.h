@@ -14,6 +14,7 @@ struct knet_vty {
 	pthread_t		vty_thread;
 	struct sockaddr_storage	src_sa;
 	socklen_t		src_sa_len;
+	char			username[64];
 	int			vty_sock;
 	int			conn_num;
 	int			active;
