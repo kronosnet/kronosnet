@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
+#include <grp.h>
 
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
@@ -140,7 +142,7 @@ static int knet_vty_get_pam_user(struct knet_vty *vty, pam_handle_t *pamh)
 	return 0;
 }
 
-int knet_vty_auth_user(struct knet_vty *vty, const char *user)
+static int knet_vty_pam_auth_user(struct knet_vty *vty, const char *user)
 {
 	pam_handle_t *pamh=NULL;
 	struct pam_conv conv;
@@ -197,4 +199,80 @@ out_fatal:
 	knet_vty_write(vty, "\n");
 
 	return err;
+}
+
+static int knet_vty_group_check(struct knet_vty *vty)
+{
+	struct group grp;
+	char *buf;
+	size_t buflen;
+	long int initlen;
+	struct group *result;
+	char *gr_mem;
+	int err, i;
+
+	errno = 0;
+	initlen = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if ((initlen < 0) && (errno == EINVAL))
+		return -1;
+
+	if (initlen < 0)
+		initlen = 1024;
+
+	buflen = (size_t) initlen;
+
+	buf = malloc(buflen);
+	if (!buf)
+		return -1;
+
+	/* TODO make default group user configurable */
+	while ((err = getgrnam_r("kronosnetadm", &grp, buf, buflen, &result)) == ERANGE) {
+		size_t newlen = 2 * buflen;
+		char *newbuf;
+
+		newbuf = realloc(buf, newlen);
+		if (!newbuf) {
+			err = -1;
+			goto out_clean;
+		}
+		buf = newbuf;
+	}
+	if (err)
+		goto out_clean;
+
+	if (result == NULL) {
+		errno = EACCES;
+		log_error("No kronosnetadm group found on the system");
+		knet_vty_write(vty, "No kronosnetadm group found on the system\n");
+		err = -1;
+		goto out_clean;
+	}
+
+	gr_mem = *grp.gr_mem;
+
+	i = 1;
+	while(gr_mem != NULL) {
+		if (!strcmp(vty->username, gr_mem)) {
+			vty->user_can_enable = 1;
+			break;
+		}
+		gr_mem = *(grp.gr_mem + i);
+		i++;
+	}
+
+out_clean:
+	free(buf);
+
+	return err;
+}
+
+int knet_vty_auth_user(struct knet_vty *vty, const char *user)
+{
+	int err;
+
+	err = knet_vty_pam_auth_user(vty, user);
+	if (err != PAM_SUCCESS)
+		return err;
+
+	return knet_vty_group_check(vty);
 }
