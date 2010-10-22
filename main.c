@@ -271,12 +271,10 @@ int main(int argc, char **argv)
 
 	log_info(PACKAGE " version " VERSION);
 
-	log_debug("Adjust OOM to -16");
 	err = set_oom_adj(-16);
 	if (err < 0)
 		goto out;
 
-	log_debug("Set RR scheduler");
 	err = set_scheduler();
 	if (err < 0)
 		goto out;
