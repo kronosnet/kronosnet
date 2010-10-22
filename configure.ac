@@ -105,6 +105,8 @@ AC_CHECK_FUNCS([memmove])
 AC_CHECK_FUNCS([strchr])
 AC_CHECK_FUNCS([atexit])
 AC_CHECK_FUNCS([ftruncate])
+AC_CHECK_FUNCS([strrchr])
+AC_CHECK_FUNCS([strstr])
 
 # PAM check
 AC_CHECK_HEADERS([security/pam_appl.h],
