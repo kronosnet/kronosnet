@@ -12,8 +12,8 @@ noinst_PROGRAMS = \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
-		  knet_test \
-		  vty_test
+		  vty_test \
+		  knet_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -41,6 +41,7 @@ vty_test_SOURCES	= \
 			  ../vty.c \
 			  ../vty_auth.c \
 			  ../vty_utils.c \
+			  ../netutils.c \
 			  ../utils.c
 
 netutils_test_SOURCES	= \

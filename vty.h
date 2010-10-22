@@ -22,9 +22,9 @@ struct knet_vty {
 };
 
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,
-		       const unsigned short port);
+		       const char *port);
 
-int knet_vty_init_listener(const char *address, const unsigned short port);
+int knet_vty_init_listener(const char *address, const char *port);
 void knet_vty_close_listener(int listener_fd);
 
 int knet_vty_set_max_connections(const int max_connections);

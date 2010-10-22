@@ -8,8 +8,10 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include "utils.h"
+#include "netutils.h"
 #include "vty.h"
 #include "vty_auth.h"
 #include "vty_utils.h"
@@ -56,7 +58,7 @@ out_clean:
  * mainloop is not thread safe as there should only be one
  */
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,
-		       const unsigned short port)
+		       const char *port)
 {
 	int vty_listener_fd;
 	int vty_accept_fd;
@@ -182,37 +184,30 @@ int knet_vty_set_max_connections(const int max_connections)
 	return err;
 }
 
-int knet_vty_init_listener(const char *ip_addr, const unsigned short port)
+int knet_vty_init_listener(const char *ip_addr, const char *port)
 {
 	int sockfd = -1, sockopt = 1;
 	int socktype = SOCK_STREAM;
-	int af_family = AF_INET6;
-	int salen = 0, err = 0;
-	struct sockaddr_in sin;
-	struct sockaddr_in6 sin6;
+	int err = 0;
+	struct sockaddr_storage ss;
+	char portbuf[8];
+
+	memset(&ss, 0, sizeof(struct sockaddr_storage));
+
+	if (!port) {
+		memset(&portbuf, 0, sizeof(portbuf));
+		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
+		port = portbuf;
+	}
+
+	if (strtoaddr(ip_addr, port, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage)) != 0)
+		return -1;
 
 	pthread_mutex_lock(&knet_vty_mutex);
 
 	/* handle sigpipe if we decide to use KEEPALIVE */
 
-	/*
-	 * I REALLY HATE MYSELF FOR WRITING THIS PIECE OF CRAP
-	 * but it gets the job done
-	 */
-
-	if ((ip_addr) &&
-	    (strlen(ip_addr)) &&
-	    (!strchr(ip_addr, ':'))) {
-		af_family = AF_INET;
-	}
-
-	sockfd = socket(af_family, socktype, 0);
-	if ((sockfd < 0) &&
-	    (errno == EAFNOSUPPORT) &&
-	    (af_family = AF_INET6)) {
-		af_family = AF_INET;
-		sockfd = socket(af_family, socktype, 0);
-	}
+	sockfd = socket(ss.ss_family, socktype, 0);
 	if (sockfd < 0) {
 		err = sockfd;
 		goto out_clean;
@@ -228,35 +223,7 @@ int knet_vty_init_listener(const char *ip_addr, const unsigned short port)
 		goto out_clean;
 	}
 
-	if (af_family == AF_INET) {
-		salen = sizeof(struct sockaddr_in);
-		memset(&sin, 0, salen);
-		sin.sin_family = af_family;
-		sin.sin_port = htons(port);
-		if ((!ip_addr) || (!strlen(ip_addr)))
-			sin.sin_addr.s_addr = htonl(INADDR_ANY);
-		else
-			if (inet_pton(af_family, ip_addr, &sin.sin_addr) <= 0) {
-				err = -1;
-				goto out_clean;
-			}
-		sin.sin_port = htons(port);
-		err = bind(sockfd, (struct sockaddr *)&sin, salen);
-	} else {
-		salen = sizeof(struct sockaddr_in6);
-		memset(&sin6, 0, salen);
-		sin6.sin6_family = af_family;
-		sin6.sin6_port = htons(port);
-		if ((!ip_addr) || (!strlen(ip_addr)))
-			memcpy(&sin6.sin6_addr, &in6addr_any, sizeof(struct in6_addr));
-		else
-			if (inet_pton(af_family, ip_addr, &sin6.sin6_addr) <= 0) {
-				err = -1;
-				goto out_clean;
-			}
-		err = bind(sockfd, (struct sockaddr *)&sin6, salen);
-	}
-
+	err = bind(sockfd, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage));
 	if (err)
 		goto out_clean;
 
