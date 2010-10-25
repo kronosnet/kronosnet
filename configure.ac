@@ -80,6 +80,7 @@ AC_CHECK_HEADERS([unistd.h])
 AC_CHECK_HEADERS([netinet/in.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([arpa/inet.h])
+AC_CHECK_HEADERS([netdb.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
