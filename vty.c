@@ -39,6 +39,7 @@ static void *vty_accept_thread(void *arg)
 {
 	struct knet_vty *vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
 	char *src_ip[2];
+	const char *ip = "unknown";
 	int err;
 
 	knet_vty_print_banner(vty);
@@ -46,22 +47,16 @@ static void *vty_accept_thread(void *arg)
 	err = addrtostr((struct sockaddr *)&vty->src_sa,
 			vty->src_sa_len,
 			src_ip);
+	err = 1;
+	if (!err)
+		ip = src_ip[0];
 
 	if (knet_vty_auth_user(vty, NULL) < 0) {
-		if (err) {
-			log_info("User failed to authenticate (ip: unknown)");
-		} else {
-			log_info("User failed to authenticate (ip: %s)",
-				 src_ip[0]);
-		}
+		log_info("User failed to authenticate (ip: %s)", ip);
 		goto out_clean;
 	}
 
-	if (err) {
-		log_info("User %s connected from unknown location.", vty->username);
-	} else {
-		log_info("User %s connected from %s (%s)", vty->username, src_ip[0], src_ip[1]);
-	}
+	log_info("User %s connected from %s", vty->username, ip);
 
 	addrtostr_free(src_ip);
 
