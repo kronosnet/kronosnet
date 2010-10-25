@@ -21,13 +21,17 @@ int strtoaddr(const char *host, const char *port, struct sockaddr *sa, socklen_t
 
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_NUMERICHOST;
 
 	ret = getaddrinfo(host, port, &hints, &result);
 
-	if (ret == 0) {
-		memmove(sa, result->ai_addr,
-			(salen < result->ai_addrlen) ? salen : result->ai_addrlen);
+	if (ret != 0) {
+		errno = EINVAL;
+		return -1;
 	}
+
+	memmove(sa, result->ai_addr,
+		(salen < result->ai_addrlen) ? salen : result->ai_addrlen);
 
 	freeaddrinfo(result);
 
