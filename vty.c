@@ -63,6 +63,8 @@ static void *vty_accept_thread(void *arg)
 		log_info("User %s connected from %s (%s)", vty->username, src_ip[0], src_ip[1]);
 	}
 
+	addrtostr_free(src_ip);
+
 out_clean:
 	pthread_mutex_lock(&knet_vty_mutex);
 	vty->active = 0;
