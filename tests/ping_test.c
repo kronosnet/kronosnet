@@ -45,22 +45,34 @@ static void print_usage(char *name)
 
 static void argv_to_hosts(int argc, char *argv[])
 {
-	int err, i, sockfd;
-	struct sockaddr_in address;
+	int err, i;
+	struct sockaddr_in *address;
 	struct knet_host *host;
+	struct knet_listener *listener;
 
-	address.sin_family = AF_INET;
-	err = tok_inaddrport(argv[1], &address);
+	listener = malloc(sizeof(struct knet_listener));
+
+	if (listener == NULL) {
+		log_error("Unable to create listener");
+		exit(EXIT_FAILURE);
+	}
+
+	memset(listener, 0, sizeof(struct knet_listener));
+
+	address = (struct sockaddr_in *) &listener->address;
+
+	address->sin_family = AF_INET;
+	err = tok_inaddrport(argv[1], address);
 
 	if (err < 0) {
 		log_error("Unable to convert ip address: %s", argv[1]);
 		exit(EXIT_FAILURE);
 	}
 
-	sockfd = knet_handle_bind(knet_h, (struct sockaddr *) &address, sizeof(struct sockaddr_in));
+	err = knet_listener_add(knet_h, listener);
 
-	if (sockfd < 0) {
-		log_error("Unable to bind knet");
+	if (err != 0) {
+		log_error("Unable to start knet listener");
 		exit(EXIT_FAILURE);
 	}
 
@@ -83,7 +95,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		memset(host->link, 0, sizeof(struct knet_link));
 
-		host->link->sock = sockfd;
+		host->link->sock = listener->sock;
 		host->link->address.ss_family = AF_INET;
 
 		err = tok_inaddrport(argv[i], (struct sockaddr_in *) &host->link->address);
@@ -125,7 +137,7 @@ int main(int argc, char *argv[])
 		tv.tv_sec = 5;
 		tv.tv_usec = 0;
 
-select_loop:
+ select_loop:
 		FD_ZERO(&rfds);
 		FD_SET(knet_sock, &rfds);
 

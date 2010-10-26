@@ -22,6 +22,12 @@ struct knet_link {
 	struct knet_link *next;
 };
 
+struct knet_listener {
+	int sock;
+	struct sockaddr_storage address;
+	struct knet_listener *next;
+};
+
 #define KNET_FRAME_MAGIC 0x12344321
 #define KNET_FRAME_VERSION 0x01
 
@@ -37,10 +43,9 @@ struct knet_frame {
 } __attribute__((packed));
 
 knet_handle_t knet_handle_new(void);
-
-int knet_handle_bind(knet_handle_t knet_h, struct sockaddr *address, socklen_t addrlen);
-
 int knet_handle_getfd(knet_handle_t knet_h);
+
+int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener);
 
 int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock);
 int knet_host_release(knet_handle_t knet_h);

@@ -19,6 +19,7 @@ struct __knet_handle {
 	int sock[2];
 	int epollfd;
 	struct knet_host *host_head;
+	struct knet_listener *listener_head;
 	struct knet_frame *buff;
 	pthread_t control_thread;
 	pthread_rwlock_t host_rwlock;
@@ -128,7 +129,6 @@ int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 {
 	struct knet_host *hp;
-	struct knet_link *lp;
 
 	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
 		return -1;
@@ -145,46 +145,54 @@ int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 		}
 	}
 
-	/* NOTE: kernel versions before 2.6.9 required a non-NULL pointer
-	 * TODO: check for EPOLL_CTL_DEL errors? */
-	for (lp = host->link; lp != NULL; lp = lp->next)
-		epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, lp->sock, 0);
-
 	pthread_rwlock_unlock(&knet_h->host_rwlock);
 	return 0;
 }
 
-int knet_handle_bind(knet_handle_t knet_h, struct sockaddr *address, socklen_t addrlen)
+int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 {
-	int sockfd, value;
+	int value;
 	struct epoll_event ev;
 
-	sockfd = socket(address->sa_family, SOCK_DGRAM, 0);
+	listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
 
-	if (sockfd < 0)
-		return sockfd;
+	if (listener->sock < 0)
+		return listener->sock;
 
 	value = KNET_RING_RCVBUFF;
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
+	setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
-	if (knet_fdset_cloexec(sockfd) != 0)
+	if (knet_fdset_cloexec(listener->sock) != 0)
 		goto exit_fail1;
 
-	if (bind(sockfd, address, addrlen) != 0)
+	if (bind(listener->sock, (struct sockaddr *) &listener->address,
+					sizeof(struct sockaddr_storage)) != 0)
 		goto exit_fail1;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	ev.events = EPOLLIN;
-	ev.data.fd = sockfd;
+	ev.data.fd = listener->sock;
 
-	if (epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, sockfd, &ev) != 0)
+	if (epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0)
 		goto exit_fail1;
 
-	return sockfd;
+	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
+		goto exit_fail2;
+
+	/* pushing new host to the front */
+	listener->next		= knet_h->listener_head;
+	knet_h->listener_head	= listener;
+
+	pthread_rwlock_unlock(&knet_h->host_rwlock);
+
+	return 0;
+
+ exit_fail2:
+	epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 
  exit_fail1:
-	close(sockfd);
+	close(listener->sock);
 	return -1;
 }
 
