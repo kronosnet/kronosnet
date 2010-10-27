@@ -165,7 +165,8 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("delete char / go one level down");
 				break;
 			case CONTROL('E'):
-				log_info("end of line");
+				while (vty->cursor_pos != vty->line_idx)
+					knet_vty_forward_char(vty);
 				break;
 			case CONTROL('F'):
 				knet_vty_forward_char(vty);
