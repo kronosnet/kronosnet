@@ -9,7 +9,7 @@
 #include "vty_cli.h"
 #include "vty_utils.h"
 
-/* if this code looks like quagga lib/vty.c it is because we stole it in part */
+/* if this code looks like quagga lib/vty.c it is because we stole it in good part */
 
 #define CONTROL(X)	((X) - '@')
 #define VTY_NORMAL	0
@@ -37,7 +37,6 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 static void knet_vty_rewrite_line(struct knet_vty *vty)
 {
 	int i;
-	log_info("this is rewrite");
 
 	for (i = 0; i <= vty->cursor_pos; i++)
 		knet_vty_write(vty, "%s", telnet_backward_char);
