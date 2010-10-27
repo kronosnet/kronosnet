@@ -11,13 +11,16 @@
 #define KNET_VTY_TOTAL_MAX_CONN		16
 #define KNET_VTY_CLI_TIMEOUT		60
 
+#define KNET_VTY_MAX_LINE		512
+
 struct knet_vty {
 	pthread_t		vty_thread;	/* thread struct for this vty */
 	struct sockaddr_storage	src_sa;		/* source IP */
 	socklen_t		src_sa_len;	/* sa len */
 	char			username[64];	/* username */
-	char			line[512];	/* input line */
+	char			line[KNET_VTY_MAX_LINE]; /* input line */
 	int			line_idx;	/* index on the input line */
+	int			cursor_pos;	/* position of the cursor in the line */
 	int			user_can_enable;/* user is in group kronosnetadm */
 	int			vty_sock;	/* tcp socket for this vty */
 	int			conn_num;	/* vty number */
