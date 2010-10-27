@@ -29,7 +29,13 @@ static void knet_vty_reset_buf(struct knet_vty *vty)
 
 static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int pos)
 {
-	vty->line[vty->line_idx] = buf[pos];
+	if (vty->cursor_pos == vty->line_idx) {
+		vty->line[vty->line_idx] = buf[pos];
+	} else {
+		memmove(&vty->line[vty->cursor_pos+1], &vty->line[vty->cursor_pos],
+			vty->line_idx - vty->cursor_pos);
+		vty->line[vty->cursor_pos] = buf[pos];
+	}
 	vty->line_idx++;
 	vty->cursor_pos++;
 }
@@ -127,7 +133,8 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 
 		switch (buf[i]) {
 			case CONTROL('A'):
-				log_info("beginning of line");
+				while (vty->cursor_pos != 0)
+					knet_vty_backward_char(vty);
 				break;
 			case CONTROL('B'):
 				knet_vty_backward_char(vty);
