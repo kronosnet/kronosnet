@@ -9,6 +9,7 @@
 
 #define KNET_VTY_DEFAULT_MAX_CONN	4
 #define KNET_VTY_TOTAL_MAX_CONN		16
+#define KNET_VTY_CLI_TIMEOUT		60
 
 struct knet_vty {
 	pthread_t		vty_thread;
@@ -20,6 +21,7 @@ struct knet_vty {
 	int			conn_num;
 	int			active;
 	int			got_epipe;
+	int			idle;
 };
 
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,

@@ -14,6 +14,7 @@
 #include "netutils.h"
 #include "vty.h"
 #include "vty_auth.h"
+#include "vty_cli.h"
 #include "vty_utils.h"
 
 STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -73,6 +74,8 @@ static void *vty_accept_thread(void *arg)
 	}
 	if (vty->got_epipe)
 		goto out_clean;
+
+	knet_vty_cli_bind(vty);
 
 out_clean:
 	if (src_ip[0])
