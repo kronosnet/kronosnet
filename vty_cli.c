@@ -17,7 +17,6 @@
 #define VTY_ESCAPE	2
 
 static const char telnet_backward_char[] = { 0x08 };
-static const char telnet_space_char[] = { ' ' };
 static const char telnet_newline[] = { '\n', '\r', 0x0 };
 
 static void knet_vty_reset_buf(struct knet_vty *vty)
@@ -72,6 +71,25 @@ static void knet_vty_backward_char(struct knet_vty *vty)
 		knet_vty_write(vty, "%s", telnet_backward_char);
 		vty->cursor_pos--;
 	}
+}
+
+static void knet_vty_kill_line(struct knet_vty *vty)
+{
+	int size, i;
+
+	size = vty->line_idx - vty->cursor_pos;
+
+	if (size == 0)
+		return;
+
+	for (i = 0; i < size; i++)
+		knet_vty_write(vty, " ");
+
+	for (i = 0; i < size; i++)
+		knet_vty_write(vty, "%s", telnet_backward_char);
+
+	memset(&vty->line[vty->cursor_pos], 0, size);
+	vty->line_idx = vty->cursor_pos;
 }
 
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
@@ -157,7 +175,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("delete backward char");
 				break;
 			case CONTROL('K'):
-				log_info("kill line");
+				knet_vty_kill_line(vty);
 				break;
 			case CONTROL('N'):
 				log_info("next line");
