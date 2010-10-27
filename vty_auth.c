@@ -77,8 +77,10 @@ static int knet_pam_misc_conv(int num_msg, const struct pam_message **msgm,
 			knet_vty_write(vty, "%s", msgm[count]->msg);
 			break;
 		default:
-			log_error("Unknown PAM conversation message");
-			knet_vty_write(vty, "Unknown PAM conversation message");
+			if (!vty->got_epipe) {
+				log_error("Unknown PAM conversation message");
+				knet_vty_write(vty, "Unknown PAM conversation message");
+			}
 			goto failed_conversation;
 		}
 
@@ -95,8 +97,10 @@ static int knet_pam_misc_conv(int num_msg, const struct pam_message **msgm,
 	return PAM_SUCCESS;
 
 failed_conversation:
-	log_error("PAM conversation error");
-	knet_vty_write(vty, "PAM conversation error");
+	if (!vty->got_epipe) {
+		log_error("PAM conversation error");
+		knet_vty_write(vty, "PAM conversation error");
+	}
 	if (reply) {
 		for (count=0; count < num_msg; ++count) {
 			if (reply[count].resp == NULL)
@@ -164,8 +168,13 @@ retry_auth:
 
 	err = pam_authenticate(pamh, 0);
 	if (err != PAM_SUCCESS) {
-		errno = EINVAL;
-		goto out_clean;
+		if (vty->got_epipe) {
+			errno = EPIPE;
+			goto out_fatal;
+		} else {
+			errno = EINVAL;
+			goto out_clean;
+		}
 	}
 
 	if (knet_vty_get_pam_user(vty, pamh) != PAM_SUCCESS) {

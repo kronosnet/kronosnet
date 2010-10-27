@@ -35,7 +35,5 @@ kronosnetd_SOURCES	= \
 			  vty_auth.c \
 			  vty_utils.c
 
-kronosnetd_LDFLAGS	= -lpthread
-
 maintainer-clean-local:
 	rm -rf m4

@@ -19,6 +19,7 @@ struct knet_vty {
 	int			vty_sock;
 	int			conn_num;
 	int			active;
+	int			got_epipe;
 };
 
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,
