@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "vty_utils.h"
 
@@ -15,7 +17,13 @@
  */
 static int knet_vty_loopy_write(struct knet_vty *vty, const char *buf, size_t bufsize)
 {
-	return write(vty->vty_sock, buf, bufsize);
+	ssize_t writelen;
+
+	writelen = write(vty->vty_sock, buf, bufsize);
+	if (writelen < 0)
+		vty->got_epipe = 1;
+
+	return writelen;
 }
 
 int knet_vty_write(struct knet_vty *vty, const char *format, ...)
@@ -28,6 +36,9 @@ int knet_vty_write(struct knet_vty *vty, const char *format, ...)
 		errno = EINVAL;
 		return -1;
 	}
+
+	if (vty->got_epipe)
+		return -1;
 
 	va_start (args, format);
 	len = vsnprintf (buf, VTY_MAX_BUFFER_SIZE, format, args);
@@ -45,14 +56,19 @@ static int knet_vty_read_real(struct knet_vty *vty, unsigned char *buf, size_t b
 	ssize_t readlen;
 
 iac_retry:
-	readlen = read(vty->vty_sock, buf, bufsize);
+	readlen = recv(vty->vty_sock, buf, bufsize, 0);
+	if (readlen == 0) {
+		vty->got_epipe = 1;
+		goto out_clean;
+	}
 	if (readlen < 0)
-		return readlen;
+		goto out_clean;
 
 	/* at somepoint we *might* have to add IAC parsing */
 	if ((buf[0] == IAC) && (ignore_iac))
 		goto iac_retry;
 
+out_clean:
 	return readlen;
 }
 
@@ -62,6 +78,11 @@ int knet_vty_read(struct knet_vty *vty, unsigned char *buf, size_t bufsize)
 		errno = EINVAL;
 		return -1;
 	}
+	if (vty->got_epipe) {
+		errno = EPIPE;
+		return -1;
+	}
+
 	return knet_vty_read_real(vty, buf, bufsize, 1);
 }
 

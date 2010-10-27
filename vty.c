@@ -51,10 +51,13 @@ static void *vty_accept_thread(void *arg)
 	if (!err)
 		ip = src_ip[0];
 
-	if (knet_vty_auth_user(vty, NULL) < 0) {
+	if ((knet_vty_auth_user(vty, NULL) < 0) && (!vty->got_epipe)) {
 		log_info("User failed to authenticate (ip: %s)", ip);
 		goto out_clean;
 	}
+
+	if (vty->got_epipe)
+		goto out_clean;
 
 	log_info("User %s connected from %s", vty->username, ip);
 
