@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "utils.h"
 #include "vty_utils.h"
 
 static int check_vty(struct knet_vty *vty)
@@ -72,7 +73,7 @@ iac_retry:
 	if (readlen < 0)
 		goto out_clean;
 
-	/* at somepoint we *might* have to add IAC parsing */
+	/* at somepoint we have to add IAC parsing */
 	if ((buf[0] == IAC) && (ignore_iac))
 		goto iac_retry;
 
@@ -155,13 +156,23 @@ void knet_vty_print_banner(struct knet_vty *vty)
 
 int knet_vty_set_iacs(struct knet_vty *vty)
 {
+	unsigned char cmdreply[VTY_MAX_BUFFER_SIZE];
 	unsigned char cmdsga[] = { IAC, WILL, TELOPT_SGA, '\0' };
+	unsigned char cmdsgareply[] = { IAC, DO, TELOPT_SGA, '\0' };
 	unsigned char cmdlm[] = { IAC, DONT, TELOPT_LINEMODE, '\0' };
+	ssize_t readlen;
 
 	if (check_vty(vty))
 		return -1;
 
 	if (knet_vty_write(vty, "%s", cmdsga) < 0)
+		return -1;
+
+	readlen = knet_vty_read_real(vty, cmdreply, VTY_MAX_BUFFER_SIZE, 0);
+	if (readlen < 0)
+		return readlen;
+
+	if (memcmp(&cmdreply, &cmdsgareply, readlen))
 		return -1;
 
 	if (knet_vty_write(vty, "%s", cmdlm) < 0)
