@@ -19,8 +19,6 @@ TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS		= -DTEST
 
-AM_LDFLAGS		= -lpthread
-
 knet_test_SOURCES	= \
 			  knet_test.c \
 			  ../knet.c \

@@ -69,6 +69,7 @@ check_lib_no_libs() {
 AC_C_INLINE
 
 # Checks for libraries.
+AC_CHECK_LIB([pthread], [pthread_create])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
