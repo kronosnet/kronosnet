@@ -140,7 +140,8 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				knet_vty_backward_char(vty);
 				break;
 			case CONTROL('C'):
-				log_info("stop input");
+				knet_vty_write(vty, "%s", telnet_newline);
+				knet_vty_reset_buf(vty);
 				break;
 			case CONTROL('D'):
 				log_info("delete char / go one level down");
@@ -179,6 +180,9 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 			case '\n':
 			case '\r':
 				knet_vty_write(vty, "%s", telnet_newline);
+				if (strlen(vty->line))
+					knet_vty_write(vty, "Processing: %s%s",
+							vty->line, telnet_newline);
 				knet_vty_reset_buf(vty);
 				break;
 			case '\t':
