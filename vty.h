@@ -21,6 +21,7 @@ struct knet_vty {
 	char			line[KNET_VTY_MAX_LINE]; /* input line */
 	int			line_idx;	/* index on the input line */
 	int			cursor_pos;	/* position of the cursor in the line */
+	int			escape;		/* escape status */
 	int			user_can_enable;/* user is in group kronosnetadm */
 	int			vty_sock;	/* tcp socket for this vty */
 	int			conn_num;	/* vty number */

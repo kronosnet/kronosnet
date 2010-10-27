@@ -47,6 +47,52 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 		return -1;
 
 	for (i = 0; i <= buflen; i++) {
+		if (vty->escape == VTY_ESCAPE) {
+			vty->escape = VTY_NORMAL;
+			switch (buf[i]) {
+				case ('A'):
+					log_info("previous line");
+					break;
+				case ('B'):
+					log_info("next line");
+					break;
+				case ('C'):
+					log_info("forward char");
+					break;
+				case ('D'):
+					log_info("backward char");
+					break;
+				default:
+					break;
+			}
+			continue;
+		}
+
+		if (vty->escape == VTY_PRE_ESCAPE) {
+			vty->escape = VTY_NORMAL;
+			switch (buf[i]) {
+				case '[':
+					vty->escape = VTY_ESCAPE;
+					break;
+				case 'b':
+					log_info("backword word");
+					break;
+				case 'f':
+					log_info("forward word");
+					break;
+				case 'd':
+					log_info("forward kill word");
+					break;
+				case CONTROL('H'):
+				case 0x7f:
+					log_info("backward kill word");
+					break;
+				default:
+					break;
+			}
+			continue;
+		}
+
 		switch (buf[i]) {
 			case CONTROL('A'):
 				log_info("beginning of line");
@@ -103,7 +149,12 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("help");
 				break;
 			case '\033':
-				log_info("escape: %d", buflen);
+				if ((i + 1 < buflen) && (buf[i + 1] == '[')) {
+					vty->escape = VTY_ESCAPE;
+					i++;
+				} else {
+					vty->escape = VTY_PRE_ESCAPE;
+				}
 				break;
 			default:
 				if (buf[i] > 31 && buf[i] < 127)
