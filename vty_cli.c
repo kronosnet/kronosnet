@@ -33,20 +33,8 @@ void knet_vty_cli_bind(struct knet_vty *vty)
 		if ((se_result == -1) || (vty->got_epipe))
 			goto out_clean;
 
-		if (se_result == 0) {
-			vty->idle++;
-			if (vty->idle >= KNET_VTY_CLI_TIMEOUT) {
-				log_info("vty(%d) connection timeout", vty->conn_num);
-				knet_vty_write(vty, "\n\nvty(%d) connection timeout\n\n", vty->conn_num);
-				goto out_clean;
-			}
+		if ((se_result == 0) || (!FD_ISSET(vty->vty_sock, &rfds)))
 			continue;
-		}
-
-		if (!FD_ISSET(vty->vty_sock, &rfds))
-			continue;
-
-		vty->idle = 0;
 
 		memset(buf, 0 , sizeof(buf));
 		readlen = knet_vty_read(vty, buf, sizeof(buf));
