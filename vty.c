@@ -47,7 +47,7 @@ static void *vty_accept_thread(void *arg)
 	err = addrtostr((struct sockaddr *)&vty->src_sa,
 			vty->src_sa_len,
 			src_ip);
-	err = 1;
+
 	if (!err)
 		ip = src_ip[0];
 
