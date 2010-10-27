@@ -8,12 +8,12 @@ check-valgrind: $(check_PROGRAMS)
 noinst_PROGRAMS = \
 		  ping_test \
 		  khandle_test \
-		  netutils_test \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
 		  vty_test \
-		  knet_test
+		  knet_test \
+		  netutils_test
 
 TESTS = $(check_PROGRAMS)
 
