@@ -44,7 +44,7 @@ int knet_vty_write(struct knet_vty *vty, const char *format, ...)
 	len = vsnprintf (buf, VTY_MAX_BUFFER_SIZE, format, args);
 	va_end (args);
 
-	if (len < 0)
+	if ((len < 0) || (len > VTY_MAX_BUFFER_SIZE))
 		return -1;
 
 	return knet_vty_loopy_write(vty, buf, len);
