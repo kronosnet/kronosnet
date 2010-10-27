@@ -73,6 +73,8 @@ iac_retry:
 	if (readlen < 0)
 		goto out_clean;
 
+	vty->idle = 0;
+
 	/* at somepoint we have to add IAC parsing */
 	if ((buf[0] == IAC) && (ignore_iac))
 		goto iac_retry;

@@ -152,7 +152,25 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 			goto out;
 		}
 
-		if ((se_result == 0) || (!FD_ISSET(vty_listener_fd, &rfds)))
+		if (se_result == 0) {
+			pthread_mutex_lock(&knet_vty_mutex);
+			for(conn_index = 0; conn_index <= KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
+				if ((knet_vtys[conn_index].active) &&
+				    (!knet_vtys[conn_index].disable_idle)) {
+					knet_vtys[conn_index].idle++;
+					if (knet_vtys[conn_index].idle > KNET_VTY_CLI_TIMEOUT) {
+						close(knet_vtys[conn_index].vty_sock);
+						pthread_cancel(knet_vtys[conn_index].vty_thread);
+						knet_vtys[conn_index].active=0;
+						vty_current_connections--;
+					}
+				}
+			}
+			pthread_mutex_unlock(&knet_vty_mutex);
+			continue;
+		}
+
+		if (!FD_ISSET(vty_listener_fd, &rfds))
 			continue;
 
 		memset(&incoming_sa, 0, sizeof(struct sockaddr_storage));

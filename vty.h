@@ -12,16 +12,19 @@
 #define KNET_VTY_CLI_TIMEOUT		60
 
 struct knet_vty {
-	pthread_t		vty_thread;
-	struct sockaddr_storage	src_sa;
-	socklen_t		src_sa_len;
-	char			username[64];
-	int			user_can_enable;
-	int			vty_sock;
-	int			conn_num;
-	int			active;
-	int			got_epipe;
-	int			idle;
+	pthread_t		vty_thread;	/* thread struct for this vty */
+	struct sockaddr_storage	src_sa;		/* source IP */
+	socklen_t		src_sa_len;	/* sa len */
+	char			username[64];	/* username */
+	char			line[512];	/* input line */
+	int			line_idx;	/* index on the input line */
+	int			user_can_enable;/* user is in group kronosnetadm */
+	int			vty_sock;	/* tcp socket for this vty */
+	int			conn_num;	/* vty number */
+	int			active;		/* vty is active */
+	int			got_epipe;	/* vty_sock has been closed */
+	int			idle;		/* idle time */
+	int			disable_idle;	/* disable automatic logout */
 };
 
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,
