@@ -11,6 +11,19 @@
 
 #include "vty_utils.h"
 
+static int check_vty(struct knet_vty *vty)
+{
+	if (!vty) {
+		errno = EINVAL;
+		return -1;
+	}
+	if (vty->got_epipe) {
+		errno = EPIPE;
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * TODO: implement loopy_write here
  * should sock be non-blocking?
@@ -32,12 +45,7 @@ int knet_vty_write(struct knet_vty *vty, const char *format, ...)
 	int len = 0;
 	char buf[VTY_MAX_BUFFER_SIZE];
 
-	if (!vty) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (vty->got_epipe)
+	if (check_vty(vty))
 		return -1;
 
 	va_start (args, format);
@@ -74,15 +82,13 @@ out_clean:
 
 int knet_vty_read(struct knet_vty *vty, unsigned char *buf, size_t bufsize)
 {
-	if ((!vty) || (!buf) || (bufsize == 0)) {
+	if (check_vty(vty))
+		return -1;
+
+	if ((!buf) || (bufsize == 0)) {
 		errno = EINVAL;
 		return -1;
 	}
-	if (vty->got_epipe) {
-		errno = EPIPE;
-		return -1;
-	}
-
 	return knet_vty_read_real(vty, buf, bufsize, 1);
 }
 
@@ -128,10 +134,8 @@ static int knet_vty_set_echoon(struct knet_vty *vty)
 
 int knet_vty_set_echo(struct knet_vty *vty, int on)
 {
-	if (!vty) {
-		errno = EINVAL;
+	if (check_vty(vty))
 		return -1;
-	}
 
 	if (on)
 		return knet_vty_set_echoon(vty);
@@ -141,10 +145,27 @@ int knet_vty_set_echo(struct knet_vty *vty, int on)
 
 void knet_vty_print_banner(struct knet_vty *vty)
 {
-	if (!vty)
+	if (check_vty(vty))
 		return;
 
 	knet_vty_write(vty,
 		"Welcome to " PACKAGE " " PACKAGE_VERSION " (built " __DATE__
 		" " __TIME__ ")\n");
+}
+
+int knet_vty_set_iacs(struct knet_vty *vty)
+{
+	unsigned char cmdsga[] = { IAC, WILL, TELOPT_SGA, '\0' };
+	unsigned char cmdlm[] = { IAC, DONT, TELOPT_LINEMODE, '\0' };
+
+	if (check_vty(vty))
+		return -1;
+
+	if (knet_vty_write(vty, "%s", cmdsga) < 0)
+		return -1;
+
+	if (knet_vty_write(vty, "%s", cmdlm) < 0)
+		return -1;
+
+	return 0;
 }

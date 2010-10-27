@@ -14,4 +14,6 @@ int knet_vty_set_echo(struct knet_vty *vty, int on);
 
 void knet_vty_print_banner(struct knet_vty *vty);
 
+int knet_vty_set_iacs(struct knet_vty *vty);
+
 #endif

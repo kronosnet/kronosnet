@@ -42,7 +42,11 @@ static void *vty_accept_thread(void *arg)
 	const char *ip = "unknown";
 	int err;
 
+	src_ip[0] = NULL;
+
 	knet_vty_print_banner(vty);
+	if (vty->got_epipe)
+		goto out_clean;
 
 	err = addrtostr((struct sockaddr *)&vty->src_sa,
 			vty->src_sa_len,
@@ -55,17 +59,25 @@ static void *vty_accept_thread(void *arg)
 		log_info("User failed to authenticate (ip: %s)", ip);
 		goto out_clean;
 	}
-
 	if (vty->got_epipe)
 		goto out_clean;
 
 	log_info("User %s connected from %s", vty->username, ip);
-
 	knet_vty_write(vty, "Welcome %s (%s) on vty(%d)\n", vty->username, ip, vty->conn_num);
+	if (vty->got_epipe)
+		goto out_clean;
 
-	addrtostr_free(src_ip);
+	if (knet_vty_set_iacs(vty) < 0) {
+		knet_vty_write(vty, "Unable to set telnet session preferences");
+		goto out_clean;
+	}
+	if (vty->got_epipe)
+		goto out_clean;
 
 out_clean:
+	if (src_ip[0])
+		addrtostr_free(src_ip);
+
 	pthread_mutex_lock(&knet_vty_mutex);
 	vty->active = 0;
 	close(vty->vty_sock);
