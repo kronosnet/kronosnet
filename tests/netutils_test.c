@@ -117,6 +117,32 @@ static void check_ipv6(void)
 	addrtostr_free(buf);
 }
 
+static void check_resolve(void)
+{
+	int err;
+	struct sockaddr_in addr;
+
+	log_info("Checking host resolution");
+	err = strtoaddr("localhost", "50000",
+			(struct sockaddr *) &addr, sizeof(struct sockaddr_in));
+
+	if (err == 0) {
+		errno = EINVAL;
+		log_error("Host resolution should not be enabled");
+		exit(EXIT_FAILURE);
+	}
+
+	log_info("Checking port resolution");
+	err = strtoaddr("127.0.0.1", "ssh",
+			(struct sockaddr *) &addr, sizeof(struct sockaddr_in));
+
+	if (err == 0) {
+		errno = EINVAL;
+		log_error("Port resolution should not be enabled");
+		exit(EXIT_FAILURE);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int err;
@@ -126,7 +152,8 @@ int main(int argc, char *argv[])
 	if (argc == 1) { /* automated tests */
 		check_ipv4();
 		check_ipv6();
-		return 0;
+		check_resolve();
+		exit(EXIT_SUCCESS);
 	} else if (argc != 3) {
 		printf("usage: %s [host] [port]\n", argv[0]);
 		exit(EXIT_SUCCESS);

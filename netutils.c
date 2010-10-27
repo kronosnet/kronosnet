@@ -21,7 +21,7 @@ int strtoaddr(const char *host, const char *port, struct sockaddr *sa, socklen_t
 
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_flags = AI_NUMERICHOST;
+	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 
 	ret = getaddrinfo(host, port, &hints, &result);
 
