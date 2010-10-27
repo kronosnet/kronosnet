@@ -16,14 +16,9 @@
 #define VTY_PRE_ESCAPE	1
 #define VTY_ESCAPE	2
 
-static const char telnet_backward_char = 0x08;
-static const char telnet_space_char = ' ';
-
-/*
- * return = ^M <- 2 chars, go back 2 chars, write 2 spaces, go back 2 chars, go down
- * this feels so old school poke!
- */
-static const char telnet_newline[] = { 0x08, 0x08, ' ', ' ', 0x08, 0x08, '\n', 0x0 };
+static const char telnet_backward_char[] = { 0x08 };
+static const char telnet_space_char[] = { ' ' };
+static const char telnet_newline[] = { '\n', '\r', 0x0 };
 
 static void knet_vty_reset_buf(struct knet_vty *vty)
 {
@@ -39,6 +34,19 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 	vty->cursor_pos++;
 }
 
+static void knet_vty_rewrite_line(struct knet_vty *vty)
+{
+	int i;
+	log_info("this is rewrite");
+
+	for (i = 0; i <= vty->cursor_pos; i++)
+		knet_vty_write(vty, "%s", telnet_backward_char);
+
+	knet_vty_write(vty, "%s", vty->line);
+
+	vty->cursor_pos = vty->line_idx;
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -46,9 +54,8 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 	if (vty->line_idx >= KNET_VTY_MAX_LINE)
 		return -1;
 
-	for (i = 0; i <= buflen; i++) {
+	for (i = 0; i < buflen; i++) {
 		if (vty->escape == VTY_ESCAPE) {
-			vty->escape = VTY_NORMAL;
 			switch (buf[i]) {
 				case ('A'):
 					log_info("previous line");
@@ -65,26 +72,30 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				default:
 					break;
 			}
+			vty->escape = VTY_NORMAL;
 			continue;
 		}
 
 		if (vty->escape == VTY_PRE_ESCAPE) {
-			vty->escape = VTY_NORMAL;
 			switch (buf[i]) {
 				case '[':
 					vty->escape = VTY_ESCAPE;
 					break;
 				case 'b':
+					vty->escape = VTY_NORMAL;
 					log_info("backword word");
 					break;
 				case 'f':
+					vty->escape = VTY_NORMAL;
 					log_info("forward word");
 					break;
 				case 'd':
+					vty->escape = VTY_NORMAL;
 					log_info("forward kill word");
 					break;
 				case CONTROL('H'):
 				case 0x7f:
+					vty->escape = VTY_NORMAL;
 					log_info("backward kill word");
 					break;
 				default:
@@ -149,12 +160,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("help");
 				break;
 			case '\033':
-				if ((i + 1 < buflen) && (buf[i + 1] == '[')) {
-					vty->escape = VTY_ESCAPE;
-					i++;
-				} else {
-					vty->escape = VTY_PRE_ESCAPE;
-				}
+				vty->escape = VTY_PRE_ESCAPE;
 				break;
 			default:
 				if (buf[i] > 31 && buf[i] < 127)
@@ -198,6 +204,9 @@ void knet_vty_cli_bind(struct knet_vty *vty)
 			knet_vty_write(vty, "\nError processing command: command too long\n");
 			knet_vty_reset_buf(vty);
 		}
+
+		if (vty->escape == VTY_NORMAL)
+			knet_vty_rewrite_line(vty);
 	}
 
 out_clean:

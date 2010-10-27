@@ -167,6 +167,9 @@ int knet_vty_set_iacs(struct knet_vty *vty)
 	if (check_vty(vty))
 		return -1;
 
+	if (knet_vty_set_echo(vty, 0) < 0)
+		return -1;
+
 	if (knet_vty_write(vty, "%s", cmdsga) < 0)
 		return -1;
 
