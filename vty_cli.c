@@ -123,6 +123,24 @@ static void knet_vty_delete_backward_char(struct knet_vty *vty)
 	knet_vty_delete_char(vty);
 }
 
+static void knet_vty_beginning_of_line(struct knet_vty *vty)
+{
+	while (vty->cursor_pos != 0)
+		knet_vty_backward_char(vty);
+}
+
+static void knet_vty_end_of_line(struct knet_vty *vty)
+{
+	while (vty->cursor_pos != vty->line_idx)
+		knet_vty_forward_char(vty);
+}
+
+static void knet_vty_kill_line_from_beginning(struct knet_vty *vty)
+{
+	knet_vty_beginning_of_line(vty);
+	knet_vty_kill_line(vty);
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -182,8 +200,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 
 		switch (buf[i]) {
 			case CONTROL('A'):
-				while (vty->cursor_pos != 0)
-					knet_vty_backward_char(vty);
+				knet_vty_beginning_of_line(vty);
 				break;
 			case CONTROL('B'):
 				knet_vty_backward_char(vty);
@@ -196,8 +213,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				knet_vty_delete_char(vty);
 				break;
 			case CONTROL('E'):
-				while (vty->cursor_pos != vty->line_idx)
-					knet_vty_forward_char(vty);
+				knet_vty_end_of_line(vty);
 				break;
 			case CONTROL('F'):
 				knet_vty_forward_char(vty);
@@ -219,7 +235,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("transport chars");
 				break;
 			case CONTROL('U'):
-				log_info("kill line from beginning");
+				knet_vty_kill_line_from_beginning(vty);
 				break;
 			case CONTROL('W'):
 				log_info("kill backward word");
