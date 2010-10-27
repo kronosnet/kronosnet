@@ -43,7 +43,29 @@ static void knet_vty_rewrite_line(struct knet_vty *vty)
 
 	knet_vty_write(vty, "%s", vty->line);
 
-	vty->cursor_pos = vty->line_idx;
+	for (i = 0; i < (vty->line_idx - vty->cursor_pos); i++)
+		knet_vty_write(vty, "%s", telnet_backward_char);
+
+}
+
+static void knet_vty_forward_char(struct knet_vty *vty)
+{
+	char buf[2];
+
+	if (vty->cursor_pos < vty->line_idx) {
+		buf[1] = vty->line[vty->cursor_pos];
+		buf[2] = 0;
+		knet_vty_write(vty, "%s", buf);
+		vty->cursor_pos++;
+	}
+}
+
+static void knet_vty_backward_char(struct knet_vty *vty)
+{
+	if (vty->cursor_pos > 0) {
+		knet_vty_write(vty, "%s", telnet_backward_char);
+		vty->cursor_pos--;
+	}
 }
 
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
@@ -63,10 +85,10 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 					log_info("next line");
 					break;
 				case ('C'):
-					log_info("forward char");
+					knet_vty_forward_char(vty);
 					break;
 				case ('D'):
-					log_info("backward char");
+					knet_vty_backward_char(vty);
 					break;
 				default:
 					break;
@@ -108,7 +130,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("beginning of line");
 				break;
 			case CONTROL('B'):
-				log_info("backward char");
+				knet_vty_backward_char(vty);
 				break;
 			case CONTROL('C'):
 				log_info("stop input");
@@ -120,7 +142,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("end of line");
 				break;
 			case CONTROL('F'):
-				log_info("forward char");
+				knet_vty_forward_char(vty);
 				break;
 			case CONTROL('H'):
 			case 0x7f:
