@@ -58,6 +58,8 @@ static void *vty_accept_thread(void *arg)
 
 	log_info("User %s connected from %s", vty->username, ip);
 
+	knet_vty_write(vty, "Welcome %s (%s) on vty(%d)\n", vty->username, ip, vty->conn_num);
+
 	addrtostr_free(src_ip);
 
 out_clean:

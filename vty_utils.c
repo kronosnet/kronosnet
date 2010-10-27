@@ -125,5 +125,5 @@ void knet_vty_print_banner(struct knet_vty *vty)
 
 	knet_vty_write(vty,
 		"Welcome to " PACKAGE " " PACKAGE_VERSION " (built " __DATE__
-		" " __TIME__ ") vty(%d)\n",vty->conn_num);
+		" " __TIME__ ")\n");
 }
