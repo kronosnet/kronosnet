@@ -92,6 +92,37 @@ static void knet_vty_kill_line(struct knet_vty *vty)
 	vty->line_idx = vty->cursor_pos;
 }
 
+static void knet_vty_delete_char(struct knet_vty *vty)
+{
+	int size, i;
+
+	if (vty->line_idx == 0)
+		log_info("Write function to go one level down");
+
+	if (vty->line_idx == vty->cursor_pos)
+		return;
+
+	size = vty->line_idx - vty->cursor_pos;
+
+	vty->line_idx--;
+	memmove(&vty->line[vty->cursor_pos], &vty->line[vty->cursor_pos+1],
+		size - 1);
+	vty->line[vty->line_idx] = '\0';
+
+	knet_vty_write(vty, "%s ", &vty->line[vty->cursor_pos]);
+	for (i = 0; i < size; i++)
+		knet_vty_write(vty, "%s", telnet_backward_char);
+}
+
+static void knet_vty_delete_backward_char(struct knet_vty *vty)
+{
+	if (vty->cursor_pos == 0)
+		return;
+
+	knet_vty_backward_char(vty);
+	knet_vty_delete_char(vty);
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -162,7 +193,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				knet_vty_reset_buf(vty);
 				break;
 			case CONTROL('D'):
-				log_info("delete char / go one level down");
+				knet_vty_delete_char(vty);
 				break;
 			case CONTROL('E'):
 				while (vty->cursor_pos != vty->line_idx)
@@ -173,7 +204,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				break;
 			case CONTROL('H'):
 			case 0x7f:
-				log_info("delete backward char");
+				knet_vty_delete_backward_char(vty);
 				break;
 			case CONTROL('K'):
 				knet_vty_kill_line(vty);
