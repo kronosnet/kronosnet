@@ -258,6 +258,12 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				case ('D'):
 					knet_vty_backward_char(vty);
 					break;
+				case ('H'):
+					log_info("home key");
+					break;
+				case ('F'):
+					log_info("end key");
+					break;
 				case ('1'):
 				case ('2'):
 				case ('3'):
