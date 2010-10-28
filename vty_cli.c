@@ -21,6 +21,11 @@
 static const char telnet_backward_char[] = { 0x08, 0x0 };
 static const char telnet_newline[] = { '\n', '\r', 0x0 };
 
+static void knet_vty_prompt(struct knet_vty *vty)
+{
+	knet_vty_write(vty, "%s", "knet> ");
+}
+
 static void knet_vty_reset_buf(struct knet_vty *vty)
 {
 	memset(vty->line, 0, sizeof(vty->line));
@@ -52,20 +57,6 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 	knet_vty_write(vty, "%s%s", outbuf, &vty->line[vty->cursor_pos]);
 	for (i = 0; i < (vty->line_idx - vty->cursor_pos); i++)
 		knet_vty_write(vty, "%s", telnet_backward_char);
-}
-
-static void knet_vty_rewrite_line(struct knet_vty *vty)
-{
-	int i;
-
-	for (i = 0; i <= vty->cursor_pos; i++)
-		knet_vty_write(vty, "%s", telnet_backward_char);
-
-	knet_vty_write(vty, "%s", vty->line);
-
-	for (i = 0; i < (vty->line_idx - vty->cursor_pos); i++)
-		knet_vty_write(vty, "%s", telnet_backward_char);
-
 }
 
 static void knet_vty_forward_char(struct knet_vty *vty)
@@ -245,7 +236,7 @@ static void knet_vty_history_print(struct knet_vty *vty)
 	memcpy(vty->line, vty->history[vty->history_pos], len);
 	vty->cursor_pos = vty->line_idx = len;
 
-	knet_vty_rewrite_line(vty);
+	knet_vty_write(vty, "%s", vty->line);
 }
 
 static void knet_vty_history_prev(struct knet_vty *vty)
@@ -410,6 +401,7 @@ vty_ext_escape_out:
 			case CONTROL('C'):
 				knet_vty_write(vty, "%s", telnet_newline);
 				knet_vty_reset_buf(vty);
+				knet_vty_prompt(vty);
 				break;
 			case CONTROL('D'):
 				knet_vty_delete_char(vty);
@@ -454,6 +446,7 @@ vty_ext_escape_out:
 					knet_vty_history_add(vty);
 				}
 				knet_vty_reset_buf(vty);
+				knet_vty_prompt(vty);
 				break;
 			case '\t':
 				log_info("command completion");
@@ -481,6 +474,8 @@ void knet_vty_cli_bind(struct knet_vty *vty)
 	struct timeval tv;
 	unsigned char buf[VTY_MAX_BUFFER_SIZE];
 	int readlen;
+
+	knet_vty_prompt(vty);
 
 	while (se_result >= 0 && !vty->got_epipe) {
 		FD_ZERO (&rfds);
