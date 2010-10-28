@@ -22,6 +22,7 @@ struct knet_vty {
 	int			line_idx;	/* index on the input line */
 	int			cursor_pos;	/* position of the cursor in the line */
 	int			escape;		/* escape status */
+	int			escape_code;	/* escape code buffer */
 	int			user_can_enable;/* user is in group kronosnetadm */
 	int			vty_sock;	/* tcp socket for this vty */
 	int			conn_num;	/* vty number */
