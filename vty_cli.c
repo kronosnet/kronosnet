@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <sys/select.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "utils.h"
 #include "vty.h"
@@ -53,7 +54,6 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 		knet_vty_write(vty, "%s", telnet_backward_char);
 }
 
-/*
 static void knet_vty_rewrite_line(struct knet_vty *vty)
 {
 	int i;
@@ -67,7 +67,6 @@ static void knet_vty_rewrite_line(struct knet_vty *vty)
 		knet_vty_write(vty, "%s", telnet_backward_char);
 
 }
-*/
 
 static void knet_vty_forward_char(struct knet_vty *vty)
 {
@@ -208,6 +207,90 @@ static void knet_vty_transpose_chars(struct knet_vty *vty)
 	knet_vty_add_to_buf(vty, swap, 1);
 }
 
+static void knet_vty_history_add(struct knet_vty *vty)
+{
+	int idx;
+
+	if (vty->line_idx == 0)
+		return;
+
+	idx = vty->history_idx % KNET_VTY_MAX_HIST;
+
+	if (vty->history[idx]) {
+		free(vty->history[idx]);
+		vty->history[idx] = NULL;
+	}
+
+	vty->history[idx] = strdup(vty->line);
+	if (vty->history[idx] == NULL) {
+		log_error("Not enough memory to add history lines!");
+		knet_vty_write(vty, "Not enough memory to add history lines!");
+	}
+
+	vty->history_idx++;
+
+	if (vty->history_idx == KNET_VTY_MAX_HIST)
+		vty->history_idx = 0;
+
+	vty->history_pos = vty->history_idx;
+}
+
+static void knet_vty_history_print(struct knet_vty *vty)
+{
+	int len;
+
+	knet_vty_kill_line_from_beginning(vty);
+
+	len = strlen(vty->history[vty->history_pos]);
+	memcpy(vty->line, vty->history[vty->history_pos], len);
+	vty->cursor_pos = vty->line_idx = len;
+
+	knet_vty_rewrite_line(vty);
+}
+
+static void knet_vty_history_prev(struct knet_vty *vty)
+{
+	int idx;
+
+	idx = vty->history_pos;
+
+	if (idx == 0) {
+		idx = KNET_VTY_MAX_HIST - 1;
+	} else {
+		idx--;
+	}
+
+	if (vty->history[idx] == NULL)
+		return;
+
+	vty->history_pos = idx;
+
+	knet_vty_history_print(vty);
+}
+
+static void knet_vty_history_next(struct knet_vty *vty)
+{
+	int idx;
+
+	if (vty->history_pos == vty->history_idx)
+		return;
+
+	idx = vty->history_pos;
+
+	if (idx == (KNET_VTY_MAX_HIST - 1)) {
+		idx = 0;
+	} else {
+		idx++;
+	}
+
+	if (vty->history[idx] == NULL)
+		return;
+
+	vty->history_pos = idx;
+
+	knet_vty_history_print(vty);
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -238,14 +321,14 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 					knet_vty_end_of_line(vty);
 					break;
 				case ('5'):
-					log_info("pg-up key");
+					knet_vty_history_prev(vty);
 					break;
 				case ('6'):
-					log_info("pg-down key");
+					knet_vty_history_next(vty);
 					break;
 			}
 
- vty_ext_escape_out:
+vty_ext_escape_out:
 			vty->escape = VTY_NORMAL;
 			continue;
 		}
@@ -253,10 +336,10 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 		if (vty->escape == VTY_ESCAPE) {
 			switch (buf[i]) {
 				case ('A'):
-					log_info("previous line");
+					knet_vty_history_prev(vty);
 					break;
 				case ('B'):
-					log_info("next line");
+					knet_vty_history_next(vty);
 					break;
 				case ('C'):
 					knet_vty_forward_char(vty);
@@ -345,10 +428,10 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				knet_vty_kill_line(vty);
 				break;
 			case CONTROL('N'):
-				log_info("next line");
+				knet_vty_history_next(vty);
 				break;
 			case CONTROL('P'):
-				log_info("previous line");
+				knet_vty_history_prev(vty);
 				break;
 			case CONTROL('T'):
 				knet_vty_transpose_chars(vty);
@@ -365,9 +448,11 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 			case '\n':
 			case '\r':
 				knet_vty_write(vty, "%s", telnet_newline);
-				if (strlen(vty->line))
+				if (strlen(vty->line)) {
 					knet_vty_write(vty, "Processing: %s%s",
 							vty->line, telnet_newline);
+					knet_vty_history_add(vty);
+				}
 				knet_vty_reset_buf(vty);
 				break;
 			case '\t':

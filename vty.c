@@ -36,6 +36,14 @@ static void sigpipe_handler(int sig)
 	return;
 }
 
+static void knet_vty_close(struct knet_vty *vty)
+{
+	knet_vty_free_history(vty);
+	vty->active = 0;
+	close(vty->vty_sock);
+	vty_current_connections--;
+}
+
 static void *vty_accept_thread(void *arg)
 {
 	struct knet_vty *vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
@@ -82,9 +90,7 @@ out_clean:
 		addrtostr_free(src_ip);
 
 	pthread_mutex_lock(&knet_vty_mutex);
-	vty->active = 0;
-	close(vty->vty_sock);
-	vty_current_connections--;
+	knet_vty_close(vty);
 	pthread_mutex_unlock(&knet_vty_mutex);
 
 	return NULL;
@@ -159,10 +165,8 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 				    (!knet_vtys[conn_index].disable_idle)) {
 					knet_vtys[conn_index].idle++;
 					if (knet_vtys[conn_index].idle > KNET_VTY_CLI_TIMEOUT) {
-						close(knet_vtys[conn_index].vty_sock);
+						knet_vty_close(&knet_vtys[conn_index]);
 						pthread_cancel(knet_vtys[conn_index].vty_thread);
-						knet_vtys[conn_index].active=0;
-						vty_current_connections--;
 					}
 				}
 			}

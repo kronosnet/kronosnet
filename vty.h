@@ -13,12 +13,17 @@
 
 #define KNET_VTY_MAX_LINE		512
 
+#define KNET_VTY_MAX_HIST		50
+
 struct knet_vty {
 	pthread_t		vty_thread;	/* thread struct for this vty */
 	struct sockaddr_storage	src_sa;		/* source IP */
 	socklen_t		src_sa_len;	/* sa len */
 	char			username[64];	/* username */
 	char			line[KNET_VTY_MAX_LINE]; /* input line */
+	char			*history[KNET_VTY_MAX_HIST]; /* history */
+	int			history_idx;	/* index to history */
+	int			history_pos;	/* position in the history */
 	int			insert_mode;	/* add or insert */
 	int			line_idx;	/* index on the input line */
 	int			cursor_pos;	/* position of the cursor in the line */

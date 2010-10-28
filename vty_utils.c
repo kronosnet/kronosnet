@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -184,4 +185,19 @@ int knet_vty_set_iacs(struct knet_vty *vty)
 		return -1;
 
 	return 0;
+}
+
+void knet_vty_free_history(struct knet_vty *vty)
+{
+	int i;
+
+	if (check_vty(vty))
+		return;
+
+	for (i = 0; i <= KNET_VTY_MAX_HIST; i++) {
+		if (vty->history[i]) {
+			free(vty->history[i]);
+			vty->history[i] = NULL;
+		}
+	}
 }
