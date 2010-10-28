@@ -18,7 +18,7 @@
 #define VTY_ESCAPE	2
 #define VTY_EXT_ESCAPE	3
 
-static const char telnet_backward_char[] = { 0x08 };
+static const char telnet_backward_char[] = { 0x08, 0x0 };
 static const char telnet_newline[] = { '\n', '\r', 0x0 };
 
 static void knet_vty_reset_buf(struct knet_vty *vty)
