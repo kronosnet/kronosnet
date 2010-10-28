@@ -22,7 +22,7 @@ STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
 STATIC int vty_current_connections = 0;
 
-STATIC struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
+STATIC struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN+1];
 
 STATIC int daemon_quit = 0;
 
