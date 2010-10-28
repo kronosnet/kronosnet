@@ -28,6 +28,12 @@ static void knet_vty_reset_buf(struct knet_vty *vty)
 
 static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int pos)
 {
+	char outbuf[2];
+
+	outbuf[0] = buf[pos];
+	outbuf[1] = 0;
+	knet_vty_write(vty, "%s", outbuf);
+
 	if (vty->cursor_pos == vty->line_idx) {
 		vty->line[vty->line_idx] = buf[pos];
 	} else {
@@ -39,6 +45,7 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 	vty->cursor_pos++;
 }
 
+/*
 static void knet_vty_rewrite_line(struct knet_vty *vty)
 {
 	int i;
@@ -52,14 +59,15 @@ static void knet_vty_rewrite_line(struct knet_vty *vty)
 		knet_vty_write(vty, "%s", telnet_backward_char);
 
 }
+*/
 
 static void knet_vty_forward_char(struct knet_vty *vty)
 {
 	char buf[2];
 
 	if (vty->cursor_pos < vty->line_idx) {
-		buf[1] = vty->line[vty->cursor_pos];
-		buf[2] = 0;
+		buf[0] = vty->line[vty->cursor_pos];
+		buf[1] = 0;
 		knet_vty_write(vty, "%s", buf);
 		vty->cursor_pos++;
 	}
@@ -302,9 +310,6 @@ void knet_vty_cli_bind(struct knet_vty *vty)
 			knet_vty_write(vty, "\nError processing command: command too long\n");
 			knet_vty_reset_buf(vty);
 		}
-
-		if (vty->escape == VTY_NORMAL)
-			knet_vty_rewrite_line(vty);
 	}
 
 out_clean:
