@@ -34,13 +34,17 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 
 	if (vty->cursor_pos == vty->line_idx) {
 		vty->line[vty->line_idx] = buf[pos];
+		vty->line_idx++;
+		vty->cursor_pos++;
 	} else {
-		memmove(&vty->line[vty->cursor_pos+1], &vty->line[vty->cursor_pos],
-			vty->line_idx - vty->cursor_pos);
+		if (!vty->insert_mode) {
+			memmove(&vty->line[vty->cursor_pos+1], &vty->line[vty->cursor_pos],
+				vty->line_idx - vty->cursor_pos);
+			vty->line_idx++;
+		}
 		vty->line[vty->cursor_pos] = buf[pos];
+		vty->cursor_pos++;
 	}
-	vty->line_idx++;
-	vty->cursor_pos++;
 
 	outbuf[0] = buf[pos];
 	outbuf[1] = 0;
@@ -224,7 +228,11 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 					knet_vty_beginning_of_line(vty);
 					break;
 				case ('2'):
-					log_info("ins key");
+					if (!vty->insert_mode) {
+						vty->insert_mode = 1;
+					} else {
+						vty->insert_mode = 0;
+					}
 					break;
 				case ('3'):
 					knet_vty_delete_char(vty);
