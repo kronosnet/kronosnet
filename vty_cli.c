@@ -15,7 +15,7 @@
 #define VTY_NORMAL	0
 #define VTY_PRE_ESCAPE	1
 #define VTY_ESCAPE	2
-#define VTY_EXTESCAPE	3
+#define VTY_EXT_ESCAPE	3
 
 static const char telnet_backward_char[] = { 0x08 };
 static const char telnet_newline[] = { '\n', '\r', 0x0 };
@@ -216,12 +216,9 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 		return -1;
 
 	for (i = 0; i < buflen; i++) {
-		if (vty->escape == VTY_EXTESCAPE)  {
-			if (buf[i] != '~') {
-				log_error("unterminated escape sequence");
-				vty->escape = VTY_NORMAL;
-				continue;
-			}
+		if (vty->escape == VTY_EXT_ESCAPE)  {
+			if (buf[i] != '~')
+				goto vty_ext_escape_out;
 
 			switch (vty->escape_code) {
 				case ('1'):
@@ -248,6 +245,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 					break;
 			}
 
+ vty_ext_escape_out:
 			vty->escape = VTY_NORMAL;
 			continue;
 		}
@@ -278,7 +276,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				case ('4'):
 				case ('5'):
 				case ('6'):
-					vty->escape = VTY_EXTESCAPE;
+					vty->escape = VTY_EXT_ESCAPE;
 					vty->escape_code = buf[i];
 					break;
 				default:
