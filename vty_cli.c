@@ -221,16 +221,16 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 
 			switch (vty->escape_code) {
 				case ('1'):
-					log_info("home key");
+					knet_vty_beginning_of_line(vty);
 					break;
 				case ('2'):
 					log_info("ins key");
 					break;
 				case ('3'):
-					log_info("del key");
+					knet_vty_delete_char(vty);
 					break;
 				case ('4'):
-					log_info("end key");
+					knet_vty_end_of_line(vty);
 					break;
 				case ('5'):
 					log_info("pg-up key");
@@ -259,10 +259,10 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 					knet_vty_backward_char(vty);
 					break;
 				case ('H'):
-					log_info("home key");
+					knet_vty_beginning_of_line(vty);
 					break;
 				case ('F'):
-					log_info("end key");
+					knet_vty_end_of_line(vty);
 					break;
 				case ('1'):
 				case ('2'):
