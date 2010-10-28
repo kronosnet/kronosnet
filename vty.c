@@ -149,7 +149,8 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		se_result = select((vty_listener_fd + 1), &rfds, 0, 0, &tv);
 
 		if ((se_result == -1) && (daemon_quit)) {
-			log_info("Got a SIGTERM, goodbye");
+			log_info("Got a SIGTERM, goodbye");	
+			/* to be 100% clean here, we should allow the threads to exit */
 			goto out;
 		}
 
