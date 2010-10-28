@@ -29,10 +29,7 @@ static void knet_vty_reset_buf(struct knet_vty *vty)
 static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int pos)
 {
 	char outbuf[2];
-
-	outbuf[0] = buf[pos];
-	outbuf[1] = 0;
-	knet_vty_write(vty, "%s", outbuf);
+	int i;
 
 	if (vty->cursor_pos == vty->line_idx) {
 		vty->line[vty->line_idx] = buf[pos];
@@ -43,6 +40,12 @@ static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int po
 	}
 	vty->line_idx++;
 	vty->cursor_pos++;
+
+	outbuf[0] = buf[pos];
+	outbuf[1] = 0;
+	knet_vty_write(vty, "%s%s", outbuf, &vty->line[vty->cursor_pos]);
+	for (i = 0; i < (vty->line_idx - vty->cursor_pos); i++)
+		knet_vty_write(vty, "%s", telnet_backward_char);
 }
 
 /*
