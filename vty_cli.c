@@ -161,6 +161,15 @@ static void knet_vty_backward_word(struct knet_vty *vty)
 		knet_vty_backward_char(vty);
 }
 
+static void knet_vty_backward_kill_word(struct knet_vty *vty)
+{
+	while(vty->cursor_pos > 0 && vty->line[vty->cursor_pos - 1] == ' ')
+		knet_vty_delete_backward_char(vty);
+
+	while(vty->cursor_pos > 0 && vty->line[vty->cursor_pos - 1] != ' ')
+		knet_vty_delete_backward_char(vty);
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -210,7 +219,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				case CONTROL('H'):
 				case 0x7f:
 					vty->escape = VTY_NORMAL;
-					log_info("backward kill word");
+					knet_vty_backward_kill_word(vty);
 					break;
 				default:
 					break;
@@ -258,7 +267,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				knet_vty_kill_line_from_beginning(vty);
 				break;
 			case CONTROL('W'):
-				log_info("kill backward word");
+				knet_vty_backward_kill_word(vty);
 				break;
 			case CONTROL('Z'):
 				log_info("end config");
