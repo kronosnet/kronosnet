@@ -167,7 +167,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 					knet_vtys[conn_index].idle++;
 					if (knet_vtys[conn_index].idle > KNET_VTY_CLI_TIMEOUT) {
 						knet_vty_close(&knet_vtys[conn_index]);
-						pthread_cancel(knet_vtys[conn_index].vty_thread);
+						knet_vtys[conn_index].got_epipe = 1;
 					}
 				}
 			}

@@ -204,6 +204,11 @@ out_clean:
 	}
 
 out_fatal:
+	if (pamh) {
+		pam_end(pamh, err);
+		pamh = NULL;
+	}
+
 	knet_vty_write(vty, "\n");
 
 	return err;
