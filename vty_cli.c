@@ -149,6 +149,15 @@ static void knet_vty_kill_line_from_beginning(struct knet_vty *vty)
 	knet_vty_kill_line(vty);
 }
 
+static void knet_vty_backward_word(struct knet_vty *vty)
+{
+	while(vty->cursor_pos > 0 && vty->line[vty->cursor_pos - 1] == ' ')
+		knet_vty_backward_char(vty);
+
+	while(vty->cursor_pos > 0 && vty->line[vty->cursor_pos - 1] != ' ')
+		knet_vty_backward_char(vty);
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -185,7 +194,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 					break;
 				case 'b':
 					vty->escape = VTY_NORMAL;
-					log_info("backword word");
+					knet_vty_backward_word(vty);
 					break;
 				case 'f':
 					vty->escape = VTY_NORMAL;
