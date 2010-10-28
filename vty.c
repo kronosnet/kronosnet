@@ -72,7 +72,7 @@ static void *vty_accept_thread(void *arg)
 		goto out_clean;
 
 	log_info("User %s connected from %s", vty->username, ip);
-	knet_vty_write(vty, "Welcome %s (%s) on vty(%d)\n", vty->username, ip, vty->conn_num);
+	knet_vty_write(vty, "Welcome %s (%s) on vty(%d)\n\n", vty->username, ip, vty->conn_num);
 	if (vty->got_epipe)
 		goto out_clean;
 
