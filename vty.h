@@ -19,6 +19,7 @@ struct knet_vty {
 	pthread_t		vty_thread;	/* thread struct for this vty */
 	struct sockaddr_storage	src_sa;		/* source IP */
 	socklen_t		src_sa_len;	/* sa len */
+	char			ip[128];	/* ip addr of source */
 	char			username[64];	/* username */
 	char			line[KNET_VTY_MAX_LINE]; /* input line */
 	char			*history[KNET_VTY_MAX_HIST]; /* history */

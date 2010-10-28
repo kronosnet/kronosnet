@@ -48,31 +48,35 @@ static void *vty_accept_thread(void *arg)
 {
 	struct knet_vty *vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
 	char *src_ip[2];
-	const char *ip = "unknown";
 	int err;
-
-	src_ip[0] = NULL;
 
 	knet_vty_print_banner(vty);
 	if (vty->got_epipe)
 		goto out_clean;
 
+	src_ip[0] = NULL;
 	err = addrtostr((struct sockaddr *)&vty->src_sa,
 			vty->src_sa_len,
 			src_ip);
 
-	if (!err)
-		ip = src_ip[0];
+	if (!err) {
+		strncpy(vty->ip, src_ip[0], sizeof(vty->ip));
+	} else {
+		strcpy(vty->ip, "unknown");
+	}
+
+	if (src_ip[0])
+		addrtostr_free(src_ip);
 
 	if ((knet_vty_auth_user(vty, NULL) < 0) && (!vty->got_epipe)) {
-		log_info("User failed to authenticate (ip: %s)", ip);
+		log_info("User failed to authenticate (ip: %s)", vty->ip);
 		goto out_clean;
 	}
 	if (vty->got_epipe)
 		goto out_clean;
 
-	log_info("User %s connected from %s", vty->username, ip);
-	knet_vty_write(vty, "Welcome %s (%s) on vty(%d)\n\n", vty->username, ip, vty->conn_num);
+	log_info("User %s connected from %s", vty->username, vty->ip);
+	knet_vty_write(vty, "Welcome %s (%s) on vty(%d)\n\n", vty->username, vty->ip, vty->conn_num);
 	if (vty->got_epipe)
 		goto out_clean;
 
@@ -86,9 +90,6 @@ static void *vty_accept_thread(void *arg)
 	knet_vty_cli_bind(vty);
 
 out_clean:
-	if (src_ip[0])
-		addrtostr_free(src_ip);
-
 	pthread_mutex_lock(&knet_vty_mutex);
 	knet_vty_close(vty);
 	pthread_mutex_unlock(&knet_vty_mutex);
