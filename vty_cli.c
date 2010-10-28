@@ -188,6 +188,21 @@ static void knet_vty_forward_kill_word(struct knet_vty *vty)
 		knet_vty_delete_backward_char(vty);
 }
 
+static void knet_vty_transpose_chars(struct knet_vty *vty)
+{
+	unsigned char swap[2];
+
+	if (vty->line_idx < 2 || vty->cursor_pos < 2)
+		return;
+
+	swap[0] = vty->line[vty->cursor_pos - 1];
+	swap[1] = vty->line[vty->cursor_pos - 2];
+	knet_vty_delete_backward_char(vty);
+	knet_vty_delete_backward_char(vty);
+	knet_vty_add_to_buf(vty, swap, 0);
+	knet_vty_add_to_buf(vty, swap, 1);
+}
+
 static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int buflen)
 {
 	int i;
@@ -279,7 +294,7 @@ static int knet_vty_process_buf(struct knet_vty *vty, unsigned char *buf, int bu
 				log_info("previous line");
 				break;
 			case CONTROL('T'):
-				log_info("transport chars");
+				knet_vty_transpose_chars(vty);
 				break;
 			case CONTROL('U'):
 				knet_vty_kill_line_from_beginning(vty);
