@@ -149,8 +149,16 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		se_result = select((vty_listener_fd + 1), &rfds, 0, 0, &tv);
 
 		if ((se_result == -1) && (daemon_quit)) {
-			log_info("Got a SIGTERM, goodbye");	
-			/* to be 100% clean here, we should allow the threads to exit */
+			log_info("Got a SIGTERM, requesting CLI threads to exit");	
+			for(conn_index = 0; conn_index <= KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
+				if (knet_vtys[conn_index].active) {
+					knet_vty_write(&knet_vtys[conn_index], "\n\r\n\rServer is going down..\n\r\n\r");
+					knet_vty_close(&knet_vtys[conn_index]);
+					knet_vtys[conn_index].got_epipe = 1;
+				}
+			}
+			sleep(2);
+			log_info("Have a nice day! Goodbye");
 			goto out;
 		}
 
