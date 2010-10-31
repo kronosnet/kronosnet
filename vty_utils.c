@@ -194,7 +194,7 @@ void knet_vty_free_history(struct knet_vty *vty)
 	if (check_vty(vty))
 		return;
 
-	for (i = 0; i <= KNET_VTY_MAX_HIST; i++) {
+	for (i = 0; i < KNET_VTY_MAX_HIST; i++) {
 		if (vty->history[i]) {
 			free(vty->history[i]);
 			vty->history[i] = NULL;
