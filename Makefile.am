@@ -24,6 +24,7 @@ noinst_HEADERS		= knet.h \
 			  vty.h \
 			  vty_auth.h \
 			  vty_cli.h \
+			  vty_cli_cmds.h \
 			  vty_utils.h
 
 sbin_PROGRAMS		= kronosnetd
@@ -35,6 +36,7 @@ kronosnetd_SOURCES	= \
 			  vty.c \
 			  vty_auth.c \
 			  vty_cli.c \
+			  vty_cli_cmds.c \
 			  vty_utils.c
 
 maintainer-clean-local:

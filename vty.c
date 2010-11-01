@@ -17,14 +17,12 @@
 #include "vty_cli.h"
 #include "vty_utils.h"
 
-STATIC pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
 STATIC int vty_current_connections = 0;
-
-STATIC struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN+1];
-
 STATIC int daemon_quit = 0;
+
+pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN+1];
 
 static void sigterm_handler(int sig)
 {
@@ -152,7 +150,8 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 			log_info("Got a SIGTERM, requesting CLI threads to exit");	
 			for(conn_index = 0; conn_index <= KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 				if (knet_vtys[conn_index].active) {
-					knet_vty_write(&knet_vtys[conn_index], "\n\r\n\rServer is going down..\n\r\n\r");
+					knet_vty_write(&knet_vtys[conn_index], "%s%sServer is going down..%s%s",
+						telnet_newline, telnet_newline, telnet_newline, telnet_newline);
 					knet_vty_close(&knet_vtys[conn_index]);
 					knet_vtys[conn_index].got_epipe = 1;
 				}

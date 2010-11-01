@@ -39,6 +39,7 @@ vty_test_SOURCES	= \
 			  ../vty.c \
 			  ../vty_auth.c \
 			  ../vty_cli.c \
+			  ../vty_cli_cmds.c \
 			  ../vty_utils.c \
 			  ../netutils.c \
 			  ../utils.c

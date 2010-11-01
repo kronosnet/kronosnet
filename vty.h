@@ -37,7 +37,11 @@ struct knet_vty {
 	int			got_epipe;	/* vty_sock has been closed */
 	int			idle;		/* idle time */
 	int			disable_idle;	/* disable automatic logout */
+	int			node;		/* node number of the menus */
 };
+
+extern pthread_mutex_t knet_vty_mutex;
+extern struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN+1];
 
 int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 		       const char *port);

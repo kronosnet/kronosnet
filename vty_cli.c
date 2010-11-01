@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "vty.h"
 #include "vty_cli.h"
+#include "vty_cli_cmds.h"
 #include "vty_utils.h"
 
 /* if this code looks like quagga lib/vty.c it is because we stole it in good part */
@@ -18,12 +19,18 @@
 #define VTY_ESCAPE	2
 #define VTY_EXT_ESCAPE	3
 
-static const char telnet_backward_char[] = { 0x08, 0x0 };
-static const char telnet_newline[] = { '\n', '\r', 0x0 };
-
 static void knet_vty_prompt(struct knet_vty *vty)
 {
-	knet_vty_write(vty, "%s", "knet> ");
+	char buf[3];
+
+	if (vty->user_can_enable) {
+		buf[0] = '#';
+	} else {
+		buf[0] = '>';
+	}
+	buf[1] = ' ';
+	buf[2] = 0;
+	knet_vty_write(vty, "%s%s", knet_vty_nodes[vty->node].prompt, buf);
 }
 
 static void knet_vty_reset_buf(struct knet_vty *vty)
@@ -441,9 +448,8 @@ vty_ext_escape_out:
 			case '\r':
 				knet_vty_write(vty, "%s", telnet_newline);
 				if (strlen(vty->line)) {
-					knet_vty_write(vty, "Processing: %s%s",
-							vty->line, telnet_newline);
 					knet_vty_history_add(vty);
+					knet_vty_execute_cmd(vty);
 				}
 				knet_vty_reset_buf(vty);
 				knet_vty_prompt(vty);
