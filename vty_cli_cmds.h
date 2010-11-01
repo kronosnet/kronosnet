@@ -24,7 +24,8 @@ typedef struct {
 	const vty_node_cmds_t	*cmds;
 } vty_nodes_t;
 
-int knet_vty_execute_cmd(struct knet_vty *vty);
+void knet_vty_execute_cmd(struct knet_vty *vty);
+void knet_vty_help(struct knet_vty *vty);
 
 extern vty_nodes_t knet_vty_nodes[];
 

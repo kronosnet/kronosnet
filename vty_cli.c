@@ -458,7 +458,10 @@ vty_ext_escape_out:
 				log_info("command completion");
 				break;
 			case '?':
-				log_info("help");
+				knet_vty_write(vty, "%s", telnet_newline);
+				knet_vty_help(vty);
+				knet_vty_prompt(vty);
+				knet_vty_write(vty, "%s", vty->line);
 				break;
 			case '\033':
 				vty->escape = VTY_PRE_ESCAPE;

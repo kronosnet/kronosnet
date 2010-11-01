@@ -112,7 +112,26 @@ static int find_command(struct knet_vty *vty)
 	return -1;
 }
 
-int knet_vty_execute_cmd(struct knet_vty *vty)
+void knet_vty_help(struct knet_vty *vty)
+{
+	int idx = 0;
+
+	while (knet_vty_nodes[vty->node].cmds[idx].cmd != NULL) {
+		if (knet_vty_nodes[vty->node].cmds[idx].help != NULL) {
+			knet_vty_write(vty, "%s\t%s%s",
+				knet_vty_nodes[vty->node].cmds[idx].cmd,
+				knet_vty_nodes[vty->node].cmds[idx].help,
+				telnet_newline);
+		} else {
+			knet_vty_write(vty, "%s\tNo help available for this command%s",
+				knet_vty_nodes[vty->node].cmds[idx].cmd,
+				telnet_newline);
+		}
+		idx++;
+	}
+}
+
+void knet_vty_execute_cmd(struct knet_vty *vty)
 {
 	void *func;
 	int cmdidx;
@@ -120,11 +139,12 @@ int knet_vty_execute_cmd(struct knet_vty *vty)
 
 	cmdidx = find_command(vty);
 	if (cmdidx < 0)
-		return cmdidx;
+		return;
 
-	if (knet_vty_nodes[vty->node].cmds[cmdidx].func != NULL)
-		return knet_vty_nodes[vty->node].cmds[cmdidx].func(vty);
-
-	knet_vty_write(vty, "no fn associated to this command%s", telnet_newline);
-	return -1;
+	if (knet_vty_nodes[vty->node].cmds[cmdidx].func != NULL) {
+		knet_vty_nodes[vty->node].cmds[cmdidx].func(vty);
+	} else { /* this will eventually disappear */
+		knet_vty_write(vty, "no fn associated to this command%s", telnet_newline);
+	}
+	return;
 }
