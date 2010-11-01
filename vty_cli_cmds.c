@@ -9,6 +9,7 @@
 /* forward declarations */
 
 static int knet_cmd_who(struct knet_vty *vty);
+static int knet_cmd_help(struct knet_vty *vty);
 
 enum vty_nodes {
 	ROOT = 0,
@@ -16,8 +17,9 @@ enum vty_nodes {
 };
 
 vty_node_cmds_t root_cmds[] = {
-	{ "who", "Show users connected", NULL, NULL, knet_cmd_who },
-	{ "show", NULL, NULL, NULL, NULL },
+	{ "who", "Display users connected to CLI", NULL, NULL, knet_cmd_who },
+	{ "help", "Display basic help", NULL, NULL, knet_cmd_help },
+	{ "show", "Show several information", NULL, NULL, NULL },
 	{ NULL, NULL, NULL, NULL, NULL },
 };
 
@@ -45,6 +47,12 @@ static int knet_cmd_who(struct knet_vty *vty)
 
 	pthread_mutex_unlock(&knet_vty_mutex);
 
+	return 0;
+}
+
+static int knet_cmd_help(struct knet_vty *vty)
+{
+	knet_vty_help(vty);
 	return 0;
 }
 
