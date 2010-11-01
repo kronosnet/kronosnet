@@ -22,7 +22,7 @@ STATIC int vty_current_connections = 0;
 STATIC int daemon_quit = 0;
 
 pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
-struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN+1];
+struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
 static void sigterm_handler(int sig)
 {
@@ -148,7 +148,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 
 		if ((se_result == -1) && (daemon_quit)) {
 			log_info("Got a SIGTERM, requesting CLI threads to exit");	
-			for(conn_index = 0; conn_index <= KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
+			for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 				if (knet_vtys[conn_index].active) {
 					knet_vty_write(&knet_vtys[conn_index], "%s%sServer is going down..%s%s",
 						telnet_newline, telnet_newline, telnet_newline, telnet_newline);
@@ -169,7 +169,7 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 
 		if (se_result == 0) {
 			pthread_mutex_lock(&knet_vty_mutex);
-			for(conn_index = 0; conn_index <= KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
+			for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 				if ((knet_vtys[conn_index].active) &&
 				    (!knet_vtys[conn_index].disable_idle)) {
 					knet_vtys[conn_index].idle++;
