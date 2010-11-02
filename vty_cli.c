@@ -38,6 +38,7 @@ static void knet_vty_reset_buf(struct knet_vty *vty)
 	memset(vty->line, 0, sizeof(vty->line));
 	vty->line_idx = 0;
 	vty->cursor_pos = 0;
+	vty->history_pos = vty->history_idx;
 }
 
 static void knet_vty_add_to_buf(struct knet_vty *vty, unsigned char *buf, int pos)
@@ -281,8 +282,11 @@ static void knet_vty_history_next(struct knet_vty *vty)
 		idx++;
 	}
 
-	if (vty->history[idx] == NULL)
+	if (vty->history[idx] == NULL) {
+		knet_vty_kill_line_from_beginning(vty);
+		vty->history_pos = vty->history_idx;
 		return;
+	}
 
 	vty->history_pos = idx;
 
