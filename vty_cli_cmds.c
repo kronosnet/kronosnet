@@ -56,7 +56,7 @@ static int knet_cmd_help(struct knet_vty *vty)
 	return 0;
 }
 
-static char *get_first_word(struct knet_vty *vty)
+static int get_first_word(struct knet_vty *vty, char **cmd, int *len)
 {
 	int start = 0, idx;
 
@@ -66,15 +66,18 @@ static char *get_first_word(struct knet_vty *vty)
 	}
 	start = idx;
 	if (start == vty->line_idx)
-		return NULL;
+		return -1;
+
+	*cmd = &vty->line[start];
 
 	for (idx = start; idx < vty->line_idx; idx++) {
 		if (vty->line[idx] == ' ')
 			break;
 	}
-	vty->line[idx] = 0;
 
-	return &vty->line[start];
+	*len = idx - start;
+
+	return 0;
 }
 
 /*
@@ -91,8 +94,11 @@ static int find_command(struct knet_vty *vty)
 		return -1;
 	}
 
-	cmd = get_first_word(vty);
-	len = strlen(cmd);
+	if (get_first_word(vty, &cmd, &len) < 0) {
+		knet_vty_write(vty,
+			"CLI error. Unable to determine command%s", telnet_newline);
+		return -1;
+	}
 
 	idx = 0;
 	found = 0;
@@ -120,6 +126,24 @@ static int find_command(struct knet_vty *vty)
 	return -1;
 }
 
+void knet_vty_execute_cmd(struct knet_vty *vty)
+{
+	void *func;
+	int cmdidx;
+	func = NULL;
+
+	cmdidx = find_command(vty);
+	if (cmdidx < 0)
+		return;
+
+	if (knet_vty_nodes[vty->node].cmds[cmdidx].func != NULL) {
+		knet_vty_nodes[vty->node].cmds[cmdidx].func(vty);
+	} else { /* this will eventually disappear */
+		knet_vty_write(vty, "no fn associated to this command%s", telnet_newline);
+	}
+	return;
+}
+
 void knet_vty_help(struct knet_vty *vty)
 {
 	int idx = 0;
@@ -137,22 +161,4 @@ void knet_vty_help(struct knet_vty *vty)
 		}
 		idx++;
 	}
-}
-
-void knet_vty_execute_cmd(struct knet_vty *vty)
-{
-	void *func;
-	int cmdidx;
-	func = NULL;
-
-	cmdidx = find_command(vty);
-	if (cmdidx < 0)
-		return;
-
-	if (knet_vty_nodes[vty->node].cmds[cmdidx].func != NULL) {
-		knet_vty_nodes[vty->node].cmds[cmdidx].func(vty);
-	} else { /* this will eventually disappear */
-		knet_vty_write(vty, "no fn associated to this command%s", telnet_newline);
-	}
-	return;
 }
