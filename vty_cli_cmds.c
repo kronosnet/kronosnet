@@ -10,6 +10,7 @@
 
 static int knet_cmd_who(struct knet_vty *vty);
 static int knet_cmd_help(struct knet_vty *vty);
+static int knet_cmd_logout(struct knet_vty *vty);
 
 enum vty_nodes {
 	ROOT = 0,
@@ -17,9 +18,11 @@ enum vty_nodes {
 };
 
 vty_node_cmds_t root_cmds[] = {
-	{ "who", "Display users connected to CLI", NULL, NULL, knet_cmd_who },
+	{ "exit", "Exit from CLI", NULL, NULL, knet_cmd_logout },
 	{ "help", "Display basic help", NULL, NULL, knet_cmd_help },
+	{ "logout", "Exit from CLI", NULL, NULL, knet_cmd_logout },
 	{ "show", "Show several information", NULL, NULL, NULL },
+	{ "who", "Display users connected to CLI", NULL, NULL, knet_cmd_who },
 	{ NULL, NULL, NULL, NULL, NULL },
 };
 
@@ -28,6 +31,12 @@ vty_nodes_t knet_vty_nodes[] = {
 	{ CONFIG, "config", NULL },
 	{ -1, NULL, NULL },
 };
+
+static int knet_cmd_logout(struct knet_vty *vty)
+{
+	vty->got_epipe = 1;
+	return 0;
+}
 
 static int knet_cmd_who(struct knet_vty *vty)
 {
