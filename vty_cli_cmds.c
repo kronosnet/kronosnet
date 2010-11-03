@@ -12,11 +12,6 @@ static int knet_cmd_who(struct knet_vty *vty);
 static int knet_cmd_help(struct knet_vty *vty);
 static int knet_cmd_logout(struct knet_vty *vty);
 
-enum vty_nodes {
-	ROOT = 0,
-	CONFIG,
-};
-
 vty_node_cmds_t root_cmds[] = {
 	{ "exit", "Exit from CLI", NULL, NULL, knet_cmd_logout },
 	{ "help", "Display basic help", NULL, NULL, knet_cmd_help },
@@ -27,8 +22,8 @@ vty_node_cmds_t root_cmds[] = {
 };
 
 vty_nodes_t knet_vty_nodes[] = {
-	{ ROOT, "knet", root_cmds },
-	{ CONFIG, "config", NULL },
+	{ NODE_ROOT, "knet", root_cmds },
+	{ NODE_CONFIG, "config", NULL },
 	{ -1, NULL, NULL },
 };
 

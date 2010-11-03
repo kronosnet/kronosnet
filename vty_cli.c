@@ -110,8 +110,13 @@ static void knet_vty_delete_char(struct knet_vty *vty)
 {
 	int size, i;
 
-	if (vty->line_idx == 0)
+	if (vty->line_idx == 0) {
+		if (vty->node == NODE_ROOT) {
+			vty->got_epipe = 1;
+			return;
+		}
 		log_info("Write function to go one level down");
+	}
 
 	if (vty->line_idx == vty->cursor_pos)
 		return;

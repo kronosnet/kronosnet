@@ -24,6 +24,11 @@ typedef struct {
 	const vty_node_cmds_t	*cmds;
 } vty_nodes_t;
 
+enum vty_nodes {
+	NODE_ROOT = 0,
+	NODE_CONFIG,
+};
+
 void knet_vty_execute_cmd(struct knet_vty *vty);
 void knet_vty_help(struct knet_vty *vty);
 
