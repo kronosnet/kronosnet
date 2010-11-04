@@ -79,7 +79,7 @@ static int knet_cmd_who(struct knet_vty *vty)
 
 	for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 		if (knet_vtys[conn_index].active) {
-			knet_vty_write(vty, " User: %s on vty(%d) from %s%s",
+			knet_vty_write(vty, "User %s connected on vty(%d) from %s%s",
 				knet_vtys[conn_index].username,
 				knet_vtys[conn_index].conn_num,
 				knet_vtys[conn_index].ip,
