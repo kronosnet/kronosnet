@@ -64,6 +64,11 @@ struct knet_eth *knet_open(char *dev, size_t dev_size)
 	if (ioctl(knet_eth->knet_etherfd, TUNSETIFF, &knet_eth->ifr) < 0)
 		goto out_error;
 
+	if ((strlen(dev) > 0) && (strcmp(dev, knet_eth->ifr.ifr_name) != 0)) {
+		errno = EBUSY;
+		goto out_error;
+	}
+
 	strcpy(dev, knet_eth->ifr.ifr_name);
 
 	if (!knet_sockfd)

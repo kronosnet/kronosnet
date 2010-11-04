@@ -175,6 +175,35 @@ static int check_knet_multi_eth(void)
 		log_info("Unable to find interface %s on the system", device_name2);
 	}
 
+	if (knet_eth1)
+		knet_close(knet_eth1);
+	if (knet_eth2)
+		knet_close(knet_eth2);
+
+	log_info("Testing error conditions");
+
+	log_info("Open same device twice");
+
+	knet_eth1 = knet_open(device_name1, size);
+	if (!knet_eth1) {
+		log_error("Unable to init %s.", device_name1);
+		err = -1;
+		goto out_clean;
+	}
+
+	if (is_if_in_system(device_name1) > 0) {
+		log_info("Found interface %s on the system", device_name1);
+	} else {
+		log_info("Unable to find interface %s on the system", device_name1);
+	}
+
+	knet_eth2 = knet_open(device_name1, size);
+	if (knet_eth2) {
+		log_error("We were able to init 2 interfaces with the same name!");
+		err = -1;
+		goto out_clean;
+	}
+
 out_clean:
 	if (knet_eth1)
 		knet_close(knet_eth1);
