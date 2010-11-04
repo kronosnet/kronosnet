@@ -22,6 +22,7 @@ STATIC int vty_current_connections = 0;
 STATIC int daemon_quit = 0;
 
 pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
+int knet_vty_config = -1;
 struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
 static void sigterm_handler(int sig)

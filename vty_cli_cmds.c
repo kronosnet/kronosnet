@@ -8,24 +8,62 @@
 
 /* forward declarations */
 
-static int knet_cmd_who(struct knet_vty *vty);
+static int knet_cmd_config(struct knet_vty *vty);
+static int knet_cmd_exit_node(struct knet_vty *vty);
 static int knet_cmd_help(struct knet_vty *vty);
 static int knet_cmd_logout(struct knet_vty *vty);
+static int knet_cmd_who(struct knet_vty *vty);
 
 vty_node_cmds_t root_cmds[] = {
-	{ "exit", "Exit from CLI", NULL, NULL, knet_cmd_logout },
-	{ "help", "Display basic help", NULL, NULL, knet_cmd_help },
-	{ "logout", "Exit from CLI", NULL, NULL, knet_cmd_logout },
-	{ "show", "Show several information", NULL, NULL, NULL },
-	{ "who", "Display users connected to CLI", NULL, NULL, knet_cmd_who },
+	{ "configure", "enter configuration mode", NULL, NULL, knet_cmd_config },
+	{ "exit", "exit from CLI", NULL, NULL, knet_cmd_logout },
+	{ "help", "display basic help", NULL, NULL, knet_cmd_help },
+	{ "logout", "exit from CLI", NULL, NULL, knet_cmd_logout },
+	{ "who", "display users connected to CLI", NULL, NULL, knet_cmd_who },
+	{ NULL, NULL, NULL, NULL, NULL },
+};
+
+vty_node_cmds_t config_cmds[] = {
+	{ "exit", "exit configuration mode", NULL, NULL, knet_cmd_exit_node },
+	{ "help", "display basic help", NULL, NULL, knet_cmd_help },
+	{ "logout", "exit from CLI", NULL, NULL, knet_cmd_logout },
+	{ "who", "display users connected to CLI", NULL, NULL, knet_cmd_who },
 	{ NULL, NULL, NULL, NULL, NULL },
 };
 
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds },
-	{ NODE_CONFIG, "config", NULL },
+	{ NODE_CONFIG, "config", config_cmds },
 	{ -1, NULL, NULL },
 };
+
+static int knet_cmd_exit_node(struct knet_vty *vty)
+{
+	knet_vty_exit_node(vty);
+	return 0;
+}
+
+static int knet_cmd_config(struct knet_vty *vty)
+{
+	int err = 0;
+
+	if (!vty->user_can_enable) {
+		knet_vty_write(vty, "Error: user %s does not have enough privileges to perform config operations%s", vty->username, telnet_newline);
+		return -1;
+	}
+
+	pthread_mutex_lock(&knet_vty_mutex);
+	if (knet_vty_config >= 0) {
+		knet_vty_write(vty, "Error: configuration is currently locked by user %s on vty(%d). Try again later%s", vty->username, knet_vty_config, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+	vty->node = NODE_CONFIG;
+	knet_vty_config = vty->conn_num;
+out_clean:
+	pthread_mutex_unlock(&knet_vty_mutex);
+	return err;
+}
 
 static int knet_cmd_logout(struct knet_vty *vty)
 {
@@ -164,5 +202,23 @@ void knet_vty_help(struct knet_vty *vty)
 				telnet_newline);
 		}
 		idx++;
+	}
+}
+
+void knet_vty_exit_node(struct knet_vty *vty)
+{
+	switch(vty->node) {
+		case NODE_CONFIG:
+			pthread_mutex_lock(&knet_vty_mutex);
+			knet_vty_config = -1;
+			pthread_mutex_unlock(&knet_vty_mutex);
+			vty->node = NODE_ROOT;
+			break;
+		case NODE_ROOT:
+			vty->got_epipe = 1;
+			break;
+		default:
+			knet_vty_write(vty, "No idea where to go..%s", telnet_newline);
+			break;
 	}
 }

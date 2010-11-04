@@ -31,6 +31,7 @@ enum vty_nodes {
 
 void knet_vty_execute_cmd(struct knet_vty *vty);
 void knet_vty_help(struct knet_vty *vty);
+void knet_vty_exit_node(struct knet_vty *vty);
 
 extern vty_nodes_t knet_vty_nodes[];
 

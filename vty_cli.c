@@ -106,16 +106,23 @@ static void knet_vty_kill_line(struct knet_vty *vty)
 	vty->line_idx = vty->cursor_pos;
 }
 
+static void knet_vty_newline(struct knet_vty *vty)
+{
+	knet_vty_write(vty, "%s", telnet_newline);
+	knet_vty_reset_buf(vty);
+	knet_vty_prompt(vty);
+}
+
 static void knet_vty_delete_char(struct knet_vty *vty)
 {
 	int size, i;
 
 	if (vty->line_idx == 0) {
-		if (vty->node == NODE_ROOT) {
-			vty->got_epipe = 1;
-			return;
+		knet_vty_exit_node(vty);
+		if (!vty->got_epipe) {
+			knet_vty_newline(vty);
 		}
-		log_info("Write function to go one level down");
+		return;
 	}
 
 	if (vty->line_idx == vty->cursor_pos)
@@ -415,9 +422,7 @@ vty_ext_escape_out:
 				knet_vty_backward_char(vty);
 				break;
 			case CONTROL('C'):
-				knet_vty_write(vty, "%s", telnet_newline);
-				knet_vty_reset_buf(vty);
-				knet_vty_prompt(vty);
+				knet_vty_newline(vty);
 				break;
 			case CONTROL('D'):
 				knet_vty_delete_char(vty);
