@@ -11,6 +11,7 @@
 static int knet_cmd_config(struct knet_vty *vty);
 static int knet_cmd_exit_node(struct knet_vty *vty);
 static int knet_cmd_help(struct knet_vty *vty);
+static int knet_cmd_interface(struct knet_vty *vty);
 static int knet_cmd_logout(struct knet_vty *vty);
 static int knet_cmd_who(struct knet_vty *vty);
 
@@ -23,8 +24,15 @@ vty_node_cmds_t root_cmds[] = {
 	{ NULL, NULL, NULL, NULL, NULL },
 };
 
+vty_node_opts_t interface_opts[] = {
+	{ "name", "interface name (eg. kronosnet0)", NULL, 0 },
+	{ NULL, NULL, NULL, 0 },
+
+};
+
 vty_node_cmds_t config_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, NULL, knet_cmd_exit_node },
+	{ "interface", "configure kronosnet interface", NULL, interface_opts, knet_cmd_interface },
 	{ "help", "display basic help", NULL, NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, NULL, knet_cmd_logout },
 	{ "who", "display users connected to CLI", NULL, NULL, knet_cmd_who },
@@ -34,8 +42,18 @@ vty_node_cmds_t config_cmds[] = {
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds },
 	{ NODE_CONFIG, "config", config_cmds },
+	{ NODE_INTERFACE, "iface", NULL },
 	{ -1, NULL, NULL },
 };
+
+static int knet_cmd_interface(struct knet_vty *vty)
+{
+	int err = 0;
+
+	vty->node = NODE_INTERFACE;
+
+	return err;
+}
 
 static int knet_cmd_exit_node(struct knet_vty *vty)
 {
@@ -190,6 +208,11 @@ void knet_vty_help(struct knet_vty *vty)
 {
 	int idx = 0;
 
+	if (knet_vty_nodes[vty->node].cmds == NULL) {
+		knet_vty_write(vty, "No commands associated to this node%s", telnet_newline);
+		return;
+	}
+
 	while (knet_vty_nodes[vty->node].cmds[idx].cmd != NULL) {
 		if (knet_vty_nodes[vty->node].cmds[idx].help != NULL) {
 			knet_vty_write(vty, "%s\t%s%s",
@@ -208,6 +231,9 @@ void knet_vty_help(struct knet_vty *vty)
 void knet_vty_exit_node(struct knet_vty *vty)
 {
 	switch(vty->node) {
+		case NODE_INTERFACE:
+			vty->node = NODE_CONFIG;
+			break;
 		case NODE_CONFIG:
 			pthread_mutex_lock(&knet_vty_mutex);
 			knet_vty_config = -1;

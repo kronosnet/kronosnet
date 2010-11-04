@@ -27,6 +27,7 @@ typedef struct {
 enum vty_nodes {
 	NODE_ROOT = 0,
 	NODE_CONFIG,
+	NODE_INTERFACE,
 };
 
 void knet_vty_execute_cmd(struct knet_vty *vty);
