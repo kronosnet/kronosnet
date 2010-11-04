@@ -37,6 +37,9 @@ static void sigpipe_handler(int sig)
 
 static void knet_vty_close(struct knet_vty *vty)
 {
+	if (knet_vty_config == vty->conn_num)
+		knet_vty_config = -1;
+
 	knet_vty_free_history(vty);
 	vty->active = 0;
 	close(vty->vty_sock);
