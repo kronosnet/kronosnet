@@ -456,7 +456,9 @@ vty_ext_escape_out:
 				knet_vty_backward_kill_word(vty);
 				break;
 			case CONTROL('Z'):
-				log_info("end config");
+				vty->node = NODE_CONFIG;
+				knet_vty_exit_node(vty);
+				knet_vty_newline(vty);
 				break;
 			case '\n':
 			case '\r':
