@@ -22,6 +22,7 @@ typedef struct {
 	const int		node_num;
 	const char		*prompt;
 	const vty_node_cmds_t	*cmds;
+	const vty_node_cmds_t	*no_cmds;
 } vty_nodes_t;
 
 enum vty_nodes {
