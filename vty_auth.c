@@ -262,7 +262,7 @@ static int knet_vty_group_check(struct knet_vty *vty)
 
 	gr_mem = *grp.gr_mem;
 
-	i = 1;
+	i = 0;
 	while(gr_mem != NULL) {
 		if (!strcmp(vty->username, gr_mem)) {
 			vty->user_can_enable = 1;
