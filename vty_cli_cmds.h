@@ -8,6 +8,7 @@ typedef struct {
 	const char	*help;
 	const char	*requires;
 	const int	optional;
+	const void	*next_opts;
 } vty_node_opts_t;
 
 typedef struct {
@@ -33,7 +34,7 @@ enum vty_nodes {
 
 void knet_vty_execute_cmd(struct knet_vty *vty);
 void knet_vty_help(struct knet_vty *vty);
-void knet_vty_exit_node(struct knet_vty *vty);
+void knet_vty_tab_completion(struct knet_vty *vty);
 
 extern vty_nodes_t knet_vty_nodes[];
 

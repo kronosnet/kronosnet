@@ -19,20 +19,6 @@
 #define VTY_ESCAPE	2
 #define VTY_EXT_ESCAPE	3
 
-static void knet_vty_prompt(struct knet_vty *vty)
-{
-	char buf[3];
-
-	if (vty->user_can_enable) {
-		buf[0] = '#';
-	} else {
-		buf[0] = '>';
-	}
-	buf[1] = ' ';
-	buf[2] = 0;
-	knet_vty_write(vty, "%s%s", knet_vty_nodes[vty->node].prompt, buf);
-}
-
 static void knet_vty_reset_buf(struct knet_vty *vty)
 {
 	memset(vty->line, 0, sizeof(vty->line));
@@ -222,7 +208,7 @@ static void knet_vty_history_add(struct knet_vty *vty)
 {
 	int idx;
 
-	if (vty->line_idx == 0)
+	if (knet_vty_is_line_empty(vty))
 		return;
 
 	idx = vty->history_idx % KNET_VTY_MAX_HIST;
@@ -463,15 +449,13 @@ vty_ext_escape_out:
 			case '\n':
 			case '\r':
 				knet_vty_write(vty, "%s", telnet_newline);
-				if (strlen(vty->line)) {
-					knet_vty_history_add(vty);
-					knet_vty_execute_cmd(vty);
-				}
+				knet_vty_history_add(vty);
+				knet_vty_execute_cmd(vty);
 				knet_vty_reset_buf(vty);
 				knet_vty_prompt(vty);
 				break;
 			case '\t':
-				log_info("command completion");
+				knet_vty_tab_completion(vty);
 				break;
 			case '?':
 				knet_vty_write(vty, "%s", telnet_newline);

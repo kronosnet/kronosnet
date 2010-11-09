@@ -18,4 +18,10 @@ int knet_vty_set_iacs(struct knet_vty *vty);
 
 void knet_vty_free_history(struct knet_vty *vty);
 
+void knet_vty_exit_node(struct knet_vty *vty);
+
+int knet_vty_is_line_empty(struct knet_vty *vty);
+
+void knet_vty_prompt(struct knet_vty *vty);
+
 #endif

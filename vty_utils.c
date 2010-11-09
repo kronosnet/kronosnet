@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 
 #include "utils.h"
+#include "vty_cli.h"
+#include "vty_cli_cmds.h"
 #include "vty_utils.h"
 
 static int check_vty(struct knet_vty *vty)
@@ -200,4 +202,51 @@ void knet_vty_free_history(struct knet_vty *vty)
 			vty->history[i] = NULL;
 		}
 	}
+}
+
+void knet_vty_exit_node(struct knet_vty *vty)
+{
+	switch(vty->node) {
+		case NODE_INTERFACE:
+			vty->node = NODE_CONFIG;
+			break;
+		case NODE_CONFIG:
+			pthread_mutex_lock(&knet_vty_mutex);
+			knet_vty_config = -1;
+			pthread_mutex_unlock(&knet_vty_mutex);
+			vty->node = NODE_ROOT;
+			break;
+		case NODE_ROOT:
+			vty->got_epipe = 1;
+			break;
+		default:
+			knet_vty_write(vty, "No idea where to go..%s", telnet_newline);
+			break;
+	}
+}
+
+int knet_vty_is_line_empty(struct knet_vty *vty)
+{
+	int idx;
+
+	for (idx = 0; idx < vty->line_idx; idx++) {
+		if (vty->line[idx] != ' ')
+			return 0;
+	}
+
+	return 1;
+}
+
+void knet_vty_prompt(struct knet_vty *vty)
+{
+	char buf[3];
+
+	if (vty->user_can_enable) {
+		buf[0] = '#';
+	} else {
+		buf[0] = '>';
+	}
+	buf[1] = ' ';
+	buf[2] = 0;
+	knet_vty_write(vty, "%s%s", knet_vty_nodes[vty->node].prompt, buf);
 }
