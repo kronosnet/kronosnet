@@ -18,7 +18,10 @@ dist_doc_DATA		= \
 			  COPYRIGHT \
 			  README.licence
 
-noinst_HEADERS		= knet.h \
+noinst_HEADERS		= \
+			  cfg.h \
+			  knet.h \
+			  netutils.h \
 			  ring.h \
 			  utils.h \
 			  vty.h \
@@ -30,6 +33,8 @@ noinst_HEADERS		= knet.h \
 sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
+			  cfg.c \
+			  knet.c \
 			  main.c \
 			  netutils.c \
 			  utils.c \

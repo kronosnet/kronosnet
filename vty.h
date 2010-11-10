@@ -38,6 +38,7 @@ struct knet_vty {
 	int			idle;		/* idle time */
 	int			disable_idle;	/* disable automatic logout */
 	int			node;		/* node number of the menus */
+	void			*data;		/* pointer to node data */
 };
 
 extern pthread_mutex_t knet_vty_mutex;
@@ -45,8 +46,7 @@ extern int knet_vty_config;
 
 extern struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
-int knet_vty_main_loop(const char *configfile, const char *ip_addr,
-		       const char *port);
+int knet_vty_main_loop(void);
 
 int knet_vty_init_listener(const char *address, const char *port);
 void knet_vty_close_listener(int listener_fd);

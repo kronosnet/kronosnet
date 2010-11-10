@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#include "cfg.h"
 #include "utils.h"
 #include "netutils.h"
 #include "vty.h"
@@ -102,8 +103,7 @@ out_clean:
 /*
  * mainloop is not thread safe as there should only be one
  */
-int knet_vty_main_loop(const char *configfile, const char *ip_addr,
-		       const char *port)
+int knet_vty_main_loop(void)
 {
 	int vty_listener_fd;
 	int vty_accept_fd;
@@ -114,26 +114,14 @@ int knet_vty_main_loop(const char *configfile, const char *ip_addr,
 	struct timeval tv;
 	int err = 0;
 	int conn_index, found;
-	char portbuf[8];
-	char ipbuf[4];
 
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
 	// read and process config file here
 
-	if (!ip_addr) {
-		memset(&ipbuf, 0, sizeof(ipbuf));
-		snprintf(ipbuf, sizeof(ipbuf), "::");
-		ip_addr = ipbuf;
-	}
-	if (!port) {
-		memset(&portbuf, 0, sizeof(portbuf));
-		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
-		port = portbuf;
-	}
-
-	vty_listener_fd = knet_vty_init_listener(ip_addr, port);
+	vty_listener_fd = knet_vty_init_listener(knet_cfg_head.ip_addr,
+						 knet_cfg_head.port);
 	if (vty_listener_fd < 0) {
 		log_error("Unable to setup vty listener");
 		return -1;

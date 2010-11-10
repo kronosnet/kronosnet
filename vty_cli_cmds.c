@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include "cfg.h"
 #include "utils.h"
 #include "knet.h"
 #include "vty.h"
@@ -66,18 +67,93 @@ vty_nodes_t knet_vty_nodes[] = {
 	{ -1, NULL, NULL },
 };
 
+static int knet_vty_get_n_word_from_end(struct knet_vty *vty, int n, char **word, int *wlen)
+{
+	int widx;
+	int idx, end, start;
+
+	for (widx = 0; widx < n; widx++) {
+		for (idx = vty->line_idx - 1; idx > 0; idx--) {
+			if (vty->line[idx] != ' ')
+				break;
+		}
+		end = idx;
+		for (idx = end; idx > 0; idx--) {
+			if (vty->line[idx-1] == ' ')
+				break;
+		}
+		start = idx;
+	}
+
+	*wlen = (end - start) + 1;
+	*word = &vty->line[start];
+
+	return 0;
+}
+
 static int knet_cmd_no_interface(struct knet_vty *vty)
 {
-	int err = 0;
+	int err = 0, paramlen = 0;
+	char *param = NULL;
+	struct knet_cfg *knet_iface = NULL;
+
+	knet_vty_get_n_word_from_end(vty, 1, &param, &paramlen);
+
+	knet_iface = knet_get_iface(param, paramlen, 0);
+	if (!knet_iface) {
+		knet_vty_write(vty, "Error: Unable to find requested interface%s", telnet_newline);
+		return -1;
+	}
+
+	if (knet_iface->knet_eth)
+		knet_close(knet_iface->knet_eth);
+
+	if (knet_iface)
+		knet_destroy_iface(knet_iface);
+
 	return err;
 }
 
 static int knet_cmd_interface(struct knet_vty *vty)
 {
-	int err = 0;
+	int err = 0, paramlen = 0;
+	char *param = NULL;
+	char device[IFNAMSIZ];
+	struct knet_cfg *knet_iface = NULL;
+
+	knet_vty_get_n_word_from_end(vty, 1, &param, &paramlen);
+
+	knet_iface = knet_get_iface(param, paramlen, 1);
+	if (!knet_iface) {
+		knet_vty_write(vty, "Error: Unable to allocate memory for config structures%s",
+				telnet_newline);
+		return -1;
+	}
+
+	strncpy(device, param, IFNAMSIZ);
+
+	if (!knet_iface->knet_eth)
+		knet_iface->knet_eth = knet_open(device, IFNAMSIZ);
+
+	if ((!knet_iface->knet_eth) && (errno = EBUSY)) {
+		knet_vty_write(vty, "Error: interface %s seems to exist in the system%s",
+				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+
+	if (!knet_iface->knet_eth) {
+		knet_vty_write(vty, "Error: Unable to create %s system tap device%s",
+				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
 
 	vty->node = NODE_INTERFACE;
 
+out_clean:
+	if (err) 
+		knet_destroy_iface(knet_iface);
 	return err;
 }
 
@@ -144,30 +220,6 @@ static int knet_cmd_help(struct knet_vty *vty)
 			    " until entering a '?' shows the available options.%s",
 			    telnet_newline, telnet_newline, telnet_newline, telnet_newline, 
 			    telnet_newline, telnet_newline);
-	return 0;
-}
-
-static int knet_vty_get_n_word_from_end(struct knet_vty *vty, int n, char **word, int *wlen)
-{
-	int widx;
-	int idx, end, start;
-
-	for (widx = 0; widx < n; widx++) {
-		for (idx = vty->line_idx - 1; idx > 0; idx--) {
-			if (vty->line[idx] != ' ')
-				break;
-		}
-		end = idx;
-		for (idx = end; idx > 0; idx--) {
-			if (vty->line[idx-1] == ' ')
-				break;
-		}
-		start = idx;
-	}
-
-	*wlen = (end - start) + 1;
-	*word = &vty->line[start];
-
 	return 0;
 }
 

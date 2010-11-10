@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "cfg.h"
 #include "vty.h"
 #include "utils.h"
 
@@ -15,9 +16,8 @@
 #define OPTION_STRING "hdfVc:b:p:"
 
 static int daemonize = 1;
-static char *conffile = NULL;
-static char *vty_ip_addr = NULL;
-static char *vty_port = NULL;
+
+struct knet_cfg_top knet_cfg_head;
 
 extern int utils_debug;
 
@@ -49,8 +49,8 @@ static int read_arguments(int argc, char **argv)
 		switch (optchar) {
 
 		case 'b':
-			vty_ip_addr = strdup(optarg);
-			if (!vty_ip_addr)
+			knet_cfg_head.ip_addr = strdup(optarg);
+			if (!knet_cfg_head.ip_addr)
 				return -1;
 			break;
 
@@ -60,14 +60,14 @@ static int read_arguments(int argc, char **argv)
 				errno = EINVAL;
 				return -1;
 			}
-			vty_port = strdup(optarg);
-			if (!vty_port)
+			knet_cfg_head.port = strdup(optarg);
+			if (!knet_cfg_head.port)
 				return -1;
 			break;
 
 		case 'c':
-			conffile = strdup(optarg);
-			if (!conffile)
+			knet_cfg_head.conffile = strdup(optarg);
+			if (!knet_cfg_head.conffile)
 				return -1;
 			break;
 
@@ -247,6 +247,8 @@ int main(int argc, char **argv)
 {
 	int err;
 
+	memset(&knet_cfg_head, 0, sizeof(struct knet_cfg_top));
+
 	if (create_lockfile(LOCKFILE_NAME) < 0) {
 		log_error("Unable to create lockfile");
 		exit(EXIT_FAILURE);
@@ -257,10 +259,26 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (!conffile)
-		conffile = strdup(CONFFILE);
-	if (!conffile) {
+	if (!knet_cfg_head.conffile)
+		knet_cfg_head.conffile = strdup(CONFFILE);
+	if (!knet_cfg_head.conffile) {
 		log_error("Unable to allocate memory for config file");
+		exit(EXIT_FAILURE);
+	}
+	if (!knet_cfg_head.ip_addr)
+		knet_cfg_head.ip_addr = strdup("::");
+	if (!knet_cfg_head.ip_addr) {
+		log_error("Unable to allocate memory for default ip address");
+		exit(EXIT_FAILURE);
+	}
+	if (!knet_cfg_head.port) {
+		char portbuf[8];
+		memset(&portbuf, 0, sizeof(portbuf));
+		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
+		knet_cfg_head.port = strdup(portbuf);
+	}
+	if (!knet_cfg_head.port) {
+		log_error("Unable to allocate memory for default port address");
 		exit(EXIT_FAILURE);
 	}
 
@@ -281,15 +299,16 @@ int main(int argc, char **argv)
 	if (err < 0)
 		goto out;
 
-	if (knet_vty_main_loop(conffile, vty_ip_addr, vty_port) < 0)
+	if (knet_vty_main_loop() < 0)
 		log_error("Detected fatal error in main loop");
 
 out:
-	free(conffile);
-	if (vty_ip_addr)
-		free(vty_ip_addr);
-	if (vty_port)
-		free(vty_port);
+	if (knet_cfg_head.conffile)
+		free(knet_cfg_head.conffile);
+	if (knet_cfg_head.ip_addr)
+		free(knet_cfg_head.ip_addr);
+	if (knet_cfg_head.port)
+		free(knet_cfg_head.port);
 
 	return 0;
 }

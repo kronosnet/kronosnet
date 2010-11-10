@@ -2,10 +2,13 @@
 
 #include <unistd.h>
 
+#include "cfg.h"
 #include "utils.h"
 #include "vty.h"
 
 extern int vty_max_connections;
+
+struct knet_cfg_top knet_cfg_head;
 
 static int knet_vty_set_max_check(void)
 {

@@ -36,6 +36,8 @@ khandle_test_SOURCES	= \
 
 vty_test_SOURCES	= \
 			  vty_test.c \
+			  ../cfg.c \
+			  ../knet.c \
 			  ../vty.c \
 			  ../vty_auth.c \
 			  ../vty_cli.c \
