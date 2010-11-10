@@ -34,7 +34,6 @@ vty_node_cmds_t root_cmds[] = {
 	{ "configure", "enter configuration mode", NULL, NULL, CMDS_PARAM_NO, knet_cmd_config },
 	{ "exit", "exit from CLI", NULL, NULL, CMDS_PARAM_NO, knet_cmd_logout },
 	{ "help", "display basic help", NULL, NULL, CMDS_PARAM_NO, knet_cmd_help },
-	{ "login", "exit from CLI", NULL, NULL, CMDS_PARAM_NO, knet_cmd_logout },
 	{ "logout", "exit from CLI", NULL, NULL, CMDS_PARAM_NO, knet_cmd_logout },
 	{ "who", "display users connected to CLI", NULL, NULL, CMDS_PARAM_NO, knet_cmd_who },
 	{ NULL, NULL, NULL, NULL, CMDS_PARAM_NO, NULL },
@@ -337,7 +336,6 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 				}
 				if (cmds[matches[0]].param != CMDS_PARAM_NO) {
 					knet_vty_get_n_word_from_end(vty, 1, &word, &wlen);
-					log_info("word: %s[%d]", word, wlen);
 					if (strncmp(word, cmd, wlen)) {
 						check_param(vty, cmds[matches[0]].param, word, wlen);
 					} else {
