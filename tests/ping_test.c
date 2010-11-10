@@ -112,6 +112,25 @@ static void argv_to_hosts(int argc, char *argv[])
 	}
 }
 
+static void check_links(void)
+{
+	struct knet_host *i;
+	struct knet_link *j;
+
+	knet_host_acquire(knet_h, &i, 0);
+
+	while (i != NULL) {
+		for (j = i->link; j != NULL; j = j->next) {
+			if (j->enabled == 0)
+				printf("link disabled: %p\n", j);
+		}
+
+		i = i->next;
+	}
+
+	knet_host_release(knet_h);
+}
+
 int main(int argc, char *argv[])
 {
 	char buff[1024];
@@ -134,6 +153,8 @@ int main(int argc, char *argv[])
 	knet_sock = knet_handle_getfd(knet_h);
 
 	while (1) {
+		check_links();
+
 		log_info("Sending 'Hello World!' frame");
 		write(knet_sock, "Hello World!", 13);
 

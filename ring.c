@@ -311,8 +311,6 @@ static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 	knet_tsdiff(&j->ping_last, &clock_now, &diff_ping);
 
 	if (diff_ping >= j->ping_interval) {
-		printf("diff_ping: %lu\n", diff_ping);
-
 		knet_h->buff->type = KNET_FRAME_PING;
 
 		sendto(j->sock, knet_h->buff, sizeof(struct knet_frame),
@@ -326,10 +324,8 @@ static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 	if (j->enabled == 1) {
 		knet_tsdiff(&j->pong_last, &clock_now, &diff_pong);
 
-		if (diff_pong >= j->pong_timeout) {
-			printf("diff_pong: %lu\n", diff_pong);
+		if (diff_pong >= j->pong_timeout)
 			j->enabled = 0; /* TODO: might need write lock */
-		}
 	}
 }
 
