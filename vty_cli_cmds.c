@@ -194,7 +194,7 @@ static void knet_vty_print_help(struct knet_vty *vty, const vty_node_cmds_t *cmd
  * return -1 if we cannot find a command. no can be trusted. cmd/len would be empty
  */
 
-static int get_command(struct knet_vty *vty, char **cmd, int *cmdlen, int *no)
+static int get_command(struct knet_vty *vty, char **cmd, int *cmdlen, int *cmdoffset, int *no)
 {
 	int start = 0, idx;
 
@@ -220,6 +220,7 @@ static int get_command(struct knet_vty *vty, char **cmd, int *cmdlen, int *no)
 		return -1;
 
 	*cmd = &vty->line[start];
+	*cmdoffset = start;
 
 	for (idx = start; idx < vty->line_idx; idx++) {
 		if (vty->line[idx] == ' ')
@@ -231,12 +232,12 @@ static int get_command(struct knet_vty *vty, char **cmd, int *cmdlen, int *no)
 	return 0;
 }
 
-static const vty_node_cmds_t *get_cmds(struct knet_vty *vty, char **cmd, int *cmdlen)
+static const vty_node_cmds_t *get_cmds(struct knet_vty *vty, char **cmd, int *cmdlen, int *cmdoffset)
 {
 	int no;
 	const vty_node_cmds_t *cmds =  knet_vty_nodes[vty->node].cmds;
 
-	get_command(vty, cmd, cmdlen, &no);
+	get_command(vty, cmd, cmdlen, cmdoffset, &no);
 
 	if (no)
 		cmds = knet_vty_nodes[vty->node].no_cmds;
@@ -301,7 +302,7 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
  *  > 0 number of commands (-1)
  */
 static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
-			 char *cmd, int cmdlen, int mode)
+			 char *cmd, int cmdlen, int cmdoffset, int mode)
 {
 	int idx = 0, found = -1, wlen;
 	char *word;
@@ -330,8 +331,13 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 	switch(mode) {
 		case KNET_VTY_MATCH_HELP:
 			if (found == 0) {
+				if ((cmdoffset <= vty->cursor_pos) && (vty->cursor_pos <= (cmdoffset + cmdlen))) {
+					knet_vty_print_help(vty, cmds, matches[0]);
+					break;
+				}
 				if (cmds[matches[0]].param != CMDS_PARAM_NO) {
 					knet_vty_get_n_word_from_end(vty, 1, &word, &wlen);
+					log_info("word: %s[%d]", word, wlen);
 					if (strncmp(word, cmd, wlen)) {
 						check_param(vty, cmds[matches[0]].param, word, wlen);
 					} else {
@@ -376,7 +382,7 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 		case KNET_VTY_MATCH_EXPAND:
 			if (found == 0) {
 				int do_complete = 1;
-				if (vty->cursor_pos > cmdlen)
+				if (vty->cursor_pos > cmdoffset+cmdlen)
 					break;
 
 				if (cmds[matches[0]].param != CMDS_PARAM_NO) {
@@ -388,11 +394,11 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 
 				if (do_complete) {
 					int cmdreallen = strlen(cmds[matches[0]].cmd);
-					memset(vty->line, 0, sizeof(vty->line));
-					memcpy(vty->line, cmds[matches[0]].cmd, cmdreallen);
-					vty->line[cmdreallen] = ' ';
-					vty->line_idx = cmdreallen + 1;
-					vty->cursor_pos = cmdreallen + 1;
+					memset(vty->line + cmdoffset, 0, cmdlen);
+					memcpy(vty->line + cmdoffset, cmds[matches[0]].cmd, cmdreallen);
+					vty->line[cmdreallen + cmdoffset] = ' ';
+					vty->line_idx = cmdreallen + cmdoffset + 1;
+					vty->cursor_pos = cmdreallen + cmdoffset + 1;
 				}
 			}
 			if (found > 0) { /* add completion to string base root */
@@ -422,11 +428,12 @@ void knet_vty_execute_cmd(struct knet_vty *vty)
 	const vty_node_cmds_t *cmds = NULL;
 	char *cmd = NULL;
 	int cmdlen = 0;
+	int cmdoffset = 0;
 
 	if (knet_vty_is_line_empty(vty))
 		return;
 
-	cmds = get_cmds(vty, &cmd, &cmdlen);
+	cmds = get_cmds(vty, &cmd, &cmdlen, &cmdoffset);
 
 	/* this will eventually disappear. keep it as safeguard for now */
 	if (cmds == NULL) {
@@ -434,7 +441,7 @@ void knet_vty_execute_cmd(struct knet_vty *vty)
 		return;
 	}
 
-	match_command(vty, cmds, cmd, cmdlen, KNET_VTY_MATCH_EXEC);
+	match_command(vty, cmds, cmd, cmdlen, cmdoffset, KNET_VTY_MATCH_EXEC);
 }
 
 void knet_vty_help(struct knet_vty *vty)
@@ -443,8 +450,9 @@ void knet_vty_help(struct knet_vty *vty)
 	const vty_node_cmds_t *cmds = NULL;
 	char *cmd = NULL;
 	int cmdlen = 0;
+	int cmdoffset = 0;
 
-	cmds = get_cmds(vty, &cmd, &cmdlen);
+	cmds = get_cmds(vty, &cmd, &cmdlen, &cmdoffset);
 
 	/* this will eventually disappear. keep it as safeguard for now */
 	if (cmds == NULL) {
@@ -460,7 +468,7 @@ void knet_vty_help(struct knet_vty *vty)
 		return;
 	}
 
-	match_command(vty, cmds, cmd, cmdlen, KNET_VTY_MATCH_HELP);
+	match_command(vty, cmds, cmd, cmdlen, cmdoffset, KNET_VTY_MATCH_HELP);
 }
 
 void knet_vty_tab_completion(struct knet_vty *vty)
@@ -468,13 +476,14 @@ void knet_vty_tab_completion(struct knet_vty *vty)
 	const vty_node_cmds_t *cmds = NULL;
 	char *cmd = NULL;
 	int cmdlen = 0;
+	int cmdoffset = 0;
 
 	if (knet_vty_is_line_empty(vty))
 		return;
 
 	knet_vty_write(vty, "%s", telnet_newline);
 
-	cmds = get_cmds(vty, &cmd, &cmdlen);
+	cmds = get_cmds(vty, &cmd, &cmdlen, &cmdoffset);
 
 	/* this will eventually disappear. keep it as safeguard for now */
 	if (cmds == NULL) {
@@ -482,7 +491,7 @@ void knet_vty_tab_completion(struct knet_vty *vty)
 		return;
 	}
 
-	match_command(vty, cmds, cmd, cmdlen, KNET_VTY_MATCH_EXPAND);
+	match_command(vty, cmds, cmd, cmdlen, cmdoffset, KNET_VTY_MATCH_EXPAND);
 
 	knet_vty_prompt(vty);
 	knet_vty_write(vty, "%s", vty->line);

@@ -448,6 +448,7 @@ vty_ext_escape_out:
 				break;
 			case '\n':
 			case '\r':
+				knet_vty_end_of_line(vty);
 				knet_vty_write(vty, "%s", telnet_newline);
 				knet_vty_history_add(vty);
 				knet_vty_execute_cmd(vty);
@@ -459,6 +460,7 @@ vty_ext_escape_out:
 				knet_vty_tab_completion(vty);
 				break;
 			case '?':
+				knet_vty_end_of_line(vty);
 				knet_vty_write(vty, "%s", telnet_newline);
 				knet_vty_help(vty);
 				knet_vty_prompt(vty);
