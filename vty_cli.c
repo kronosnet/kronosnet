@@ -455,6 +455,7 @@ vty_ext_escape_out:
 				knet_vty_prompt(vty);
 				break;
 			case '\t':
+				knet_vty_end_of_line(vty);
 				knet_vty_tab_completion(vty);
 				break;
 			case '?':

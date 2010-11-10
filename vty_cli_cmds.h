@@ -16,6 +16,7 @@ typedef struct {
 	const char		*help;
 	const char		*requires;
 	const vty_node_opts_t	*opts;
+	const int		param;
 	int (*func) (struct knet_vty *vty);
 } vty_node_cmds_t;
 
