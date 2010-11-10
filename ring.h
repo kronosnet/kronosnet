@@ -19,8 +19,10 @@ struct knet_link {
 	int sock;
 	struct sockaddr_storage address;
 	unsigned int enabled:1;	/* link is enabled for data */
-	struct timespec clk_ping;
-	struct timespec clk_pong;
+	suseconds_t ping_interval;
+	suseconds_t pong_timeout;
+	struct timespec ping_last;
+	struct timespec pong_last;
 	struct knet_link *next;
 };
 

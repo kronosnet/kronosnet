@@ -12,7 +12,7 @@
 #include "utils.h"
 
 #define KNET_MAX_EVENTS 8
-#define KNET_PING_TIMERES 500
+#define KNET_PING_TIMERES 200
 #define KNET_BUFSIZE 2048
 
 struct __knet_handle {
@@ -286,7 +286,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_PONG:
 		j->enabled = 1; /* TODO: might need write lock */
-		clock_gettime(CLOCK_MONOTONIC, &j->clk_pong);
+		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
 		break;
 	}
 
@@ -300,44 +300,50 @@ static void knet_tsdiff(struct timespec *start, struct timespec *end, suseconds_
 	*diff += (end->tv_nsec - start->tv_nsec) / 1000; /* micro-seconds */
 }
 
-static void knet_heartbeat_check(knet_handle_t knet_h)
+static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 {
-	struct knet_host *i;
-	struct knet_link *j;
 	struct timespec clock_now;
 	suseconds_t diff_ping, diff_pong;
-
-	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
-		return;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
 		return;
 
-	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = i->link; j != NULL; j = j->next) {
-			knet_tsdiff(&j->clk_ping, &clock_now, &diff_ping);
+	knet_tsdiff(&j->ping_last, &clock_now, &diff_ping);
 
-			if (diff_ping > 1000000) {
-				printf("diff_ping: %lu\n", diff_ping);
-				knet_h->buff->type = KNET_FRAME_PING;
-				sendto(j->sock, knet_h->buff,
-					sizeof(struct knet_frame),
-					MSG_DONTWAIT,
-					(struct sockaddr *) &j->address,
-					sizeof(struct sockaddr_storage));
-				clock_gettime(CLOCK_MONOTONIC, &j->clk_ping);
-				/* TODO: send ping */
-			}
+	if (diff_ping >= j->ping_interval) {
+		printf("diff_ping: %lu\n", diff_ping);
 
-			if (j->enabled == 1) {
-				knet_tsdiff(&j->clk_pong, &clock_now, &diff_pong);
+		knet_h->buff->type = KNET_FRAME_PING;
 
-				if (diff_pong > 3000000) {
-					printf("diff_pong: %lu\n", diff_pong);
-					j->enabled = 0; /* TODO: might need write lock */
-				}
-			}
+		sendto(j->sock, knet_h->buff, sizeof(struct knet_frame),
+			MSG_DONTWAIT, (struct sockaddr *) &j->address,
+			sizeof(struct sockaddr_storage));
+
+		clock_gettime(CLOCK_MONOTONIC, &j->ping_last);
+		/* TODO: send ping */
+	}
+
+	if (j->enabled == 1) {
+		knet_tsdiff(&j->pong_last, &clock_now, &diff_pong);
+
+		if (diff_pong >= j->pong_timeout) {
+			printf("diff_pong: %lu\n", diff_pong);
+			j->enabled = 0; /* TODO: might need write lock */
 		}
+	}
+}
+
+static void knet_heartbeat_check(knet_handle_t knet_h)
+{
+	struct knet_host *i;
+	struct knet_link *j;
+
+	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
+		return;
+
+	for (i = knet_h->host_head; i != NULL; i = i->next) {
+		for (j = i->link; j != NULL; j = j->next)
+			knet_heartbeat_check_each(knet_h, j);
 	}
 
 	pthread_rwlock_unlock(&knet_h->host_rwlock);

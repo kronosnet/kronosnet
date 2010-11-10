@@ -95,6 +95,9 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		memset(host->link, 0, sizeof(struct knet_link));
 
+		host->link->ping_interval = 1000000; /* 1 second */
+		host->link->pong_timeout = 5000000;  /* 5 seconds */
+
 		host->link->sock = listener->sock;
 		host->link->address.ss_family = AF_INET;
 
