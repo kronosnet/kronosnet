@@ -17,8 +17,10 @@ struct knet_host {
 
 struct knet_link {
 	int sock;
-	unsigned int enabled:1;	/* link is enabled for data */
 	struct sockaddr_storage address;
+	unsigned int enabled:1;	/* link is enabled for data */
+	struct timespec clk_ping;
+	struct timespec clk_pong;
 	struct knet_link *next;
 };
 

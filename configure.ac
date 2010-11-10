@@ -70,6 +70,7 @@ AC_C_INLINE
 
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create])
+AC_CHECK_LIB([rt], [clock_gettime])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
