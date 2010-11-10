@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	knet_sock = knet_handle_getfd(knet_h);
 
 	while (1) {
-		log_info("Sending 'Hello World!' frames");
+		log_info("Sending 'Hello World!' frame");
 		write(knet_sock, "Hello World!", 13);
 
 		tv.tv_sec = 5;
