@@ -11,12 +11,16 @@ static pthread_mutex_t knet_cfg_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct knet_cfg *knet_get_iface(const char *name, const int namelen, int create)
 {
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+	char iface[IFNAMSIZ];
 	int found = 0;
 
 	pthread_mutex_lock(&knet_cfg_mutex);
 
+	memset(iface, 0, sizeof(iface));
+	strncpy(iface, name, namelen);
+
 	while (knet_iface != NULL) {
-		if (!strncmp(knet_iface->name, name, namelen)) {
+		if (!strcmp(knet_iface->name, iface)) {
 			found = 1;
 			break;
 		}
