@@ -1,11 +1,14 @@
 #ifndef __CFG_H__
 #define __CFG_H__
 
+#include <stdint.h>
+
 #include "knet.h"
 #include "ring.h"
 
 struct knet_cfg {
 	char name[IFNAMSIZ];
+	uint8_t node_id;
 	struct knet_eth *knet_eth;
 	knet_handle_t *knet_ring;
 	struct knet_cfg *next;
@@ -18,8 +21,7 @@ struct knet_cfg_top {
 	struct knet_cfg *knet_cfg;
 };
 
-struct knet_cfg *knet_get_iface(const char *name, const int namelen,
-				const int create);
+struct knet_cfg *knet_get_iface(const char *name, const int create);
 void knet_destroy_iface(struct knet_cfg *knet_iface);
 
 int knet_read_config(void);
