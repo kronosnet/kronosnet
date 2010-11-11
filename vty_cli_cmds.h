@@ -4,19 +4,13 @@
 #include "vty.h"
 
 typedef struct {
-	const char	*option;
-	const char	*help;
-	const char	*requires;
-	const int	optional;
-	const void	*next_opts;
-} vty_node_opts_t;
+	const int		param;
+} vty_param_t;
 
 typedef struct {
 	const char		*cmd;
 	const char		*help;
-	const char		*requires;
-	const vty_node_opts_t	*opts;
-	const int		param;
+	const vty_param_t	*params;
 	int (*func) (struct knet_vty *vty);
 } vty_node_cmds_t;
 

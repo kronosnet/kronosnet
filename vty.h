@@ -39,6 +39,7 @@ struct knet_vty {
 	int			disable_idle;	/* disable automatic logout */
 	int			node;		/* node number of the menus */
 	void			*data;		/* pointer to node data */
+	int			dataoffset;	/* required if data is available */
 };
 
 extern pthread_mutex_t knet_vty_mutex;
