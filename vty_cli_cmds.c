@@ -204,8 +204,10 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 static int knet_cmd_interface(struct knet_vty *vty)
 {
 	int err = 0, paramlen = 0, paramoffset = 0;
-	char *param = NULL;
+	char *param = NULL, *cur_mac = NULL;
 	char device[IFNAMSIZ];
+	char mac[18];
+	int maclen;
 	struct knet_cfg *knet_iface = NULL;
 
 	knet_vty_get_param(vty, 1, &param, &paramlen, &paramoffset);
@@ -238,11 +240,33 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	knet_vty_get_param(vty, 2, &param, &paramlen, &paramoffset);
 	knet_iface->node_id = param_to_int(param, paramlen);
 
+	if (knet_get_mac(knet_iface->knet_eth, &cur_mac) < 0) {
+		knet_vty_write(vty, "Error: Unable to get mac address on device %s%s",
+				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+	memset(&mac, 0, sizeof(mac));
+	maclen = strrchr(cur_mac, ':') - cur_mac + 1;
+	memcpy(mac, cur_mac, maclen);
+	snprintf(mac + maclen, sizeof(mac) - maclen, "%x", knet_iface->node_id);
+	free(cur_mac);
+	if (knet_set_mac(knet_iface->knet_eth, mac) < 0) {
+		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
+				mac, device, telnet_newline); 
+		err = -1;
+		goto out_clean;
+	}
+
 	vty->node = NODE_INTERFACE;
 
 out_clean:
-	if (err) 
+	if (err) {
+		if (knet_iface->knet_eth)
+			knet_close(knet_iface->knet_eth);
+ 
 		knet_destroy_iface(knet_iface);
+	}
 	return err;
 }
 
@@ -410,7 +434,7 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_NODEID:
 			tmp = param_to_int(param, paramlen);
-			if ((tmp < 0) || (tmp > 256)) {
+			if ((tmp < 0) || (tmp > 255)) {
 				knet_vty_write(vty, "node id must be a value between 0 and 255%s", telnet_newline);
 				err = -1;
 			}
