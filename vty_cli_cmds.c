@@ -580,7 +580,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 static int knet_cmd_interface(struct knet_vty *vty)
 {
-	int err = 0, paramlen = 0, paramoffset = 0;
+	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
 	char *param = NULL, *cur_mac = NULL;
 	char device[IFNAMSIZ];
 	char mac[18];
@@ -595,6 +595,11 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		knet_vty_write(vty, "Error: Unable to allocate memory for config structures%s",
 				telnet_newline);
 		return -1;
+	}
+
+	if (knet_iface->knet_eth) {
+		found = 1;
+		goto knet_found;
 	}
 
 	if (!knet_iface->knet_eth)
@@ -614,8 +619,20 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		goto out_clean;
 	}
 
+knet_found:
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
-	knet_iface->node_id = param_to_int(param, paramlen);
+	requested_id = param_to_int(param, paramlen);
+	if (found) {
+		if (requested_id == knet_iface->node_id)
+			goto out_found;
+
+		knet_vty_write(vty, "Error: no interface %s with nodeid %d found%s",
+				device, param_to_int(param, paramlen), telnet_newline);
+		goto out_clean;
+
+	} else {
+		knet_iface->node_id = requested_id;
+	}
 
 	if (knet_get_mac(knet_iface->knet_eth, &cur_mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to get mac address on device %s%s",
@@ -643,6 +660,8 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		goto out_clean;
 	}
 	knet_iface->mtu = knet_iface->default_mtu;
+
+out_found:
 
 	vty->node = NODE_INTERFACE;
 	vty->iface = (void *)knet_iface;
