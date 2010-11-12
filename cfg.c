@@ -10,7 +10,7 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 	int found = 0;
 
 	while (knet_iface != NULL) {
-		if (!strcmp(knet_iface->name, name)) {
+		if (!strcmp(knet_iface->cfg_eth.name, name)) {
 			found = 1;
 			break;
 		}
@@ -23,7 +23,8 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 			goto out_clean;
 
 		memset(knet_iface, 0, sizeof(struct knet_cfg));
-		memcpy(knet_iface->name, name, sizeof(knet_iface->name));
+		memcpy(knet_iface->cfg_eth.name, name,
+			sizeof(knet_iface->cfg_eth.name));
 
 		knet_iface->next = knet_cfg_head.knet_cfg;
 		knet_cfg_head.knet_cfg = knet_iface;

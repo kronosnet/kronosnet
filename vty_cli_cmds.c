@@ -522,13 +522,13 @@ static int knet_cmd_no_mtu(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
-	if (knet_set_mtu(knet_iface->knet_eth, knet_iface->default_mtu) < 0) {
+	if (knet_set_mtu(knet_iface->knet_eth, knet_iface->cfg_eth.default_mtu) < 0) {
 		knet_vty_write(vty, "Error: Unable to set default mtu %d on device %s%s",
-				 knet_iface->default_mtu, knet_iface->name, telnet_newline);
+				 knet_iface->cfg_eth.default_mtu, knet_iface->cfg_eth.name, telnet_newline);
 				return -1;
 	}
 
-	knet_iface->mtu = knet_iface->default_mtu;
+	knet_iface->cfg_eth.mtu = knet_iface->cfg_eth.default_mtu;
 
 	return 0;
 }
@@ -544,11 +544,11 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 
 	if (knet_set_mtu(knet_iface->knet_eth, expected_mtu) < 0) {
 		knet_vty_write(vty, "Error: Unable to set requested mtu %d on device %s%s",
-				expected_mtu, knet_iface->name, telnet_newline);
+				expected_mtu, knet_iface->cfg_eth.name, telnet_newline);
 				return -1;
 	}
 
-	knet_iface->mtu = expected_mtu;
+	knet_iface->cfg_eth.mtu = expected_mtu;
 
 	return 0;
 }
@@ -623,15 +623,15 @@ knet_found:
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	requested_id = param_to_int(param, paramlen);
 	if (found) {
-		if (requested_id == knet_iface->node_id)
+		if (requested_id == knet_iface->cfg_eth.node_id)
 			goto out_found;
 
 		knet_vty_write(vty, "Error: no interface %s with nodeid %d found%s",
-				device, param_to_int(param, paramlen), telnet_newline);
+				device, requested_id, telnet_newline);
 		goto out_clean;
 
 	} else {
-		knet_iface->node_id = requested_id;
+		knet_iface->cfg_eth.node_id = requested_id;
 	}
 
 	if (knet_get_mac(knet_iface->knet_eth, &cur_mac) < 0) {
@@ -643,7 +643,7 @@ knet_found:
 	memset(&mac, 0, sizeof(mac));
 	maclen = strrchr(cur_mac, ':') - cur_mac + 1;
 	memcpy(mac, cur_mac, maclen);
-	snprintf(mac + maclen, sizeof(mac) - maclen, "%x", knet_iface->node_id);
+	snprintf(mac + maclen, sizeof(mac) - maclen, "%x", knet_iface->cfg_eth.node_id);
 	free(cur_mac);
 	if (knet_set_mac(knet_iface->knet_eth, mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
@@ -652,14 +652,14 @@ knet_found:
 		goto out_clean;
 	}
 
-	knet_iface->default_mtu = knet_get_mtu(knet_iface->knet_eth);
-	if (knet_iface->default_mtu < 0) {
+	knet_iface->cfg_eth.default_mtu = knet_get_mtu(knet_iface->knet_eth);
+	if (knet_iface->cfg_eth.default_mtu < 0) {
 		knet_vty_write(vty, "Error: Unable to get current MTU on device %s%s",
 				device, telnet_newline);
 		err = -1;
 		goto out_clean;
 	}
-	knet_iface->mtu = knet_iface->default_mtu;
+	knet_iface->cfg_eth.mtu = knet_iface->cfg_eth.default_mtu;
 
 out_found:
 
