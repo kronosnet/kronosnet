@@ -9,6 +9,8 @@
 struct knet_cfg {
 	char name[IFNAMSIZ];
 	uint8_t node_id;
+	int mtu;
+	int default_mtu;
 	struct knet_eth *knet_eth;
 	knet_handle_t *knet_ring;
 	struct knet_cfg *next;

@@ -20,6 +20,7 @@
 #define CMDS_PARAM_INT		4
 #define CMDS_PARAM_NODEID	5
 #define CMDS_PARAM_STR		6
+#define CMDS_PARAM_MTU		7
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -192,6 +193,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_STR:
 			break;
+		case CMDS_PARAM_MTU:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 576) || (tmp > 65536)) {
+				knet_vty_write(vty, "mtu should be a value between 576 and 65536 (note: max value depends on the media)%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -219,6 +227,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			knet_vty_write(vty, "NODEID - unique identifier for this interface in this kronos network (value between 0 and 255)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_STR:
+			break;
+		case CMDS_PARAM_MTU:
+			knet_vty_write(vty, "MTU - a value between 576 and 65536 (note: max value depends on the media)%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -553,6 +564,15 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		goto out_clean;
 	}
 
+	knet_iface->default_mtu = knet_get_mtu(knet_iface->knet_eth);
+	if (knet_iface->default_mtu < 0) {
+		knet_vty_write(vty, "Error: Unable to get current MTU on device %s%s",
+				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+	knet_iface->mtu = knet_iface->default_mtu;
+
 	vty->node = NODE_INTERFACE;
 
 out_clean:
@@ -630,6 +650,8 @@ static int knet_cmd_help(struct knet_vty *vty)
 			    telnet_newline, telnet_newline);
 	return 0;
 }
+
+/* exported API to vty_cli.c */
 
 void knet_vty_execute_cmd(struct knet_vty *vty)
 {
