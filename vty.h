@@ -38,8 +38,9 @@ struct knet_vty {
 	int			idle;		/* idle time */
 	int			disable_idle;	/* disable automatic logout */
 	int			node;		/* node number of the menus */
-	void			*data;		/* pointer to node data */
-	int			dataoffset;	/* required if data is available */
+	void			*param;		/* pointer to cmd param */
+	int			paramoffset;	/* required if param is set */
+	void			*iface;		/* pointer to iface we are working on */
 };
 
 extern pthread_mutex_t knet_vty_mutex;

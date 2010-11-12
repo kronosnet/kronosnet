@@ -258,8 +258,8 @@ static int get_param(struct knet_vty *vty, int wanted_paranum,
 			      char **param, int *paramlen, int *paramoffset)
 {
 	int eparams, tparams;
-	const vty_param_t *params = (const vty_param_t *)vty->data;
-	int paramstart = vty->dataoffset;
+	const vty_param_t *params = (const vty_param_t *)vty->param;
+	int paramstart = vty->paramoffset;
 
 	eparams = expected_params(params);
 	tparams = count_words(vty, paramstart);
@@ -321,8 +321,8 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 					break;
 				}
 				if (cmds[matches[0]].params != NULL) {
-					vty->data = (void *)cmds[matches[0]].params;
-					vty->dataoffset = paramstart;
+					vty->param = (void *)cmds[matches[0]].params;
+					vty->paramoffset = paramstart;
 					last_param = get_param(vty, -1, &param, &paramlen, &paramoffset);
 
 					if ((paramoffset <= vty->cursor_pos) && (vty->cursor_pos <= (paramoffset + paramlen)))
@@ -368,8 +368,8 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 
 					idx = 0;
 					while(cmds[matches[0]].params[idx].param != CMDS_PARAM_NOMORE) {
-						vty->data = (void *)cmds[matches[0]].params;
-						vty->dataoffset = paramstart;
+						vty->param = (void *)cmds[matches[0]].params;
+						vty->paramoffset = paramstart;
 						get_param(vty, idx + 1, &param, &paramlen, &paramoffset);
 						if (check_param(vty, cmds[matches[0]].params[idx].param, param, paramlen) < 0)
 							exec = -1;
@@ -379,8 +379,8 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 				}
 				if (!exec) {
 					if (cmds[matches[0]].params != NULL) {
-						vty->data = (void *)cmds[matches[0]].params;
-						vty->dataoffset = paramstart;
+						vty->param = (void *)cmds[matches[0]].params;
+						vty->paramoffset = paramstart;
 					}
 					if (cmds[matches[0]].func != NULL) {
 						cmds[matches[0]].func(vty);
@@ -444,6 +444,9 @@ static int knet_cmd_config(struct knet_vty *vty);
 static int knet_cmd_interface(struct knet_vty *vty);
 static int knet_cmd_no_interface(struct knet_vty *vty);
 
+/* interface node */
+static int knet_cmd_mtu(struct knet_vty *vty);
+static int knet_cmd_no_mtu(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -482,14 +485,73 @@ vty_node_cmds_t config_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
+/* interface node description */
+
+vty_node_cmds_t no_interface_cmds[] = {
+	{ "mtu", "revert to default MTU", NULL, knet_cmd_no_mtu },
+	{ NULL, NULL, NULL, NULL },
+};
+
+vty_param_t mtu_params[] = {
+	{ CMDS_PARAM_MTU },
+	{ CMDS_PARAM_NOMORE },
+};
+
+vty_node_cmds_t interface_cmds[] = {
+	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
+	{ "help", "display basic help", NULL, knet_cmd_help },
+	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
+	{ "mtu", "set mtu", mtu_params, knet_cmd_mtu },
+	{ "no", "revert command", NULL, NULL },
+	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
+	{ NULL, NULL, NULL, NULL },
+};
+
 /* nodes */
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds, NULL },
 	{ NODE_CONFIG, "config", config_cmds, no_config_cmds },
-	{ NODE_INTERFACE, "iface", NULL, NULL },
+	{ NODE_INTERFACE, "iface", interface_cmds, no_interface_cmds },
 	{ -1, NULL, NULL },
 };
 
+
+/* command execution */
+
+static int knet_cmd_no_mtu(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+
+	if (knet_set_mtu(knet_iface->knet_eth, knet_iface->default_mtu) < 0) {
+		knet_vty_write(vty, "Error: Unable to set default mtu %d on device %s%s",
+				 knet_iface->default_mtu, knet_iface->name, telnet_newline);
+				return -1;
+	}
+
+	knet_iface->mtu = knet_iface->default_mtu;
+
+	return 0;
+}
+
+static int knet_cmd_mtu(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	int paramlen = 0, paramoffset = 0, expected_mtu = 0;
+	char *param = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	expected_mtu = param_to_int(param, paramlen);
+
+	if (knet_set_mtu(knet_iface->knet_eth, expected_mtu) < 0) {
+		knet_vty_write(vty, "Error: Unable to set requested mtu %d on device %s%s",
+				expected_mtu, knet_iface->name, telnet_newline);
+				return -1;
+	}
+
+	knet_iface->mtu = expected_mtu;
+
+	return 0;
+}
 
 static int knet_cmd_no_interface(struct knet_vty *vty)
 {
@@ -583,6 +645,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	knet_iface->mtu = knet_iface->default_mtu;
 
 	vty->node = NODE_INTERFACE;
+	vty->iface = (void *)knet_iface;
 
 out_clean:
 	if (err) {
