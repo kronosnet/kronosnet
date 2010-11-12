@@ -444,6 +444,8 @@ static int knet_cmd_config(struct knet_vty *vty);
 static int knet_cmd_interface(struct knet_vty *vty);
 static int knet_cmd_no_interface(struct knet_vty *vty);
 
+
+/* root node description */
 vty_node_cmds_t root_cmds[] = {
 	{ "configure", "enter configuration mode", NULL, knet_cmd_config },
 	{ "exit", "exit from CLI", NULL, knet_cmd_logout },
@@ -453,6 +455,7 @@ vty_node_cmds_t root_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
+/* config node description */
 vty_param_t no_int_params[] = {
 	{ CMDS_PARAM_KNET },
 	{ CMDS_PARAM_NOMORE },
@@ -479,6 +482,7 @@ vty_node_cmds_t config_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
+/* nodes */
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds, NULL },
 	{ NODE_CONFIG, "config", config_cmds, no_config_cmds },
