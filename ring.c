@@ -14,7 +14,7 @@
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
 #define KNET_DATABUFSIZE 131072 /* 128k */
-#define KNET_PINGBUFSIZE sizeof(struct knet_frame)
+#define KNET_PINGBUFSIZE (sizeof(struct knet_frame) + sizeof(struct timespec))
 
 struct __knet_handle {
 	int sock[2];
@@ -242,9 +242,13 @@ static void knet_send_data(knet_handle_t knet_h)
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = i->link; j != NULL; j = j->next) {
+			if (j->enabled != 1) /* link is disabled */
+				continue;
+
 			snt = sendto(j->sock, knet_h->databuf, len, MSG_DONTWAIT,
 					(struct sockaddr *) &j->address,
 					sizeof(struct sockaddr_storage));
+
 			if ((i->active == 0) && (snt == len))
 				break;
 		}
@@ -298,9 +302,9 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_PING:
 		knet_h->databuf->type = KNET_FRAME_PONG;
-		sendto(j->sock, knet_h->databuf, sizeof(struct knet_frame),
-				MSG_DONTWAIT, (struct sockaddr *) &j->address,
-				sizeof(struct sockaddr_storage));
+		sendto(j->sock, knet_h->databuf, len,
+			MSG_DONTWAIT, (struct sockaddr *) &j->address,
+			sizeof(struct sockaddr_storage));
 		break;
 	case KNET_FRAME_PONG:
 		j->enabled = 1; /* TODO: might need write lock */
@@ -330,11 +334,14 @@ static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 	knet_tsdiff(&j->ping_last, &clock_now, &diff_ping);
 
 	if (diff_ping >= j->ping_interval) {
-		sendto(j->sock, knet_h->pingbuf, sizeof(struct knet_frame),
+		clock_gettime(CLOCK_MONOTONIC, &j->ping_last);
+
+		memmove(knet_h->pingbuf + 1,
+			&j->ping_last, sizeof(struct timespec));
+
+		sendto(j->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
 			MSG_DONTWAIT, (struct sockaddr *) &j->address,
 			sizeof(struct sockaddr_storage));
-
-		clock_gettime(CLOCK_MONOTONIC, &j->ping_last);
 	}
 
 	if (j->enabled == 1) {
