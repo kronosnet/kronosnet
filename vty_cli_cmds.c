@@ -431,13 +431,18 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 
 /* forward declarations */
 
-static int knet_cmd_config(struct knet_vty *vty);
-static int knet_cmd_exit_node(struct knet_vty *vty);
-static int knet_cmd_help(struct knet_vty *vty);
-static int knet_cmd_interface(struct knet_vty *vty);
-static int knet_cmd_no_interface(struct knet_vty *vty);
+/* common to almost all nodes */
 static int knet_cmd_logout(struct knet_vty *vty);
 static int knet_cmd_who(struct knet_vty *vty);
+static int knet_cmd_exit_node(struct knet_vty *vty);
+static int knet_cmd_help(struct knet_vty *vty);
+
+/* root node */
+static int knet_cmd_config(struct knet_vty *vty);
+
+/* config node */
+static int knet_cmd_interface(struct knet_vty *vty);
+static int knet_cmd_no_interface(struct knet_vty *vty);
 
 vty_node_cmds_t root_cmds[] = {
 	{ "configure", "enter configuration mode", NULL, knet_cmd_config },
