@@ -16,11 +16,12 @@
 #define CMDS_PARAM_NOMORE	0
 #define CMDS_PARAM_KNET		1
 #define CMDS_PARAM_IP		2
-#define CMDS_PARAM_BOOL		3
-#define CMDS_PARAM_INT		4
-#define CMDS_PARAM_NODEID	5
-#define CMDS_PARAM_STR		6
-#define CMDS_PARAM_MTU		7
+#define CMDS_PARAM_IP_PREFIX	3
+#define CMDS_PARAM_BOOL		4
+#define CMDS_PARAM_INT		5
+#define CMDS_PARAM_NODEID	6
+#define CMDS_PARAM_STR		7
+#define CMDS_PARAM_MTU		8
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -180,6 +181,8 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_IP:
 			break;
+		case CMDS_PARAM_IP_PREFIX:
+			break;
 		case CMDS_PARAM_BOOL:
 			break;
 		case CMDS_PARAM_INT:
@@ -218,6 +221,10 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			knet_vty_write(vty, "KNET_IFACE_NAME - interface name (max %d chars) eg: kronosnet0%s", IFNAMSIZ, telnet_newline);
 			break;
 		case CMDS_PARAM_IP:
+			knet_vty_write(vty, "IP address - ipv4 or ipv6 address to add to this interface%s", telnet_newline);
+			break;
+		case CMDS_PARAM_IP_PREFIX:
+			knet_vty_write(vty, "IP prefix len (eg. 24, 64)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_BOOL:
 			break;
@@ -447,6 +454,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty);
 /* interface node */
 static int knet_cmd_mtu(struct knet_vty *vty);
 static int knet_cmd_no_mtu(struct knet_vty *vty);
+static int knet_cmd_ip(struct knet_vty *vty);
+static int knet_cmd_no_ip(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -487,7 +496,14 @@ vty_node_cmds_t config_cmds[] = {
 
 /* interface node description */
 
+vty_param_t ip_params[] = {
+	{ CMDS_PARAM_IP },
+	{ CMDS_PARAM_IP_PREFIX },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t no_interface_cmds[] = {
+	{ "ip", "remove ip address", ip_params, knet_cmd_no_ip },
 	{ "mtu", "revert to default MTU", NULL, knet_cmd_no_mtu },
 	{ NULL, NULL, NULL, NULL },
 };
@@ -500,6 +516,7 @@ vty_param_t mtu_params[] = {
 vty_node_cmds_t interface_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
+	{ "ip", "add ip address", ip_params, knet_cmd_ip },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "mtu", "set mtu", mtu_params, knet_cmd_mtu },
 	{ "no", "revert command", NULL, NULL },
@@ -517,6 +534,71 @@ vty_nodes_t knet_vty_nodes[] = {
 
 
 /* command execution */
+
+static int knet_cmd_no_ip(struct knet_vty *vty)
+{
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+	char ipaddr[512], prefix[4];
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_cfg_ip *knet_ip = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
+
+	get_param(vty, 2, &param, &paramlen, &paramoffset);
+	param_to_str(prefix, sizeof(prefix), param, paramlen);
+
+	knet_ip = knet_get_ip(knet_iface, ipaddr, prefix, 0);
+	if (!knet_ip) {
+		knet_vty_write(vty, "Error: Unable to locate ip addr config entry%s", telnet_newline);
+		return -1;
+	}
+
+	if (knet_del_ip(knet_iface->knet_eth, ipaddr, prefix) < 0) {
+		knet_vty_write(vty, "Error: Unable to del ip addr %s/%s on device %s%s",
+				ipaddr, prefix, knet_iface->cfg_eth.name, telnet_newline);
+		return -1;
+	}
+
+	knet_destroy_ip(knet_iface, knet_ip);
+
+	return 0;
+}
+
+static int knet_cmd_ip(struct knet_vty *vty)
+{
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+	char ipaddr[512], prefix[4];
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_cfg_ip *knet_ip = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
+
+	get_param(vty, 2, &param, &paramlen, &paramoffset);
+	param_to_str(prefix, sizeof(prefix), param, paramlen);
+
+	knet_ip = knet_get_ip(knet_iface, ipaddr, prefix, 1);
+	if (!knet_ip) {
+		knet_vty_write(vty, "Error: Unable to create ip addr config entry%s", telnet_newline);
+		return -1;
+	}
+
+	if (knet_ip->active)
+		return 0;
+
+	if (knet_add_ip(knet_iface->knet_eth, ipaddr, prefix) < 0) {
+		knet_vty_write(vty, "Error: Unable to set ip addr %s/%s on device %s%s",
+				ipaddr, prefix, knet_iface->cfg_eth.name, telnet_newline);
+		knet_destroy_ip(knet_iface, knet_ip);
+	}
+
+	knet_ip->active = 1;
+
+	return 0;
+}
 
 static int knet_cmd_no_mtu(struct knet_vty *vty)
 {
@@ -567,6 +649,13 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	if (!knet_iface) {
 		knet_vty_write(vty, "Error: Unable to find requested interface%s", telnet_newline);
 		return -1;
+	}
+
+	while (knet_iface->cfg_eth.knet_ip != NULL) {
+		knet_del_ip(knet_iface->knet_eth,
+			    knet_iface->cfg_eth.knet_ip->ipaddr,
+			    knet_iface->cfg_eth.knet_ip->prefix);
+		knet_destroy_ip(knet_iface, knet_iface->cfg_eth.knet_ip);
 	}
 
 	if (knet_iface->knet_eth)

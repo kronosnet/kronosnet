@@ -49,8 +49,8 @@ static int read_arguments(int argc, char **argv)
 		switch (optchar) {
 
 		case 'b':
-			knet_cfg_head.ip_addr = strdup(optarg);
-			if (!knet_cfg_head.ip_addr)
+			knet_cfg_head.vty_ip = strdup(optarg);
+			if (!knet_cfg_head.vty_ip)
 				return -1;
 			break;
 
@@ -60,8 +60,8 @@ static int read_arguments(int argc, char **argv)
 				errno = EINVAL;
 				return -1;
 			}
-			knet_cfg_head.port = strdup(optarg);
-			if (!knet_cfg_head.port)
+			knet_cfg_head.vty_port = strdup(optarg);
+			if (!knet_cfg_head.vty_port)
 				return -1;
 			break;
 
@@ -265,19 +265,19 @@ int main(int argc, char **argv)
 		log_error("Unable to allocate memory for config file");
 		exit(EXIT_FAILURE);
 	}
-	if (!knet_cfg_head.ip_addr)
-		knet_cfg_head.ip_addr = strdup("::");
-	if (!knet_cfg_head.ip_addr) {
+	if (!knet_cfg_head.vty_ip)
+		knet_cfg_head.vty_ip = strdup("::");
+	if (!knet_cfg_head.vty_ip) {
 		log_error("Unable to allocate memory for default ip address");
 		exit(EXIT_FAILURE);
 	}
-	if (!knet_cfg_head.port) {
+	if (!knet_cfg_head.vty_port) {
 		char portbuf[8];
 		memset(&portbuf, 0, sizeof(portbuf));
 		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
-		knet_cfg_head.port = strdup(portbuf);
+		knet_cfg_head.vty_port = strdup(portbuf);
 	}
-	if (!knet_cfg_head.port) {
+	if (!knet_cfg_head.vty_port) {
 		log_error("Unable to allocate memory for default port address");
 		exit(EXIT_FAILURE);
 	}
@@ -305,10 +305,10 @@ int main(int argc, char **argv)
 out:
 	if (knet_cfg_head.conffile)
 		free(knet_cfg_head.conffile);
-	if (knet_cfg_head.ip_addr)
-		free(knet_cfg_head.ip_addr);
-	if (knet_cfg_head.port)
-		free(knet_cfg_head.port);
+	if (knet_cfg_head.vty_ip)
+		free(knet_cfg_head.vty_ip);
+	if (knet_cfg_head.vty_port)
+		free(knet_cfg_head.vty_port);
 
 	return 0;
 }

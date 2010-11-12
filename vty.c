@@ -120,8 +120,8 @@ int knet_vty_main_loop(void)
 
 	// read and process config file here
 
-	vty_listener_fd = knet_vty_init_listener(knet_cfg_head.ip_addr,
-						 knet_cfg_head.port);
+	vty_listener_fd = knet_vty_init_listener(knet_cfg_head.vty_ip,
+						 knet_cfg_head.vty_port);
 	if (vty_listener_fd < 0) {
 		log_error("Unable to setup vty listener");
 		return -1;
