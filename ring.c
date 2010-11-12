@@ -31,6 +31,9 @@ struct __knet_handle {
 static void *knet_control_thread(void *data);
 static void *knet_heartbt_thread(void *data);
 
+static inline void knet_tsdiff(
+	struct timespec *start, struct timespec *end, suseconds_t *diff);
+
 knet_handle_t knet_handle_new(void)
 {
 	knet_handle_t knet_h;
@@ -299,16 +302,23 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_DATA:
 		write(knet_h->sock[0],
 			knet_h->databuf + 1, len - sizeof(struct knet_frame));
+
 		break;
 	case KNET_FRAME_PING:
 		knet_h->databuf->type = KNET_FRAME_PONG;
+
 		sendto(j->sock, knet_h->databuf, len,
-			MSG_DONTWAIT, (struct sockaddr *) &j->address,
-			sizeof(struct sockaddr_storage));
+				MSG_DONTWAIT, (struct sockaddr *) &j->address,
+				sizeof(struct sockaddr_storage));
+
 		break;
 	case KNET_FRAME_PONG:
-		j->enabled = 1; /* TODO: might need write lock */
 		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
+
+		j->enabled = 1; /* TODO: might need write lock */
+		knet_tsdiff((struct timespec *) (knet_h->databuf + 1),
+						&j->pong_last, &j->latency);
+
 		break;
 	}
 

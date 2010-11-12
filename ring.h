@@ -19,6 +19,7 @@ struct knet_link {
 	int sock;
 	struct sockaddr_storage address;
 	unsigned int enabled:1;	/* link is enabled for data */
+	suseconds_t latency;
 	suseconds_t ping_interval;
 	suseconds_t pong_timeout;
 	struct timespec ping_last;
