@@ -374,6 +374,8 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 					}
 
 					idx = 0;
+					vty->param = (void *)cmds[matches[0]].params;
+					vty->paramoffset = paramstart;
 					while(cmds[matches[0]].params[idx].param != CMDS_PARAM_NOMORE) {
 						get_param(vty, idx + 1, &param, &paramlen, &paramoffset);
 						if (check_param(vty, cmds[matches[0]].params[idx].param, param, paramlen) < 0)
@@ -448,6 +450,7 @@ static int knet_cmd_config(struct knet_vty *vty);
 /* config node */
 static int knet_cmd_interface(struct knet_vty *vty);
 static int knet_cmd_no_interface(struct knet_vty *vty);
+static int knet_cmd_show_conf(struct knet_vty *vty);
 
 /* interface node */
 static int knet_cmd_mtu(struct knet_vty *vty);
@@ -485,6 +488,7 @@ vty_param_t int_params[] = {
 vty_node_cmds_t config_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "interface", "configure kronosnet interface", int_params, knet_cmd_interface },
+	{ "show", "show running config", NULL, knet_cmd_show_conf },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
@@ -766,6 +770,35 @@ out_clean:
 static int knet_cmd_exit_node(struct knet_vty *vty)
 {
 	knet_vty_exit_node(vty);
+	return 0;
+}
+
+static int knet_cmd_show_conf(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+
+	knet_vty_write(vty, "%s%sconfigure%s",
+			telnet_newline, telnet_newline, telnet_newline);
+
+	while (knet_iface != NULL) {
+		struct knet_cfg_ip *knet_ip = knet_iface->cfg_eth.knet_ip;
+
+		knet_vty_write(vty, " interface %s %d%s", knet_iface->cfg_eth.name, knet_iface->cfg_eth.node_id, telnet_newline);
+
+		if (knet_iface->cfg_eth.mtu != knet_iface->cfg_eth.default_mtu)
+			 knet_vty_write(vty, "  mtu %d%s", knet_iface->cfg_eth.mtu, telnet_newline);
+
+		while (knet_ip != NULL) {
+			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, telnet_newline);
+			knet_ip = knet_ip->next;
+		}
+
+		knet_vty_write(vty, "  exit%s", telnet_newline);
+		knet_iface = knet_iface->next;
+	}
+
+	knet_vty_write(vty, " exit%sexit%s", telnet_newline, telnet_newline);
+
 	return 0;
 }
 
