@@ -115,6 +115,11 @@ static void argv_to_hosts(int argc, char *argv[])
 	}
 }
 
+/* Testing the latency/timeout:
+ *   # tc qdisc add dev lo root handle 1:0 netem delay 1s limit 1000
+ *   # tc -d qdisc show dev lo
+ *   # tc qdisc del dev lo root
+ */
 static void check_links(void)
 {
 	struct knet_host *i;
