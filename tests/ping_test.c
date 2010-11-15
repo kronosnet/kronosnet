@@ -98,6 +98,9 @@ static void argv_to_hosts(int argc, char *argv[])
 		host->link->ping_interval = 1000000; /* 1 second */
 		host->link->pong_timeout = 5000000;  /* 5 seconds */
 
+		host->link->latency_fix = 512;
+		host->link->latency_exp = 495; /* 512 / e(1s / 30s) */
+
 		host->link->sock = listener->sock;
 		host->link->address.ss_family = AF_INET;
 

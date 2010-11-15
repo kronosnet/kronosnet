@@ -267,6 +267,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	socklen_t addrlen;
 	struct knet_host *i;
 	struct knet_link *j, *link_src;
+	suseconds_t latency_last;
 
 	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
 		return;
@@ -315,9 +316,13 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
 
-		j->enabled = 1; /* TODO: might need write lock */
 		knet_tsdiff((struct timespec *) (knet_h->databuf + 1),
-						&j->pong_last, &j->latency);
+						&j->pong_last, &latency_last);
+
+		j->enabled = 1; /* TODO: might need write lock */
+		j->latency *= j->latency_exp;
+		j->latency += latency_last * (j->latency_fix - j->latency_exp);
+		j->latency /= j->latency_fix;
 
 		break;
 	}
