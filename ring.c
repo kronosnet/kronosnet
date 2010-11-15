@@ -319,7 +319,9 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		knet_tsdiff((struct timespec *) (knet_h->databuf + 1),
 						&j->pong_last, &latency_last);
 
-		j->enabled = 1; /* TODO: might need write lock */
+		if (latency_last < j->pong_timeout)
+			j->enabled = 1; /* TODO: might need write lock */
+
 		j->latency *= j->latency_exp;
 		j->latency += latency_last * (j->latency_fix - j->latency_exp);
 		j->latency /= j->latency_fix;
