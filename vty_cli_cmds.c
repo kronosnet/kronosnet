@@ -375,8 +375,6 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 
 					idx = 0;
 					while(cmds[matches[0]].params[idx].param != CMDS_PARAM_NOMORE) {
-						vty->param = (void *)cmds[matches[0]].params;
-						vty->paramoffset = paramstart;
 						get_param(vty, idx + 1, &param, &paramlen, &paramoffset);
 						if (check_param(vty, cmds[matches[0]].params[idx].param, param, paramlen) < 0)
 							exec = -1;
