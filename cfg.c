@@ -133,17 +133,3 @@ void knet_destroy_iface(struct knet_cfg *knet_iface)
 		free(knet_iface);
 	}
 }
-
-int knet_read_config(void)
-{
-	int err = 0;
-
-	return err;
-}
-
-int knet_write_config(void)
-{
-	int err = 0;
-
-	return err;
-}

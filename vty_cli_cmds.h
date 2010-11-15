@@ -27,9 +27,11 @@ enum vty_nodes {
 	NODE_INTERFACE,
 };
 
-void knet_vty_execute_cmd(struct knet_vty *vty);
+int knet_vty_execute_cmd(struct knet_vty *vty);
 void knet_vty_help(struct knet_vty *vty);
 void knet_vty_tab_completion(struct knet_vty *vty);
+
+int knet_read_conf(void);
 
 extern vty_nodes_t knet_vty_nodes[];
 

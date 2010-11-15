@@ -16,6 +16,7 @@
 #include "vty.h"
 #include "vty_auth.h"
 #include "vty_cli.h"
+#include "vty_cli_cmds.h"
 #include "vty_utils.h"
 
 STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
@@ -118,7 +119,12 @@ int knet_vty_main_loop(void)
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
-	// read and process config file here
+	memset(&knet_vtys, 0, sizeof(knet_vtys));
+
+	if (knet_read_conf() < 0) {
+		log_error("Unable to read config file %s", knet_cfg_head.conffile);
+		return -1;
+	}
 
 	vty_listener_fd = knet_vty_init_listener(knet_cfg_head.vty_ip,
 						 knet_cfg_head.vty_port);
@@ -126,8 +132,6 @@ int knet_vty_main_loop(void)
 		log_error("Unable to setup vty listener");
 		return -1;
 	}
-
-	memset(&knet_vtys, 0, sizeof(knet_vtys));
 
 	while (se_result >= 0 && !daemon_quit) {
 		FD_ZERO (&rfds);

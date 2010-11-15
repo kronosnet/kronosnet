@@ -1,5 +1,12 @@
 #include "config.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <limits.h>
+#include <stdio.h>
+
 #include "cfg.h"
 #include "utils.h"
 #include "knet.h"
@@ -287,11 +294,6 @@ static int get_param(struct knet_vty *vty, int wanted_paranum,
 }
 
 
-/*
- * -1 command not found or error
- *  0 exact command found
- *  > 0 number of commands (-1)
- */
 static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 			 char *cmd, int cmdlen, int cmdoffset, int mode)
 {
@@ -378,8 +380,12 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 					vty->paramoffset = paramstart;
 					while(cmds[matches[0]].params[idx].param != CMDS_PARAM_NOMORE) {
 						get_param(vty, idx + 1, &param, &paramlen, &paramoffset);
-						if (check_param(vty, cmds[matches[0]].params[idx].param, param, paramlen) < 0)
+						if (check_param(vty, cmds[matches[0]].params[idx].param,
+								param, paramlen) < 0) {
 							exec = -1;
+							if (vty->filemode)
+								return -1;
+						}
 
 						idx++;
 					}
@@ -390,7 +396,7 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 						vty->paramoffset = paramstart;
 					}
 					if (cmds[matches[0]].func != NULL) {
-						cmds[matches[0]].func(vty);
+						return cmds[matches[0]].func(vty);
 					} else { /* this will eventually disappear */
 						knet_vty_write(vty, "no fn associated to this command%s", telnet_newline);
 					}
@@ -451,6 +457,7 @@ static int knet_cmd_config(struct knet_vty *vty);
 static int knet_cmd_interface(struct knet_vty *vty);
 static int knet_cmd_no_interface(struct knet_vty *vty);
 static int knet_cmd_show_conf(struct knet_vty *vty);
+static int knet_cmd_write_conf(struct knet_vty *vty);
 
 /* interface node */
 static int knet_cmd_mtu(struct knet_vty *vty);
@@ -493,6 +500,7 @@ vty_node_cmds_t config_cmds[] = {
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
+	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
 };
 
@@ -773,33 +781,82 @@ static int knet_cmd_exit_node(struct knet_vty *vty)
 	return 0;
 }
 
-static int knet_cmd_show_conf(struct knet_vty *vty)
+static int knet_cmd_print_conf(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+	const char *nl = telnet_newline;
 
-	knet_vty_write(vty, "%s%sconfigure%s",
-			telnet_newline, telnet_newline, telnet_newline);
+	if (vty->filemode)
+		nl = file_newline;
+
+	knet_vty_write(vty, "configure%s", nl);
 
 	while (knet_iface != NULL) {
 		struct knet_cfg_ip *knet_ip = knet_iface->cfg_eth.knet_ip;
 
-		knet_vty_write(vty, " interface %s %d%s", knet_iface->cfg_eth.name, knet_iface->cfg_eth.node_id, telnet_newline);
+		knet_vty_write(vty, " interface %s %d%s", knet_iface->cfg_eth.name, knet_iface->cfg_eth.node_id, nl);
 
 		if (knet_iface->cfg_eth.mtu != knet_iface->cfg_eth.default_mtu)
-			 knet_vty_write(vty, "  mtu %d%s", knet_iface->cfg_eth.mtu, telnet_newline);
+			 knet_vty_write(vty, "  mtu %d%s", knet_iface->cfg_eth.mtu, nl);
 
 		while (knet_ip != NULL) {
-			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, telnet_newline);
+			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, nl);
 			knet_ip = knet_ip->next;
 		}
 
-		knet_vty_write(vty, "  exit%s", telnet_newline);
+		knet_vty_write(vty, "  exit%s", nl);
 		knet_iface = knet_iface->next;
 	}
 
-	knet_vty_write(vty, " exit%sexit%s", telnet_newline, telnet_newline);
+	knet_vty_write(vty, " exit%sexit%s", nl, nl);
 
 	return 0;
+}
+
+static int knet_cmd_show_conf(struct knet_vty *vty)
+{
+	return knet_cmd_print_conf(vty);
+}
+
+static int knet_cmd_write_conf(struct knet_vty *vty)
+{
+	int fd = 1, vty_sock, err = 0, backup = 1;
+	char tempfile[PATH_MAX];
+
+	memset(tempfile, 0, sizeof(tempfile));
+
+	snprintf(tempfile, sizeof(tempfile), "%s.sav", knet_cfg_head.conffile);
+	err = rename(knet_cfg_head.conffile, tempfile);
+	if ((err < 0) && (errno != ENOENT)) {
+		knet_vty_write(vty, "Unable to create backup config file %s %s", tempfile, telnet_newline);
+		return -1;
+	}
+	if ((err < 0) && (errno == ENOENT))
+		backup = 0;
+
+	fd = open(knet_cfg_head.conffile,
+		  O_RDWR | O_CREAT | O_CLOEXEC | O_EXCL | O_TRUNC,
+		  S_IRUSR | S_IWUSR);
+	if (fd < 0) {
+		knet_vty_write(vty, "Error unable to open file%s", telnet_newline);
+		return -1;
+	}
+
+	vty_sock = vty->vty_sock;
+	vty->vty_sock = fd;
+	vty->filemode = 1;
+	knet_cmd_print_conf(vty);
+	vty->vty_sock = vty_sock;
+	vty->filemode = 0;
+
+	close(fd);
+
+	knet_vty_write(vty, "Configuration saved to %s%s", knet_cfg_head.conffile, telnet_newline);
+	if (backup)
+		knet_vty_write(vty, "Old configuration file has been stored in %s%s",
+				tempfile, telnet_newline);
+
+	return err;
 }
 
 static int knet_cmd_config(struct knet_vty *vty)
@@ -864,7 +921,7 @@ static int knet_cmd_help(struct knet_vty *vty)
 
 /* exported API to vty_cli.c */
 
-void knet_vty_execute_cmd(struct knet_vty *vty)
+int knet_vty_execute_cmd(struct knet_vty *vty)
 {
 	const vty_node_cmds_t *cmds = NULL;
 	char *cmd = NULL;
@@ -872,17 +929,55 @@ void knet_vty_execute_cmd(struct knet_vty *vty)
 	int cmdoffset = 0;
 
 	if (knet_vty_is_line_empty(vty))
-		return;
+		return 0;
 
 	cmds = get_cmds(vty, &cmd, &cmdlen, &cmdoffset);
 
 	/* this will eventually disappear. keep it as safeguard for now */
 	if (cmds == NULL) {
 		knet_vty_write(vty, "No commands associated to this node%s", telnet_newline);
-		return;
+		return 0;
 	}
 
-	match_command(vty, cmds, cmd, cmdlen, cmdoffset, KNET_VTY_MATCH_EXEC);
+	return match_command(vty, cmds, cmd, cmdlen, cmdoffset, KNET_VTY_MATCH_EXEC);
+}
+
+int knet_read_conf(void)
+{
+	int err = 0, len = 0;
+	struct knet_vty *vty = &knet_vtys[0];
+	FILE *file = NULL;
+
+	file = fopen(knet_cfg_head.conffile, "r");
+
+	if ((file == NULL) && (errno != ENOENT)) {
+		log_error("Unable to open config file for reading %s", knet_cfg_head.conffile);
+		return -1;
+	}
+
+	if ((file == NULL) && (errno == ENOENT)) {
+		log_info("Configuration file %s not found, starting with default empty config", knet_cfg_head.conffile);
+		return 0;
+	}
+
+	vty->vty_sock = 1;
+	vty->user_can_enable = 1;
+	vty->filemode = 1;
+
+	while(fgets(vty->line, sizeof(vty->line), file) != NULL) {
+		len = strlen(vty->line) - 1;
+		memset(&vty->line[len], 0, 1);
+		vty->line_idx = len;
+		err = knet_vty_execute_cmd(vty);
+		if (err != 0) 
+			break;
+	}
+
+	fclose(file);
+
+	memset(vty, 0, sizeof(vty));
+
+	return err;
 }
 
 void knet_vty_help(struct knet_vty *vty)
