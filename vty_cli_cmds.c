@@ -221,7 +221,7 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			knet_vty_write(vty, "KNET_IFACE_NAME - interface name (max %d chars) eg: kronosnet0%s", IFNAMSIZ, telnet_newline);
 			break;
 		case CMDS_PARAM_IP:
-			knet_vty_write(vty, "IP address - ipv4 or ipv6 address to add to this interface%s", telnet_newline);
+			knet_vty_write(vty, "IP address - ipv4 or ipv6 address to add/remove%s", telnet_newline);
 			break;
 		case CMDS_PARAM_IP_PREFIX:
 			knet_vty_write(vty, "IP prefix len (eg. 24, 64)%s", telnet_newline);
