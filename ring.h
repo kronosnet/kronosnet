@@ -57,6 +57,9 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener);
 int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock);
 int knet_host_release(knet_handle_t knet_h);
 
+int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
+int knet_listener_release(knet_handle_t knet_h);
+
 int knet_host_add(knet_handle_t khandle, struct knet_host *host);
 int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 

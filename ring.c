@@ -25,7 +25,7 @@ struct __knet_handle {
 	struct knet_frame *pingbuf;
 	pthread_t control_thread;
 	pthread_t heartbt_thread;
-	pthread_rwlock_t host_rwlock;
+	pthread_rwlock_t list_rwlock;
 };
 
 static void *knet_control_thread(void *data);
@@ -54,7 +54,7 @@ knet_handle_t knet_handle_new(void)
 
 	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
 
-	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0)
+	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
 		goto exit_fail3;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
@@ -98,7 +98,7 @@ exit_fail5:
 	close(knet_h->sock[1]);
 
 exit_fail4:
-	pthread_rwlock_destroy(&knet_h->host_rwlock);
+	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
 exit_fail3:
 	free(knet_h->databuf);
@@ -116,9 +116,9 @@ int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelo
 	int ret;
 
 	if (writelock != 0)
-		ret = pthread_rwlock_wrlock(&knet_h->host_rwlock);
+		ret = pthread_rwlock_wrlock(&knet_h->list_rwlock);
 	else
-		ret = pthread_rwlock_rdlock(&knet_h->host_rwlock);
+		ret = pthread_rwlock_rdlock(&knet_h->list_rwlock);
 
 	if (head)
 		*head = (ret == 0) ? knet_h->host_head : NULL;
@@ -128,7 +128,27 @@ int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelo
 
 int knet_host_release(knet_handle_t knet_h)
 {
-	return pthread_rwlock_unlock(&knet_h->host_rwlock);
+	return pthread_rwlock_unlock(&knet_h->list_rwlock);
+}
+
+int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock)
+{
+	int ret;
+
+	if (writelock != 0)
+		ret = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	else
+		ret = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+
+	if (head)
+		*head = (ret == 0) ? knet_h->listener_head : NULL;
+
+	return ret;
+}
+
+int knet_listener_release(knet_handle_t knet_h)
+{
+	return pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
 int knet_handle_getfd(knet_handle_t knet_h)
@@ -138,14 +158,14 @@ int knet_handle_getfd(knet_handle_t knet_h)
 
 int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 {
-	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		return -1;
 
 	/* pushing new host to the front */
 	host->next		= knet_h->host_head;
 	knet_h->host_head	= host;
 
-	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 	return 0;
 }
 
@@ -153,7 +173,7 @@ int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 {
 	struct knet_host *hp;
 
-	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		return -1;
 
 	/* TODO: use a doubly-linked list? */
@@ -168,7 +188,7 @@ int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 		}
 	}
 
-	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 	return 0;
 }
 
@@ -200,14 +220,14 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	if (epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0)
 		goto exit_fail1;
 
-	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0)
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		goto exit_fail2;
 
 	/* pushing new host to the front */
 	listener->next		= knet_h->listener_head;
 	knet_h->listener_head	= listener;
 
-	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 	return 0;
 
@@ -240,7 +260,7 @@ static void knet_send_data(knet_handle_t knet_h)
 
 	knet_h->databuf->type = KNET_FRAME_DATA;
 
-	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
@@ -257,7 +277,7 @@ static void knet_send_data(knet_handle_t knet_h)
 		}
 	}
 
-	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
 static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
@@ -269,7 +289,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	struct knet_link *j, *link_src;
 	suseconds_t latency_last;
 
-	if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
 
 	len = recvfrom(sockfd, knet_h->databuf, KNET_DATABUFSIZE,
@@ -330,7 +350,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	}
 
  exit_unlock:
-	pthread_rwlock_unlock(&knet_h->host_rwlock);
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
 static inline void knet_tsdiff(
@@ -385,7 +405,7 @@ static void *knet_heartbt_thread(void *data)
 	while (1) {
 		usleep(KNET_PING_TIMERES);
 
-		if (pthread_rwlock_rdlock(&knet_h->host_rwlock) != 0)
+		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 			continue;
 
 		for (i = knet_h->host_head; i != NULL; i = i->next) {
@@ -393,7 +413,7 @@ static void *knet_heartbt_thread(void *data)
 				knet_heartbeat_check_each(knet_h, j);
 		}
 
-		pthread_rwlock_unlock(&knet_h->host_rwlock);
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
 	}
 
 	return NULL;
