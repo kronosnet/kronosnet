@@ -432,7 +432,7 @@ static void *knet_control_thread(void *data)
 	knet_h->databuf->version = KNET_FRAME_VERSION;
 
 	while (1) {
-		nev = epoll_wait(knet_h->epollfd, events, KNET_MAX_EVENTS, 0);
+		nev = epoll_wait(knet_h->epollfd, events, KNET_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sock[0]) {
