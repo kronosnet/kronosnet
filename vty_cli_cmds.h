@@ -25,6 +25,7 @@ enum vty_nodes {
 	NODE_ROOT = 0,
 	NODE_CONFIG,
 	NODE_INTERFACE,
+	NODE_PEER,
 };
 
 int knet_vty_execute_cmd(struct knet_vty *vty);

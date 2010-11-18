@@ -9,7 +9,11 @@ typedef struct __knet_handle *knet_handle_t;
 #define KNET_RING_DEFPORT 50000
 #define KNET_RING_RCVBUFF 8192
 
+#define KNET_MAX_HOST_LEN 64
+
 struct knet_host {
+	uint8_t node_id;
+	char name[KNET_MAX_HOST_LEN];
 	unsigned int active:1; /* data packets are sent to all links */
 	struct knet_link *link;
 	struct knet_host *next;
@@ -50,17 +54,16 @@ struct knet_frame {
 } __attribute__((packed));
 
 knet_handle_t knet_handle_new(void);
-int knet_handle_getfd(knet_handle_t knet_h);
 
-int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener);
+int knet_handle_getfd(knet_handle_t knet_h);
 
 int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock);
 int knet_host_release(knet_handle_t knet_h);
+int knet_host_add(knet_handle_t khandle, struct knet_host *host);
+int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
 int knet_listener_release(knet_handle_t knet_h);
-
-int knet_host_add(knet_handle_t khandle, struct knet_host *host);
-int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
+int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener);
 
 #endif

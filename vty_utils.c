@@ -207,6 +207,9 @@ void knet_vty_free_history(struct knet_vty *vty)
 void knet_vty_exit_node(struct knet_vty *vty)
 {
 	switch(vty->node) {
+		case NODE_PEER:
+			vty->node = NODE_INTERFACE;
+			break;
 		case NODE_INTERFACE:
 			vty->node = NODE_CONFIG;
 			break;
