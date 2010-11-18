@@ -16,6 +16,7 @@ struct knet_cfg_ip {
 };
 
 struct knet_cfg_eth {
+	struct knet_eth *knet_eth;
 	char name[IFNAMSIZ];
 	uint8_t node_id;
 	int mtu;
@@ -24,6 +25,7 @@ struct knet_cfg_eth {
 };
 
 struct knet_cfg_ring {
+	knet_handle_t knet_h;
 	int auto_listeners;
 	int base_port;
 	struct knet_cfg_ip *knet_listeners;
@@ -31,8 +33,6 @@ struct knet_cfg_ring {
 
 struct knet_cfg {
 	struct knet_cfg_eth cfg_eth;
-	struct knet_eth *knet_eth;
-	knet_handle_t knet_h;
 	struct knet_cfg_ring cfg_ring;
 	struct knet_cfg *next;
 };
