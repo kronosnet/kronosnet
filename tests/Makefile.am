@@ -44,6 +44,7 @@ vty_test_SOURCES	= \
 			  ../vty_cli_cmds.c \
 			  ../vty_utils.c \
 			  ../netutils.c \
+			  ../ring.c \
 			  ../utils.c
 
 netutils_test_SOURCES	= \

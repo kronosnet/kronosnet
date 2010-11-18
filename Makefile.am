@@ -37,6 +37,7 @@ kronosnetd_SOURCES	= \
 			  knet.c \
 			  main.c \
 			  netutils.c \
+			  ring.c \
 			  utils.c \
 			  vty.c \
 			  vty_auth.c \

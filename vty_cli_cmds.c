@@ -24,11 +24,12 @@
 #define CMDS_PARAM_KNET		1
 #define CMDS_PARAM_IP		2
 #define CMDS_PARAM_IP_PREFIX	3
-#define CMDS_PARAM_BOOL		4
-#define CMDS_PARAM_INT		5
-#define CMDS_PARAM_NODEID	6
-#define CMDS_PARAM_STR		7
-#define CMDS_PARAM_MTU		8
+#define CMDS_PARAM_IP_PORT	4
+#define CMDS_PARAM_BOOL		5
+#define CMDS_PARAM_INT		6
+#define CMDS_PARAM_NODEID	7
+#define CMDS_PARAM_STR		8
+#define CMDS_PARAM_MTU		9
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -190,6 +191,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_IP_PREFIX:
 			break;
+		case CMDS_PARAM_IP_PORT:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 0) || (tmp > 65279)) {
+				knet_vty_write(vty, "port number must be a value between 0 and 65279%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		case CMDS_PARAM_BOOL:
 			break;
 		case CMDS_PARAM_INT:
@@ -233,6 +241,8 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 		case CMDS_PARAM_IP_PREFIX:
 			knet_vty_write(vty, "IP prefix len (eg. 24, 64)%s", telnet_newline);
 			break;
+		case CMDS_PARAM_IP_PORT:
+			knet_vty_write(vty, "base port (eg: %d) %s", KNET_RING_DEFPORT, telnet_newline);
 		case CMDS_PARAM_BOOL:
 			break;
 		case CMDS_PARAM_INT:
@@ -464,6 +474,8 @@ static int knet_cmd_mtu(struct knet_vty *vty);
 static int knet_cmd_no_mtu(struct knet_vty *vty);
 static int knet_cmd_ip(struct knet_vty *vty);
 static int knet_cmd_no_ip(struct knet_vty *vty);
+static int knet_cmd_auto_listeners(struct knet_vty *vty);
+static int knet_cmd_no_auto_listeners(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -514,6 +526,7 @@ vty_param_t ip_params[] = {
 
 vty_node_cmds_t no_interface_cmds[] = {
 	{ "ip", "remove ip address", ip_params, knet_cmd_no_ip },
+	{ "auto-listeners", "remove listeners", NULL, knet_cmd_no_auto_listeners },
 	{ "mtu", "revert to default MTU", NULL, knet_cmd_no_mtu },
 	{ NULL, NULL, NULL, NULL },
 };
@@ -523,7 +536,13 @@ vty_param_t mtu_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
+vty_param_t listener_auto_params[] = {
+	{ CMDS_PARAM_IP_PORT },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t interface_cmds[] = {
+	{ "auto-listeners", "let " PACKAGE " configure listeners for you", listener_auto_params, knet_cmd_auto_listeners },
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "ip", "add ip address", ip_params, knet_cmd_ip },
@@ -544,6 +563,47 @@ vty_nodes_t knet_vty_nodes[] = {
 
 
 /* command execution */
+
+static int knet_cmd_no_auto_listeners(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+
+	if (knet_iface->cfg_ring.auto_listeners) {
+		if (!knet_iface->cfg_ring.knet_listeners) {
+			knet_iface->cfg_ring.auto_listeners = 0;
+		} else {
+			knet_vty_write(vty, "Error: cannot disable auto-listeners when listeners are active%s", telnet_newline);
+			return -1;
+		}
+	} else {
+		knet_vty_write(vty, "auto-listeners is already disabled%s", telnet_newline);
+	}
+
+	return 0;
+}
+
+static int knet_cmd_auto_listeners(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+
+	if (!knet_iface->cfg_ring.auto_listeners) {
+		if (!knet_iface->cfg_ring.knet_listeners) {
+			knet_iface->cfg_ring.auto_listeners = 1;
+			knet_iface->cfg_ring.base_port = param_to_int(param, paramlen);
+		} else {
+			knet_vty_write(vty, "Error: cannot switch to auto-listeners when listeners are active%s", telnet_newline);
+			return -1;
+		}
+	} else {
+		knet_vty_write(vty, "auto-listeners is already enabled (base port %d)%s", knet_iface->cfg_ring.base_port, telnet_newline);
+	}
+
+	return 0;
+}
 
 static int knet_cmd_no_ip(struct knet_vty *vty)
 {
@@ -698,7 +758,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 
 	if (knet_iface->knet_eth) {
 		found = 1;
-		goto knet_found;
+		goto knet_eth_found;
 	}
 
 	if (!knet_iface->knet_eth)
@@ -713,6 +773,18 @@ static int knet_cmd_interface(struct knet_vty *vty)
 
 	if (!knet_iface->knet_eth) {
 		knet_vty_write(vty, "Error: Unable to create %s system tap device%s",
+				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+knet_eth_found:
+
+	if (knet_iface->knet_h)
+		goto knet_found;
+
+	knet_iface->knet_h = knet_handle_new();
+	if (!knet_iface->knet_h) {
+		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);
 		err = -1;
 		goto out_clean;
@@ -767,6 +839,10 @@ out_found:
 
 out_clean:
 	if (err) {
+		/*
+		 * if (knet_iface->knet_h)
+		 *	knet_handle_destroy(knet_iface->knet_h);
+		 */
 		if (knet_iface->knet_eth)
 			knet_close(knet_iface->knet_eth);
  
@@ -802,6 +878,10 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 		while (knet_ip != NULL) {
 			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, nl);
 			knet_ip = knet_ip->next;
+		}
+
+		if (knet_iface->cfg_ring.auto_listeners) {
+			knet_vty_write(vty, "  auto-listeners %d%s", knet_iface->cfg_ring.base_port, nl);
 		}
 
 		knet_vty_write(vty, "  exit%s", nl);
