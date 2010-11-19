@@ -13,7 +13,8 @@ noinst_PROGRAMS = \
 check_PROGRAMS = \
 		  vty_test \
 		  knet_test \
-		  netutils_test
+		  netutils_test \
+		  listener_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -31,6 +32,11 @@ ping_test_SOURCES	= \
 
 khandle_test_SOURCES	= \
 			  khandle_test.c \
+			  ../ring.c \
+			  ../utils.c
+
+listener_test_SOURCES	= \
+			  listener_test.c \
 			  ../ring.c \
 			  ../utils.c
 

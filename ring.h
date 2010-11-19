@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
-typedef struct __knet_handle *knet_handle_t;
+typedef struct knet_handle *knet_handle_t;
 
 #define KNET_RING_DEFPORT 50000
 #define KNET_RING_RCVBUFF 8192
@@ -62,11 +62,11 @@ int knet_host_release(knet_handle_t knet_h);
 int knet_host_add(knet_handle_t khandle, struct knet_host *host);
 int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 
+void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
+
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
 int knet_listener_release(knet_handle_t knet_h);
 int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener);
 int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener);
-
-void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
 
 #endif

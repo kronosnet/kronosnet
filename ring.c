@@ -8,25 +8,13 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "ring.h"
+#include "knethandle.h"
 #include "utils.h"
 
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
 #define KNET_DATABUFSIZE 131072 /* 128k */
 #define KNET_PINGBUFSIZE (sizeof(struct knet_frame) + sizeof(struct timespec))
-
-struct __knet_handle {
-	int sock[2];
-	int epollfd;
-	struct knet_host *host_head;
-	struct knet_listener *listener_head;
-	struct knet_frame *databuf;
-	struct knet_frame *pingbuf;
-	pthread_t control_thread;
-	pthread_t heartbt_thread;
-	pthread_rwlock_t list_rwlock;
-};
 
 static void *knet_control_thread(void *data);
 static void *knet_heartbt_thread(void *data);
@@ -39,10 +27,10 @@ knet_handle_t knet_handle_new(void)
 	knet_handle_t knet_h;
 	struct epoll_event ev;
 
-	if ((knet_h = malloc(sizeof(struct __knet_handle))) == NULL)
+	if ((knet_h = malloc(sizeof(struct knet_handle))) == NULL)
 		return NULL;
 
-	memset(knet_h, 0, sizeof(struct __knet_handle));
+	memset(knet_h, 0, sizeof(struct knet_handle));
 
 	if ((knet_h->databuf = malloc(KNET_DATABUFSIZE))== NULL)
 		goto exit_fail1;
@@ -241,7 +229,7 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 
 int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 {
-	int ret;
+	int err;
 	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
 	struct knet_listener *lp;
 	struct knet_host *i;
@@ -250,12 +238,12 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		return -1;
 
-	ret = 0;
+	err = 0;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = i->link; j != NULL; j = j->next) {
 			if (j->sock == listener->sock) {
-				ret = -EBUSY;
+				err = EBUSY;
 				goto exit_fail1;
 			}
 		}
@@ -277,9 +265,12 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 	close(listener->sock);
 
  exit_fail1:
-
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-	return ret;
+
+	if (err != 0)
+		errno = err;
+
+	return -err;
 }
 
 void knet_link_timeout(struct knet_link *lnk,
