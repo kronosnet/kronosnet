@@ -7,11 +7,9 @@
 #include "ring.h"
 
 struct knet_cfg_ip {
-	char *name;
 	char *ipaddr;
 	char *prefix;
 	int  active;
-	struct knet_listener *listener;
 	struct knet_cfg_ip *next;
 };
 
@@ -28,7 +26,6 @@ struct knet_cfg_ring {
 	knet_handle_t knet_h;
 	int auto_listeners;
 	int base_port;
-	struct knet_cfg_ip *knet_listeners;
 };
 
 struct knet_cfg {

@@ -10,6 +10,7 @@
 #include "cfg.h"
 #include "utils.h"
 #include "knet.h"
+#include "netutils.h"
 #include "vty.h"
 #include "vty_cli.h"
 #include "vty_cli_cmds.h"
@@ -594,10 +595,20 @@ vty_nodes_t knet_vty_nodes[] = {
 
 /* command execution */
 
-static void knet_destroy_host(struct knet_host *host)
+static int knet_destroy_host(struct knet_vty *vty, struct knet_host *host)
 {
-	/* free all links here */
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+
+	if (host->auto_listener) {
+		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->auto_listener) == -EBUSY) {
+			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
+			knet_host_add(knet_iface->cfg_ring.knet_h, host);
+			return -1;
+		}
+	}
+
 	free(host);
+	return 0;
 }
 
 static int knet_find_host(struct knet_vty *vty, struct knet_host **host,
@@ -678,9 +689,7 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 		goto out_clean;
 	}
 
-	/* remember to free the links */
-
-	knet_destroy_host(host);
+	err = knet_destroy_host(vty, host);
 
 out_clean:
 	return err;
@@ -692,6 +701,7 @@ static int knet_cmd_peer(struct knet_vty *vty)
 	int paramlen = 0, paramoffset = 0, requested_node_id = 0, err = 0;
 	char *param = NULL;
 	struct knet_host *host = NULL;
+	struct knet_listener *listener = NULL;
 	char nodename[KNET_MAX_HOST_LEN];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
@@ -721,26 +731,86 @@ static int knet_cmd_peer(struct knet_vty *vty)
 		host->node_id = requested_node_id;
 
 		knet_host_add(knet_iface->cfg_ring.knet_h, host);
+
+		if (knet_iface->cfg_ring.auto_listeners) {
+			listener = malloc(sizeof(struct knet_listener));
+			if (!listener) {
+				knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
+				err = -1;
+				goto out_clean;
+			}
+			memset(listener, 0, sizeof(struct knet_listener));
+			snprintf(listener->ipaddr, KNET_MAX_HOST_LEN, "::");
+			snprintf(listener->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
+			if (strtoaddr(listener->ipaddr, listener->port, (struct sockaddr *)&listener->address, sizeof(listener->address)) != 0) {
+				knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
+				err = -1;
+				goto out_clean;
+			}
+			if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener) != 0) {
+				knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
+				err = -1;
+				goto out_clean;
+			}
+			host->auto_listener = listener;
+		}
 	}
 
 	vty->host = (void *)host;
 	vty->node = NODE_PEER;
 
 out_clean:
+	if (err < 0) {
+		if (listener)
+			free(listener);
+		if (host)
+			knet_host_remove(knet_iface->cfg_ring.knet_h, host);
+	}
 	return err;
+}
+
+static int active_auto_listeners(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_host *head = NULL;
+	int autolisteners = 0;
+
+	if (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head, 0)) {
+		knet_vty_write(vty, "Error: unable to acquire lock on peer list!%s", telnet_newline);
+		return -1;
+	}
+
+	while (head != NULL) {
+		if (head->auto_listener)
+			autolisteners++;
+		head = head->next;
+	}
+
+	while (knet_host_release(knet_iface->cfg_ring.knet_h) != 0) {
+		knet_vty_write(vty, "Error: unable to release lock on peer list!%s", telnet_newline);
+		sleep(1);
+	}
+
+	return autolisteners;
 }
 
 static int knet_cmd_no_auto_listeners(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	int err = 0;
 
+	/* need to fix this to check for hosts or stop listeners for all hosts */
 	if (knet_iface->cfg_ring.auto_listeners) {
-		if (!knet_iface->cfg_ring.knet_listeners) {
+		err = active_auto_listeners(vty);
+		if (!err) {
 			knet_iface->cfg_ring.auto_listeners = 0;
-		} else {
+		}
+		if (err > 0) {
 			knet_vty_write(vty, "Error: cannot disable auto-listeners when listeners are active%s", telnet_newline);
 			return -1;
 		}
+		if (err < 0)
+			return -1;
 	} else {
 		knet_vty_write(vty, "auto-listeners is already disabled%s", telnet_newline);
 	}
@@ -751,19 +821,24 @@ static int knet_cmd_no_auto_listeners(struct knet_vty *vty)
 static int knet_cmd_auto_listeners(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	int paramlen = 0, paramoffset = 0;
+	int paramlen = 0, paramoffset = 0, err = 0;
 	char *param = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 
+	/* need to fix this to check for hosts or start listeners for all hosts */
 	if (!knet_iface->cfg_ring.auto_listeners) {
-		if (!knet_iface->cfg_ring.knet_listeners) {
+		err = active_auto_listeners(vty);
+		if (!err) {
 			knet_iface->cfg_ring.auto_listeners = 1;
 			knet_iface->cfg_ring.base_port = param_to_int(param, paramlen);
-		} else {
+		}
+		if (err > 0) {
 			knet_vty_write(vty, "Error: cannot switch to auto-listeners when listeners are active%s", telnet_newline);
 			return -1;
 		}
+		if (err < 0)
+			return -1;
 	} else {
 		knet_vty_write(vty, "auto-listeners is already enabled (base port %d)%s", knet_iface->cfg_ring.base_port, telnet_newline);
 	}
@@ -888,6 +963,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		return -1;
 	}
 
+	vty->iface = (void *)knet_iface;
+
 	while (knet_iface->cfg_eth.knet_ip != NULL) {
 		knet_del_ip(knet_iface->cfg_eth.knet_eth,
 			    knet_iface->cfg_eth.knet_ip->ipaddr,
@@ -918,7 +995,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 			sleep (1);
 		}
 
-		knet_destroy_host(host);
+		knet_destroy_host(vty, host);
 	}
 
 	/*
@@ -1090,6 +1167,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		while (host != NULL) {
 			knet_vty_write(vty, "  peer %s %d%s", host->name, host->node_id, nl);
+			knet_vty_write(vty, "   exit%s", nl);
 			host = host->next;
 		}
 
@@ -1238,7 +1316,7 @@ int knet_vty_execute_cmd(struct knet_vty *vty)
 
 int knet_read_conf(void)
 {
-	int err = 0, len = 0;
+	int err = 0, len = 0, line = 0;
 	struct knet_vty *vty = &knet_vtys[0];
 	FILE *file = NULL;
 
@@ -1259,12 +1337,15 @@ int knet_read_conf(void)
 	vty->filemode = 1;
 
 	while(fgets(vty->line, sizeof(vty->line), file) != NULL) {
+		line++;
 		len = strlen(vty->line) - 1;
 		memset(&vty->line[len], 0, 1);
 		vty->line_idx = len;
 		err = knet_vty_execute_cmd(vty);
-		if (err != 0) 
+		if (err != 0)  {
+			log_error("line[%d]: %s", line, vty->line);
 			break;
+		}
 	}
 
 	fclose(file);

@@ -15,6 +15,7 @@ struct knet_host {
 	uint8_t node_id;
 	char name[KNET_MAX_HOST_LEN];
 	unsigned int active:1; /* data packets are sent to all links */
+	struct knet_listener *auto_listener;
 	struct knet_link *link;
 	struct knet_host *next;
 };
@@ -35,6 +36,8 @@ struct knet_link {
 
 struct knet_listener {
 	int sock;
+	char ipaddr[KNET_MAX_HOST_LEN];
+	char port[6];
 	struct sockaddr_storage address;
 	struct knet_listener *next;
 };
