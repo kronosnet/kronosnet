@@ -697,6 +697,8 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 		klink->sock = host->auto_listener->sock;
 
+		knet_link_timeout(klink, 1000, 5000, 2048);
+
 		knet_host_remove(knet_iface->cfg_ring.knet_h, host);
 		klink->next = host->link;
 		host->link = klink;
