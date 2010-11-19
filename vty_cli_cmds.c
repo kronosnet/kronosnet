@@ -1207,7 +1207,7 @@ static int knet_cmd_write_conf(struct knet_vty *vty)
 		backup = 0;
 
 	fd = open(knet_cfg_head.conffile,
-		  O_RDWR | O_CREAT | O_CLOEXEC | O_EXCL | O_TRUNC,
+		  O_RDWR | O_CREAT | O_EXCL | O_TRUNC,
 		  S_IRUSR | S_IWUSR);
 	if (fd < 0) {
 		knet_vty_write(vty, "Error unable to open file%s", telnet_newline);

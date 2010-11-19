@@ -332,6 +332,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	struct knet_host *i;
 	struct knet_link *j, *link_src;
 	suseconds_t latency_last;
+	struct timespec pong;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
@@ -380,8 +381,8 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
 
-		knet_tsdiff((struct timespec *) (knet_h->databuf + 1),
-						&j->pong_last, &latency_last);
+		memcpy(&pong, knet_h->databuf + 1, sizeof(struct timespec));
+		knet_tsdiff(&pong, &j->pong_last, &latency_last);
 
 		if (latency_last < j->pong_timeout)
 			j->enabled = 1; /* TODO: might need write lock */
