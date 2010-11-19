@@ -484,6 +484,10 @@ static int knet_cmd_no_auto_listeners(struct knet_vty *vty);
 static int knet_cmd_peer(struct knet_vty *vty);
 static int knet_cmd_no_peer(struct knet_vty *vty);
 
+/* peer node */
+static int knet_cmd_link(struct knet_vty *vty);
+static int knet_cmd_no_link(struct knet_vty *vty);
+
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
 	{ "configure", "enter configuration mode", NULL, knet_cmd_config },
@@ -572,9 +576,20 @@ vty_node_cmds_t interface_cmds[] = {
 
 /* peer node description */
 
+vty_param_t link_params[] = {
+	{ CMDS_PARAM_IP },
+	{ CMDS_PARAM_NOMORE },
+};
+
+vty_node_cmds_t no_peer_cmds[] = {
+	{ "link", "remove peer endpoint", link_params, knet_cmd_no_link},
+	{ NULL, NULL, NULL, NULL },
+};
+
 vty_node_cmds_t peer_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
+	{ "link", "add peer endpoint", link_params, knet_cmd_link },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
@@ -583,17 +598,119 @@ vty_node_cmds_t peer_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
-
 /* nodes */
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds, NULL },
 	{ NODE_CONFIG, "config", config_cmds, no_config_cmds },
 	{ NODE_INTERFACE, "iface", interface_cmds, no_interface_cmds },
-	{ NODE_PEER, "peer", peer_cmds, NULL },
+	{ NODE_PEER, "peer", peer_cmds, no_peer_cmds },
 	{ -1, NULL, NULL },
 };
 
 /* command execution */
+
+/* links */
+
+static int knet_cmd_no_link(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_host *host = (struct knet_host *)vty->host;
+	struct knet_link *klink = NULL, *prev = NULL;
+	int paramlen = 0, paramoffset = 0, found = 0;
+	char *param = NULL;
+	char ipaddr[KNET_MAX_HOST_LEN], port[6];
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	param_to_str(ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
+
+	memset(port, 0, sizeof(port));
+	snprintf(port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+
+	klink = host->link;
+	prev = host->link;
+	while(klink != NULL) {
+		if (!strcmp(klink->ipaddr, ipaddr) && !strcmp(klink->port, port)) {
+			found = 1;
+			break;
+		}
+		prev = klink;
+		klink = klink->next;
+	}
+
+	if (!found) {
+		knet_vty_write(vty, "Error: unable to find link%s", telnet_newline);
+		return -1;
+	}
+
+	knet_host_remove(knet_iface->cfg_ring.knet_h, host);
+	if (prev == host->link) {
+		host->link = klink->next;
+	} else {
+		prev->next = klink->next;
+	}
+	knet_host_add(knet_iface->cfg_ring.knet_h, host);
+
+	return 0;
+}
+
+static int knet_cmd_link(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_host *host = (struct knet_host *)vty->host;
+	struct knet_link *klink = NULL;
+	int paramlen = 0, paramoffset = 0, err = 0, found = 0;
+	char *param = NULL;
+	char ipaddr[KNET_MAX_HOST_LEN], port[6];
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	param_to_str(ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
+
+	memset(port, 0, sizeof(port));
+	snprintf(port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+
+	klink = host->link;
+	while(klink != NULL) {
+		if (!strcmp(klink->ipaddr, ipaddr) && !strcmp(klink->port, port)) {
+			found = 1;
+			break;
+		}
+		klink = klink->next;
+	}
+
+	if (!found) {
+		klink = malloc(sizeof(struct knet_link));
+		if (!klink) {
+			knet_vty_write(vty, "Error: unable to allocate memory for link structure!%s", telnet_newline);
+			return -1;
+		}
+
+		memset(klink, 0, sizeof(struct knet_link));
+
+		memcpy(klink->ipaddr, ipaddr, strlen(ipaddr));
+		memcpy(klink->port, port, strlen(port));
+
+		if (strtoaddr(klink->ipaddr, klink->port, (struct sockaddr *)&klink->address, sizeof(klink->address)) != 0) {
+			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+
+		klink->sock = host->auto_listener->sock;
+
+		knet_host_remove(knet_iface->cfg_ring.knet_h, host);
+		klink->next = host->link;
+		host->link = klink;
+		knet_host_add(knet_iface->cfg_ring.knet_h, host);
+	}
+
+out_clean:
+	if (err < 0) {
+		if (klink)
+			free(klink);
+
+	}
+	return err;
+}
 
 static int knet_destroy_host(struct knet_vty *vty, struct knet_host *host)
 {
@@ -850,7 +967,7 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 {
 	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
-	char ipaddr[512], prefix[4];
+	char ipaddr[KNET_MAX_HOST_LEN], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	struct knet_cfg_ip *knet_ip = NULL;
 
@@ -1136,6 +1253,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
 	struct knet_host *host = NULL;
+	struct knet_link *klink = NULL;
 	const char *nl = telnet_newline;
 
 	if (vty->filemode)
@@ -1167,6 +1285,11 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		while (host != NULL) {
 			knet_vty_write(vty, "  peer %s %d%s", host->name, host->node_id, nl);
+			klink = host->link;
+			while (klink != NULL) {
+				knet_vty_write(vty, "   link %s%s", klink->ipaddr, nl);
+				klink = klink->next;
+			}
 			knet_vty_write(vty, "   exit%s", nl);
 			host = host->next;
 		}

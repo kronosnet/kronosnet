@@ -22,6 +22,8 @@ struct knet_host {
 
 struct knet_link {
 	int sock;
+	char ipaddr[KNET_MAX_HOST_LEN];
+	char port[6];
 	struct sockaddr_storage address;
 	unsigned int enabled:1;	/* link is enabled for data */
 	suseconds_t latency; /* average latency computed by fix/exp */
