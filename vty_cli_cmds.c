@@ -643,7 +643,7 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 	}
 
 	knet_host_remove(knet_iface->cfg_ring.knet_h, host);
-	if (prev == host->link) {
+	if (klink == host->link) {
 		host->link = klink->next;
 	} else {
 		prev->next = klink->next;
