@@ -239,6 +239,59 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	return -1;
 }
 
+int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
+{
+	int ret;
+	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
+	struct knet_listener *lp;
+	struct knet_host *i;
+	struct knet_link *j;
+
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
+		return -1;
+
+	ret = 0;
+
+	for (i = knet_h->host_head; i != NULL; i = i->next) {
+		for (j = i->link; j != NULL; j = j->next) {
+			if (j->sock == listener->sock) {
+				ret = -EBUSY;
+				goto exit_fail1;
+			}
+		}
+	}
+
+	/* TODO: use a doubly-linked list? */
+	if (listener == knet_h->listener_head) {
+		knet_h->listener_head = knet_h->listener_head->next;
+	} else {
+		for (lp = knet_h->listener_head; lp != NULL; lp = lp->next) {
+			if (listener == lp->next) {
+				lp->next = lp->next->next;
+				break;
+			}
+		}
+	}
+
+	epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
+	close(listener->sock);
+
+ exit_fail1:
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	return ret;
+}
+
+void knet_link_timeout(struct knet_link *lnk,
+				time_t interval, time_t timeout, int precision)
+{
+	lnk->ping_interval = interval * 1000; /* microseconds */
+	lnk->pong_timeout = timeout * 1000; /* microseconds */
+	lnk->latency_fix = precision;
+	lnk->latency_exp = precision - \
+				((lnk->ping_interval * precision) / 8000000);
+}
+
 static void knet_send_data(knet_handle_t knet_h)
 {
 	ssize_t len, snt;
