@@ -374,6 +374,7 @@ vty_ext_escape_out:
 
 		if (vty->escape == VTY_PRE_ESCAPE) {
 			switch (buf[i]) {
+				case 'O':
 				case '[':
 					vty->escape = VTY_ESCAPE;
 					break;
