@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	/* don't try this at home :) */
-	log_info("Checking listener file descriptor");
 	err = epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, listener->sock, &ev);
 
 	if (err != -1) {
@@ -88,16 +87,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	log_error("Listener file descriptor was added to epollfd");
+
 	log_info("Adding host to handle");
 	test_add_host();
 
-	log_info("Removing listener (with active links)");
 	err = knet_listener_remove(knet_h, listener);
 
 	if (err != -EBUSY) {
 		log_error("Listener socket should be in use");
 		exit(EXIT_FAILURE);
 	}
+
+	log_error("Unable to remove listener with active links");
 
 	log_info("Removing host from handle");
 	err = knet_host_remove(knet_h, host);
@@ -115,13 +117,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Checking listener file descriptor");
+	/* don't try this at home :) */
 	err = epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 
 	if (err != -1) {
 		log_error("Listener file was present in epollfd");
 		exit(EXIT_FAILURE);
 	}
+
+	log_error("Listener file descriptor was removed from epollfd");
 
 	return 0;
 }
