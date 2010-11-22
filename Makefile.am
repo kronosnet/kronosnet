@@ -21,6 +21,7 @@ dist_doc_DATA		= \
 noinst_HEADERS		= \
 			  cfg.h \
 			  knet.h \
+			  knethandle.h \
 			  netutils.h \
 			  ring.h \
 			  utils.h \
