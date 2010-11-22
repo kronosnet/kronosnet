@@ -18,7 +18,7 @@ check_PROGRAMS = \
 
 TESTS = $(check_PROGRAMS)
 
-AM_CFLAGS		= -DTEST
+AM_CFLAGS		= -DTEST -I$(srcdir)/../
 
 knet_test_SOURCES	= \
 			  knet_test.c \
@@ -28,16 +28,19 @@ knet_test_SOURCES	= \
 ping_test_SOURCES	= \
 			  ping_test.c \
 			  ../ring.c \
+			  ../netutils.c \
 			  ../utils.c
 
 khandle_test_SOURCES	= \
 			  khandle_test.c \
 			  ../ring.c \
+			  ../netutils.c \
 			  ../utils.c
 
 listener_test_SOURCES	= \
 			  listener_test.c \
 			  ../ring.c \
+			  ../netutils.c \
 			  ../utils.c
 
 vty_test_SOURCES	= \

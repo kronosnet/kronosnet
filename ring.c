@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #include "knethandle.h"
+#include "netutils.h"
 #include "utils.h"
 
 #define KNET_MAX_EVENTS 8
@@ -328,7 +329,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t len;
 	struct sockaddr_storage address;
-	socklen_t addrlen;
+	socklen_t addrlen = sizeof(struct sockaddr_storage);
 	struct knet_host *i;
 	struct knet_link *j, *link_src;
 	unsigned long long latency_last;
@@ -354,7 +355,8 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = i->link; j != NULL; j = j->next) {
-			if (memcmp(&address, &j->address, addrlen) == 0) {
+			if (cmpaddr((struct sockaddr *) &address, addrlen,
+				    (struct sockaddr *) &j->address, addrlen) == 0) {
 				link_src = j;
 				break;
 			}
