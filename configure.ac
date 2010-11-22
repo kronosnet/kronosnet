@@ -83,6 +83,7 @@ AC_CHECK_HEADERS([netinet/in.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([arpa/inet.h])
 AC_CHECK_HEADERS([netdb.h])
+AC_CHECK_HEADERS([limits.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
@@ -110,6 +111,7 @@ AC_CHECK_FUNCS([atexit])
 AC_CHECK_FUNCS([ftruncate])
 AC_CHECK_FUNCS([strrchr])
 AC_CHECK_FUNCS([strstr])
+AC_CHECK_FUNCS([clock_gettime])
 
 # PAM check
 AC_CHECK_HEADERS([security/pam_appl.h],
