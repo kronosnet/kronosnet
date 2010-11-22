@@ -83,19 +83,6 @@ void knet_destroy_ip(struct knet_cfg *knet_iface, struct knet_cfg_ip *knet_ip)
 	return;
 }
 
-struct knet_cfg_ip *knet_get_listener(struct knet_cfg *knet_iface,
-				      const char *name,
-				      const char *ipaddr, const char *prefix,
-				      const int create)
-{
-	return NULL;
-}
-
-int knet_destroy_listener(struct knet_cfg *knet_iface, char *name)
-{
-	return 0;
-}
-
 struct knet_cfg *knet_get_iface(const char *name, int create)
 {
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;

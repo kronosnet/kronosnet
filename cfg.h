@@ -24,7 +24,6 @@ struct knet_cfg_eth {
 
 struct knet_cfg_ring {
 	knet_handle_t knet_h;
-	int auto_listeners;
 	int base_port;
 };
 
@@ -45,13 +44,6 @@ struct knet_cfg_ip *knet_get_ip(struct knet_cfg *knet_iface,
 				const char *ipaddr, const char *prefix,
 				const int create);
 void knet_destroy_ip(struct knet_cfg *knet_iface, struct knet_cfg_ip *knet_ip);
-
-struct knet_cfg_ip *knet_get_listener(struct knet_cfg *knet_iface,
-				      const char *name,
-				      const char *ipaddr, const char *prefix,
-				      const int create);
-
-int knet_destroy_listener(struct knet_cfg *knet_iface, char *name);
 
 struct knet_cfg *knet_get_iface(const char *name, const int create);
 void knet_destroy_iface(struct knet_cfg *knet_iface);

@@ -479,8 +479,7 @@ static int knet_cmd_mtu(struct knet_vty *vty);
 static int knet_cmd_no_mtu(struct knet_vty *vty);
 static int knet_cmd_ip(struct knet_vty *vty);
 static int knet_cmd_no_ip(struct knet_vty *vty);
-static int knet_cmd_auto_listeners(struct knet_vty *vty);
-static int knet_cmd_no_auto_listeners(struct knet_vty *vty);
+static int knet_cmd_baseport(struct knet_vty *vty);
 static int knet_cmd_peer(struct knet_vty *vty);
 static int knet_cmd_no_peer(struct knet_vty *vty);
 
@@ -542,7 +541,6 @@ vty_param_t peer_params[] = {
 };
 
 vty_node_cmds_t no_interface_cmds[] = {
-	{ "auto-listeners", "remove listeners", NULL, knet_cmd_no_auto_listeners },
 	{ "ip", "remove ip address", ip_params, knet_cmd_no_ip },
 	{ "mtu", "revert to default MTU", NULL, knet_cmd_no_mtu },
 	{ "peer", "remove peer from this interface", peer_params, knet_cmd_no_peer },
@@ -554,13 +552,13 @@ vty_param_t mtu_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
-vty_param_t listener_auto_params[] = {
+vty_param_t baseport_params[] = {
 	{ CMDS_PARAM_IP_PORT },
 	{ CMDS_PARAM_NOMORE },
 };
 
 vty_node_cmds_t interface_cmds[] = {
-	{ "auto-listeners", "let " PACKAGE " configure listeners for you", listener_auto_params, knet_cmd_auto_listeners },
+	{ "baseport", "set base listening port for this interface", baseport_params, knet_cmd_baseport },
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "ip", "add ip address", ip_params, knet_cmd_ip },
@@ -695,7 +693,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 			goto out_clean;
 		}
 
-		klink->sock = host->auto_listener->sock;
+		klink->sock = host->listener->sock;
 
 		knet_link_timeout(klink, 1000, 5000, 2048);
 
@@ -718,8 +716,8 @@ static int knet_destroy_host(struct knet_vty *vty, struct knet_host *host)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
-	if (host->auto_listener) {
-		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->auto_listener) == -EBUSY) {
+	if (host->listener) {
+		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener) == -EBUSY) {
 			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
 			knet_host_add(knet_iface->cfg_ring.knet_h, host);
 			return -1;
@@ -851,28 +849,26 @@ static int knet_cmd_peer(struct knet_vty *vty)
 
 		knet_host_add(knet_iface->cfg_ring.knet_h, host);
 
-		if (knet_iface->cfg_ring.auto_listeners) {
-			listener = malloc(sizeof(struct knet_listener));
-			if (!listener) {
-				knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
-				err = -1;
-				goto out_clean;
-			}
-			memset(listener, 0, sizeof(struct knet_listener));
-			snprintf(listener->ipaddr, KNET_MAX_HOST_LEN, "::");
-			snprintf(listener->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
-			if (strtoaddr(listener->ipaddr, listener->port, (struct sockaddr *)&listener->address, sizeof(listener->address)) != 0) {
-				knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
-				err = -1;
-				goto out_clean;
-			}
-			if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener) != 0) {
-				knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
-				err = -1;
-				goto out_clean;
-			}
-			host->auto_listener = listener;
+		listener = malloc(sizeof(struct knet_listener));
+		if (!listener) {
+			knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
 		}
+		memset(listener, 0, sizeof(struct knet_listener));
+		snprintf(listener->ipaddr, KNET_MAX_HOST_LEN, "::");
+		snprintf(listener->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
+		if (strtoaddr(listener->ipaddr, listener->port, (struct sockaddr *)&listener->address, sizeof(listener->address)) != 0) {
+			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener) != 0) {
+			knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+		host->listener = listener;
 	}
 
 	vty->host = (void *)host;
@@ -888,11 +884,11 @@ out_clean:
 	return err;
 }
 
-static int active_auto_listeners(struct knet_vty *vty)
+static int active_listeners(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	struct knet_host *head = NULL;
-	int autolisteners = 0;
+	int listeners = 0;
 
 	if (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head, 0)) {
 		knet_vty_write(vty, "Error: unable to acquire lock on peer list!%s", telnet_newline);
@@ -900,8 +896,8 @@ static int active_auto_listeners(struct knet_vty *vty)
 	}
 
 	while (head != NULL) {
-		if (head->auto_listener)
-			autolisteners++;
+		if (head->listener)
+			listeners++;
 		head = head->next;
 	}
 
@@ -910,34 +906,10 @@ static int active_auto_listeners(struct knet_vty *vty)
 		sleep(1);
 	}
 
-	return autolisteners;
+	return listeners;
 }
 
-static int knet_cmd_no_auto_listeners(struct knet_vty *vty)
-{
-	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	int err = 0;
-
-	/* need to fix this to check for hosts or stop listeners for all hosts */
-	if (knet_iface->cfg_ring.auto_listeners) {
-		err = active_auto_listeners(vty);
-		if (!err) {
-			knet_iface->cfg_ring.auto_listeners = 0;
-		}
-		if (err > 0) {
-			knet_vty_write(vty, "Error: cannot disable auto-listeners when listeners are active%s", telnet_newline);
-			return -1;
-		}
-		if (err < 0)
-			return -1;
-	} else {
-		knet_vty_write(vty, "auto-listeners is already disabled%s", telnet_newline);
-	}
-
-	return 0;
-}
-
-static int knet_cmd_auto_listeners(struct knet_vty *vty)
+static int knet_cmd_baseport(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	int paramlen = 0, paramoffset = 0, err = 0;
@@ -945,24 +917,17 @@ static int knet_cmd_auto_listeners(struct knet_vty *vty)
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 
-	/* need to fix this to check for hosts or start listeners for all hosts */
-	if (!knet_iface->cfg_ring.auto_listeners) {
-		err = active_auto_listeners(vty);
-		if (!err) {
-			knet_iface->cfg_ring.auto_listeners = 1;
-			knet_iface->cfg_ring.base_port = param_to_int(param, paramlen);
-		}
-		if (err > 0) {
-			knet_vty_write(vty, "Error: cannot switch to auto-listeners when listeners are active%s", telnet_newline);
-			return -1;
-		}
-		if (err < 0)
-			return -1;
-	} else {
-		knet_vty_write(vty, "auto-listeners is already enabled (base port %d)%s", knet_iface->cfg_ring.base_port, telnet_newline);
+	/* need to check if baseport is in use by other interfaces */
+	err = active_listeners(vty);
+	if (!err) {
+		knet_iface->cfg_ring.base_port = param_to_int(param, paramlen);
+	}
+	if (err > 0) {
+		knet_vty_write(vty, "Error: cannot switch baseport when listeners are active%s", telnet_newline);
+		err = -1;
 	}
 
-	return 0;
+	return err;
 }
 
 static int knet_cmd_no_ip(struct knet_vty *vty)
@@ -1276,9 +1241,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			knet_ip = knet_ip->next;
 		}
 
-		if (knet_iface->cfg_ring.auto_listeners) {
-			knet_vty_write(vty, "  auto-listeners %d%s", knet_iface->cfg_ring.base_port, nl);
-		}
+		knet_vty_write(vty, "  baseport %d%s", knet_iface->cfg_ring.base_port, nl);
 
 		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &host, 0)) {
 			log_error("CLI ERROR: waiting for peer lock");
