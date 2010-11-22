@@ -26,11 +26,11 @@ struct knet_link {
 	char port[6];
 	struct sockaddr_storage address;
 	unsigned int enabled:1;	/* link is enabled for data */
-	suseconds_t latency; /* average latency computed by fix/exp */
+	long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
 	unsigned int latency_fix;
-	suseconds_t ping_interval;
-	suseconds_t pong_timeout;
+	long long ping_interval;
+	long long pong_timeout;
 	struct timespec ping_last;
 	struct timespec pong_last;
 	struct knet_link *next;
