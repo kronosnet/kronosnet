@@ -20,7 +20,7 @@ static void *knet_control_thread(void *data);
 static void *knet_heartbt_thread(void *data);
 
 static inline void knet_tsdiff(
-	struct timespec *start, struct timespec *end, long long *diff);
+	struct timespec *start, struct timespec *end, unsigned long long *diff);
 
 knet_handle_t knet_handle_new(void)
 {
@@ -331,7 +331,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	socklen_t addrlen;
 	struct knet_host *i;
 	struct knet_link *j, *link_src;
-	long long latency_last;
+	unsigned long long latency_last;
 	struct timespec pong;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
@@ -399,7 +399,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 }
 
 static inline void knet_tsdiff(
-		struct timespec *start, struct timespec *end, long long *diff)
+		struct timespec *start, struct timespec *end, unsigned long long *diff)
 {
 	*diff = (end->tv_sec - start->tv_sec) * 1000000; /* micro-seconds */
 	*diff += (end->tv_nsec - start->tv_nsec) / 1000; /* micro-seconds */
@@ -408,7 +408,7 @@ static inline void knet_tsdiff(
 static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 {
 	struct timespec clock_now;
-	long long diff_ping, diff_pong;
+	unsigned long long diff_ping, diff_pong;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
 		return;

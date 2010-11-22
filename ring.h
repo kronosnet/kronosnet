@@ -15,7 +15,7 @@ struct knet_host {
 	uint8_t node_id;
 	char name[KNET_MAX_HOST_LEN];
 	unsigned int active:1; /* data packets are sent to all links */
-	struct knet_listener *auto_listener;
+	struct knet_listener *listener;
 	struct knet_link *link;
 	struct knet_host *next;
 };
@@ -26,11 +26,11 @@ struct knet_link {
 	char port[6];
 	struct sockaddr_storage address;
 	unsigned int enabled:1;	/* link is enabled for data */
-	long long latency; /* average latency computed by fix/exp */
+	unsigned long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
 	unsigned int latency_fix;
-	long long ping_interval;
-	long long pong_timeout;
+	unsigned long long ping_interval;
+	unsigned long long pong_timeout;
 	struct timespec ping_last;
 	struct timespec pong_last;
 	struct knet_link *next;

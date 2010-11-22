@@ -128,7 +128,7 @@ static void check_links(void)
 			if (j->enabled == 0) {
 				printf("link %p disabled\n", j);
 			} else {
-				printf("link %p latency is %llims\n", j, j->latency);
+				printf("link %p latency is %llums\n", j, j->latency);
 			}
 		}
 
