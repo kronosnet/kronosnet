@@ -482,6 +482,8 @@ static int knet_cmd_no_ip(struct knet_vty *vty);
 static int knet_cmd_baseport(struct knet_vty *vty);
 static int knet_cmd_peer(struct knet_vty *vty);
 static int knet_cmd_no_peer(struct knet_vty *vty);
+static int knet_cmd_start(struct knet_vty *vty);
+static int knet_cmd_stop(struct knet_vty *vty);
 
 /* peer node */
 static int knet_cmd_link(struct knet_vty *vty);
@@ -567,6 +569,8 @@ vty_node_cmds_t interface_cmds[] = {
 	{ "no", "revert command", NULL, NULL },
 	{ "peer", "add peer endpoint", peer_params, knet_cmd_peer },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "start", "start forwarding engine", NULL, knet_cmd_start },
+	{ "stop", "stop forwarding engine", NULL, knet_cmd_stop },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
@@ -1026,6 +1030,36 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 	}
 
 	knet_iface->cfg_eth.mtu = expected_mtu;
+
+	return 0;
+}
+
+static int knet_cmd_stop(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+
+	if (knet_set_down(knet_iface->cfg_eth.knet_eth) < 0)
+		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", knet_iface->cfg_eth.name, telnet_newline);
+
+	knet_stop_bridge(knet_iface);
+
+	return 0;
+}
+
+static int knet_cmd_start(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+
+	if (knet_start_bridge(knet_iface) < 0) {
+		knet_vty_write(vty, "Error: Unable to start forwarding thread!%s", telnet_newline);
+		return -1;
+	}
+
+	if (knet_set_up(knet_iface->cfg_eth.knet_eth) < 0) {
+		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", knet_iface->cfg_eth.name, telnet_newline);
+		knet_stop_bridge(knet_iface);
+		return -1;
+	}
 
 	return 0;
 }

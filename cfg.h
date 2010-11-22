@@ -27,9 +27,15 @@ struct knet_cfg_ring {
 	int base_port;
 };
 
+struct knet_cfg_bridge {
+	pthread_t eth2ring;
+	pthread_t ring2eth;
+};
+
 struct knet_cfg {
 	struct knet_cfg_eth cfg_eth;
 	struct knet_cfg_ring cfg_ring;
+	struct knet_cfg_bridge cfg_bridge;
 	struct knet_cfg *next;
 };
 
@@ -47,6 +53,9 @@ void knet_destroy_ip(struct knet_cfg *knet_iface, struct knet_cfg_ip *knet_ip);
 
 struct knet_cfg *knet_get_iface(const char *name, const int create);
 void knet_destroy_iface(struct knet_cfg *knet_iface);
+
+int knet_start_bridge(struct knet_cfg *iface);
+void knet_stop_bridge(struct knet_cfg *iface);
 
 extern struct knet_cfg_top knet_cfg_head;
 
