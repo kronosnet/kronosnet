@@ -32,12 +32,18 @@ static int host_loop(knet_handle_t knet_h, size_t *loopnum)
 
 int main(int argc, char *argv[])
 {
-	int i, j;
+	int sock, i, j;
 	size_t loopnum;
 	knet_handle_t knet_h;
-	
 
-	knet_h = knet_handle_new(-1);
+	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+
+	if (sock < 0) {
+		log_error("Unable to create new socket");
+		exit(EXIT_FAILURE);
+	}
+
+	knet_h = knet_handle_new(sock);
 
 	for (i = 0; i < HOST_LIST_SIZE; i++) {
 		host_list[i] = malloc(sizeof(struct knet_host));
@@ -58,7 +64,14 @@ int main(int argc, char *argv[])
 		host_list[i] = NULL;
 	}
 
-	printf("loop count: %zu times\n", loopnum);
+	printf("Loop count: %zu times\n", loopnum);
+
+	if (knet_handle_free(knet_h) != 0) {
+		log_error("Unable to free knet_handle");
+		exit(EXIT_FAILURE);
+	}
+
+	knet_h = 0;
 
 	return 0;
 }

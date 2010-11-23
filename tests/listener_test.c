@@ -134,5 +134,10 @@ int main(int argc, char *argv[])
 
 	log_error("Listener file descriptor was removed from epollfd");
 
+	if (knet_handle_free(knet_h) != 0) {
+		log_error("Unable to free knet_handle");
+		exit(EXIT_FAILURE);
+	}
+
 	return 0;
 }

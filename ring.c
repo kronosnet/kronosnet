@@ -94,6 +94,30 @@ exit_fail1:
 	return NULL;
 }
 
+int knet_handle_free(knet_handle_t knet_h)
+{
+	void *retval;
+
+	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL)) {
+		errno = EBUSY;
+		return -EBUSY;
+	}
+
+	pthread_cancel(knet_h->control_thread);
+	pthread_join(knet_h->control_thread, &retval);
+
+	close(knet_h->epollfd);
+
+	pthread_rwlock_destroy(&knet_h->list_rwlock);
+
+	free(knet_h->databuf);
+	free(knet_h->pingbuf);
+
+	free(knet_h);
+
+	return 0;
+}
+
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
 {
 	knet_h->enabled = (enabled == 1) ? 1 : 0;

@@ -59,6 +59,7 @@ struct knet_frame {
 } __attribute__((packed));
 
 knet_handle_t knet_handle_new(int fd);
+int knet_handle_free(knet_handle_t knet_h);
 
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 
