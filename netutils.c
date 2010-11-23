@@ -11,45 +11,45 @@
 #define ADDRTOSTR_HOST_LEN 256
 #define ADDRTOSTR_PORT_LEN 24
 
-static int is_v4_mapped(struct sockaddr *sa, socklen_t salen)
+static int is_v4_mapped(struct sockaddr_storage *ss, socklen_t salen)
 {
 	char map[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
-	struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *) sa;
+	struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *) ss;
 	return memcmp(&addr6->sin6_addr, map, 12);
 }
 
-int cmpaddr(struct sockaddr *sa1, socklen_t salen1,
-	    struct sockaddr *sa2, socklen_t salen2)
+int cmpaddr(struct sockaddr_storage *ss1, socklen_t sslen1,
+	    struct sockaddr_storage *ss2, socklen_t sslen2)
 {
-	int sa1_offset = 0, sa2_offset = 0;
-	struct sockaddr_in6 *sa1_addr6 = (struct sockaddr_in6 *)sa1;
-	struct sockaddr_in6 *sa2_addr6 = (struct sockaddr_in6 *)sa2;
-	struct sockaddr_in *sa1_addr = (struct sockaddr_in *)sa1;
-	struct sockaddr_in *sa2_addr = (struct sockaddr_in *)sa2;
+	int ss1_offset = 0, ss2_offset = 0;
+	struct sockaddr_in6 *ss1_addr6 = (struct sockaddr_in6 *)ss1;
+	struct sockaddr_in6 *ss2_addr6 = (struct sockaddr_in6 *)ss2;
+	struct sockaddr_in *ss1_addr = (struct sockaddr_in *)ss1;
+	struct sockaddr_in *ss2_addr = (struct sockaddr_in *)ss2;
 	char *addr1, *addr2;
 
-	if (sa1->sa_family == sa2->sa_family)
-		return memcmp(sa1, sa2, salen1);
+	if (ss1->ss_family == ss2->ss_family)
+		return memcmp(ss1, ss2, sslen1);
 
-	if (sa1->sa_family == AF_INET6) {
-		if (is_v4_mapped(sa1, salen1))
+	if (ss1->ss_family == AF_INET6) {
+		if (is_v4_mapped(ss1, sslen1))
 			return 1;
 
-		addr1 = (char *)&sa1_addr6->sin6_addr;
-		sa1_offset = 12;
+		addr1 = (char *)&ss1_addr6->sin6_addr;
+		ss1_offset = 12;
 	} else
-		addr1 = (char *)&sa1_addr->sin_addr;
+		addr1 = (char *)&ss1_addr->sin_addr;
 
-	if (sa2->sa_family == AF_INET6) {
-		if (is_v4_mapped(sa2, salen2))
+	if (ss2->ss_family == AF_INET6) {
+		if (is_v4_mapped(ss2, sslen2))
 			return 1;
 
-		addr2 = (char *)&sa2_addr6->sin6_addr;  
-		sa2_offset = 12;
+		addr2 = (char *)&ss2_addr6->sin6_addr;  
+		ss2_offset = 12;
 	} else
-		addr2 = (char *)&sa2_addr->sin_addr; 
+		addr2 = (char *)&ss2_addr->sin_addr; 
 
-	return memcmp(addr1+sa1_offset, addr2+sa2_offset, 4);
+	return memcmp(addr1+ss1_offset, addr2+ss2_offset, 4);
 }
 
 int strtoaddr(const char *host, const char *port, struct sockaddr *sa, socklen_t salen)

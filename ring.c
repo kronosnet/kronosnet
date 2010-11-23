@@ -355,12 +355,14 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = i->link; j != NULL; j = j->next) {
-			if (cmpaddr((struct sockaddr *) &address, addrlen,
-				    (struct sockaddr *) &j->address, addrlen) == 0) {
+			if (cmpaddr(&address, addrlen,
+				    &j->address, addrlen) == 0) {
 				link_src = j;
 				break;
 			}
 		}
+		if (link_src)
+			break;
 	}
 
 	if (link_src == NULL) /* host/link not found */
