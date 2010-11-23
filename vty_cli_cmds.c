@@ -1078,10 +1078,7 @@ static int knet_cmd_start(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
-	if (knet_start_bridge(knet_iface) < 0) {
-		knet_vty_write(vty, "Error: Unable to start forwarding thread!%s", telnet_newline);
-		return -1;
-	}
+	knet_start_bridge(knet_iface);
 
 	if (knet_set_up(knet_iface->cfg_eth.knet_eth) < 0) {
 		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", knet_iface->cfg_eth.name, telnet_newline);
@@ -1203,7 +1200,7 @@ knet_eth_found:
 	if (knet_iface->cfg_ring.knet_h)
 		goto knet_found;
 
-	knet_iface->cfg_ring.knet_h = knet_handle_new();
+	knet_iface->cfg_ring.knet_h = knet_handle_new(knet_iface->cfg_eth.knet_eth->knet_etherfd);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);

@@ -23,7 +23,7 @@ static void *knet_heartbt_thread(void *data);
 static inline void knet_tsdiff(
 	struct timespec *start, struct timespec *end, unsigned long long *diff);
 
-knet_handle_t knet_handle_new(void)
+knet_handle_t knet_handle_new(int fd)
 {
 	knet_handle_t knet_h;
 	struct epoll_event ev;
@@ -46,45 +46,39 @@ knet_handle_t knet_handle_new(void)
 	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
 		goto exit_fail3;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_h->sock) != 0)
-		goto exit_fail4;
-
+	knet_h->sockfd = fd;
 	knet_h->epollfd = epoll_create(KNET_MAX_EVENTS);
 
 	if (knet_h->epollfd < 0)
-		goto exit_fail5;
+		goto exit_fail4;
 
 	if (knet_fdset_cloexec(knet_h->epollfd) != 0)
-		goto exit_fail6;
+		goto exit_fail5;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->sock[0];
+	ev.data.fd = knet_h->sockfd;
 
 	if (epoll_ctl(knet_h->epollfd,
-				EPOLL_CTL_ADD, knet_h->sock[0], &ev) != 0)
-		goto exit_fail6;
+				EPOLL_CTL_ADD, knet_h->sockfd, &ev) != 0)
+		goto exit_fail5;
 
 	if (pthread_create(&knet_h->control_thread, 0,
 				knet_control_thread, (void *) knet_h) != 0)
-		goto exit_fail6;
+		goto exit_fail5;
 
 	if (pthread_create(&knet_h->heartbt_thread, 0,
 				knet_heartbt_thread, (void *) knet_h) != 0)
-		goto exit_fail7;
+		goto exit_fail6;
 
 	return knet_h;
 
-exit_fail7:
+exit_fail6:
 	pthread_cancel(knet_h->control_thread);
 
-exit_fail6:
-	close(knet_h->epollfd);
-
 exit_fail5:
-	close(knet_h->sock[0]);
-	close(knet_h->sock[1]);
+	close(knet_h->epollfd);
 
 exit_fail4:
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
@@ -98,6 +92,11 @@ exit_fail2:
 exit_fail1:
 	free(knet_h);
 	return NULL;
+}
+
+void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
+{
+	knet_h->enabled = (enabled == 1) ? 1 : 0;
 }
 
 int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock)
@@ -138,11 +137,6 @@ int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int
 int knet_listener_release(knet_handle_t knet_h)
 {
 	return pthread_rwlock_unlock(&knet_h->list_rwlock);
-}
-
-int knet_handle_getfd(knet_handle_t knet_h)
-{
-	return knet_h->sock[1];
 }
 
 int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
@@ -290,16 +284,18 @@ static void knet_send_data(knet_handle_t knet_h)
 	struct knet_host *i;
 	struct knet_link *j;
 
-	len = read(knet_h->sock[0], knet_h->databuf + 1,
+	len = read(knet_h->sockfd, knet_h->databuf + 1,
 				KNET_DATABUFSIZE - sizeof(struct knet_frame));
 
 	if (len == 0) {
 		/* TODO: disconnection, should never happen! */
-		close(knet_h->sock[0]); /* FIXME: from here is downhill :) */
 		return;
 	}
 
 	len += sizeof(struct knet_frame);
+
+	if (knet_h->enabled != 1) /* data forward is disabled */
+		return;
 
 	/* TODO: packet inspection */
 
@@ -370,7 +366,10 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 
 	switch (knet_h->databuf->type) {
 	case KNET_FRAME_DATA:
-		write(knet_h->sock[0],
+		if (knet_h->enabled != 1) /* data forward is disabled */
+			break;
+
+		write(knet_h->sockfd,
 			knet_h->databuf + 1, len - sizeof(struct knet_frame));
 
 		break;
@@ -484,7 +483,7 @@ static void *knet_control_thread(void *data)
 		nev = epoll_wait(knet_h->epollfd, events, KNET_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
-			if (events[i].data.fd == knet_h->sock[0]) {
+			if (events[i].data.fd == knet_h->sockfd) {
 				knet_send_data(knet_h);
 			} else {
 				knet_recv_frame(knet_h, events[i].data.fd);

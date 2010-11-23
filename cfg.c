@@ -145,63 +145,12 @@ struct fds_io {
 	int done;
 };
 
-
-/* this one needs to find a way to signal that it died */
-
-static void *briswifwd_thread(void *arg)
+void knet_start_bridge(struct knet_cfg *iface)
 {
-	char buf[131072];
-	ssize_t len = 0;
-	struct fds_io *fds = (struct fds_io *)arg;
-	int fd_in, fd_out;
-
-	fd_in = fds->fd_in;
-	fd_out = fds->fd_out;
-	fds->done = 1;
-
-	while ((len=read(fd_in, buf, sizeof(buf))) >= 0)
-		write(fd_out, buf, len);
-
-	return NULL;
-}
-
-int knet_start_bridge(struct knet_cfg *iface)
-{
-	struct fds_io fds;
-	int err = 0;
-
-	fds.fd_in = iface->cfg_eth.knet_eth->knet_etherfd;
-	fds.fd_out = knet_handle_getfd(iface->cfg_ring.knet_h);
-
-	fds.done = 0;
-
-	err = pthread_create(&iface->cfg_bridge.eth2ring, NULL,
-			     briswifwd_thread, (void *)&fds);
-	if (err)
-		goto out_clean;
-
-	while(fds.done != 1)
-		usleep(1000);
-
-	fds.fd_in = knet_handle_getfd(iface->cfg_ring.knet_h);
-	fds.fd_out = iface->cfg_eth.knet_eth->knet_etherfd;
-	fds.done = 0;
-
-	err = pthread_create(&iface->cfg_bridge.ring2eth, NULL,
-			     briswifwd_thread, (void *)&fds);
-	if (err)
-		pthread_cancel(iface->cfg_bridge.eth2ring);
-
-	while(fds.done != 1)
-		usleep(1000);
-
-out_clean:
-
-	return err;
+	knet_handle_setfwd(iface->cfg_ring.knet_h, 1);
 }
 
 void knet_stop_bridge(struct knet_cfg *iface)
 {
-	pthread_cancel(iface->cfg_bridge.eth2ring);
-	pthread_cancel(iface->cfg_bridge.ring2eth);
+	knet_handle_setfwd(iface->cfg_ring.knet_h, 0);
 }

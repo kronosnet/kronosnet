@@ -9,7 +9,7 @@
 #include "ring.h"
 #include "utils.h"
 
-static int knet_sock;
+static int knet_sock[2];
 static knet_handle_t knet_h;
 
 static in_port_t tok_inport(char *str)
@@ -150,35 +150,38 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if ((knet_h = knet_handle_new()) == NULL) {
+	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_sock) != 0) {
+		log_error("Unable to create socket");
+		exit(EXIT_FAILURE);
+	}
+
+	if ((knet_h = knet_handle_new(knet_sock[0])) == NULL) {
 		log_error("Unable to create new knet_handle_t");
 		exit(EXIT_FAILURE);
 	}
 
 	argv_to_hosts(argc, argv);
 
-	knet_sock = knet_handle_getfd(knet_h);
-
 	while (1) {
 		check_links();
 
 		log_info("Sending 'Hello World!' frame");
-		write(knet_sock, "Hello World!", 13);
+		write(knet_sock[1], "Hello World!", 13);
 
 		tv.tv_sec = 5;
 		tv.tv_usec = 0;
 
  select_loop:
 		FD_ZERO(&rfds);
-		FD_SET(knet_sock, &rfds);
+		FD_SET(knet_sock[1], &rfds);
 
-		len = select(knet_sock + 1, &rfds, NULL, NULL, &tv);
+		len = select(knet_sock[1] + 1, &rfds, NULL, NULL, &tv);
 
 		if (len < 0) {
 			log_error("Unable select over knet_handle_t");
 			exit(EXIT_FAILURE);
-		} else if (FD_ISSET(knet_sock, &rfds)) {
-			read(knet_sock, buff, sizeof(buff));
+		} else if (FD_ISSET(knet_sock[1], &rfds)) {
+			read(knet_sock[1], buff, sizeof(buff));
 			printf("Received data: '%s'\n", buff);
 		}
 

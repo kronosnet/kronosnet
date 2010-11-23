@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 	knet_handle_t knet_h;
 	
 
-	knet_h = knet_handle_new();
+	knet_h = knet_handle_new(-1);
 
 	for (i = 0; i < HOST_LIST_SIZE; i++) {
 		host_list[i] = malloc(sizeof(struct knet_host));

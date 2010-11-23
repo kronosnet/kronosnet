@@ -58,9 +58,9 @@ struct knet_frame {
 	uint16_t __pad;
 } __attribute__((packed));
 
-knet_handle_t knet_handle_new(void);
+knet_handle_t knet_handle_new(int fd);
 
-int knet_handle_getfd(knet_handle_t knet_h);
+void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 
 int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock);
 int knet_host_release(knet_handle_t knet_h);

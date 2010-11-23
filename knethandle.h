@@ -8,8 +8,9 @@
 #include "ring.h"
 
 struct knet_handle {
-	int sock[2];
+	int sockfd;
 	int epollfd;
+	unsigned int enabled:1;
 	struct knet_host *host_head;
 	struct knet_listener *listener_head;
 	struct knet_frame *databuf;

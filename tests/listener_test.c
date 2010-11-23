@@ -66,10 +66,17 @@ static void test_add_host(void)
 
 int main(int argc, char *argv[])
 {
-	int err;
+	int err, sock;
 	struct epoll_event ev;
 
-	if ((knet_h = knet_handle_new()) == NULL) {
+	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+
+	if (sock < 0) {
+		log_error("Unable to create new socket");
+		exit(EXIT_FAILURE);
+	}
+
+	if ((knet_h = knet_handle_new(sock)) == NULL) {
 		log_error("Unable to create new knet_handle_t");
 		exit(EXIT_FAILURE);
 	}
