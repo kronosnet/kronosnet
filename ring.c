@@ -98,13 +98,14 @@ int knet_handle_free(knet_handle_t knet_h)
 {
 	void *retval;
 
-	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL)) {
-		errno = EBUSY;
-		return -EBUSY;
-	}
+	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL))
+		goto exit_busy;
 
 	pthread_cancel(knet_h->control_thread);
 	pthread_join(knet_h->control_thread, &retval);
+
+	if (retval != PTHREAD_CANCELED)
+		goto exit_busy;
 
 	close(knet_h->epollfd);
 
@@ -116,6 +117,10 @@ int knet_handle_free(knet_handle_t knet_h)
 	free(knet_h);
 
 	return 0;
+
+ exit_busy:
+	errno = EBUSY;
+	return -EBUSY;
 }
 
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
