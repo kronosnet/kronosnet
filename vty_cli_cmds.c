@@ -1043,6 +1043,8 @@ static int knet_cmd_stop(struct knet_vty *vty)
 
 	knet_stop_bridge(knet_iface);
 
+	knet_iface->cfg_bridge.active = 0;
+
 	return 0;
 }
 
@@ -1060,6 +1062,8 @@ static int knet_cmd_start(struct knet_vty *vty)
 		knet_stop_bridge(knet_iface);
 		return -1;
 	}
+
+	knet_iface->cfg_bridge.active = 1;
 
 	return 0;
 }
@@ -1297,6 +1301,9 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			log_error("CLI ERROR: unable to release peer lock.. will retry in 1 sec");
 			sleep(1);
 		}
+
+		if (knet_iface->cfg_bridge.active)
+			knet_vty_write(vty, "  start%s", nl);
 
 		knet_vty_write(vty, "  exit%s", nl);
 		knet_iface = knet_iface->next;

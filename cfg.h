@@ -30,6 +30,7 @@ struct knet_cfg_ring {
 struct knet_cfg_bridge {
 	pthread_t eth2ring;
 	pthread_t ring2eth;
+	int active;
 };
 
 struct knet_cfg {
