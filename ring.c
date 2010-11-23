@@ -101,6 +101,12 @@ int knet_handle_free(knet_handle_t knet_h)
 	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL))
 		goto exit_busy;
 
+	pthread_cancel(knet_h->heartbt_thread);
+	pthread_join(knet_h->heartbt_thread, &retval);
+
+	if (retval != PTHREAD_CANCELED)
+		goto exit_busy;
+
 	pthread_cancel(knet_h->control_thread);
 	pthread_join(knet_h->control_thread, &retval);
 
