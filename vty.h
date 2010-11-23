@@ -41,7 +41,8 @@ struct knet_vty {
 	void			*param;		/* pointer to cmd param */
 	int			paramoffset;	/* required if param is set */
 	void			*iface;		/* pointer to iface we are working on */
-	void			*host;		/* pointer to iface we are working on */
+	void			*host;		/* pointer to peer/host we are working on */
+	void			*link;		/* pointer to link we are working on */
 	int			filemode;	/* tell print_conf to add or not carriage return */
 };
 

@@ -600,12 +600,26 @@ vty_node_cmds_t peer_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
+/* link node description */
+
+vty_node_cmds_t link_cmds[] = {
+	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
+	{ "help", "display basic help", NULL, knet_cmd_help },
+	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
+	{ "no", "revert command", NULL, NULL },
+	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
+	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
+	{ NULL, NULL, NULL, NULL },
+};
+
 /* nodes */
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds, NULL },
 	{ NODE_CONFIG, "config", config_cmds, no_config_cmds },
 	{ NODE_INTERFACE, "iface", interface_cmds, no_interface_cmds },
 	{ NODE_PEER, "peer", peer_cmds, no_peer_cmds },
+	{ NODE_LINK, "link", link_cmds, NULL },
 	{ -1, NULL, NULL },
 };
 
@@ -651,6 +665,8 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 		prev->next = klink->next;
 	}
 	knet_host_add(knet_iface->cfg_ring.knet_h, host);
+
+	free(klink);
 
 	return 0;
 }
@@ -707,6 +723,9 @@ static int knet_cmd_link(struct knet_vty *vty)
 		knet_host_add(knet_iface->cfg_ring.knet_h, host);
 	}
 
+	vty->link = (void *)klink;
+	vty->node = NODE_LINK;
+
 out_clean:
 	if (err < 0) {
 		if (klink)
@@ -719,6 +738,7 @@ out_clean:
 static int knet_destroy_host(struct knet_vty *vty, struct knet_host *host)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_link *klink = host->link;
 
 	if (host->listener) {
 		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener) == -EBUSY) {
@@ -726,6 +746,12 @@ static int knet_destroy_host(struct knet_vty *vty, struct knet_host *host)
 			knet_host_add(knet_iface->cfg_ring.knet_h, host);
 			return -1;
 		}
+	}
+
+	while (klink != NULL) {
+		struct knet_link *tmp = klink->next;
+		free(klink);
+		klink = tmp;
 	}
 
 	free(host);
@@ -1094,10 +1120,6 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		knet_destroy_ip(knet_iface, knet_iface->cfg_eth.knet_ip);
 	}
 
-	/* remember to close listeners */
-
-	/* remove all hosts */
-
 	while (1) {
 		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &host, 0) != 0) {
 			log_error("CLI ERROR: unable to acquire peer lock.. will retry in 1 sec"); 
@@ -1119,6 +1141,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 		knet_destroy_host(vty, host);
 	}
+
+	knet_cmd_stop(vty);
 
 	/*
 	 * if (knet_iface->knet_h)
@@ -1291,6 +1315,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			klink = host->link;
 			while (klink != NULL) {
 				knet_vty_write(vty, "   link %s%s", klink->ipaddr, nl);
+				/* print link properties */
+				knet_vty_write(vty, "    exit%s", nl);
 				klink = klink->next;
 			}
 			knet_vty_write(vty, "   exit%s", nl);
