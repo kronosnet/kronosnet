@@ -117,6 +117,7 @@ int knet_vty_main_loop(void)
 	int conn_index, found;
 
 	signal(SIGTERM, sigterm_handler);
+	signal(SIGINT, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
 	memset(&knet_vtys, 0, sizeof(knet_vtys));

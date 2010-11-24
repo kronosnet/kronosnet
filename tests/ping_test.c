@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <alloca.h>
+#include <signal.h>
 #include <arpa/inet.h>
 
 #include "ring.h"
@@ -138,6 +139,24 @@ static void check_links(void)
 	knet_host_release(knet_h);
 }
 
+static void sigint_handler(int signum)
+{
+	int err;
+
+	printf("Cleaning up...\n");
+
+	if (knet_h != NULL) {
+		err = knet_handle_free(knet_h);
+
+		if (err != 0) {
+			log_error("Unable to cleanup before exit");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char *argv[])
 {
 	char buff[1024];
@@ -155,12 +174,21 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	knet_h = NULL;
+
+	if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+		log_error("Unable to configure SIGINT handler");
+		exit(EXIT_FAILURE);
+	}
+
 	if ((knet_h = knet_handle_new(knet_sock[0])) == NULL) {
 		log_error("Unable to create new knet_handle_t");
 		exit(EXIT_FAILURE);
 	}
 
 	argv_to_hosts(argc, argv);
+
+	knet_handle_setfwd(knet_h, 1);
 
 	while (1) {
 		check_links();
@@ -175,7 +203,7 @@ int main(int argc, char *argv[])
 		FD_ZERO(&rfds);
 		FD_SET(knet_sock[1], &rfds);
 
-		len = select(knet_sock[1] + 1, &rfds, NULL, NULL, &tv);
+		len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
 
 		if (len < 0) {
 			log_error("Unable select over knet_handle_t");
