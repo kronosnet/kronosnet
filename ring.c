@@ -20,9 +20,6 @@
 static void *knet_control_thread(void *data);
 static void *knet_heartbt_thread(void *data);
 
-static inline void knet_tsdiff(
-	struct timespec *start, struct timespec *end, unsigned long long *diff);
-
 knet_handle_t knet_handle_new(int fd)
 {
 	knet_handle_t knet_h;
@@ -420,7 +417,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
 
 		memcpy(&pong, knet_h->databuf + 1, sizeof(struct timespec));
-		knet_tsdiff(&pong, &j->pong_last, &latency_last);
+		knet_ts_diff(&pong, &j->pong_last, &latency_last);
 
 		if (latency_last < j->pong_timeout)
 			j->enabled = 1; /* TODO: might need write lock */
@@ -436,13 +433,6 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static inline void knet_tsdiff(
-		struct timespec *start, struct timespec *end, unsigned long long *diff)
-{
-	*diff = (end->tv_sec - start->tv_sec) * 1000000; /* micro-seconds */
-	*diff += (end->tv_nsec - start->tv_nsec) / 1000; /* micro-seconds */
-}
-
 static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 {
 	struct timespec clock_now;
@@ -451,7 +441,7 @@ static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
 		return;
 
-	knet_tsdiff(&j->ping_last, &clock_now, &diff_ping);
+	knet_ts_diff(&j->ping_last, &clock_now, &diff_ping);
 
 	if (diff_ping >= j->ping_interval) {
 		clock_gettime(CLOCK_MONOTONIC, &j->ping_last);
@@ -465,7 +455,7 @@ static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 	}
 
 	if (j->enabled == 1) {
-		knet_tsdiff(&j->pong_last, &clock_now, &diff_pong);
+		knet_ts_diff(&j->pong_last, &clock_now, &diff_pong);
 
 		if (diff_pong >= j->pong_timeout)
 			j->enabled = 0; /* TODO: might need write lock */

@@ -126,13 +126,10 @@ static void check_links(void)
 
 	while (i != NULL) {
 		for (j = i->link; j != NULL; j = j->next) {
-			if (j->enabled == 0) {
-				printf("link %p disabled\n", j);
-			} else {
-				printf("link %p latency is %llums\n", j, j->latency);
-			}
+			printf("link %p latency is %llums, status: %s\n",
+				j, j->latency,
+				(j->enabled == 0) ? "disabled" : "enabled");
 		}
-
 		i = i->next;
 	}
 

@@ -33,6 +33,15 @@ do { \
 	if (utils_syslog) syslog(LOG_ERR, fmt, ##args); \
 } while (0);
 
+#define knet_ts_diff(start, end, diff) \
+do { \
+	if ((end)->tv_sec > (start)->tv_sec) \
+		*(diff) = (((end)->tv_sec - (start)->tv_sec) * 1000000) \
+			+ (((end)->tv_nsec - (start)->tv_nsec) / 1000); \
+	else \
+		*(diff) = ((end)->tv_nsec - (start)->tv_nsec) / 1000; \
+} while (0);
+
 int knet_fdset_cloexec(int fd);
 
 #endif
