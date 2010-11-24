@@ -1,13 +1,18 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 VALGRIND = valgrind -q --error-exitcode=127 --leak-check=full
+HELGRIND = valgrind -v --tool=helgrind
 
 check-valgrind: $(check_PROGRAMS)
 	$(MAKE) TESTS_ENVIRONMENT="$(VALGRIND)" check
 
+check-helgrind: $(check_PROGRAMS)
+	$(MAKE) TESTS_ENVIRONMENT="$(HELGRIND)" check
+
 noinst_PROGRAMS = \
 		  ping_test \
 		  khandle_test \
+		  lookup_bench \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
@@ -34,6 +39,11 @@ ping_test_SOURCES	= \
 khandle_test_SOURCES	= \
 			  khandle_test.c \
 			  ../ring.c \
+			  ../netutils.c \
+			  ../utils.c
+
+lookup_bench_SOURCES	= \
+			  lookup_bench.c \
 			  ../netutils.c \
 			  ../utils.c
 
