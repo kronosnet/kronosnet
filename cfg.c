@@ -139,12 +139,6 @@ void knet_destroy_iface(struct knet_cfg *knet_iface)
 	}
 }
 
-struct fds_io {
-	int fd_in;
-	int fd_out;
-	int done;
-};
-
 void knet_start_bridge(struct knet_cfg *iface)
 {
 	knet_handle_setfwd(iface->cfg_ring.knet_h, 1);
