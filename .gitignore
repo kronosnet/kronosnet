@@ -23,3 +23,4 @@ autoscan.log
 kronosnetd
 *.swp
 tests/*_test
+tests/*_bench
