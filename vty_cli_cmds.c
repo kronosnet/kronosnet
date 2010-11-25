@@ -1067,7 +1067,7 @@ static int knet_cmd_stop(struct knet_vty *vty)
 	if (knet_set_down(knet_iface->cfg_eth.knet_eth) < 0)
 		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", knet_iface->cfg_eth.name, telnet_newline);
 
-	knet_stop_bridge(knet_iface);
+	knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 
 	knet_iface->active = 0;
 
@@ -1078,11 +1078,11 @@ static int knet_cmd_start(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
-	knet_start_bridge(knet_iface);
+	knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 1);
 
 	if (knet_set_up(knet_iface->cfg_eth.knet_eth) < 0) {
 		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", knet_iface->cfg_eth.name, telnet_newline);
-		knet_stop_bridge(knet_iface);
+		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 		return -1;
 	}
 

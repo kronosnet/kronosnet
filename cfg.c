@@ -138,13 +138,3 @@ void knet_destroy_iface(struct knet_cfg *knet_iface)
 		free(knet_iface);
 	}
 }
-
-void knet_start_bridge(struct knet_cfg *iface)
-{
-	knet_handle_setfwd(iface->cfg_ring.knet_h, 1);
-}
-
-void knet_stop_bridge(struct knet_cfg *iface)
-{
-	knet_handle_setfwd(iface->cfg_ring.knet_h, 0);
-}
