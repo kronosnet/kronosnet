@@ -1141,10 +1141,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	knet_cmd_stop(vty);
 
-	/*
-	 * if (knet_iface->knet_h)
-	 *	knet_handle_destroy(knet_iface->knet_h);
-	 */
+	if (knet_iface->cfg_ring.knet_h)
+		knet_handle_free(knet_iface->cfg_ring.knet_h);
 
 	if (knet_iface->cfg_eth.knet_eth)
 		knet_close(knet_iface->cfg_eth.knet_eth);
@@ -1257,10 +1255,9 @@ out_found:
 
 out_clean:
 	if (err) {
-		/*
-		 * if (knet_iface->knet_h)
-		 *	knet_handle_destroy(knet_iface->knet_h);
-		 */
+		if (knet_iface->cfg_ring.knet_h)
+			knet_handle_free(knet_iface->cfg_ring.knet_h);
+
 		if (knet_iface->cfg_eth.knet_eth)
 			knet_close(knet_iface->cfg_eth.knet_eth);
  
