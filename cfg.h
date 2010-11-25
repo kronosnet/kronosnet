@@ -27,16 +27,10 @@ struct knet_cfg_ring {
 	int base_port;
 };
 
-struct knet_cfg_bridge {
-	pthread_t eth2ring;
-	pthread_t ring2eth;
-	int active;
-};
-
 struct knet_cfg {
 	struct knet_cfg_eth cfg_eth;
 	struct knet_cfg_ring cfg_ring;
-	struct knet_cfg_bridge cfg_bridge;
+	int active;
 	struct knet_cfg *next;
 };
 
