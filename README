@@ -1,0 +1,33 @@
+kronosnet
+---------
+
+Architecture
+------------
+
+Please refer to
+http://kronosnet.org/docs/kronosnet_architecture.odp
+for a few fancy drawings and schemas
+
+WARNING
+-------
+
+kronosnet is currently in very early stages of its development.
+on-wire and configuration compatibility between versions will not
+be guaranteed till 1.0 release.
+
+QUICK SETUP
+-----------
+
+* build/install
+* create /etc/pam.d/kronosnet
+  - the users that can login with those credentials will gain access
+    to kronosnetd read only view of the setup
+* add kronosnetadm system group
+  - user in this group, after login to kronosnetd (auth via pam), will
+    be allowed to perform configuration tasks within kronosnetd
+* start kronosnetd
+  - there is no requirement for kronosnetd to have a configuration file
+    to start. Configuration can be created at runtime by:
+    "telnet localhost 50000"
+* always refer to http://kronosnet.org/ user manual for latest
+  information on how to perform runtime configuration tasks
