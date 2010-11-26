@@ -1,0 +1,113 @@
+0.1
+---
+
+link layer:
+
+* add priority/weight to link config struct
+* add linkid.
+
+host layer:
+
+* add seq num and ring buffer for pckt tracking to struct
+
+knet_frame:
+
+* remove padding to add nodeid (1 char) and linkid (3 bit), flags (1 bit compress, 1 bit encrypted, 3 pad)
+* add unions based on pckt type.
+
+ring:
+
+* change from many mallocs to single malloc in handler_new and map it.
+* support up to 256 nodes, up to 8 links per node, 8 listener per node.
+
+general:
+
+* /etc/kronosnet/
+                 kronosnetd.conf
+* v4/v6 (bindv6only check via cli)
+* logging and what to log
+  log to file: who logins, config changes and link status changes
+  log to vty: cmd execution failure
+
+api:
+
+* knet_{domain}_ are public api's
+* knet_{domain}_ structs are public
+* {domain}_ are private API's
+
+vty:
+
+* split cmd_files
+* basic show info
+
+0.2
+---
+
+* packet inspector
+
+0.3
+---
+
+link layer:
+
+* add active/active to link config struct
+* change link->enabled to something more meaningfull (ping enable/admin enable)
+
+host layer:
+
+* add seq num and ring buffer for pckt tracking to struct
+
+* benchmark tests:
+  - all critical paths in ring.c
+
+0.4
+---
+
+general:
+
+* add statistics
+* add init script / spec file
+* /etc/kronosnet/
+		 pre-up.d/
+		 up.d/
+		 down.d/
+		 post-down.d/
+		 (ca-ssl/)
+* v4/v6 (bindv6only check via cli)
+
+vty:
+
+* add optional options
+* sorting
+* tab completion on options
+
+0.5
+---
+
+* pong count
+* switch engine
+
+0.6
+---
+
+* dynip
+
+0.9
+---
+
+* crypto
+* compression
+
+1.0-pre
+-------
+
+tests:
+
+* coverity
+* unit test:
+  - test all public APIs
+  - write ad-doc tests for internal complex functions
+  - not required to test return codes from external libs directly
+    (we are not testing glibc)
+  - test all code paths we write
+  - no 0.9/1.0 release without max testing coverage for the core
