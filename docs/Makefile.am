@@ -1,5 +1,7 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
+EXTRA_DIST		= kronosnet_architecture.odp
+
 docbook			= Kronosnet
 
 DOCBOOK_FORMATS := pdf,html,html-single,txt
@@ -20,4 +22,5 @@ clean-local:
 push:
 	@for book in $(docbook); do \
 		rsync -rtz --progress $$book/publish/* fabbione@kronosnet.org:kronosnet/docs; \
+		rsync -rtz --progress kronosnet_architecture.odp fabbione@kronosnet.org:kronosnet/docs/kronosnet_architecture.odp; \
 	done
