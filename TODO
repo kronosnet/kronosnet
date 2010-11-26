@@ -17,8 +17,10 @@ knet_frame:
 
 ring:
 
-* change from many mallocs to single malloc in handler_new and map it.
-* support up to 256 nodes, up to 8 links per node, 8 listener per node.
+* change from many mallocs to single (per host) malloc in handler_new and map it.
+* support up to 2^16 nodes, up to 8 links per node, 8 listener per node.
+* add api to knet_handle_new to define src/dst mapping in data frame.
+* index pointer list
 
 general:
 
