@@ -97,6 +97,7 @@ vty:
 
 * review ring api for libknetring shared lib
 * review tap api for libknettap shared lib
+* review vty api for libknetvty shared lib
 
 0.9
 ---
