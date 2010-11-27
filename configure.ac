@@ -3,7 +3,7 @@
 
 AC_PREREQ([2.63])
 AC_INIT([kronosnetd], [0.1], [fabbione@kronosnet.org])
-AM_INIT_AUTOMAKE([1.11.1 dist-xz color-tests -Wno-portability])
+AM_INIT_AUTOMAKE([1.11.1 dist-bzip2 dist-xz color-tests -Wno-portability])
 LT_PREREQ([2.2.6])
 LT_INIT
 
