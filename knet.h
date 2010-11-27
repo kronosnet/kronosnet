@@ -26,6 +26,4 @@ int knet_add_ip(struct knet_eth *knet_eth, const char *ip_addr,
 int knet_del_ip(struct knet_eth *knet_eth, const char *ip_addr,
 		const char *prefix);
 
-int knet_execute_shell(const char *command);
-
 #endif

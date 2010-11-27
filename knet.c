@@ -22,11 +22,138 @@ STATIC int knet_sockfd = 0;
 STATIC pthread_mutex_t knet_eth_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
-STATIC int knet_read_pipe(int fd, char **file, size_t *length);
-STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix);
-STATIC int knet_set_ip(struct knet_eth *knet_eth, const char *command,
-		       const char *ip_addr, const char *prefix);
-STATIC void knet_close_unsafe(struct knet_eth *knet_eth);
+STATIC int knet_execute_shell(const char *command);
+
+static int knet_read_pipe(int fd, char **file, size_t *length)
+{
+	char buf[4096];
+	int n;
+	int done = 0;
+
+	*file = NULL;
+	*length = 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	while (!done) {
+
+		n = read(fd, buf, sizeof(buf));
+
+		if (n < 0) {
+			if (errno == EINTR)
+				continue;
+
+			if (*file)
+				free(*file);
+
+			return n;
+		}
+
+		if (n == 0 && (!*length))
+			return 0;
+
+		if (n == 0)
+			done = 1;
+
+		if (*file)
+			*file = realloc(*file, (*length) + n + done);
+		else
+			*file = malloc(n + done);
+
+		if (!*file)
+			return -1;
+
+		memcpy((*file) + (*length), buf, n);
+		*length += (done + n);
+	}
+
+	/* Null terminator */
+	(*file)[(*length) - 1] = 0;
+
+	return 0;
+}
+
+STATIC int knet_execute_shell(const char *command)
+{
+	pid_t pid;
+	int status, err = 0;
+	int fd[2];
+	char *data = NULL;
+	size_t size = 0;
+
+	if (command == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	err = pipe(fd);
+	if (err)
+		goto out_clean;
+
+	pid = fork();
+	if (pid < 0) {
+		err = pid;
+		goto out_clean;
+	}
+
+	if (pid) { /* parent */
+
+		close(fd[1]);
+		err = knet_read_pipe(fd[0], &data, &size);
+		if (err)
+			goto out_clean;
+
+		waitpid(pid, &status, 0);
+		if (!WIFEXITED(status)) {
+			log_error("shell: child did not terminate normally");
+			err = -1;
+			goto out_clean;
+		}
+		if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+			log_error("shell: child returned %d", WEXITSTATUS(status));
+			err = -1;
+			goto out_clean;
+		}
+	} else { /* child */
+		close(0);
+		close(1);
+		close(2);
+
+		close(fd[0]);
+		if(dup2(fd[1], 1) < 0)
+			log_error("Unable to redirect stdout");
+		if(dup2(fd[1], 2) < 0)
+			log_error("Unable to redirect stderr");
+		close(fd[1]);
+
+		execlp("/bin/sh", "/bin/sh", "-c", command, NULL);
+		exit(EXIT_FAILURE);
+	}
+
+out_clean:
+	close(fd[0]);
+	close(fd[1]);
+
+	if ((size) && (err)) {
+		log_error("%s", data);
+		free(data);
+	}
+
+	return err;
+}
+
+static void knet_close_unsafe(struct knet_eth *knet_eth)
+{
+	if (!knet_eth)
+		return;
+
+	if (knet_eth->knet_etherfd)
+		close(knet_eth->knet_etherfd);
+
+	free(knet_eth);
+
+	return;
+}
 
 struct knet_eth *knet_open(char *dev, size_t dev_size)
 {
@@ -86,19 +213,6 @@ out_error:
 	knet_close_unsafe(knet_eth);
 	pthread_mutex_unlock(&knet_eth_mutex);
 	return NULL;
-}
-
-STATIC void knet_close_unsafe(struct knet_eth *knet_eth)
-{
-	if (!knet_eth)
-		return;
-
-	if (knet_eth->knet_etherfd)
-		close(knet_eth->knet_etherfd);
-
-	free(knet_eth);
-
-	return;
 }
 
 void knet_close(struct knet_eth *knet_eth)
@@ -268,7 +382,7 @@ out:
 	return err;
 }
 
-STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix)
+static char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix)
 {
 	int prefix_len;
 	struct in_addr mask;
@@ -291,7 +405,7 @@ STATIC char *knet_get_v4_broadcast(const char *ip_addr, const char *prefix)
 	return strdup(inet_ntoa(broadcast));
 }
 
-STATIC int knet_set_ip(struct knet_eth *knet_eth, const char *command,
+static int knet_set_ip(struct knet_eth *knet_eth, const char *command,
 		       const char *ip_addr, const char *prefix)
 {
 	char *broadcast = NULL;
@@ -346,124 +460,6 @@ int knet_del_ip(struct knet_eth *knet_eth, const char *ip_addr, const char *pref
 	pthread_mutex_lock(&knet_eth_mutex);
 	err = knet_set_ip(knet_eth, "del", ip_addr, prefix);
 	pthread_mutex_unlock(&knet_eth_mutex);
-
-	return err;
-}
-
-STATIC int knet_read_pipe(int fd, char **file, size_t *length)
-{
-	char buf[4096];
-	int n;
-	int done = 0;
-
-	*file = NULL;
-	*length = 0;
-
-	memset(buf, 0, sizeof(buf));
-
-	while (!done) {
-
-		n = read(fd, buf, sizeof(buf));
-
-		if (n < 0) {
-			if (errno == EINTR)
-				continue;
-
-			if (*file)
-				free(*file);
-
-			return n;
-		}
-
-		if (n == 0 && (!*length))
-			return 0;
-
-		if (n == 0)
-			done = 1;
-
-		if (*file)
-			*file = realloc(*file, (*length) + n + done);
-		else
-			*file = malloc(n + done);
-
-		if (!*file)
-			return -1;
-
-		memcpy((*file) + (*length), buf, n);
-		*length += (done + n);
-	}
-
-	/* Null terminator */
-	(*file)[(*length) - 1] = 0;
-
-	return 0;
-}
-
-int knet_execute_shell(const char *command)
-{
-	pid_t pid;
-	int status, err = 0;
-	int fd[2];
-	char *data = NULL;
-	size_t size = 0;
-
-	if (command == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	err = pipe(fd);
-	if (err)
-		goto out_clean;
-
-	pid = fork();
-	if (pid < 0) {
-		err = pid;
-		goto out_clean;
-	}
-
-	if (pid) { /* parent */
-
-		close(fd[1]);
-		err = knet_read_pipe(fd[0], &data, &size);
-		if (err)
-			goto out_clean;
-
-		waitpid(pid, &status, 0);
-		if (!WIFEXITED(status)) {
-			log_error("shell: child did not terminate normally");
-			err = -1;
-			goto out_clean;
-		}
-		if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-			log_error("shell: child returned %d", WEXITSTATUS(status));
-			err = -1;
-			goto out_clean;
-		}
-	} else { /* child */
-		close(0);
-		close(1);
-		close(2);
-
-		close(fd[0]);
-		if(dup2(fd[1], 1) < 0)
-			log_error("Unable to redirect stdout");
-		if(dup2(fd[1], 2) < 0)
-			log_error("Unable to redirect stderr");
-		close(fd[1]);
-
-		execlp("/bin/sh", "/bin/sh", "-c", command, NULL);
-		exit(EXIT_FAILURE);
-	}
-
-out_clean:
-	close(fd[0]);
-	close(fd[1]);
-
-	if ((size) && (err)) {
-		log_error("%s", data);
-		free(data);
-	}
 
 	return err;
 }

@@ -14,6 +14,8 @@
 
 extern int knet_sockfd;
 
+extern int knet_execute_shell(const char *command);
+
 static int is_if_in_system(char *name)
 {
 	struct ifaddrs *ifap = NULL;
