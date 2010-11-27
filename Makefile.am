@@ -52,7 +52,7 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
 
 uninstall-local:
-	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || ;
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || :;
 
 maintainer-clean-local:
 	rm -rf m4
