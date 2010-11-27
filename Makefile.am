@@ -16,7 +16,9 @@ dist_doc_DATA		= \
 			  COPYING.applications \
 			  COPYING.libraries \
 			  COPYRIGHT \
-			  README.licence
+			  README.licence \
+			  README \
+			  TODO
 
 noinst_HEADERS		= \
 			  cfg.h \
@@ -45,6 +47,12 @@ kronosnetd_SOURCES	= \
 			  vty_cli.c \
 			  vty_cli_cmds.c \
 			  vty_utils.c
+
+install-exec-local:
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
+
+uninstall-local:
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || ;
 
 maintainer-clean-local:
 	rm -rf m4

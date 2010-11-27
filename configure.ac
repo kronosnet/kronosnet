@@ -154,12 +154,18 @@ AC_ARG_WITH([defaultadmgroup],
 ## random vars
 LOGDIR=${localstatedir}/log/
 RUNDIR=${localstatedir}/run/
+DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 
 ## do subst
 
 AM_CONDITIONAL(BUILD_DOCS, test "x${enable_publicandocs}" = xyes)
 
-AC_DEFINE_UNQUOTED([CONFFILE], "$(eval echo ${sysconfdir}/kronosnetd.conf)",
+AC_SUBST([DEFAULT_CONFIG_DIR])
+AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR], "$(eval echo ${DEFAULT_CONFIG_DIR})",
+		   [Default config directory])
+
+AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_FILE],
+		   "$(eval echo ${DEFAULT_CONFIG_DIR}/kronosnetd.conf)",
 		   [Default config file])
 
 AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",

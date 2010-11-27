@@ -29,7 +29,7 @@ static void print_usage(void)
 	printf("  -b <ip_addr> Bind management VTY to ip_addr (default: all)\n");
 	printf("  -p <port>    Bind management VTY to port (default %d)\n",
 		KNET_VTY_DEFAULT_PORT);
-	printf("  -c <file>    Use config file (default "CONFFILE")\n");
+	printf("  -c <file>    Use config file (default "DEFAULT_CONFIG_FILE")\n");
 	printf("  -f           Do not fork in background\n");
 	printf("  -d           Enable debugging output\n");
 	printf("  -h           This help\n");
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!knet_cfg_head.conffile)
-		knet_cfg_head.conffile = strdup(CONFFILE);
+		knet_cfg_head.conffile = strdup(DEFAULT_CONFIG_FILE);
 	if (!knet_cfg_head.conffile) {
 		log_error("Unable to allocate memory for config file");
 		exit(EXIT_FAILURE);
