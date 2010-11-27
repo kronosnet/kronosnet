@@ -94,6 +94,12 @@ vty:
 
 * dynip
 
+0.7
+---
+
+* review ring api for libknetring shared lib
+* review tap api for libknettap shared lib
+
 0.9
 ---
 
