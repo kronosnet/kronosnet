@@ -15,7 +15,7 @@
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
 #define KNET_DATABUFSIZE 131072 /* 128k */
-#define KNET_PINGBUFSIZE (sizeof(struct knet_frame) + sizeof(struct timespec))
+#define KNET_PINGBUFSIZE sizeof(struct knet_frame)
 
 static void *knet_control_thread(void *data);
 static void *knet_heartbt_thread(void *data);
@@ -316,22 +316,22 @@ static void knet_send_data(knet_handle_t knet_h)
 	struct knet_host *i;
 	struct knet_link *j;
 
-	len = read(knet_h->sockfd, knet_h->databuf + 1,
-				KNET_DATABUFSIZE - sizeof(struct knet_frame));
+	len = read(knet_h->sockfd, knet_h->databuf->kf_data,
+					KNET_DATABUFSIZE - KNET_FRAME_SIZE);
 
 	if (len == 0) {
 		/* TODO: disconnection, should never happen! */
 		return;
 	}
 
-	len += sizeof(struct knet_frame);
+	len += sizeof(KNET_FRAME_SIZE);
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		return;
 
 	/* TODO: packet inspection */
 
-	knet_h->databuf->type = KNET_FRAME_DATA;
+	knet_h->databuf->kf_type = KNET_FRAME_DATA;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
@@ -361,7 +361,6 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	struct knet_host *i;
 	struct knet_link *j, *link_src;
 	unsigned long long latency_last;
-	struct timespec pong;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
@@ -369,13 +368,13 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	len = recvfrom(sockfd, knet_h->databuf, KNET_DATABUFSIZE,
 		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
 
-	if (len < sizeof(struct knet_frame))
+	if (len < (KNET_FRAME_SIZE + 1))
 		goto exit_unlock;
 
-	if (ntohl(knet_h->databuf->magic) != KNET_FRAME_MAGIC)
+	if (ntohl(knet_h->databuf->kf_magic) != KNET_FRAME_MAGIC)
 		goto exit_unlock;
 
-	if (knet_h->databuf->version != KNET_FRAME_VERSION)
+	if (knet_h->databuf->kf_version != KNET_FRAME_VERSION)
 		goto exit_unlock;
 
 	/* searching host/link, TODO: improve lookup */
@@ -396,17 +395,17 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	if (link_src == NULL) /* host/link not found */
 		goto exit_unlock;
 
-	switch (knet_h->databuf->type) {
+	switch (knet_h->databuf->kf_type) {
 	case KNET_FRAME_DATA:
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
 		write(knet_h->sockfd,
-			knet_h->databuf + 1, len - sizeof(struct knet_frame));
+			knet_h->databuf->kf_data, len - sizeof(struct knet_frame));
 
 		break;
 	case KNET_FRAME_PING:
-		knet_h->databuf->type = KNET_FRAME_PONG;
+		knet_h->databuf->kf_type = KNET_FRAME_PONG;
 
 		sendto(j->sock, knet_h->databuf, len,
 				MSG_DONTWAIT, (struct sockaddr *) &j->address,
@@ -416,9 +415,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
 
-		memcpy(&pong, knet_h->databuf + 1, sizeof(struct timespec));
-
-		timespec_diff(pong, j->pong_last, &latency_last);
+		timespec_diff(knet_h->databuf->kf_time, j->pong_last, &latency_last);
 		latency_last /= 1000;
 
 		if (latency_last < j->pong_timeout)
@@ -438,30 +435,30 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 {
 	struct timespec clock_now;
-	unsigned long long diff_ping, diff_pong;
+	unsigned long long diff_ping;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
 		return;
 
 	timespec_diff(j->ping_last, clock_now, &diff_ping);
-	diff_ping /= 1000;
 
-	if (diff_ping >= j->ping_interval) {
-		clock_gettime(CLOCK_MONOTONIC, &j->ping_last);
+	if ((diff_ping / 1000) >= j->ping_interval) {
+		int len;
 
-		memmove(knet_h->pingbuf + 1,
-			&j->ping_last, sizeof(struct timespec));
+		memmove(&knet_h->pingbuf->kf_time, &clock_now, sizeof(struct timespec));
 
-		sendto(j->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
+		len = sendto(j->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
 			MSG_DONTWAIT, (struct sockaddr *) &j->address,
 			sizeof(struct sockaddr_storage));
+
+		if (len == KNET_PINGBUFSIZE)
+			memmove(&j->ping_last, &clock_now, sizeof(struct timespec));
 	}
 
 	if (j->enabled == 1) {
-		timespec_diff(j->pong_last, clock_now, &diff_pong);
-		diff_pong /= 1000;
+		timespec_diff(j->pong_last, clock_now, &diff_ping);
 
-		if (diff_pong >= j->pong_timeout)
+		if ((diff_ping / 1000) >= j->pong_timeout)
 			j->enabled = 0; /* TODO: might need write lock */
 	}
 }
@@ -475,9 +472,9 @@ static void *knet_heartbt_thread(void *data)
 	knet_h = (knet_handle_t) data;
 
 	/* preparing ping buffer */
-	knet_h->pingbuf->magic = htonl(KNET_FRAME_MAGIC);
-	knet_h->pingbuf->version = KNET_FRAME_VERSION;
-	knet_h->pingbuf->type = KNET_FRAME_PING;
+	knet_h->pingbuf->kf_magic = htonl(KNET_FRAME_MAGIC);
+	knet_h->pingbuf->kf_version = KNET_FRAME_VERSION;
+	knet_h->pingbuf->kf_type = KNET_FRAME_PING;
 
 	while (1) {
 		usleep(KNET_PING_TIMERES);
@@ -505,8 +502,8 @@ static void *knet_control_thread(void *data)
 	knet_h = (knet_handle_t) data;
 
 	/* preparing data buffer */
-	knet_h->databuf->magic = htonl(KNET_FRAME_MAGIC);
-	knet_h->databuf->version = KNET_FRAME_VERSION;
+	knet_h->databuf->kf_magic = htonl(KNET_FRAME_MAGIC);
+	knet_h->databuf->kf_version = KNET_FRAME_VERSION;
 
 	while (1) {
 		nev = epoll_wait(knet_h->epollfd, events, KNET_MAX_EVENTS, -1);

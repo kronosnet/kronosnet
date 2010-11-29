@@ -44,19 +44,37 @@ struct knet_listener {
 	struct knet_listener *next;
 };
 
+union knet_frame_data {
+	uint8_t			kfd_data[0];
+	struct {
+		uint16_t	kfd_node;
+		uint8_t		kfd_link;
+		struct timespec	kfd_time;
+	};
+} __attribute__((packed));
+
+struct knet_frame {
+	uint32_t 		kf_magic;
+	uint8_t			kf_version;
+	uint8_t			kf_type;
+	uint16_t		__pad;
+	union knet_frame_data	kf_payload;
+} __attribute__((packed));
+
+#define kf_data kf_payload.kfd_data
+#define kf_node kf_payload.kfd_node
+#define kf_link kf_payload.kfd_link
+#define kf_time kf_payload.kfd_time
+
+#define KNET_FRAME_SIZE (sizeof(struct knet_frame) \
+					- sizeof(union knet_frame_data))
+
 #define KNET_FRAME_MAGIC 0x12344321
 #define KNET_FRAME_VERSION 0x01
 
 #define KNET_FRAME_DATA 0x00
 #define KNET_FRAME_PING 0x01
 #define KNET_FRAME_PONG 0x02
-
-struct knet_frame {
-	uint32_t magic;
-	uint8_t	version;
-	uint8_t type;
-	uint16_t __pad;
-} __attribute__((packed));
 
 knet_handle_t knet_handle_new(int fd);
 int knet_handle_free(knet_handle_t knet_h);
