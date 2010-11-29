@@ -19,7 +19,8 @@ check_PROGRAMS = \
 		  vty_test \
 		  knet_test \
 		  netutils_test \
-		  listener_test
+		  listener_test \
+		  utils_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -69,4 +70,8 @@ vty_test_SOURCES	= \
 netutils_test_SOURCES	= \
 			  netutils_test.c \
 			  ../netutils.c \
+			  ../utils.c
+
+utils_test_SOURCES	= \
+			  utils_test.c \
 			  ../utils.c

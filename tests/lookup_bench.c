@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 				bench_start.tv_sec, bench_start.tv_nsec,
 				bench_end.tv_sec, bench_end.tv_nsec);
 
-	knet_ts_diff(&bench_start, &bench_end, &bench_diff);
+	timespec_diff(bench_start, bench_end, &bench_diff);
 
 	printf("end - start = %llums\n", bench_diff);
 
