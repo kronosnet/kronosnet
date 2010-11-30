@@ -210,8 +210,8 @@ int main(int argc, char *argv[])
 			log_error("Unable select over knet_handle_t");
 			exit(EXIT_FAILURE);
 		} else if (FD_ISSET(knet_sock[1], &rfds)) {
-			read(knet_sock[1], buff, sizeof(buff));
-			printf("Received data: '%s'\n", buff);
+			len = read(knet_sock[1], buff, sizeof(buff));
+			printf("Received data (%zu bytes): '%s'\n", len, buff);
 		}
 
 		if ((tv.tv_sec > 0) || (tv.tv_usec > 0))

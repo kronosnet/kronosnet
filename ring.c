@@ -358,7 +358,7 @@ static void knet_send_data(knet_handle_t knet_h)
 		return;
 	}
 
-	len += sizeof(KNET_FRAME_SIZE);
+	len += KNET_FRAME_SIZE;
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		return;
@@ -435,7 +435,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 			break;
 
 		write(knet_h->sockfd,
-			knet_h->databuf->kf_data, len - sizeof(struct knet_frame));
+			knet_h->databuf->kf_data, len - KNET_FRAME_SIZE);
 
 		break;
 	case KNET_FRAME_PING:
