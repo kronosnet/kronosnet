@@ -33,7 +33,7 @@ static void check_timespec_diff(void)
 
 	log_info("Checking 4999995000 == %llu", diff);
 
-	if (diff != 4999995000) {
+	if (diff != 4999995000llu) {
 		log_error("Failure!");
 		exit(EXIT_FAILURE);
 	}
