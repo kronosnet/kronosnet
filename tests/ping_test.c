@@ -87,6 +87,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		memset(host, 0, sizeof(struct knet_host));
 
+		host->node_id = i - 1;
 		host->link = malloc(sizeof(struct knet_link));
 
 		if (host->link == NULL) {
@@ -108,7 +109,10 @@ static void argv_to_hosts(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		knet_host_add(knet_h, host);
+		if (knet_host_add(knet_h, host) != 0) {
+			log_error("Unable to add new knet_host");
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 

@@ -173,38 +173,72 @@ int knet_listener_release(knet_handle_t knet_h)
 
 int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 {
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
-		return -1;
+	int ret = 0; /* success */
+
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		ret = -EBUSY;
+		goto exit_clean;
+	}
+
+	if (knet_h->host_index[host->node_id] != NULL) {
+		ret = -EEXIST;
+		goto exit_unlock;
+	}
+
+	/* adding new host to the index */
+	knet_h->host_index[host->node_id] = host;
 
 	/* pushing new host to the front */
 	host->next		= knet_h->host_head;
 	knet_h->host_head	= host;
 
+ exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-	return 0;
+
+ exit_clean:
+	if (ret < 0) errno = -ret;
+	return ret;
 }
 
 int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
 {
+	int ret = 0; /* success */
 	struct knet_host *hp;
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
-		return -1;
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		ret = -EBUSY;
+		goto exit_clean;
+	}
 
-	/* TODO: use a doubly-linked list? */
+	if (knet_h->host_index[host->node_id] == NULL) {
+		ret = -EINVAL;
+		goto exit_unlock;
+	}
+
+	/* removing host from list */
 	if (host == knet_h->host_head) {
 		knet_h->host_head = host->next;
 	} else {
 		for (hp = knet_h->host_head; hp != NULL; hp = hp->next) {
 			if (host == hp->next) {
-				hp->next = hp->next->next;
+				hp->next = host->next;
 				break;
 			}
 		}
 	}
 
+	/* removing host from index */
+	knet_h->host_index[host->node_id] = NULL;
+
+	/* cleaning up next pointer */
+	host->next = NULL;
+
+ exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-	return 0;
+
+ exit_clean:
+	if (ret < 0) errno = -ret;
+	return ret;
 }
 
 int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)

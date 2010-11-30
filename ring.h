@@ -9,10 +9,11 @@ typedef struct knet_handle *knet_handle_t;
 #define KNET_RING_DEFPORT 50000
 #define KNET_RING_RCVBUFF 8388608
 
+#define KNET_MAX_HOST 65536
 #define KNET_MAX_HOST_LEN 64
 
 struct knet_host {
-	uint8_t node_id;
+	uint16_t node_id;
 	char name[KNET_MAX_HOST_LEN];
 	unsigned int active:1; /* data packets are sent to all links */
 	struct knet_listener *listener;
@@ -66,8 +67,7 @@ struct knet_frame {
 #define kf_link kf_payload.kfd_link
 #define kf_time kf_payload.kfd_time
 
-#define KNET_FRAME_SIZE (sizeof(struct knet_frame) \
-					- sizeof(union knet_frame_data))
+#define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
 
 #define KNET_FRAME_MAGIC 0x12344321
 #define KNET_FRAME_VERSION 0x01

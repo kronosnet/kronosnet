@@ -12,6 +12,7 @@ struct knet_handle {
 	int epollfd;
 	unsigned int enabled:1;
 	struct knet_host *host_head;
+	struct knet_host *host_index[KNET_MAX_HOST];
 	struct knet_listener *listener_head;
 	struct knet_frame *databuf;
 	struct knet_frame *pingbuf;
