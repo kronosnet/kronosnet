@@ -10,22 +10,15 @@ typedef struct knet_handle *knet_handle_t;
 #define KNET_RING_RCVBUFF 8388608
 
 #define KNET_MAX_HOST 65536
+#define KNET_MAX_LINK 8
 #define KNET_MAX_HOST_LEN 64
-
-struct knet_host {
-	uint16_t node_id;
-	char name[KNET_MAX_HOST_LEN];
-	unsigned int active:1; /* data packets are sent to all links */
-	struct knet_listener *listener;
-	struct knet_link *link;
-	struct knet_host *next;
-};
 
 struct knet_link {
 	int sock;
 	char ipaddr[KNET_MAX_HOST_LEN];
 	char port[6];
 	struct sockaddr_storage address;
+	unsigned int ready:1; /* link is configured and ready to be used */
 	unsigned int enabled:1;	/* link is enabled for data */
 	unsigned long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
@@ -34,7 +27,15 @@ struct knet_link {
 	unsigned long long pong_timeout;
 	struct timespec ping_last;
 	struct timespec pong_last;
-	struct knet_link *next;
+};
+
+struct knet_host {
+	uint16_t node_id;
+	char name[KNET_MAX_HOST_LEN];
+	unsigned int active:1; /* data packets are sent to all links */
+	struct knet_listener *listener;
+	struct knet_link link[KNET_MAX_LINK];
+	struct knet_host *next;
 };
 
 struct knet_listener {
@@ -87,6 +88,9 @@ int knet_host_add(knet_handle_t khandle, struct knet_host *host);
 int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 
 void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
+
+typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, struct knet_link *link, void *data);
+int knet_link_foreach(knet_handle_t knet_h, knet_link_fn_t linkfn, void *data);
 
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
 int knet_listener_release(knet_handle_t knet_h);

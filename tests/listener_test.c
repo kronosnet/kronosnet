@@ -48,15 +48,8 @@ static void test_add_host(void)
 
 	memset(host, 0, sizeof(struct knet_host));
 
-	host->link = malloc(sizeof(struct knet_link));
-
-	if (host->link == NULL) {
-		log_error("Unable to allocate new knet_link");
-		exit(EXIT_FAILURE);
-	}
-
-	memset(host->link, 0, sizeof(struct knet_link));
-	host->link->sock = listener->sock;
+	host->link[0].sock = listener->sock;
+	host->link[0].ready = 1;
 
 	if (knet_host_add(knet_h, host) != 0) {
 		log_error("Unable to add host to knet_handle");

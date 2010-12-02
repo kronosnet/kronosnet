@@ -88,21 +88,13 @@ static void argv_to_hosts(int argc, char *argv[])
 		memset(host, 0, sizeof(struct knet_host));
 
 		host->node_id = i - 1;
-		host->link = malloc(sizeof(struct knet_link));
+		knet_link_timeout(&host->link[0], 1000, 5000, 2048);
 
-		if (host->link == NULL) {
-			log_error("Unable to allocate new knet_link");
-			exit(EXIT_FAILURE);
-		}
+		host->link[0].sock = listener->sock;
+		host->link[0].address.ss_family = AF_INET;
+		host->link[0].ready = 1;
 
-		memset(host->link, 0, sizeof(struct knet_link));
-
-		knet_link_timeout(host->link, 1000, 5000, 2048);
-
-		host->link->sock = listener->sock;
-		host->link->address.ss_family = AF_INET;
-
-		err = tok_inaddrport(argv[i], (struct sockaddr_in *) &host->link->address);
+		err = tok_inaddrport(argv[i], (struct sockaddr_in *) &host->link[0].address);
 
 		if (err < 0) {
 			log_error("Unable to convert ip address: %s", argv[i]);
@@ -121,23 +113,11 @@ static void argv_to_hosts(int argc, char *argv[])
  *   # tc -d qdisc show dev lo
  *   # tc qdisc del dev lo root
  */
-static void check_links(void)
+static int print_link(knet_handle_t handle, struct knet_host *i, struct knet_link *j, void *data)
 {
-	struct knet_host *i;
-	struct knet_link *j;
-
-	knet_host_acquire(knet_h, &i, 0);
-
-	while (i != NULL) {
-		for (j = i->link; j != NULL; j = j->next) {
-			printf("link %p latency is %llums, status: %s\n",
-				j, j->latency,
-				(j->enabled == 0) ? "disabled" : "enabled");
-		}
-		i = i->next;
-	}
-
-	knet_host_release(knet_h);
+	printf("link %p latency is %llums, status: %s\n",
+		j, j->latency, (j->enabled == 0) ? "disabled" : "enabled");
+	return 0;
 }
 
 static void sigint_handler(int signum)
@@ -192,7 +172,7 @@ int main(int argc, char *argv[])
 	knet_handle_setfwd(knet_h, 1);
 
 	while (1) {
-		check_links();
+		knet_link_foreach(knet_h, print_link, NULL);
 
 		log_info("Sending 'Hello World!' frame");
 		write(knet_sock[1], "Hello World!", 13);
@@ -205,6 +185,8 @@ int main(int argc, char *argv[])
 		FD_SET(knet_sock[1], &rfds);
 
 		len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+
+		usleep(500000);
 
 		if (len < 0) {
 			log_error("Unable select over knet_handle_t");

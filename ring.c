@@ -151,6 +151,32 @@ int knet_host_release(knet_handle_t knet_h)
 	return pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
+int knet_link_foreach(knet_handle_t knet_h, knet_link_fn_t linkfn, void *data)
+{
+	int lockstatus, i;
+	struct knet_host *host;
+
+	lockstatus = pthread_rwlock_tryrdlock(&knet_h->list_rwlock);
+
+	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
+		return -EBUSY;
+	}
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		for (i = 0; i < KNET_MAX_LINK; i++) {
+			if (host->link[i].ready != 1) continue;
+			if (linkfn(knet_h, host, &host->link[i], data) == 1)
+				goto exit_unlock;
+		}
+	}
+
+ exit_unlock:
+	if (lockstatus == 0)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return 0;
+}
+
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock)
 {
 	int ret;
@@ -290,21 +316,20 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 
 int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 {
-	int err;
+	int ret, j;
 	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
 	struct knet_listener *lp;
 	struct knet_host *i;
-	struct knet_link *j;
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		return -1;
 
-	err = 0;
+	ret = 0;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = i->link; j != NULL; j = j->next) {
-			if (j->sock == listener->sock) {
-				err = EBUSY;
+		for (j = 0; j < KNET_MAX_LINK; j++) {
+			if (i->link[j].sock == listener->sock) {
+				errno = ret = EBUSY;
 				goto exit_fail1;
 			}
 		}
@@ -328,10 +353,7 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
  exit_fail1:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
-	if (err != 0)
-		errno = err;
-
-	return -err;
+	return (ret > 0) ? -ret : ret;
 }
 
 void knet_link_timeout(struct knet_link *lnk,
@@ -346,9 +368,9 @@ void knet_link_timeout(struct knet_link *lnk,
 
 static void knet_send_data(knet_handle_t knet_h)
 {
+	int j;
 	ssize_t len, snt;
 	struct knet_host *i;
-	struct knet_link *j;
 
 	len = read(knet_h->sockfd, knet_h->databuf->kf_data,
 					KNET_DATABUFSIZE - KNET_FRAME_SIZE);
@@ -371,12 +393,13 @@ static void knet_send_data(knet_handle_t knet_h)
 		return;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = i->link; j != NULL; j = j->next) {
-			if (j->enabled != 1) /* link is disabled */
+		for (j = 0; j < KNET_MAX_LINK; j++) {
+			if (i->link[j].enabled != 1) /* link is disabled */
 				continue;
 
-			snt = sendto(j->sock, knet_h->databuf, len, MSG_DONTWAIT,
-					(struct sockaddr *) &j->address,
+			snt = sendto(i->link[j].sock,
+					knet_h->databuf, len, MSG_DONTWAIT,
+					(struct sockaddr *) &i->link[j].address,
 					sizeof(struct sockaddr_storage));
 
 			if ((i->active == 0) && (snt == len))
@@ -391,14 +414,16 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t len;
 	struct sockaddr_storage address;
-	socklen_t addrlen = sizeof(struct sockaddr_storage);
+	socklen_t addrlen;
+	int j;
 	struct knet_host *i;
-	struct knet_link *j, *link_src;
+	struct knet_link *link_src;
 	unsigned long long latency_last;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
 
+	addrlen = sizeof(struct sockaddr_storage);
 	len = recvfrom(sockfd, knet_h->databuf, KNET_DATABUFSIZE,
 		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
 
@@ -415,10 +440,10 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	link_src = NULL;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = i->link; j != NULL; j = j->next) {
+		for (j = 0; j < KNET_MAX_LINK; j++) {
 			if (cmpaddr(&address, addrlen,
-				    &j->address, addrlen) == 0) {
-				link_src = j;
+				    &i->link[j].address, addrlen) == 0) {
+				link_src = &i->link[j];
 				break;
 			}
 		}
@@ -441,23 +466,24 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_PING:
 		knet_h->databuf->kf_type = KNET_FRAME_PONG;
 
-		sendto(j->sock, knet_h->databuf, len,
-				MSG_DONTWAIT, (struct sockaddr *) &j->address,
+		sendto(i->link[j].sock, knet_h->databuf, len, MSG_DONTWAIT,
+				(struct sockaddr *) &i->link[j].address,
 				sizeof(struct sockaddr_storage));
 
 		break;
 	case KNET_FRAME_PONG:
-		clock_gettime(CLOCK_MONOTONIC, &j->pong_last);
+		clock_gettime(CLOCK_MONOTONIC, &i->link[j].pong_last);
 
-		timespec_diff(knet_h->databuf->kf_time, j->pong_last, &latency_last);
+		timespec_diff(knet_h->databuf->kf_time, i->link[j].pong_last, &latency_last);
 		latency_last /= 1000;
 
-		if (latency_last < j->pong_timeout)
-			j->enabled = 1; /* TODO: might need write lock */
+		if (latency_last < i->link[j].pong_timeout)
+			i->link[j].enabled = 1; /* TODO: might need write lock */
 
-		j->latency *= j->latency_exp;
-		j->latency += latency_last * (j->latency_fix - j->latency_exp);
-		j->latency /= j->latency_fix;
+		i->link[j].latency *= i->link[j].latency_exp;
+		i->link[j].latency += latency_last \
+			* (i->link[j].latency_fix - i->link[j].latency_exp);
+		i->link[j].latency /= i->link[j].latency_fix;
 
 		break;
 	}
@@ -499,9 +525,9 @@ static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 
 static void *knet_heartbt_thread(void *data)
 {
+	int j;
 	knet_handle_t knet_h;
 	struct knet_host *i;
-	struct knet_link *j;
 
 	knet_h = (knet_handle_t) data;
 
@@ -517,8 +543,10 @@ static void *knet_heartbt_thread(void *data)
 			continue;
 
 		for (i = knet_h->host_head; i != NULL; i = i->next) {
-			for (j = i->link; j != NULL; j = j->next)
-				knet_heartbeat_check_each(knet_h, j);
+			for (j = 0; j < KNET_MAX_LINK; j++) {
+				if (i->link[j].ready != 1) continue;
+				knet_heartbeat_check_each(knet_h, &i->link[j]);
+			}
 		}
 
 		pthread_rwlock_unlock(&knet_h->list_rwlock);
