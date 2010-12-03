@@ -151,28 +151,34 @@ int knet_host_release(knet_handle_t knet_h)
 	return pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-int knet_link_foreach(knet_handle_t knet_h, knet_link_fn_t linkfn, void *data)
+int knet_link_foreach(struct knet_link_search *data, knet_link_fn_t linkfn)
 {
-	int lockstatus, i;
-	struct knet_host *host;
+	int lockstatus, i, ret;
 
-	lockstatus = pthread_rwlock_tryrdlock(&knet_h->list_rwlock);
+	lockstatus = pthread_rwlock_rdlock(&data->knet_h->list_rwlock);
 
 	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
 		return -EBUSY;
 	}
 
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
+	data->host = data->knet_h->host_head;
+
+	for (; data->host != NULL; data->host = data->host->next) {
 		for (i = 0; i < KNET_MAX_LINK; i++) {
-			if (host->link[i].ready != 1) continue;
-			if (linkfn(knet_h, host, &host->link[i], data) == 1)
+			if (data->host->link[i].ready != 1) continue;
+
+			ret = linkfn(data, &data->host->link[i]);
+
+			if (ret == KNET_LINK_FOREACH_SKIP)
+				break;
+			else if (ret == KNET_LINK_FOREACH_FOUND)
 				goto exit_unlock;
 		}
 	}
 
  exit_unlock:
 	if (lockstatus == 0)
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
+		pthread_rwlock_unlock(&data->knet_h->list_rwlock);
 
 	return 0;
 }
@@ -314,26 +320,33 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	return -1;
 }
 
+static int check_listener_sock(struct knet_link_search *data, struct knet_link *j)
+{
+	if (j->sock == data->param1) {
+		data->retval = -EBUSY;
+		return KNET_LINK_FOREACH_FOUND;
+	}
+
+	return KNET_LINK_FOREACH_NEXT;
+}
+
 int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 {
-	int ret, j;
 	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
 	struct knet_listener *lp;
-	struct knet_host *i;
+	struct knet_link_search check_search;
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
-		return -1;
+		return -EINVAL;
 
-	ret = 0;
+	check_search.knet_h = knet_h;
+	check_search.retval = 0;
+	check_search.param1 = listener->sock;
 
-	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = 0; j < KNET_MAX_LINK; j++) {
-			if (i->link[j].sock == listener->sock) {
-				errno = ret = EBUSY;
-				goto exit_fail1;
-			}
-		}
-	}
+	knet_link_foreach(&check_search, check_listener_sock);
+
+	if (check_search.retval != 0)
+		goto exit_fail1;
 
 	/* TODO: use a doubly-linked list? */
 	if (listener == knet_h->listener_head) {
@@ -353,7 +366,9 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
  exit_fail1:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
-	return (ret > 0) ? -ret : ret;
+	if (check_search.retval != 0) errno = check_search.retval;
+
+	return check_search.retval;
 }
 
 void knet_link_timeout(struct knet_link *lnk,

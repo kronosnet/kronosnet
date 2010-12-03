@@ -89,8 +89,20 @@ int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
 
 void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
 
-typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, struct knet_link *link, void *data);
-int knet_link_foreach(knet_handle_t knet_h, knet_link_fn_t linkfn, void *data);
+#define KNET_LINK_FOREACH_NEXT 0 /* next link */
+#define KNET_LINK_FOREACH_SKIP 1 /* skip to next host */
+#define KNET_LINK_FOREACH_FOUND 2 /* loop stop */
+
+struct knet_link_search {
+	knet_handle_t knet_h;
+	struct knet_host *host;
+	int param1;
+	int retval;
+	void *data;
+};
+
+typedef int (*knet_link_fn_t)(struct knet_link_search *data, struct knet_link *link);
+int knet_link_foreach(struct knet_link_search *data, knet_link_fn_t linkfn);
 
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
 int knet_listener_release(knet_handle_t knet_h);

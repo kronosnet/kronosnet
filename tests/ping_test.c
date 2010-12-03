@@ -113,11 +113,12 @@ static void argv_to_hosts(int argc, char *argv[])
  *   # tc -d qdisc show dev lo
  *   # tc qdisc del dev lo root
  */
-static int print_link(knet_handle_t handle, struct knet_host *i, struct knet_link *j, void *data)
+static int print_link(struct knet_link_search *data, struct knet_link *j)
 {
-	printf("link %p latency is %llums, status: %s\n",
-		j, j->latency, (j->enabled == 0) ? "disabled" : "enabled");
-	return 0;
+	printf("host %p, link %p latency is %llums, status: %s\n",
+		data->host, j, j->latency, (j->enabled == 0) ? "disabled" : "enabled");
+
+	return KNET_LINK_FOREACH_NEXT;
 }
 
 static void sigint_handler(int signum)
@@ -144,6 +145,7 @@ int main(int argc, char *argv[])
 	size_t len;
 	fd_set rfds;
 	struct timeval tv;
+	struct knet_link_search print_search;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -167,12 +169,13 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	print_search.knet_h = knet_h;
+	
 	argv_to_hosts(argc, argv);
-
-	knet_handle_setfwd(knet_h, 1);
+	knet_handle_setfwd(knet_h, 1);	
 
 	while (1) {
-		knet_link_foreach(knet_h, print_link, NULL);
+		knet_link_foreach(&print_search, print_link);
 
 		log_info("Sending 'Hello World!' frame");
 		write(knet_sock[1], "Hello World!", 13);
