@@ -10,7 +10,6 @@
 
 static knet_handle_t knet_h;
 struct knet_listener *listener;
-struct knet_host *host;
 
 static void test_add_listener(void)
 {
@@ -39,22 +38,19 @@ static void test_add_listener(void)
 
 static void test_add_host(void)
 {
-	host = malloc(sizeof(struct knet_host));
+	struct knet_host *host;
 
-	if (host == NULL) {
-		log_error("Unable to allocate new knet_host");
+	if (knet_host_add(knet_h, 1) != 0) {
+		log_error("Unable to add host to knet_handle");
 		exit(EXIT_FAILURE);
 	}
 
-	memset(host, 0, sizeof(struct knet_host));
+	knet_host_acquire(knet_h, 1, &host);
 
 	host->link[0].sock = listener->sock;
 	host->link[0].ready = 1;
 
-	if (knet_host_add(knet_h, host) != 0) {
-		log_error("Unable to add host to knet_handle");
-		exit(EXIT_FAILURE);
-	}
+	knet_host_release(knet_h, 1, &host);
 }
 
 int main(int argc, char *argv[])
@@ -102,7 +98,7 @@ int main(int argc, char *argv[])
 	log_error("Unable to remove listener with active links");
 
 	log_info("Removing host from handle");
-	err = knet_host_remove(knet_h, host);
+	err = knet_host_remove(knet_h, 1);
 
 	if (err != 0) {
 		log_error("Unable to remove host from knet_handle");

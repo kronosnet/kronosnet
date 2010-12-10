@@ -131,54 +131,53 @@ void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
 	knet_h->enabled = (enabled == 1) ? 1 : 0;
 }
 
-int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock)
+int knet_host_acquire(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
 {
 	int ret;
 
-	if (writelock != 0)
-		ret = pthread_rwlock_wrlock(&knet_h->list_rwlock);
-	else
-		ret = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if ((ret = pthread_rwlock_rdlock(&knet_h->list_rwlock)) != 0)
+		return ret;
 
-	if (head)
-		*head = (ret == 0) ? knet_h->host_head : NULL;
+	*host = knet_h->host_index[node_id];
 
-	return ret;
-}
-
-int knet_host_release(knet_handle_t knet_h)
-{
-	return pthread_rwlock_unlock(&knet_h->list_rwlock);
-}
-
-int knet_link_foreach(struct knet_link_search *data, knet_link_fn_t linkfn)
-{
-	int lockstatus, i, ret;
-
-	lockstatus = pthread_rwlock_rdlock(&data->knet_h->list_rwlock);
-
-	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
-		return -EBUSY;
+	if (*host == NULL) {
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+		errno = ENOENT;
+		return ENOENT;
 	}
 
-	data->host = data->knet_h->host_head;
+	return 0;
+}
 
-	for (; data->host != NULL; data->host = data->host->next) {
-		for (i = 0; i < KNET_MAX_LINK; i++) {
-			if (data->host->link[i].ready != 1) continue;
+int knet_host_release(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
+{
+	int ret;
 
-			ret = linkfn(data, &data->host->link[i]);
+	*host = NULL;
 
-			if (ret == KNET_LINK_FOREACH_SKIP)
-				break;
-			else if (ret == KNET_LINK_FOREACH_FOUND)
-				goto exit_unlock;
-		}
+	if ((ret = pthread_rwlock_unlock(&knet_h->list_rwlock)) != 0)
+		return ret;
+
+	return 0;
+}
+
+int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data)
+{
+	int lockstatus;
+	struct knet_host *host;
+
+	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+
+	if ((lockstatus != 0) && (lockstatus != EDEADLK))
+		return lockstatus;
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		if ((linkfun(knet_h, host, data)) != KNET_HOST_FOREACH_NEXT)
+			break;
 	}
 
- exit_unlock:
 	if (lockstatus == 0)
-		pthread_rwlock_unlock(&data->knet_h->list_rwlock);
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 	return 0;
 }
@@ -203,23 +202,33 @@ int knet_listener_release(knet_handle_t knet_h)
 	return pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
+int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 {
-	int ret = 0; /* success */
+	int i, ret = 0; /* success */
+	struct knet_host *host;
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
-		ret = -EBUSY;
+	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0)
 		goto exit_clean;
-	}
 
-	if (knet_h->host_index[host->node_id] != NULL) {
-		ret = -EEXIST;
+	if (knet_h->host_index[node_id] != NULL) {
+		errno = ret = EEXIST;
 		goto exit_unlock;
 	}
 
-	/* adding new host to the index */
-	knet_h->host_index[host->node_id] = host;
+	if ((host = malloc(sizeof(struct knet_host))) == NULL)
+		goto exit_unlock;
 
+	memset(host, 0, sizeof(struct knet_host));
+
+	host->node_id = node_id;
+
+	for (i = 0; i < KNET_MAX_LINK; i++)
+		host->link[i].link_id = i;
+
+	/* adding new host to the index */
+	knet_h->host_index[node_id] = host;
+
+	/* TODO: keep hosts ordered */
 	/* pushing new host to the front */
 	host->next		= knet_h->host_head;
 	knet_h->host_head	= host;
@@ -228,48 +237,47 @@ int knet_host_add(knet_handle_t knet_h, struct knet_host *host)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
  exit_clean:
-	if (ret < 0) errno = -ret;
 	return ret;
 }
 
-int knet_host_remove(knet_handle_t knet_h, struct knet_host *host)
+int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 {
 	int ret = 0; /* success */
-	struct knet_host *hp;
+	struct knet_host *i, *removed;
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
-		ret = -EBUSY;
+	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0)
 		goto exit_clean;
-	}
 
-	if (knet_h->host_index[host->node_id] == NULL) {
-		ret = -EINVAL;
+	if (knet_h->host_index[node_id] == NULL) {
+		errno = ret = EINVAL;
 		goto exit_unlock;
 	}
 
+	removed = NULL;
+
 	/* removing host from list */
-	if (host == knet_h->host_head) {
-		knet_h->host_head = host->next;
+	if (knet_h->host_head->node_id == node_id) {
+		removed = knet_h->host_head;
+		knet_h->host_head = removed->next;
 	} else {
-		for (hp = knet_h->host_head; hp != NULL; hp = hp->next) {
-			if (host == hp->next) {
-				hp->next = host->next;
+		for (i = knet_h->host_head; i->next != NULL; i = i->next) {
+			if (i->next->node_id == node_id) {
+				removed = i->next;
+				i->next = removed->next;
 				break;
 			}
 		}
 	}
 
-	/* removing host from index */
-	knet_h->host_index[host->node_id] = NULL;
-
-	/* cleaning up next pointer */
-	host->next = NULL;
+	if (removed != NULL) {
+		knet_h->host_index[node_id] = NULL;
+		free(removed);
+	}
 
  exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
  exit_clean:
-	if (ret < 0) errno = -ret;
 	return ret;
 }
 
@@ -320,41 +328,37 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	return -1;
 }
 
-static int check_listener_sock(struct knet_link_search *data, struct knet_link *j)
-{
-	if (j->sock == data->param1) {
-		data->retval = -EBUSY;
-		return KNET_LINK_FOREACH_FOUND;
-	}
-
-	return KNET_LINK_FOREACH_NEXT;
-}
-
 int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 {
+	int i, ret;
 	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
-	struct knet_listener *lp;
-	struct knet_link_search check_search;
+	struct knet_host *host;
+	struct knet_listener *l;
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		return -EINVAL;
 
-	check_search.knet_h = knet_h;
-	check_search.retval = 0;
-	check_search.param1 = listener->sock;
+	ret = 0;
 
-	knet_link_foreach(&check_search, check_listener_sock);
+	/* checking if listener is in use */
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		for (i = 0; i < KNET_MAX_LINK; i++) {
+			if (host->link[i].ready != 1) continue;
 
-	if (check_search.retval != 0)
-		goto exit_fail1;
+			if (host->link[i].sock == listener->sock) {
+				ret = -EBUSY;
+				goto exit_fail1;
+			}
+		}
+	}
 
 	/* TODO: use a doubly-linked list? */
 	if (listener == knet_h->listener_head) {
 		knet_h->listener_head = knet_h->listener_head->next;
 	} else {
-		for (lp = knet_h->listener_head; lp != NULL; lp = lp->next) {
-			if (listener == lp->next) {
-				lp->next = lp->next->next;
+		for (l = knet_h->listener_head; l != NULL; l = l->next) {
+			if (listener == l->next) {
+				l->next = l->next->next;
 				break;
 			}
 		}
@@ -366,9 +370,8 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
  exit_fail1:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
-	if (check_search.retval != 0) errno = check_search.retval;
-
-	return check_search.retval;
+	if (ret < 0) errno = -ret;
+	return ret;
 }
 
 void knet_link_timeout(struct knet_link *lnk,
@@ -490,15 +493,15 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		clock_gettime(CLOCK_MONOTONIC, &i->link[j].pong_last);
 
 		timespec_diff(knet_h->databuf->kf_time, i->link[j].pong_last, &latency_last);
-		latency_last /= 1000;
 
-		if (latency_last < i->link[j].pong_timeout)
-			i->link[j].enabled = 1; /* TODO: might need write lock */
+		i->link[j].latency =
+			((i->link[j].latency * i->link[j].latency_exp) +
+			((latency_last / 1000llu) *
+				(i->link[j].latency_fix - i->link[j].latency_exp))) /
+					i->link[j].latency_fix;
 
-		i->link[j].latency *= i->link[j].latency_exp;
-		i->link[j].latency += latency_last \
-			* (i->link[j].latency_fix - i->link[j].latency_exp);
-		i->link[j].latency /= i->link[j].latency_fix;
+		if (i->link[j].latency < i->link[j].pong_timeout)
+			i->link[j].enabled = 1;
 
 		break;
 	}
@@ -509,31 +512,33 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 
 static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
 {
-	struct timespec clock_now;
+	int len;
+	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
+
+	/* caching last pong to avoid race conditions */
+	pong_last = j->pong_last;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
 		return;
 
 	timespec_diff(j->ping_last, clock_now, &diff_ping);
 
-	if ((diff_ping / 1000) >= j->ping_interval) {
-		int len;
-
-		memmove(&knet_h->pingbuf->kf_time, &clock_now, sizeof(struct timespec));
+	if (diff_ping >= (j->ping_interval * 1000llu)) {
+		knet_h->pingbuf->kf_time = clock_now;
 
 		len = sendto(j->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
 			MSG_DONTWAIT, (struct sockaddr *) &j->address,
 			sizeof(struct sockaddr_storage));
 
 		if (len == KNET_PINGBUFSIZE)
-			memmove(&j->ping_last, &clock_now, sizeof(struct timespec));
+			j->ping_last = clock_now;
 	}
 
 	if (j->enabled == 1) {
-		timespec_diff(j->pong_last, clock_now, &diff_ping);
+		timespec_diff(pong_last, clock_now, &diff_ping);
 
-		if ((diff_ping / 1000) >= j->pong_timeout)
+		if (diff_ping >= (j->pong_timeout * 1000llu))
 			j->enabled = 0; /* TODO: might need write lock */
 	}
 }

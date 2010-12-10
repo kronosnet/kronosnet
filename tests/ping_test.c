@@ -78,33 +78,29 @@ static void argv_to_hosts(int argc, char *argv[])
 	}
 
 	for (i = 2; i < argc; i++) {
-		host = malloc(sizeof(struct knet_host));
-
-		if (host == NULL) {
-			log_error("Unable to allocate new knet_host");
+		if (knet_host_add(knet_h, i - 1) != 0) {
+			log_error("Unable to add new knet_host");
 			exit(EXIT_FAILURE);
 		}
 
-		memset(host, 0, sizeof(struct knet_host));
-
-		host->node_id = i - 1;
-		knet_link_timeout(&host->link[0], 1000, 5000, 2048);
+		knet_host_acquire(knet_h, i - 1, &host);
 
 		host->link[0].sock = listener->sock;
 		host->link[0].address.ss_family = AF_INET;
+
+		knet_link_timeout(&host->link[0], 1000, 5000, 2048);
+
 		host->link[0].ready = 1;
 
-		err = tok_inaddrport(argv[i], (struct sockaddr_in *) &host->link[0].address);
+		err = tok_inaddrport(argv[i],
+				(struct sockaddr_in *) &host->link[0].address);
 
 		if (err < 0) {
 			log_error("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
 
-		if (knet_host_add(knet_h, host) != 0) {
-			log_error("Unable to add new knet_host");
-			exit(EXIT_FAILURE);
-		}
+		knet_host_release(knet_h, i - 1, &host);
 	}
 }
 
@@ -113,12 +109,19 @@ static void argv_to_hosts(int argc, char *argv[])
  *   # tc -d qdisc show dev lo
  *   # tc qdisc del dev lo root
  */
-static int print_link(struct knet_link_search *data, struct knet_link *j)
+static int print_link(knet_handle_t khandle, struct knet_host *host, struct knet_host_search *data)
 {
-	printf("host %p, link %p latency is %llums, status: %s\n",
-		data->host, j, j->latency, (j->enabled == 0) ? "disabled" : "enabled");
+	int i;
 
-	return KNET_LINK_FOREACH_NEXT;
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		if (host->link[i].ready != 1) continue;
+
+		printf("host %p, link %p latency is %llums, status: %s\n",
+			host, &host->link[i], host->link[i].latency,
+			(host->link[i].enabled == 0) ? "disabled" : "enabled");
+	}
+
+	return KNET_HOST_FOREACH_NEXT;
 }
 
 static void sigint_handler(int signum)
@@ -145,7 +148,7 @@ int main(int argc, char *argv[])
 	size_t len;
 	fd_set rfds;
 	struct timeval tv;
-	struct knet_link_search print_search;
+	struct knet_host_search print_search;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -168,14 +171,12 @@ int main(int argc, char *argv[])
 		log_error("Unable to create new knet_handle_t");
 		exit(EXIT_FAILURE);
 	}
-
-	print_search.knet_h = knet_h;
 	
 	argv_to_hosts(argc, argv);
 	knet_handle_setfwd(knet_h, 1);	
 
 	while (1) {
-		knet_link_foreach(&print_search, print_link);
+		knet_host_foreach(knet_h, print_link, &print_search);
 
 		log_info("Sending 'Hello World!' frame");
 		write(knet_sock[1], "Hello World!", 13);
@@ -189,7 +190,8 @@ int main(int argc, char *argv[])
 
 		len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
 
-		usleep(500000);
+		/* uncomment this to replicate the one-message problem */
+		/* usleep(500000); */
 
 		if (len < 0) {
 			log_error("Unable select over knet_handle_t");

@@ -14,6 +14,7 @@ typedef struct knet_handle *knet_handle_t;
 #define KNET_MAX_HOST_LEN 64
 
 struct knet_link {
+	uint8_t link_id;
 	int sock;
 	char ipaddr[KNET_MAX_HOST_LEN];
 	char port[6];
@@ -78,31 +79,28 @@ struct knet_frame {
 #define KNET_FRAME_PONG 0x02
 
 knet_handle_t knet_handle_new(int fd);
+void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);
 
-void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
-
-int knet_host_acquire(knet_handle_t knet_h, struct knet_host **head, int writelock);
-int knet_host_release(knet_handle_t knet_h);
-int knet_host_add(knet_handle_t khandle, struct knet_host *host);
-int knet_host_remove(knet_handle_t khandle, struct knet_host *host);
+int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
+int knet_host_acquire(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
+int knet_host_release(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
+int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
 
 void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
 
-#define KNET_LINK_FOREACH_NEXT 0 /* next link */
-#define KNET_LINK_FOREACH_SKIP 1 /* skip to next host */
-#define KNET_LINK_FOREACH_FOUND 2 /* loop stop */
+#define KNET_HOST_FOREACH_NEXT 0	/* next host */
+#define KNET_HOST_FOREACH_FOUND 1	/* host found, exit loop */
 
-struct knet_link_search {
-	knet_handle_t knet_h;
-	struct knet_host *host;
-	int param1;
-	int retval;
-	void *data;
+struct knet_host_search {
+	int 			param1;	/* user parameter 1 */
+	void 			*data1;	/* user data pointer 1 */
+	void 			*data2;	/* user data pointer 2 */
+	int 			retval;	/* search return value */
 };
 
-typedef int (*knet_link_fn_t)(struct knet_link_search *data, struct knet_link *link);
-int knet_link_foreach(struct knet_link_search *data, knet_link_fn_t linkfn);
+typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, struct knet_host_search *data);
+int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data);
 
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
 int knet_listener_release(knet_handle_t knet_h);
