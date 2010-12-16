@@ -17,7 +17,7 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  vty_test \
-		  knet_test \
+		  tap_test \
 		  netutils_test \
 		  listener_test \
 		  utils_test
@@ -26,8 +26,8 @@ TESTS = $(check_PROGRAMS)
 
 AM_CFLAGS		= -DTEST -I$(srcdir)/../ -I$(srcdir)/../libtap/
 
-knet_test_SOURCES	= \
-			  knet_test.c \
+tap_test_SOURCES	= \
+			  tap_test.c \
 			  ../libtap/libtap.c \
 			  ../utils.c
 
