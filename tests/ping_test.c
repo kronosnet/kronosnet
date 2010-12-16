@@ -83,7 +83,7 @@ static void argv_to_hosts(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		knet_host_acquire(knet_h, i - 1, &host);
+		knet_host_get(knet_h, i - 1, &host);
 
 		host->link[0].sock = listener->sock;
 		host->link[0].address.ss_family = AF_INET;
@@ -100,7 +100,7 @@ static void argv_to_hosts(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		knet_host_release(knet_h, i - 1, &host);
+		knet_host_release(knet_h, &host);
 	}
 }
 

@@ -83,8 +83,9 @@ void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);
 
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
-int knet_host_acquire(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
-int knet_host_release(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
+int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host);
+int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
+int knet_host_release(knet_handle_t knet_h, struct knet_host **host);
 int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
 
 void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);

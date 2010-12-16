@@ -45,12 +45,12 @@ static void test_add_host(void)
 		exit(EXIT_FAILURE);
 	}
 
-	knet_host_acquire(knet_h, 1, &host);
+	knet_host_get(knet_h, 1, &host);
 
 	host->link[0].sock = listener->sock;
 	host->link[0].ready = 1;
 
-	knet_host_release(knet_h, 1, &host);
+	knet_host_release(knet_h, &host);
 }
 
 int main(int argc, char *argv[])

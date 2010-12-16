@@ -131,7 +131,7 @@ void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
 	knet_h->enabled = (enabled == 1) ? 1 : 0;
 }
 
-int knet_host_acquire(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
+int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
 {
 	int ret;
 
@@ -149,7 +149,19 @@ int knet_host_acquire(knet_handle_t knet_h, uint16_t node_id, struct knet_host *
 	return 0;
 }
 
-int knet_host_release(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
+int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host)
+{
+	int ret;
+
+	if ((ret = pthread_rwlock_rdlock(&knet_h->list_rwlock)) != 0)
+		return ret;
+
+	*host = knet_h->host_head;
+
+	return 0;
+}
+
+int knet_host_release(knet_handle_t knet_h, struct knet_host **host)
 {
 	int ret;
 
