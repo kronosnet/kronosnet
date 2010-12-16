@@ -1462,7 +1462,6 @@ int knet_read_conf(void)
 		len = strlen(vty->line) - 1;
 		memset(&vty->line[len], 0, 1);
 		vty->line_idx = len;
-		log_info("Executing: line[%d]: %s", line, vty->line);
 		err = knet_vty_execute_cmd(vty);
 		if (err != 0)  {
 			log_error("line[%d]: %s", line, vty->line);
