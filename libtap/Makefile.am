@@ -3,16 +3,17 @@ MAINTAINERCLEANFILES	= Makefile.in
 LIBS			= -lpthread \
 			  -version-info $(libversion)
 
-name			= libtap
-sources			= $(name).c
+sources			= libtap.c
 
 libversion		= 0:0:0
 
-include_HEADERS		= $(name).h
+include_HEADERS		= libtap.h
+
+noinst_HEADERS		= libtap_private.h
 
 pkgconfigdir		= $(libdir)/pkgconfig
 
-pkgconfig_DATA		= $(name).pc
+pkgconfig_DATA		= libtap.pc
 
 lib_LTLIBRARIES		= libtap.la
 
