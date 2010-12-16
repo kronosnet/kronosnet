@@ -1186,7 +1186,6 @@ knet_eth_found:
 
 	if (knet_iface->cfg_ring.knet_h)
 		goto knet_found;
-/* FIXME: fix to new api
 	knet_iface->cfg_ring.knet_h = knet_handle_new(knet_iface->cfg_eth.knet_eth->knet_etherfd);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
@@ -1194,7 +1193,7 @@ knet_eth_found:
 		err = -1;
 		goto out_clean;
 	}
-*/
+
 knet_found:
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	requested_id = param_to_int(param, paramlen);
