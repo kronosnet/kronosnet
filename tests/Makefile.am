@@ -24,12 +24,15 @@ check_PROGRAMS = \
 
 TESTS = $(check_PROGRAMS)
 
-AM_CFLAGS		= -DTEST -I$(srcdir)/../ -I$(srcdir)/../libtap/
+AM_CPPFLAGS		= -DTEST \
+			  -I$(srcdir)/../ \
+			  -I$(srcdir)/../libtap/
 
 tap_test_SOURCES	= \
 			  tap_test.c \
-			  ../libtap/libtap.c \
 			  ../utils.c
+
+tap_test_LDADD		= $(top_builddir)/libtap/libtap_test.la
 
 ping_test_SOURCES	= \
 			  ping_test.c \
@@ -57,7 +60,6 @@ listener_test_SOURCES	= \
 vty_test_SOURCES	= \
 			  vty_test.c \
 			  ../cfg.c \
-			  ../libtap/libtap.c \
 			  ../vty.c \
 			  ../vty_auth.c \
 			  ../vty_cli.c \
@@ -66,6 +68,8 @@ vty_test_SOURCES	= \
 			  ../netutils.c \
 			  ../ring.c \
 			  ../utils.c
+
+vty_test_LDADD		= $(top_builddir)/libtap/libtap_test.la
 
 netutils_test_SOURCES	= \
 			  netutils_test.c \
