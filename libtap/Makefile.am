@@ -1,19 +1,25 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
-# clear global linking list
-LIBS			=
+LIBS			= -lpthread \
+			  -version-info $(libversion)
+
+name			= libtap
+sources			= $(name).c
 
 libversion		= 0:0:0
 
-include_HEADERS		= libtap.h
+include_HEADERS		= $(name).h
 
 pkgconfigdir		= $(libdir)/pkgconfig
 
-pkgconfig_DATA		= libtap.pc
+pkgconfig_DATA		= $(name).pc
 
 lib_LTLIBRARIES		= libtap.la
 
-libtap_la_SOURCES	= libtap.c
+noinst_LTLIBRARIES	= libtap_test.la
 
-libtap_la_LDFLAGS	= -lpthread \
-			  -version-info $(libversion)
+libtap_test_la_SOURCES	= $(sources)
+
+libtap_test_la_CPPFLAGS	= -DTEST
+
+libtap_la_SOURCES	= $(sources)
