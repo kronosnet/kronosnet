@@ -20,7 +20,8 @@
 #include "libtap.h"
 #include "libtap_private.h"
 
-STATIC int tap_sockfd = 0;
+STATIC int tap_init = 0;
+STATIC struct tap_config tap_cfg;
 STATIC pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
@@ -198,13 +199,19 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 		goto out_error;
 	}
 
-	if (!tap_sockfd)
-		tap_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-			if (tap_sockfd < 0)
+	if (!tap_init) {
+		tap_cfg.tap_head = NULL;
+		tap_cfg.tap_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+			if (tap_cfg.tap_sockfd < 0)
 				goto out_error;
+		tap_init = 1;
+	}
 
-	if (ioctl(tap_sockfd, SIOGIFINDEX, &knet_tap->ifr) < 0)
+	if (ioctl(tap_cfg.tap_sockfd, SIOGIFINDEX, &knet_tap->ifr) < 0)
 		goto out_error;
+
+	knet_tap->next = tap_cfg.tap_head;
+	tap_cfg.tap_head = knet_tap;
 
 	pthread_mutex_unlock(&tap_mutex);
 	return knet_tap;
@@ -217,9 +224,24 @@ out_error:
 
 void knet_tap_close(knet_tap_t knet_tap)
 {
+	knet_tap_t temp = tap_cfg.tap_head;
+	knet_tap_t prev = tap_cfg.tap_head;
+
 	pthread_mutex_lock(&tap_mutex);
 
-	tap_close_unsafe(knet_tap);
+	while (temp != knet_tap) {
+		prev = temp;
+		temp = temp->next;
+	}
+
+	if (temp == knet_tap) {
+		if (knet_tap == prev) {
+			tap_cfg.tap_head = knet_tap->next;
+		} else {
+			prev->next = knet_tap->next;
+		}
+		tap_close_unsafe(knet_tap);
+	}
 
 	pthread_mutex_unlock(&tap_mutex);
 
@@ -238,7 +260,7 @@ int knet_tap_get_mtu(const knet_tap_t knet_tap)
 		goto out;
 	}
 
-	err = ioctl(tap_sockfd, SIOCGIFMTU, &knet_tap->ifr);
+	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFMTU, &knet_tap->ifr);
 	if (err)
 		goto out;
 
@@ -254,6 +276,8 @@ int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
 {
 	int err, oldmtu;
 
+	knet_tap_get_mtu(knet_tap);
+
 	pthread_mutex_lock(&tap_mutex);
 
 	if (!knet_tap) {
@@ -265,7 +289,7 @@ int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
 	oldmtu = knet_tap->ifr.ifr_mtu;
 	knet_tap->ifr.ifr_mtu = mtu;
 
-	err = ioctl(tap_sockfd, SIOCSIFMTU, &knet_tap->ifr);
+	err = ioctl(tap_cfg.tap_sockfd, SIOCSIFMTU, &knet_tap->ifr);
 	if (err)
 		knet_tap->ifr.ifr_mtu = oldmtu;
 
@@ -288,7 +312,7 @@ int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 		goto out;
 	}
 
-	err = ioctl(tap_sockfd, SIOCGIFHWADDR, &knet_tap->ifr);
+	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFHWADDR, &knet_tap->ifr);
 	if (err)
 		goto out;
 
@@ -307,7 +331,12 @@ out:
 int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
 {
 	struct ether_addr oldmac;
+	char *temp_mac = NULL;
 	int err;
+
+	knet_tap_get_mac(knet_tap, &temp_mac);
+	if (temp_mac)
+		free(temp_mac);
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -320,7 +349,7 @@ int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
 	memcpy(&oldmac, knet_tap->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 	memcpy(knet_tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
-	err = ioctl(tap_sockfd, SIOCSIFHWADDR, &knet_tap->ifr);
+	err = ioctl(tap_cfg.tap_sockfd, SIOCSIFHWADDR, &knet_tap->ifr);
 	if (err)
 		memcpy(knet_tap->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
 
@@ -345,7 +374,7 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err=ioctl(tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
+	err=ioctl(tap_cfg.tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
 
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
@@ -371,7 +400,7 @@ int knet_tap_set_down(knet_tap_t knet_tap)
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags &= ~IFF_UP;
-	err=ioctl(tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
+	err=ioctl(tap_cfg.tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
 
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
