@@ -198,8 +198,6 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 		goto out_error;
 	}
 
-	strcpy(dev, knet_tap->ifr.ifr_name);
-
 	if (!tap_sockfd)
 		tap_sockfd = socket(AF_INET, SOCK_STREAM, 0);
 			if (tap_sockfd < 0)
