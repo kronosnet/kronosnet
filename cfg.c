@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "cfg.h"
 #include "libtap.h"

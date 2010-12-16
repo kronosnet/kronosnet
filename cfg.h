@@ -2,6 +2,7 @@
 #define __CFG_H__
 
 #include <stdint.h>
+#include <net/if.h>
 
 #include "libtap.h"
 #include "ring.h"
@@ -14,7 +15,7 @@ struct knet_cfg_ip {
 };
 
 struct knet_cfg_eth {
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 	char name[IFNAMSIZ];
 	uint8_t node_id;
 	int mtu;

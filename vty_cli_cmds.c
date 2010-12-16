@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "cfg.h"
 #include "utils.h"
@@ -1168,7 +1169,8 @@ knet_tap_found:
 
 	if (knet_iface->cfg_ring.knet_h)
 		goto knet_found;
-	knet_iface->cfg_ring.knet_h = knet_handle_new(knet_iface->cfg_eth.knet_tap->knet_tap_fd);
+
+	knet_iface->cfg_ring.knet_h = knet_handle_new(knet_tap_get_fd(knet_iface->cfg_eth.knet_tap));
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);

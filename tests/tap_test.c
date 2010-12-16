@@ -7,6 +7,7 @@
 #include <ifaddrs.h>
 #include <netinet/ether.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "libtap.h"
@@ -43,7 +44,7 @@ static int is_if_in_system(char *name)
 
 static int test_iface(char *name, size_t size)
 {
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 	char *oldname = NULL;
 
 	if ((name) && (strlen(name))) {
@@ -140,8 +141,8 @@ static int check_knet_multi_eth(void)
 	char device_name2[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	struct knet_tap *knet_tap1 = NULL;
-	struct knet_tap *knet_tap2 = NULL;
+	knet_tap_t knet_tap1 = NULL;
+	knet_tap_t knet_tap2 = NULL;
 
 	log_info("Testing multiple knet interface instances");
 
@@ -219,7 +220,7 @@ static int check_knet_mtu(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -294,7 +295,7 @@ static int check_knet_mac(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
 
@@ -453,7 +454,7 @@ static int check_knet_up_down(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 
 	log_info("Testing interface up/down");
 
@@ -525,7 +526,7 @@ static int check_knet_set_del_ip(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 
 	log_info("Testing interface add/remove ip");
 

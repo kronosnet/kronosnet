@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -17,6 +18,7 @@
 
 #include "utils.h"
 #include "libtap.h"
+#include "libtap_private.h"
 
 STATIC int tap_sockfd = 0;
 STATIC pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -142,7 +144,7 @@ out_clean:
 	return err;
 }
 
-static void tap_close_unsafe(struct knet_tap *knet_tap)
+static void tap_close_unsafe(knet_tap_t knet_tap)
 {
 	if (!knet_tap)
 		return;
@@ -155,9 +157,9 @@ static void tap_close_unsafe(struct knet_tap *knet_tap)
 	return;
 }
 
-struct knet_tap *knet_tap_open(char *dev, size_t dev_size)
+knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 {
-	struct knet_tap *knet_tap;
+	knet_tap_t knet_tap;
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -215,7 +217,7 @@ out_error:
 	return NULL;
 }
 
-void knet_tap_close(struct knet_tap *knet_tap)
+void knet_tap_close(knet_tap_t knet_tap)
 {
 	pthread_mutex_lock(&tap_mutex);
 
@@ -226,7 +228,7 @@ void knet_tap_close(struct knet_tap *knet_tap)
 	return;
 }
 
-int knet_tap_get_mtu(const struct knet_tap *knet_tap)
+int knet_tap_get_mtu(const knet_tap_t knet_tap)
 {
 	int err;
 
@@ -250,7 +252,7 @@ out:
 	return err;
 }
 
-int knet_tap_set_mtu(struct knet_tap *knet_tap, const int mtu)
+int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
 {
 	int err, oldmtu;
 
@@ -275,7 +277,7 @@ out:
 	return err;
 }
 
-int knet_tap_get_mac(const struct knet_tap *knet_tap, char **ether_addr)
+int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 {
 	int err;
 	char mac[18];
@@ -304,7 +306,7 @@ out:
 	return err;
 }
 
-int knet_tap_set_mac(struct knet_tap *knet_tap, const char *ether_addr)
+int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
 {
 	struct ether_addr oldmac;
 	int err;
@@ -330,7 +332,7 @@ out:
 	return err;
 }
 
-int knet_tap_set_up(struct knet_tap *knet_tap)
+int knet_tap_set_up(knet_tap_t knet_tap)
 {
 	int err;
 	short int oldflags;
@@ -356,7 +358,7 @@ out:
 	return err;
 }
 
-int knet_tap_set_down(struct knet_tap *knet_tap)
+int knet_tap_set_down(knet_tap_t knet_tap)
 {
 	int err;
 	short int oldflags;
@@ -405,7 +407,7 @@ static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix)
 	return strdup(inet_ntoa(broadcast));
 }
 
-static int tap_set_ip(struct knet_tap *knet_tap, const char *command,
+static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 		       const char *ip_addr, const char *prefix)
 {
 	char *broadcast = NULL;
@@ -442,7 +444,7 @@ static int tap_set_ip(struct knet_tap *knet_tap, const char *command,
 	return tap_execute_shell(cmdline);
 }
 
-int knet_tap_add_ip(struct knet_tap *knet_tap, const char *ip_addr, const char *prefix)
+int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix)
 {
 	int err;
 
@@ -453,7 +455,7 @@ int knet_tap_add_ip(struct knet_tap *knet_tap, const char *ip_addr, const char *
 	return err;
 }
 
-int knet_tap_del_ip(struct knet_tap *knet_tap, const char *ip_addr, const char *prefix)
+int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix)
 {
 	int err;
 
@@ -462,4 +464,9 @@ int knet_tap_del_ip(struct knet_tap *knet_tap, const char *ip_addr, const char *
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
+}
+
+int knet_tap_get_fd(const knet_tap_t knet_tap)
+{
+	return knet_tap->knet_tap_fd;
 }
