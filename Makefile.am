@@ -6,7 +6,7 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= tests
+SUBDIRS			= libtap tests
 
 if BUILD_DOCS
 SUBDIRS			+= docs
