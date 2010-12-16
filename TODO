@@ -4,7 +4,6 @@
 link layer:
 
 * add priority/weight to link config struct
-* add linkid.
 
 host layer:
 
@@ -13,12 +12,11 @@ host layer:
 knet_frame:
 
 * remove padding to add nodeid (1 char) and linkid (3 bit), flags (1 bit compress, 1 bit encrypted, 3 pad)
-* add unions based on pckt type.
 
 ring:
 
 * change from many mallocs to single (per host) malloc in handler_new and map it.
-* support up to 2^16 nodes, up to 8 links per node, 8 listener per node.
+* support 8 listener per node.
 * add api to knet_handle_new to define src/dst mapping in data frame.
 * index pointer list
 
