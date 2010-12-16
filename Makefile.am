@@ -12,6 +12,8 @@ if BUILD_DOCS
 SUBDIRS			+= docs
 endif
 
+AM_CFLAGS		= -I$(srcdir)/libtap
+
 dist_doc_DATA		= \
 			  COPYING.applications \
 			  COPYING.libraries \
@@ -22,7 +24,7 @@ dist_doc_DATA		= \
 
 noinst_HEADERS		= \
 			  cfg.h \
-			  knet.h \
+			  libtap/libtap.h \
 			  knethandle.h \
 			  netutils.h \
 			  ring.h \
@@ -37,7 +39,7 @@ sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
-			  knet.c \
+			  libtap/libtap.c \
 			  main.c \
 			  netutils.c \
 			  ring.c \

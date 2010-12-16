@@ -16,7 +16,7 @@
 #include <pthread.h>
 
 #include "utils.h"
-#include "knet.h"
+#include "libtap.h"
 
 STATIC int knet_sockfd = 0;
 STATIC pthread_mutex_t knet_eth_mutex = PTHREAD_MUTEX_INITIALIZER;

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "knet.h"
+#include "libtap.h"
 #include "ring.h"
 
 struct knet_cfg_ip {

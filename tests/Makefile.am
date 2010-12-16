@@ -24,11 +24,11 @@ check_PROGRAMS = \
 
 TESTS = $(check_PROGRAMS)
 
-AM_CFLAGS		= -DTEST -I$(srcdir)/../
+AM_CFLAGS		= -DTEST -I$(srcdir)/../ -I$(srcdir)/../libtap/
 
 knet_test_SOURCES	= \
 			  knet_test.c \
-			  ../knet.c \
+			  ../libtap/libtap.c \
 			  ../utils.c
 
 ping_test_SOURCES	= \
@@ -57,7 +57,7 @@ listener_test_SOURCES	= \
 vty_test_SOURCES	= \
 			  vty_test.c \
 			  ../cfg.c \
-			  ../knet.c \
+			  ../libtap/libtap.c \
 			  ../vty.c \
 			  ../vty_auth.c \
 			  ../vty_cli.c \

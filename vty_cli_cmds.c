@@ -9,7 +9,7 @@
 
 #include "cfg.h"
 #include "utils.h"
-#include "knet.h"
+#include "libtap.h"
 #include "netutils.h"
 #include "vty.h"
 #include "vty_cli.h"

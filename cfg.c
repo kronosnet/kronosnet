@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "cfg.h"
-#include "knet.h"
+#include "libtap.h"
 #include "utils.h"
 
 static void free_knet_ip(struct knet_cfg_ip *knet_ip)

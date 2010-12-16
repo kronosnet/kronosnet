@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "knet.h"
+#include "libtap.h"
 #include "utils.h"
 
 extern int knet_sockfd;
