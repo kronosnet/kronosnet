@@ -11,9 +11,10 @@
 #include <unistd.h>
 
 #include "libtap.h"
+#include "libtap_private.h"
 #include "utils.h"
 
-extern int tap_sockfd;
+extern struct tap_config tap_cfg;
 
 extern int tap_execute_shell(const char *command);
 
@@ -57,7 +58,7 @@ static int test_iface(char *name, size_t size)
 
 	knet_tap=knet_tap_open(name, size);
 	if (!knet_tap) {
-		if (tap_sockfd < 0)
+		if (tap_cfg.tap_sockfd < 0)
 			log_error("Unable to open knet_socket");
 		log_error("Unable to open knet.");
 		if (oldname)

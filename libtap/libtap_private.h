@@ -6,6 +6,12 @@
 struct knet_tap {
         struct ifreq ifr;
         int knet_tap_fd;
+	struct knet_tap *next;
+};
+
+struct tap_config {
+	struct knet_tap *tap_head;
+	int tap_sockfd;
 };
 
 #endif
