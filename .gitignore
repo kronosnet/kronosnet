@@ -1,4 +1,7 @@
 *.o
+*.la
+*.lo
+*.pc
 stamp-h1
 Makefile.in
 Makefile

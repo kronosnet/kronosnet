@@ -241,6 +241,8 @@ LDFLAGS="$ENV_LDFLAGS"
 
 AC_CONFIG_FILES([
 		Makefile
+		libtap/Makefile
+		libtap/libtap.pc
 		docs/Makefile
 		tests/Makefile
 		])
