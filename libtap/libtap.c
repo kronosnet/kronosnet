@@ -265,11 +265,11 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	knet_tap = malloc(sizeof(struct knet_tap));
+	knet_tap = malloc(sizeof(struct tap_iface));
 	if (!knet_tap)
 		return NULL;
 
-	memset(knet_tap, 0, sizeof(struct knet_tap));
+	memset(knet_tap, 0, sizeof(struct tap_iface));
 
 	if ((knet_tap->knet_tap_fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
