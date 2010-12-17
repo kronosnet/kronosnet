@@ -1,6 +1,7 @@
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
-			  ltmain.sh compile config.h.in config.h.in~
+			  ltmain.sh compile config.h.in config.h.in~ \
+			  autoscan.log configure.scan
 
 AUTOMAKE_OPTIONS	= foreign
 
