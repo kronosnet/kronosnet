@@ -1115,6 +1115,9 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(device, IFNAMSIZ, param, paramlen);
 
+	get_param(vty, 2, &param, &paramlen, &paramoffset);
+	requested_id = param_to_int(param, paramlen);
+
 	knet_iface = knet_get_iface(device, 1);
 	if (!knet_iface) {
 		knet_vty_write(vty, "Error: Unable to allocate memory for config structures%s",
@@ -1150,6 +1153,7 @@ knet_tap_found:
 
 	/* FIXME */
 	knet_iface->cfg_ring.knet_h = knet_handle_new(knet_tap_get_fd(knet_iface->cfg_eth.knet_tap));
+	//knet_iface->cfg_ring.knet_h = knet_handle_new(knet_tap_get_fd(knet_iface->cfg_eth.knet_tap), requested_id);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);
@@ -1158,8 +1162,6 @@ knet_tap_found:
 	}
 
 knet_found:
-	get_param(vty, 2, &param, &paramlen, &paramoffset);
-	requested_id = param_to_int(param, paramlen);
 	if (found) {
 		if (requested_id == knet_iface->cfg_eth.node_id)
 			goto out_found;
