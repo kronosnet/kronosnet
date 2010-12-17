@@ -23,6 +23,7 @@ ring:
 libtap:
 
 * remove log_* calls
+* move all iface management in libtap
 
 general:
 
@@ -40,6 +41,7 @@ vty:
 
 * split cmd_files
 * basic show info
+* fix check_param for ip/prefix
 
 0.2
 ---
