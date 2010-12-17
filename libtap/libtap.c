@@ -188,7 +188,7 @@ out:
 static int tap_get_mac_unsafe(const knet_tap_t knet_tap, char **ether_addr)
 {
 	int err;
-	char mac[18];
+	char mac[MAX_MAC_CHAR];
 
 	if ((!knet_tap) || (!ether_addr)) {
 		errno = EINVAL;
@@ -551,12 +551,62 @@ static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 	return tap_execute_shell(cmdline);
 }
 
+static int tap_find_ip(knet_tap_t knet_tap,
+			const char *ip_addr, const char *prefix,
+			struct tap_ip **tap_ip, struct tap_ip **tap_ip_prev)
+{
+	struct tap_ip *local_tap_ip, *local_tap_ip_prev;
+	int found = 0;
+
+	local_tap_ip = local_tap_ip_prev = knet_tap->tap_ip;
+
+	while(local_tap_ip) {
+		if ((!strcmp(local_tap_ip->ip_addr, ip_addr)) && (!strcmp(local_tap_ip->prefix, prefix))) {
+			found = 1;
+			break;
+		}
+		local_tap_ip_prev = local_tap_ip;
+		local_tap_ip = local_tap_ip->next;
+	}
+
+	if (found) {
+		*tap_ip = local_tap_ip;
+		*tap_ip_prev = local_tap_ip_prev;
+	}
+
+	return found;
+}
+
 int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix)
 {
-	int err;
+	int err = 0, found;
+	struct tap_ip *tap_ip = NULL, *tap_ip_prev = NULL;
 
 	pthread_mutex_lock(&tap_mutex);
+
+	found = tap_find_ip(knet_tap, ip_addr, prefix, &tap_ip, &tap_ip_prev);
+	if (found)
+		goto out_clean;
+
+	tap_ip = malloc(sizeof(struct tap_ip));
+	if (!tap_ip) {
+		err = -1 ;
+		goto out_clean;
+	}
+	memset(tap_ip, 0, sizeof(struct tap_ip));
+	strncpy(tap_ip->ip_addr, ip_addr, MAX_IP_CHAR);
+	strncpy(tap_ip->prefix, prefix, MAX_PREFIX_CHAR);
+
 	err = tap_set_ip(knet_tap, "add", ip_addr, prefix);
+	if (err) {
+		free(tap_ip);
+		goto out_clean;
+	}
+
+	tap_ip->next = knet_tap->tap_ip;
+	knet_tap->tap_ip = tap_ip;
+
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -564,10 +614,27 @@ int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 
 int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix)
 {
-	int err;
+	int err = 0, found;
+	struct tap_ip *tap_ip = NULL, *tap_ip_prev = NULL;
 
 	pthread_mutex_lock(&tap_mutex);
+
+	found = tap_find_ip(knet_tap, ip_addr, prefix, &tap_ip, &tap_ip_prev);
+	if (!found)
+		goto out_clean;
+
 	err = tap_set_ip(knet_tap, "del", ip_addr, prefix);
+
+	if (!err) {
+		if (tap_ip == tap_ip_prev) {
+			knet_tap->tap_ip = tap_ip->next;
+		} else {
+			tap_ip_prev->next = tap_ip->next;
+		}
+		free(tap_ip);
+	}
+
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;

@@ -3,18 +3,22 @@
 
 #include <net/if.h>
 
+#define MAX_IP_CHAR	128
+#define MAX_PREFIX_CHAR	4
+#define MAX_MAC_CHAR	18
+
 struct tap_ip {
-	char *ipaddr[128];
-	char prefix[4];
-	int active;
+	char ip_addr[MAX_IP_CHAR];
+	char prefix[MAX_PREFIX_CHAR];
 	struct tap_ip *next;
 };
 
 struct tap_iface {
-        struct ifreq ifr;
-        int knet_tap_fd;
+	struct ifreq ifr;
+	char default_mac[MAX_MAC_CHAR];
+	int knet_tap_fd;
 	int default_mtu;
-	char default_mac[18];
+	struct tap_ip *tap_ip;
 	struct tap_iface *next;
 };
 #define ifname ifr.ifr_name

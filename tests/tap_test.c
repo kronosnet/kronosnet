@@ -534,6 +534,14 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
+	log_info("Adding duplicate ip: 192.168.168.168/24");
+
+	if (knet_tap_add_ip(knet_tap, "192.168.168.168", "24") < 0) {
+		log_error("Unable to find IP address in libtap db");
+		err=-1;
+		goto out_clean;
+	}
+
 	log_info("Checking ip: 192.168.168.168/24");
 
 	if (tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24")) {
@@ -543,6 +551,14 @@ static int check_knet_set_del_ip(void)
 	}
 
 	log_info("Deleting ip: 192.168.168.168/24");
+
+	if (knet_tap_del_ip(knet_tap, "192.168.168.168", "24") < 0) {
+		log_error("Unable to delete IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Deleting again ip: 192.168.168.168/24");
 
 	if (knet_tap_del_ip(knet_tap, "192.168.168.168", "24") < 0) {
 		log_error("Unable to delete IP address");

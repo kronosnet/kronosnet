@@ -933,7 +933,6 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 	char *param = NULL;
 	char ipaddr[KNET_MAX_HOST_LEN], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_cfg_ip *knet_ip = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
@@ -941,19 +940,11 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	param_to_str(prefix, sizeof(prefix), param, paramlen);
 
-	knet_ip = knet_get_ip(knet_iface, ipaddr, prefix, 0);
-	if (!knet_ip) {
-		knet_vty_write(vty, "Error: Unable to locate ip addr config entry%s", telnet_newline);
-		return -1;
-	}
-
 	if (knet_tap_del_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix) < 0) {
 		knet_vty_write(vty, "Error: Unable to del ip addr %s/%s on device %s%s",
 				ipaddr, prefix, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 		return -1;
 	}
-
-	knet_destroy_ip(knet_iface, knet_ip);
 
 	return 0;
 }
@@ -964,7 +955,6 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	char *param = NULL;
 	char ipaddr[512], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_cfg_ip *knet_ip = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
@@ -972,20 +962,10 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	param_to_str(prefix, sizeof(prefix), param, paramlen);
 
-	knet_ip = knet_get_ip(knet_iface, ipaddr, prefix, 1);
-	if (!knet_ip) {
-		knet_vty_write(vty, "Error: Unable to create ip addr config entry%s", telnet_newline);
-		return -1;
-	}
-
-	if (knet_ip->active)
-		return 0;
 	if (knet_tap_add_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix) < 0) {
 		knet_vty_write(vty, "Error: Unable to set ip addr %s/%s on device %s%s",
 				ipaddr, prefix, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
-		knet_destroy_ip(knet_iface, knet_ip);
 	}
-	knet_ip->active = 1;
 
 	return 0;
 }
@@ -1070,12 +1050,14 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	vty->iface = (void *)knet_iface;
 
+/* FIXME
 	while (knet_iface->cfg_eth.knet_ip != NULL) {
 		knet_tap_del_ip(knet_iface->cfg_eth.knet_tap,
 			    knet_iface->cfg_eth.knet_ip->ipaddr,
 			    knet_iface->cfg_eth.knet_ip->prefix);
 		knet_destroy_ip(knet_iface, knet_iface->cfg_eth.knet_ip);
 	}
+*/
 
 	while (1) {
 		struct knet_host *head;
@@ -1166,6 +1148,7 @@ knet_tap_found:
 	if (knet_iface->cfg_ring.knet_h)
 		goto knet_found;
 
+	/* FIXME */
 	knet_iface->cfg_ring.knet_h = knet_handle_new(knet_tap_get_fd(knet_iface->cfg_eth.knet_tap));
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
@@ -1244,16 +1227,16 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "configure%s", nl);
 
 	while (knet_iface != NULL) {
-		struct knet_cfg_ip *knet_ip = knet_iface->cfg_eth.knet_ip;
-
 		knet_vty_write(vty, " interface %s %d%s", knet_tap_get_name(knet_iface->cfg_eth.knet_tap), knet_iface->cfg_eth.node_id, nl);
 
 		knet_vty_write(vty, "  mtu %d%s", knet_tap_get_mtu(knet_iface->cfg_eth.knet_tap), nl);
 
+/* FIXME
 		while (knet_ip != NULL) {
 			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, nl);
 			knet_ip = knet_ip->next;
 		}
+*/
 
 		knet_vty_write(vty, "  baseport %d%s", knet_iface->cfg_ring.base_port, nl);
 

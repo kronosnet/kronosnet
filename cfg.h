@@ -7,17 +7,10 @@
 #include "libtap.h"
 #include "ring.h"
 
-struct knet_cfg_ip {
-	char *ipaddr;
-	char *prefix;
-	int  active;
-	struct knet_cfg_ip *next;
-};
 
 struct knet_cfg_eth {
 	knet_tap_t knet_tap;
 	uint8_t node_id;
-	struct knet_cfg_ip *knet_ip;
 };
 
 struct knet_cfg_ring {
@@ -38,11 +31,6 @@ struct knet_cfg_top {
 	char *vty_port;
 	struct knet_cfg *knet_cfg;
 };
-
-struct knet_cfg_ip *knet_get_ip(struct knet_cfg *knet_iface,
-				const char *ipaddr, const char *prefix,
-				const int create);
-void knet_destroy_ip(struct knet_cfg *knet_iface, struct knet_cfg_ip *knet_ip);
 
 struct knet_cfg *knet_get_iface(const char *name, const int create);
 void knet_destroy_iface(struct knet_cfg *knet_iface);
