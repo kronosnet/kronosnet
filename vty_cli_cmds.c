@@ -994,13 +994,11 @@ static int knet_cmd_no_mtu(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
-	if (knet_tap_set_mtu(knet_iface->cfg_eth.knet_tap, knet_iface->cfg_eth.default_mtu) < 0) {
-		knet_vty_write(vty, "Error: Unable to set default mtu %d on device %s%s",
-				 knet_iface->cfg_eth.default_mtu, knet_iface->cfg_eth.name, telnet_newline);
+	if (knet_tap_reset_mtu(knet_iface->cfg_eth.knet_tap) < 0) {
+		knet_vty_write(vty, "Error: Unable to set default mtu on device %s%s",
+				knet_iface->cfg_eth.name, telnet_newline);
 				return -1;
 	}
-
-	knet_iface->cfg_eth.mtu = knet_iface->cfg_eth.default_mtu;
 
 	return 0;
 }
@@ -1019,8 +1017,6 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 				expected_mtu, knet_iface->cfg_eth.name, telnet_newline);
 				return -1;
 	}
-
-	knet_iface->cfg_eth.mtu = expected_mtu;
 
 	return 0;
 }
@@ -1211,15 +1207,6 @@ knet_found:
 		goto out_clean;
 	}
 
-	knet_iface->cfg_eth.default_mtu = knet_tap_get_mtu(knet_iface->cfg_eth.knet_tap);
-	if (knet_iface->cfg_eth.default_mtu < 0) {
-		knet_vty_write(vty, "Error: Unable to get current MTU on device %s%s",
-				device, telnet_newline);
-		err = -1;
-		goto out_clean;
-	}
-	knet_iface->cfg_eth.mtu = knet_iface->cfg_eth.default_mtu;
-
 out_found:
 
 	vty->node = NODE_INTERFACE;
@@ -1261,8 +1248,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		knet_vty_write(vty, " interface %s %d%s", knet_iface->cfg_eth.name, knet_iface->cfg_eth.node_id, nl);
 
-		if (knet_iface->cfg_eth.mtu != knet_iface->cfg_eth.default_mtu)
-			 knet_vty_write(vty, "  mtu %d%s", knet_iface->cfg_eth.mtu, nl);
+		knet_vty_write(vty, "  mtu %d%s", knet_tap_get_mtu(knet_iface->cfg_eth.knet_tap), nl);
 
 		while (knet_ip != NULL) {
 			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, nl);
