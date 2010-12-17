@@ -16,7 +16,6 @@ struct knet_cfg_ip {
 
 struct knet_cfg_eth {
 	knet_tap_t knet_tap;
-	char name[IFNAMSIZ];
 	uint8_t node_id;
 	struct knet_cfg_ip *knet_ip;
 };

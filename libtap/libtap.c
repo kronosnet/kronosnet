@@ -577,3 +577,8 @@ int knet_tap_get_fd(const knet_tap_t knet_tap)
 {
 	return knet_tap->knet_tap_fd;
 }
+
+const char *knet_tap_get_name(const knet_tap_t knet_tap)
+{
+	return knet_tap->ifname;
+}

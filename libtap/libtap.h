@@ -10,6 +10,8 @@ knet_tap_t knet_tap_find(char *dev, size_t dev_size);
 
 int knet_tap_get_fd(const knet_tap_t knet_tap);
 
+const char *knet_tap_get_name(const knet_tap_t knet_tap);
+
 int knet_tap_get_mtu(const knet_tap_t knet_tap);
 int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu);
 int knet_tap_reset_mtu(knet_tap_t knet_tap);

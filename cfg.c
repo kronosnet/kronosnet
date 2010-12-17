@@ -93,7 +93,7 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 	int found = 0;
 
 	while (knet_iface != NULL) {
-		if (!strcmp(knet_iface->cfg_eth.name, name)) {
+		if (!strcmp(knet_tap_get_name(knet_iface->cfg_eth.knet_tap), name)) {
 			found = 1;
 			break;
 		}
@@ -106,8 +106,6 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 			goto out_clean;
 
 		memset(knet_iface, 0, sizeof(struct knet_cfg));
-		memcpy(knet_iface->cfg_eth.name, name,
-			sizeof(knet_iface->cfg_eth.name));
 
 		knet_iface->cfg_ring.base_port = KNET_RING_DEFPORT;
 

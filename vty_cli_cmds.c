@@ -949,7 +949,7 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 
 	if (knet_tap_del_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix) < 0) {
 		knet_vty_write(vty, "Error: Unable to del ip addr %s/%s on device %s%s",
-				ipaddr, prefix, knet_iface->cfg_eth.name, telnet_newline);
+				ipaddr, prefix, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 		return -1;
 	}
 
@@ -982,7 +982,7 @@ static int knet_cmd_ip(struct knet_vty *vty)
 		return 0;
 	if (knet_tap_add_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix) < 0) {
 		knet_vty_write(vty, "Error: Unable to set ip addr %s/%s on device %s%s",
-				ipaddr, prefix, knet_iface->cfg_eth.name, telnet_newline);
+				ipaddr, prefix, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 		knet_destroy_ip(knet_iface, knet_ip);
 	}
 	knet_ip->active = 1;
@@ -996,7 +996,7 @@ static int knet_cmd_no_mtu(struct knet_vty *vty)
 
 	if (knet_tap_reset_mtu(knet_iface->cfg_eth.knet_tap) < 0) {
 		knet_vty_write(vty, "Error: Unable to set default mtu on device %s%s",
-				knet_iface->cfg_eth.name, telnet_newline);
+				knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 				return -1;
 	}
 
@@ -1014,7 +1014,7 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 
 	if (knet_tap_set_mtu(knet_iface->cfg_eth.knet_tap, expected_mtu) < 0) {
 		knet_vty_write(vty, "Error: Unable to set requested mtu %d on device %s%s",
-				expected_mtu, knet_iface->cfg_eth.name, telnet_newline);
+				expected_mtu, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 				return -1;
 	}
 
@@ -1026,7 +1026,7 @@ static int knet_cmd_stop(struct knet_vty *vty)
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
 	if (knet_tap_set_down(knet_iface->cfg_eth.knet_tap) < 0)
-		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", knet_iface->cfg_eth.name, telnet_newline);
+		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 
 	knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 
@@ -1042,7 +1042,7 @@ static int knet_cmd_start(struct knet_vty *vty)
 	knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 1);
 
 	if (knet_tap_set_up(knet_iface->cfg_eth.knet_tap) < 0) {
-		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", knet_iface->cfg_eth.name, telnet_newline);
+		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 		return -1;
 	}
@@ -1246,7 +1246,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	while (knet_iface != NULL) {
 		struct knet_cfg_ip *knet_ip = knet_iface->cfg_eth.knet_ip;
 
-		knet_vty_write(vty, " interface %s %d%s", knet_iface->cfg_eth.name, knet_iface->cfg_eth.node_id, nl);
+		knet_vty_write(vty, " interface %s %d%s", knet_tap_get_name(knet_iface->cfg_eth.knet_tap), knet_iface->cfg_eth.node_id, nl);
 
 		knet_vty_write(vty, "  mtu %d%s", knet_tap_get_mtu(knet_iface->cfg_eth.knet_tap), nl);
 
