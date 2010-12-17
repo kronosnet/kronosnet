@@ -243,6 +243,11 @@ void knet_tap_close(knet_tap_t knet_tap)
 		tap_close_unsafe(knet_tap);
 	}
 
+	if (tap_cfg.tap_head == NULL) {
+		close(tap_cfg.tap_sockfd);
+		tap_init = 0;
+	}
+
 	pthread_mutex_unlock(&tap_mutex);
 
 	return;
