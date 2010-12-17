@@ -6,6 +6,8 @@
 struct knet_tap {
         struct ifreq ifr;
         int knet_tap_fd;
+	int default_mtu;
+	char default_mac[18];
 	struct knet_tap *next;
 };
 

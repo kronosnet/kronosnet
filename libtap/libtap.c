@@ -158,9 +158,64 @@ static void tap_close_unsafe(knet_tap_t knet_tap)
 	return;
 }
 
+static void tap_close_cfg(void) {
+	if (tap_cfg.tap_head == NULL) {
+		close(tap_cfg.tap_sockfd);
+		tap_init = 0;
+	}
+}
+
+static int tap_get_mtu_unsafe(const knet_tap_t knet_tap)
+{
+	int err;
+
+	if (!knet_tap) {
+		errno = EINVAL;
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFMTU, &knet_tap->ifr);
+	if (err)
+		goto out;
+
+	err = knet_tap->ifr.ifr_mtu;
+
+out:
+	return err;
+}
+
+static int tap_get_mac_unsafe(const knet_tap_t knet_tap, char **ether_addr)
+{
+	int err;
+	char mac[18];
+
+	if ((!knet_tap) || (!ether_addr)) {
+		errno = EINVAL;
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFHWADDR, &knet_tap->ifr);
+	if (err)
+		goto out;
+
+	ether_ntoa_r((struct ether_addr *)knet_tap->ifr.ifr_hwaddr.sa_data, mac);
+
+	*ether_addr = strdup(mac);
+	if (!*ether_addr)
+		err = -1;
+
+out:
+
+	return err;
+}
+
+
 knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 {
 	knet_tap_t knet_tap;
+	char *temp_mac = NULL;
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -210,6 +265,16 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 	if (ioctl(tap_cfg.tap_sockfd, SIOGIFINDEX, &knet_tap->ifr) < 0)
 		goto out_error;
 
+	knet_tap->default_mtu = tap_get_mtu_unsafe(knet_tap);
+	if (knet_tap->default_mtu < 0)
+		goto out_error;
+
+	if (tap_get_mac_unsafe(knet_tap, &temp_mac) < 0)
+		goto out_error;
+
+	strncpy(knet_tap->default_mac, temp_mac, 18);
+	free(temp_mac);
+
 	knet_tap->next = tap_cfg.tap_head;
 	tap_cfg.tap_head = knet_tap;
 
@@ -218,6 +283,7 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 
 out_error:
 	tap_close_unsafe(knet_tap);
+	tap_close_cfg();
 	pthread_mutex_unlock(&tap_mutex);
 	return NULL;
 }
@@ -226,6 +292,9 @@ void knet_tap_close(knet_tap_t knet_tap)
 {
 	knet_tap_t temp = tap_cfg.tap_head;
 	knet_tap_t prev = tap_cfg.tap_head;
+
+	if (!knet_tap)
+		return;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -243,10 +312,7 @@ void knet_tap_close(knet_tap_t knet_tap)
 		tap_close_unsafe(knet_tap);
 	}
 
-	if (tap_cfg.tap_head == NULL) {
-		close(tap_cfg.tap_sockfd);
-		tap_init = 0;
-	}
+	tap_close_cfg();
 
 	pthread_mutex_unlock(&tap_mutex);
 
@@ -259,19 +325,8 @@ int knet_tap_get_mtu(const knet_tap_t knet_tap)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	if (!knet_tap) {
-		errno = EINVAL;
-		err = -1;
-		goto out;
-	}
+	err = tap_get_mtu_unsafe(knet_tap);
 
-	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFMTU, &knet_tap->ifr);
-	if (err)
-		goto out;
-
-	err = knet_tap->ifr.ifr_mtu;
-
-out:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -280,8 +335,6 @@ out:
 int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
 {
 	int err, oldmtu;
-
-	knet_tap_get_mtu(knet_tap);
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -307,27 +360,11 @@ out:
 int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 {
 	int err;
-	char mac[18];
 
 	pthread_mutex_lock(&tap_mutex);
 
-	if ((!knet_tap) || (!ether_addr)) {
-		errno = EINVAL;
-		err = -1;
-		goto out;
-	}
+	err = tap_get_mac_unsafe(knet_tap, ether_addr);
 
-	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFHWADDR, &knet_tap->ifr);
-	if (err)
-		goto out;
-
-	ether_ntoa_r((struct ether_addr *)knet_tap->ifr.ifr_hwaddr.sa_data, mac);
-
-	*ether_addr = strdup(mac);
-	if (!*ether_addr)
-		err = -1;
-
-out:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -336,12 +373,7 @@ out:
 int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
 {
 	struct ether_addr oldmac;
-	char *temp_mac = NULL;
 	int err;
-
-	knet_tap_get_mac(knet_tap, &temp_mac);
-	if (temp_mac)
-		free(temp_mac);
 
 	pthread_mutex_lock(&tap_mutex);
 
