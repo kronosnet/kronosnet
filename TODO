@@ -20,6 +20,10 @@ ring:
 * add api to knet_handle_new to define src/dst mapping in data frame.
 * index pointer list
 
+libtap:
+
+* remove log_* calls
+
 general:
 
 * logging and what to log
