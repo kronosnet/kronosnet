@@ -357,6 +357,11 @@ out:
 	return err;
 }
 
+int knet_tap_reset_mtu(knet_tap_t knet_tap)
+{
+	return knet_tap_set_mtu(knet_tap, knet_tap->default_mtu);
+}
+
 int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 {
 	int err;
@@ -394,6 +399,11 @@ out:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
+}
+
+int knet_tap_reset_mac(knet_tap_t knet_tap)
+{
+	return knet_tap_set_mac(knet_tap, knet_tap->default_mac);
 }
 
 int knet_tap_set_up(knet_tap_t knet_tap)
