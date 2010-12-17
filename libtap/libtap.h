@@ -6,6 +6,8 @@ typedef struct knet_tap *knet_tap_t;
 knet_tap_t knet_tap_open(char *dev, size_t dev_size);
 void knet_tap_close(knet_tap_t knet_tap);
 
+knet_tap_t knet_tap_find(char *dev, size_t dev_size);
+
 int knet_tap_get_fd(const knet_tap_t knet_tap);
 
 int knet_tap_get_mtu(const knet_tap_t knet_tap);

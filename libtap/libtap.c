@@ -211,6 +211,37 @@ out:
 	return err;
 }
 
+knet_tap_t knet_tap_find(char *dev, size_t dev_size)
+{
+	knet_tap_t knet_tap;
+
+	if (dev == NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (dev_size < IFNAMSIZ) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (strlen(dev) > IFNAMSIZ) {
+		errno = E2BIG;
+		return NULL;
+	}
+
+	pthread_mutex_lock(&tap_mutex);
+
+	knet_tap = tap_cfg.tap_head;
+	while (knet_tap != NULL) {
+		if (!strcmp(dev, knet_tap->ifname))
+			break;
+		knet_tap = knet_tap->next;
+	}
+
+	pthread_mutex_unlock(&tap_mutex);
+	return knet_tap;
+}
 
 knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 {
@@ -243,16 +274,18 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 	if ((knet_tap->knet_tap_fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
 
-	strncpy(knet_tap->ifr.ifr_name, dev, IFNAMSIZ);
+	strncpy(knet_tap->ifname, dev, IFNAMSIZ);
 	knet_tap->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
 	if (ioctl(knet_tap->knet_tap_fd, TUNSETIFF, &knet_tap->ifr) < 0)
 		goto out_error;
 
-	if ((strlen(dev) > 0) && (strcmp(dev, knet_tap->ifr.ifr_name) != 0)) {
+	if ((strlen(dev) > 0) && (strcmp(dev, knet_tap->ifname) != 0)) {
 		errno = EBUSY;
 		goto out_error;
 	}
+
+	strcpy(dev, knet_tap->ifname);
 
 	if (!tap_init) {
 		tap_cfg.tap_head = NULL;
@@ -298,7 +331,7 @@ void knet_tap_close(knet_tap_t knet_tap)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	while (temp != knet_tap) {
+	while ((temp) && (temp != knet_tap)) {
 		prev = temp;
 		temp = temp->next;
 	}
@@ -506,13 +539,13 @@ static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 		snprintf(cmdline, sizeof(cmdline)-1,
 			"ip addr %s %s/%s dev %s broadcast %s",
 			 command, ip_addr, prefix,
-			 knet_tap->ifr.ifr_name, broadcast);
+			 knet_tap->ifname, broadcast);
 		free(broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			"ip addr %s %s/%s dev %s",
 			command, ip_addr, prefix,
-			knet_tap->ifr.ifr_name);
+			knet_tap->ifname);
 	}
 
 	return tap_execute_shell(cmdline);

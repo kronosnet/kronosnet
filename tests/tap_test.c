@@ -46,31 +46,15 @@ static int is_if_in_system(char *name)
 static int test_iface(char *name, size_t size)
 {
 	knet_tap_t knet_tap;
-	char *oldname = NULL;
-
-	if ((name) && (strlen(name))) {
-		oldname = strdup(name);
-		if (!oldname) {
-			log_error("Not enough memory to run the test");
-			exit(1);
-		}
-	}
 
 	knet_tap=knet_tap_open(name, size);
 	if (!knet_tap) {
 		if (tap_cfg.tap_sockfd < 0)
 			log_error("Unable to open knet_socket");
 		log_error("Unable to open knet.");
-		if (oldname)
-			free(oldname);
 		return -1;
 	}
 	log_info("Created interface: %s", name);
-
-	if (oldname) {
-		if (strcmp(oldname, name) != 0)
-			log_error("New name does NOT match request name... NOT FATAL");
-	}
 
 	if (is_if_in_system(name) > 0) {
 		log_info("Found interface %s on the system", name);
@@ -78,13 +62,16 @@ static int test_iface(char *name, size_t size)
 		log_info("Unable to find interface %s on the system", name);
 	}
 
+	if (!knet_tap_find(name, size)) {
+		log_info("Unable to find interface %s in tap db", name);
+	} else {
+		log_info("Found interface %s in tap db", name);
+	}
+
 	knet_tap_close(knet_tap);
 
 	if (is_if_in_system(name) == 0)
 		log_info("Successfully removed interface %s from the system", name);
-
-	if (oldname)
-		free(oldname);
 
 	return 0;
 }

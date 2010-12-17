@@ -11,6 +11,8 @@ struct knet_tap {
 	struct knet_tap *next;
 };
 
+#define ifname ifr.ifr_name
+
 struct tap_config {
 	struct knet_tap *tap_head;
 	int tap_sockfd;
