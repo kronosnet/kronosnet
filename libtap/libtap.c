@@ -145,6 +145,23 @@ out_clean:
 	return err;
 }
 
+static int tap_check(const knet_tap_t knet_tap)
+{
+	knet_tap_t temp = tap_cfg.tap_head;
+
+	if (!knet_tap)
+		return 0;
+
+	while (temp != NULL) {
+		if (knet_tap == temp)
+			return 1;
+
+		temp = temp->next;
+	}
+
+	return 0;
+}
+
 static void tap_close_unsafe(knet_tap_t knet_tap)
 {
 	if (!knet_tap)
@@ -169,19 +186,13 @@ static int tap_get_mtu_unsafe(const knet_tap_t knet_tap)
 {
 	int err;
 
-	if (!knet_tap) {
-		errno = EINVAL;
-		err = -1;
-		goto out;
-	}
-
 	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFMTU, &knet_tap->ifr);
 	if (err)
-		goto out;
+		goto out_clean;
 
 	err = knet_tap->ifr.ifr_mtu;
 
-out:
+out_clean:
 	return err;
 }
 
@@ -190,15 +201,9 @@ static int tap_get_mac_unsafe(const knet_tap_t knet_tap, char **ether_addr)
 	int err;
 	char mac[MAX_MAC_CHAR];
 
-	if ((!knet_tap) || (!ether_addr)) {
-		errno = EINVAL;
-		err = -1;
-		goto out;
-	}
-
 	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFHWADDR, &knet_tap->ifr);
 	if (err)
-		goto out;
+		goto out_clean;
 
 	ether_ntoa_r((struct ether_addr *)knet_tap->ifr.ifr_hwaddr.sa_data, mac);
 
@@ -206,7 +211,7 @@ static int tap_get_mac_unsafe(const knet_tap_t knet_tap, char **ether_addr)
 	if (!*ether_addr)
 		err = -1;
 
-out:
+out_clean:
 
 	return err;
 }
@@ -321,15 +326,19 @@ out_error:
 	return NULL;
 }
 
-void knet_tap_close(knet_tap_t knet_tap)
+int knet_tap_close(knet_tap_t knet_tap)
 {
+	int err = 0;
 	knet_tap_t temp = tap_cfg.tap_head;
 	knet_tap_t prev = tap_cfg.tap_head;
 
-	if (!knet_tap)
-		return;
-
 	pthread_mutex_lock(&tap_mutex);
+
+	if (!tap_check(knet_tap)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
 
 	while ((temp) && (temp != knet_tap)) {
 		prev = temp;
@@ -347,9 +356,10 @@ void knet_tap_close(knet_tap_t knet_tap)
 
 	tap_close_cfg();
 
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
-	return;
+	return err;
 }
 
 int knet_tap_get_mtu(const knet_tap_t knet_tap)
@@ -358,8 +368,15 @@ int knet_tap_get_mtu(const knet_tap_t knet_tap)
 
 	pthread_mutex_lock(&tap_mutex);
 
+	if (!tap_check(knet_tap)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
 	err = tap_get_mtu_unsafe(knet_tap);
 
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -371,10 +388,10 @@ int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	if (!knet_tap) {
+	if (!tap_check(knet_tap)) {
 		errno = EINVAL;
 		err = -1;
-		goto out;
+		goto out_clean;
 	}
 
 	oldmtu = knet_tap->ifr.ifr_mtu;
@@ -384,7 +401,7 @@ int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
 	if (err)
 		knet_tap->ifr.ifr_mtu = oldmtu;
 
-out:
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -401,8 +418,15 @@ int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 
 	pthread_mutex_lock(&tap_mutex);
 
+	if ((!tap_check(knet_tap)) || (!ether_addr)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
 	err = tap_get_mac_unsafe(knet_tap, ether_addr);
 
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -415,10 +439,10 @@ int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	if ((!knet_tap) || (!ether_addr)) {
+	if ((!tap_check(knet_tap)) || (!ether_addr)) {
 		errno = EINVAL;
 		err = -1;
-		goto out;
+		goto out_clean;
 	}
 
 	memcpy(&oldmac, knet_tap->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
@@ -428,7 +452,7 @@ int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
 	if (err)
 		memcpy(knet_tap->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
 
-out:
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -446,10 +470,10 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	if (!knet_tap) {
+	if (!tap_check(knet_tap)) {
 		errno = EINVAL;
 		err = -1;
-		goto out;
+		goto out_clean;
 	}
 
 	oldflags = knet_tap->ifr.ifr_flags;
@@ -459,7 +483,7 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
 
-out:
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -472,10 +496,10 @@ int knet_tap_set_down(knet_tap_t knet_tap)
 
 	pthread_mutex_lock(&tap_mutex);
 
-	if (!knet_tap) {
+	if (!tap_check(knet_tap)) {
 		errno = EINVAL;
 		err = -1;
-		goto out;
+		goto out_clean;
 	}
 
 	oldflags = knet_tap->ifr.ifr_flags;
@@ -485,7 +509,7 @@ int knet_tap_set_down(knet_tap_t knet_tap)
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
 
-out:
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
@@ -519,11 +543,6 @@ static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 {
 	char *broadcast = NULL;
 	char cmdline[4096];
-
-	if ((!knet_tap) || (!ip_addr) || (!prefix) || (!command)) {
-		errno = EINVAL;
-		return -1;
-	}
 
 	if (!strchr(ip_addr, ':')) {
 		broadcast = tap_get_v4_broadcast(ip_addr, prefix);
@@ -584,6 +603,12 @@ int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 
 	pthread_mutex_lock(&tap_mutex);
 
+	if ((!tap_check(knet_tap)) || (!ip_addr) || (!prefix)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
 	found = tap_find_ip(knet_tap, ip_addr, prefix, &tap_ip, &tap_ip_prev);
 	if (found)
 		goto out_clean;
@@ -619,6 +644,12 @@ int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 
 	pthread_mutex_lock(&tap_mutex);
 
+	if ((!tap_check(knet_tap)) || (!ip_addr) || (!prefix)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
 	found = tap_find_ip(knet_tap, ip_addr, prefix, &tap_ip, &tap_ip_prev);
 	if (!found)
 		goto out_clean;
@@ -642,10 +673,54 @@ out_clean:
 
 int knet_tap_get_fd(const knet_tap_t knet_tap)
 {
-	return knet_tap->knet_tap_fd;
+	int fd;
+
+	pthread_mutex_lock(&tap_mutex);
+
+	if (!tap_check(knet_tap)) {
+		errno = EINVAL;
+		fd = -1;
+		goto out_clean;
+	}
+
+	fd = knet_tap->knet_tap_fd;
+
+out_clean:
+	pthread_mutex_unlock(&tap_mutex);
+
+	return fd;
 }
 
 const char *knet_tap_get_name(const knet_tap_t knet_tap)
 {
-	return knet_tap->ifname;
+	char *name = NULL;
+
+	pthread_mutex_lock(&tap_mutex);
+
+	if (!tap_check(knet_tap)) {
+		errno = EINVAL;
+		goto out_clean;
+	}
+
+	name = knet_tap->ifname;
+
+out_clean:
+	pthread_mutex_unlock(&tap_mutex);
+
+	return name;
+}
+
+int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int **entries)
+{
+	int err = 0;
+/*
+	int found = 0;
+	char *ip_list = NULL;
+	struct tap_ip *tap_ip = knet_tap->tap_ip;
+*/
+	pthread_mutex_lock(&tap_mutex);
+
+	pthread_mutex_unlock(&tap_mutex);
+
+	return err;
 }
