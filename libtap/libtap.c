@@ -710,16 +710,46 @@ out_clean:
 	return name;
 }
 
-int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int **entries)
+int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int *entries)
 {
 	int err = 0;
-/*
 	int found = 0;
 	char *ip_list = NULL;
+	int size = 0, offset = 0, len;
 	struct tap_ip *tap_ip = knet_tap->tap_ip;
-*/
+
 	pthread_mutex_lock(&tap_mutex);
 
+	while (tap_ip) {
+		found++;
+		tap_ip = tap_ip->next;
+	}
+
+	size = found * (MAX_IP_CHAR + MAX_PREFIX_CHAR + 2);
+	ip_list = malloc(size);
+	if (!ip_list) {
+		err = -1;
+		goto out_clean;
+	}
+
+	memset(ip_list, 0, size);
+
+	tap_ip = knet_tap->tap_ip;
+
+	while (tap_ip) {
+		len = strlen(tap_ip->ip_addr);
+		memcpy(ip_list + offset, tap_ip->ip_addr, len);
+		offset = offset + len + 1;
+		len = strlen(tap_ip->prefix);
+		memcpy(ip_list + offset, tap_ip->prefix, len);
+		offset = offset + len + 1;
+		tap_ip = tap_ip->next;
+	}
+
+	*ip_addr_list = ip_list;
+	*entries = found;
+
+out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;

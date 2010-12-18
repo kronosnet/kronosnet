@@ -515,6 +515,8 @@ static int check_knet_set_del_ip(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	knet_tap_t knet_tap;
+	char *ip_list = NULL;
+	int ip_list_entries = 0, i, offset = 0;
 
 	log_info("Testing interface add/remove ip");
 
@@ -529,6 +531,14 @@ static int check_knet_set_del_ip(void)
 	log_info("Adding ip: 192.168.168.168/24");
 
 	if (knet_tap_add_ip(knet_tap, "192.168.168.168", "24") < 0) {
+		log_error("Unable to assign IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Adding ip: 192.168.169.169/24");
+
+	if (knet_tap_add_ip(knet_tap, "192.168.169.169", "24") < 0) {
 		log_error("Unable to assign IP address");
 		err=-1;
 		goto out_clean;
@@ -550,9 +560,39 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
+	log_info("Get ip list from libtap:");
+
+	if (knet_tap_get_ips(knet_tap, &ip_list, &ip_list_entries) < 0) {
+		log_error("Not enough mem?");
+		err=-1;
+		goto out_clean;
+	}
+
+	if (ip_list_entries != 2) {
+		log_error("Didn't get enough ip back from libtap?");
+		err=-1;
+		goto out_clean;
+	}
+
+	for (i = 1; i <= ip_list_entries; i++) {
+		log_info("Found IP %s %s in libtap db", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1);
+		offset = offset + strlen(ip_list) + 1;
+		offset = offset + strlen(ip_list + offset) + 1;
+	}
+
+	free(ip_list);
+
 	log_info("Deleting ip: 192.168.168.168/24");
 
 	if (knet_tap_del_ip(knet_tap, "192.168.168.168", "24") < 0) {
+		log_error("Unable to delete IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Deleting ip: 192.168.169.169/24");
+
+	if (knet_tap_del_ip(knet_tap, "192.168.169.169", "24") < 0) {
 		log_error("Unable to delete IP address");
 		err=-1;
 		goto out_clean;

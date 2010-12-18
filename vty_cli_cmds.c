@@ -1039,6 +1039,9 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	char device[IFNAMSIZ];
 	struct knet_cfg *knet_iface = NULL;
 	struct knet_host *host;
+	char *ip_list = NULL;
+	int ip_list_entries = 0, i, offset = 0;
+
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(device, IFNAMSIZ, param, paramlen);
 
@@ -1050,18 +1053,22 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	vty->iface = (void *)knet_iface;
 
-/* FIXME
-	while (knet_iface->cfg_eth.knet_ip != NULL) {
-		knet_tap_del_ip(knet_iface->cfg_eth.knet_tap,
-			    knet_iface->cfg_eth.knet_ip->ipaddr,
-			    knet_iface->cfg_eth.knet_ip->prefix);
-		knet_destroy_ip(knet_iface, knet_iface->cfg_eth.knet_ip);
+	knet_tap_get_ips(knet_iface->cfg_eth.knet_tap, &ip_list, &ip_list_entries);
+	if ((ip_list) && (ip_list_entries > 0)) {
+		for (i = 1; i <= ip_list_entries; i++) {
+			knet_tap_del_ip(knet_iface->cfg_eth.knet_tap,
+					ip_list + offset,
+					ip_list + offset + strlen(ip_list + offset) + 1);
+			offset = offset + strlen(ip_list) + 1;
+			offset = offset + strlen(ip_list + offset) + 1;
+		}
+		free(ip_list);
+		ip_list = NULL;
+		ip_list_entries = 0;
 	}
-*/
 
 	while (1) {
 		struct knet_host *head;
-		int i;
 
 		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head) != 0) {
 			log_error("CLI ERROR: unable to acquire peer lock.. will retry in 1 sec"); 
@@ -1222,6 +1229,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
 	struct knet_host *host = NULL;
 	const char *nl = telnet_newline;
+	char *ip_list = NULL;
+	int ip_list_entries = 0, offset = 0;
 
 	if (vty->filemode)
 		nl = file_newline;
@@ -1233,12 +1242,17 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		knet_vty_write(vty, "  mtu %d%s", knet_tap_get_mtu(knet_iface->cfg_eth.knet_tap), nl);
 
-/* FIXME
-		while (knet_ip != NULL) {
-			knet_vty_write(vty, "  ip %s %s%s", knet_ip->ipaddr, knet_ip->prefix, nl);
-			knet_ip = knet_ip->next;
+		knet_tap_get_ips(knet_iface->cfg_eth.knet_tap, &ip_list, &ip_list_entries);
+		if ((ip_list) && (ip_list_entries > 0)) {
+			for (i = 1; i <= ip_list_entries; i++) {
+				knet_vty_write(vty, "  ip %s %s%s", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1, nl);
+				offset = offset + strlen(ip_list) + 1;
+				offset = offset + strlen(ip_list + offset) + 1;
 		}
-*/
+			free(ip_list);
+			ip_list = NULL;
+			ip_list_entries = 0;
+		}
 
 		knet_vty_write(vty, "  baseport %d%s", knet_iface->cfg_ring.base_port, nl);
 

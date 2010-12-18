@@ -25,6 +25,6 @@ int knet_tap_set_down(knet_tap_t knet_tap);
 
 int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix);
 int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix);
-int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int **entries);
+int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int *entries);
 
 #endif
