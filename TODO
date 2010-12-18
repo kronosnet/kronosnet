@@ -23,8 +23,6 @@ ring:
 libtap:
 
 * remove log_* calls
-* move all iface management in libtap
-* add list_ips
 
 general:
 
