@@ -3,7 +3,7 @@
 
 typedef struct tap_iface *knet_tap_t;
 
-knet_tap_t knet_tap_open(char *dev, size_t dev_size);
+knet_tap_t knet_tap_open(char *dev, size_t dev_size, const char *updownpath);
 int knet_tap_close(knet_tap_t knet_tap);
 
 knet_tap_t knet_tap_find(char *dev, size_t dev_size);

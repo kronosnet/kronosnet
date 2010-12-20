@@ -47,7 +47,7 @@ static int test_iface(char *name, size_t size)
 {
 	knet_tap_t knet_tap;
 
-	knet_tap=knet_tap_open(name, size);
+	knet_tap=knet_tap_open(name, size, NULL);
 	if (!knet_tap) {
 		if (tap_cfg.tap_sockfd < 0)
 			log_error("Unable to open knet_socket");
@@ -140,7 +140,7 @@ static int check_knet_multi_eth(void)
 	strncpy(device_name1, "kronostest1", size);
 	strncpy(device_name2, "kronostest2", size);
 
-	knet_tap1 = knet_tap_open(device_name1, size);
+	knet_tap1 = knet_tap_open(device_name1, size, NULL);
 	if (!knet_tap1) {
 		log_error("Unable to init %s.", device_name1);
 		err = -1;
@@ -153,7 +153,7 @@ static int check_knet_multi_eth(void)
 		log_info("Unable to find interface %s on the system", device_name1);
 	}
 
-	knet_tap2 = knet_tap_open(device_name2, size);
+	knet_tap2 = knet_tap_open(device_name2, size, NULL);
 	if (!knet_tap2) {
 		log_error("Unable to init %s.", device_name2);
 		err = -1;
@@ -175,7 +175,7 @@ static int check_knet_multi_eth(void)
 
 	log_info("Open same device twice");
 
-	knet_tap1 = knet_tap_open(device_name1, size);
+	knet_tap1 = knet_tap_open(device_name1, size, NULL);
 	if (!knet_tap1) {
 		log_error("Unable to init %s.", device_name1);
 		err = -1;
@@ -188,7 +188,7 @@ static int check_knet_multi_eth(void)
 		log_info("Unable to find interface %s on the system", device_name1);
 	}
 
-	knet_tap2 = knet_tap_open(device_name1, size);
+	knet_tap2 = knet_tap_open(device_name1, size, NULL);
 	if (knet_tap2) {
 		log_error("We were able to init 2 interfaces with the same name!");
 		err = -1;
@@ -217,7 +217,7 @@ static int check_knet_mtu(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size);
+	knet_tap = knet_tap_open(device_name, size, NULL);
 	if (!knet_tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
@@ -291,7 +291,7 @@ static int check_knet_mac(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size);
+	knet_tap = knet_tap_open(device_name, size, NULL);
 	if (!knet_tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
@@ -448,7 +448,7 @@ static int check_knet_up_down(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size);
+	knet_tap = knet_tap_open(device_name, size, NULL);
 	if (!knet_tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
@@ -509,6 +509,46 @@ out_clean:
 	return err;
 }
 
+static int check_knet_close_leak(void)
+{
+	char device_name[IFNAMSIZ];
+	size_t size = IFNAMSIZ;
+	int err=0;
+	knet_tap_t knet_tap;
+
+	log_info("Testing close leak (needs valgrind)");
+
+	memset(device_name, 0, size);
+	strncpy(device_name, "kronostest", size);
+	knet_tap = knet_tap_open(device_name, size, NULL);
+	if (!knet_tap) {
+		log_error("Unable to init %s.", device_name);
+		return -1;
+	}
+
+	log_info("Adding ip: 192.168.168.168/24");
+
+	if (knet_tap_add_ip(knet_tap, "192.168.168.168", "24") < 0) {
+		log_error("Unable to assign IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+	log_info("Adding ip: 192.168.169.169/24");
+
+	if (knet_tap_add_ip(knet_tap, "192.168.169.169", "24") < 0) {
+		log_error("Unable to assign IP address");
+		err=-1;
+		goto out_clean;
+	}
+
+out_clean:
+
+	knet_tap_close(knet_tap);
+
+	return err;
+}
+
 static int check_knet_set_del_ip(void)
 {
 	char device_name[IFNAMSIZ];
@@ -522,7 +562,7 @@ static int check_knet_set_del_ip(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size);
+	knet_tap = knet_tap_open(device_name, size, NULL);
 	if (!knet_tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
@@ -670,6 +710,9 @@ int main(void)
 		return -1;
 
 	if (check_knet_set_del_ip() < 0)
+		return -1;
+
+	if (check_knet_close_leak() < 0)
 		return -1;
 
 	return 0;

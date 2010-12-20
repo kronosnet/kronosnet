@@ -15,6 +15,7 @@
 #include <netinet/ether.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <limits.h>
 
 #include "utils.h"
 #include "libtap.h"
@@ -26,6 +27,20 @@ STATIC pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
 STATIC int tap_execute_shell(const char *command);
+static int tap_set_down(knet_tap_t knet_tap);
+static int tap_read_pipe(int fd, char **file, size_t *length);
+static int tap_check(const knet_tap_t knet_tap);
+static void tap_close(knet_tap_t knet_tap);
+static void tap_close_cfg(void);
+static int tap_get_mtu(const knet_tap_t knet_tap);
+static int tap_get_mac(const knet_tap_t knet_tap, char **ether_addr);
+static int tap_set_down(knet_tap_t knet_tap);
+static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix);
+static int tap_set_ip(knet_tap_t knet_tap, const char *command,
+		      const char *ip_addr, const char *prefix);
+static int tap_find_ip(knet_tap_t knet_tap,
+			const char *ip_addr, const char *prefix,
+			struct tap_ip **tap_ip, struct tap_ip **tap_ip_prev);
 
 static int tap_read_pipe(int fd, char **file, size_t *length)
 {
@@ -162,7 +177,7 @@ static int tap_check(const knet_tap_t knet_tap)
 	return 0;
 }
 
-static void tap_close_unsafe(knet_tap_t knet_tap)
+static void tap_close(knet_tap_t knet_tap)
 {
 	if (!knet_tap)
 		return;
@@ -175,14 +190,15 @@ static void tap_close_unsafe(knet_tap_t knet_tap)
 	return;
 }
 
-static void tap_close_cfg(void) {
+static void tap_close_cfg(void)
+{
 	if (tap_cfg.tap_head == NULL) {
 		close(tap_cfg.tap_sockfd);
 		tap_init = 0;
 	}
 }
 
-static int tap_get_mtu_unsafe(const knet_tap_t knet_tap)
+static int tap_get_mtu(const knet_tap_t knet_tap)
 {
 	int err;
 
@@ -196,7 +212,7 @@ out_clean:
 	return err;
 }
 
-static int tap_get_mac_unsafe(const knet_tap_t knet_tap, char **ether_addr)
+static int tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 {
 	int err;
 	char mac[MAX_MAC_CHAR];
@@ -248,7 +264,7 @@ knet_tap_t knet_tap_find(char *dev, size_t dev_size)
 	return knet_tap;
 }
 
-knet_tap_t knet_tap_open(char *dev, size_t dev_size)
+knet_tap_t knet_tap_open(char *dev, size_t dev_size, const char *updownpath)
 {
 	knet_tap_t knet_tap;
 	char *temp_mac = NULL;
@@ -266,6 +282,19 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 	if (strlen(dev) > IFNAMSIZ) {
 		errno = E2BIG;
 		return NULL;
+	}
+
+	if (updownpath) {
+		/* only absolute paths */
+		if (updownpath[0] != '/') {
+			errno = EINVAL;
+			return NULL;
+		}
+		/* 14: 2 for /, 1 for \0 + 11 (post-down.d) */
+		if (strlen(updownpath) >= (PATH_MAX - (strlen(dev) + 14))) {
+			errno = E2BIG;
+			return NULL;
+		}
 	}
 
 	pthread_mutex_lock(&tap_mutex);
@@ -303,15 +332,25 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 	if (ioctl(tap_cfg.tap_sockfd, SIOGIFINDEX, &knet_tap->ifr) < 0)
 		goto out_error;
 
-	knet_tap->default_mtu = tap_get_mtu_unsafe(knet_tap);
+	knet_tap->default_mtu = tap_get_mtu(knet_tap);
 	if (knet_tap->default_mtu < 0)
 		goto out_error;
 
-	if (tap_get_mac_unsafe(knet_tap, &temp_mac) < 0)
+	if (tap_get_mac(knet_tap, &temp_mac) < 0)
 		goto out_error;
 
 	strncpy(knet_tap->default_mac, temp_mac, 18);
 	free(temp_mac);
+
+	if (updownpath) {
+		int len = strlen(updownpath);
+
+		strcpy(knet_tap->updownpath, updownpath);
+		if (knet_tap->updownpath[len] != '/') {
+			knet_tap->updownpath[len+1] = '/';
+		}
+		knet_tap->hasupdown = 1;
+	}
 
 	knet_tap->next = tap_cfg.tap_head;
 	tap_cfg.tap_head = knet_tap;
@@ -320,7 +359,7 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size)
 	return knet_tap;
 
 out_error:
-	tap_close_unsafe(knet_tap);
+	tap_close(knet_tap);
 	tap_close_cfg();
 	pthread_mutex_unlock(&tap_mutex);
 	return NULL;
@@ -331,6 +370,7 @@ int knet_tap_close(knet_tap_t knet_tap)
 	int err = 0;
 	knet_tap_t temp = tap_cfg.tap_head;
 	knet_tap_t prev = tap_cfg.tap_head;
+	struct tap_ip *tap_ip, *tap_ip_next;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -345,15 +385,23 @@ int knet_tap_close(knet_tap_t knet_tap)
 		temp = temp->next;
 	}
 
-	if (temp == knet_tap) {
-		if (knet_tap == prev) {
-			tap_cfg.tap_head = knet_tap->next;
-		} else {
-			prev->next = knet_tap->next;
-		}
-		tap_close_unsafe(knet_tap);
+	if (knet_tap == prev) {
+		tap_cfg.tap_head = knet_tap->next;
+	} else {
+		prev->next = knet_tap->next;
 	}
 
+	tap_set_down(knet_tap);
+
+	tap_ip = knet_tap->tap_ip;
+	while (tap_ip) {
+		tap_ip_next = tap_ip->next;
+		tap_set_ip(knet_tap, "del", tap_ip->ip_addr, tap_ip->prefix);
+		free(tap_ip);
+		tap_ip = tap_ip_next;
+	}
+
+	tap_close(knet_tap);
 	tap_close_cfg();
 
 out_clean:
@@ -374,7 +422,7 @@ int knet_tap_get_mtu(const knet_tap_t knet_tap)
 		goto out_clean;
 	}
 
-	err = tap_get_mtu_unsafe(knet_tap);
+	err = tap_get_mtu(knet_tap);
 
 out_clean:
 	pthread_mutex_unlock(&tap_mutex);
@@ -424,7 +472,7 @@ int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
 		goto out_clean;
 	}
 
-	err = tap_get_mac_unsafe(knet_tap, ether_addr);
+	err = tap_get_mac(knet_tap, ether_addr);
 
 out_clean:
 	pthread_mutex_unlock(&tap_mutex);
@@ -465,7 +513,7 @@ int knet_tap_reset_mac(knet_tap_t knet_tap)
 
 int knet_tap_set_up(knet_tap_t knet_tap)
 {
-	int err;
+	int err = 0;
 	short int oldflags;
 
 	pthread_mutex_lock(&tap_mutex);
@@ -475,6 +523,11 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 		err = -1;
 		goto out_clean;
 	}
+
+	if (knet_tap->up)
+		goto out_clean;
+
+	// FIXME execute pre-up.d
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
@@ -483,16 +536,45 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
 
+	// FIXME execute up.d
+
+	knet_tap->up = 1;
 out_clean:
 	pthread_mutex_unlock(&tap_mutex);
 
 	return err;
 }
 
+static int tap_set_down(knet_tap_t knet_tap)
+{
+	int err = 0;
+	short int oldflags;
+
+	if (!knet_tap->up)
+		goto out_clean;
+
+	// FIXME execute down.d
+
+	oldflags = knet_tap->ifr.ifr_flags;
+	knet_tap->ifr.ifr_flags &= ~IFF_UP;
+	err=ioctl(tap_cfg.tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
+
+	if (err) {
+		knet_tap->ifr.ifr_flags = oldflags;
+		goto out_clean;
+	}
+
+	// FIXME execute post-down.d
+
+	knet_tap->up = 0;
+
+out_clean:
+	return err;
+}
+
 int knet_tap_set_down(knet_tap_t knet_tap)
 {
-	int err;
-	short int oldflags;
+	int err = 0;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -502,12 +584,7 @@ int knet_tap_set_down(knet_tap_t knet_tap)
 		goto out_clean;
 	}
 
-	oldflags = knet_tap->ifr.ifr_flags;
-	knet_tap->ifr.ifr_flags &= ~IFF_UP;
-	err=ioctl(tap_cfg.tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
-
-	if (err)
-		knet_tap->ifr.ifr_flags = oldflags;
+	err=tap_set_down(knet_tap);
 
 out_clean:
 	pthread_mutex_unlock(&tap_mutex);

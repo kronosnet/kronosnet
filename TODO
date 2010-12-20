@@ -69,12 +69,7 @@ general:
 
 * add statistics
 * add init script / spec file
-* /etc/kronosnet/
-		 pre-up.d/
-		 up.d/
-		 down.d/
-		 post-down.d/
-		 (ca-ssl/)
+* /etc/kronosnet/(ca-ssl/)
 * v4/v6 (bindv6only check via cli)
 
 vty:

@@ -2,6 +2,7 @@
 #define __LIBTAP_PRIVATE_H__
 
 #include <net/if.h>
+#include <limits.h>
 
 #define MAX_IP_CHAR	128
 #define MAX_PREFIX_CHAR	4
@@ -15,9 +16,12 @@ struct tap_ip {
 
 struct tap_iface {
 	struct ifreq ifr;
-	char default_mac[MAX_MAC_CHAR];
 	int knet_tap_fd;
+	char default_mac[MAX_MAC_CHAR];
 	int default_mtu;
+	char updownpath[PATH_MAX];
+	int hasupdown;
+	int up;
 	struct tap_ip *tap_ip;
 	struct tap_iface *next;
 };
