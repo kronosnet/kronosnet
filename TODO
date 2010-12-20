@@ -23,12 +23,16 @@ ring:
 libtap:
 
 * remove log_* calls
+* add man pages
+* improve tests to cover thread safety and more error codes
 
 general:
 
 * logging and what to log
   log to file: who logins, config changes and link status changes
   log to vty: cmd execution failure
+
+* consider splitting tests/* based on what they test (tap_test -> libtap/) ?
 
 api:
 
