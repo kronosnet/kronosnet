@@ -25,6 +25,7 @@ check_PROGRAMS = \
 TESTS = $(check_PROGRAMS)
 
 AM_CPPFLAGS		= -DTEST \
+			  -DABSBUILDDIR=\"$(abs_builddir)\" \
 			  -I$(srcdir)/../ \
 			  -I$(srcdir)/../libtap/
 

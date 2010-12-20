@@ -27,6 +27,7 @@ STATIC pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
 STATIC int tap_execute_shell(const char *command);
+static int tap_exec_updown(const knet_tap_t knet_tap, const char *action);
 static int tap_set_down(knet_tap_t knet_tap);
 static int tap_read_pipe(int fd, char **file, size_t *length);
 static int tap_check(const knet_tap_t knet_tap);
@@ -158,6 +159,17 @@ out_clean:
 	}
 
 	return err;
+}
+
+static int tap_exec_updown(const knet_tap_t knet_tap, const char *action)
+{
+	char command[PATH_MAX];
+
+	memset(command, 0, PATH_MAX);
+
+	snprintf(command, PATH_MAX, "%s%s/%s", knet_tap->updownpath, action, knet_tap->ifname);
+
+	return tap_execute_shell(command);
 }
 
 static int tap_check(const knet_tap_t knet_tap)
@@ -346,8 +358,8 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size, const char *updownpath)
 		int len = strlen(updownpath);
 
 		strcpy(knet_tap->updownpath, updownpath);
-		if (knet_tap->updownpath[len] != '/') {
-			knet_tap->updownpath[len+1] = '/';
+		if (knet_tap->updownpath[len-1] != '/') {
+			knet_tap->updownpath[len] = '/';
 		}
 		knet_tap->hasupdown = 1;
 	}
@@ -527,7 +539,7 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 	if (knet_tap->up)
 		goto out_clean;
 
-	// FIXME execute pre-up.d
+	tap_exec_updown(knet_tap, "pre-up.d");
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
@@ -536,7 +548,7 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
 
-	// FIXME execute up.d
+	tap_exec_updown(knet_tap, "up.d");
 
 	knet_tap->up = 1;
 out_clean:
@@ -553,7 +565,7 @@ static int tap_set_down(knet_tap_t knet_tap)
 	if (!knet_tap->up)
 		goto out_clean;
 
-	// FIXME execute down.d
+	tap_exec_updown(knet_tap, "down.d");
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags &= ~IFF_UP;
@@ -564,7 +576,7 @@ static int tap_set_down(knet_tap_t knet_tap)
 		goto out_clean;
 	}
 
-	// FIXME execute post-down.d
+	tap_exec_updown(knet_tap, "post-down.d");
 
 	knet_tap->up = 0;
 
