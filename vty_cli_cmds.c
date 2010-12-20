@@ -1138,7 +1138,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	}
 
 	if (!knet_iface->cfg_eth.knet_tap)
-		knet_iface->cfg_eth.knet_tap = knet_tap_open(device, IFNAMSIZ, NULL);
+		knet_iface->cfg_eth.knet_tap = knet_tap_open(device, IFNAMSIZ, DEFAULT_CONFIG_DIR);
 
 	if ((!knet_iface->cfg_eth.knet_tap) && (errno = EBUSY)) {
 		knet_vty_write(vty, "Error: interface %s seems to exist in the system%s",
