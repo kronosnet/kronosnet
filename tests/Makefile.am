@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
-VALGRIND = valgrind -q --error-exitcode=127 --leak-check=full
+VALGRIND = valgrind -q --error-exitcode=127 --track-fds=yes --leak-check=full
 HELGRIND = valgrind -v --tool=helgrind
 
 check-valgrind: $(check_PROGRAMS)
