@@ -75,8 +75,9 @@ struct knet_frame {
 #define KNET_FRAME_VERSION 0x01
 
 #define KNET_FRAME_DATA 0x00
-#define KNET_FRAME_PING 0x01
-#define KNET_FRAME_PONG 0x03
+#define KNET_FRAME_PING 0x81
+#define KNET_FRAME_PONG 0x82
+#define KNET_FRAME_PMSK 0x80 /* ping/pong packet mask */
 
 knet_handle_t knet_handle_new(int fd, uint16_t node_id);
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);

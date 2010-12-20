@@ -469,8 +469,8 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	src_host = NULL;
 	src_link = NULL;
 
-	if ((knet_h->databuf->kf_type == KNET_FRAME_PING)
-			|| (knet_h->databuf->kf_type == KNET_FRAME_PONG)) {
+	if ((knet_h->databuf->kf_type & KNET_FRAME_PMSK) != 0) {
+		knet_h->databuf->kf_node = ntohs(knet_h->databuf->kf_node);
 		src_host = knet_h->host_index[knet_h->databuf->kf_node];
 
 		if (src_host == NULL)	/* host not found */
@@ -491,7 +491,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_PING:
 		knet_h->databuf->kf_type = KNET_FRAME_PONG;
-		knet_h->databuf->kf_node = knet_h->node_id;
+		knet_h->databuf->kf_node = htons(knet_h->node_id);
 
 		sendto(src_link->sock, knet_h->databuf, len, MSG_DONTWAIT,
 				(struct sockaddr *) &src_link->address,
@@ -568,7 +568,7 @@ static void *knet_heartbt_thread(void *data)
 	knet_h->pingbuf->kf_magic = htonl(KNET_FRAME_MAGIC);
 	knet_h->pingbuf->kf_version = KNET_FRAME_VERSION;
 	knet_h->pingbuf->kf_type = KNET_FRAME_PING;
-	knet_h->pingbuf->kf_node = knet_h->node_id;
+	knet_h->pingbuf->kf_node = htons(knet_h->node_id);
 
 	while (1) {
 		usleep(KNET_PING_TIMERES);
