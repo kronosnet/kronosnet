@@ -165,6 +165,9 @@ static int tap_exec_updown(const knet_tap_t knet_tap, const char *action)
 {
 	char command[PATH_MAX];
 
+	if (!knet_tap->hasupdown)
+		return 0;
+
 	memset(command, 0, PATH_MAX);
 
 	snprintf(command, PATH_MAX, "%s%s/%s", knet_tap->updownpath, action, knet_tap->ifname);

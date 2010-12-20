@@ -43,11 +43,11 @@ static int is_if_in_system(char *name)
 	return found;
 }
 
-static int test_iface(char *name, size_t size)
+static int test_iface(char *name, size_t size, const char *updownpath)
 {
 	knet_tap_t knet_tap;
 
-	knet_tap=knet_tap_open(name, size, NULL);
+	knet_tap=knet_tap_open(name, size, updownpath);
 	if (!knet_tap) {
 		if (tap_cfg.tap_sockfd < 0)
 			log_error("Unable to open knet_socket");
@@ -79,19 +79,20 @@ static int test_iface(char *name, size_t size)
 static int check_knet_tap_open_close(void)
 {
 	char device_name[2*IFNAMSIZ];
+	char fakepath[PATH_MAX];
 	size_t size = IFNAMSIZ;
 
 	memset(device_name, 0, sizeof(device_name));
 
 	log_info("Creating random tap interface:");
-	if (test_iface(device_name, size) < 0) {
+	if (test_iface(device_name, size,  NULL) < 0) {
 		log_error("Unable to create random interface");
 		return -1;
 	}
 
 	log_info("Creating kronostest tap interface:");
 	strncpy(device_name, "kronostest", IFNAMSIZ);
-	if (test_iface(device_name, size) < 0) {
+	if (test_iface(device_name, size, NULL) < 0) {
 		log_error("Unable to create kronosnet interface");
 		return -1;
 	}
@@ -100,14 +101,14 @@ static int check_knet_tap_open_close(void)
 
 	log_info("Testing dev == NULL");
 	errno=0;
-	if ((test_iface(NULL, size) >= 0) || (errno != EINVAL)) {
+	if ((test_iface(NULL, size, NULL) >= 0) || (errno != EINVAL)) {
 		log_error("Something is wrong in knet_tap_open sanity checks");
 		return -1;
 	}
 
 	log_info("Testing size < IFNAMSIZ");
 	errno=0;
-	if ((test_iface(device_name, 1) >= 0) || (errno != EINVAL)) {
+	if ((test_iface(device_name, 1, NULL) >= 0) || (errno != EINVAL)) {
 		log_error("Something is wrong in knet_tap_open sanity checks");
 		return -1;
 	}
@@ -115,7 +116,26 @@ static int check_knet_tap_open_close(void)
 	log_info("Testing device_name size > IFNAMSIZ");
 	errno=0;
 	strcpy(device_name, "abcdefghilmnopqrstuvwz");
-	if ((test_iface(device_name, IFNAMSIZ) >= 0) || (errno != E2BIG)) {
+	if ((test_iface(device_name, IFNAMSIZ, NULL) >= 0) || (errno != E2BIG)) {
+		log_error("Something is wrong in knet_tap_open sanity checks");
+		return -1;
+	}
+
+	log_info("Testing updown path != abs");
+	errno=0;
+	strcpy(device_name, "kronostest");
+	if ((test_iface(device_name, IFNAMSIZ, "foo")  >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_tap_open sanity checks");
+		return -1;
+	}
+
+	memset(fakepath, '/', PATH_MAX - 2);
+	fakepath[PATH_MAX-1] = 0;
+
+	log_info("Testing updown path > PATH_MAX");
+	errno=0;
+	strcpy(device_name, "kronostest");
+	if ((test_iface(device_name, IFNAMSIZ, fakepath)  >= 0) || (errno != E2BIG)) {
 		log_error("Something is wrong in knet_tap_open sanity checks");
 		return -1;
 	}
@@ -483,6 +503,60 @@ static int check_knet_up_down(void)
 		err = -1;
 		goto out_clean;
 	}
+
+	knet_tap_close(knet_tap);
+
+	log_info("Testing interface pre-up/up/down/post-down (exec errors)");
+
+	knet_tap = knet_tap_open(device_name, size, ABSBUILDDIR "/tap_updown_bad");
+	if (!knet_tap) {
+		log_error("Unable to init %s.", device_name);
+		return -1;
+	}
+
+	log_info("Put the interface up");
+
+	if (knet_tap_set_up(knet_tap) < 0) {
+		log_error("Unable to set interface up");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Put the interface down");
+
+	if (knet_tap_set_down(knet_tap) < 0) {
+		log_error("Unable to put the interface down");
+		err = -1;
+		goto out_clean;
+	}
+
+	knet_tap_close(knet_tap);
+
+	log_info("Testing interface pre-up/up/down/post-down");
+
+	knet_tap = knet_tap_open(device_name, size, ABSBUILDDIR "/tap_updown_good");
+	if (!knet_tap) {
+		log_error("Unable to init %s.", device_name);
+		return -1;
+	}
+
+	log_info("Put the interface up");
+
+	if (knet_tap_set_up(knet_tap) < 0) {
+		log_error("Unable to set interface up");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Put the interface down");
+
+	if (knet_tap_set_down(knet_tap) < 0) {
+		log_error("Unable to put the interface down");
+		err = -1;
+		goto out_clean;
+	}
+
+	knet_tap_close(knet_tap);
 
 	log_info("Test ERROR conditions");
 
