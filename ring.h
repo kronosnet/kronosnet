@@ -76,9 +76,9 @@ struct knet_frame {
 
 #define KNET_FRAME_DATA 0x00
 #define KNET_FRAME_PING 0x01
-#define KNET_FRAME_PONG 0x02
+#define KNET_FRAME_PONG 0x03
 
-knet_handle_t knet_handle_new(int fd);
+knet_handle_t knet_handle_new(int fd, uint16_t node_id);
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);
 

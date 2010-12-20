@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	knet_h = knet_handle_new(sock);
+	knet_h = knet_handle_new(sock, 1);
 
 	for (i = 0; i < HOST_LIST_SIZE; i++)
 		knet_host_add(knet_h, i);

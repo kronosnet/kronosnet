@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if ((knet_h = knet_handle_new(sock)) == NULL) {
+	if ((knet_h = knet_handle_new(sock, 1)) == NULL) {
 		log_error("Unable to create new knet_handle_t");
 		exit(EXIT_FAILURE);
 	}

@@ -20,7 +20,7 @@
 static void *knet_control_thread(void *data);
 static void *knet_heartbt_thread(void *data);
 
-knet_handle_t knet_handle_new(int fd)
+knet_handle_t knet_handle_new(int fd, uint16_t node_id)
 {
 	knet_handle_t knet_h;
 	struct epoll_event ev;
@@ -45,6 +45,7 @@ knet_handle_t knet_handle_new(int fd)
 
 	knet_h->sockfd = fd;
 	knet_h->epollfd = epoll_create(KNET_MAX_EVENTS);
+	knet_h->node_id = node_id;
 
 	if (knet_h->epollfd < 0)
 		goto exit_fail4;
@@ -445,9 +446,8 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	ssize_t len;
 	struct sockaddr_storage address;
 	socklen_t addrlen;
-	int j;
-	struct knet_host *i;
-	struct knet_link *link_src;
+	struct knet_host *src_host;
+	struct knet_link *src_link;
 	unsigned long long latency_last;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
@@ -466,23 +466,19 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	if (knet_h->databuf->kf_version != KNET_FRAME_VERSION)
 		goto exit_unlock;
 
-	/* searching host/link, TODO: improve lookup */
-	link_src = NULL;
+	src_host = NULL;
+	src_link = NULL;
 
-	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = 0; j < KNET_MAX_LINK; j++) {
-			if (cmpaddr(&address, addrlen,
-				    &i->link[j].address, addrlen) == 0) {
-				link_src = &i->link[j];
-				break;
-			}
-		}
-		if (link_src)
-			break;
+	if ((knet_h->databuf->kf_type == KNET_FRAME_PING)
+			|| (knet_h->databuf->kf_type == KNET_FRAME_PONG)) {
+		src_host = knet_h->host_index[knet_h->databuf->kf_node];
+
+		if (src_host == NULL)	/* host not found */
+			goto exit_unlock;
+
+		src_link = src_host->link +
+				(knet_h->databuf->kf_link % KNET_MAX_LINK);
 	}
-
-	if (link_src == NULL) /* host/link not found */
-		goto exit_unlock;
 
 	switch (knet_h->databuf->kf_type) {
 	case KNET_FRAME_DATA:
@@ -495,63 +491,68 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_PING:
 		knet_h->databuf->kf_type = KNET_FRAME_PONG;
+		knet_h->databuf->kf_node = knet_h->node_id;
 
-		sendto(i->link[j].sock, knet_h->databuf, len, MSG_DONTWAIT,
-				(struct sockaddr *) &i->link[j].address,
+		sendto(src_link->sock, knet_h->databuf, len, MSG_DONTWAIT,
+				(struct sockaddr *) &src_link->address,
 				sizeof(struct sockaddr_storage));
 
 		break;
 	case KNET_FRAME_PONG:
-		clock_gettime(CLOCK_MONOTONIC, &i->link[j].pong_last);
+		clock_gettime(CLOCK_MONOTONIC, &src_link->pong_last);
 
-		timespec_diff(knet_h->databuf->kf_time, i->link[j].pong_last, &latency_last);
+		timespec_diff(knet_h->databuf->kf_time,
+				src_link->pong_last, &latency_last);
 
-		i->link[j].latency =
-			((i->link[j].latency * i->link[j].latency_exp) +
+		src_link->latency =
+			((src_link->latency * src_link->latency_exp) +
 			((latency_last / 1000llu) *
-				(i->link[j].latency_fix - i->link[j].latency_exp))) /
-					i->link[j].latency_fix;
+				(src_link->latency_fix - src_link->latency_exp))) /
+					src_link->latency_fix;
 
-		if (i->link[j].latency < i->link[j].pong_timeout)
-			i->link[j].enabled = 1;
+		if (src_link->latency < src_link->pong_timeout)
+			src_link->enabled = 1;
 
 		break;
+	default:
+		goto exit_unlock;
 	}
 
  exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static void knet_heartbeat_check_each(knet_handle_t knet_h, struct knet_link *j)
+static void heartbeat_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 {
 	int len;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
 
 	/* caching last pong to avoid race conditions */
-	pong_last = j->pong_last;
+	pong_last = dst_link->pong_last;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
 		return;
 
-	timespec_diff(j->ping_last, clock_now, &diff_ping);
+	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
-	if (diff_ping >= (j->ping_interval * 1000llu)) {
+	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
 		knet_h->pingbuf->kf_time = clock_now;
+		knet_h->pingbuf->kf_link = dst_link->link_id;
 
-		len = sendto(j->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
-			MSG_DONTWAIT, (struct sockaddr *) &j->address,
+		len = sendto(dst_link->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
+			MSG_DONTWAIT, (struct sockaddr *) &dst_link->address,
 			sizeof(struct sockaddr_storage));
 
 		if (len == KNET_PINGBUFSIZE)
-			j->ping_last = clock_now;
+			dst_link->ping_last = clock_now;
 	}
 
-	if (j->enabled == 1) {
+	if (dst_link->enabled == 1) {
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
-		if (diff_ping >= (j->pong_timeout * 1000llu))
-			j->enabled = 0; /* TODO: might need write lock */
+		if (diff_ping >= (dst_link->pong_timeout * 1000llu))
+			dst_link->enabled = 0; /* TODO: might need write lock */
 	}
 }
 
@@ -567,6 +568,7 @@ static void *knet_heartbt_thread(void *data)
 	knet_h->pingbuf->kf_magic = htonl(KNET_FRAME_MAGIC);
 	knet_h->pingbuf->kf_version = KNET_FRAME_VERSION;
 	knet_h->pingbuf->kf_type = KNET_FRAME_PING;
+	knet_h->pingbuf->kf_node = knet_h->node_id;
 
 	while (1) {
 		usleep(KNET_PING_TIMERES);
@@ -577,7 +579,7 @@ static void *knet_heartbt_thread(void *data)
 		for (i = knet_h->host_head; i != NULL; i = i->next) {
 			for (j = 0; j < KNET_MAX_LINK; j++) {
 				if (i->link[j].ready != 1) continue;
-				knet_heartbeat_check_each(knet_h, &i->link[j]);
+				heartbeat_check_each(knet_h, &i->link[j]);
 			}
 		}
 

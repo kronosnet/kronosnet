@@ -10,6 +10,7 @@
 struct knet_handle {
 	int sockfd;
 	int epollfd;
+	uint16_t node_id;
 	unsigned int enabled:1;
 	struct knet_host *host_head;
 	struct knet_host *host_index[KNET_MAX_HOST];
