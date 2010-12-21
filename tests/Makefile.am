@@ -27,23 +27,24 @@ TESTS = $(check_PROGRAMS)
 AM_CPPFLAGS		= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\" \
 			  -I$(srcdir)/../ \
-			  -I$(srcdir)/../libtap/
+			  -I$(srcdir)/../libtap/ \
+			  -I$(srcdir)/../libknet/
+
+AM_LDFLAGS		= \
+			  $(top_builddir)/libtap/libtap_test.la \
+			  $(top_builddir)/libknet/libknet.la
 
 tap_test_SOURCES	= \
 			  tap_test.c \
 			  ../utils.c
 
-tap_test_LDADD		= $(top_builddir)/libtap/libtap_test.la
-
 ping_test_SOURCES	= \
 			  ping_test.c \
-			  ../ring.c \
 			  ../netutils.c \
 			  ../utils.c
 
 khandle_test_SOURCES	= \
 			  khandle_test.c \
-			  ../ring.c \
 			  ../netutils.c \
 			  ../utils.c
 
@@ -54,7 +55,6 @@ lookup_bench_SOURCES	= \
 
 listener_test_SOURCES	= \
 			  listener_test.c \
-			  ../ring.c \
 			  ../netutils.c \
 			  ../utils.c
 
@@ -67,10 +67,7 @@ vty_test_SOURCES	= \
 			  ../vty_cli_cmds.c \
 			  ../vty_utils.c \
 			  ../netutils.c \
-			  ../ring.c \
 			  ../utils.c
-
-vty_test_LDADD		= $(top_builddir)/libtap/libtap_test.la
 
 netutils_test_SOURCES	= \
 			  netutils_test.c \

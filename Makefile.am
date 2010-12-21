@@ -7,13 +7,13 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= libtap tests
+SUBDIRS			= libtap libknet tests
 
 if BUILD_DOCS
 SUBDIRS			+= docs
 endif
 
-AM_CFLAGS		= -I$(srcdir)/libtap
+AM_CFLAGS		= -I$(srcdir)/libtap -I$(srcdir)/libknet
 
 dist_doc_DATA		= \
 			  COPYING.applications \
@@ -25,10 +25,7 @@ dist_doc_DATA		= \
 
 noinst_HEADERS		= \
 			  cfg.h \
-			  libtap/libtap.h \
-			  knethandle.h \
 			  netutils.h \
-			  ring.h \
 			  utils.h \
 			  vty.h \
 			  vty_auth.h \
@@ -43,7 +40,7 @@ kronosnetd_SOURCES	= \
 			  libtap/libtap.c \
 			  main.c \
 			  netutils.c \
-			  ring.c \
+			  libknet/ring.c \
 			  utils.c \
 			  vty.c \
 			  vty_auth.c \
