@@ -16,8 +16,8 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <limits.h>
+#include <stdio.h>
 
-#include "utils.h"
 #include "libtap.h"
 #include "libtap_private.h"
 
@@ -26,8 +26,8 @@ STATIC struct tap_config tap_cfg;
 STATIC pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
-STATIC int tap_execute_shell(const char *command);
-static int tap_exec_updown(const knet_tap_t knet_tap, const char *action);
+STATIC int tap_execute_shell(const char *command, char **error_string);
+static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char **error_string);
 static int tap_set_down(knet_tap_t knet_tap);
 static int tap_read_pipe(int fd, char **file, size_t *length);
 static int tap_check(const knet_tap_t knet_tap);
@@ -38,7 +38,8 @@ static int tap_get_mac(const knet_tap_t knet_tap, char **ether_addr);
 static int tap_set_down(knet_tap_t knet_tap);
 static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix);
 static int tap_set_ip(knet_tap_t knet_tap, const char *command,
-		      const char *ip_addr, const char *prefix);
+		      const char *ip_addr, const char *prefix,
+		      char **error_string);
 static int tap_find_ip(knet_tap_t knet_tap,
 			const char *ip_addr, const char *prefix,
 			struct tap_ip **tap_ip, struct tap_ip **tap_ip_prev);
@@ -92,18 +93,19 @@ static int tap_read_pipe(int fd, char **file, size_t *length)
 	return 0;
 }
 
-STATIC int tap_execute_shell(const char *command)
+STATIC int tap_execute_shell(const char *command, char **error_string)
 {
 	pid_t pid;
 	int status, err = 0;
 	int fd[2];
-	char *data = NULL;
 	size_t size = 0;
 
-	if (command == NULL) {
+	if ((command == NULL) || (!error_string)) {
 		errno = EINVAL;
 		return -1;
 	}
+
+	*error_string = NULL;
 
 	err = pipe(fd);
 	if (err)
@@ -118,19 +120,17 @@ STATIC int tap_execute_shell(const char *command)
 	if (pid) { /* parent */
 
 		close(fd[1]);
-		err = tap_read_pipe(fd[0], &data, &size);
+		err = tap_read_pipe(fd[0], error_string, &size);
 		if (err)
 			goto out_clean;
 
 		waitpid(pid, &status, 0);
 		if (!WIFEXITED(status)) {
-			log_error("shell: child did not terminate normally");
 			err = -1;
 			goto out_clean;
 		}
 		if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-			log_error("shell: child returned %d", WEXITSTATUS(status));
-			err = -1;
+			err = WEXITSTATUS(status);
 			goto out_clean;
 		}
 	} else { /* child */
@@ -139,10 +139,8 @@ STATIC int tap_execute_shell(const char *command)
 		close(2);
 
 		close(fd[0]);
-		if(dup2(fd[1], 1) < 0)
-			log_error("Unable to redirect stdout");
-		if(dup2(fd[1], 2) < 0)
-			log_error("Unable to redirect stderr");
+		dup2(fd[1], 1);
+		dup2(fd[1], 2);
 		close(fd[1]);
 
 		execlp("/bin/sh", "/bin/sh", "-c", command, NULL);
@@ -153,15 +151,10 @@ out_clean:
 	close(fd[0]);
 	close(fd[1]);
 
-	if ((size) && (err)) {
-		log_error("%s", data);
-		free(data);
-	}
-
 	return err;
 }
 
-static int tap_exec_updown(const knet_tap_t knet_tap, const char *action)
+static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char **error_string)
 {
 	char command[PATH_MAX];
 
@@ -172,7 +165,7 @@ static int tap_exec_updown(const knet_tap_t knet_tap, const char *action)
 
 	snprintf(command, PATH_MAX, "%s%s/%s", knet_tap->updownpath, action, knet_tap->ifname);
 
-	return tap_execute_shell(command);
+	return tap_execute_shell(command, error_string);
 }
 
 static int tap_check(const knet_tap_t knet_tap)
@@ -386,6 +379,7 @@ int knet_tap_close(knet_tap_t knet_tap)
 	knet_tap_t temp = tap_cfg.tap_head;
 	knet_tap_t prev = tap_cfg.tap_head;
 	struct tap_ip *tap_ip, *tap_ip_next;
+	char *error_string = NULL;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -411,7 +405,9 @@ int knet_tap_close(knet_tap_t knet_tap)
 	tap_ip = knet_tap->tap_ip;
 	while (tap_ip) {
 		tap_ip_next = tap_ip->next;
-		tap_set_ip(knet_tap, "del", tap_ip->ip_addr, tap_ip->prefix);
+		tap_set_ip(knet_tap, "del", tap_ip->ip_addr, tap_ip->prefix, &error_string);
+		if (error_string)
+			free(error_string);
 		free(tap_ip);
 		tap_ip = tap_ip_next;
 	}
@@ -530,6 +526,7 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 {
 	int err = 0;
 	short int oldflags;
+	char *error_string = NULL;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -542,7 +539,9 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 	if (knet_tap->up)
 		goto out_clean;
 
-	tap_exec_updown(knet_tap, "pre-up.d");
+	tap_exec_updown(knet_tap, "pre-up.d", &error_string);
+	if (error_string)
+		free(error_string);
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
@@ -551,7 +550,9 @@ int knet_tap_set_up(knet_tap_t knet_tap)
 	if (err)
 		knet_tap->ifr.ifr_flags = oldflags;
 
-	tap_exec_updown(knet_tap, "up.d");
+	tap_exec_updown(knet_tap, "up.d", &error_string);
+	if (error_string)
+		free(error_string);
 
 	knet_tap->up = 1;
 out_clean:
@@ -564,11 +565,14 @@ static int tap_set_down(knet_tap_t knet_tap)
 {
 	int err = 0;
 	short int oldflags;
+	char *error_string = NULL;
 
 	if (!knet_tap->up)
 		goto out_clean;
 
-	tap_exec_updown(knet_tap, "down.d");
+	tap_exec_updown(knet_tap, "down.d", &error_string);
+	if (error_string)
+		free(error_string);
 
 	oldflags = knet_tap->ifr.ifr_flags;
 	knet_tap->ifr.ifr_flags &= ~IFF_UP;
@@ -579,7 +583,9 @@ static int tap_set_down(knet_tap_t knet_tap)
 		goto out_clean;
 	}
 
-	tap_exec_updown(knet_tap, "post-down.d");
+	tap_exec_updown(knet_tap, "post-down.d", &error_string);
+	if (error_string)
+		free(error_string);
 
 	knet_tap->up = 0;
 
@@ -631,7 +637,8 @@ static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix)
 }
 
 static int tap_set_ip(knet_tap_t knet_tap, const char *command,
-		       const char *ip_addr, const char *prefix)
+		      const char *ip_addr, const char *prefix,
+		      char **error_string)
 {
 	char *broadcast = NULL;
 	char cmdline[4096];
@@ -659,7 +666,7 @@ static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 			knet_tap->ifname);
 	}
 
-	return tap_execute_shell(cmdline);
+	return tap_execute_shell(cmdline, error_string);
 }
 
 static int tap_find_ip(knet_tap_t knet_tap,
@@ -692,6 +699,7 @@ int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 {
 	int err = 0, found;
 	struct tap_ip *tap_ip = NULL, *tap_ip_prev = NULL;
+	char *error_string = NULL;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -714,7 +722,10 @@ int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 	strncpy(tap_ip->ip_addr, ip_addr, MAX_IP_CHAR);
 	strncpy(tap_ip->prefix, prefix, MAX_PREFIX_CHAR);
 
-	err = tap_set_ip(knet_tap, "add", ip_addr, prefix);
+	err = tap_set_ip(knet_tap, "add", ip_addr, prefix, &error_string);
+	if (error_string)
+		free(error_string);
+
 	if (err) {
 		free(tap_ip);
 		goto out_clean;
@@ -733,6 +744,7 @@ int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 {
 	int err = 0, found;
 	struct tap_ip *tap_ip = NULL, *tap_ip_prev = NULL;
+	char *error_string = NULL;
 
 	pthread_mutex_lock(&tap_mutex);
 
@@ -746,7 +758,9 @@ int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix
 	if (!found)
 		goto out_clean;
 
-	err = tap_set_ip(knet_tap, "del", ip_addr, prefix);
+	err = tap_set_ip(knet_tap, "del", ip_addr, prefix, &error_string);
+	if (error_string)
+		free(error_string);
 
 	if (!err) {
 		if (tap_ip == tap_ip_prev) {

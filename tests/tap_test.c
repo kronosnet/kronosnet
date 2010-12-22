@@ -16,7 +16,7 @@
 
 extern struct tap_config tap_cfg;
 
-extern int tap_execute_shell(const char *command);
+extern int tap_execute_shell(const char *command, char **error_string);
 
 static int is_if_in_system(char *name)
 {
@@ -408,6 +408,7 @@ static int check_tap_execute_shell(void)
 {
 	int err = 0;
 	char command[4096];
+	char *error_string = NULL;
 
 	memset(command, 0, sizeof(command));
 
@@ -415,9 +416,14 @@ static int check_tap_execute_shell(void)
 
 	log_info("command /bin/true");
 
-	if (tap_execute_shell("/bin/true") < 0) {
+	err = tap_execute_shell("/bin/true", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to execute /bin/true ?!?!");
-		err = -1;
 		goto out_clean;
 	}
 
@@ -425,32 +431,67 @@ static int check_tap_execute_shell(void)
 
 	log_info("command /bin/false");
 
-	if (!tap_execute_shell("/bin/false")) {
+	err = tap_execute_shell("/bin/false", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Can we really execute /bin/false successfully?!?!");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("command that outputs to stdout (enforcing redirect)");
-	if (!tap_execute_shell("/bin/grep -h 2>&1")) {
+
+	err = tap_execute_shell("/bin/grep -h 2>&1", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Can we really execute /bin/grep -h successfully?!?");
 		err = -1;
 		goto out_clean;
 	} 
 
 	log_info("command that outputs to stderr");
-	if (!tap_execute_shell("/bin/grep -h")) {
+	err = tap_execute_shell("/bin/grep -h", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Can we really execute /bin/grep -h successfully?!?");
 		err = -1;
 		goto out_clean;
 	} 
 
 	log_info("empty command");
-	if (!tap_execute_shell(NULL)) {
+	err = tap_execute_shell(NULL, &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Can we really execute (nil) successfully?!?!");
 		err = -1;
 		goto out_clean;
 	}
+
+	log_info("empty error");
+	err = tap_execute_shell("/bin/true", NULL);
+	if (!err) {
+		log_error("Check EINVAL filter for no error_string!");
+		err = -1;
+		goto out_clean;
+	}
+
+	err = 0;
 
 out_clean:
 
@@ -463,6 +504,7 @@ static int check_knet_up_down(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	knet_tap_t knet_tap;
+	char *error_string = NULL;
 
 	log_info("Testing interface up/down");
 
@@ -482,7 +524,14 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	if (tap_execute_shell("ip addr show dev kronostest | grep -q UP") < 0) {
+
+	err = tap_execute_shell("ip addr show dev kronostest | grep -q UP", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to verify inteface UP");
 		err = -1;
 		goto out_clean;
@@ -496,9 +545,13 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	log_info("A shell error here is NORMAL");
-
-	if (!tap_execute_shell("ifconfig kronostest | grep -q UP")) {
+	err = tap_execute_shell("ifconfig kronostest | grep -q UP", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Unable to verify inteface DOWN");
 		err = -1;
 		goto out_clean;
@@ -631,6 +684,7 @@ static int check_knet_set_del_ip(void)
 	knet_tap_t knet_tap;
 	char *ip_list = NULL;
 	int ip_list_entries = 0, i, offset = 0;
+	char *error_string = NULL;
 
 	log_info("Testing interface add/remove ip");
 
@@ -668,7 +722,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Checking ip: 192.168.168.168/24");
 
-	if (tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24")) {
+	err = tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err) {
 		log_error("Unable to verify IP address");
 		err=-1;
 		goto out_clean;
@@ -720,8 +780,13 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	log_info("A shell error here is NORMAL");
-	if (!tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24")) {
+	err = tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Unable to verify IP address");
 		err=-1;
 		goto out_clean;
@@ -735,7 +800,13 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	if (tap_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64")) {
+	err = tap_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err) {
 		log_error("Unable to verify IP address");
 		err=-1;
 		goto out_clean;
@@ -749,8 +820,13 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	log_info("A shell error here is NORMAL");
-	if (!tap_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64")) {
+	err = tap_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
 		log_error("Unable to verify IP address");
 		err=-1;
 		goto out_clean;
