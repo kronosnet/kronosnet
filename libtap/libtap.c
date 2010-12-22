@@ -19,7 +19,7 @@
 #include <stdio.h>
 
 #include "libtap.h"
-#include "libtap_private.h"
+#include "libtap-private.h"
 
 STATIC int tap_init = 0;
 STATIC struct tap_config tap_cfg;

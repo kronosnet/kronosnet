@@ -9,7 +9,7 @@ libversion		= 0:0:0
 
 include_HEADERS		= libtap.h
 
-noinst_HEADERS		= libtap_private.h
+noinst_HEADERS		= libtap-private.h
 
 pkgconfigdir		= $(libdir)/pkgconfig
 

@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #include "libtap.h"
-#include "libtap_private.h"
+#include "libtap-private.h"
 #include "utils.h"
 
 extern struct tap_config tap_cfg;
