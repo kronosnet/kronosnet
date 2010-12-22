@@ -7,7 +7,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
-#include "ring.h"
+#include "libknet.h"
 #include "utils.h"
 
 static int knet_sock[2];

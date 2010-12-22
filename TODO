@@ -36,9 +36,9 @@ general:
 
 api:
 
-* knet_{domain}_ are public api's
-* knet_{domain}_ structs are public
-* {domain}_ are private API's
+* {domain}_ are public api's
+* {domain}_ structs are public
+* _{function} are private functions
 
 vty:
 

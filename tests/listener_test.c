@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <sys/epoll.h>
 
-#include "knethandle.h"
+#include "libknet-private.h"
 #include "utils.h"
 
 #define KNET_TEST_PORT 50000

@@ -5,7 +5,7 @@
  *       testing purpose only.
  */
 
-#include "ring.h"
+#include "libknet.h"
 
 struct knet_handle {
 	int sockfd;

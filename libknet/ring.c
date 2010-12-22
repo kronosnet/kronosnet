@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "knethandle.h"
+#include "libknet-private.h"
 #include "netutils.h"
 #include "utils.h"
 

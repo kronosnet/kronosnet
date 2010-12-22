@@ -5,7 +5,7 @@
 #include <net/if.h>
 
 #include "libtap.h"
-#include "ring.h"
+#include "libknet.h"
 
 
 struct knet_cfg_eth {

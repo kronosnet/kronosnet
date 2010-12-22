@@ -7,9 +7,8 @@ sources			= ring.c
 
 libversion		= 0:0:0
 
-include_HEADERS		= ring.h
-
-noinst_HEADERS		= knethandle.h
+include_HEADERS		= libknet.h
+noinst_HEADERS		= libknet-private.h
 
 lib_LTLIBRARIES		= libknet.la
 

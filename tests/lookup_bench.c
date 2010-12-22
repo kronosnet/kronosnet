@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "ring.h"
+#include "libknet.h"
 #include "netutils.h"
 #include "utils.h"
 

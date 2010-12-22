@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#include "ring.h"
+#include "libknet.h"
 #include "utils.h"
 
 #define HOST_LIST_SIZE 8192
