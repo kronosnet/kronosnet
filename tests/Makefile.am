@@ -32,7 +32,7 @@ AM_CPPFLAGS		= -DTEST \
 
 AM_LDFLAGS		= \
 			  $(top_builddir)/libtap/libtap_test.la \
-			  $(top_builddir)/libknet/libknet.la
+			  $(top_builddir)/libknet/libknet.a
 
 tap_test_SOURCES	= \
 			  tap_test.c \

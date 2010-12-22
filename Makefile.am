@@ -40,13 +40,14 @@ kronosnetd_SOURCES	= \
 			  libtap/libtap.c \
 			  main.c \
 			  netutils.c \
-			  libknet/ring.c \
 			  utils.c \
 			  vty.c \
 			  vty_auth.c \
 			  vty_cli.c \
 			  vty_cli_cmds.c \
 			  vty_utils.c
+kronosnetd_LDADD	= \
+			  $(top_builddir)/libknet/libknet.a
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
