@@ -15,8 +15,8 @@
 #define KNET_DATABUFSIZE 131072 /* 128k */
 #define KNET_PINGBUFSIZE sizeof(struct knet_frame)
 
-static void *knet_control_thread(void *data);
-static void *knet_heartbt_thread(void *data);
+static void *_handle_control_thread(void *data);
+static void *_handle_heartbt_thread(void *data);
 
 knet_handle_t knet_handle_new(int fd, uint16_t node_id)
 {
@@ -61,11 +61,11 @@ knet_handle_t knet_handle_new(int fd, uint16_t node_id)
 		goto exit_fail5;
 
 	if (pthread_create(&knet_h->control_thread, 0,
-				knet_control_thread, (void *) knet_h) != 0)
+				_handle_control_thread, (void *) knet_h) != 0)
 		goto exit_fail5;
 
 	if (pthread_create(&knet_h->heartbt_thread, 0,
-				knet_heartbt_thread, (void *) knet_h) != 0)
+				_handle_heartbt_thread, (void *) knet_h) != 0)
 		goto exit_fail6;
 
 	return knet_h;
@@ -140,7 +140,7 @@ void knet_link_timeout(struct knet_link *lnk,
 				((lnk->ping_interval * precision) / 8000000);
 }
 
-static void knet_send_data(knet_handle_t knet_h)
+static void _handle_data_send(knet_handle_t knet_h)
 {
 	int j;
 	ssize_t len, snt;
@@ -184,7 +184,7 @@ static void knet_send_data(knet_handle_t knet_h)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
+static void _handle_recv_frame(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t len;
 	struct sockaddr_storage address;
@@ -265,7 +265,7 @@ static void knet_recv_frame(knet_handle_t knet_h, int sockfd)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static void heartbeat_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
+static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 {
 	int len;
 	struct timespec clock_now, pong_last;
@@ -299,7 +299,7 @@ static void heartbeat_check_each(knet_handle_t knet_h, struct knet_link *dst_lin
 	}
 }
 
-static void *knet_heartbt_thread(void *data)
+static void *_handle_heartbt_thread(void *data)
 {
 	int j;
 	knet_handle_t knet_h;
@@ -322,7 +322,7 @@ static void *knet_heartbt_thread(void *data)
 		for (i = knet_h->host_head; i != NULL; i = i->next) {
 			for (j = 0; j < KNET_MAX_LINK; j++) {
 				if (i->link[j].ready != 1) continue;
-				heartbeat_check_each(knet_h, &i->link[j]);
+				_handle_check_each(knet_h, &i->link[j]);
 			}
 		}
 
@@ -332,7 +332,7 @@ static void *knet_heartbt_thread(void *data)
 	return NULL;
 }
 
-static void *knet_control_thread(void *data)
+static void *_handle_control_thread(void *data)
 {
 	int i, nev;
 	knet_handle_t knet_h;
@@ -349,9 +349,9 @@ static void *knet_control_thread(void *data)
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sockfd) {
-				knet_send_data(knet_h);
+				_handle_data_send(knet_h);
 			} else {
-				knet_recv_frame(knet_h, events[i].data.fd);
+				_handle_recv_frame(knet_h, events[i].data.fd);
 			}
 		}
 	}
