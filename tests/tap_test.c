@@ -505,6 +505,8 @@ static int check_knet_up_down(void)
 	int err=0;
 	knet_tap_t knet_tap;
 	char *error_string = NULL;
+	char *error_preup = NULL, *error_up = NULL;
+	char *error_down = NULL, *error_postdown = NULL;
 
 	log_info("Testing interface up/down");
 
@@ -518,7 +520,18 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface up");
 
-	if (knet_tap_set_up(knet_tap) < 0) {
+	err = knet_tap_set_up(knet_tap, &error_preup, &error_up);
+	if (error_preup) {
+		log_info("preup output: %s", error_preup);
+		free(error_preup);
+		error_preup = NULL;
+	}
+	if (error_up) {
+		log_info("up output: %s", error_up);
+		free(error_up);
+		error_up = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to set interface up");
 		err = -1;
 		goto out_clean;
@@ -539,7 +552,18 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface down");
 
-	if (knet_tap_set_down(knet_tap) < 0) {
+	err = knet_tap_set_down(knet_tap, &error_down, &error_postdown);
+	if (error_down) {
+		log_info("down output: %s", error_down);
+		free(error_down);
+		error_down = NULL;
+	}
+	if (error_postdown) {
+		log_info("postdown output: %s", error_down);
+		free(error_down);
+		error_down = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to put the interface down");
 		err = -1;
 		goto out_clean;
@@ -569,7 +593,18 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface up");
 
-	if (knet_tap_set_up(knet_tap) < 0) {
+	err = knet_tap_set_up(knet_tap, &error_preup, &error_up);
+	if (error_preup) {
+		log_info("preup output: %s", error_preup);
+		free(error_preup);
+		error_preup = NULL;
+	}
+	if (error_up) {
+		log_info("up output: %s", error_up);
+		free(error_up);
+		error_up = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to set interface up");
 		err = -1;
 		goto out_clean;
@@ -577,7 +612,18 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface down");
 
-	if (knet_tap_set_down(knet_tap) < 0) {
+	err = knet_tap_set_down(knet_tap, &error_down, &error_postdown);
+	if (error_down) {
+		log_info("down output: %s", error_down);
+		free(error_down);
+		error_down = NULL;
+	}
+	if (error_postdown) {
+		log_info("postdown output: %s", error_down);
+		free(error_down);
+		error_down = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to put the interface down");
 		err = -1;
 		goto out_clean;
@@ -595,7 +641,18 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface up");
 
-	if (knet_tap_set_up(knet_tap) < 0) {
+	err = knet_tap_set_up(knet_tap, &error_preup, &error_up);
+	if (error_preup) {
+		log_info("preup output: %s", error_preup);
+		free(error_preup);
+		error_preup = NULL;
+	}
+	if (error_up) {
+		log_info("up output: %s", error_up);
+		free(error_up);
+		error_up = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to set interface up");
 		err = -1;
 		goto out_clean;
@@ -603,7 +660,18 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface down");
 
-	if (knet_tap_set_down(knet_tap) < 0) {
+	err = knet_tap_set_down(knet_tap, &error_down, &error_postdown);
+	if (error_down) {
+		log_info("down output: %s", error_down);
+		free(error_down);
+		error_down = NULL;
+	}
+	if (error_postdown) {
+		log_info("postdown output: %s", error_down);
+		free(error_down);
+		error_down = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to put the interface down");
 		err = -1;
 		goto out_clean;
@@ -613,17 +681,49 @@ static int check_knet_up_down(void)
 
 	log_info("Test ERROR conditions");
 
-	log_info("Pass NULL to set_up");
+	log_info("Pass NULL to knet_tap set_up");
 	errno = 0;
-	if ((knet_tap_set_up(NULL) >= 0) || (errno != EINVAL)) {
+	if ((knet_tap_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
 		log_error("Something is wrong in knet_tap_set_up sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to set_down");
+	log_info("Pass NULL to error_preup set_up");
 	errno = 0;
-	if ((knet_tap_set_down(NULL) >= 0) || (errno != EINVAL)) {
+	if ((knet_tap_set_up(knet_tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_tap_set_up sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Pass NULL to error_up set_up");
+	errno = 0;
+	if ((knet_tap_set_up(knet_tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_tap_set_up sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Pass NULL to knet_tap set_down");
+	errno = 0;
+	if ((knet_tap_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_tap_set_down sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Pass NULL to error_down set_down");
+	errno = 0;
+	if ((knet_tap_set_down(knet_tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in knet_tap_set_down sanity checks");
+		err = -1;
+		goto out_clean;
+	}
+
+	log_info("Pass NULL to error_postdown set_down");
+	errno = 0;
+	if ((knet_tap_set_down(knet_tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
 		log_error("Something is wrong in knet_tap_set_down sanity checks");
 		err = -1;
 		goto out_clean;
@@ -642,6 +742,7 @@ static int check_knet_close_leak(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	knet_tap_t knet_tap;
+	char *error_string = NULL;
 
 	log_info("Testing close leak (needs valgrind)");
 
@@ -655,7 +756,13 @@ static int check_knet_close_leak(void)
 
 	log_info("Adding ip: 192.168.168.168/24");
 
-	if (knet_tap_add_ip(knet_tap, "192.168.168.168", "24") < 0) {
+	err = knet_tap_add_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	if (error_string) {
+		log_info("add ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to assign IP address");
 		err=-1;
 		goto out_clean;
@@ -663,7 +770,13 @@ static int check_knet_close_leak(void)
 
 	log_info("Adding ip: 192.168.169.169/24");
 
-	if (knet_tap_add_ip(knet_tap, "192.168.169.169", "24") < 0) {
+	err = knet_tap_add_ip(knet_tap, "192.168.169.169", "24", &error_string);
+	if (error_string) {
+		log_info("add ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to assign IP address");
 		err=-1;
 		goto out_clean;
@@ -698,7 +811,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding ip: 192.168.168.168/24");
 
-	if (knet_tap_add_ip(knet_tap, "192.168.168.168", "24") < 0) {
+	err = knet_tap_add_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	if (error_string) {
+		log_info("add ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to assign IP address");
 		err=-1;
 		goto out_clean;
@@ -706,7 +825,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding ip: 192.168.169.169/24");
 
-	if (knet_tap_add_ip(knet_tap, "192.168.169.169", "24") < 0) {
+	err = knet_tap_add_ip(knet_tap, "192.168.169.169", "24", &error_string);
+	if (error_string) {
+		log_info("add ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to assign IP address");
 		err=-1;
 		goto out_clean;
@@ -714,7 +839,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding duplicate ip: 192.168.168.168/24");
 
-	if (knet_tap_add_ip(knet_tap, "192.168.168.168", "24") < 0) {
+	err = knet_tap_add_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	if (error_string) {
+		log_info("add ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to find IP address in libtap db");
 		err=-1;
 		goto out_clean;
@@ -758,7 +889,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting ip: 192.168.168.168/24");
 
-	if (knet_tap_del_ip(knet_tap, "192.168.168.168", "24") < 0) {
+	err = knet_tap_del_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	if (error_string) {
+		log_info("del ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to delete IP address");
 		err=-1;
 		goto out_clean;
@@ -766,7 +903,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting ip: 192.168.169.169/24");
 
-	if (knet_tap_del_ip(knet_tap, "192.168.169.169", "24") < 0) {
+	err = knet_tap_del_ip(knet_tap, "192.168.169.169", "24", &error_string);
+	if (error_string) {
+		log_info("del ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to delete IP address");
 		err=-1;
 		goto out_clean;
@@ -774,7 +917,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting again ip: 192.168.168.168/24");
 
-	if (knet_tap_del_ip(knet_tap, "192.168.168.168", "24") < 0) {
+	err = knet_tap_del_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	if (error_string) {
+		log_info("del ip output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to delete IP address");
 		err=-1;
 		goto out_clean;
@@ -794,7 +943,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding ip: 3ffe::1/64");
 
-	if (knet_tap_add_ip(knet_tap, "3ffe::1", "64") < 0) {
+	err = knet_tap_add_ip(knet_tap, "3ffe::1", "64", &error_string);
+	if (error_string) {
+		log_info("add ipv6 output: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
 		log_error("Unable to assign IP address");
 		err=-1;
 		goto out_clean;
@@ -814,7 +969,13 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting ip: 3ffe::1/64");
 
-	if (knet_tap_del_ip(knet_tap, "3ffe::1", "64") < 0) {
+	err = knet_tap_del_ip(knet_tap, "3ffe::1", "64", &error_string);
+	if (error_string) {
+		log_error("Error string: %s", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err) {
 		log_error("Unable to delete IP address");
 		err=-1;
 		goto out_clean;

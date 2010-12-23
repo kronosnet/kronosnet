@@ -20,11 +20,11 @@ int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr);
 int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr);
 int knet_tap_reset_mac(knet_tap_t knet_tap);
 
-int knet_tap_set_up(knet_tap_t knet_tap);
-int knet_tap_set_down(knet_tap_t knet_tap);
+int knet_tap_set_up(knet_tap_t knet_tap, char **error_preup, char **error_up);
+int knet_tap_set_down(knet_tap_t knet_tap, char **error_down, char **error_postdown);
 
-int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix);
-int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix);
+int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix, char **error_string);
+int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix, char **error_string);
 int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int *entries);
 
 #endif

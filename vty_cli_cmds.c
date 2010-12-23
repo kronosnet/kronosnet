@@ -933,6 +933,7 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 	char *param = NULL;
 	char ipaddr[KNET_MAX_HOST_LEN], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	char *error_string = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
@@ -940,9 +941,13 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	param_to_str(prefix, sizeof(prefix), param, paramlen);
 
-	if (knet_tap_del_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix) < 0) {
+	if (knet_tap_del_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix, &error_string) < 0) {
 		knet_vty_write(vty, "Error: Unable to del ip addr %s/%s on device %s%s",
 				ipaddr, prefix, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
+		if (error_string) {
+			knet_vty_write(vty, "(%s)%s", error_string, telnet_newline);
+			free(error_string);
+		}
 		return -1;
 	}
 
@@ -955,6 +960,7 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	char *param = NULL;
 	char ipaddr[512], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	char *error_string = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
@@ -962,9 +968,14 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	param_to_str(prefix, sizeof(prefix), param, paramlen);
 
-	if (knet_tap_add_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix) < 0) {
+	if (knet_tap_add_ip(knet_iface->cfg_eth.knet_tap, ipaddr, prefix, &error_string) < 0) {
 		knet_vty_write(vty, "Error: Unable to set ip addr %s/%s on device %s%s",
 				ipaddr, prefix, knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
+		if (error_string) {
+			knet_vty_write(vty, "(%s)%s", error_string, telnet_newline);
+			free(error_string);
+		}
+		return -1;
 	}
 
 	return 0;
@@ -1004,32 +1015,52 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 static int knet_cmd_stop(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	char *error_down = NULL, *error_postdown = NULL;
+	int err = 0;
 
-	if (knet_tap_set_down(knet_iface->cfg_eth.knet_tap) < 0)
+	err = knet_tap_set_down(knet_iface->cfg_eth.knet_tap, &error_down, &error_postdown);
+	if (err < 0) {
 		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
+	} else {
+		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
+		knet_iface->active = 0;
+	}
+	if (error_down) {
+		knet_vty_write(vty, "down script output:%s(%s)%s", telnet_newline, error_down, telnet_newline);
+		free(error_down);
+	}
+	if (error_postdown) {
+		knet_vty_write(vty, "post-down script output:%s(%s)%s", telnet_newline, error_postdown, telnet_newline);
+		free(error_postdown);
+	}
 
-	knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
-
-	knet_iface->active = 0;
-
-	return 0;
+	return err;
 }
 
 static int knet_cmd_start(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	char *error_preup = NULL, *error_up = NULL;
+	int err = 0;
 
-	knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 1);
-
-	if (knet_tap_set_up(knet_iface->cfg_eth.knet_tap) < 0) {
+	err = knet_tap_set_up(knet_iface->cfg_eth.knet_tap, &error_preup, &error_up);
+	if (err < 0) {
 		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", knet_tap_get_name(knet_iface->cfg_eth.knet_tap), telnet_newline);
 		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
-		return -1;
+	} else {
+		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 1);
+		knet_iface->active = 1;
+	}
+	if (error_preup) {
+		knet_vty_write(vty, "pre-up script output:%s(%s)%s", telnet_newline, error_preup, telnet_newline);
+		free(error_preup);
+	}
+	if (error_up) {
+		knet_vty_write(vty, "up script output:%s(%s)%s", telnet_newline, error_up, telnet_newline);
+		free(error_up);
 	}
 
-	knet_iface->active = 1;
-
-	return 0;
+	return err;
 }
 
 static int knet_cmd_no_interface(struct knet_vty *vty)
@@ -1041,6 +1072,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	struct knet_host *host;
 	char *ip_list = NULL;
 	int ip_list_entries = 0, i, offset = 0;
+	char *error_string = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(device, IFNAMSIZ, param, paramlen);
@@ -1058,7 +1090,11 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		for (i = 1; i <= ip_list_entries; i++) {
 			knet_tap_del_ip(knet_iface->cfg_eth.knet_tap,
 					ip_list + offset,
-					ip_list + offset + strlen(ip_list + offset) + 1);
+					ip_list + offset + strlen(ip_list + offset) + 1, &error_string);
+			if (error_string) {
+				free(error_string);
+				error_string = NULL;
+			}
 			offset = offset + strlen(ip_list) + 1;
 			offset = offset + strlen(ip_list + offset) + 1;
 		}
