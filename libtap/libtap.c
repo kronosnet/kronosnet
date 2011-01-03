@@ -156,6 +156,8 @@ out_clean:
 static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char **error_string)
 {
 	char command[PATH_MAX];
+	struct stat sb;
+	int err = 0;
 
 	if (!knet_tap->hasupdown)
 		return 0;
@@ -164,7 +166,17 @@ static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char *
 
 	snprintf(command, PATH_MAX, "%s%s/%s", knet_tap->updownpath, action, knet_tap->ifname);
 
-	return tap_execute_shell(command, error_string);
+	err = stat(command, &sb);
+	if ((err < 0) && (errno == ENOENT))
+		return 0;
+
+	err = tap_execute_shell(command, error_string);
+	if ((!err) && (*error_string)) {
+		free(*error_string);
+		*error_string = NULL;
+	}
+
+	return err;
 }
 
 static int tap_check(const knet_tap_t knet_tap)
