@@ -9,7 +9,7 @@
 
 
 struct knet_cfg_eth {
-	knet_tap_t knet_tap;
+	tap_t tap;
 	uint8_t node_id;
 };
 

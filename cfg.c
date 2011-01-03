@@ -14,7 +14,7 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 	int found = 0;
 
 	while (knet_iface != NULL) {
-		if (!strcmp(knet_tap_get_name(knet_iface->cfg_eth.knet_tap), name)) {
+		if (!strcmp(tap_get_name(knet_iface->cfg_eth.tap), name)) {
 			found = 1;
 			break;
 		}

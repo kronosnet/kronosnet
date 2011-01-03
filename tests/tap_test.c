@@ -14,9 +14,9 @@
 #include "libtap-private.h"
 #include "utils.h"
 
-extern struct tap_config tap_cfg;
+extern struct _config lib_cfg;
 
-extern int tap_execute_shell(const char *command, char **error_string);
+extern int _execute_shell(const char *command, char **error_string);
 
 static int is_if_in_system(char *name)
 {
@@ -45,11 +45,11 @@ static int is_if_in_system(char *name)
 
 static int test_iface(char *name, size_t size, const char *updownpath)
 {
-	knet_tap_t knet_tap;
+	tap_t tap;
 
-	knet_tap=knet_tap_open(name, size, updownpath);
-	if (!knet_tap) {
-		if (tap_cfg.tap_sockfd < 0)
+	tap=tap_open(name, size, updownpath);
+	if (!tap) {
+		if (lib_cfg.sockfd < 0)
 			log_error("Unable to open knet_socket");
 		log_error("Unable to open knet.");
 		return -1;
@@ -62,13 +62,13 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 		log_info("Unable to find interface %s on the system", name);
 	}
 
-	if (!knet_tap_find(name, size)) {
+	if (!tap_find(name, size)) {
 		log_info("Unable to find interface %s in tap db", name);
 	} else {
 		log_info("Found interface %s in tap db", name);
 	}
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	if (is_if_in_system(name) == 0)
 		log_info("Successfully removed interface %s from the system", name);
@@ -76,7 +76,7 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 	return 0;
 }
 
-static int check_knet_tap_open_close(void)
+static int check_tap_open_close(void)
 {
 	char device_name[2*IFNAMSIZ];
 	char fakepath[PATH_MAX];
@@ -102,14 +102,14 @@ static int check_knet_tap_open_close(void)
 	log_info("Testing dev == NULL");
 	errno=0;
 	if ((test_iface(NULL, size, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_open sanity checks");
+		log_error("Something is wrong in tap_open sanity checks");
 		return -1;
 	}
 
 	log_info("Testing size < IFNAMSIZ");
 	errno=0;
 	if ((test_iface(device_name, 1, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_open sanity checks");
+		log_error("Something is wrong in tap_open sanity checks");
 		return -1;
 	}
 
@@ -117,7 +117,7 @@ static int check_knet_tap_open_close(void)
 	errno=0;
 	strcpy(device_name, "abcdefghilmnopqrstuvwz");
 	if ((test_iface(device_name, IFNAMSIZ, NULL) >= 0) || (errno != E2BIG)) {
-		log_error("Something is wrong in knet_tap_open sanity checks");
+		log_error("Something is wrong in tap_open sanity checks");
 		return -1;
 	}
 
@@ -125,7 +125,7 @@ static int check_knet_tap_open_close(void)
 	errno=0;
 	strcpy(device_name, "kronostest");
 	if ((test_iface(device_name, IFNAMSIZ, "foo")  >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_open sanity checks");
+		log_error("Something is wrong in tap_open sanity checks");
 		return -1;
 	}
 
@@ -136,7 +136,7 @@ static int check_knet_tap_open_close(void)
 	errno=0;
 	strcpy(device_name, "kronostest");
 	if ((test_iface(device_name, IFNAMSIZ, fakepath)  >= 0) || (errno != E2BIG)) {
-		log_error("Something is wrong in knet_tap_open sanity checks");
+		log_error("Something is wrong in tap_open sanity checks");
 		return -1;
 	}
 
@@ -149,8 +149,8 @@ static int check_knet_multi_eth(void)
 	char device_name2[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	knet_tap_t knet_tap1 = NULL;
-	knet_tap_t knet_tap2 = NULL;
+	tap_t tap1 = NULL;
+	tap_t tap2 = NULL;
 
 	log_info("Testing multiple knet interface instances");
 
@@ -160,8 +160,8 @@ static int check_knet_multi_eth(void)
 	strncpy(device_name1, "kronostest1", size);
 	strncpy(device_name2, "kronostest2", size);
 
-	knet_tap1 = knet_tap_open(device_name1, size, NULL);
-	if (!knet_tap1) {
+	tap1 = tap_open(device_name1, size, NULL);
+	if (!tap1) {
 		log_error("Unable to init %s.", device_name1);
 		err = -1;
 		goto out_clean;
@@ -173,8 +173,8 @@ static int check_knet_multi_eth(void)
 		log_info("Unable to find interface %s on the system", device_name1);
 	}
 
-	knet_tap2 = knet_tap_open(device_name2, size, NULL);
-	if (!knet_tap2) {
+	tap2 = tap_open(device_name2, size, NULL);
+	if (!tap2) {
 		log_error("Unable to init %s.", device_name2);
 		err = -1;
 		goto out_clean;
@@ -186,17 +186,17 @@ static int check_knet_multi_eth(void)
 		log_info("Unable to find interface %s on the system", device_name2);
 	}
 
-	if (knet_tap1)
-		knet_tap_close(knet_tap1);
-	if (knet_tap2)
-		knet_tap_close(knet_tap2);
+	if (tap1)
+		tap_close(tap1);
+	if (tap2)
+		tap_close(tap2);
 
 	log_info("Testing error conditions");
 
 	log_info("Open same device twice");
 
-	knet_tap1 = knet_tap_open(device_name1, size, NULL);
-	if (!knet_tap1) {
+	tap1 = tap_open(device_name1, size, NULL);
+	if (!tap1) {
 		log_error("Unable to init %s.", device_name1);
 		err = -1;
 		goto out_clean;
@@ -208,18 +208,18 @@ static int check_knet_multi_eth(void)
 		log_info("Unable to find interface %s on the system", device_name1);
 	}
 
-	knet_tap2 = knet_tap_open(device_name1, size, NULL);
-	if (knet_tap2) {
+	tap2 = tap_open(device_name1, size, NULL);
+	if (tap2) {
 		log_error("We were able to init 2 interfaces with the same name!");
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
-	if (knet_tap1)
-		knet_tap_close(knet_tap1);
-	if (knet_tap2)
-		knet_tap_close(knet_tap2);
+	if (tap1)
+		tap_close(tap1);
+	if (tap2)
+		tap_close(tap2);
 	return err;
 }
 
@@ -228,7 +228,7 @@ static int check_knet_mtu(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	knet_tap_t knet_tap;
+	tap_t tap;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -237,14 +237,14 @@ static int check_knet_mtu(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size, NULL);
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, NULL);
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Comparing default MTU");
-	current_mtu = knet_tap_get_mtu(knet_tap);
+	current_mtu = tap_get_mtu(tap);
 	if (current_mtu < 0) {
 		log_error("Unable to get MTU");
 		err = -1;
@@ -258,13 +258,13 @@ static int check_knet_mtu(void)
 
 	log_info("Setting MTU to 9000");
 	expected_mtu = 9000;
-	if (knet_tap_set_mtu(knet_tap, expected_mtu) < 0) {
+	if (tap_set_mtu(tap, expected_mtu) < 0) {
 		log_error("Unable to set MTU to %d.", expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
-	current_mtu = knet_tap_get_mtu(knet_tap);
+	current_mtu = tap_get_mtu(tap);
 	if (current_mtu < 0) {
 		log_error("Unable to get MTU");
 		err = -1;
@@ -279,21 +279,21 @@ static int check_knet_mtu(void)
 	log_info("Testing ERROR conditions");
 
 	log_info("Passing empty struct to get_mtu");
-	if (knet_tap_get_mtu(NULL) > 0) {
-		log_error("Something is wrong in knet_tap_get_mtu sanity checks");
+	if (tap_get_mtu(NULL) > 0) {
+		log_error("Something is wrong in tap_get_mtu sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Passing empty struct to set_mtu");
-	if (knet_tap_set_mtu(NULL, 1500) == 0) {
-		log_error("Something is wrong in knet_tap_set_mtu sanity checks"); 
+	if (tap_set_mtu(NULL, 1500) == 0) {
+		log_error("Something is wrong in tap_set_mtu sanity checks"); 
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	return err;
 }
@@ -303,7 +303,7 @@ static int check_knet_mac(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	knet_tap_t knet_tap;
+	tap_t tap;
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
 
@@ -311,15 +311,15 @@ static int check_knet_mac(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size, NULL);
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, NULL);
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Get current MAC");
 
-	if (knet_tap_get_mac(knet_tap, &current_mac) < 0) {
+	if (tap_get_mac(tap, &current_mac) < 0) {
 		log_error("Unable to get current MAC address.");
 		err = -1;
 		goto out_clean;
@@ -329,13 +329,13 @@ static int check_knet_mac(void)
 
 	log_info("Setting MAC: 00:01:01:01:01:01");
 
-	if (knet_tap_set_mac(knet_tap, "00:01:01:01:01:01") < 0) {
+	if (tap_set_mac(tap, "00:01:01:01:01:01") < 0) {
 		log_error("Unable to set current MAC address.");
 		err = -1;
 		goto out_clean;
 	}
 
-	if (knet_tap_get_mac(knet_tap, &temp_mac) < 0) {
+	if (tap_get_mac(tap, &temp_mac) < 0) {
 		log_error("Unable to get current MAC address.");
 		err = -1;
 		goto out_clean;
@@ -357,32 +357,32 @@ static int check_knet_mac(void)
 
 	log_info("Pass NULL to get_mac (pass1)");
 	errno = 0;
-	if ((knet_tap_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_get_mac sanity checks");
+	if ((tap_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_get_mac sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to get_mac (pass2)");
 	errno = 0;
-	if ((knet_tap_get_mac(knet_tap, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_get_mac sanity checks");
+	if ((tap_get_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_get_mac sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to set_mac (pass1)");
 	errno = 0;
-	if ((knet_tap_set_mac(knet_tap, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_mac sanity checks");
+	if ((tap_set_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_mac sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to set_mac (pass2)");
 	errno = 0;
-	if ((knet_tap_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_mac sanity checks");
+	if ((tap_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_mac sanity checks");
 		err = -1;
 		goto out_clean;
 	}
@@ -399,7 +399,7 @@ out_clean:
 	if (temp_mac)
 		free(temp_mac);
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	return err;
 }
@@ -412,11 +412,11 @@ static int check_tap_execute_shell(void)
 
 	memset(command, 0, sizeof(command));
 
-	log_info("Testing tap_execute_shell");
+	log_info("Testing _execute_shell");
 
 	log_info("command /bin/true");
 
-	err = tap_execute_shell("/bin/true", &error_string);
+	err = _execute_shell("/bin/true", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -431,7 +431,7 @@ static int check_tap_execute_shell(void)
 
 	log_info("command /bin/false");
 
-	err = tap_execute_shell("/bin/false", &error_string);
+	err = _execute_shell("/bin/false", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -445,7 +445,7 @@ static int check_tap_execute_shell(void)
 
 	log_info("command that outputs to stdout (enforcing redirect)");
 
-	err = tap_execute_shell("/bin/grep -h 2>&1", &error_string);
+	err = _execute_shell("/bin/grep -h 2>&1", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -458,7 +458,7 @@ static int check_tap_execute_shell(void)
 	} 
 
 	log_info("command that outputs to stderr");
-	err = tap_execute_shell("/bin/grep -h", &error_string);
+	err = _execute_shell("/bin/grep -h", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -471,7 +471,7 @@ static int check_tap_execute_shell(void)
 	} 
 
 	log_info("empty command");
-	err = tap_execute_shell(NULL, &error_string);
+	err = _execute_shell(NULL, &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -484,7 +484,7 @@ static int check_tap_execute_shell(void)
 	}
 
 	log_info("empty error");
-	err = tap_execute_shell("/bin/true", NULL);
+	err = _execute_shell("/bin/true", NULL);
 	if (!err) {
 		log_error("Check EINVAL filter for no error_string!");
 		err = -1;
@@ -503,7 +503,7 @@ static int check_knet_up_down(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	knet_tap_t knet_tap;
+	tap_t tap;
 	char *error_string = NULL;
 	char *error_preup = NULL, *error_up = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
@@ -512,15 +512,15 @@ static int check_knet_up_down(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size, NULL);
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, NULL);
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Put the interface up");
 
-	err = knet_tap_set_up(knet_tap, &error_preup, &error_up);
+	err = tap_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
 		log_info("preup output: %s", error_preup);
 		free(error_preup);
@@ -538,7 +538,7 @@ static int check_knet_up_down(void)
 	}
 
 
-	err = tap_execute_shell("ip addr show dev kronostest | grep -q UP", &error_string);
+	err = _execute_shell("ip addr show dev kronostest | grep -q UP", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -552,7 +552,7 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface down");
 
-	err = knet_tap_set_down(knet_tap, &error_down, &error_postdown);
+	err = tap_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
 		log_info("down output: %s", error_down);
 		free(error_down);
@@ -569,7 +569,7 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	err = tap_execute_shell("ifconfig kronostest | grep -q UP", &error_string);
+	err = _execute_shell("ifconfig kronostest | grep -q UP", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -581,19 +581,19 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	log_info("Testing interface pre-up/up/down/post-down (exec errors)");
 
-	knet_tap = knet_tap_open(device_name, size, ABSBUILDDIR "/tap_updown_bad");
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_bad");
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Put the interface up");
 
-	err = knet_tap_set_up(knet_tap, &error_preup, &error_up);
+	err = tap_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
 		log_info("preup output: %s", error_preup);
 		free(error_preup);
@@ -612,7 +612,7 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface down");
 
-	err = knet_tap_set_down(knet_tap, &error_down, &error_postdown);
+	err = tap_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
 		log_info("down output: %s", error_down);
 		free(error_down);
@@ -629,19 +629,19 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	log_info("Testing interface pre-up/up/down/post-down");
 
-	knet_tap = knet_tap_open(device_name, size, ABSBUILDDIR "/tap_updown_good");
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_good");
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Put the interface up");
 
-	err = knet_tap_set_up(knet_tap, &error_preup, &error_up);
+	err = tap_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
 		log_info("preup output: %s", error_preup);
 		free(error_preup);
@@ -660,7 +660,7 @@ static int check_knet_up_down(void)
 
 	log_info("Put the interface down");
 
-	err = knet_tap_set_down(knet_tap, &error_down, &error_postdown);
+	err = tap_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
 		log_info("down output: %s", error_down);
 		free(error_down);
@@ -677,61 +677,61 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	log_info("Test ERROR conditions");
 
-	log_info("Pass NULL to knet_tap set_up");
+	log_info("Pass NULL to tap set_up");
 	errno = 0;
-	if ((knet_tap_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_up sanity checks");
+	if ((tap_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_up sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to error_preup set_up");
 	errno = 0;
-	if ((knet_tap_set_up(knet_tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_up sanity checks");
+	if ((tap_set_up(tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_up sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to error_up set_up");
 	errno = 0;
-	if ((knet_tap_set_up(knet_tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_up sanity checks");
+	if ((tap_set_up(tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_up sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to knet_tap set_down");
+	log_info("Pass NULL to tap set_down");
 	errno = 0;
-	if ((knet_tap_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_down sanity checks");
+	if ((tap_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_down sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to error_down set_down");
 	errno = 0;
-	if ((knet_tap_set_down(knet_tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_down sanity checks");
+	if ((tap_set_down(tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_down sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 	log_info("Pass NULL to error_postdown set_down");
 	errno = 0;
-	if ((knet_tap_set_down(knet_tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in knet_tap_set_down sanity checks");
+	if ((tap_set_down(tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
+		log_error("Something is wrong in tap_set_down sanity checks");
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	return err;
 }
@@ -741,22 +741,22 @@ static int check_knet_close_leak(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	knet_tap_t knet_tap;
+	tap_t tap;
 	char *error_string = NULL;
 
 	log_info("Testing close leak (needs valgrind)");
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size, NULL);
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, NULL);
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Adding ip: 192.168.168.168/24");
 
-	err = knet_tap_add_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
 		log_info("add ip output: %s", error_string);
 		free(error_string);
@@ -770,7 +770,7 @@ static int check_knet_close_leak(void)
 
 	log_info("Adding ip: 192.168.169.169/24");
 
-	err = knet_tap_add_ip(knet_tap, "192.168.169.169", "24", &error_string);
+	err = tap_add_ip(tap, "192.168.169.169", "24", &error_string);
 	if (error_string) {
 		log_info("add ip output: %s", error_string);
 		free(error_string);
@@ -784,7 +784,7 @@ static int check_knet_close_leak(void)
 
 out_clean:
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	return err;
 }
@@ -794,7 +794,7 @@ static int check_knet_set_del_ip(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	knet_tap_t knet_tap;
+	tap_t tap;
 	char *ip_list = NULL;
 	int ip_list_entries = 0, i, offset = 0;
 	char *error_string = NULL;
@@ -803,15 +803,15 @@ static int check_knet_set_del_ip(void)
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
-	knet_tap = knet_tap_open(device_name, size, NULL);
-	if (!knet_tap) {
+	tap = tap_open(device_name, size, NULL);
+	if (!tap) {
 		log_error("Unable to init %s.", device_name);
 		return -1;
 	}
 
 	log_info("Adding ip: 192.168.168.168/24");
 
-	err = knet_tap_add_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
 		log_info("add ip output: %s", error_string);
 		free(error_string);
@@ -825,7 +825,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding ip: 192.168.169.169/24");
 
-	err = knet_tap_add_ip(knet_tap, "192.168.169.169", "24", &error_string);
+	err = tap_add_ip(tap, "192.168.169.169", "24", &error_string);
 	if (error_string) {
 		log_info("add ip output: %s", error_string);
 		free(error_string);
@@ -839,7 +839,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding duplicate ip: 192.168.168.168/24");
 
-	err = knet_tap_add_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
 		log_info("add ip output: %s", error_string);
 		free(error_string);
@@ -853,7 +853,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Checking ip: 192.168.168.168/24");
 
-	err = tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
+	err = _execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -867,7 +867,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Get ip list from libtap:");
 
-	if (knet_tap_get_ips(knet_tap, &ip_list, &ip_list_entries) < 0) {
+	if (tap_get_ips(tap, &ip_list, &ip_list_entries) < 0) {
 		log_error("Not enough mem?");
 		err=-1;
 		goto out_clean;
@@ -889,7 +889,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting ip: 192.168.168.168/24");
 
-	err = knet_tap_del_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	err = tap_del_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
 		log_info("del ip output: %s", error_string);
 		free(error_string);
@@ -903,7 +903,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting ip: 192.168.169.169/24");
 
-	err = knet_tap_del_ip(knet_tap, "192.168.169.169", "24", &error_string);
+	err = tap_del_ip(tap, "192.168.169.169", "24", &error_string);
 	if (error_string) {
 		log_info("del ip output: %s", error_string);
 		free(error_string);
@@ -917,7 +917,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting again ip: 192.168.168.168/24");
 
-	err = knet_tap_del_ip(knet_tap, "192.168.168.168", "24", &error_string);
+	err = tap_del_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
 		log_info("del ip output: %s", error_string);
 		free(error_string);
@@ -929,7 +929,7 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	err = tap_execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
+	err = _execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -943,7 +943,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Adding ip: 3ffe::1/64");
 
-	err = knet_tap_add_ip(knet_tap, "3ffe::1", "64", &error_string);
+	err = tap_add_ip(tap, "3ffe::1", "64", &error_string);
 	if (error_string) {
 		log_info("add ipv6 output: %s", error_string);
 		free(error_string);
@@ -955,7 +955,7 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	err = tap_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -969,7 +969,7 @@ static int check_knet_set_del_ip(void)
 
 	log_info("Deleting ip: 3ffe::1/64");
 
-	err = knet_tap_del_ip(knet_tap, "3ffe::1", "64", &error_string);
+	err = tap_del_ip(tap, "3ffe::1", "64", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -981,7 +981,7 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	err = tap_execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
 	if (error_string) {
 		log_error("Error string: %s", error_string);
 		free(error_string);
@@ -995,14 +995,14 @@ static int check_knet_set_del_ip(void)
 
 out_clean:
 
-	knet_tap_close(knet_tap);
+	tap_close(tap);
 
 	return err;
 }
 
 int main(void)
 {
-	if (check_knet_tap_open_close() < 0)
+	if (check_tap_open_close() < 0)
 		return -1;
 
 	if (check_knet_multi_eth() < 0)

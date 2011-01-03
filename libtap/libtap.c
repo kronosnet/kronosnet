@@ -21,29 +21,29 @@
 #include "libtap.h"
 #include "libtap-private.h"
 
-STATIC int tap_init = 0;
-STATIC struct tap_config tap_cfg;
-STATIC pthread_mutex_t tap_mutex = PTHREAD_MUTEX_INITIALIZER;
+STATIC int lib_init = 0;
+STATIC struct _config lib_cfg;
+STATIC pthread_mutex_t lib_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
-STATIC int tap_execute_shell(const char *command, char **error_string);
-static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char **error_string);
-static int tap_read_pipe(int fd, char **file, size_t *length);
-static int tap_check(const knet_tap_t knet_tap);
-static void tap_close(knet_tap_t knet_tap);
-static void tap_close_cfg(void);
-static int tap_get_mtu(const knet_tap_t knet_tap);
-static int tap_get_mac(const knet_tap_t knet_tap, char **ether_addr);
-static int tap_set_down(knet_tap_t knet_tap, char **error_down, char **error_postdown);
-static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix);
-static int tap_set_ip(knet_tap_t knet_tap, const char *command,
+STATIC int _execute_shell(const char *command, char **error_string);
+static int _exec_updown(const tap_t tap, const char *action, char **error_string);
+static int _read_pipe(int fd, char **file, size_t *length);
+static int _check(const tap_t tap);
+static void _close(tap_t tap);
+static void _close_cfg(void);
+static int _get_mtu(const tap_t tap);
+static int _get_mac(const tap_t tap, char **ether_addr);
+static int _set_down(tap_t tap, char **error_down, char **error_postdown);
+static char *_get_v4_broadcast(const char *ip_addr, const char *prefix);
+static int _set_ip(tap_t tap, const char *command,
 		      const char *ip_addr, const char *prefix,
 		      char **error_string);
-static int tap_find_ip(knet_tap_t knet_tap,
+static int _find_ip(tap_t tap,
 			const char *ip_addr, const char *prefix,
-			struct tap_ip **tap_ip, struct tap_ip **tap_ip_prev);
+			struct _ip **ip, struct _ip **ip_prev);
 
-static int tap_read_pipe(int fd, char **file, size_t *length)
+static int _read_pipe(int fd, char **file, size_t *length)
 {
 	char buf[4096];
 	int n;
@@ -92,7 +92,7 @@ static int tap_read_pipe(int fd, char **file, size_t *length)
 	return 0;
 }
 
-STATIC int tap_execute_shell(const char *command, char **error_string)
+STATIC int _execute_shell(const char *command, char **error_string)
 {
 	pid_t pid;
 	int status, err = 0;
@@ -119,7 +119,7 @@ STATIC int tap_execute_shell(const char *command, char **error_string)
 	if (pid) { /* parent */
 
 		close(fd[1]);
-		err = tap_read_pipe(fd[0], error_string, &size);
+		err = _read_pipe(fd[0], error_string, &size);
 		if (err)
 			goto out_clean;
 
@@ -153,24 +153,24 @@ out_clean:
 	return err;
 }
 
-static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char **error_string)
+static int _exec_updown(const tap_t tap, const char *action, char **error_string)
 {
 	char command[PATH_MAX];
 	struct stat sb;
 	int err = 0;
 
-	if (!knet_tap->hasupdown)
+	if (!tap->hasupdown)
 		return 0;
 
 	memset(command, 0, PATH_MAX);
 
-	snprintf(command, PATH_MAX, "%s%s/%s", knet_tap->updownpath, action, knet_tap->ifname);
+	snprintf(command, PATH_MAX, "%s%s/%s", tap->updownpath, action, tap->ifname);
 
 	err = stat(command, &sb);
 	if ((err < 0) && (errno == ENOENT))
 		return 0;
 
-	err = tap_execute_shell(command, error_string);
+	err = _execute_shell(command, error_string);
 	if ((!err) && (*error_string)) {
 		free(*error_string);
 		*error_string = NULL;
@@ -179,15 +179,15 @@ static int tap_exec_updown(const knet_tap_t knet_tap, const char *action, char *
 	return err;
 }
 
-static int tap_check(const knet_tap_t knet_tap)
+static int _check(const tap_t tap)
 {
-	knet_tap_t temp = tap_cfg.tap_head;
+	tap_t temp = lib_cfg.head;
 
-	if (!knet_tap)
+	if (!tap)
 		return 0;
 
 	while (temp != NULL) {
-		if (knet_tap == temp)
+		if (tap == temp)
 			return 1;
 
 		temp = temp->next;
@@ -196,51 +196,51 @@ static int tap_check(const knet_tap_t knet_tap)
 	return 0;
 }
 
-static void tap_close(knet_tap_t knet_tap)
+static void _close(tap_t tap)
 {
-	if (!knet_tap)
+	if (!tap)
 		return;
 
-	if (knet_tap->knet_tap_fd)
-		close(knet_tap->knet_tap_fd);
+	if (tap->fd)
+		close(tap->fd);
 
-	free(knet_tap);
+	free(tap);
 
 	return;
 }
 
-static void tap_close_cfg(void)
+static void _close_cfg(void)
 {
-	if (tap_cfg.tap_head == NULL) {
-		close(tap_cfg.tap_sockfd);
-		tap_init = 0;
+	if (lib_cfg.head == NULL) {
+		close(lib_cfg.sockfd);
+		lib_init = 0;
 	}
 }
 
-static int tap_get_mtu(const knet_tap_t knet_tap)
+static int _get_mtu(const tap_t tap)
 {
 	int err;
 
-	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFMTU, &knet_tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &tap->ifr);
 	if (err)
 		goto out_clean;
 
-	err = knet_tap->ifr.ifr_mtu;
+	err = tap->ifr.ifr_mtu;
 
 out_clean:
 	return err;
 }
 
-static int tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
+static int _get_mac(const tap_t tap, char **ether_addr)
 {
 	int err;
 	char mac[MAX_MAC_CHAR];
 
-	err = ioctl(tap_cfg.tap_sockfd, SIOCGIFHWADDR, &knet_tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
 	if (err)
 		goto out_clean;
 
-	ether_ntoa_r((struct ether_addr *)knet_tap->ifr.ifr_hwaddr.sa_data, mac);
+	ether_ntoa_r((struct ether_addr *)tap->ifr.ifr_hwaddr.sa_data, mac);
 
 	*ether_addr = strdup(mac);
 	if (!*ether_addr)
@@ -251,9 +251,9 @@ out_clean:
 	return err;
 }
 
-knet_tap_t knet_tap_find(char *dev, size_t dev_size)
+tap_t tap_find(char *dev, size_t dev_size)
 {
-	knet_tap_t knet_tap;
+	tap_t tap;
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -270,22 +270,22 @@ knet_tap_t knet_tap_find(char *dev, size_t dev_size)
 		return NULL;
 	}
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	knet_tap = tap_cfg.tap_head;
-	while (knet_tap != NULL) {
-		if (!strcmp(dev, knet_tap->ifname))
+	tap = lib_cfg.head;
+	while (tap != NULL) {
+		if (!strcmp(dev, tap->ifname))
 			break;
-		knet_tap = knet_tap->next;
+		tap = tap->next;
 	}
 
-	pthread_mutex_unlock(&tap_mutex);
-	return knet_tap;
+	pthread_mutex_unlock(&lib_mutex);
+	return tap;
 }
 
-knet_tap_t knet_tap_open(char *dev, size_t dev_size, const char *updownpath)
+tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 {
-	knet_tap_t knet_tap;
+	tap_t tap;
 	char *temp_mac = NULL;
 
 	if (dev == NULL) {
@@ -316,313 +316,313 @@ knet_tap_t knet_tap_open(char *dev, size_t dev_size, const char *updownpath)
 		}
 	}
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	knet_tap = malloc(sizeof(struct tap_iface));
-	if (!knet_tap)
+	tap = malloc(sizeof(struct _iface));
+	if (!tap)
 		return NULL;
 
-	memset(knet_tap, 0, sizeof(struct tap_iface));
+	memset(tap, 0, sizeof(struct _iface));
 
-	if ((knet_tap->knet_tap_fd = open("/dev/net/tun", O_RDWR)) < 0)
+	if ((tap->fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
 
-	strncpy(knet_tap->ifname, dev, IFNAMSIZ);
-	knet_tap->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+	strncpy(tap->ifname, dev, IFNAMSIZ);
+	tap->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	if (ioctl(knet_tap->knet_tap_fd, TUNSETIFF, &knet_tap->ifr) < 0)
+	if (ioctl(tap->fd, TUNSETIFF, &tap->ifr) < 0)
 		goto out_error;
 
-	if ((strlen(dev) > 0) && (strcmp(dev, knet_tap->ifname) != 0)) {
+	if ((strlen(dev) > 0) && (strcmp(dev, tap->ifname) != 0)) {
 		errno = EBUSY;
 		goto out_error;
 	}
 
-	strcpy(dev, knet_tap->ifname);
+	strcpy(dev, tap->ifname);
 
-	if (!tap_init) {
-		tap_cfg.tap_head = NULL;
-		tap_cfg.tap_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-			if (tap_cfg.tap_sockfd < 0)
+	if (!lib_init) {
+		lib_cfg.head = NULL;
+		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
+			if (lib_cfg.sockfd < 0)
 				goto out_error;
-		tap_init = 1;
+		lib_init = 1;
 	}
 
-	if (ioctl(tap_cfg.tap_sockfd, SIOGIFINDEX, &knet_tap->ifr) < 0)
+	if (ioctl(lib_cfg.sockfd, SIOGIFINDEX, &tap->ifr) < 0)
 		goto out_error;
 
-	knet_tap->default_mtu = tap_get_mtu(knet_tap);
-	if (knet_tap->default_mtu < 0)
+	tap->default_mtu = _get_mtu(tap);
+	if (tap->default_mtu < 0)
 		goto out_error;
 
-	if (tap_get_mac(knet_tap, &temp_mac) < 0)
+	if (_get_mac(tap, &temp_mac) < 0)
 		goto out_error;
 
-	strncpy(knet_tap->default_mac, temp_mac, 18);
+	strncpy(tap->default_mac, temp_mac, 18);
 	free(temp_mac);
 
 	if (updownpath) {
 		int len = strlen(updownpath);
 
-		strcpy(knet_tap->updownpath, updownpath);
-		if (knet_tap->updownpath[len-1] != '/') {
-			knet_tap->updownpath[len] = '/';
+		strcpy(tap->updownpath, updownpath);
+		if (tap->updownpath[len-1] != '/') {
+			tap->updownpath[len] = '/';
 		}
-		knet_tap->hasupdown = 1;
+		tap->hasupdown = 1;
 	}
 
-	knet_tap->next = tap_cfg.tap_head;
-	tap_cfg.tap_head = knet_tap;
+	tap->next = lib_cfg.head;
+	lib_cfg.head = tap;
 
-	pthread_mutex_unlock(&tap_mutex);
-	return knet_tap;
+	pthread_mutex_unlock(&lib_mutex);
+	return tap;
 
 out_error:
-	tap_close(knet_tap);
-	tap_close_cfg();
-	pthread_mutex_unlock(&tap_mutex);
+	_close(tap);
+	_close_cfg();
+	pthread_mutex_unlock(&lib_mutex);
 	return NULL;
 }
 
 // TODO: consider better error report from here
-int knet_tap_close(knet_tap_t knet_tap)
+int tap_close(tap_t tap)
 {
 	int err = 0;
-	knet_tap_t temp = tap_cfg.tap_head;
-	knet_tap_t prev = tap_cfg.tap_head;
-	struct tap_ip *tap_ip, *tap_ip_next;
+	tap_t temp = lib_cfg.head;
+	tap_t prev = lib_cfg.head;
+	struct _ip *ip, *ip_next;
 	char *error_string = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap)) {
+	if (!_check(tap)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	while ((temp) && (temp != knet_tap)) {
+	while ((temp) && (temp != tap)) {
 		prev = temp;
 		temp = temp->next;
 	}
 
-	if (knet_tap == prev) {
-		tap_cfg.tap_head = knet_tap->next;
+	if (tap == prev) {
+		lib_cfg.head = tap->next;
 	} else {
-		prev->next = knet_tap->next;
+		prev->next = tap->next;
 	}
 
-	tap_set_down(knet_tap, &error_down, &error_postdown);
+	_set_down(tap, &error_down, &error_postdown);
 	if (error_down)
 		free(error_down);
 	if (error_postdown)
 		free(error_postdown);
 
-	tap_ip = knet_tap->tap_ip;
-	while (tap_ip) {
-		tap_ip_next = tap_ip->next;
-		tap_set_ip(knet_tap, "del", tap_ip->ip_addr, tap_ip->prefix, &error_string);
+	ip = tap->ip;
+	while (ip) {
+		ip_next = ip->next;
+		_set_ip(tap, "del", ip->ip_addr, ip->prefix, &error_string);
 		if (error_string) {
 			free(error_string);
 			error_string = NULL;
 		}
-		free(tap_ip);
-		tap_ip = tap_ip_next;
+		free(ip);
+		ip = ip_next;
 	}
 
-	tap_close(knet_tap);
-	tap_close_cfg();
+	_close(tap);
+	_close_cfg();
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_get_mtu(const knet_tap_t knet_tap)
+int tap_get_mtu(const tap_t tap)
 {
 	int err;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap)) {
+	if (!_check(tap)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = tap_get_mtu(knet_tap);
+	err = _get_mtu(tap);
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_set_mtu(knet_tap_t knet_tap, const int mtu)
+int tap_set_mtu(tap_t tap, const int mtu)
 {
 	int err, oldmtu;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap)) {
+	if (!_check(tap)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	oldmtu = knet_tap->ifr.ifr_mtu;
-	knet_tap->ifr.ifr_mtu = mtu;
+	oldmtu = tap->ifr.ifr_mtu;
+	tap->ifr.ifr_mtu = mtu;
 
-	err = ioctl(tap_cfg.tap_sockfd, SIOCSIFMTU, &knet_tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &tap->ifr);
 	if (err)
-		knet_tap->ifr.ifr_mtu = oldmtu;
+		tap->ifr.ifr_mtu = oldmtu;
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_reset_mtu(knet_tap_t knet_tap)
+int tap_reset_mtu(tap_t tap)
 {
-	return knet_tap_set_mtu(knet_tap, knet_tap->default_mtu);
+	return tap_set_mtu(tap, tap->default_mtu);
 }
 
-int knet_tap_get_mac(const knet_tap_t knet_tap, char **ether_addr)
+int tap_get_mac(const tap_t tap, char **ether_addr)
 {
 	int err;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if ((!tap_check(knet_tap)) || (!ether_addr)) {
+	if ((!_check(tap)) || (!ether_addr)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = tap_get_mac(knet_tap, ether_addr);
+	err = _get_mac(tap, ether_addr);
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_set_mac(knet_tap_t knet_tap, const char *ether_addr)
+int tap_set_mac(tap_t tap, const char *ether_addr)
 {
 	struct ether_addr oldmac;
 	int err;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if ((!tap_check(knet_tap)) || (!ether_addr)) {
+	if ((!_check(tap)) || (!ether_addr)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	memcpy(&oldmac, knet_tap->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
-	memcpy(knet_tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
+	memcpy(&oldmac, tap->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+	memcpy(tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
-	err = ioctl(tap_cfg.tap_sockfd, SIOCSIFHWADDR, &knet_tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &tap->ifr);
 	if (err)
-		memcpy(knet_tap->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
+		memcpy(tap->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_reset_mac(knet_tap_t knet_tap)
+int tap_reset_mac(tap_t tap)
 {
-	return knet_tap_set_mac(knet_tap, knet_tap->default_mac);
+	return tap_set_mac(tap, tap->default_mac);
 }
 
-int knet_tap_set_up(knet_tap_t knet_tap, char **error_preup, char **error_up)
+int tap_set_up(tap_t tap, char **error_preup, char **error_up)
 {
 	int err = 0;
 	short int oldflags;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap) || (!error_preup) || (!error_up)) {
+	if (!_check(tap) || (!error_preup) || (!error_up)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	if (knet_tap->up)
+	if (tap->up)
 		goto out_clean;
 
-	tap_exec_updown(knet_tap, "pre-up.d", error_preup);
+	_exec_updown(tap, "pre-up.d", error_preup);
 
-	oldflags = knet_tap->ifr.ifr_flags;
-	knet_tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err=ioctl(tap_cfg.tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
+	oldflags = tap->ifr.ifr_flags;
+	tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &tap->ifr);
 
 	if (err)
-		knet_tap->ifr.ifr_flags = oldflags;
+		tap->ifr.ifr_flags = oldflags;
 
-	tap_exec_updown(knet_tap, "up.d", error_up);
+	_exec_updown(tap, "up.d", error_up);
 
-	knet_tap->up = 1;
+	tap->up = 1;
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-static int tap_set_down(knet_tap_t knet_tap, char **error_down, char **error_postdown)
+static int _set_down(tap_t tap, char **error_down, char **error_postdown)
 {
 	int err = 0;
 	short int oldflags;
 
-	if (!knet_tap->up)
+	if (!tap->up)
 		goto out_clean;
 
-	tap_exec_updown(knet_tap, "down.d", error_down);
+	_exec_updown(tap, "down.d", error_down);
 
-	oldflags = knet_tap->ifr.ifr_flags;
-	knet_tap->ifr.ifr_flags &= ~IFF_UP;
-	err=ioctl(tap_cfg.tap_sockfd, SIOCSIFFLAGS, &knet_tap->ifr);
+	oldflags = tap->ifr.ifr_flags;
+	tap->ifr.ifr_flags &= ~IFF_UP;
+	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &tap->ifr);
 
 	if (err) {
-		knet_tap->ifr.ifr_flags = oldflags;
+		tap->ifr.ifr_flags = oldflags;
 		goto out_clean;
 	}
 
-	tap_exec_updown(knet_tap, "post-down.d", error_postdown);
+	_exec_updown(tap, "post-down.d", error_postdown);
 
-	knet_tap->up = 0;
+	tap->up = 0;
 
 out_clean:
 	return err;
 }
 
-int knet_tap_set_down(knet_tap_t knet_tap, char **error_down, char **error_postdown)
+int tap_set_down(tap_t tap, char **error_down, char **error_postdown)
 {
 	int err = 0;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap) || (!error_down) || (!error_postdown)) {
+	if (!_check(tap) || (!error_down) || (!error_postdown)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = tap_set_down(knet_tap, error_down, error_postdown);
+	err = _set_down(tap, error_down, error_postdown);
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix)
+static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
 {
 	int prefix_len;
 	struct in_addr mask;
@@ -645,7 +645,7 @@ static char *tap_get_v4_broadcast(const char *ip_addr, const char *prefix)
 	return strdup(inet_ntoa(broadcast));
 }
 
-static int tap_set_ip(knet_tap_t knet_tap, const char *command,
+static int _set_ip(tap_t tap, const char *command,
 		      const char *ip_addr, const char *prefix,
 		      char **error_string)
 {
@@ -653,7 +653,7 @@ static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 	char cmdline[4096];
 
 	if (!strchr(ip_addr, ':')) {
-		broadcast = tap_get_v4_broadcast(ip_addr, prefix);
+		broadcast = _get_v4_broadcast(ip_addr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
@@ -666,172 +666,172 @@ static int tap_set_ip(knet_tap_t knet_tap, const char *command,
 		snprintf(cmdline, sizeof(cmdline)-1,
 			"ip addr %s %s/%s dev %s broadcast %s",
 			 command, ip_addr, prefix,
-			 knet_tap->ifname, broadcast);
+			 tap->ifname, broadcast);
 		free(broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			"ip addr %s %s/%s dev %s",
 			command, ip_addr, prefix,
-			knet_tap->ifname);
+			tap->ifname);
 	}
 
-	return tap_execute_shell(cmdline, error_string);
+	return _execute_shell(cmdline, error_string);
 }
 
-static int tap_find_ip(knet_tap_t knet_tap,
+static int _find_ip(tap_t tap,
 			const char *ip_addr, const char *prefix,
-			struct tap_ip **tap_ip, struct tap_ip **tap_ip_prev)
+			struct _ip **ip, struct _ip **ip_prev)
 {
-	struct tap_ip *local_tap_ip, *local_tap_ip_prev;
+	struct _ip *local_ip, *local_ip_prev;
 	int found = 0;
 
-	local_tap_ip = local_tap_ip_prev = knet_tap->tap_ip;
+	local_ip = local_ip_prev = tap->ip;
 
-	while(local_tap_ip) {
-		if ((!strcmp(local_tap_ip->ip_addr, ip_addr)) && (!strcmp(local_tap_ip->prefix, prefix))) {
+	while(local_ip) {
+		if ((!strcmp(local_ip->ip_addr, ip_addr)) && (!strcmp(local_ip->prefix, prefix))) {
 			found = 1;
 			break;
 		}
-		local_tap_ip_prev = local_tap_ip;
-		local_tap_ip = local_tap_ip->next;
+		local_ip_prev = local_ip;
+		local_ip = local_ip->next;
 	}
 
 	if (found) {
-		*tap_ip = local_tap_ip;
-		*tap_ip_prev = local_tap_ip_prev;
+		*ip = local_ip;
+		*ip_prev = local_ip_prev;
 	}
 
 	return found;
 }
 
-int knet_tap_add_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix, char **error_string)
+int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
-	struct tap_ip *tap_ip = NULL, *tap_ip_prev = NULL;
+	struct _ip *ip = NULL, *ip_prev = NULL;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if ((!tap_check(knet_tap)) || (!ip_addr) || (!prefix) || (!error_string)) {
+	if ((!_check(tap)) || (!ip_addr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	found = tap_find_ip(knet_tap, ip_addr, prefix, &tap_ip, &tap_ip_prev);
+	found = _find_ip(tap, ip_addr, prefix, &ip, &ip_prev);
 	if (found)
 		goto out_clean;
 
-	tap_ip = malloc(sizeof(struct tap_ip));
-	if (!tap_ip) {
+	ip = malloc(sizeof(struct _ip));
+	if (!ip) {
 		err = -1 ;
 		goto out_clean;
 	}
-	memset(tap_ip, 0, sizeof(struct tap_ip));
-	strncpy(tap_ip->ip_addr, ip_addr, MAX_IP_CHAR);
-	strncpy(tap_ip->prefix, prefix, MAX_PREFIX_CHAR);
+	memset(ip, 0, sizeof(struct _ip));
+	strncpy(ip->ip_addr, ip_addr, MAX_IP_CHAR);
+	strncpy(ip->prefix, prefix, MAX_PREFIX_CHAR);
 
-	err = tap_set_ip(knet_tap, "add", ip_addr, prefix, error_string);
+	err = _set_ip(tap, "add", ip_addr, prefix, error_string);
 
 	if (err) {
-		free(tap_ip);
+		free(ip);
 		goto out_clean;
 	}
 
-	tap_ip->next = knet_tap->tap_ip;
-	knet_tap->tap_ip = tap_ip;
+	ip->next = tap->ip;
+	tap->ip = ip;
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_del_ip(knet_tap_t knet_tap, const char *ip_addr, const char *prefix, char **error_string)
+int tap_del_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
-	struct tap_ip *tap_ip = NULL, *tap_ip_prev = NULL;
+	struct _ip *ip = NULL, *ip_prev = NULL;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if ((!tap_check(knet_tap)) || (!ip_addr) || (!prefix) || (!error_string)) {
+	if ((!_check(tap)) || (!ip_addr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	found = tap_find_ip(knet_tap, ip_addr, prefix, &tap_ip, &tap_ip_prev);
+	found = _find_ip(tap, ip_addr, prefix, &ip, &ip_prev);
 	if (!found)
 		goto out_clean;
 
-	err = tap_set_ip(knet_tap, "del", ip_addr, prefix, error_string);
+	err = _set_ip(tap, "del", ip_addr, prefix, error_string);
 
 	if (!err) {
-		if (tap_ip == tap_ip_prev) {
-			knet_tap->tap_ip = tap_ip->next;
+		if (ip == ip_prev) {
+			tap->ip = ip->next;
 		} else {
-			tap_ip_prev->next = tap_ip->next;
+			ip_prev->next = ip->next;
 		}
-		free(tap_ip);
+		free(ip);
 	}
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-int knet_tap_get_fd(const knet_tap_t knet_tap)
+int tap_get_fd(const tap_t tap)
 {
 	int fd;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap)) {
+	if (!_check(tap)) {
 		errno = EINVAL;
 		fd = -1;
 		goto out_clean;
 	}
 
-	fd = knet_tap->knet_tap_fd;
+	fd = tap->fd;
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return fd;
 }
 
-const char *knet_tap_get_name(const knet_tap_t knet_tap)
+const char *tap_get_name(const tap_t tap)
 {
 	char *name = NULL;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	if (!tap_check(knet_tap)) {
+	if (!_check(tap)) {
 		errno = EINVAL;
 		goto out_clean;
 	}
 
-	name = knet_tap->ifname;
+	name = tap->ifname;
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return name;
 }
 
-int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int *entries)
+int tap_get_ips(const tap_t tap, char **ip_addr_list, int *entries)
 {
 	int err = 0;
 	int found = 0;
 	char *ip_list = NULL;
 	int size = 0, offset = 0, len;
-	struct tap_ip *tap_ip = knet_tap->tap_ip;
+	struct _ip *ip = tap->ip;
 
-	pthread_mutex_lock(&tap_mutex);
+	pthread_mutex_lock(&lib_mutex);
 
-	while (tap_ip) {
+	while (ip) {
 		found++;
-		tap_ip = tap_ip->next;
+		ip = ip->next;
 	}
 
 	size = found * (MAX_IP_CHAR + MAX_PREFIX_CHAR + 2);
@@ -843,23 +843,23 @@ int knet_tap_get_ips(const knet_tap_t knet_tap, char **ip_addr_list, int *entrie
 
 	memset(ip_list, 0, size);
 
-	tap_ip = knet_tap->tap_ip;
+	ip = tap->ip;
 
-	while (tap_ip) {
-		len = strlen(tap_ip->ip_addr);
-		memcpy(ip_list + offset, tap_ip->ip_addr, len);
+	while (ip) {
+		len = strlen(ip->ip_addr);
+		memcpy(ip_list + offset, ip->ip_addr, len);
 		offset = offset + len + 1;
-		len = strlen(tap_ip->prefix);
-		memcpy(ip_list + offset, tap_ip->prefix, len);
+		len = strlen(ip->prefix);
+		memcpy(ip_list + offset, ip->prefix, len);
 		offset = offset + len + 1;
-		tap_ip = tap_ip->next;
+		ip = ip->next;
 	}
 
 	*ip_addr_list = ip_list;
 	*entries = found;
 
 out_clean:
-	pthread_mutex_unlock(&tap_mutex);
+	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }

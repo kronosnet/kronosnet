@@ -14,28 +14,28 @@
 #define MAX_PREFIX_CHAR	4
 #define MAX_MAC_CHAR	18
 
-struct tap_ip {
+struct _ip {
 	char ip_addr[MAX_IP_CHAR];
 	char prefix[MAX_PREFIX_CHAR];
-	struct tap_ip *next;
+	struct _ip *next;
 };
 
-struct tap_iface {
+struct _iface {
 	struct ifreq ifr;
-	int knet_tap_fd;
+	int fd;
 	char default_mac[MAX_MAC_CHAR];
 	int default_mtu;
 	char updownpath[PATH_MAX];
 	int hasupdown;
 	int up;
-	struct tap_ip *tap_ip;
-	struct tap_iface *next;
+	struct _ip *ip;
+	struct _iface *next;
 };
 #define ifname ifr.ifr_name
 
-struct tap_config {
-	struct tap_iface *tap_head;
-	int tap_sockfd;
+struct _config {
+	struct _iface *head;
+	int sockfd;
 };
 
 #endif
