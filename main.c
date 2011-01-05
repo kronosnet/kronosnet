@@ -105,24 +105,6 @@ static int read_arguments(int argc, char **argv)
 	return 0;
 }
 
-static int set_oom_adj(int val)
-{
-	FILE *fp;
-	int err = 0;
-
-	fp = fopen("/proc/self/oom_adj", "w");
-	if (!fp)
-		return -1;
-
-	err = fprintf(fp, "%i", val);
-	if (err < 0) {
-		fclose(fp);
-		return err;
-	}
-
-	return fclose(fp);
-}
-
 static int set_scheduler(void)
 {
 	struct sched_param sched_param;
@@ -290,10 +272,6 @@ int main(int argc, char **argv)
 	}
 
 	log_info(PACKAGE " version " VERSION);
-
-	err = set_oom_adj(-16);
-	if (err < 0)
-		goto out;
 
 	err = set_scheduler();
 	if (err < 0)
