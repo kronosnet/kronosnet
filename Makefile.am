@@ -37,7 +37,6 @@ sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
-			  libtap/libtap.c \
 			  main.c \
 			  netutils.c \
 			  utils.c \
@@ -46,8 +45,10 @@ kronosnetd_SOURCES	= \
 			  vty_cli.c \
 			  vty_cli_cmds.c \
 			  vty_utils.c
+
 kronosnetd_LDADD	= \
-			  $(top_builddir)/libknet/libknet.a
+			  $(top_builddir)/libknet/libknet.a \
+			  $(top_builddir)/libtap/libtap.la
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
