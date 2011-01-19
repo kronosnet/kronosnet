@@ -25,21 +25,13 @@ libtap_la_LDFLAGS	= -Wl,-version-script,libtap_exported_sym \
 			  --export-dynamic \
 			  -version-info $(libversion)
 
-noinst_LTLIBRARIES	= libtap_test.la
-
-libtap_test_la_SOURCES	= $(sources)
-
-libtap_test_la_CPPFLAGS	= -DTEST
-
 TESTS			= $(check_PROGRAMS)
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
 
 check_PROGRAMS		= tap_test
 
-tap_test_SOURCES	= tap_test.c ../utils.c
+tap_test_SOURCES	= $(sources) ../utils.c
 
 tap_test_CPPFLAGS	= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"
-
-tap_test_LDADD		= libtap_test.la

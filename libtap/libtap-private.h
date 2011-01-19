@@ -4,12 +4,6 @@
 #include <net/if.h>
 #include <limits.h>
 
-#ifndef TEST
-#define STATIC static
-#else
-#define STATIC
-#endif
-
 #define MAX_IP_CHAR	128
 #define MAX_PREFIX_CHAR	4
 #define MAX_MAC_CHAR	18
