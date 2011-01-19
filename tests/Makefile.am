@@ -17,7 +17,6 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  vty_test \
-		  tap_test \
 		  netutils_test \
 		  listener_test \
 		  utils_test
@@ -25,7 +24,6 @@ check_PROGRAMS = \
 TESTS = $(check_PROGRAMS)
 
 AM_CPPFLAGS		= -DTEST \
-			  -DABSBUILDDIR=\"$(abs_builddir)\" \
 			  -I$(srcdir)/../ \
 			  -I$(srcdir)/../libtap/ \
 			  -I$(srcdir)/../libknet/
@@ -33,10 +31,6 @@ AM_CPPFLAGS		= -DTEST \
 AM_LDFLAGS		= \
 			  $(top_builddir)/libtap/libtap_test.la \
 			  $(top_builddir)/libknet/libknet.a
-
-tap_test_SOURCES	= \
-			  tap_test.c \
-			  ../utils.c
 
 ping_test_SOURCES	= \
 			  ping_test.c \

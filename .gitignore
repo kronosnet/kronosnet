@@ -26,5 +26,5 @@ libtool
 autoscan.log
 kronosnetd
 *.swp
-tests/*_test
-tests/*_bench
+*_test
+*_bench
