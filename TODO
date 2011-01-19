@@ -22,7 +22,6 @@ ring:
 
 libtap:
 
-* remove log_* calls
 * add man pages
 * improve tests to cover thread safety and more error codes
 
