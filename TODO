@@ -33,12 +33,6 @@ general:
 
 * consider splitting tests/* based on what they test (tap_test -> libtap/) ?
 
-api:
-
-* {domain}_ are public api's
-* {domain}_ structs are public
-* _{function} are private functions
-
 vty:
 
 * split cmd_files
