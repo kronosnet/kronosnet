@@ -29,7 +29,7 @@ AM_CPPFLAGS		= -DTEST \
 			  -I$(srcdir)/../libknet/
 
 AM_LDFLAGS		= \
-			  $(top_builddir)/libtap/libtap_test.la \
+			  $(top_builddir)/libtap/libtap.la \
 			  $(top_builddir)/libknet/libknet.a
 
 ping_test_SOURCES	= \
