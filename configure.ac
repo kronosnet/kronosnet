@@ -226,6 +226,19 @@ WARNLIST="
 	gnu89-inline
 	no-strict-aliasing
 	error
+	address
+	cpp
+	enum-compare
+	overflow
+	parentheses
+	sequence-point
+	switch
+	uninitialized
+	unused-but-set-variable
+	unused-function
+	unused-result
+	unused-value
+	unused-variable
 	"
 
 for j in $WARNLIST; do
