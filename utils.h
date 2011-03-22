@@ -16,10 +16,12 @@ extern int utils_syslog;
 #endif
 
 #define log_debug(fmt, args...)	\
-if (utils_debug) { \
-	printf("DEBUG(%s:%i|%s): " fmt "\n", \
-			__FILE__, __LINE__, __FUNCTION__, ##args); \
-}
+do { \
+	if (utils_debug) { \
+		printf("DEBUG(%s:%i|%s): " fmt "\n", __FILE__, __LINE__, __FUNCTION__, ##args); \
+		if (utils_syslog) syslog(LOG_DEBUG, "DEBUG(%s:%i|%s): " fmt, __FILE__, __LINE__, __FUNCTION__, ##args); \
+	} \
+} while (0);
 
 #define log_info(fmt, args...) \
 do { \
