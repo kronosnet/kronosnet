@@ -35,3 +35,18 @@ tap_test_SOURCES	= $(sources) ../utils.c
 
 tap_test_CPPFLAGS	= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"
+
+install-exec-local:
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/down.d
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/post-down.d
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/pre-up.d
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/up.d
+
+uninstall-local:
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/down.d || :;
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/post-down.d || :;
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/pre-up.d || :;
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/up.d || :;
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || :;
+

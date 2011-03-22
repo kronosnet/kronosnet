@@ -16,7 +16,6 @@ noinst_PROGRAMS = \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
-		  vty_test \
 		  netutils_test \
 		  listener_test \
 		  utils_test
@@ -49,17 +48,6 @@ lookup_bench_SOURCES	= \
 
 listener_test_SOURCES	= \
 			  listener_test.c \
-			  ../netutils.c \
-			  ../utils.c
-
-vty_test_SOURCES	= \
-			  vty_test.c \
-			  ../cfg.c \
-			  ../vty.c \
-			  ../vty_auth.c \
-			  ../vty_cli.c \
-			  ../vty_cli_cmds.c \
-			  ../vty_utils.c \
 			  ../netutils.c \
 			  ../utils.c
 

@@ -258,6 +258,8 @@ AC_CONFIG_FILES([
 		libtap/libtap.pc
 		libknet/Makefile
 		libknet/libknet.pc
+		libvty/Makefile
+		libvty/libvty.pc
 		docs/Makefile
 		tests/Makefile
 		])
