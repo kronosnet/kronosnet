@@ -225,6 +225,34 @@ fail_close:
 	return -1;
 }
 
+static void set_cfg_defaults(void)
+{
+	if (!knet_cfg_head.conffile)
+		knet_cfg_head.conffile = strdup(DEFAULT_CONFIG_FILE);
+	if (!knet_cfg_head.conffile) {
+		log_error("Unable to allocate memory for config file");
+		exit(EXIT_FAILURE);
+	}
+
+	if (!knet_cfg_head.vty_ip)
+		knet_cfg_head.vty_ip = strdup("::");
+	if (!knet_cfg_head.vty_ip) {
+		log_error("Unable to allocate memory for default ip address");
+		exit(EXIT_FAILURE);
+	}
+
+	if (!knet_cfg_head.vty_port) {
+		char portbuf[8];
+		memset(&portbuf, 0, sizeof(portbuf));
+		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
+		knet_cfg_head.vty_port = strdup(portbuf);
+	}
+	if (!knet_cfg_head.vty_port) {
+		log_error("Unable to allocate memory for default port address");
+		exit(EXIT_FAILURE);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int err;
@@ -241,28 +269,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	if (!knet_cfg_head.conffile)
-		knet_cfg_head.conffile = strdup(DEFAULT_CONFIG_FILE);
-	if (!knet_cfg_head.conffile) {
-		log_error("Unable to allocate memory for config file");
-		exit(EXIT_FAILURE);
-	}
-	if (!knet_cfg_head.vty_ip)
-		knet_cfg_head.vty_ip = strdup("::");
-	if (!knet_cfg_head.vty_ip) {
-		log_error("Unable to allocate memory for default ip address");
-		exit(EXIT_FAILURE);
-	}
-	if (!knet_cfg_head.vty_port) {
-		char portbuf[8];
-		memset(&portbuf, 0, sizeof(portbuf));
-		snprintf(portbuf, sizeof(portbuf), "%d", KNET_VTY_DEFAULT_PORT);
-		knet_cfg_head.vty_port = strdup(portbuf);
-	}
-	if (!knet_cfg_head.vty_port) {
-		log_error("Unable to allocate memory for default port address");
-		exit(EXIT_FAILURE);
-	}
+	set_cfg_defaults();
 
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
