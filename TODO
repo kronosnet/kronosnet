@@ -20,11 +20,6 @@ ring:
 * add api to knet_handle_new to define src/dst mapping in data frame.
 * index pointer list
 
-libtap:
-
-* add man pages
-* improve tests to cover thread safety and more error codes
-
 general:
 
 * logging and what to log
@@ -43,6 +38,11 @@ vty:
 ---
 
 * packet inspector
+
+libtap:
+
+* add man pages
+* improve tests to cover thread safety and more error codes
 
 0.3
 ---
