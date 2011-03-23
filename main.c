@@ -259,6 +259,8 @@ int main(int argc, char **argv)
 
 	memset(&knet_cfg_head, 0, sizeof(struct knet_cfg_top));
 
+	utils_syslog=1;
+
 	if (create_lockfile(LOCKFILE_NAME) < 0) {
 		log_error("Unable to create lockfile");
 		exit(EXIT_FAILURE);

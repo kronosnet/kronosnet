@@ -6,7 +6,7 @@
 #include "utils.h"
 
 int utils_debug = 0;
-int utils_syslog = 1;
+int utils_syslog = 0;
 
 int knet_fdset_cloexec(int fd)
 {
