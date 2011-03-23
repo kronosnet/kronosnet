@@ -28,7 +28,6 @@ dist_doc_DATA		= \
 
 noinst_HEADERS		= \
 			  cfg.h \
-			  netutils.h \
 			  utils.h
 
 sbin_PROGRAMS		= kronosnetd
@@ -36,7 +35,6 @@ sbin_PROGRAMS		= kronosnetd
 kronosnetd_SOURCES	= \
 			  cfg.c \
 			  main.c \
-			  netutils.c \
 			  utils.c
 
 kronosnetd_LDADD	= \

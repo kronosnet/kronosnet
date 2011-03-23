@@ -25,35 +25,32 @@ TESTS = $(check_PROGRAMS)
 AM_CPPFLAGS		= -DTEST \
 			  -I$(srcdir)/../ \
 			  -I$(srcdir)/../libtap/ \
-			  -I$(srcdir)/../libknet/
+			  -I$(srcdir)/../libknet/ \
+			  -I$(srcdir)/../libvty/
 
 AM_LDFLAGS		= \
 			  $(top_builddir)/libtap/libtap.la \
-			  $(top_builddir)/libknet/libknet.a
+			  $(top_builddir)/libknet/libknet.a \
+			  $(top_builddir)/libvty/libvty.a
 
 ping_test_SOURCES	= \
 			  ping_test.c \
-			  ../netutils.c \
 			  ../utils.c
 
 khandle_test_SOURCES	= \
 			  khandle_test.c \
-			  ../netutils.c \
 			  ../utils.c
 
 lookup_bench_SOURCES	= \
 			  lookup_bench.c \
-			  ../netutils.c \
 			  ../utils.c
 
 listener_test_SOURCES	= \
 			  listener_test.c \
-			  ../netutils.c \
 			  ../utils.c
 
 netutils_test_SOURCES	= \
 			  netutils_test.c \
-			  ../netutils.c \
 			  ../utils.c
 
 utils_test_SOURCES	= \
