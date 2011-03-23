@@ -18,7 +18,7 @@ noinst_PROGRAMS = \
 check_PROGRAMS = \
 		  netutils_test \
 		  listener_test \
-		  utils_test
+		  timediff_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -53,6 +53,6 @@ netutils_test_SOURCES	= \
 			  netutils_test.c \
 			  ../utils.c
 
-utils_test_SOURCES	= \
-			  utils_test.c \
+timediff_test_SOURCES	= \
+			  timediff_test.c \
 			  ../utils.c
