@@ -22,7 +22,6 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <stdint.h>
-#include "utils.h"
 #endif
 
 #include "libtap.h"
@@ -879,7 +878,7 @@ static int is_if_in_system(char *name)
 	int found = 0;
 
 	if (getifaddrs(&ifap) < 0) {
-		log_error("Unable to get interface list.");
+		printf("Unable to get interface list.\n");
 		return -1;
 	}
 
@@ -904,28 +903,28 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 	tap=tap_open(name, size, updownpath);
 	if (!tap) {
 		if (lib_cfg.sockfd < 0)
-			log_error("Unable to open knet_socket");
-		log_error("Unable to open knet.");
+			printf("Unable to open knet_socket\n");
+		printf("Unable to open knet.\n");
 		return -1;
 	}
-	log_info("Created interface: %s", name);
+	printf("Created interface: %s\n", name);
 
 	if (is_if_in_system(name) > 0) {
-		log_info("Found interface %s on the system", name);
+		printf("Found interface %s on the system\n", name);
 	} else {
-		log_info("Unable to find interface %s on the system", name);
+		printf("Unable to find interface %s on the system\n", name);
 	}
 
 	if (!tap_find(name, size)) {
-		log_info("Unable to find interface %s in tap db", name);
+		printf("Unable to find interface %s in tap db\n", name);
 	} else {
-		log_info("Found interface %s in tap db", name);
+		printf("Found interface %s in tap db\n", name);
 	}
 
 	tap_close(tap);
 
 	if (is_if_in_system(name) == 0)
-		log_info("Successfully removed interface %s from the system", name);
+		printf("Successfully removed interface %s from the system\n", name);
 
 	return 0;
 }
@@ -938,59 +937,59 @@ static int check_tap_open_close(void)
 
 	memset(device_name, 0, sizeof(device_name));
 
-	log_info("Creating random tap interface:");
+	printf("Creating random tap interface:\n");
 	if (test_iface(device_name, size,  NULL) < 0) {
-		log_error("Unable to create random interface");
+		printf("Unable to create random interface\n");
 		return -1;
 	}
 
-	log_info("Creating kronostest tap interface:");
+	printf("Creating kronostest tap interface:\n");
 	strncpy(device_name, "kronostest", IFNAMSIZ);
 	if (test_iface(device_name, size, NULL) < 0) {
-		log_error("Unable to create kronosnet interface");
+		printf("Unable to create kronosnet interface\n");
 		return -1;
 	}
 
-	log_info("Testing ERROR conditions");
+	printf("Testing ERROR conditions\n");
 
-	log_info("Testing dev == NULL");
+	printf("Testing dev == NULL\n");
 	errno=0;
 	if ((test_iface(NULL, size, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_open sanity checks");
+		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
 	}
 
-	log_info("Testing size < IFNAMSIZ");
+	printf("Testing size < IFNAMSIZ\n");
 	errno=0;
 	if ((test_iface(device_name, 1, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_open sanity checks");
+		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
 	}
 
-	log_info("Testing device_name size > IFNAMSIZ");
+	printf("Testing device_name size > IFNAMSIZ\n");
 	errno=0;
 	strcpy(device_name, "abcdefghilmnopqrstuvwz");
 	if ((test_iface(device_name, IFNAMSIZ, NULL) >= 0) || (errno != E2BIG)) {
-		log_error("Something is wrong in tap_open sanity checks");
+		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
 	}
 
-	log_info("Testing updown path != abs");
+	printf("Testing updown path != abs\n");
 	errno=0;
 	strcpy(device_name, "kronostest");
 	if ((test_iface(device_name, IFNAMSIZ, "foo")  >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_open sanity checks");
+		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
 	}
 
 	memset(fakepath, '/', PATH_MAX - 2);
 	fakepath[PATH_MAX-1] = 0;
 
-	log_info("Testing updown path > PATH_MAX");
+	printf("Testing updown path > PATH_MAX\n");
 	errno=0;
 	strcpy(device_name, "kronostest");
 	if ((test_iface(device_name, IFNAMSIZ, fakepath)  >= 0) || (errno != E2BIG)) {
-		log_error("Something is wrong in tap_open sanity checks");
+		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
 	}
 
@@ -1006,7 +1005,7 @@ static int check_knet_multi_eth(void)
 	tap_t tap1 = NULL;
 	tap_t tap2 = NULL;
 
-	log_info("Testing multiple knet interface instances");
+	printf("Testing multiple knet interface instances\n");
 
 	memset(device_name1, 0, size);
 	memset(device_name2, 0, size);
@@ -1016,28 +1015,28 @@ static int check_knet_multi_eth(void)
 
 	tap1 = tap_open(device_name1, size, NULL);
 	if (!tap1) {
-		log_error("Unable to init %s.", device_name1);
+		printf("Unable to init %s\n", device_name1);
 		err = -1;
 		goto out_clean;
 	}
 
 	if (is_if_in_system(device_name1) > 0) {
-		log_info("Found interface %s on the system", device_name1);
+		printf("Found interface %s on the system\n", device_name1);
 	} else {
-		log_info("Unable to find interface %s on the system", device_name1);
+		printf("Unable to find interface %s on the system\n", device_name1);
 	}
 
 	tap2 = tap_open(device_name2, size, NULL);
 	if (!tap2) {
-		log_error("Unable to init %s.", device_name2);
+		printf("Unable to init %s\n", device_name2);
 		err = -1;
 		goto out_clean;
 	}
 
 	if (is_if_in_system(device_name2) > 0) {
-		log_info("Found interface %s on the system", device_name2);
+		printf("Found interface %s on the system\n", device_name2);
 	} else {
-		log_info("Unable to find interface %s on the system", device_name2);
+		printf("Unable to find interface %s on the system\n", device_name2);
 	}
 
 	if (tap1)
@@ -1045,26 +1044,26 @@ static int check_knet_multi_eth(void)
 	if (tap2)
 		tap_close(tap2);
 
-	log_info("Testing error conditions");
+	printf("Testing error conditions\n");
 
-	log_info("Open same device twice");
+	printf("Open same device twice\n");
 
 	tap1 = tap_open(device_name1, size, NULL);
 	if (!tap1) {
-		log_error("Unable to init %s.", device_name1);
+		printf("Unable to init %s\n", device_name1);
 		err = -1;
 		goto out_clean;
 	}
 
 	if (is_if_in_system(device_name1) > 0) {
-		log_info("Found interface %s on the system", device_name1);
+		printf("Found interface %s on the system\n", device_name1);
 	} else {
-		log_info("Unable to find interface %s on the system", device_name1);
+		printf("Unable to find interface %s on the system\n", device_name1);
 	}
 
 	tap2 = tap_open(device_name1, size, NULL);
 	if (tap2) {
-		log_error("We were able to init 2 interfaces with the same name!");
+		printf("We were able to init 2 interfaces with the same name!\n");
 		err = -1;
 		goto out_clean;
 	}
@@ -1087,61 +1086,61 @@ static int check_knet_mtu(void)
 	int current_mtu = 0;
 	int expected_mtu = 1500;
 
-	log_info("Testing get/set MTU");
+	printf("Testing get/set MTU\n");
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Comparing default MTU");
+	printf("Comparing default MTU\n");
 	current_mtu = tap_get_mtu(tap);
 	if (current_mtu < 0) {
-		log_error("Unable to get MTU");
+		printf("Unable to get MTU\n");
 		err = -1;
 		goto out_clean;
 	}
 	if (current_mtu != expected_mtu) {
-		log_error("current mtu [%d] does not match expected default [%d]", current_mtu, expected_mtu);
+		printf("current mtu [%d] does not match expected default [%d]\n", current_mtu, expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Setting MTU to 9000");
+	printf("Setting MTU to 9000\n");
 	expected_mtu = 9000;
 	if (tap_set_mtu(tap, expected_mtu) < 0) {
-		log_error("Unable to set MTU to %d.", expected_mtu);
+		printf("Unable to set MTU to %d\n", expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
 	current_mtu = tap_get_mtu(tap);
 	if (current_mtu < 0) {
-		log_error("Unable to get MTU");
+		printf("Unable to get MTU\n");
 		err = -1;
 		goto out_clean;
 	}
 	if (current_mtu != expected_mtu) {
-		log_error("current mtu [%d] does not match expected value [%d]", current_mtu, expected_mtu);
+		printf("current mtu [%d] does not match expected value [%d]\n", current_mtu, expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Testing ERROR conditions");
+	printf("Testing ERROR conditions\n");
 
-	log_info("Passing empty struct to get_mtu");
+	printf("Passing empty struct to get_mtu\n");
 	if (tap_get_mtu(NULL) > 0) {
-		log_error("Something is wrong in tap_get_mtu sanity checks");
+		printf("Something is wrong in tap_get_mtu sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Passing empty struct to set_mtu");
+	printf("Passing empty struct to set_mtu\n");
 	if (tap_set_mtu(NULL, 1500) == 0) {
-		log_error("Something is wrong in tap_set_mtu sanity checks"); 
+		printf("Something is wrong in tap_set_mtu sanity checks\n"); 
 		err = -1;
 		goto out_clean;
 	}
@@ -1161,89 +1160,89 @@ static int check_knet_mac(void)
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
 
-	log_info("Testing get/set MAC");
+	printf("Testing get/set MAC\n");
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Get current MAC");
+	printf("Get current MAC\n");
 
 	if (tap_get_mac(tap, &current_mac) < 0) {
-		log_error("Unable to get current MAC address.");
+		printf("Unable to get current MAC address.\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Current MAC: %s", current_mac);
+	printf("Current MAC: %s\n", current_mac);
 
-	log_info("Setting MAC: 00:01:01:01:01:01");
+	printf("Setting MAC: 00:01:01:01:01:01\n");
 
 	if (tap_set_mac(tap, "00:01:01:01:01:01") < 0) {
-		log_error("Unable to set current MAC address.");
+		printf("Unable to set current MAC address.\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	if (tap_get_mac(tap, &temp_mac) < 0) {
-		log_error("Unable to get current MAC address.");
+		printf("Unable to get current MAC address.\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Current MAC: %s", temp_mac);
+	printf("Current MAC: %s\n", temp_mac);
 
 	cur_mac = ether_aton(current_mac);
 	tmp_mac = ether_aton(temp_mac);
 
-	log_info("Comparing MAC addresses");
+	printf("Comparing MAC addresses\n");
 	if (memcmp(cur_mac, tmp_mac, sizeof(struct ether_addr))) {
-		log_error("Mac addresses are not the same?!");
+		printf("Mac addresses are not the same?!\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Testing ERROR conditions");
+	printf("Testing ERROR conditions\n");
 
-	log_info("Pass NULL to get_mac (pass1)");
+	printf("Pass NULL to get_mac (pass1)\n");
 	errno = 0;
 	if ((tap_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_get_mac sanity checks");
+		printf("Something is wrong in tap_get_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to get_mac (pass2)");
+	printf("Pass NULL to get_mac (pass2)\n");
 	errno = 0;
 	if ((tap_get_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_get_mac sanity checks");
+		printf("Something is wrong in tap_get_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to set_mac (pass1)");
+	printf("Pass NULL to set_mac (pass1)\n");
 	errno = 0;
 	if ((tap_set_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_mac sanity checks");
+		printf("Something is wrong in tap_set_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to set_mac (pass2)");
+	printf("Pass NULL to set_mac (pass2)\n");
 	errno = 0;
 	if ((tap_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_mac sanity checks");
+		printf("Something is wrong in tap_set_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
 	if (err_mac) {
-		log_error("Something managed to set err_mac!");
+		printf("Something managed to set err_mac!\n");
 		err = -1;
 		free(err_mac);
 	}
@@ -1266,81 +1265,81 @@ static int check_tap_execute_shell(void)
 
 	memset(command, 0, sizeof(command));
 
-	log_info("Testing _execute_shell");
+	printf("Testing _execute_shell\n");
 
-	log_info("command /bin/true");
+	printf("command /bin/true\n");
 
 	err = _execute_shell("/bin/true", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to execute /bin/true ?!?!");
+		printf("Unable to execute /bin/true ?!?!\n");
 		goto out_clean;
 	}
 
-	log_info("Testing ERROR conditions");
+	printf("Testing ERROR conditions\n");
 
-	log_info("command /bin/false");
+	printf("command /bin/false\n");
 
 	err = _execute_shell("/bin/false", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Can we really execute /bin/false successfully?!?!");
+		printf("Can we really execute /bin/false successfully?!?!\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("command that outputs to stdout (enforcing redirect)");
+	printf("command that outputs to stdout (enforcing redirect)\n");
 
 	err = _execute_shell("/bin/grep -h 2>&1", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Can we really execute /bin/grep -h successfully?!?");
+		printf("Can we really execute /bin/grep -h successfully?!?\n");
 		err = -1;
 		goto out_clean;
 	} 
 
-	log_info("command that outputs to stderr");
+	printf("command that outputs to stderr\n");
 	err = _execute_shell("/bin/grep -h", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Can we really execute /bin/grep -h successfully?!?");
+		printf("Can we really execute /bin/grep -h successfully?!?\n");
 		err = -1;
 		goto out_clean;
 	} 
 
-	log_info("empty command");
+	printf("empty command\n");
 	err = _execute_shell(NULL, &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Can we really execute (nil) successfully?!?!");
+		printf("Can we really execute (nil) successfully?!?!\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("empty error");
+	printf("empty error\n");
 	err = _execute_shell("/bin/true", NULL);
 	if (!err) {
-		log_error("Check EINVAL filter for no error_string!");
+		printf("Check EINVAL filter for no error_string!\n");
 		err = -1;
 		goto out_clean;
 	}
@@ -1362,31 +1361,31 @@ static int check_knet_up_down(void)
 	char *error_preup = NULL, *error_up = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
 
-	log_info("Testing interface up/down");
+	printf("Testing interface up/down\n");
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Put the interface up");
+	printf("Put the interface up\n");
 
 	err = tap_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
-		log_info("preup output: %s", error_preup);
+		printf("preup output: %s\n", error_preup);
 		free(error_preup);
 		error_preup = NULL;
 	}
 	if (error_up) {
-		log_info("up output: %s", error_up);
+		printf("up output: %s\n", error_up);
 		free(error_up);
 		error_up = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to set interface up");
+		printf("Unable to set interface up\n");
 		err = -1;
 		goto out_clean;
 	}
@@ -1394,191 +1393,191 @@ static int check_knet_up_down(void)
 
 	err = _execute_shell("ip addr show dev kronostest | grep -q UP", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to verify inteface UP");
+		printf("Unable to verify inteface UP\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Put the interface down");
+	printf("Put the interface down\n");
 
 	err = tap_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
-		log_info("down output: %s", error_down);
+		printf("down output: %s\n", error_down);
 		free(error_down);
 		error_down = NULL;
 	}
 	if (error_postdown) {
-		log_info("postdown output: %s", error_down);
+		printf("postdown output: %s\n", error_down);
 		free(error_down);
 		error_down = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to put the interface down");
+		printf("Unable to put the interface down\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	err = _execute_shell("ifconfig kronostest | grep -q UP", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Unable to verify inteface DOWN");
+		printf("Unable to verify inteface DOWN\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	tap_close(tap);
 
-	log_info("Testing interface pre-up/up/down/post-down (exec errors)");
+	printf("Testing interface pre-up/up/down/post-down (exec errors)\n");
 
 	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_bad");
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Put the interface up");
+	printf("Put the interface up\n");
 
 	err = tap_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
-		log_info("preup output: %s", error_preup);
+		printf("preup output: %s\n", error_preup);
 		free(error_preup);
 		error_preup = NULL;
 	}
 	if (error_up) {
-		log_info("up output: %s", error_up);
+		printf("up output: %s\n", error_up);
 		free(error_up);
 		error_up = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to set interface up");
+		printf("Unable to set interface up\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Put the interface down");
+	printf("Put the interface down\n");
 
 	err = tap_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
-		log_info("down output: %s", error_down);
+		printf("down output: %s\n", error_down);
 		free(error_down);
 		error_down = NULL;
 	}
 	if (error_postdown) {
-		log_info("postdown output: %s", error_down);
+		printf("postdown output: %s\n", error_down);
 		free(error_down);
 		error_down = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to put the interface down");
+		printf("Unable to put the interface down\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	tap_close(tap);
 
-	log_info("Testing interface pre-up/up/down/post-down");
+	printf("Testing interface pre-up/up/down/post-down\n");
 
 	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_good");
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Put the interface up");
+	printf("Put the interface up\n");
 
 	err = tap_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
-		log_info("preup output: %s", error_preup);
+		printf("preup output: %s\n", error_preup);
 		free(error_preup);
 		error_preup = NULL;
 	}
 	if (error_up) {
-		log_info("up output: %s", error_up);
+		printf("up output: %s\n", error_up);
 		free(error_up);
 		error_up = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to set interface up");
+		printf("Unable to set interface up\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Put the interface down");
+	printf("Put the interface down\n");
 
 	err = tap_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
-		log_info("down output: %s", error_down);
+		printf("down output: %s\n", error_down);
 		free(error_down);
 		error_down = NULL;
 	}
 	if (error_postdown) {
-		log_info("postdown output: %s", error_down);
+		printf("postdown output: %s\n", error_down);
 		free(error_down);
 		error_down = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to put the interface down");
+		printf("Unable to put the interface down\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	tap_close(tap);
 
-	log_info("Test ERROR conditions");
+	printf("Test ERROR conditions\n");
 
-	log_info("Pass NULL to tap set_up");
+	printf("Pass NULL to tap set_up\n");
 	errno = 0;
 	if ((tap_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_up sanity checks");
+		printf("Something is wrong in tap_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to error_preup set_up");
+	printf("Pass NULL to error_preup set_up\n");
 	errno = 0;
 	if ((tap_set_up(tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_up sanity checks");
+		printf("Something is wrong in tap_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to error_up set_up");
+	printf("Pass NULL to error_up set_up\n");
 	errno = 0;
 	if ((tap_set_up(tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_up sanity checks");
+		printf("Something is wrong in tap_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to tap set_down");
+	printf("Pass NULL to tap set_down\n");
 	errno = 0;
 	if ((tap_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_down sanity checks");
+		printf("Something is wrong in tap_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to error_down set_down");
+	printf("Pass NULL to error_down set_down\n");
 	errno = 0;
 	if ((tap_set_down(tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_down sanity checks");
+		printf("Something is wrong in tap_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	log_info("Pass NULL to error_postdown set_down");
+	printf("Pass NULL to error_postdown set_down\n");
 	errno = 0;
 	if ((tap_set_down(tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
-		log_error("Something is wrong in tap_set_down sanity checks");
+		printf("Something is wrong in tap_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
@@ -1598,40 +1597,40 @@ static int check_knet_close_leak(void)
 	tap_t tap;
 	char *error_string = NULL;
 
-	log_info("Testing close leak (needs valgrind)");
+	printf("Testing close leak (needs valgrind)\n");
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Adding ip: 192.168.168.168/24");
+	printf("Adding ip: 192.168.168.168/24\n");
 
 	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
-		log_info("add ip output: %s", error_string);
+		printf("add ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to assign IP address");
+		printf("Unable to assign IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Adding ip: 192.168.169.169/24");
+	printf("Adding ip: 192.168.169.169/24\n");
 
 	err = tap_add_ip(tap, "192.168.169.169", "24", &error_string);
 	if (error_string) {
-		log_info("add ip output: %s", error_string);
+		printf("add ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to assign IP address");
+		printf("Unable to assign IP address\n");
 		err=-1;
 		goto out_clean;
 	}
@@ -1653,196 +1652,196 @@ static int check_knet_set_del_ip(void)
 	int ip_list_entries = 0, i, offset = 0;
 	char *error_string = NULL;
 
-	log_info("Testing interface add/remove ip");
+	printf("Testing interface add/remove ip\n");
 
 	memset(device_name, 0, size);
 	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
-		log_error("Unable to init %s.", device_name);
+		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
-	log_info("Adding ip: 192.168.168.168/24");
+	printf("Adding ip: 192.168.168.168/24\n");
 
 	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
-		log_info("add ip output: %s", error_string);
+		printf("add ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to assign IP address");
+		printf("Unable to assign IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Adding ip: 192.168.169.169/24");
+	printf("Adding ip: 192.168.169.169/24\n");
 
 	err = tap_add_ip(tap, "192.168.169.169", "24", &error_string);
 	if (error_string) {
-		log_info("add ip output: %s", error_string);
+		printf("add ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to assign IP address");
+		printf("Unable to assign IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Adding duplicate ip: 192.168.168.168/24");
+	printf("Adding duplicate ip: 192.168.168.168/24\n");
 
 	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
-		log_info("add ip output: %s", error_string);
+		printf("add ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to find IP address in libtap db");
+		printf("Unable to find IP address in libtap db\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Checking ip: 192.168.168.168/24");
+	printf("Checking ip: 192.168.168.168/24\n");
 
 	err = _execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err) {
-		log_error("Unable to verify IP address");
+		printf("Unable to verify IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Get ip list from libtap:");
+	printf("Get ip list from libtap:\n");
 
 	if (tap_get_ips(tap, &ip_list, &ip_list_entries) < 0) {
-		log_error("Not enough mem?");
+		printf("Not enough mem?\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	if (ip_list_entries != 2) {
-		log_error("Didn't get enough ip back from libtap?");
+		printf("Didn't get enough ip back from libtap?\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	for (i = 1; i <= ip_list_entries; i++) {
-		log_info("Found IP %s %s in libtap db", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1);
+		printf("Found IP %s %s in libtap db\n", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1);
 		offset = offset + strlen(ip_list) + 1;
 		offset = offset + strlen(ip_list + offset) + 1;
 	}
 
 	free(ip_list);
 
-	log_info("Deleting ip: 192.168.168.168/24");
+	printf("Deleting ip: 192.168.168.168/24\n");
 
 	err = tap_del_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
-		log_info("del ip output: %s", error_string);
+		printf("del ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to delete IP address");
+		printf("Unable to delete IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Deleting ip: 192.168.169.169/24");
+	printf("Deleting ip: 192.168.169.169/24\n");
 
 	err = tap_del_ip(tap, "192.168.169.169", "24", &error_string);
 	if (error_string) {
-		log_info("del ip output: %s", error_string);
+		printf("del ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to delete IP address");
+		printf("Unable to delete IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Deleting again ip: 192.168.168.168/24");
+	printf("Deleting again ip: 192.168.168.168/24\n");
 
 	err = tap_del_ip(tap, "192.168.168.168", "24", &error_string);
 	if (error_string) {
-		log_info("del ip output: %s", error_string);
+		printf("del ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to delete IP address");
+		printf("Unable to delete IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	err = _execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Unable to verify IP address");
+		printf("Unable to verify IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Adding ip: 3ffe::1/64");
+	printf("Adding ip: 3ffe::1/64\n");
 
 	err = tap_add_ip(tap, "3ffe::1", "64", &error_string);
 	if (error_string) {
-		log_info("add ipv6 output: %s", error_string);
+		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		log_error("Unable to assign IP address");
+		printf("Unable to assign IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err) {
-		log_error("Unable to verify IP address");
+		printf("Unable to verify IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
-	log_info("Deleting ip: 3ffe::1/64");
+	printf("Deleting ip: 3ffe::1/64\n");
 
 	err = tap_del_ip(tap, "3ffe::1", "64", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err) {
-		log_error("Unable to delete IP address");
+		printf("Unable to delete IP address\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
 	if (error_string) {
-		log_error("Error string: %s", error_string);
+		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		log_error("Unable to verify IP address");
+		printf("Unable to verify IP address\n");
 		err=-1;
 		goto out_clean;
 	}
