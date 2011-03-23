@@ -1,11 +1,14 @@
 #include "config.h"
 
+#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sched.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <string.h>
 
 #include "cfg.h"
 #include "vty.h"
@@ -230,14 +233,14 @@ static void set_cfg_defaults(void)
 	if (!knet_cfg_head.conffile)
 		knet_cfg_head.conffile = strdup(DEFAULT_CONFIG_FILE);
 	if (!knet_cfg_head.conffile) {
-		log_error("Unable to allocate memory for config file");
+		fprintf(stderr, "Unable to allocate memory for config file");
 		exit(EXIT_FAILURE);
 	}
 
 	if (!knet_cfg_head.vty_ip)
 		knet_cfg_head.vty_ip = strdup("::");
 	if (!knet_cfg_head.vty_ip) {
-		log_error("Unable to allocate memory for default ip address");
+		fprintf(stderr, "Unable to allocate memory for default ip address");
 		exit(EXIT_FAILURE);
 	}
 
@@ -248,7 +251,7 @@ static void set_cfg_defaults(void)
 		knet_cfg_head.vty_port = strdup(portbuf);
 	}
 	if (!knet_cfg_head.vty_port) {
-		log_error("Unable to allocate memory for default port address");
+		fprintf(stderr, "Unable to allocate memory for default port address");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -262,12 +265,12 @@ int main(int argc, char **argv)
 	utils_syslog=1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0) {
-		log_error("Unable to create lockfile");
+		fprintf(stderr, "Unable to create lockfile");
 		exit(EXIT_FAILURE);
 	}
 
 	if (read_arguments(argc, argv) < 0) {
-		log_error("Unable to parse options");
+		fprintf(stderr, "Unable to parse options");
 		exit(EXIT_FAILURE);
 	}
 
