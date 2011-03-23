@@ -9,12 +9,6 @@
 extern int utils_debug;
 extern int utils_syslog;
 
-#ifndef TEST
-#define STATIC static
-#else
-#define STATIC
-#endif
-
 #define log_debug(fmt, args...)	\
 do { \
 	if (utils_debug) { \

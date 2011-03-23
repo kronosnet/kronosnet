@@ -19,9 +19,9 @@
 #include "vty_cli_cmds.h"
 #include "vty_utils.h"
 
-STATIC int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
-STATIC int vty_current_connections = 0;
-STATIC int daemon_quit = 0;
+static int vty_max_connections = KNET_VTY_DEFAULT_MAX_CONN;
+static int vty_current_connections = 0;
+static int daemon_quit = 0;
 
 pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 int knet_vty_config = -1;
