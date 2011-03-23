@@ -53,9 +53,4 @@ extern struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
 int knet_vty_main_loop(void);
 
-int knet_vty_init_listener(const char *address, const char *port);
-void knet_vty_close_listener(int listener_fd);
-
-int knet_vty_set_max_connections(const int max_connections);
-
 #endif

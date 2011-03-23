@@ -27,6 +27,76 @@ pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 int knet_vty_config = -1;
 struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
+static int knet_vty_init_listener(const char *ip_addr, const char *port)
+{
+	int sockfd = -1, sockopt = 1;
+	int socktype = SOCK_STREAM;
+	int err = 0;
+	struct sockaddr_storage ss;
+
+	memset(&ss, 0, sizeof(struct sockaddr_storage));
+
+	if (strtoaddr(ip_addr, port, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage)) != 0)
+		return -1;
+
+	pthread_mutex_lock(&knet_vty_mutex);
+
+	/* handle sigpipe if we decide to use KEEPALIVE */
+
+	sockfd = socket(ss.ss_family, socktype, 0);
+	if (sockfd < 0) {
+		err = sockfd;
+		goto out_clean;
+	}
+
+	err = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+			 (void *)&sockopt, sizeof(sockopt));
+	if (err)
+		goto out_clean;
+
+	if (knet_fdset_cloexec(sockfd) < 0) {
+		err = -1;
+		goto out_clean;
+	}
+
+	err = bind(sockfd, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage));
+	if (err)
+		goto out_clean;
+
+	err = listen(sockfd, 0);
+	if (err)
+		goto out_clean;
+
+	pthread_mutex_unlock(&knet_vty_mutex);
+
+	return sockfd;
+
+out_clean:
+	if (sockfd >= 0)
+		close(sockfd);
+
+	pthread_mutex_unlock(&knet_vty_mutex);
+
+	return err;
+}
+
+static void knet_vty_close_listener(int listener_fd)
+{
+	pthread_mutex_lock(&knet_vty_mutex);
+
+	if (listener_fd <= 0)
+		goto out_clean;
+
+	close(listener_fd);
+	listener_fd = 0;
+
+out_clean:
+
+	pthread_mutex_unlock(&knet_vty_mutex);
+
+	return;
+}
+
 static void sigterm_handler(int sig)
 {
 	daemon_quit = 1;
@@ -244,6 +314,7 @@ out:
 	return err;
 }
 
+/*
 int knet_vty_set_max_connections(const int max_connections)
 {
 	int err = 0;
@@ -259,73 +330,4 @@ int knet_vty_set_max_connections(const int max_connections)
 	pthread_mutex_unlock(&knet_vty_mutex);
 	return err;
 }
-
-int knet_vty_init_listener(const char *ip_addr, const char *port)
-{
-	int sockfd = -1, sockopt = 1;
-	int socktype = SOCK_STREAM;
-	int err = 0;
-	struct sockaddr_storage ss;
-
-	memset(&ss, 0, sizeof(struct sockaddr_storage));
-
-	if (strtoaddr(ip_addr, port, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage)) != 0)
-		return -1;
-
-	pthread_mutex_lock(&knet_vty_mutex);
-
-	/* handle sigpipe if we decide to use KEEPALIVE */
-
-	sockfd = socket(ss.ss_family, socktype, 0);
-	if (sockfd < 0) {
-		err = sockfd;
-		goto out_clean;
-	}
-
-	err = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
-			 (void *)&sockopt, sizeof(sockopt));
-	if (err)
-		goto out_clean;
-
-	if (knet_fdset_cloexec(sockfd) < 0) {
-		err = -1;
-		goto out_clean;
-	}
-
-	err = bind(sockfd, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage));
-	if (err)
-		goto out_clean;
-
-	err = listen(sockfd, 0);
-	if (err)
-		goto out_clean;
-
-	pthread_mutex_unlock(&knet_vty_mutex);
-
-	return sockfd;
-
-out_clean:
-	if (sockfd >= 0)
-		close(sockfd);
-
-	pthread_mutex_unlock(&knet_vty_mutex);
-
-	return err;
-}
-
-void knet_vty_close_listener(int listener_fd)
-{
-	pthread_mutex_lock(&knet_vty_mutex);
-
-	if (listener_fd <= 0)
-		goto out_clean;
-
-	close(listener_fd);
-	listener_fd = 0;
-
-out_clean:
-
-	pthread_mutex_unlock(&knet_vty_mutex);
-
-	return;
-}
+*/
