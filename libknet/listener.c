@@ -4,8 +4,8 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <string.h>
 
-#include "utils.h"
 #include "libknet-private.h"
 
 int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock)
@@ -41,7 +41,7 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	value = KNET_RING_RCVBUFF;
 	setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
-	if (knet_fdset_cloexec(listener->sock) != 0)
+	if (_fdset_cloexec(listener->sock) != 0)
 		goto exit_fail1;
 
 	if (bind(listener->sock, (struct sockaddr *) &listener->address,

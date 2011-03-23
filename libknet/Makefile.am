@@ -6,6 +6,7 @@ LIBS			= -lpthread \
 libversion		= 0:0:0
 
 sources			= \
+			  common.c \
 			  handle.c \
 			  host.c \
 			  listener.c

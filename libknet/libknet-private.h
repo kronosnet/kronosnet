@@ -31,4 +31,6 @@ struct knet_handle {
 	pthread_rwlock_t list_rwlock;
 };
 
+int _fdset_cloexec(int fd);
+
 #endif

@@ -29,7 +29,7 @@ struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
 static int knet_vty_init_listener(const char *ip_addr, const char *port)
 {
-	int sockfd = -1, sockopt = 1;
+	int sockfd = -1, sockopt = 1, sockflags = -1;
 	int socktype = SOCK_STREAM;
 	int err = 0;
 	struct sockaddr_storage ss;
@@ -54,7 +54,13 @@ static int knet_vty_init_listener(const char *ip_addr, const char *port)
 	if (err)
 		goto out_clean;
 
-	if (knet_fdset_cloexec(sockfd) < 0) {
+	sockflags = fcntl(sockfd, F_GETFD, 0);
+	if (sockflags < 0) {
+		err = -1;
+		goto out_clean;
+	}
+	sockflags |= FD_CLOEXEC;
+	if (fcntl(sockfd, F_SETFD, sockflags) < 0)
 		err = -1;
 		goto out_clean;
 	}

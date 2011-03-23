@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <sys/epoll.h>
 
-#include "utils.h"
 #include "libknet-private.h"
 
 #define KNET_MAX_EVENTS 8
@@ -48,7 +47,7 @@ knet_handle_t knet_handle_new(int fd, uint16_t node_id)
 	if (knet_h->epollfd < 0)
 		goto exit_fail4;
 
-	if (knet_fdset_cloexec(knet_h->epollfd) != 0)
+	if (_fdset_cloexec(knet_h->epollfd) != 0)
 		goto exit_fail5;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
