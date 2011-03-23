@@ -29,15 +29,6 @@ do { \
 	if (utils_syslog) syslog(LOG_ERR, fmt, ##args); \
 } while (0);
 
-#define timespec_diff(start, end, diff) \
-do { \
-	if (end.tv_sec > start.tv_sec) \
-		*(diff) = ((end.tv_sec - start.tv_sec) * 1000000000llu) \
-					+ end.tv_nsec - start.tv_nsec; \
-	else \
-		*(diff) = end.tv_nsec - start.tv_nsec; \
-} while (0);
-
 int knet_fdset_cloexec(int fd);
 
 #endif

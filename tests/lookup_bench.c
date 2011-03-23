@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "libknet.h"
+#include "libknet-private.h"
 #include "netutils.h"
 #include "utils.h"
 

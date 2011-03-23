@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "utils.h"
+#include "libknet-private.h"
 
 #define timespec_set(x, sec, nsec) \
 do { \
