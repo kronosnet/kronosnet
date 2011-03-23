@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <sys/epoll.h>
 
-#include "netutils.h"
 #include "utils.h"
 #include "libknet-private.h"
 
