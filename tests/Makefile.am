@@ -33,26 +33,14 @@ AM_LDFLAGS		= \
 			  $(top_builddir)/libknet/libknet.a \
 			  $(top_builddir)/libvty/libvty.a
 
-ping_test_SOURCES	= \
-			  ping_test.c \
-			  ../utils.c
+ping_test_SOURCES	= ping_test.c
 
-khandle_test_SOURCES	= \
-			  khandle_test.c \
-			  ../utils.c
+khandle_test_SOURCES	= khandle_test.c
 
-lookup_bench_SOURCES	= \
-			  lookup_bench.c \
-			  ../utils.c
+lookup_bench_SOURCES	= lookup_bench.c
 
-listener_test_SOURCES	= \
-			  listener_test.c \
-			  ../utils.c
+listener_test_SOURCES	= listener_test.c
 
-netutils_test_SOURCES	= \
-			  netutils_test.c \
-			  ../utils.c
+netutils_test_SOURCES	= netutils_test.c
 
-timediff_test_SOURCES	= \
-			  timediff_test.c \
-			  ../utils.c
+timediff_test_SOURCES	= timediff_test.c

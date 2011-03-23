@@ -1,12 +1,14 @@
 #include "config.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
 #include "netutils.h"
-#include "utils.h"
 
 static void check_ipv4(void)
 {
@@ -17,7 +19,7 @@ static void check_ipv4(void)
 	memset(&addr, 0, sizeof(struct sockaddr_in));
 	memset(&addrck, 0, sizeof(struct sockaddr_in));
 
-	log_info("Checking strtoaddr on 192.168.0.1:50000");
+	printf("Checking strtoaddr on 192.168.0.1:50000\n");
 
 	addrck.sin_family = AF_INET;
 	addrck.sin_addr.s_addr = htonl(0xc0a80001); /* 192.168.0.1 */
@@ -27,35 +29,35 @@ static void check_ipv4(void)
 			(struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
 	if (err != 0) {
-		log_error("Unable to convert 192.168.0.1:50000");
+		printf("Unable to convert 192.168.0.1:50000\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (memcmp(&addr, &addrck, sizeof(struct sockaddr_in)) != 0) {
 		errno = EINVAL;
-		log_error("Check on 192.168.0.1:50000 failed");
+		printf("Check on 192.168.0.1:50000 failed\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Checking addrtostr on 192.168.0.1:50000");
+	printf("Checking addrtostr on 192.168.0.1:50000\n");
 
 	err = addrtostr((struct sockaddr *) &addrck,
 					sizeof(struct sockaddr_in), buf);
 
 	if (err != 0) {
-		log_error("Unable to convert 192.168.0.1:50000");
+		printf("Unable to convert 192.168.0.1:50000\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(buf[0], "192.168.0.1") != 0) {
 		errno = EINVAL;
-		log_error("Wrong address conversion: %s", buf[0]);
+		printf("Wrong address conversion: %s\n", buf[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(buf[1], "50000") != 0) {
 		errno = EINVAL;
-		log_error("Wrong port conversion: %s", buf[1]);
+		printf("Wrong port conversion: %s\n", buf[1]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -71,7 +73,7 @@ static void check_ipv6(void)
 	memset(&addr, 0, sizeof(struct sockaddr_in6));
 	memset(&addrck, 0, sizeof(struct sockaddr_in6));
 
-	log_info("Checking strtoaddr on [fd00::1]:50000");
+	printf("Checking strtoaddr on [fd00::1]:50000\n");
 
 	addrck.sin6_family = AF_INET6;
 	addrck.sin6_addr.s6_addr16[0] = htons(0xfd00); /* fd00::1 */
@@ -82,35 +84,35 @@ static void check_ipv6(void)
 			(struct sockaddr *) &addr, sizeof(struct sockaddr_in6));
 
 	if (err != 0) {
-		log_error("Unable to convert [fd00::1]:50000");
+		printf("Unable to convert [fd00::1]:50000\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (memcmp(&addr, &addrck, sizeof(struct sockaddr_in6)) != 0) {
 		errno = EINVAL;
-		log_error("Check on 192.168.0.1:50000 failed");
+		printf("Check on 192.168.0.1:50000 failed\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Checking addrtostr on [fd00::1]:50000");
+	printf("Checking addrtostr on [fd00::1]:50000\n");
 
 	err = addrtostr((struct sockaddr *) &addrck,
 					sizeof(struct sockaddr_in6), buf);
 
 	if (err != 0) {
-		log_error("Unable to convert 192.168.0.1:50000");
+		printf("Unable to convert 192.168.0.1:50000\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(buf[0], "fd00::1") != 0) {
 		errno = EINVAL;
-		log_error("Wrong address conversion: %s", buf[0]);
+		printf("Wrong address conversion: %s\n", buf[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	if (strcmp(buf[1], "50000") != 0) {
 		errno = EINVAL;
-		log_error("Wrong port conversion: %s", buf[1]);
+		printf("Wrong port conversion: %s\n", buf[1]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -122,23 +124,23 @@ static void check_resolve(void)
 	int err;
 	struct sockaddr_in addr;
 
-	log_info("Checking host resolution");
+	printf("Checking host resolution\n");
 	err = strtoaddr("localhost", "50000",
 			(struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
 	if (err == 0) {
 		errno = EINVAL;
-		log_error("Host resolution should not be enabled");
+		printf("Host resolution should not be enabled\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Checking port resolution");
+	printf("Checking port resolution\n");
 	err = strtoaddr("127.0.0.1", "ssh",
 			(struct sockaddr *) &addr, sizeof(struct sockaddr_in));
 
 	if (err == 0) {
 		errno = EINVAL;
-		log_error("Port resolution should not be enabled");
+		printf("Port resolution should not be enabled\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -163,7 +165,7 @@ int main(int argc, char *argv[])
 					sizeof(struct sockaddr_storage));
 
 	if (err != 0) {
-		log_error("Unable to convert strings to sockaddr");
+		printf("Unable to convert strings to sockaddr\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -171,7 +173,7 @@ int main(int argc, char *argv[])
 			sizeof(struct sockaddr_storage), buf);
 
 	if (err != 0) {
-		log_error("Unable to convert sockaddr to strings");
+		printf("Unable to convert sockaddr to strings\n");
 		exit(EXIT_FAILURE);
 	}
 

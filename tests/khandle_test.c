@@ -1,12 +1,12 @@
 #include "config.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
 #include "libknet.h"
-#include "utils.h"
 
 #define HOST_LIST_SIZE 8192
 #define HOST_LIST_LOOP 64
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
 	if (sock < 0) {
-		log_error("Unable to create new socket");
+		printf("Unable to create new socket\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	printf("Loop count: %u times\n", (unsigned int) search.param1);
 
 	if (knet_handle_free(knet_h) != 0) {
-		log_error("Unable to free knet_handle");
+		printf("Unable to free knet_handle\n");
 		exit(EXIT_FAILURE);
 	}
 

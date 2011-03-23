@@ -31,7 +31,7 @@ noinst_PROGRAMS		= $(check_PROGRAMS)
 
 check_PROGRAMS		= tap_test
 
-tap_test_SOURCES	= $(sources) ../utils.c
+tap_test_SOURCES	= $(sources)
 
 tap_test_CPPFLAGS	= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"

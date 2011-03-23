@@ -1,12 +1,13 @@
 #include "config.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #include "libknet.h"
 #include "libknet-private.h"
 #include "netutils.h"
-#include "utils.h"
 
 #define KNET_PORT 50000
 #define KNET_BENCH_LOOPNUM 100000000
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
 	head = malloc(sizeof(struct knet_link));
 
 	if (head == NULL) {
-		log_error("Unable to create knet_link");
+		printf("Unable to create knet_link\n");
 		exit(EXIT_FAILURE);
 	}
 

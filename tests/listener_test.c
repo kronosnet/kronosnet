@@ -1,10 +1,12 @@
 #include "config.h"
 
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/epoll.h>
 
 #include "libknet-private.h"
-#include "utils.h"
 
 #define KNET_TEST_PORT 50000
 
@@ -18,7 +20,7 @@ static void test_add_listener(void)
 	listener = malloc(sizeof(struct knet_listener));
 
 	if (listener == NULL) {
-		log_error("Unable to create listener");
+		printf("Unable to create listener\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -31,7 +33,7 @@ static void test_add_listener(void)
 	address->sin_addr.s_addr = INADDR_ANY;
 
 	if (knet_listener_add(knet_h, listener) != 0) {
-		log_error("Unable to add listener");
+		printf("Unable to add listener\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -41,7 +43,7 @@ static void test_add_host(void)
 	struct knet_host *host;
 
 	if (knet_host_add(knet_h, 1) != 0) {
-		log_error("Unable to add host to knet_handle");
+		printf("Unable to add host to knet_handle\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -61,16 +63,16 @@ int main(int argc, char *argv[])
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
 	if (sock < 0) {
-		log_error("Unable to create new socket");
+		printf("Unable to create new socket\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if ((knet_h = knet_handle_new(sock, 1)) == NULL) {
-		log_error("Unable to create new knet_handle_t");
+		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Adding listener to handle");
+	printf("Adding listener to handle\n");
 	test_add_listener();
 
 	memset(&ev, 0, sizeof(struct epoll_event));
@@ -79,37 +81,37 @@ int main(int argc, char *argv[])
 	err = epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, listener->sock, &ev);
 
 	if (err != -1) {
-		log_error("Listener file descriptor not found in epollfd");
+		printf("Listener file descriptor not found in epollfd\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_error("Listener file descriptor was added to epollfd");
+	printf("Listener file descriptor was added to epollfd\n");
 
-	log_info("Adding host to handle");
+	printf("Adding host to handle\n");
 	test_add_host();
 
 	err = knet_listener_remove(knet_h, listener);
 
 	if (err != -EBUSY) {
-		log_error("Listener socket should be in use");
+		printf("Listener socket should be in use\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_error("Unable to remove listener with active links");
+	printf("Unable to remove listener with active links\n");
 
-	log_info("Removing host from handle");
+	printf("Removing host from handle\n");
 	err = knet_host_remove(knet_h, 1);
 
 	if (err != 0) {
-		log_error("Unable to remove host from knet_handle");
+		printf("Unable to remove host from knet_handle\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_info("Removing listener");
+	printf("Removing listener\n");
 	err = knet_listener_remove(knet_h, listener);
 
 	if (err != 0) {
-		log_error("Unable to remove listener from knet_handle");
+		printf("Unable to remove listener from knet_handle\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -117,14 +119,14 @@ int main(int argc, char *argv[])
 	err = epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 
 	if (err != -1) {
-		log_error("Listener file was present in epollfd");
+		printf("Listener file was present in epollfd\n");
 		exit(EXIT_FAILURE);
 	}
 
-	log_error("Listener file descriptor was removed from epollfd");
+	printf("Listener file descriptor was removed from epollfd\n");
 
 	if (knet_handle_free(knet_h) != 0) {
-		log_error("Unable to free knet_handle");
+		printf("Unable to free knet_handle\n");
 		exit(EXIT_FAILURE);
 	}
 

@@ -1,9 +1,9 @@
 #include "config.h"
 
+#include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
 
-#include "utils.h"
 #include "libknet-private.h"
 
 #define timespec_set(x, sec, nsec) \
@@ -22,20 +22,20 @@ static void check_timespec_diff(void)
 	timespec_set(end, start.tv_sec, start.tv_nsec + 10000);
 	timespec_diff(start, end, &diff);
 
-	log_info("Checking 10000 == %llu", diff);
+	printf("Checking 10000 == %llu\n", diff);
 
 	if (diff != 10000) {
-		log_error("Failure!");
+		printf("Failure!\n");
 		exit(EXIT_FAILURE);
 	}
 
 	timespec_set(end, start.tv_sec + 5, start.tv_nsec - 5000);
 	timespec_diff(start, end, &diff);
 
-	log_info("Checking 4999995000 == %llu", diff);
+	printf("Checking 4999995000 == %llu\n", diff);
 
 	if (diff != 4999995000llu) {
-		log_error("Failure!");
+		printf("Failure!\n");
 		exit(EXIT_FAILURE);
 	}
 }

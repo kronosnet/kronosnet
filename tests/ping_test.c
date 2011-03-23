@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,7 +9,6 @@
 #include <arpa/inet.h>
 
 #include "libknet.h"
-#include "utils.h"
 
 static int knet_sock[2];
 static knet_handle_t knet_h;
@@ -54,7 +54,7 @@ static void argv_to_hosts(int argc, char *argv[])
 	listener = malloc(sizeof(struct knet_listener));
 
 	if (listener == NULL) {
-		log_error("Unable to create listener");
+		printf("Unable to create listener\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -66,20 +66,20 @@ static void argv_to_hosts(int argc, char *argv[])
 	err = tok_inaddrport(argv[1], address);
 
 	if (err < 0) {
-		log_error("Unable to convert ip address: %s", argv[1]);
+		printf("Unable to convert ip address: %s\n", argv[1]);
 		exit(EXIT_FAILURE);
 	}
 
 	err = knet_listener_add(knet_h, listener);
 
 	if (err != 0) {
-		log_error("Unable to start knet listener");
+		printf("Unable to start knet listener\n");
 		exit(EXIT_FAILURE);
 	}
 
 	for (i = 2; i < argc; i++) {
 		if (knet_host_add(knet_h, i - 1) != 0) {
-			log_error("Unable to add new knet_host");
+			printf("Unable to add new knet_host\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -96,7 +96,7 @@ static void argv_to_hosts(int argc, char *argv[])
 				(struct sockaddr_in *) &host->link[0].address);
 
 		if (err < 0) {
-			log_error("Unable to convert ip address: %s", argv[i]);
+			printf("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
 
@@ -134,7 +134,7 @@ static void sigint_handler(int signum)
 		err = knet_handle_free(knet_h);
 
 		if (err != 0) {
-			log_error("Unable to cleanup before exit");
+			printf("Unable to cleanup before exit\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -156,19 +156,19 @@ int main(int argc, char *argv[])
 	}
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_sock) != 0) {
-		log_error("Unable to create socket");
+		printf("Unable to create socket\n");
 		exit(EXIT_FAILURE);
 	}
 
 	knet_h = NULL;
 
 	if (signal(SIGINT, sigint_handler) == SIG_ERR) {
-		log_error("Unable to configure SIGINT handler");
+		printf("Unable to configure SIGINT handler\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if ((knet_h = knet_handle_new(knet_sock[0], 1)) == NULL) {
-		log_error("Unable to create new knet_handle_t");
+		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 	while (1) {
 		knet_host_foreach(knet_h, print_link, &print_search);
 
-		log_info("Sending 'Hello World!' frame");
+		printf("Sending 'Hello World!' frame\n");
 		write(knet_sock[1], "Hello World!", 13);
 
 		tv.tv_sec = 5;
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 		/* usleep(500000); */
 
 		if (len < 0) {
-			log_error("Unable select over knet_handle_t");
+			printf("Unable select over knet_handle_t\n");
 			exit(EXIT_FAILURE);
 		} else if (FD_ISSET(knet_sock[1], &rfds)) {
 			len = read(knet_sock[1], buff, sizeof(buff));
