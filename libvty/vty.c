@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <errno.h>
@@ -60,7 +61,7 @@ static int knet_vty_init_listener(const char *ip_addr, const char *port)
 		goto out_clean;
 	}
 	sockflags |= FD_CLOEXEC;
-	if (fcntl(sockfd, F_SETFD, sockflags) < 0)
+	if (fcntl(sockfd, F_SETFD, sockflags) < 0) {
 		err = -1;
 		goto out_clean;
 	}
