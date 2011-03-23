@@ -3,10 +3,10 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "cfg.h"
 #include "libtap.h"
-#include "utils.h"
 
 struct knet_cfg *knet_get_iface(const char *name, int create)
 {
