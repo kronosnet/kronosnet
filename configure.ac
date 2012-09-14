@@ -28,8 +28,9 @@ fi
 
 # Checks for programs.
 if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
-	AC_MSG_ERROR([you don't seem to have GNU make; it is required])
+	AC_MSG_ERROR(["you don't seem to have GNU make; it is required"])
 fi
+
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_LN_S
@@ -44,11 +45,13 @@ AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 # this function checks if CC support options passed as
 # args. Global CFLAGS are ignored during this test.
 cc_supports_flag() {
-	local CFLAGS="$@"
+	saveCPPFLAGS="$CPPFLAGS"
+	CPPFLAGS="$@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_COMPILE_IFELSE([int main(){return 0;}] ,
+	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
+	CPPFLAGS="$saveCPPFLAGS"
 	return $RC
 }
 
@@ -247,10 +250,10 @@ for j in $WARNLIST; do
 	fi
 done
 
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
+CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
 	$EXTRA_WARNINGS $WERROR_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS"
+LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic"
 
 AC_CONFIG_FILES([
 		Makefile
