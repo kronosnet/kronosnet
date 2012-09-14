@@ -2,9 +2,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 sources			= libtap.c
 
-libversion		= 0:0:0
-
-AM_CFLAGS		= -fPIC
+libversion		= 1:0:0
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			= -lpthread
@@ -23,7 +21,7 @@ libtap_la_SOURCES	= $(sources)
 
 libtap_la_LDFLAGS	= -Wl,-version-script,libtap_exported_sym \
 			  --export-dynamic \
-			  -version-info $(libversion)
+			  -version-number $(libversion)
 
 TESTS			= $(check_PROGRAMS)
 
