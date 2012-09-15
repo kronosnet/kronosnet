@@ -9,8 +9,6 @@ LIBS			= -lpthread
 
 include_HEADERS		= libtap.h
 
-noinst_HEADERS		= libtap-private.h
-
 pkgconfigdir		= $(libdir)/pkgconfig
 
 pkgconfig_DATA		= libtap.pc
