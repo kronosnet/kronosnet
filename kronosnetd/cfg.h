@@ -27,6 +27,7 @@ struct knet_cfg {
 
 struct knet_cfg_top {
 	char *conffile;
+	char *logfile;
 	char *vty_ip;
 	char *vty_port;
 	struct knet_cfg *knet_cfg;

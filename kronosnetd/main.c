@@ -16,7 +16,7 @@
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
-#define OPTION_STRING "hdfVc:b:p:"
+#define OPTION_STRING "hdfVc:l:b:p:"
 
 static int daemonize = 1;
 
@@ -33,6 +33,7 @@ static void print_usage(void)
 	printf("  -p <port>    Bind management VTY to port (default %d)\n",
 		KNET_VTY_DEFAULT_PORT);
 	printf("  -c <file>    Use config file (default "DEFAULT_CONFIG_FILE")\n");
+	printf("  -l <file>    Use log file (default "DEFAULT_LOG_FILE")\n");
 	printf("  -f           Do not fork in background\n");
 	printf("  -d           Enable debugging output\n");
 	printf("  -h           This help\n");
@@ -71,6 +72,12 @@ static int read_arguments(int argc, char **argv)
 		case 'c':
 			knet_cfg_head.conffile = strdup(optarg);
 			if (!knet_cfg_head.conffile)
+				return -1;
+			break;
+
+		case 'l':
+			knet_cfg_head.logfile = strdup(optarg);
+			if (!knet_cfg_head.logfile)
 				return -1;
 			break;
 
@@ -233,14 +240,21 @@ static void set_cfg_defaults(void)
 	if (!knet_cfg_head.conffile)
 		knet_cfg_head.conffile = strdup(DEFAULT_CONFIG_FILE);
 	if (!knet_cfg_head.conffile) {
-		fprintf(stderr, "Unable to allocate memory for config file");
+		fprintf(stderr, "Unable to allocate memory for config file\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (!knet_cfg_head.logfile)
+		knet_cfg_head.logfile = strdup(DEFAULT_LOG_FILE);
+	if (!knet_cfg_head.conffile) {
+		fprintf(stderr, "Unable to allocate memory for log file\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (!knet_cfg_head.vty_ip)
 		knet_cfg_head.vty_ip = strdup("::");
 	if (!knet_cfg_head.vty_ip) {
-		fprintf(stderr, "Unable to allocate memory for default ip address");
+		fprintf(stderr, "Unable to allocate memory for default ip address\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -251,7 +265,7 @@ static void set_cfg_defaults(void)
 		knet_cfg_head.vty_port = strdup(portbuf);
 	}
 	if (!knet_cfg_head.vty_port) {
-		fprintf(stderr, "Unable to allocate memory for default port address");
+		fprintf(stderr, "Unable to allocate memory for default port address\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -265,12 +279,12 @@ int main(int argc, char **argv)
 	utils_syslog=1;
 
 	if (create_lockfile(LOCKFILE_NAME) < 0) {
-		fprintf(stderr, "Unable to create lockfile");
+		fprintf(stderr, "Unable to create lockfile\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (read_arguments(argc, argv) < 0) {
-		fprintf(stderr, "Unable to parse options");
+		fprintf(stderr, "Unable to parse options\n");
 		exit(EXIT_FAILURE);
 	}
 

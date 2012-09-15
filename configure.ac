@@ -149,7 +149,7 @@ AC_ARG_WITH([syslogfacility],
 	[  --with-syslogfacility=FACILITY
 			  default syslog facility. ],
 	[ SYSLOGFACILITY="$withval" ],
-	[ SYSLOGFACILITY="LOG_LOCAL4" ])
+	[ SYSLOGFACILITY="LOG_DAEMON" ])
 
 AC_ARG_WITH([sysloglevel],
 	[  --with-sysloglevel=LEVEL
@@ -184,6 +184,10 @@ AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_FILE],
 
 AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",
 		   [Default logging directory])
+
+AC_DEFINE_UNQUOTED([DEFAULT_LOG_FILE],
+		   "$(eval echo ${LOGDIR}/kronosnetd.log)",
+		   [Default log file])
 
 AC_DEFINE_UNQUOTED([RUNDIR], "$(eval echo ${RUNDIR})",
 		   [Default run directory])
