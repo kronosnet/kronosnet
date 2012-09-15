@@ -24,7 +24,7 @@ m4
 missing
 libtool
 autoscan.log
-kronosnetd
+kronosnetd/kronosnetd
 *.swp
 *_test
 *_bench

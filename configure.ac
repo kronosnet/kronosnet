@@ -8,7 +8,7 @@ LT_PREREQ([2.2.6])
 LT_INIT
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([main.c])
+AC_CONFIG_SRCDIR([kronosnetd/main.c])
 AC_CONFIG_HEADERS([config.h])
 
 AC_CANONICAL_HOST
@@ -259,6 +259,7 @@ AC_CONFIG_FILES([
 		Makefile
 		libtap/Makefile
 		libtap/libtap.pc
+		kronosnetd/Makefile
 		libknet/Makefile
 		libknet/libknet.pc
 		libvty/Makefile

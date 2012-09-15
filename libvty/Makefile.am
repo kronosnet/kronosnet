@@ -2,7 +2,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 AM_CFLAGS		= \
 			  -I$(top_srcdir)/libtap \
-			  -I$(top_srcdir)/libknet
+			  -I$(top_srcdir)/libknet \
+			  -I$(top_srcdir)/kronosnetd
 
 noinst_HEADERS		= \
 			  vty.h \

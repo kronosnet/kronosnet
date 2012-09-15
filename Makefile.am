@@ -7,7 +7,7 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= libtap libknet libvty tests
+SUBDIRS			= libtap libknet libvty kronosnetd tests
 
 if BUILD_DOCS
 SUBDIRS			+= docs
@@ -25,22 +25,6 @@ dist_doc_DATA		= \
 			  README.licence \
 			  README \
 			  TODO
-
-noinst_HEADERS		= \
-			  cfg.h \
-			  utils.h
-
-sbin_PROGRAMS		= kronosnetd
-
-kronosnetd_SOURCES	= \
-			  cfg.c \
-			  main.c \
-			  utils.c
-
-kronosnetd_LDADD	= \
-			  $(top_builddir)/libvty/libvty.a \
-			  $(top_builddir)/libknet/libknet.a \
-			  $(top_builddir)/libtap/libtap.la
 
 maintainer-clean-local:
 	rm -rf m4
