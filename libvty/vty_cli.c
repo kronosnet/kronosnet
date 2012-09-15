@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "utils.h"
+#include "logging.h"
 #include "vty.h"
 #include "vty_cli.h"
 #include "vty_cli_cmds.h"

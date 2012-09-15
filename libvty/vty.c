@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 #include "cfg.h"
-#include "utils.h"
+#include "logging.h"
 #include "netutils.h"
 #include "vty.h"
 #include "vty_auth.h"

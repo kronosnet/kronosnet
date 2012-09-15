@@ -2,14 +2,14 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 noinst_HEADERS		= \
 			  cfg.h \
-			  utils.h
+			  logging.h
 
 sbin_PROGRAMS		= kronosnetd
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
 			  main.c \
-			  utils.c
+			  logging.c
 
 kronosnetd_CPPFLAGS	= \
 			  -I$(top_srcdir)/libtap \

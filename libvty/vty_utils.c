@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "utils.h"
+#include "logging.h"
 #include "vty_cli.h"
 #include "vty_cli_cmds.h"
 #include "vty_utils.h"

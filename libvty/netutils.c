@@ -4,9 +4,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <errno.h>
+#include <string.h>
 
 #include "netutils.h"
-#include "utils.h"
 
 #define ADDRTOSTR_HOST_LEN 256
 #define ADDRTOSTR_PORT_LEN 24

@@ -11,7 +11,7 @@
 #include <security/pam_appl.h>
 #include <security/pam_misc.h>
 
-#include "utils.h"
+#include "logging.h"
 #include "vty_auth.h"
 #include "vty_utils.h"
 

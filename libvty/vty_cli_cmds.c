@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #include "cfg.h"
-#include "utils.h"
+#include "logging.h"
 #include "libtap.h"
 #include "netutils.h"
 #include "vty.h"

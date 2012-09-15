@@ -12,7 +12,7 @@
 
 #include "cfg.h"
 #include "vty.h"
-#include "utils.h"
+#include "logging.h"
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
