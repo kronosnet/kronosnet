@@ -75,6 +75,17 @@ AC_C_INLINE
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([rt], [clock_gettime])
 
+PKG_CHECK_MODULES([nss],[nss])
+PKG_CHECK_MODULES([LIBQB], [libqb])
+
+AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
+	     [have_qb_log_thread_priority_set="yes"],
+             [have_qb_log_thread_priority_set="no"])
+
+if test "x${have_qb_log_thread_priority_set}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
+fi
+
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
 AC_CHECK_HEADERS([stdlib.h])
