@@ -18,11 +18,10 @@
 
 #define OPTION_STRING "hdfVc:l:b:p:"
 
+static int debug = 0;
 static int daemonize = 1;
 
 struct knet_cfg_top knet_cfg_head;
-
-extern int utils_debug;
 
 static void print_usage(void)
 {
@@ -82,7 +81,7 @@ static int read_arguments(int argc, char **argv)
 			break;
 
 		case 'd':
-			utils_debug = 1;
+			debug = 1;
 			break;
 
 		case 'f':
@@ -276,19 +275,17 @@ int main(int argc, char **argv)
 
 	memset(&knet_cfg_head, 0, sizeof(struct knet_cfg_top));
 
-	utils_syslog=1;
-
-	if (create_lockfile(LOCKFILE_NAME) < 0) {
-		fprintf(stderr, "Unable to create lockfile\n");
-		exit(EXIT_FAILURE);
-	}
-
 	if (read_arguments(argc, argv) < 0) {
 		fprintf(stderr, "Unable to parse options\n");
 		exit(EXIT_FAILURE);
 	}
 
 	set_cfg_defaults();
+
+	if (create_lockfile(LOCKFILE_NAME) < 0) {
+		fprintf(stderr, "Unable to create lockfile\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
@@ -297,16 +294,20 @@ int main(int argc, char **argv)
 		}
 	}
 
+	logging_init_defaults(debug, daemonize, knet_cfg_head.logfile);
 	log_info(PACKAGE " version " VERSION);
 
 	err = set_scheduler();
 	if (err < 0)
 		goto out;
 
-	if (knet_vty_main_loop() < 0)
+	err = knet_vty_main_loop();
+	if (err < 0)
 		log_error("Detected fatal error in main loop");
 
 out:
+	if (knet_cfg_head.logfile)
+		free(knet_cfg_head.logfile);
 	if (knet_cfg_head.conffile)
 		free(knet_cfg_head.conffile);
 	if (knet_cfg_head.vty_ip)
@@ -314,5 +315,7 @@ out:
 	if (knet_cfg_head.vty_port)
 		free(knet_cfg_head.vty_port);
 
-	return 0;
+	logging_fini();
+
+	return err;
 }
