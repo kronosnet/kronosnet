@@ -172,33 +172,39 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 
 ## do subst
 
-AM_CONDITIONAL(BUILD_DOCS, test "x${enable_publicandocs}" = xyes)
+AM_CONDITIONAL([BUILD_DOCS], [test "x${enable_publicandocs}" = xyes])
 
 AC_SUBST([DEFAULT_CONFIG_DIR])
-AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR], "$(eval echo ${DEFAULT_CONFIG_DIR})",
+AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR],
+		   ["$(eval echo ${DEFAULT_CONFIG_DIR})"],
 		   [Default config directory])
 
 AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_FILE],
-		   "$(eval echo ${DEFAULT_CONFIG_DIR}/kronosnetd.conf)",
+		   ["$(eval echo ${DEFAULT_CONFIG_DIR}/kronosnetd.conf)"],
 		   [Default config file])
 
-AC_DEFINE_UNQUOTED([LOGDIR], "$(eval echo ${LOGDIR})",
+AC_DEFINE_UNQUOTED([LOGDIR],
+		   ["$(eval echo ${LOGDIR})"],
 		   [Default logging directory])
 
 AC_DEFINE_UNQUOTED([DEFAULT_LOG_FILE],
-		   "$(eval echo ${LOGDIR}/kronosnetd.log)",
+		   ["$(eval echo ${LOGDIR}/kronosnetd.log)"],
 		   [Default log file])
 
-AC_DEFINE_UNQUOTED([RUNDIR], "$(eval echo ${RUNDIR})",
+AC_DEFINE_UNQUOTED([RUNDIR],
+		   ["$(eval echo ${RUNDIR})"],
 		   [Default run directory])
 
-AC_DEFINE_UNQUOTED([SYSLOGFACILITY], "$(eval echo ${SYSLOGFACILITY})",
+AC_DEFINE_UNQUOTED([SYSLOGFACILITY],
+		   [$(eval echo ${SYSLOGFACILITY})],
 		   [Default syslog facility])
 
-AC_DEFINE_UNQUOTED([SYSLOGLEVEL], "$(eval echo ${SYSLOGLEVEL})",
+AC_DEFINE_UNQUOTED([SYSLOGLEVEL],
+		   [$(eval echo ${SYSLOGLEVEL})],
 		   [Default syslog level])
 
-AC_DEFINE_UNQUOTED([DEFAULTADMGROUP], "$(eval echo ${DEFAULTADMGROUP})",
+AC_DEFINE_UNQUOTED([DEFAULTADMGROUP],
+		   ["$(eval echo ${DEFAULTADMGROUP})"],
 		   [Default admin group])
 
 ## *FLAGS handling
