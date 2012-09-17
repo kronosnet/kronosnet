@@ -283,8 +283,6 @@ AC_CONFIG_FILES([
 		kronosnetd/Makefile
 		libknet/Makefile
 		libknet/libknet.pc
-		libvty/Makefile
-		libvty/libvty.pc
 		docs/Makefile
 		tests/Makefile
 		])

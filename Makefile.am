@@ -7,16 +7,11 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= libtap libknet libvty kronosnetd tests
+SUBDIRS			= libtap libknet kronosnetd tests
 
 if BUILD_DOCS
 SUBDIRS			+= docs
 endif
-
-AM_CFLAGS		= \
-			  -I$(top_srcdir)/libtap \
-			  -I$(top_srcdir)/libknet \
-			  -I$(top_srcdir)/libvty
 
 dist_doc_DATA		= \
 			  COPYING.applications \

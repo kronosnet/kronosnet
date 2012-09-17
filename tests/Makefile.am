@@ -23,24 +23,24 @@ check_PROGRAMS = \
 TESTS = $(check_PROGRAMS)
 
 AM_CPPFLAGS		= -DTEST \
-			  -I$(srcdir)/../ \
 			  -I$(srcdir)/../libtap/ \
 			  -I$(srcdir)/../libknet/ \
-			  -I$(srcdir)/../libvty/
+			  -I$(srcdir)/../kronosnetd/
 
 AM_LDFLAGS		= \
 			  $(top_builddir)/libtap/libtap.la \
-			  $(top_builddir)/libknet/libknet.a \
-			  $(top_builddir)/libvty/libvty.a
+			  $(top_builddir)/libknet/libknet.a 
 
 ping_test_SOURCES	= ping_test.c
 
 khandle_test_SOURCES	= khandle_test.c
 
-lookup_bench_SOURCES	= lookup_bench.c
+lookup_bench_SOURCES	= lookup_bench.c \
+			  $(srcdir)/../kronosnetd/netutils.c
 
 listener_test_SOURCES	= listener_test.c
 
-netutils_test_SOURCES	= netutils_test.c
+netutils_test_SOURCES	= netutils_test.c \
+			  $(srcdir)/../kronosnetd/netutils.c
 
 timediff_test_SOURCES	= timediff_test.c
