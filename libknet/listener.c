@@ -53,7 +53,7 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	ev.events = EPOLLIN;
 	ev.data.fd = listener->sock;
 
-	if (epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0)
+	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0)
 		goto exit_fail1;
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
@@ -68,7 +68,7 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	return 0;
 
  exit_fail2:
-	epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
+	epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 
  exit_fail1:
 	close(listener->sock);
@@ -111,7 +111,7 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 		}
 	}
 
-	epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
+	epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 	close(listener->sock);
 
  exit_fail1:

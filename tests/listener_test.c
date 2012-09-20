@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	/* don't try this at home :) */
-	err = epoll_ctl(knet_h->epollfd, EPOLL_CTL_ADD, listener->sock, &ev);
+	err = epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, listener->sock, &ev);
 
 	if (err != -1) {
 		printf("Listener file descriptor not found in epollfd\n");
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* don't try this at home :) */
-	err = epoll_ctl(knet_h->epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
+	err = epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 
 	if (err != -1) {
 		printf("Listener file was present in epollfd\n");

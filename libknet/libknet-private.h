@@ -18,15 +18,18 @@ do { \
 
 struct knet_handle {
 	int sockfd;
-	int epollfd;
+	int tap_to_links_epollfd;
+	int recv_from_links_epollfd;
 	uint16_t node_id;
 	unsigned int enabled:1;
 	struct knet_host *host_head;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	struct knet_listener *listener_head;
-	struct knet_frame *databuf;
+	struct knet_frame *tap_to_links_buf;
+	struct knet_frame *recv_from_links_buf;
 	struct knet_frame *pingbuf;
-	pthread_t control_thread;
+	pthread_t tap_to_links_thread;
+	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
 	pthread_rwlock_t list_rwlock;
 };
