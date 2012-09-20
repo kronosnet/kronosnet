@@ -116,7 +116,7 @@ static int print_link(knet_handle_t khandle, struct knet_host *host, struct knet
 	for (i = 0; i < KNET_MAX_LINK; i++) {
 		if (host->link[i].ready != 1) continue;
 
-		printf("host %p, link %p latency is %llums, status: %s\n",
+		printf("host %p, link %p latency is %llu microsecs, status: %s\n",
 			host, &host->link[i], host->link[i].latency,
 			(host->link[i].enabled == 0) ? "disabled" : "enabled");
 	}
