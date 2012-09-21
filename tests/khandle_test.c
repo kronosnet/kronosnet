@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
 	int sock, i, j;
 	knet_handle_t knet_h;
 	struct knet_host_search search;
+	struct knet_handle_cfg knet_handle_cfg;
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
@@ -31,7 +32,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	knet_h = knet_handle_new(sock, 1);
+	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
+	knet_handle_cfg.fd = sock;
+	knet_handle_cfg.node_id = 1;
+
+	knet_h = knet_handle_new(&knet_handle_cfg);
 
 	for (i = 0; i < HOST_LIST_SIZE; i++)
 		knet_host_add(knet_h, i);

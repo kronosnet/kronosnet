@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 {
 	int err, sock;
 	struct epoll_event ev;
+	struct knet_handle_cfg knet_handle_cfg;
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
@@ -67,7 +68,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if ((knet_h = knet_handle_new(sock, 1)) == NULL) {
+	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
+	knet_handle_cfg.fd = sock;
+	knet_handle_cfg.node_id = 1;
+
+	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}

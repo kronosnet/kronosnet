@@ -79,7 +79,16 @@ struct knet_frame {
 #define KNET_FRAME_PONG 0x82
 #define KNET_FRAME_PMSK 0x80 /* ping/pong packet mask */
 
-knet_handle_t knet_handle_new(int fd, uint16_t node_id);
+struct knet_handle_cfg {
+	int		fd;
+	uint16_t	node_id;
+	char		*crypto_cipher_type;
+	char		*crypto_hash_type;
+	char		*private_key;
+	unsigned int	private_key_len;
+};
+
+knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);
 

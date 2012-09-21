@@ -18,10 +18,26 @@ static void *_handle_tap_to_links_thread(void *data);
 static void *_handle_recv_from_links_thread(void *data);
 static void *_handle_heartbt_thread(void *data);
 
-knet_handle_t knet_handle_new(int fd, uint16_t node_id)
+knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 {
 	knet_handle_t knet_h;
 	struct epoll_event ev;
+
+	/*
+	 * validate incoming config request
+	 */
+	if (knet_handle_cfg == NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
+	if (knet_handle_cfg->fd <= 0) {
+		errno = EINVAL;
+		return NULL;
+	}
+	/*
+	 * cryto hooks will validate crypto config
+	 */
+	//crypto_init
 
 	if ((knet_h = malloc(sizeof(struct knet_handle))) == NULL)
 		return NULL;
@@ -46,10 +62,10 @@ knet_handle_t knet_handle_new(int fd, uint16_t node_id)
 	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
 		goto exit_fail4;
 
-	knet_h->sockfd = fd;
+	knet_h->sockfd = knet_handle_cfg->fd;
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
-	knet_h->node_id = node_id;
+	knet_h->node_id = knet_handle_cfg->node_id;
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0))

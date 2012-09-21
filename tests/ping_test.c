@@ -149,6 +149,7 @@ int main(int argc, char *argv[])
 	fd_set rfds;
 	struct timeval tv;
 	struct knet_host_search print_search;
+	struct knet_handle_cfg knet_handle_cfg;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -167,7 +168,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if ((knet_h = knet_handle_new(knet_sock[0], 1)) == NULL) {
+	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
+	knet_handle_cfg.fd = knet_sock[0];
+	knet_handle_cfg.node_id = 1;
+
+	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
