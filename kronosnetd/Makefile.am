@@ -30,6 +30,6 @@ kronosnetd_CPPFLAGS	= \
 kronosnetd_CFLAGS	= $(LIBQB_CFLAGS)
 
 kronosnetd_LDADD	= \
-			  $(top_builddir)/libknet/libknet.a \
+			  $(top_builddir)/libknet/libknet.la \
 			  $(top_builddir)/libtap/libtap.la \
 			  $(LIBQB_LIBS)

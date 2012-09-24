@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 
 #include "libknet-private.h"
+#include "nsscrypto.h"
 
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
@@ -34,33 +35,32 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		errno = EINVAL;
 		return NULL;
 	}
-	/*
-	 * cryto hooks will validate crypto config
-	 */
-	//crypto_init
 
 	if ((knet_h = malloc(sizeof(struct knet_handle))) == NULL)
 		return NULL;
 
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
-	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
+	if (crypto_init(knet_h, knet_handle_cfg) < 0)
 		goto exit_fail1;
+
+	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
+		goto exit_fail2;
 
 	memset(knet_h->tap_to_links_buf, 0, KNET_DATABUFSIZE);
 
 	if ((knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
-		goto exit_fail2;
+		goto exit_fail3;
 
 	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
 	if ((knet_h->pingbuf = malloc(KNET_PINGBUFSIZE))== NULL)
-		goto exit_fail3;
+		goto exit_fail4;
 
 	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
 
 	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
-		goto exit_fail4;
+		goto exit_fail5;
 
 	knet_h->sockfd = knet_handle_cfg->fd;
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
@@ -69,11 +69,11 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0))
-		goto exit_fail5;
+		goto exit_fail6;
 
 	if ((_fdset_cloexec(knet_h->tap_to_links_epollfd) != 0) ||
 	    (_fdset_cloexec(knet_h->recv_from_links_epollfd != 0)))
-		goto exit_fail5;
+		goto exit_fail6;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -82,29 +82,29 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	if (epoll_ctl(knet_h->tap_to_links_epollfd,
 				EPOLL_CTL_ADD, knet_h->sockfd, &ev) != 0)
-		goto exit_fail5;
+		goto exit_fail6;
 
 	if (pthread_create(&knet_h->tap_to_links_thread, 0,
 				_handle_tap_to_links_thread, (void *) knet_h) != 0)
-		goto exit_fail5;
+		goto exit_fail6;
 
 	if (pthread_create(&knet_h->recv_from_links_thread, 0,
 				_handle_recv_from_links_thread, (void *) knet_h) != 0)
-		goto exit_fail6;
+		goto exit_fail7;
 
 	if (pthread_create(&knet_h->heartbt_thread, 0,
 				_handle_heartbt_thread, (void *) knet_h) != 0)
-		goto exit_fail7;
+		goto exit_fail8;
 
 	return knet_h;
 
-exit_fail7:
+exit_fail8:
 	pthread_cancel(knet_h->recv_from_links_thread);
 
-exit_fail6:
+exit_fail7:
 	pthread_cancel(knet_h->tap_to_links_thread);
 
-exit_fail5:
+exit_fail6:
 	if (knet_h->tap_to_links_epollfd >= 0)
 		close(knet_h->tap_to_links_epollfd);
 	if (knet_h->recv_from_links_epollfd >= 0)
@@ -112,14 +112,17 @@ exit_fail5:
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
-exit_fail4:
+exit_fail5:
 	free(knet_h->pingbuf);
 
-exit_fail3:
+exit_fail4:
 	free(knet_h->recv_from_links_buf);
 
-exit_fail2:
+exit_fail3:
 	free(knet_h->tap_to_links_buf);
+
+exit_fail2:
+	crypto_fini(knet_h);
 
 exit_fail1:
 	free(knet_h);
@@ -158,6 +161,8 @@ int knet_handle_free(knet_handle_t knet_h)
 	free(knet_h->tap_to_links_buf);
 	free(knet_h->recv_from_links_buf);
 	free(knet_h->pingbuf);
+
+	crypto_fini(knet_h);
 
 	free(knet_h);
 

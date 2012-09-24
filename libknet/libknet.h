@@ -84,7 +84,7 @@ struct knet_handle_cfg {
 	uint16_t	node_id;
 	char		*crypto_cipher_type;
 	char		*crypto_hash_type;
-	char		*private_key;
+	unsigned char	*private_key;
 	unsigned int	private_key_len;
 };
 

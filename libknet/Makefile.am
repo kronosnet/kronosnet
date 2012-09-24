@@ -9,13 +9,16 @@ sources			= \
 			  common.c \
 			  handle.c \
 			  host.c \
-			  listener.c
+			  listener.c \
+			  nsscrypto.c
 
 include_HEADERS		= libknet.h
-noinst_HEADERS		= libknet-private.h
+noinst_HEADERS		= libknet-private.h \
+			  nsscrypto.h
 
-noinst_LIBRARIES	= libknet.a
-#lib_LTLIBRARIES	= libknet.la
+lib_LTLIBRARIES		= libknet.la
 
-libknet_a_SOURCES	= $(sources)
-#libknet_la_SOURCES	= $(sources)
+libknet_la_SOURCES	= $(sources)
+
+libknet_la_CFLAGS	= $(nss_CFLAGS)
+libknet_la_LIBADD	= $(nss_LIBS)

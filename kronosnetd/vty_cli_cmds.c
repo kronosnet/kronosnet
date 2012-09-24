@@ -1198,6 +1198,8 @@ tap_found:
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = tap_get_fd(knet_iface->cfg_eth.tap);
 	knet_handle_cfg.node_id = requested_id;
+	knet_handle_cfg.crypto_cipher_type = (char *)"none";
+	knet_handle_cfg.crypto_hash_type = (char *)"none";
 
 	knet_iface->cfg_ring.knet_h = knet_handle_new(&knet_handle_cfg);
 	if (!knet_iface->cfg_ring.knet_h) {

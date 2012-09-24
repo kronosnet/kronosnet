@@ -26,12 +26,14 @@ struct knet_handle {
 	struct knet_host *host_index[KNET_MAX_HOST];
 	struct knet_listener *listener_head;
 	struct knet_frame *tap_to_links_buf;
+	char *tap_to_links_buf_crypt;
 	struct knet_frame *recv_from_links_buf;
 	struct knet_frame *pingbuf;
 	pthread_t tap_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
 	pthread_rwlock_t list_rwlock;
+	struct crypto_instance *crypto_instance;
 };
 
 int _fdset_cloexec(int fd);

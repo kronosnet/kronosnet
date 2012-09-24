@@ -10,6 +10,7 @@
 
 #include "libknet.h"
 
+static unsigned char crypto_key[4096];
 static int knet_sock[2];
 static knet_handle_t knet_h;
 
@@ -171,12 +172,21 @@ int main(int argc, char *argv[])
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = knet_sock[0];
 	knet_handle_cfg.node_id = 1;
+	knet_handle_cfg.crypto_cipher_type = (char *)"aes256";
+	knet_handle_cfg.crypto_hash_type = (char *)"sha512";
+	knet_handle_cfg.private_key = crypto_key;
+	knet_handle_cfg.private_key_len = sizeof(crypto_key);
+
+	/*
+	 * fake a 4KB key of all 0's
+	 */
+	memset(knet_handle_cfg.private_key, 0, sizeof(crypto_key));
 
 	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	argv_to_hosts(argc, argv);
 	knet_handle_setfwd(knet_h, 1);	
 

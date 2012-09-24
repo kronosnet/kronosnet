@@ -71,6 +71,8 @@ int main(int argc, char *argv[])
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = sock;
 	knet_handle_cfg.node_id = 1;
+	knet_handle_cfg.crypto_cipher_type = (char *)"none";
+	knet_handle_cfg.crypto_hash_type = (char *)"none";
 
 	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
