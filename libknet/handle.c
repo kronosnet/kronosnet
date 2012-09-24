@@ -190,6 +190,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 {
 	int j;
 	ssize_t len, snt;
+	size_t outlen;
 	struct knet_host *i;
 
 	len = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
@@ -210,7 +211,12 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
 
-	/* TODO: add encryption */
+	if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+				    (const unsigned char *)knet_h->tap_to_links_buf,
+				    len,
+				    knet_h->tap_to_links_buf_crypt,
+				    &outlen) < 0)
+		return;
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = 0; j < KNET_MAX_LINK; j++) {
@@ -218,7 +224,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 				continue;
 
 			snt = sendto(i->link[j].sock,
-					knet_h->tap_to_links_buf, len, MSG_DONTWAIT,
+					knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
 					(struct sockaddr *) &i->link[j].address,
 					sizeof(struct sockaddr_storage));
 
@@ -233,6 +239,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t len;
+	size_t outlen;
 	struct sockaddr_storage address;
 	socklen_t addrlen;
 	struct knet_host *src_host;
@@ -246,7 +253,10 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	len = recvfrom(sockfd, knet_h->recv_from_links_buf, KNET_DATABUFSIZE,
 		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
 
-	/* TODO add decryption */
+	if (crypto_authenticate_and_decrypt(knet_h->crypto_instance,
+					    (unsigned char *)knet_h->recv_from_links_buf,
+					    &len) < 0)
+		goto exit_unlock;
 
 	if (len < (KNET_FRAME_SIZE + 1))
 		goto exit_unlock;
@@ -284,7 +294,15 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_PONG;
 		knet_h->recv_from_links_buf->kf_node = htons(knet_h->node_id);
 
-		sendto(src_link->sock, knet_h->recv_from_links_buf, len, MSG_DONTWAIT,
+		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+					    (const unsigned char *)knet_h->recv_from_links_buf,
+					    len,
+					    knet_h->recv_from_links_buf_crypt,
+					    &outlen) < 0)
+			break;
+					    
+
+		sendto(src_link->sock, knet_h->recv_from_links_buf_crypt, outlen, MSG_DONTWAIT,
 				(struct sockaddr *) &src_link->address,
 				sizeof(struct sockaddr_storage));
 
@@ -316,6 +334,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 {
 	int len;
+	size_t outlen;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
 
@@ -331,13 +350,18 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 		knet_h->pingbuf->kf_time = clock_now;
 		knet_h->pingbuf->kf_link = dst_link->link_id;
 
-		/* TODO add encryption */
+		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+					    (const unsigned char *)knet_h->pingbuf,
+					    KNET_PINGBUFSIZE,
+					    knet_h->pingbuf_crypt,
+					    &outlen) < 0)
+		return;
 
-		len = sendto(dst_link->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
+		len = sendto(dst_link->sock, knet_h->pingbuf_crypt, outlen,
 			MSG_DONTWAIT, (struct sockaddr *) &dst_link->address,
 			sizeof(struct sockaddr_storage));
 
-		if (len == KNET_PINGBUFSIZE)
+		if (len == outlen)
 			dst_link->ping_last = clock_now;
 	}
 

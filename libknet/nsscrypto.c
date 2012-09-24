@@ -11,7 +11,7 @@
 #include "libknet-private.h"
 
 #ifdef CRYPTO_DEBUG
-#define log_printf(format, args...) fprintf(stderr, format, ##args);
+#define log_printf(format, args...) fprintf(stderr, format "\n", ##args);
 #else
 #define log_printf(format, args...);
 #endif
@@ -453,7 +453,6 @@ static int init_nss(struct crypto_instance *instance)
  * exported API
  */
 
-
 int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -466,11 +465,12 @@ int crypto_encrypt_and_sign (
 			return -1;
 		}
 	} else {
+		memcpy(buf_out, buf_in, buf_in_len);
 		*buf_out_len = buf_in_len;
 	}
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
-		if (calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + hash_len[instance->crypto_hash_type]) < 0) {
+		if (calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
 			return -1;
 		}
 		*buf_out_len = *buf_out_len + hash_len[instance->crypto_hash_type];
@@ -490,7 +490,7 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 			return -1;
 		}
 
-		if (memcmp(tmp_hash, buf + hash_len[instance->crypto_hash_type], hash_len[instance->crypto_hash_type]) != 0) {
+		if (memcmp(tmp_hash, buf + (*buf_len - hash_len[instance->crypto_hash_type]), hash_len[instance->crypto_hash_type]) != 0) {
 			log_printf("Digest does not match");
 			return -1;
 		}
@@ -547,19 +547,19 @@ int crypto_init(
 		    (knet_h->crypto_instance->private_key_len < 1024)) {
 			goto out_err;
 		}
-
-		knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-		if (!knet_h->tap_to_links_buf_crypt)
-			goto out_err;
-
-		knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-		if (!knet_h->pingbuf_crypt)
-			goto out_err;
-
-	} else {
-		knet_h->tap_to_links_buf_crypt = (char *)knet_h->tap_to_links_buf;
-		knet_h->pingbuf_crypt = (char *)knet_h->pingbuf;
 	}
+
+	knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+	if (!knet_h->tap_to_links_buf_crypt)
+		goto out_err;
+
+	knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+	if (!knet_h->pingbuf_crypt)
+		goto out_err;
+
+	knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+	if (!knet_h->recv_from_links_buf_crypt)
+		goto out_err;
 
 	knet_h->crypto_instance->private_key = knet_handle_cfg->private_key;
 	knet_h->crypto_instance->private_key_len = knet_handle_cfg->private_key_len;
@@ -583,10 +583,12 @@ void crypto_fini(
 			PK11_FreeSymKey(knet_h->crypto_instance->nss_sym_key);
 		if (knet_h->crypto_instance->nss_sym_key_sign) 
 			PK11_FreeSymKey(knet_h->crypto_instance->nss_sym_key_sign);
-		if (knet_h->pingbuf_crypt != (char *)knet_h->pingbuf)
+		if (knet_h->pingbuf_crypt)
 			free(knet_h->pingbuf_crypt);
-		if (knet_h->tap_to_links_buf_crypt != (char *)knet_h->tap_to_links_buf)
+		if (knet_h->tap_to_links_buf_crypt)
 			free(knet_h->tap_to_links_buf_crypt);
+		if (knet_h->recv_from_links_buf_crypt)
+			free(knet_h->recv_from_links_buf_crypt);
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}

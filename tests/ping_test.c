@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 	knet_handle_cfg.fd = knet_sock[0];
 	knet_handle_cfg.node_id = 1;
 	knet_handle_cfg.crypto_cipher_type = (char *)"aes256";
-	knet_handle_cfg.crypto_hash_type = (char *)"sha512";
+	knet_handle_cfg.crypto_hash_type = (char *)"sha1";
 	knet_handle_cfg.private_key = crypto_key;
 	knet_handle_cfg.private_key_len = sizeof(crypto_key);
 
