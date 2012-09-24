@@ -161,12 +161,6 @@ static int encrypt_nss(
 	unsigned char	*data = buf_out + SALT_SIZE;
 	int		err = -1;
 
-	if (!cipher_to_nss[instance->crypto_cipher_type]) {
-		memcpy(buf_out, buf_in, buf_in_len);
-		*buf_out_len = buf_in_len;
-		return 0;
-	}
-
 	if (PK11_GenerateRandom (salt, SALT_SIZE) != SECSuccess) {
 		log_printf("Failure to generate a random number %d",
 			   PR_GetError());
@@ -247,10 +241,6 @@ static int decrypt_nss (
 	unsigned char	outbuf[KNET_DATABUFSIZE_CRYPT];
 	int		outbuf_len;
 	int		err = -1;
-
-	if (!cipher_to_nss[instance->crypto_cipher_type]) {
-		return 0;
-	}
 
 	/* Create cipher context for decryption */
 	decrypt_param.type = siBuffer;
@@ -471,15 +461,16 @@ int crypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	size_t *buf_out_len)
 {
-	unsigned char	*hash = buf_out;
-	unsigned char	*data = hash + hash_len[instance->crypto_hash_type];
-
-	if (encrypt_nss(instance, buf_in, buf_in_len, data, buf_out_len) < 0) {
-		return -1;
+	if (cipher_to_nss[instance->crypto_cipher_type]) {
+		if (encrypt_nss(instance, buf_in, buf_in_len, buf_out, buf_out_len) < 0) {
+			return -1;
+		}
+	} else {
+		*buf_out_len = buf_in_len;
 	}
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
-		if (calculate_nss_hash(instance, data, *buf_out_len, hash) < 0) {
+		if (calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + hash_len[instance->crypto_hash_type]) < 0) {
 			return -1;
 		}
 		*buf_out_len = *buf_out_len + hash_len[instance->crypto_hash_type];
@@ -494,25 +485,23 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 {
 	if (hash_to_nss[instance->crypto_hash_type]) {
 		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
-		unsigned char	*hash = buf;
-		unsigned char	*data = hash + hash_len[instance->crypto_hash_type];
-		int		datalen = *buf_len - hash_len[instance->crypto_hash_type];
 
-		if (calculate_nss_hash(instance, data, datalen, tmp_hash) < 0) {
+		if (calculate_nss_hash(instance, buf, *buf_len - hash_len[instance->crypto_hash_type], tmp_hash) < 0) {
 			return -1;
 		}
 
-		if (memcmp(tmp_hash, hash, hash_len[instance->crypto_hash_type]) != 0) {
+		if (memcmp(tmp_hash, buf + hash_len[instance->crypto_hash_type], hash_len[instance->crypto_hash_type]) != 0) {
 			log_printf("Digest does not match");
 			return -1;
 		}
 
-		memmove(buf, data, datalen);
-		*buf_len = datalen;
+		*buf_len = *buf_len - hash_len[instance->crypto_hash_type];
 	}
 
-	if (decrypt_nss(instance, buf, buf_len) < 0) {
-		return -1;
+	if (cipher_to_nss[instance->crypto_cipher_type]) {
+		if (decrypt_nss(instance, buf, buf_len) < 0) {
+			return -1;
+		}
 	}
 
 	return 0;
