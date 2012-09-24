@@ -6,10 +6,6 @@
 
 struct crypto_instance;
 
-size_t crypto_sec_header_size(
-	const char *crypto_cipher_type,
-	const char *crypto_hash_type);
-
 int crypto_authenticate_and_decrypt (
 	struct crypto_instance *instance,
 	unsigned char *buf,

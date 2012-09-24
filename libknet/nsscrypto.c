@@ -11,21 +11,11 @@
 #include "libknet-private.h"
 
 /*
- * define onwire crypto header
- */
-
-struct crypto_config_header {
-	uint8_t	crypto_cipher_type;
-	uint8_t	crypto_hash_type;
-	uint8_t __pad0;
-	uint8_t __pad1;
-} __attribute__((packed));
-
-/*
  * crypto definitions and conversion tables
  */
 
 #define SALT_SIZE 16
+#define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
 enum crypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
@@ -98,8 +88,6 @@ struct crypto_instance {
 	enum crypto_crypt_t crypto_cipher_type;
 
 	enum crypto_hash_t crypto_hash_type;
-
-	unsigned int crypto_header_size;
 };
 
 /*
@@ -210,7 +198,7 @@ static int encrypt_nss(
 
 	if (PK11_CipherOp(crypt_context, data,
 			  &tmp1_outlen,
-			  KNET_FRAME_SIZE - instance->crypto_header_size,
+			  KNET_DATABUFSIZE_CRYPT,
 			  (unsigned char *)buf_in, buf_in_len) != SECSuccess) {
 		//log_printf(instance->log_level_security,
 		//	   "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d)",
@@ -220,7 +208,7 @@ static int encrypt_nss(
 	}
 
 	if (PK11_DigestFinal(crypt_context, data + tmp1_outlen,
-			     &tmp2_outlen, KNET_FRAME_SIZE - tmp1_outlen) != SECSuccess) {
+			     &tmp2_outlen, KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
 		//log_printf(instance->log_level_security,
 		//	   "PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d)",
 		//	   (int)cipher_to_nss[instance->crypto_cipher_type],
@@ -255,7 +243,7 @@ static int decrypt_nss (
 	unsigned char	*salt = buf;
 	unsigned char	*data = salt + SALT_SIZE;
 	int		datalen = *buf_len - SALT_SIZE;
-	unsigned char	outbuf[KNET_FRAME_SIZE];
+	unsigned char	outbuf[KNET_DATABUFSIZE_CRYPT];
 	int		outbuf_len;
 	int		err = -1;
 
@@ -540,27 +528,6 @@ static int authenticate_and_decrypt_nss (
  * exported API
  */
 
-size_t crypto_sec_header_size(
-	const char *crypto_cipher_type,
-	const char *crypto_hash_type)
-{
-	int crypto_cipher = string_to_crypto_cipher_type(crypto_cipher_type);
-	int crypto_hash = string_to_crypto_hash_type(crypto_hash_type);
-	size_t hdr_size = 0;
-
-	hdr_size = sizeof(struct crypto_config_header);
-
-	if (crypto_hash) {
-		hdr_size += hash_len[crypto_hash];
-	}
-
-	if (crypto_cipher) {
-		hdr_size += SALT_SIZE;
-		hdr_size += cypher_block_len[crypto_cipher];
-	}
-
-	return hdr_size;
-}
 
 int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
@@ -569,60 +536,15 @@ int crypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	size_t *buf_out_len)
 {
-	struct crypto_config_header *cch = (struct crypto_config_header *)buf_out;
-	int err;
-
-	cch->crypto_cipher_type = instance->crypto_cipher_type;
-	cch->crypto_hash_type = instance->crypto_hash_type;
-	cch->__pad0 = 0;
-	cch->__pad1 = 0;
-
-	buf_out += sizeof(struct crypto_config_header);
-
-	err = encrypt_and_sign_nss(instance,
+	return encrypt_and_sign_nss(instance,
 				   buf_in, buf_in_len,
 				   buf_out, buf_out_len);
-
-	*buf_out_len = *buf_out_len + sizeof(struct crypto_config_header);
-
-	return err;
 }
 
 int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	unsigned char *buf,
 	int *buf_len)
 {
-	struct crypto_config_header *cch = (struct crypto_config_header *)buf;
-
-	/*
-	 * decode crypto config of incoming packets
-	 */
-
-	if (cch->crypto_cipher_type != instance->crypto_cipher_type) {
-		//log_printf(instance->log_level_security,
-		//	   "Incoming packet has different crypto type. Rejecting");
-		return -1;
-	}
-
-	if (cch->crypto_hash_type != instance->crypto_hash_type) {
-		//log_printf(instance->log_level_security,
-		//	   "Incoming packet has different hash type. Rejecting");
-		return -1;
-	}
-
-	if ((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
-		//log_printf(instance->log_level_security,
-		//	   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
-		return -1;
-	}
-
-	/*
-	 * invalidate config header and kill it
-	 */
-	cch = NULL;
-	*buf_len -= sizeof(struct crypto_config_header);
-	memmove(buf, buf + sizeof(struct crypto_config_header), *buf_len);
-
 	return authenticate_and_decrypt_nss(instance, buf, buf_len);
 }
 
@@ -664,12 +586,22 @@ int crypto_init(
 		    (knet_h->crypto_instance->private_key_len < 1024)) {
 			goto out_err;
 		}
+
+		knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+		if (!knet_h->tap_to_links_buf_crypt)
+			goto out_err;
+
+		knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+		if (!knet_h->pingbuf_crypt)
+			goto out_err;
+
+	} else {
+		knet_h->tap_to_links_buf_crypt = (char *)knet_h->tap_to_links_buf;
+		knet_h->pingbuf_crypt = (char *)knet_h->pingbuf;
 	}
 
 	knet_h->crypto_instance->private_key = knet_handle_cfg->private_key;
 	knet_h->crypto_instance->private_key_len = knet_handle_cfg->private_key_len;
-
-	knet_h->crypto_instance->crypto_header_size = crypto_sec_header_size(knet_handle_cfg->crypto_cipher_type, knet_handle_cfg->crypto_hash_type);
 
 	if (init_nss(knet_h->crypto_instance) < 0) {
 		goto out_err;
@@ -678,8 +610,7 @@ int crypto_init(
 	return 0;
 
 out_err:
-	free(knet_h->crypto_instance);
-	knet_h->crypto_instance = NULL;
+	crypto_fini(knet_h);
 	return -1;
 }
 
@@ -691,9 +622,13 @@ void crypto_fini(
 			PK11_FreeSymKey(knet_h->crypto_instance->nss_sym_key);
 		if (knet_h->crypto_instance->nss_sym_key_sign) 
 			PK11_FreeSymKey(knet_h->crypto_instance->nss_sym_key_sign);
+		if (knet_h->pingbuf_crypt != (char *)knet_h->pingbuf)
+			free(knet_h->pingbuf_crypt);
+		if (knet_h->tap_to_links_buf_crypt != (char *)knet_h->tap_to_links_buf)
+			free(knet_h->tap_to_links_buf_crypt);
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}
-	
+
 	return;
 }

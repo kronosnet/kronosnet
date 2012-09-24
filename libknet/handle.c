@@ -12,8 +12,6 @@
 
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
-#define KNET_DATABUFSIZE 131072 /* 128k */
-#define KNET_PINGBUFSIZE sizeof(struct knet_frame)
 
 static void *_handle_tap_to_links_thread(void *data);
 static void *_handle_recv_from_links_thread(void *data);

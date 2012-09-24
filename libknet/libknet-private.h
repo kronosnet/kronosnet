@@ -7,6 +7,9 @@
 
 #include "libknet.h"
 
+#define KNET_DATABUFSIZE 131072 /* 128k */
+#define KNET_PINGBUFSIZE sizeof(struct knet_frame)
+
 #define timespec_diff(start, end, diff) \
 do { \
 	if (end.tv_sec > start.tv_sec) \
@@ -29,6 +32,7 @@ struct knet_handle {
 	char *tap_to_links_buf_crypt;
 	struct knet_frame *recv_from_links_buf;
 	struct knet_frame *pingbuf;
+	char *pingbuf_crypt;
 	pthread_t tap_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
