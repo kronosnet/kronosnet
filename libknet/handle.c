@@ -209,10 +209,10 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 	/* TODO: packet inspection */
 
-	knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
-
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
+
+	/* TODO: add encryption */
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = 0; j < KNET_MAX_LINK; j++) {
@@ -247,6 +247,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	addrlen = sizeof(struct sockaddr_storage);
 	len = recvfrom(sockfd, knet_h->recv_from_links_buf, KNET_DATABUFSIZE,
 		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
+
+	/* TODO add decryption */
 
 	if (len < (KNET_FRAME_SIZE + 1))
 		goto exit_unlock;
@@ -331,6 +333,8 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 		knet_h->pingbuf->kf_time = clock_now;
 		knet_h->pingbuf->kf_link = dst_link->link_id;
 
+		/* TODO add encryption */
+
 		len = sendto(dst_link->sock, knet_h->pingbuf, KNET_PINGBUFSIZE,
 			MSG_DONTWAIT, (struct sockaddr *) &dst_link->address,
 			sizeof(struct sockaddr_storage));
@@ -390,6 +394,7 @@ static void *_handle_tap_to_links_thread(void *data)
 	/* preparing data buffer */
 	knet_h->tap_to_links_buf->kf_magic = htonl(KNET_FRAME_MAGIC);
 	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
+	knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
 
 	while (1) {
 		if (epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_MAX_EVENTS, -1) >= 1)
