@@ -22,6 +22,8 @@ struct knet_cfg {
 	struct knet_cfg_eth cfg_eth;
 	struct knet_cfg_ring cfg_ring;
 	int active;
+	char *crypto_method;
+	char *hash_method;
 	struct knet_cfg *next;
 };
 

@@ -32,6 +32,8 @@
 #define CMDS_PARAM_NODEID	7
 #define CMDS_PARAM_NAME		8
 #define CMDS_PARAM_MTU		9
+#define CMDS_PARAM_CRYPTO	10
+#define CMDS_PARAM_HASH		11
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -223,6 +225,33 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
+		case CMDS_PARAM_CRYPTO:
+			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
+			knet_vty_write(vty, "DEBUG: %s%s", buf, telnet_newline);
+			if (!strncmp("none", buf, 4))
+				break;
+			if (!strncmp("aes256", buf, 6))
+				break;
+			knet_vty_write(vty, "unknown encryption method: %s. Supported: none/aes256%s", param, telnet_newline);
+			err = -1;
+			break;
+		case CMDS_PARAM_HASH:
+			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
+			if (!strncmp("none", buf, 4))
+				break;
+			if (!strncmp("md5", buf, 3))
+				break;
+			if (!strncmp("sha1", buf, 4))
+				break;
+			if (!strncmp("sha256", buf, 6))
+				break;
+			if (!strncmp("sha384", buf, 6))
+				break;
+			if (!strncmp("sha512", buf, 6))
+				break;
+			knet_vty_write(vty, "unknown hash method: %s. Supported none/md5/sha1/sha256/sha384/sha512%s", param, telnet_newline);
+			err = -1;
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -260,6 +289,12 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_MTU:
 			knet_vty_write(vty, "MTU - a value between 576 and 65536 (note: max value depends on the media)%s", telnet_newline);
+			break;
+		case CMDS_PARAM_CRYPTO:
+			knet_vty_write(vty, "CRYPTO - define packets encryption method: none or aes256%s", telnet_newline);
+			break;
+		case CMDS_PARAM_HASH:
+			knet_vty_write(vty, "HASH - define packets hashing method: none/md5/sha1/sha256/sha384/sha512%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -514,6 +549,8 @@ vty_node_cmds_t no_config_cmds[] = {
 vty_param_t int_params[] = {
 	{ CMDS_PARAM_KNET },
 	{ CMDS_PARAM_NODEID },
+	{ CMDS_PARAM_CRYPTO },
+	{ CMDS_PARAM_HASH },
 	{ CMDS_PARAM_NOMORE },
 };
 
@@ -1151,6 +1188,8 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
 	char *param = NULL, *cur_mac = NULL;
 	char device[IFNAMSIZ];
+	char crypto[16];
+	char hash[16];
 	char mac[18];
 	int maclen;
 	struct knet_cfg *knet_iface = NULL;
@@ -1167,6 +1206,22 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		knet_vty_write(vty, "Error: Unable to allocate memory for config structures%s",
 				telnet_newline);
 		return -1;
+	}
+
+	get_param(vty, 3, &param, &paramlen, &paramoffset);
+	param_to_str(crypto, sizeof(crypto), param, paramlen);
+	knet_iface->crypto_method = strdup(crypto);
+	if (!knet_iface->crypto_method) {
+		err = -1;
+		goto out_clean;
+	}
+
+	get_param(vty, 4, &param, &paramlen, &paramoffset);
+	param_to_str(hash, sizeof(hash), param, paramlen);
+	knet_iface->hash_method = strdup(hash);
+	if (!knet_iface->hash_method) {
+		err = -1;
+		goto out_clean;
 	}
 
 	if (knet_iface->cfg_eth.tap) {
@@ -1198,8 +1253,10 @@ tap_found:
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = tap_get_fd(knet_iface->cfg_eth.tap);
 	knet_handle_cfg.node_id = requested_id;
-	knet_handle_cfg.crypto_cipher_type = (char *)"none";
-	knet_handle_cfg.crypto_hash_type = (char *)"none";
+	knet_handle_cfg.crypto_cipher_type = knet_iface->crypto_method;
+	knet_handle_cfg.crypto_hash_type = knet_iface->hash_method;
+
+	/* XXXX READ KEY HERE */
 
 	knet_iface->cfg_ring.knet_h = knet_handle_new(&knet_handle_cfg);
 	if (!knet_iface->cfg_ring.knet_h) {
@@ -1279,7 +1336,10 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "configure%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, " interface %s %d%s", tap_get_name(knet_iface->cfg_eth.tap), knet_iface->cfg_eth.node_id, nl);
+		knet_vty_write(vty, " interface %s %d %s %s %s", tap_get_name(knet_iface->cfg_eth.tap),
+								 knet_iface->cfg_eth.node_id,
+								 knet_iface->crypto_method,
+								 knet_iface->hash_method, nl);
 
 		knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
 

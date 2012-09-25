@@ -55,6 +55,10 @@ void knet_destroy_iface(struct knet_cfg *knet_iface)
 		} else {
 			knet_iface_prev->next = knet_iface_tmp->next;
 		}
+		if (knet_iface->crypto_method)
+			free(knet_iface->crypto_method);
+		if (knet_iface->hash_method)
+			free(knet_iface->hash_method);
 		free(knet_iface);
 	}
 }
