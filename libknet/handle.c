@@ -189,8 +189,7 @@ void knet_link_timeout(struct knet_link *lnk,
 static void _handle_tap_to_links(knet_handle_t knet_h)
 {
 	int j;
-	ssize_t len, snt;
-	size_t outlen;
+	ssize_t len, snt, outlen;
 	struct knet_host *i;
 
 	len = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
@@ -238,8 +237,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 {
-	ssize_t len;
-	size_t outlen;
+	ssize_t len, outlen;
 	struct sockaddr_storage address;
 	socklen_t addrlen;
 	struct knet_host *src_host;
@@ -334,7 +332,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 {
 	int len;
-	size_t outlen;
+	ssize_t outlen;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
 

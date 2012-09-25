@@ -148,9 +148,9 @@ static int init_nss_crypto(struct crypto_instance *instance)
 static int encrypt_nss(
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
-	const size_t buf_in_len,
+	const ssize_t buf_in_len,
 	unsigned char *buf_out,
-	size_t *buf_out_len)
+	ssize_t *buf_out_len)
 {
 	PK11Context*	crypt_context = NULL;
 	SECItem		crypt_param;
@@ -229,7 +229,7 @@ out:
 static int decrypt_nss (
 	struct crypto_instance *instance,
 	unsigned char *buf,
-	int *buf_len)
+	ssize_t *buf_len)
 {
 	PK11Context*	decrypt_context = NULL;
 	SECItem		decrypt_param;
@@ -456,9 +456,9 @@ static int init_nss(struct crypto_instance *instance)
 int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
-	const size_t buf_in_len,
+	const ssize_t buf_in_len,
 	unsigned char *buf_out,
-	size_t *buf_out_len)
+	ssize_t *buf_out_len)
 {
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
 		if (encrypt_nss(instance, buf_in, buf_in_len, buf_out, buf_out_len) < 0) {
@@ -481,7 +481,7 @@ int crypto_encrypt_and_sign (
 
 int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	unsigned char *buf,
-	int *buf_len)
+	ssize_t *buf_len)
 {
 	if (hash_to_nss[instance->crypto_hash_type]) {
 		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
