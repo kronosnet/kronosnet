@@ -13,6 +13,7 @@
 static unsigned char crypto_key[4096];
 static int knet_sock[2];
 static knet_handle_t knet_h;
+static struct knet_handle_cfg knet_handle_cfg;
 
 static in_port_t tok_inport(char *str)
 {
@@ -43,6 +44,32 @@ static void print_usage(char *name)
 {
 	printf("usage: %s <localip>[:<port>] <remoteip>[:port] [...]\n", name);
 	printf("example: %s 0.0.0.0 192.168.0.2\n", name);
+	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 crypto:aes256,sha1\n", name);
+}
+
+static void set_crypto(int argc, char *argv[])
+{
+	int i, found = 0;
+
+	for (i = 0; i < argc; i++) {
+		if (!strncmp(argv[i], "crypto", 6)) {
+			printf("found crypto at: %i %s\n", i, argv[i]);
+			found = 1;
+			break;
+		}
+	}
+	if (!found) {
+		knet_handle_cfg.crypto_cipher_type = (char *)"none";
+		knet_handle_cfg.crypto_hash_type = (char *)"none";
+	} else {
+		char *tmp = NULL;
+		strtok_r(argv[i], ":", &tmp);
+		knet_handle_cfg.crypto_cipher_type = strtok_r(NULL, ",", &tmp);
+		knet_handle_cfg.crypto_hash_type = strtok_r(NULL, ",", &tmp);
+	}
+	printf("Setting up encryption: %s hmac: %s\n",
+		knet_handle_cfg.crypto_cipher_type,
+		knet_handle_cfg.crypto_hash_type);
 }
 
 static void argv_to_hosts(int argc, char *argv[])
@@ -79,6 +106,9 @@ static void argv_to_hosts(int argc, char *argv[])
 	}
 
 	for (i = 2; i < argc; i++) {
+		if (!strncmp(argv[i], "crypto", 6))
+			continue;
+
 		if (knet_host_add(knet_h, i - 1) != 0) {
 			printf("Unable to add new knet_host\n");
 			exit(EXIT_FAILURE);
@@ -150,7 +180,6 @@ int main(int argc, char *argv[])
 	fd_set rfds;
 	struct timeval tv;
 	struct knet_host_search print_search;
-	struct knet_handle_cfg knet_handle_cfg;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -172,8 +201,7 @@ int main(int argc, char *argv[])
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = knet_sock[0];
 	knet_handle_cfg.node_id = 1;
-	knet_handle_cfg.crypto_cipher_type = (char *)"aes256";
-	knet_handle_cfg.crypto_hash_type = (char *)"sha1";
+	set_crypto(argc, argv);
 	knet_handle_cfg.private_key = crypto_key;
 	knet_handle_cfg.private_key_len = sizeof(crypto_key);
 

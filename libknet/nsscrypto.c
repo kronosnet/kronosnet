@@ -91,9 +91,9 @@ struct crypto_instance {
 
 	unsigned int private_key_len;
 
-	enum crypto_crypt_t crypto_cipher_type;
+	int crypto_cipher_type;
 
-	enum crypto_hash_t crypto_hash_type;
+	int crypto_hash_type;
 };
 
 /*
@@ -511,7 +511,9 @@ int crypto_init(
 	knet_handle_t knet_h,
 	const struct knet_handle_cfg *knet_handle_cfg)
 {
-	log_printf("Initizializing crypto module\n");
+	log_printf("Initizializing crypto module [%s/%s]",
+		  knet_handle_cfg->crypto_cipher_type,
+		  knet_handle_cfg->crypto_hash_type);
 
 	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
 	if (!knet_h->crypto_instance) {
