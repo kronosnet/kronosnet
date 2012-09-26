@@ -25,6 +25,7 @@ missing
 libtool
 autoscan.log
 kronosnetd/kronosnetd
+kronosnetd/knet-keygen
 *.swp
 *_test
 *_bench

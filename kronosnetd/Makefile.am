@@ -10,7 +10,8 @@ noinst_HEADERS		= \
 			  vty_cli_cmds.h \
 			  vty_utils.h 
 
-sbin_PROGRAMS		= kronosnetd
+sbin_PROGRAMS		= kronosnetd \
+			  knet-keygen
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
@@ -33,3 +34,13 @@ kronosnetd_LDADD	= \
 			  $(top_builddir)/libknet/libknet.la \
 			  $(top_builddir)/libtap/libtap.la \
 			  $(LIBQB_LIBS)
+
+knet_keygen_SOURCES	= keygen.c
+
+install-exec-local:
+	$(INSTALL) -d -m 0700 $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
+	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d
+
+uninstall-local:
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d || :;
+	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || :;
