@@ -17,7 +17,7 @@ lib_LTLIBRARIES		= libtap.la
 
 libtap_la_SOURCES	= $(sources)
 
-libtap_la_LDFLAGS	= -Wl,-version-script,libtap_exported_sym \
+libtap_la_LDFLAGS	= -Wl,-version-script,$(srcdir)/libtap_exported_sym \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
