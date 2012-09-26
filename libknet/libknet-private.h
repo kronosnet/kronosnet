@@ -39,6 +39,8 @@ struct knet_handle {
 	pthread_t heartbt_thread;
 	pthread_rwlock_t list_rwlock;
 	struct crypto_instance *crypto_instance;
+	off_t dst_nodeid_offset;
+	size_t dst_nodeid_len;
 };
 
 int _fdset_cloexec(int fd);

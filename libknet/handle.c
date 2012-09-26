@@ -29,6 +29,7 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		errno = EINVAL;
 		return NULL;
 	}
+
 	if (knet_handle_cfg->fd <= 0) {
 		errno = EINVAL;
 		return NULL;
@@ -64,6 +65,8 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->node_id = knet_handle_cfg->node_id;
+	knet_h->dst_nodeid_offset = knet_handle_cfg->dst_nodeid_offset;
+	knet_h->dst_nodeid_len = knet_handle_cfg->dst_nodeid_len;
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0))
@@ -317,8 +320,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				(src_link->latency_fix - src_link->latency_exp))) /
 					src_link->latency_fix;
 
-		if (src_link->latency < src_link->pong_timeout)
-			src_link->enabled = 1;
+		if (src_link->latency < src_link->pong_timeout) {
+			if (!src_link->enabled) {
+				src_link->enabled = 1;
+				/* TODO: notify packet inspector */
+			}
+		}
 
 		break;
 	default:
@@ -366,8 +373,10 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 	if (dst_link->enabled == 1) {
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
-		if (diff_ping >= (dst_link->pong_timeout * 1000llu))
+		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
 			dst_link->enabled = 0; /* TODO: might need write lock */
+			/* TODO: notify packet inspector */
+		}
 	}
 }
 
@@ -428,14 +437,8 @@ static void *_handle_tap_to_links_thread(void *data)
 static void *_handle_recv_from_links_thread(void *data)
 {
 	int i, nev;
-	knet_handle_t knet_h;
+	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_MAX_EVENTS];
-
-	knet_h = (knet_handle_t) data;
-
-	/* preparing data buffer */
-	knet_h->recv_from_links_buf->kf_magic = htonl(KNET_FRAME_MAGIC);
-	knet_h->recv_from_links_buf->kf_version = KNET_FRAME_VERSION;
 
 	while (1) {
 		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_MAX_EVENTS, -1);

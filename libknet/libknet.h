@@ -89,6 +89,8 @@ struct knet_handle_cfg {
 	char		*crypto_hash_type;
 	unsigned char	*private_key;
 	unsigned int	private_key_len;
+	off_t		dst_nodeid_offset; /* destination node_id offset in data packet */
+	size_t		dst_nodeid_len; /* 0 = broadcast to all, 1|2 256/64k nodes, > 2 == 2 */
 };
 
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
