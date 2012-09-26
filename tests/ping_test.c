@@ -10,7 +10,7 @@
 
 #include "libknet.h"
 
-static unsigned char crypto_key[4096];
+static unsigned char crypto_key[KNET_MAX_KEY_LEN];
 static int knet_sock[2];
 static knet_handle_t knet_h;
 static struct knet_handle_cfg knet_handle_cfg;

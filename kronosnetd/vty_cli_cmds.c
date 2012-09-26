@@ -1259,7 +1259,7 @@ tap_found:
 	    (strncmp("none", knet_iface->hash_method, 4))) {
 		int fd = -1;
 		char keyfile[PATH_MAX];
-		unsigned char private_key[4096];
+		unsigned char private_key[KNET_MAX_KEY_LEN];
 		struct stat sb;
 
 		memset(keyfile, 0, PATH_MAX);
@@ -1284,10 +1284,11 @@ tap_found:
 		}
 
 		knet_handle_cfg.private_key_len = (unsigned int)sb.st_size;
-		if ((knet_handle_cfg.private_key_len < 1024) ||
-		    (knet_handle_cfg.private_key_len > 4096)) {
-			knet_vty_write(vty, "Error: Key %s is %u long. Must be 1024 <= key_len <= 4096%s",
-				       keyfile, knet_handle_cfg.private_key_len, telnet_newline);
+		if ((knet_handle_cfg.private_key_len < KNET_MIN_KEY_LEN) ||
+		    (knet_handle_cfg.private_key_len > KNET_MAX_KEY_LEN)) {
+			knet_vty_write(vty, "Error: Key %s is %u long. Must be %u <= key_len <= %u%s",
+				       keyfile, knet_handle_cfg.private_key_len,
+				       KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN, telnet_newline);
 			goto key_error;
 		}
 

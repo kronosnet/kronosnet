@@ -9,8 +9,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <libknet.h>
+
 static char *output_file = NULL;
-static ssize_t keylen = 4096;
+static ssize_t keylen = KNET_MAX_KEY_LEN;
 
 static void print_usage(void)
 {
@@ -44,8 +46,9 @@ static int read_arguments(int argc, char **argv)
 
 		case 's':
 			keylen = atoi(optarg);
-			if ((keylen < 1024) || (keylen > 4096)) {
-				fprintf(stderr, "Error: Key size should be a value between 1024 and 4096 (default) included\n");
+			if ((keylen < KNET_MIN_KEY_LEN) || (keylen > KNET_MAX_KEY_LEN)) {
+				fprintf(stderr, "Error: Key size should be a value between %u and %u (default) included\n",
+					KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN);
 				return -1;
 			}
 			break;

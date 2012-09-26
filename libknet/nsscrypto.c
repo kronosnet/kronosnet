@@ -546,7 +546,8 @@ int crypto_init(
 	if ((knet_h->crypto_instance->crypto_cipher_type > 0) ||
 	    (knet_h->crypto_instance->crypto_hash_type > 0)) {
 		if ((!knet_h->crypto_instance->private_key) ||
-		    (knet_h->crypto_instance->private_key_len < 1024)) {
+		    (knet_h->crypto_instance->private_key_len < KNET_MIN_KEY_LEN) ||
+		    (knet_h->crypto_instance->private_key_len > KNET_MAX_KEY_LEN)) {
 			goto out_err;
 		}
 	}
