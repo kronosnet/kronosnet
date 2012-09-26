@@ -227,7 +227,6 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_CRYPTO:
 			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
-			knet_vty_write(vty, "DEBUG: %s%s", buf, telnet_newline);
 			if (!strncmp("none", buf, 4))
 				break;
 			if (!strncmp("aes256", buf, 6))
@@ -1256,8 +1255,69 @@ tap_found:
 	knet_handle_cfg.crypto_cipher_type = knet_iface->crypto_method;
 	knet_handle_cfg.crypto_hash_type = knet_iface->hash_method;
 
-	/* XXXX READ KEY HERE */
+	if ((strncmp("none", knet_iface->crypto_method, 4)) ||
+	    (strncmp("none", knet_iface->hash_method, 4))) {
+		int fd = -1;
+		char keyfile[PATH_MAX];
+		unsigned char private_key[4096];
+		struct stat sb;
 
+		memset(keyfile, 0, PATH_MAX);
+		snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", device);
+
+		fd = open(keyfile, O_RDONLY);
+		if (fd < 0) {
+			knet_vty_write(vty, "Error: Unable to open security key: %s%s", keyfile, telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+
+		if (fstat(fd, &sb)) {
+			knet_vty_write(vty, "Error: Unable to verify security key: %s%s", keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		if (!S_ISREG(sb.st_mode)) {
+			knet_vty_write(vty, "Error: Key %s does not appear to be a regular file%s",
+				       keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		knet_handle_cfg.private_key_len = (unsigned int)sb.st_size;
+		if ((knet_handle_cfg.private_key_len < 1024) ||
+		    (knet_handle_cfg.private_key_len > 4096)) {
+			knet_vty_write(vty, "Error: Key %s is %u long. Must be 1024 <= key_len <= 4096%s",
+				       keyfile, knet_handle_cfg.private_key_len, telnet_newline);
+			goto key_error;
+		}
+
+		if (((sb.st_mode & S_IRWXU) != S_IRUSR) ||
+		    (sb.st_mode & S_IRWXG) ||
+		    (sb.st_mode & S_IRWXO)) {
+			knet_vty_write(vty, "Error: Key %s does not have the correct permission (must be user read-only)%s",
+				       keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		memset(&private_key, 0, sizeof(private_key));
+
+		if (read(fd, &private_key, knet_handle_cfg.private_key_len) != knet_handle_cfg.private_key_len) {
+			knet_vty_write(vty, "Error: Unable to read key %s%s", keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		knet_handle_cfg.private_key = private_key;
+
+		close(fd);
+		goto key_clean;
+
+key_error:
+		close(fd);
+		err = -1;
+		goto out_clean;
+	}
+
+key_clean:
 	knet_iface->cfg_ring.knet_h = knet_handle_new(&knet_handle_cfg);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
