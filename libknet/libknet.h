@@ -47,27 +47,37 @@ struct knet_listener {
 	struct knet_listener *next;
 };
 
+/* change those to uint8 and UINT8_MAX to test rollover */
+/*
+typedef uint32_t seq_num_t;
+#define SEQ_MAX UINT32_MAX
+*/
+typedef uint16_t seq_num_t;
+#define SEQ_MAX UINT16_MAX
+
 union knet_frame_data {
-	uint8_t			kfd_data[0];
 	struct {
-		uint16_t	kfd_node;
+		seq_num_t	kfd_seq_num;
+		uint8_t		kfd_data[0];
+	} data;
+	struct {
 		uint8_t		kfd_link;
 		struct timespec	kfd_time;
-	};
+	} ping;
 } __attribute__((packed));
 
 struct knet_frame {
 	uint32_t 		kf_magic;
 	uint8_t			kf_version;
 	uint8_t			kf_type;
-	uint16_t		__pad;
+	uint16_t		kf_node;
 	union knet_frame_data	kf_payload;
 } __attribute__((packed));
 
-#define kf_data kf_payload.kfd_data
-#define kf_node kf_payload.kfd_node
-#define kf_link kf_payload.kfd_link
-#define kf_time kf_payload.kfd_time
+#define kf_seq_num kf_payload.data.kfd_seq_num
+#define kf_data kf_payload.data.kfd_data
+#define kf_link kf_payload.ping.kfd_link
+#define kf_time kf_payload.ping.kfd_time
 
 #define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
 
