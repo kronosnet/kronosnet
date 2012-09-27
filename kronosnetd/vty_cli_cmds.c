@@ -1348,10 +1348,7 @@ knet_found:
 		goto out_clean;
 	}
 	memset(&mac, 0, sizeof(mac));
-	knet_vty_write(vty, "cur mac: %s%s", cur_mac, telnet_newline);
 	memset(strrchr(cur_mac, ':'), 0, 1);
-	knet_vty_write(vty, "cur mac - 1: %s%s", cur_mac, telnet_newline);
-
 	maclen = strrchr(cur_mac, ':') - cur_mac + 1;
 	memcpy(mac, cur_mac, maclen);
 	snprintf(mac + maclen, sizeof(mac) - maclen, "0:%x", knet_iface->cfg_eth.node_id);
