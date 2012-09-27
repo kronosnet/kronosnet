@@ -759,7 +759,7 @@ out_clean:
 }
 
 static int knet_find_host(struct knet_vty *vty, struct knet_host **host,
-					const char *nodename, const int requested_node_id)
+					const char *nodename, const uint16_t requested_node_id)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	struct knet_host *head = NULL;
@@ -828,6 +828,7 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 		knet_vty_write(vty, "Error: peer not found in list%s", telnet_newline);
 		goto out_clean;
 	}
+
 	if (host->listener) {
 		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener) == -EBUSY) {
 			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
@@ -1347,9 +1348,13 @@ knet_found:
 		goto out_clean;
 	}
 	memset(&mac, 0, sizeof(mac));
+	knet_vty_write(vty, "cur mac: %s%s", cur_mac, telnet_newline);
+	memset(strrchr(cur_mac, ':'), 0, 1);
+	knet_vty_write(vty, "cur mac - 1: %s%s", cur_mac, telnet_newline);
+
 	maclen = strrchr(cur_mac, ':') - cur_mac + 1;
 	memcpy(mac, cur_mac, maclen);
-	snprintf(mac + maclen, sizeof(mac) - maclen, "%x", knet_iface->cfg_eth.node_id);
+	snprintf(mac + maclen, sizeof(mac) - maclen, "0:%x", knet_iface->cfg_eth.node_id);
 	free(cur_mac);
 	if (tap_set_mac(knet_iface->cfg_eth.tap, mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
@@ -1397,7 +1402,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "configure%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, " interface %s %d %s %s %s", tap_get_name(knet_iface->cfg_eth.tap),
+		knet_vty_write(vty, " interface %s %u %s %s %s", tap_get_name(knet_iface->cfg_eth.tap),
 								 knet_iface->cfg_eth.node_id,
 								 knet_iface->crypto_method,
 								 knet_iface->hash_method, nl);
@@ -1424,7 +1429,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 		}
 
 		while (host != NULL) {
-			knet_vty_write(vty, "  peer %s %d%s", host->name, host->node_id, nl);
+			knet_vty_write(vty, "  peer %s %u%s", host->name, host->node_id, nl);
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].ready == 1) {
 					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);

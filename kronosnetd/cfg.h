@@ -7,10 +7,9 @@
 #include "libtap.h"
 #include "libknet.h"
 
-
 struct knet_cfg_eth {
 	tap_t tap;
-	uint8_t node_id;
+	uint16_t node_id;
 };
 
 struct knet_cfg_ring {
