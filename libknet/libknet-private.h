@@ -42,9 +42,10 @@ struct knet_handle {
 	off_t dst_nodeid_offset;
 	size_t dst_nodeid_len;
 	seq_num_t bcast_seq_num;
-	seq_num_t ucast_seq_num;
 };
 
 int _fdset_cloexec(int fd);
+int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
+void knet_has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
 
 #endif

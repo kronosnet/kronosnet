@@ -13,6 +13,14 @@ typedef struct knet_handle *knet_handle_t;
 #define KNET_MAX_LINK 8
 #define KNET_MAX_HOST_LEN 64
 
+#define KNET_CBUFFER_SIZE 4096
+/*
+typedef uint64_t seq_num_t;
+#define SEQ_MAX UINT64_MAX
+*/
+typedef uint16_t seq_num_t;
+#define SEQ_MAX UINT16_MAX
+
 struct knet_link {
 	uint8_t link_id;
 	int sock;
@@ -34,6 +42,11 @@ struct knet_host {
 	uint16_t node_id;
 	char name[KNET_MAX_HOST_LEN];
 	unsigned int active:1; /* data packets are sent to all links */
+	char bcast_circular_buffer[KNET_CBUFFER_SIZE];
+	seq_num_t bcast_seq_num_rx;
+	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
+	seq_num_t ucast_seq_num_tx;
+	seq_num_t ucast_seq_num_rx;
 	struct knet_listener *listener;
 	struct knet_link link[KNET_MAX_LINK];
 	struct knet_host *next;
@@ -46,14 +59,6 @@ struct knet_listener {
 	struct sockaddr_storage address;
 	struct knet_listener *next;
 };
-
-/* change those to uint8 and UINT8_MAX to test rollover */
-/*
-typedef uint32_t seq_num_t;
-#define SEQ_MAX UINT32_MAX
-*/
-typedef uint16_t seq_num_t;
-#define SEQ_MAX UINT16_MAX
 
 union knet_frame_data {
 	struct {

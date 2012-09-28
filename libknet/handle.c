@@ -196,14 +196,14 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 	struct knet_host *i;
 
 	len = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
-					KNET_DATABUFSIZE - KNET_FRAME_SIZE);
+					KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
 
 	if (len == 0) {
 		/* TODO: disconnection, should never happen! */
 		return;
 	}
 
-	len += KNET_FRAME_SIZE;
+	len += KNET_FRAME_SIZE + sizeof(seq_num_t);
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		return;
@@ -212,6 +212,9 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
+
+	/* Use bcast only pckts for now since we have no pckt inspector */
+	knet_h->tap_to_links_buf->kf_seq_num = ++knet_h->bcast_seq_num;
 
 	if (crypto_encrypt_and_sign(knet_h->crypto_instance,
 				    (const unsigned char *)knet_h->tap_to_links_buf,
@@ -222,7 +225,9 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 	for (i = knet_h->host_head; i != NULL; i = i->next) {
 		for (j = 0; j < KNET_MAX_LINK; j++) {
-			if (i->link[j].enabled != 1) /* link is disabled */
+			if (i->link[j].ready != 1) /* link is not configured */
+				continue;
+			if (i->link[j].enabled != 1) /* link is not enabled */
 				continue;
 
 			snt = sendto(i->link[j].sock,
@@ -230,7 +235,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 					(struct sockaddr *) &i->link[j].address,
 					sizeof(struct sockaddr_storage));
 
-			if ((i->active == 0) && (snt == len))
+			if ((i->active == 0) && (snt == outlen))
 				break;
 		}
 	}
@@ -268,16 +273,15 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	if (knet_h->recv_from_links_buf->kf_version != KNET_FRAME_VERSION)
 		goto exit_unlock;
 
-	src_host = NULL;
+	knet_h->recv_from_links_buf->kf_node = ntohs(knet_h->recv_from_links_buf->kf_node);
+	src_host = knet_h->host_index[knet_h->recv_from_links_buf->kf_node];
+	if (src_host == NULL) {  /* host not found */
+		goto exit_unlock;
+	}
+
 	src_link = NULL;
 
 	if ((knet_h->recv_from_links_buf->kf_type & KNET_FRAME_PMSK) != 0) {
-		knet_h->recv_from_links_buf->kf_node = ntohs(knet_h->recv_from_links_buf->kf_node);
-		src_host = knet_h->host_index[knet_h->recv_from_links_buf->kf_node];
-
-		if (src_host == NULL)	/* host not found */
-			goto exit_unlock;
-
 		src_link = src_host->link +
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
 	}
@@ -287,8 +291,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
+		if (!knet_should_deliver(src_host, 1, knet_h->recv_from_links_buf->kf_seq_num))
+			break;
+
 		write(knet_h->sockfd,
-			knet_h->recv_from_links_buf->kf_data, len - KNET_FRAME_SIZE);
+			knet_h->recv_from_links_buf->kf_data, len - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
+
+		knet_has_been_delivered(src_host, 1, knet_h->recv_from_links_buf->kf_seq_num);
 
 		break;
 	case KNET_FRAME_PING:
@@ -301,7 +310,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 					    knet_h->recv_from_links_buf_crypt,
 					    &outlen) < 0)
 			break;
-					    
 
 		sendto(src_link->sock, knet_h->recv_from_links_buf_crypt, outlen, MSG_DONTWAIT,
 				(struct sockaddr *) &src_link->address,
@@ -424,6 +432,7 @@ static void *_handle_tap_to_links_thread(void *data)
 	knet_h->tap_to_links_buf->kf_magic = htonl(KNET_FRAME_MAGIC);
 	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
 	knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
+	knet_h->tap_to_links_buf->kf_node = htons(knet_h->node_id);
 
 	while (1) {
 		if (epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_MAX_EVENTS, -1) >= 1)
