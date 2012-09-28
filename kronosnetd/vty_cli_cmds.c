@@ -728,8 +728,6 @@ static int knet_cmd_link(struct knet_vty *vty)
 			return -1;
 		}
 
-		memset(klink, 0, sizeof(struct knet_link));
-
 		memcpy(klink->ipaddr, ipaddr, strlen(ipaddr));
 		memcpy(klink->port, port, strlen(port));
 
@@ -750,11 +748,6 @@ static int knet_cmd_link(struct knet_vty *vty)
 	vty->node = NODE_LINK;
 
 out_clean:
-	if (err < 0) {
-		if (klink)
-			free(klink);
-
-	}
 	return err;
 }
 
