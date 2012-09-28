@@ -1248,6 +1248,8 @@ tap_found:
 	knet_handle_cfg.node_id = requested_id;
 	knet_handle_cfg.crypto_cipher_type = knet_iface->crypto_method;
 	knet_handle_cfg.crypto_hash_type = knet_iface->hash_method;
+	knet_handle_cfg.dst_host_filter = KNET_DST_FILTER_ENABLE;
+	knet_handle_cfg.dst_host_filter_fn = ether_host_filter_fn;
 
 	if ((strncmp("none", knet_iface->crypto_method, 4)) ||
 	    (strncmp("none", knet_iface->hash_method, 4))) {

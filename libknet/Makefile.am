@@ -10,7 +10,8 @@ sources			= \
 			  handle.c \
 			  host.c \
 			  listener.c \
-			  nsscrypto.c
+			  nsscrypto.c \
+			  etherfilter.c
 
 include_HEADERS		= libknet.h
 noinst_HEADERS		= libknet-private.h \

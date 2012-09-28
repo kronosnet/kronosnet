@@ -1,8 +1,8 @@
-#ifndef __KNETHANDLE_H__
-#define __KNETHANDLE_H__
+#ifndef __LIBKNET_PRIVATE_H__
+#define __LIBKNET_PRIVATE_H__
 
-/* NOTE: you shouldn't need to include this header normally, it is provided for
- *       testing purpose only.
+/*
+ * NOTE: you shouldn't need to include this header normally
  */
 
 #include "libknet.h"
@@ -39,9 +39,14 @@ struct knet_handle {
 	pthread_t heartbt_thread;
 	pthread_rwlock_t list_rwlock;
 	struct crypto_instance *crypto_instance;
-	off_t dst_nodeid_offset;
-	size_t dst_nodeid_len;
 	seq_num_t bcast_seq_num;
+	uint8_t dst_host_filter;
+	int (*dst_host_filter_fn) (
+		const unsigned char *outdata,
+		ssize_t outdata_len,
+		uint16_t src_node_id,
+		uint16_t *dst_host_ids,
+		size_t *dst_host_ids_entries);
 };
 
 int _fdset_cloexec(int fd);

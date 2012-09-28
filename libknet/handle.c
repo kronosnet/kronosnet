@@ -40,6 +40,12 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
+	knet_h->dst_host_filter = knet_handle_cfg->dst_host_filter;
+	knet_h->dst_host_filter_fn = knet_handle_cfg->dst_host_filter_fn;
+
+	if ((knet_h->dst_host_filter) && (!knet_h->dst_host_filter_fn))
+		goto exit_fail1;
+
 	if (crypto_init(knet_h, knet_handle_cfg) < 0)
 		goto exit_fail1;
 
@@ -65,8 +71,6 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->node_id = knet_handle_cfg->node_id;
-	knet_h->dst_nodeid_offset = knet_handle_cfg->dst_nodeid_offset;
-	knet_h->dst_nodeid_len = knet_handle_cfg->dst_nodeid_len;
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0))
@@ -192,23 +196,38 @@ void knet_link_timeout(struct knet_link *lnk,
 static void _handle_tap_to_links(knet_handle_t knet_h)
 {
 	int j;
-	ssize_t len, snt, outlen;
+	ssize_t inlen, len, snt, outlen;
 	struct knet_host *i;
+	uint16_t dst_host_ids[KNET_MAX_HOST];
+	size_t dst_host_ids_entries = 0;
+	int bcast = 1;
 
-	len = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
+	inlen = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
 					KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
 
-	if (len == 0) {
+	if (inlen == 0) {
 		/* TODO: disconnection, should never happen! */
 		return;
 	}
 
-	len += KNET_FRAME_SIZE + sizeof(seq_num_t);
+	len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		return;
 
-	/* TODO: packet inspection */
+	if (knet_h->dst_host_filter) {
+		bcast = knet_h->dst_host_filter_fn(
+				(const unsigned char *)knet_h->tap_to_links_buf->kf_data,
+				inlen,
+				knet_h->tap_to_links_buf->kf_node,
+				dst_host_ids,
+				&dst_host_ids_entries);
+		if (bcast < 0)
+			return;
+
+		if ((!bcast) && (!dst_host_ids_entries))
+			return;
+	}
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;

@@ -1,5 +1,5 @@
-#ifndef __RING_H__
-#define __RING_H__
+#ifndef __LIBKNET_H__
+#define __LIBKNET_H__
 
 #include <stdint.h>
 #include <netinet/in.h>
@@ -97,6 +97,17 @@ struct knet_frame {
 #define KNET_MIN_KEY_LEN 1024
 #define KNET_MAX_KEY_LEN 4096
 
+#define KNET_DST_FILTER_DISABLE 0 /* pckt goes everywhere */
+#define KNET_DST_FILTER_ENABLE  1 /* pckt goes via dst_host_filter,
+				     see knet_ether_filter for example */
+
+/*
+ * dst_host_filter_fn should return
+ * -1 on error, pkt is discarded
+ *  0 all good, send pkt to dst_host_ids and there are dst_host_ids_entries in buffer ready
+ *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
+ */
+
 struct knet_handle_cfg {
 	int		fd;
 	uint16_t	node_id;
@@ -104,9 +115,20 @@ struct knet_handle_cfg {
 	char		*crypto_hash_type;
 	unsigned char	*private_key;
 	unsigned int	private_key_len;
-	off_t		dst_nodeid_offset; /* destination node_id offset in data packet */
-	size_t		dst_nodeid_len; /* 0 = broadcast to all, 1|2 256/64k nodes, > 2 == 2 */
+	uint8_t		dst_host_filter;
+	int		(*dst_host_filter_fn) (
+				const unsigned char *outdata,
+				ssize_t outdata_len,
+				uint16_t src_node_id,
+				uint16_t *dst_host_ids,
+				size_t *dst_host_ids_entries);
 };
+
+int ether_host_filter_fn (const unsigned char *outdata,
+			  ssize_t outdata_len,
+			  uint16_t src_node_id,
+			  uint16_t *dst_host_ids,
+			  size_t *dst_host_ids_entries);
 
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
