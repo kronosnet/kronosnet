@@ -77,10 +77,10 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 
 int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 {
-	int i, ret;
+	int link_idx, ret;
 	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
 	struct knet_host *host;
-	struct knet_listener *l;
+	struct knet_listener *tmp_listener;
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
 		return -EINVAL;
@@ -89,10 +89,11 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 
 	/* checking if listener is in use */
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
-		for (i = 0; i < KNET_MAX_LINK; i++) {
-			if (host->link[i].ready != 1) continue;
+		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+			if (host->link[link_idx].ready != 1)
+				continue;
 
-			if (host->link[i].sock == listener->sock) {
+			if (host->link[link_idx].sock == listener->sock) {
 				ret = -EBUSY;
 				goto exit_fail1;
 			}
@@ -103,9 +104,9 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 	if (listener == knet_h->listener_head) {
 		knet_h->listener_head = knet_h->listener_head->next;
 	} else {
-		for (l = knet_h->listener_head; l != NULL; l = l->next) {
-			if (listener == l->next) {
-				l->next = l->next->next;
+		for (tmp_listener = knet_h->listener_head; tmp_listener != NULL; tmp_listener = tmp_listener->next) {
+			if (listener == tmp_listener->next) {
+				tmp_listener->next = tmp_listener->next->next;
 				break;
 			}
 		}
@@ -117,6 +118,7 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
  exit_fail1:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
-	if (ret < 0) errno = -ret;
+	if (ret < 0)
+		errno = -ret;
 	return ret;
 }

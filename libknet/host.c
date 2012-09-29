@@ -72,7 +72,7 @@ int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_
 
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 {
-	int i, ret = 0; /* success */
+	int link_idx, ret = 0; /* success */
 	struct knet_host *host;
 
 	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0)
@@ -90,8 +90,8 @@ int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 
 	host->node_id = node_id;
 
-	for (i = 0; i < KNET_MAX_LINK; i++)
-		host->link[i].link_id = i;
+	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++)
+		host->link[link_idx].link_id = link_idx;
 
 	/* adding new host to the index */
 	knet_h->host_index[node_id] = host;
@@ -111,7 +111,7 @@ int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 {
 	int ret = 0; /* success */
-	struct knet_host *i, *removed;
+	struct knet_host *host, *removed;
 
 	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0)
 		goto exit_clean;
@@ -128,10 +128,10 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 		removed = knet_h->host_head;
 		knet_h->host_head = removed->next;
 	} else {
-		for (i = knet_h->host_head; i->next != NULL; i = i->next) {
-			if (i->next->node_id == node_id) {
-				removed = i->next;
-				i->next = removed->next;
+		for (host = knet_h->host_head; host->next != NULL; host = host->next) {
+			if (host->next->node_id == node_id) {
+				removed = host->next;
+				host->next = removed->next;
 				break;
 			}
 		}

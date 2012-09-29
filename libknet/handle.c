@@ -195,9 +195,9 @@ void knet_link_timeout(struct knet_link *lnk,
 
 static void _handle_tap_to_links(knet_handle_t knet_h)
 {
-	int j;
 	ssize_t inlen, len, snt, outlen;
-	struct knet_host *i;
+	struct knet_host *dst_host;
+	int link_idx;
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
@@ -249,19 +249,19 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 			return;
 		}
 
-		for (i = knet_h->host_head; i != NULL; i = i->next) {
-			for (j = 0; j < KNET_MAX_LINK; j++) {
-				if (i->link[j].ready != 1) /* link is not configured */
+		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+				if (dst_host->link[link_idx].ready != 1) /* link is not configured */
 					continue;
-				if (i->link[j].enabled != 1) /* link is not enabled */
+				if (dst_host->link[link_idx].enabled != 1) /* link is not enabled */
 					continue;
 
-				snt = sendto(i->link[j].sock,
+				snt = sendto(dst_host->link[link_idx].sock,
 						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
-						(struct sockaddr *) &i->link[j].address,
+						(struct sockaddr *) &dst_host->link[link_idx].address,
 						sizeof(struct sockaddr_storage));
 
-				if ((i->active == 0) && (snt == outlen))
+				if ((dst_host->active == 0) && (snt == outlen))
 					break;
 			}
 		}
@@ -417,9 +417,9 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 
 static void *_handle_heartbt_thread(void *data)
 {
-	int j;
 	knet_handle_t knet_h;
-	struct knet_host *i;
+	struct knet_host *dst_host;
+	int link_idx;
 
 	knet_h = (knet_handle_t) data;
 
@@ -435,10 +435,11 @@ static void *_handle_heartbt_thread(void *data)
 		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 			continue;
 
-		for (i = knet_h->host_head; i != NULL; i = i->next) {
-			for (j = 0; j < KNET_MAX_LINK; j++) {
-				if (i->link[j].ready != 1) continue;
-				_handle_check_each(knet_h, &i->link[j]);
+		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+				if (dst_host->link[link_idx].ready != 1)
+					continue;
+				_handle_check_each(knet_h, &dst_host->link[link_idx]);
 			}
 		}
 
