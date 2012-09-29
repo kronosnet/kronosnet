@@ -28,12 +28,12 @@ kronosnetd_CPPFLAGS	= \
 			  -I$(top_srcdir)/libtap \
 			  -I$(top_srcdir)/libknet
 
-kronosnetd_CFLAGS	= $(LIBQB_CFLAGS)
+kronosnetd_CFLAGS	= $(libqb_CFLAGS)
 
 kronosnetd_LDADD	= \
 			  $(top_builddir)/libknet/libknet.la \
 			  $(top_builddir)/libtap/libtap.la \
-			  $(LIBQB_LIBS)
+			  $(libqb_LIBS)
 
 knet_keygen_SOURCES	= keygen.c
 

@@ -77,7 +77,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([rt], [clock_gettime])
 
 PKG_CHECK_MODULES([nss],[nss])
-PKG_CHECK_MODULES([LIBQB], [libqb])
+PKG_CHECK_MODULES([libqb], [libqb])
 
 AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
 	     [have_qb_log_thread_priority_set="yes"],
