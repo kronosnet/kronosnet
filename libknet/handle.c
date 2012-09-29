@@ -229,37 +229,45 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 			return;
 	}
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
-		return;
+	if (!bcast) {
 
-	/* Use bcast only pckts for now since we have no pckt inspector */
-	knet_h->tap_to_links_buf->kf_seq_num = ++knet_h->bcast_seq_num;
+		// TBD
 
-	if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+	} else {
+
+		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
+			return;
+
+		knet_h->tap_to_links_buf->kf_seq_num = ++knet_h->bcast_seq_num;
+
+		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
 				    (const unsigned char *)knet_h->tap_to_links_buf,
 				    len,
 				    knet_h->tap_to_links_buf_crypt,
-				    &outlen) < 0)
-		return;
-
-	for (i = knet_h->host_head; i != NULL; i = i->next) {
-		for (j = 0; j < KNET_MAX_LINK; j++) {
-			if (i->link[j].ready != 1) /* link is not configured */
-				continue;
-			if (i->link[j].enabled != 1) /* link is not enabled */
-				continue;
-
-			snt = sendto(i->link[j].sock,
-					knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
-					(struct sockaddr *) &i->link[j].address,
-					sizeof(struct sockaddr_storage));
-
-			if ((i->active == 0) && (snt == outlen))
-				break;
+				    &outlen) < 0) {
+			pthread_rwlock_unlock(&knet_h->list_rwlock);
+			return;
 		}
-	}
 
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+		for (i = knet_h->host_head; i != NULL; i = i->next) {
+			for (j = 0; j < KNET_MAX_LINK; j++) {
+				if (i->link[j].ready != 1) /* link is not configured */
+					continue;
+				if (i->link[j].enabled != 1) /* link is not enabled */
+					continue;
+
+				snt = sendto(i->link[j].sock,
+						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
+						(struct sockaddr *) &i->link[j].address,
+						sizeof(struct sockaddr_storage));
+
+				if ((i->active == 0) && (snt == outlen))
+					break;
+			}
+		}
+
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+	}
 }
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
