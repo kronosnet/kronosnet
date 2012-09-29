@@ -5,24 +5,14 @@ link layer:
 
 * add priority/weight to link config struct
 
-host layer:
-
-* add seq num and ring buffer for pckt tracking to struct
-
-knet_frame:
-
-* remove padding to add nodeid (1 char) and linkid (3 bit), flags (1 bit compress, 1 bit encrypted, 3 pad)
-
 ring:
 
-* change from many mallocs to single (per host) malloc in handler_new and map it.
 * support 8 listener per node.
-* add api to knet_handle_new to define src/dst mapping in data frame.
 * index pointer list
 
 general:
 
-* logging and what to log
+* what to log
   log to file: who logins, config changes and link status changes
   log to vty: cmd execution failure
 
@@ -32,12 +22,10 @@ vty:
 
 * split cmd_files
 * basic show info
-* fix check_param for ip/prefix
+* fix check_param for ip/prefix/crypto
 
 0.2
 ---
-
-* packet inspector
 
 libtap:
 
@@ -52,10 +40,6 @@ link layer:
 * add active/active to link config struct
 * change link->enabled to something more meaningfull (ping enable/admin enable)
 
-host layer:
-
-* add seq num and ring buffer for pckt tracking to struct
-
 * benchmark tests:
   - all critical paths in ring.c
 
@@ -66,7 +50,6 @@ general:
 
 * add statistics
 * add init script / spec file
-* /etc/kronosnet/(ca-ssl/)
 * v4/v6 (bindv6only check via cli)
 
 vty:
@@ -79,7 +62,6 @@ vty:
 ---
 
 * pong count
-* switch engine
 
 0.6
 ---
@@ -96,7 +78,6 @@ vty:
 0.9
 ---
 
-* crypto
 * compression
 
 1.0-pre
