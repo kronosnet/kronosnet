@@ -4,6 +4,7 @@
 link layer:
 
 * add priority/weight to link config struct
+* add active/active to link config struct
 
 ring:
 
@@ -34,11 +35,6 @@ libtap:
 
 0.3
 ---
-
-link layer:
-
-* add active/active to link config struct
-* change link->enabled to something more meaningfull (ping enable/admin enable)
 
 * benchmark tests:
   - all critical paths in ring.c

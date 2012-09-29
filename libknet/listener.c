@@ -90,7 +90,7 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 	/* checking if listener is in use */
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-			if (host->link[link_idx].ready != 1)
+			if (host->link[link_idx].configured != 1)
 				continue;
 
 			if (host->link[link_idx].sock == listener->sock) {

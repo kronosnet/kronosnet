@@ -251,9 +251,9 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if (dst_host->link[link_idx].ready != 1) /* link is not configured */
+				if (dst_host->link[link_idx].configured != 1) /* link is not configured */
 					continue;
-				if (dst_host->link[link_idx].enabled != 1) /* link is not enabled */
+				if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
 					continue;
 
 				snt = sendto(dst_host->link[link_idx].sock,
@@ -356,8 +356,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 					src_link->latency_fix;
 
 		if (src_link->latency < src_link->pong_timeout) {
-			if (!src_link->enabled) {
-				src_link->enabled = 1;
+			if (!src_link->connected) {
+				src_link->connected = 1;
 				/* TODO: notify packet inspector */
 			}
 		}
@@ -405,11 +405,11 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 			dst_link->ping_last = clock_now;
 	}
 
-	if (dst_link->enabled == 1) {
+	if (dst_link->connected == 1) {
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
-			dst_link->enabled = 0; /* TODO: might need write lock */
+			dst_link->connected = 0; /* TODO: might need write lock */
 			/* TODO: notify packet inspector */
 		}
 	}
@@ -437,7 +437,7 @@ static void *_handle_heartbt_thread(void *data)
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if (dst_host->link[link_idx].ready != 1)
+				if (dst_host->link[link_idx].configured != 1)
 					continue;
 				_handle_check_each(knet_h, &dst_host->link[link_idx]);
 			}

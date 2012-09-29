@@ -27,8 +27,8 @@ struct knet_link {
 	char ipaddr[KNET_MAX_HOST_LEN];
 	char port[6];
 	struct sockaddr_storage address;
-	unsigned int ready:1; /* link is configured and ready to be used */
-	unsigned int enabled:1;	/* link is enabled for data */
+	unsigned int configured:1; /* link is configured and ready to be used */
+	unsigned int connected:1;	/* link is enabled for data */
 	unsigned long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
 	unsigned int latency_fix;

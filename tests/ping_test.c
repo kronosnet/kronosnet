@@ -121,7 +121,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		knet_link_timeout(&host->link[0], 1000, 5000, 2048);
 
-		host->link[0].ready = 1;
+		host->link[0].configured = 1;
 
 		err = tok_inaddrport(argv[i],
 				(struct sockaddr_in *) &host->link[0].address);
@@ -145,11 +145,11 @@ static int print_link(knet_handle_t khandle, struct knet_host *host, struct knet
 	int i;
 
 	for (i = 0; i < KNET_MAX_LINK; i++) {
-		if (host->link[i].ready != 1) continue;
+		if (host->link[i].configured != 1) continue;
 
 		printf("host %p, link %p latency is %llu microsecs, status: %s\n",
 			host, &host->link[i], host->link[i].latency,
-			(host->link[i].enabled == 0) ? "disabled" : "enabled");
+			(host->link[i].connected == 0) ? "disconnected" : "connected");
 	}
 
 	return KNET_HOST_FOREACH_NEXT;

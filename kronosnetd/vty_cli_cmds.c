@@ -691,7 +691,7 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 		return -1;
 	}
 
-	host->link[j].ready = 0;
+	host->link[j].configured = 0;
 
 	return 0;
 }
@@ -712,7 +712,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	snprintf(port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
 
 	for (j = 0; j < KNET_MAX_LINK; j++) {
-		if ((klink == NULL) && (host->link[j].ready == 0)) {
+		if ((klink == NULL) && (host->link[j].configured == 0)) {
 			klink = &host->link[j];
 		}
 		if (!strcmp(host->link[j].ipaddr, ipaddr)
@@ -741,7 +741,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 		knet_link_timeout(klink, 1000, 5000, 2048);
 
-		klink->ready = 1;
+		klink->configured = 1;
 	}
 
 	vty->link = (void *)klink;
@@ -1152,7 +1152,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		}
 
 		for (i = 0; i < KNET_MAX_LINK; i++)
-			host->link[i].ready = 0;
+			host->link[i].configured = 0;
 
 		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener);
 
@@ -1423,7 +1423,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 		while (host != NULL) {
 			knet_vty_write(vty, "  peer %s %u%s", host->name, host->node_id, nl);
 			for (i = 0; i < KNET_MAX_LINK; i++) {
-				if (host->link[i].ready == 1) {
+				if (host->link[i].configured == 1) {
 					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);
 					/* print link properties */
 					knet_vty_write(vty, "    exit%s", nl);
