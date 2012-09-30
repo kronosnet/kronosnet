@@ -1,7 +1,36 @@
 0.1
 ---
 
+compress/encrypt: review API crypto->nsscrypto + compress->zlibcompress and ABI
+                  current feels clumpsy and we can save memcpy around
+                  in case we don't encrypt/compress
+
+compress must happen before encrypt, should we compress all? what's
+the price for uncompress on already uncompressed buffer? do we need
+a bit to indicate if pckt is compressed or not?
+is it worth compressing pings? do they compress at all?
+
+config bits:
+- should crypto and compress be part of handle_new? or new api calls?
+  we won't allow runtime changes, so i don't think there is much
+  benefit to have it outside of knet_handle_net for now.
+  We maybe able to spare some duplication between knet_h and knet_cfg struct
+
 link layer:
+
+one we have pckt inspector in place, we need a function to:
+
+int get_dst_links(knet_host *host, int *fd_array, size_t fd_array_size);
+
+that will call into dst_cache
+
+dst_cache is populated by link status changes, cache calculation should
+probably be in its own thread. this is a bit touchy to implement, specially
+due to rwlocks required to update the cache. Look into link status changes
+notification (maybe a signal to a thread? or write to a pipe)
+
+if all links for a host are down, then clear circular_buffers (this
+is necessary to detect restarts and a bunch of other things)
 
 * add priority/weight to link config struct
 * add active/active to link config struct
@@ -70,11 +99,6 @@ vty:
 * review ring api for libknetring shared lib
 * review tap api for libknettap shared lib
 * review vty api for libknetvty shared lib
-
-0.9
----
-
-* compression
 
 1.0-pre
 -------
