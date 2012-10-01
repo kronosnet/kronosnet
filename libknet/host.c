@@ -156,30 +156,40 @@ int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num)
 {
 	size_t i, j; /* circular buffer indexes */
 	seq_num_t seq_dist;
+	char *dst_cbuf = NULL;
+	seq_num_t *dst_seq_num;
 
-	seq_dist = (seq_num < host->bcast_seq_num_rx) ?
-		(SEQ_MAX - seq_num) + host->bcast_seq_num_rx : host->bcast_seq_num_rx - seq_num;
+	if (bcast) {
+		dst_cbuf = host->bcast_circular_buffer;
+		dst_seq_num = &host->bcast_seq_num_rx;
+	} else {
+		dst_cbuf = host->ucast_circular_buffer;
+		dst_seq_num = &host->ucast_seq_num_rx;
+	}
+
+	seq_dist = (seq_num < *dst_seq_num) ?
+		(SEQ_MAX - seq_num) + *dst_seq_num : *dst_seq_num - seq_num;
 
 	j = seq_num % KNET_CBUFFER_SIZE;
 
 	if (seq_dist < KNET_CBUFFER_SIZE) { /* seq num is in ring buffer */
-		return (host->bcast_circular_buffer[j] == 0) ? 1 : 0;
+		return (dst_cbuf[j] == 0) ? 1 : 0;
 	} else if (seq_dist <= SEQ_MAX - KNET_CBUFFER_SIZE) {
-		memset(host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-		host->bcast_seq_num_rx = seq_num;
+		memset(dst_cbuf, 0, KNET_CBUFFER_SIZE);
+		*dst_seq_num = seq_num;
 	}
 
 	/* cleaning up circular buffer */
-	i = (host->bcast_seq_num_rx + 1) % KNET_CBUFFER_SIZE;
+	i = (*dst_seq_num + 1) % KNET_CBUFFER_SIZE;
 
 	if (i > j) {
-		memset(host->bcast_circular_buffer + i, 0, KNET_CBUFFER_SIZE - i);
-		memset(host->bcast_circular_buffer, 0, j + 1);
+		memset(dst_cbuf + i, 0, KNET_CBUFFER_SIZE - i);
+		memset(dst_cbuf, 0, j + 1);
 	} else {
-		memset(host->bcast_circular_buffer + i, 0, j - i + 1);
+		memset(dst_cbuf + i, 0, j - i + 1);
 	}
 
-	host->bcast_seq_num_rx = seq_num;
+	*dst_seq_num = seq_num;
 
 	return 1;
 }

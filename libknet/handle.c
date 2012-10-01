@@ -229,14 +229,44 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 			return;
 	}
 
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
+		return;
+
 	if (!bcast) {
+		int host_idx;
 
-		// TBD
+		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
+			if (!dst_host)
+				continue;
 
+			knet_h->tap_to_links_buf->kf_seq_num = ++dst_host->ucast_seq_num_tx;
+
+			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+					    (const unsigned char *)knet_h->tap_to_links_buf,
+					    len,
+					    knet_h->tap_to_links_buf_crypt,
+					    &outlen) < 0) {
+				pthread_rwlock_unlock(&knet_h->list_rwlock);
+				return;
+			}
+
+			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+				if (dst_host->link[link_idx].configured != 1) /* link is not configured */
+					continue;
+				if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
+					continue;
+
+				snt = sendto(dst_host->link[link_idx].sock,
+						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
+						(struct sockaddr *) &dst_host->link[link_idx].address,
+						sizeof(struct sockaddr_storage));
+
+				if ((dst_host->active == 0) && (snt == outlen))
+					break;
+			}
+		}
 	} else {
-
-		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
-			return;
 
 		knet_h->tap_to_links_buf->kf_seq_num = ++knet_h->bcast_seq_num;
 
@@ -265,9 +295,8 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 					break;
 			}
 		}
-
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
 	}
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
@@ -278,6 +307,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	struct knet_host *src_host;
 	struct knet_link *src_link;
 	unsigned long long latency_last;
+	uint16_t dst_host_ids[KNET_MAX_HOST];
+	size_t dst_host_ids_entries = 0;
+	int bcast = 1;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
@@ -318,13 +350,42 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
-		if (!knet_should_deliver(src_host, 1, knet_h->recv_from_links_buf->kf_seq_num))
-			break;
+		if (knet_h->dst_host_filter) {
+			int host_idx;
+			int found = 0;
+
+			bcast = knet_h->dst_host_filter_fn(
+					(const unsigned char *)knet_h->recv_from_links_buf->kf_data,
+					len,
+					knet_h->recv_from_links_buf->kf_node,
+					dst_host_ids,
+					&dst_host_ids_entries);
+			if (bcast < 0)
+				goto exit_unlock;
+
+			if ((!bcast) && (!dst_host_ids_entries))
+				goto exit_unlock;
+
+			/* check if we are dst for this packet */
+			if (!bcast) {
+				for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+					if (dst_host_ids[host_idx] == knet_h->node_id) {
+						found = 1;
+						break;
+					}
+				}
+				if (!found)
+					goto exit_unlock;
+			}
+		}
+
+		if (!knet_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num))
+			goto exit_unlock;
 
 		write(knet_h->sockfd,
 			knet_h->recv_from_links_buf->kf_data, len - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
 
-		knet_has_been_delivered(src_host, 1, knet_h->recv_from_links_buf->kf_seq_num);
+		knet_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
 
 		break;
 	case KNET_FRAME_PING:
