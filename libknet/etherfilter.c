@@ -32,7 +32,6 @@ int ether_host_filter_fn (const unsigned char *outdata,
 {
 	struct ether_header *eth_h = (struct ether_header *)outdata;
 	uint8_t *dst_mac = (uint8_t *)eth_h->ether_dhost;
-	uint16_t *dst_host_id_map;
 	uint16_t dst_host_id;
 
 	if (is_zero_ether_addr(dst_mac))
@@ -43,10 +42,9 @@ int ether_host_filter_fn (const unsigned char *outdata,
 		return 1;
 	}
 
-	dst_host_id_map = (uint16_t *)&dst_mac[4];
-	dst_host_id = ntohs(dst_host_id_map[0]);
+	memcpy(&dst_host_id, &dst_mac[4], 2);
 
-	dst_host_ids[0] = dst_host_id;
+	dst_host_ids[0] = ntohs(dst_host_id);
 	*dst_host_ids_entries = 1;
 
 	return 0;

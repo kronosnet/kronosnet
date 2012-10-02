@@ -240,7 +240,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 			if (!dst_host)
 				continue;
 
-			knet_h->tap_to_links_buf->kf_seq_num = ++dst_host->ucast_seq_num_tx;
+			knet_h->tap_to_links_buf->kf_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
 			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
 					    (const unsigned char *)knet_h->tap_to_links_buf,
@@ -268,7 +268,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 		}
 	} else {
 
-		knet_h->tap_to_links_buf->kf_seq_num = ++knet_h->bcast_seq_num;
+		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num);
 
 		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
 				    (const unsigned char *)knet_h->tap_to_links_buf,
@@ -301,7 +301,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 {
-	ssize_t len, outlen;
+	ssize_t len, outlen, wlen;
 	struct sockaddr_storage address;
 	socklen_t addrlen;
 	struct knet_host *src_host;
@@ -350,6 +350,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
+		knet_h->recv_from_links_buf->kf_seq_num = ntohs(knet_h->recv_from_links_buf->kf_seq_num);
+
 		if (knet_h->dst_host_filter) {
 			int host_idx;
 			int found = 0;
@@ -382,10 +384,11 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (!knet_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num))
 			goto exit_unlock;
 
-		write(knet_h->sockfd,
+		wlen = write(knet_h->sockfd,
 			knet_h->recv_from_links_buf->kf_data, len - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
 
-		knet_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
+		if (wlen == len - (KNET_FRAME_SIZE + sizeof(seq_num_t)))
+			knet_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
 
 		break;
 	case KNET_FRAME_PING:

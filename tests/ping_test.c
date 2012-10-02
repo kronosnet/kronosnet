@@ -219,10 +219,13 @@ int main(int argc, char *argv[])
 	knet_handle_setfwd(knet_h, 1);	
 
 	while (1) {
+		ssize_t wlen;
 		knet_host_foreach(knet_h, print_link, &print_search);
 
 		printf("Sending 'Hello World!' frame\n");
-		write(knet_sock[1], "Hello World!", 13);
+		wlen = write(knet_sock[1], "Hello World!", 13);
+		if (wlen != 13)
+			printf("Unable to send Hello World! to socket!\n");
 
 		tv.tv_sec = 5;
 		tv.tv_usec = 0;
