@@ -253,7 +253,6 @@ WARNLIST="
 	error
 	address
 	cpp
-	enum-compare
 	overflow
 	parentheses
 	sequence-point
