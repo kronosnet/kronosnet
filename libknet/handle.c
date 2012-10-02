@@ -268,7 +268,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 		}
 	} else {
 
-		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num);
+		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
 		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
 				    (const unsigned char *)knet_h->tap_to_links_buf,

@@ -39,7 +39,7 @@ struct knet_handle {
 	pthread_t heartbt_thread;
 	pthread_rwlock_t list_rwlock;
 	struct crypto_instance *crypto_instance;
-	seq_num_t bcast_seq_num;
+	seq_num_t bcast_seq_num_tx;
 	uint8_t dst_host_filter;
 	int (*dst_host_filter_fn) (
 		const unsigned char *outdata,
