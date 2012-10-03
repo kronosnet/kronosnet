@@ -1183,12 +1183,11 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 static int knet_cmd_interface(struct knet_vty *vty)
 {
 	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
-	char *param = NULL, *cur_mac = NULL;
+	char *param = NULL;
 	char device[IFNAMSIZ];
 	char crypto[16];
 	char hash[16];
 	char mac[18];
-	int maclen;
 	struct knet_cfg *knet_iface = NULL;
 	struct knet_handle_cfg knet_handle_cfg;
 
@@ -1340,18 +1339,8 @@ knet_found:
 		knet_iface->cfg_eth.node_id = requested_id;
 	}
 
-	if (tap_get_mac(knet_iface->cfg_eth.tap, &cur_mac) < 0) {
-		knet_vty_write(vty, "Error: Unable to get mac address on device %s%s",
-				device, telnet_newline);
-		err = -1;
-		goto out_clean;
-	}
 	memset(&mac, 0, sizeof(mac));
-	memset(strrchr(cur_mac, ':'), 0, 1);
-	maclen = strrchr(cur_mac, ':') - cur_mac + 1;
-	memcpy(mac, cur_mac, maclen);
-	snprintf(mac + maclen, sizeof(mac) - maclen, "0:%x", knet_iface->cfg_eth.node_id);
-	free(cur_mac);
+	snprintf(mac, sizeof(mac) - 1, "54:54:0:0:0:%x", knet_iface->cfg_eth.node_id);
 	if (tap_set_mac(knet_iface->cfg_eth.tap, mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
 				mac, device, telnet_newline); 
