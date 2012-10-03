@@ -20,11 +20,13 @@ do { \
 } while (0);
 
 struct knet_handle {
-	int sockfd;
-	int tap_to_links_epollfd;
-	int recv_from_links_epollfd;
 	uint16_t node_id;
 	unsigned int enabled:1;
+	int sockfd;
+	int pipefd[2];
+	int tap_to_links_epollfd;
+	int recv_from_links_epollfd;
+	int dst_link_handler_epollfd;
 	struct knet_host *host_head;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	struct knet_listener *listener_head;
@@ -37,6 +39,7 @@ struct knet_handle {
 	pthread_t tap_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
+	pthread_t dst_link_handler_thread;
 	pthread_rwlock_t list_rwlock;
 	struct crypto_instance *crypto_instance;
 	seq_num_t bcast_seq_num_tx;
@@ -50,6 +53,7 @@ struct knet_handle {
 };
 
 int _fdset_cloexec(int fd);
+int _fdset_nonblock(int fd);
 int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
 void knet_has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
 

@@ -13,7 +13,7 @@
 
 static int host_loop(knet_handle_t knet_h, struct knet_host *host, struct knet_host_search *search)
 {
-	host->active = 1;
+	host->link_handler_policy = KNET_LINK_POLICY_ACTIVE;
 	search->param1++;
 	return KNET_HOST_FOREACH_NEXT;
 }

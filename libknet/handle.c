@@ -16,6 +16,7 @@
 static void *_handle_tap_to_links_thread(void *data);
 static void *_handle_recv_from_links_thread(void *data);
 static void *_handle_heartbt_thread(void *data);
+static void *_handle_dst_link_handler_thread(void *data);
 
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 {
@@ -40,45 +41,58 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
+	knet_h->node_id = knet_handle_cfg->node_id;
+	knet_h->sockfd = knet_handle_cfg->fd;
+
+	if (pipe(knet_h->pipefd))
+		goto exit_fail1;
+
+	if ((_fdset_cloexec(knet_h->pipefd[0])) ||
+	    (_fdset_cloexec(knet_h->pipefd[1])) ||
+	    (_fdset_nonblock(knet_h->pipefd[0])) ||
+	    (_fdset_nonblock(knet_h->pipefd[1])))
+		goto exit_fail2;
+
 	knet_h->dst_host_filter = knet_handle_cfg->dst_host_filter;
 	knet_h->dst_host_filter_fn = knet_handle_cfg->dst_host_filter_fn;
 
 	if ((knet_h->dst_host_filter) && (!knet_h->dst_host_filter_fn))
-		goto exit_fail1;
+		goto exit_fail2;
 
 	if (crypto_init(knet_h, knet_handle_cfg) < 0)
-		goto exit_fail1;
+		goto exit_fail2;
 
 	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
-		goto exit_fail2;
+		goto exit_fail3;
 
 	memset(knet_h->tap_to_links_buf, 0, KNET_DATABUFSIZE);
 
 	if ((knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
-		goto exit_fail3;
+		goto exit_fail4;
 
 	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
 	if ((knet_h->pingbuf = malloc(KNET_PINGBUFSIZE))== NULL)
-		goto exit_fail4;
+		goto exit_fail5;
 
 	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
 
 	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
-		goto exit_fail5;
+		goto exit_fail6;
 
-	knet_h->sockfd = knet_handle_cfg->fd;
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
-	knet_h->node_id = knet_handle_cfg->node_id;
+	knet_h->dst_link_handler_epollfd = epoll_create(KNET_MAX_EVENTS);
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
-	    (knet_h->recv_from_links_epollfd < 0))
-		goto exit_fail6;
+	    (knet_h->recv_from_links_epollfd < 0) ||
+	    (knet_h->dst_link_handler_epollfd < 0))
+		goto exit_fail7;
 
 	if ((_fdset_cloexec(knet_h->tap_to_links_epollfd) != 0) ||
-	    (_fdset_cloexec(knet_h->recv_from_links_epollfd != 0)))
-		goto exit_fail6;
+	    (_fdset_cloexec(knet_h->recv_from_links_epollfd) != 0) ||
+	    (_fdset_cloexec(knet_h->dst_link_handler_epollfd) != 0))
+		goto exit_fail7;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -87,47 +101,69 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	if (epoll_ctl(knet_h->tap_to_links_epollfd,
 				EPOLL_CTL_ADD, knet_h->sockfd, &ev) != 0)
-		goto exit_fail6;
+		goto exit_fail7;
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	ev.events = EPOLLIN;
+	ev.data.fd = knet_h->pipefd[0];
+
+	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
+				EPOLL_CTL_ADD, knet_h->pipefd[0], &ev) != 0)
+		goto exit_fail7;
+
+	if (pthread_create(&knet_h->dst_link_handler_thread, 0,
+				_handle_dst_link_handler_thread, (void *) knet_h) != 0)
+		goto exit_fail7;
 
 	if (pthread_create(&knet_h->tap_to_links_thread, 0,
 				_handle_tap_to_links_thread, (void *) knet_h) != 0)
-		goto exit_fail6;
+		goto exit_fail8;
 
 	if (pthread_create(&knet_h->recv_from_links_thread, 0,
 				_handle_recv_from_links_thread, (void *) knet_h) != 0)
-		goto exit_fail7;
+		goto exit_fail9;
 
 	if (pthread_create(&knet_h->heartbt_thread, 0,
 				_handle_heartbt_thread, (void *) knet_h) != 0)
-		goto exit_fail8;
+		goto exit_fail10;
 
 	return knet_h;
 
-exit_fail8:
+exit_fail10:
 	pthread_cancel(knet_h->recv_from_links_thread);
 
-exit_fail7:
+exit_fail9:
 	pthread_cancel(knet_h->tap_to_links_thread);
 
-exit_fail6:
+exit_fail8:
+	pthread_cancel(knet_h->dst_link_handler_thread);
+
+exit_fail7:
 	if (knet_h->tap_to_links_epollfd >= 0)
 		close(knet_h->tap_to_links_epollfd);
 	if (knet_h->recv_from_links_epollfd >= 0)
 		close(knet_h->recv_from_links_epollfd);
+	if (knet_h->dst_link_handler_epollfd >= 0)
+		close(knet_h->dst_link_handler_epollfd);
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
-exit_fail5:
+exit_fail6:
 	free(knet_h->pingbuf);
 
-exit_fail4:
+exit_fail5:
 	free(knet_h->recv_from_links_buf);
 
-exit_fail3:
+exit_fail4:
 	free(knet_h->tap_to_links_buf);
 
-exit_fail2:
+exit_fail3:
 	crypto_fini(knet_h);
+
+exit_fail2:
+	close(knet_h->pipefd[0]);
+	close(knet_h->pipefd[1]);
 
 exit_fail1:
 	free(knet_h);
@@ -158,8 +194,17 @@ int knet_handle_free(knet_handle_t knet_h)
 	if (retval != PTHREAD_CANCELED)
 		goto exit_busy;
 
+	pthread_cancel(knet_h->dst_link_handler_thread);
+	pthread_join(knet_h->dst_link_handler_thread, &retval);
+
+	if (retval != PTHREAD_CANCELED)
+		goto exit_busy;
+
 	close(knet_h->tap_to_links_epollfd);
 	close(knet_h->recv_from_links_epollfd);
+	close(knet_h->dst_link_handler_epollfd);
+	close(knet_h->pipefd[0]);
+	close(knet_h->pipefd[1]);
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
@@ -195,7 +240,7 @@ void knet_link_timeout(struct knet_link *lnk,
 
 static void _handle_tap_to_links(knet_handle_t knet_h)
 {
-	ssize_t inlen, len, snt, outlen;
+	ssize_t inlen, len, outlen;
 	struct knet_host *dst_host;
 	int link_idx;
 	uint16_t dst_host_ids[KNET_MAX_HOST];
@@ -251,23 +296,15 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 				return;
 			}
 
-			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if (dst_host->link[link_idx].configured != 1) /* link is not configured */
-					continue;
-				if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
-					continue;
-
-				snt = sendto(dst_host->link[link_idx].sock,
+			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
+				sendto(dst_host->link[dst_host->active_links[link_idx]].sock,
 						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
-						(struct sockaddr *) &dst_host->link[link_idx].address,
+						(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
 						sizeof(struct sockaddr_storage));
-
-				if ((dst_host->active == 0) && (snt == outlen))
-					break;
+				//dst_cache_update_by_policy....
 			}
 		}
 	} else {
-
 		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
 		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
@@ -280,19 +317,12 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 		}
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if (dst_host->link[link_idx].configured != 1) /* link is not configured */
-					continue;
-				if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
-					continue;
-
-				snt = sendto(dst_host->link[link_idx].sock,
-						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
-						(struct sockaddr *) &dst_host->link[link_idx].address,
-						sizeof(struct sockaddr_storage));
-
-				if ((dst_host->active == 0) && (snt == outlen))
-					break;
+			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
+				sendto(dst_host->link[dst_host->active_links[link_idx]].sock,
+					knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
+					(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
+					sizeof(struct sockaddr_storage));
+				//dst_cache_update_by_policy....
 			}
 		}
 	}
@@ -301,7 +331,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 {
-	ssize_t len, outlen, wlen;
+	ssize_t len, outlen;
 	struct sockaddr_storage address;
 	socklen_t addrlen;
 	struct knet_host *src_host;
@@ -384,10 +414,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (!knet_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num))
 			goto exit_unlock;
 
-		wlen = write(knet_h->sockfd,
-			knet_h->recv_from_links_buf->kf_data, len - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
-
-		if (wlen == len - (KNET_FRAME_SIZE + sizeof(seq_num_t)))
+		if (write(knet_h->sockfd,
+			  knet_h->recv_from_links_buf->kf_data,
+			  len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) == len - (KNET_FRAME_SIZE + sizeof(seq_num_t)))
 			knet_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
 
 		break;
@@ -421,8 +450,17 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (src_link->latency < src_link->pong_timeout) {
 			if (!src_link->connected) {
+				int write_retry = 0;
+
 				src_link->connected = 1;
-				/* TODO: notify packet inspector */
+try_again:
+				if (write(knet_h->pipefd[1], &src_host->node_id,
+					  sizeof(src_host->node_id)) != sizeof(src_host->node_id)) {
+					if (write_retry < 10) {
+						write_retry++;
+						goto try_again;
+					} /* define what to do if we can't add a link */
+				}
 			}
 		}
 
@@ -435,7 +473,57 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
+static void _handle_dst_link_updates(knet_handle_t knet_h)
+{
+	uint16_t dst_host_id;
+	struct knet_host *dst_host;
+	int link_idx;
+
+	if (read(knet_h->pipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id))
+		return;
+
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
+		return;
+
+	dst_host = knet_h->host_index[dst_host_id];
+	if (!dst_host)
+		goto out_unlock;
+
+	dst_host->active_link_entries = 0;
+	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+		if (dst_host->link[link_idx].configured != 1) /* link is not configured */
+			continue;
+		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
+			continue;
+
+		dst_host->active_links[dst_host->active_link_entries] = link_idx;
+		dst_host->active_link_entries++;
+
+		/*
+		 * for passive mode we can just report one link and we are done
+		 * we need to integrate later with link priority/weight
+		 * active and rr will report all links, dst_cache lookup will
+		 * will do the right thing
+		 */
+		if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE)
+			break;
+	}
+
+	/* no active links, we can clean the circular buffers and indexes */
+	if (!dst_host->active_link_entries) {
+		memset(dst_host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
+		memset(dst_host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
+		dst_host->bcast_seq_num_rx = 0;
+		dst_host->ucast_seq_num_rx = 0;
+	}
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return;
+}
+
+static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int len;
 	ssize_t outlen;
@@ -473,8 +561,16 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_link *dst_link)
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
-			dst_link->connected = 0; /* TODO: might need write lock */
-			/* TODO: notify packet inspector */
+			int write_retry = 0;
+
+			dst_link->connected = 0;
+try_again:
+			if (write(knet_h->pipefd[1], &dst_host->node_id, sizeof(dst_host->node_id)) != sizeof(dst_host->node_id)) {
+				if (write_retry < 10) {
+					write_retry++;
+					goto try_again;
+				} /* define what to do if we can't deactivate a link */
+			} 
 		}
 	}
 }
@@ -503,7 +599,7 @@ static void *_handle_heartbt_thread(void *data)
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				if (dst_host->link[link_idx].configured != 1)
 					continue;
-				_handle_check_each(knet_h, &dst_host->link[link_idx]);
+				_handle_check_each(knet_h, dst_host, &dst_host->link[link_idx]);
 			}
 		}
 
@@ -550,4 +646,17 @@ static void *_handle_recv_from_links_thread(void *data)
 	}
 
 	return NULL;
+}
+
+static void *_handle_dst_link_handler_thread(void *data)
+{
+	knet_handle_t knet_h = (knet_handle_t) data;
+	struct epoll_event events[KNET_MAX_EVENTS];
+
+	while (1) {
+		if (epoll_wait(knet_h->dst_link_handler_epollfd, events, KNET_MAX_EVENTS, -1) >= 1)
+			_handle_dst_link_updates(knet_h);
+	}
+
+	return NULL;	
 }

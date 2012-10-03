@@ -875,6 +875,8 @@ static int knet_cmd_peer(struct knet_vty *vty)
 		knet_host_release(knet_iface->cfg_ring.knet_h, &temp);
 		memcpy(host->name, nodename, strlen(nodename));
 
+		host->link_handler_policy = KNET_LINK_POLICY_PASSIVE;
+
 		listener = malloc(sizeof(struct knet_listener));
 		if (!listener) {
 			knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);

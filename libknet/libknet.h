@@ -38,10 +38,13 @@ struct knet_link {
 	struct timespec pong_last;
 };
 
+#define KNET_LINK_POLICY_PASSIVE 0
+#define KNET_LINK_POLICY_ACTIVE  1
+#define KNET_LINK_POLICY_RR      2
+
 struct knet_host {
 	uint16_t node_id;
 	char name[KNET_MAX_HOST_LEN];
-	unsigned int active:1; /* data packets are sent to all links */
 	char bcast_circular_buffer[KNET_CBUFFER_SIZE];
 	seq_num_t bcast_seq_num_rx;
 	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
@@ -49,6 +52,9 @@ struct knet_host {
 	seq_num_t ucast_seq_num_rx;
 	struct knet_listener *listener;
 	struct knet_link link[KNET_MAX_LINK];
+	uint8_t active_link_entries;
+	uint8_t active_links[KNET_MAX_LINK];
+	uint8_t link_handler_policy;
 	struct knet_host *next;
 };
 
