@@ -18,22 +18,15 @@ config bits:
 
 link layer:
 
-one we have pckt inspector in place, we need a function to:
+we need a function to:
+void dst_cache_links_update(knet_host *host);
+that will order link_entries by priority/weight for RR.
 
-int get_dst_links(knet_host *host, int *fd_array, size_t fd_array_size);
-
-that will call into dst_cache
-
-dst_cache is populated by link status changes, cache calculation should
-probably be in its own thread. this is a bit touchy to implement, specially
-due to rwlocks required to update the cache. Look into link status changes
-notification (maybe a signal to a thread? or write to a pipe)
-
-if all links for a host are down, then clear circular_buffers (this
-is necessary to detect restarts and a bunch of other things)
+Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
 
 * add priority/weight to link config struct
-* add active/active to link config struct
+
+we might need to update the cache on link removal... 
 
 ring:
 
