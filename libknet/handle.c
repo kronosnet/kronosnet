@@ -456,7 +456,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 try_again:
 				if (write(knet_h->pipefd[1], &src_host->node_id,
 					  sizeof(src_host->node_id)) != sizeof(src_host->node_id)) {
-					if (write_retry < 10) {
+					if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
 						write_retry++;
 						goto try_again;
 					} /* define what to do if we can't add a link */
@@ -566,7 +566,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			dst_link->connected = 0;
 try_again:
 			if (write(knet_h->pipefd[1], &dst_host->node_id, sizeof(dst_host->node_id)) != sizeof(dst_host->node_id)) {
-				if (write_retry < 10) {
+				if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
 					write_retry++;
 					goto try_again;
 				} /* define what to do if we can't deactivate a link */

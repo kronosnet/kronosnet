@@ -692,6 +692,8 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 	}
 
 	host->link[j].configured = 0;
+	if (knet_host_dst_cache_update(knet_iface->cfg_ring.knet_h, host->node_id))
+		knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
 
 	return 0;
 }

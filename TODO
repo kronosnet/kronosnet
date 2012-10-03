@@ -26,8 +26,6 @@ Look into link status changes notification (maybe a signal to a thread? or write
 
 * add priority/weight to link config struct
 
-we might need to update the cache on link removal... 
-
 ring:
 
 * support 8 listener per node.
