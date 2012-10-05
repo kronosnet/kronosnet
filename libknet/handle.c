@@ -478,6 +478,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	uint16_t dst_host_id;
 	struct knet_host *dst_host;
 	int link_idx;
+	int best_priority = -1;
 
 	if (read(knet_h->pipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id))
 		return;
@@ -490,23 +491,25 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 		goto out_unlock;
 
 	dst_host->active_link_entries = 0;
+
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (dst_host->link[link_idx].configured != 1) /* link is not configured */
 			continue;
 		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
 			continue;
 
-		dst_host->active_links[dst_host->active_link_entries] = link_idx;
-		dst_host->active_link_entries++;
-
-		/*
-		 * for passive mode we can just report one link and we are done
-		 * we need to integrate later with link priority/weight
-		 * active and rr will report all links, dst_cache lookup will
-		 * will do the right thing
-		 */
-		if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE)
-			break;
+		if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
+			/* for passive we look for the only active link with higher priority */
+			if (dst_host->link[link_idx].priority > best_priority) {
+				dst_host->active_links[0] = link_idx;
+				best_priority = dst_host->link[link_idx].priority;
+			}
+			dst_host->active_link_entries = 1;
+		} else {
+			/* for RR and ACTIVE we need to copy all available links */
+			dst_host->active_links[dst_host->active_link_entries] = link_idx;
+			dst_host->active_link_entries++;
+		}
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */

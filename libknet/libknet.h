@@ -29,6 +29,7 @@ struct knet_link {
 	struct sockaddr_storage address;
 	unsigned int configured:1; /* link is configured and ready to be used */
 	unsigned int connected:1;	/* link is enabled for data */
+	uint8_t  priority; /* higher priority == preferred for A/P */
 	unsigned long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
 	unsigned int latency_fix;
