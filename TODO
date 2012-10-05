@@ -1,20 +1,18 @@
 0.1
 ---
 
-compress/encrypt: review API crypto->nsscrypto + compress->zlibcompress and ABI
-                  current feels clumpsy and we can save memcpy around
-                  in case we don't encrypt/compress
+compress: should only compress user data, we will add a bit in the data
+          header to indicate if the pckt is compressed or not (save time).
+          this approach allow runtime change of compress.
+          open questions are: methods? level? zlib? lzo? bz? lzma? xz?
+                              how much do we save by compressin our header?
+                              custom compress callback_fn?
 
-compress must happen before encrypt, should we compress all? what's
-the price for uncompress on already uncompressed buffer? do we need
-a bit to indicate if pckt is compressed or not?
-is it worth compressing pings? do they compress at all?
+cryto:    make api generic for different methods != nss to match compress
+          review API and config to make sure we save memcpy
+          also expand API to support dual key for rekey process.         
 
-config bits:
-- should crypto and compress be part of handle_new? or new api calls?
-  we won't allow runtime changes, so i don't think there is much
-  benefit to have it outside of knet_handle_net for now.
-  We maybe able to spare some duplication between knet_h and knet_cfg struct
+compress must happen before encrypt
 
 link layer:
 
