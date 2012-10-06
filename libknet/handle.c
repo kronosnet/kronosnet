@@ -301,7 +301,16 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
 						(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
 						sizeof(struct sockaddr_storage));
-				//dst_cache_update_by_policy....
+
+				if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
+				    (dst_host->active_link_entries > 1)) {
+					uint8_t cur_link_id = dst_host->active_links[0];
+
+					memmove(&dst_host->active_links[0], &dst_host->active_links[1], (dst_host->active_link_entries - 2));
+					dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
+
+					break;
+				}
 			}
 		}
 	} else {
@@ -322,7 +331,16 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 					knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
 					(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
 					sizeof(struct sockaddr_storage));
-				//dst_cache_update_by_policy....
+
+				if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
+				    (dst_host->active_link_entries > 1)) {
+					uint8_t cur_link_id = dst_host->active_links[0];
+
+					memmove(&dst_host->active_links[0], &dst_host->active_links[1], (dst_host->active_link_entries - 2));
+					dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
+
+					break;
+				}
 			}
 		}
 	}

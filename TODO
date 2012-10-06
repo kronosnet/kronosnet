@@ -14,12 +14,6 @@ cryto:    make api generic for different methods != nss to match compress
 
 compress must happen before encrypt
 
-link layer:
-
-we need a function to:
-void dst_cache_links_update(knet_host *host);
-that will order link_entries by priority/weight for RR.
-
 config: we need ato add config/vty for link_handler_policy, link_timeout and link_priority for active/passive
 
 Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
