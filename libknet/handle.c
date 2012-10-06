@@ -306,7 +306,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 				    (dst_host->active_link_entries > 1)) {
 					uint8_t cur_link_id = dst_host->active_links[0];
 
-					memmove(&dst_host->active_links[0], &dst_host->active_links[1], (dst_host->active_link_entries - 2));
+					memmove(&dst_host->active_links[0], &dst_host->active_links[1], KNET_MAX_LINK - 1);
 					dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
 
 					break;
@@ -336,7 +336,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 				    (dst_host->active_link_entries > 1)) {
 					uint8_t cur_link_id = dst_host->active_links[0];
 
-					memmove(&dst_host->active_links[0], &dst_host->active_links[1], (dst_host->active_link_entries - 2));
+					memmove(&dst_host->active_links[0], &dst_host->active_links[1], KNET_MAX_LINK - 1);
 					dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
 
 					break;
