@@ -28,6 +28,7 @@ struct knet_handle {
 	int recv_from_links_epollfd;
 	int dst_link_handler_epollfd;
 	struct knet_host *host_head;
+	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	struct knet_listener *listener_head;
 	struct knet_frame *tap_to_links_buf;

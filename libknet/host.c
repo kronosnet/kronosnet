@@ -74,7 +74,7 @@ int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 {
 	int link_idx, ret = 0; /* success */
-	struct knet_host *host, *tail;
+	struct knet_host *host;
 
 	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0)
 		goto exit_clean;
@@ -99,12 +99,10 @@ int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 
 	if (!knet_h->host_head) {
 		knet_h->host_head = host;
+		knet_h->host_tail = host;
 	} else {
-		tail = knet_h->host_head;
-		while (tail->next != NULL)
-			tail = tail->next;
-
-		tail->next = host;
+		knet_h->host_tail->next = host;
+		knet_h->host_tail = host;
 	}
 
  exit_unlock:
