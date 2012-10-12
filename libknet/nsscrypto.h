@@ -7,12 +7,12 @@
 struct nsscrypto_instance;
 
 int nsscrypto_authenticate_and_decrypt (
-	struct nsscrypto_instance *instance,
+	void *model_instance,
 	unsigned char *buf,
 	ssize_t *buf_len);
 
 int nsscrypto_encrypt_and_sign (
-	struct nsscrypto_instance *instance,
+	void *model_instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out, 

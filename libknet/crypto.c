@@ -1,16 +1,39 @@
 #include "config.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "crypto.h"
 #include "nsscrypto.h"
-#include "libknet-private.h"
+#include "libknet.h"
 
 #ifdef CRYPTO_DEBUG
+#include <stdio.h>
 #define log_printf(format, args...) fprintf(stderr, format "\n", ##args);
 #else
 #define log_printf(format, args...);
 #endif
+
+/*
+ * internal module switch data
+ */
+
+crypto_model_t modules_cmds[] = {
+	{ "nss", nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_authenticate_and_decrypt },
+	{ NULL, NULL, NULL, NULL, NULL },
+};
+
+static int get_model(const char *model)
+{
+	int idx = 0;
+
+	while (modules_cmds[idx].model_name != NULL) {
+		if (!strcmp(modules_cmds[idx].model_name, model))
+			return idx;
+		idx++;
+	}
+	return -1;
+}
 
 /*
  * exported API
@@ -23,7 +46,7 @@ int crypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return nsscrypto_encrypt_and_sign(instance->model_instance,
+	return modules_cmds[instance->model].crypt(instance->model_instance,
 					  buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
@@ -31,7 +54,7 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
-	return nsscrypto_authenticate_and_decrypt(instance->model_instance, buf, buf_len);
+	return modules_cmds[instance->model].decrypt(instance->model_instance, buf, buf_len);
 }
 
 int crypto_init(
@@ -50,20 +73,25 @@ int crypto_init(
 		return -1;
 	}
 
-	/* do the model switch here */
-	if (nsscrypto_init(knet_h, knet_handle_crypto_cfg)) {
+	knet_h->crypto_instance->model = get_model(knet_handle_crypto_cfg->crypto_model);
+	if (knet_h->crypto_instance->model < 0) {
+		log_printf("model %s not supported", knet_handle_crypto_cfg->crypto_model);
+		return -1;
+	}
+
+	if (modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg)) {
 		free(knet_h->crypto_instance);
 		return -1;
 	}
 
-	return nsscrypto_init(knet_h, knet_handle_crypto_cfg);
+	return 0;
 }
 
 void crypto_fini(
 	knet_handle_t knet_h)
 {
 	if (knet_h->crypto_instance) {
-		nsscrypto_fini(knet_h);
+		modules_cmds[knet_h->crypto_instance->model].fini(knet_h);
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}

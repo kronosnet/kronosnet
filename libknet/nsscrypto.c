@@ -12,6 +12,7 @@
 #include "libknet-private.h"
 
 #ifdef CRYPTO_DEBUG
+#include <stdio.h>
 #define log_printf(format, args...) fprintf(stderr, format "\n", ##args);
 #else
 #define log_printf(format, args...);
@@ -455,12 +456,14 @@ static int init_nss(struct nsscrypto_instance *instance)
  */
 
 int nsscrypto_encrypt_and_sign (
-	struct nsscrypto_instance *instance,
+	void *model_instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
+	struct nsscrypto_instance *instance = model_instance;
+
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
 		if (encrypt_nss(instance, buf_in, buf_in_len, buf_out, buf_out_len) < 0) {
 			return -1;
@@ -480,10 +483,13 @@ int nsscrypto_encrypt_and_sign (
 	return 0;
 }
 
-int nsscrypto_authenticate_and_decrypt (struct nsscrypto_instance *instance,
+int nsscrypto_authenticate_and_decrypt (
+	void *model_instance,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
+	struct nsscrypto_instance *instance = model_instance;
+
 	if (hash_to_nss[instance->crypto_hash_type]) {
 		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
 
