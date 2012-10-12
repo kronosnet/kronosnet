@@ -8,9 +8,7 @@ compress: should only compress user data, we will add a bit in the data
                               how much do we save by compressin our header?
                               custom compress callback_fn?
 
-cryto:    make api generic for different methods != nss to match compress
-          review API and config to make sure we save memcpy
-          also expand API to support dual key for rekey process.         
+cryto:    expand API to support dual key for rekey process.         
 
 compress must happen before encrypt
 

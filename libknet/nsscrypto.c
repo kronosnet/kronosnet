@@ -7,6 +7,7 @@
 #include <blapit.h>
 #include <hasht.h>
 
+#include "crypto.h"
 #include "nsscrypto.h"
 #include "libknet-private.h"
 
@@ -83,7 +84,7 @@ size_t hash_block_len[] = {
 	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
-struct crypto_instance {
+struct nsscrypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
 
@@ -110,7 +111,7 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return -1;
 }
 
-static int init_nss_crypto(struct crypto_instance *instance)
+static int init_nss_crypto(struct nsscrypto_instance *instance)
 {
 	PK11SlotInfo*	crypt_slot = NULL;
 	SECItem		crypt_param;
@@ -146,7 +147,7 @@ static int init_nss_crypto(struct crypto_instance *instance)
 }
 
 static int encrypt_nss(
-	struct crypto_instance *instance,
+	struct nsscrypto_instance *instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
@@ -227,7 +228,7 @@ out:
 }
 
 static int decrypt_nss (
-	struct crypto_instance *instance,
+	struct nsscrypto_instance *instance,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
@@ -311,7 +312,7 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 	return -1;
 }
 
-static int init_nss_hash(struct crypto_instance *instance)
+static int init_nss_hash(struct nsscrypto_instance *instance)
 {
 	PK11SlotInfo*	hash_slot = NULL;
 	SECItem		hash_param;
@@ -347,7 +348,7 @@ static int init_nss_hash(struct crypto_instance *instance)
 }
 
 static int calculate_nss_hash(
-	struct crypto_instance *instance,
+	struct nsscrypto_instance *instance,
 	const unsigned char *buf,
 	const size_t buf_len,
 	unsigned char *hash)
@@ -416,7 +417,7 @@ out:
  * global/glue nss functions
  */
 
-static int init_nss_db(struct crypto_instance *instance)
+static int init_nss_db(struct nsscrypto_instance *instance)
 {
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
 	    (!hash_to_nss[instance->crypto_hash_type])) {
@@ -432,7 +433,7 @@ static int init_nss_db(struct crypto_instance *instance)
 	return 0;
 }
 
-static int init_nss(struct crypto_instance *instance)
+static int init_nss(struct nsscrypto_instance *instance)
 {
 	if (init_nss_db(instance) < 0) {
 		return -1;
@@ -453,8 +454,8 @@ static int init_nss(struct crypto_instance *instance)
  * exported API
  */
 
-int crypto_encrypt_and_sign (
-	struct crypto_instance *instance,
+int nsscrypto_encrypt_and_sign (
+	struct nsscrypto_instance *instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
@@ -479,7 +480,7 @@ int crypto_encrypt_and_sign (
 	return 0;
 }
 
-int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
+int nsscrypto_authenticate_and_decrypt (struct nsscrypto_instance *instance,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
@@ -507,27 +508,31 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	return 0;
 }
 
-int crypto_init(
+int nsscrypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
+	struct nsscrypto_instance *nsscrypto_instance = NULL;
+
 	log_printf("Initizializing nss crypto module [%s/%s]",
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
-	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
-	if (!knet_h->crypto_instance) {
+	knet_h->crypto_instance->model_instance = malloc(sizeof(struct nsscrypto_instance));
+	if (!knet_h->crypto_instance->model_instance) {
 		return -1;
 	}
 
-	memset(knet_h->crypto_instance, 0, sizeof(struct crypto_instance));
+	nsscrypto_instance = knet_h->crypto_instance->model_instance;
+
+	memset(nsscrypto_instance, 0, sizeof(struct nsscrypto_instance));
 
 	if (!knet_handle_crypto_cfg->crypto_cipher_type) {
 		goto out_err;
 	}
 
-	knet_h->crypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
-	if (knet_h->crypto_instance->crypto_cipher_type < 0) {
+	nsscrypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
+	if (nsscrypto_instance->crypto_cipher_type < 0) {
 		goto out_err;
 	}
 
@@ -535,19 +540,19 @@ int crypto_init(
 		goto out_err;
 	}
 
-	knet_h->crypto_instance->crypto_hash_type = string_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
-	if (knet_h->crypto_instance->crypto_hash_type < 0) {
+	nsscrypto_instance->crypto_hash_type = string_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
+	if (nsscrypto_instance->crypto_hash_type < 0) {
 		goto out_err;
 	}
 
-	knet_h->crypto_instance->private_key = knet_handle_crypto_cfg->private_key;
-	knet_h->crypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
+	nsscrypto_instance->private_key = knet_handle_crypto_cfg->private_key;
+	nsscrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
-	if ((knet_h->crypto_instance->crypto_cipher_type > 0) ||
-	    (knet_h->crypto_instance->crypto_hash_type > 0)) {
-		if ((!knet_h->crypto_instance->private_key) ||
-		    (knet_h->crypto_instance->private_key_len < KNET_MIN_KEY_LEN) ||
-		    (knet_h->crypto_instance->private_key_len > KNET_MAX_KEY_LEN)) {
+	if ((nsscrypto_instance->crypto_cipher_type > 0) ||
+	    (nsscrypto_instance->crypto_hash_type > 0)) {
+		if ((!nsscrypto_instance->private_key) ||
+		    (nsscrypto_instance->private_key_len < KNET_MIN_KEY_LEN) ||
+		    (nsscrypto_instance->private_key_len > KNET_MAX_KEY_LEN)) {
 			goto out_err;
 		}
 	}
@@ -564,36 +569,49 @@ int crypto_init(
 	if (!knet_h->recv_from_links_buf_crypt)
 		goto out_err;
 
-	knet_h->crypto_instance->private_key = knet_handle_crypto_cfg->private_key;
-	knet_h->crypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
+	nsscrypto_instance->private_key = knet_handle_crypto_cfg->private_key;
+	nsscrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
-	if (init_nss(knet_h->crypto_instance) < 0) {
+	if (init_nss(nsscrypto_instance) < 0) {
 		goto out_err;
 	}
 
 	return 0;
 
 out_err:
-	crypto_fini(knet_h);
+	nsscrypto_fini(knet_h);
 	return -1;
 }
 
-void crypto_fini(
+void nsscrypto_fini(
 	knet_handle_t knet_h)
 {
-	if (knet_h->crypto_instance) {
-		if (knet_h->crypto_instance->nss_sym_key)
-			PK11_FreeSymKey(knet_h->crypto_instance->nss_sym_key);
-		if (knet_h->crypto_instance->nss_sym_key_sign) 
-			PK11_FreeSymKey(knet_h->crypto_instance->nss_sym_key_sign);
-		if (knet_h->pingbuf_crypt)
+	struct nsscrypto_instance *nsscrypto_instance = knet_h->crypto_instance->model_instance;
+
+	if (nsscrypto_instance) {
+		if (nsscrypto_instance->nss_sym_key) {
+			PK11_FreeSymKey(nsscrypto_instance->nss_sym_key);
+			nsscrypto_instance->nss_sym_key = NULL;
+		}
+		if (nsscrypto_instance->nss_sym_key_sign) {
+			PK11_FreeSymKey(nsscrypto_instance->nss_sym_key_sign);
+			nsscrypto_instance->nss_sym_key_sign = NULL;
+		}
+		if (knet_h->pingbuf_crypt) {
 			free(knet_h->pingbuf_crypt);
-		if (knet_h->tap_to_links_buf_crypt)
+			knet_h->pingbuf_crypt = NULL;
+		}
+		if (knet_h->tap_to_links_buf_crypt) {
 			free(knet_h->tap_to_links_buf_crypt);
-		if (knet_h->recv_from_links_buf_crypt)
+			knet_h->tap_to_links_buf_crypt = NULL;
+		}
+		if (knet_h->recv_from_links_buf_crypt) {
 			free(knet_h->recv_from_links_buf_crypt);
-		free(knet_h->crypto_instance);
-		knet_h->crypto_instance = NULL;
+			knet_h->recv_from_links_buf_crypt = NULL;
+		}
+
+		free(nsscrypto_instance);
+		knet_h->crypto_instance->model_instance = NULL;
 	}
 
 	return;

@@ -8,7 +8,7 @@
 #include <sys/epoll.h>
 
 #include "libknet-private.h"
-#include "nsscrypto.h"
+#include "crypto.h"
 
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
