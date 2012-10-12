@@ -509,11 +509,11 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 
 int crypto_init(
 	knet_handle_t knet_h,
-	const struct knet_handle_cfg *knet_handle_cfg)
+	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	log_printf("Initizializing crypto module [%s/%s]",
-		  knet_handle_cfg->crypto_cipher_type,
-		  knet_handle_cfg->crypto_hash_type);
+	log_printf("Initizializing nss crypto module [%s/%s]",
+		  knet_handle_crypto_cfg->crypto_cipher_type,
+		  knet_handle_crypto_cfg->crypto_hash_type);
 
 	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
 	if (!knet_h->crypto_instance) {
@@ -522,26 +522,26 @@ int crypto_init(
 
 	memset(knet_h->crypto_instance, 0, sizeof(struct crypto_instance));
 
-	if (!knet_handle_cfg->crypto_cipher_type) {
+	if (!knet_handle_crypto_cfg->crypto_cipher_type) {
 		goto out_err;
 	}
 
-	knet_h->crypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_cfg->crypto_cipher_type);
+	knet_h->crypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (knet_h->crypto_instance->crypto_cipher_type < 0) {
 		goto out_err;
 	}
 
-	if (!knet_handle_cfg->crypto_hash_type) {
+	if (!knet_handle_crypto_cfg->crypto_hash_type) {
 		goto out_err;
 	}
 
-	knet_h->crypto_instance->crypto_hash_type = string_to_crypto_hash_type(knet_handle_cfg->crypto_hash_type);
+	knet_h->crypto_instance->crypto_hash_type = string_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
 	if (knet_h->crypto_instance->crypto_hash_type < 0) {
 		goto out_err;
 	}
 
-	knet_h->crypto_instance->private_key = knet_handle_cfg->private_key;
-	knet_h->crypto_instance->private_key_len = knet_handle_cfg->private_key_len;
+	knet_h->crypto_instance->private_key = knet_handle_crypto_cfg->private_key;
+	knet_h->crypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
 	if ((knet_h->crypto_instance->crypto_cipher_type > 0) ||
 	    (knet_h->crypto_instance->crypto_hash_type > 0)) {
@@ -564,8 +564,8 @@ int crypto_init(
 	if (!knet_h->recv_from_links_buf_crypt)
 		goto out_err;
 
-	knet_h->crypto_instance->private_key = knet_handle_cfg->private_key;
-	knet_h->crypto_instance->private_key_len = knet_handle_cfg->private_key_len;
+	knet_h->crypto_instance->private_key = knet_handle_crypto_cfg->private_key;
+	knet_h->crypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
 	if (init_nss(knet_h->crypto_instance) < 0) {
 		goto out_err;

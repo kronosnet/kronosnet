@@ -30,6 +30,18 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 
 		knet_iface->cfg_ring.base_port = KNET_RING_DEFPORT;
 
+		strncpy(knet_iface->knet_handle_crypto_cfg.crypto_model,
+			"none",
+			sizeof(knet_iface->knet_handle_crypto_cfg.crypto_model) - 1);
+
+		strncpy(knet_iface->knet_handle_crypto_cfg.crypto_cipher_type,
+			"none",
+			sizeof(knet_iface->knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+
+		strncpy(knet_iface->knet_handle_crypto_cfg.crypto_hash_type,
+			"none",
+			sizeof(knet_iface->knet_handle_crypto_cfg.crypto_hash_type) - 1);
+
 		knet_iface->next = knet_cfg_head.knet_cfg;
 		knet_cfg_head.knet_cfg = knet_iface;
 	}
@@ -55,10 +67,6 @@ void knet_destroy_iface(struct knet_cfg *knet_iface)
 		} else {
 			knet_iface_prev->next = knet_iface_tmp->next;
 		}
-		if (knet_iface->crypto_method)
-			free(knet_iface->crypto_method);
-		if (knet_iface->hash_method)
-			free(knet_iface->hash_method);
 		free(knet_iface);
 	}
 }

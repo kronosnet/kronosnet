@@ -20,7 +20,7 @@ int crypto_encrypt_and_sign (
 
 int crypto_init(
 	knet_handle_t knet_h,
-	const struct knet_handle_cfg *knet_handle_cfg);
+	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
 void crypto_fini(
 	knet_handle_t knet_h);

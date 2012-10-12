@@ -118,10 +118,6 @@ struct knet_frame {
 struct knet_handle_cfg {
 	int		fd;
 	uint16_t	node_id;
-	char		*crypto_cipher_type;
-	char		*crypto_hash_type;
-	unsigned char	*private_key;
-	unsigned int	private_key_len;
 	uint8_t		dst_host_filter;
 	int		(*dst_host_filter_fn) (
 				const unsigned char *outdata,
@@ -140,6 +136,16 @@ int ether_host_filter_fn (const unsigned char *outdata,
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);
+
+struct knet_handle_crypto_cfg {
+	char		crypto_model[16];
+	char		crypto_cipher_type[16];
+	char		crypto_hash_type[16];
+	unsigned char	private_key[KNET_MAX_KEY_LEN];
+	unsigned int	private_key_len;
+};
+
+int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
 int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host);

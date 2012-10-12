@@ -59,26 +59,23 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	if ((knet_h->dst_host_filter) && (!knet_h->dst_host_filter_fn))
 		goto exit_fail2;
 
-	if (crypto_init(knet_h, knet_handle_cfg) < 0)
-		goto exit_fail2;
-
 	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
-		goto exit_fail3;
+		goto exit_fail2;
 
 	memset(knet_h->tap_to_links_buf, 0, KNET_DATABUFSIZE);
 
 	if ((knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
-		goto exit_fail4;
+		goto exit_fail3;
 
 	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
 	if ((knet_h->pingbuf = malloc(KNET_PINGBUFSIZE))== NULL)
-		goto exit_fail5;
+		goto exit_fail4;
 
 	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
 
 	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
-		goto exit_fail6;
+		goto exit_fail5;
 
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
@@ -87,12 +84,12 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0) ||
 	    (knet_h->dst_link_handler_epollfd < 0))
-		goto exit_fail7;
+		goto exit_fail6;
 
 	if ((_fdset_cloexec(knet_h->tap_to_links_epollfd) != 0) ||
 	    (_fdset_cloexec(knet_h->recv_from_links_epollfd) != 0) ||
 	    (_fdset_cloexec(knet_h->dst_link_handler_epollfd) != 0))
-		goto exit_fail7;
+		goto exit_fail6;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -101,7 +98,7 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	if (epoll_ctl(knet_h->tap_to_links_epollfd,
 				EPOLL_CTL_ADD, knet_h->sockfd, &ev) != 0)
-		goto exit_fail7;
+		goto exit_fail6;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -110,36 +107,36 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
 				EPOLL_CTL_ADD, knet_h->pipefd[0], &ev) != 0)
-		goto exit_fail7;
+		goto exit_fail6;
 
 	if (pthread_create(&knet_h->dst_link_handler_thread, 0,
 				_handle_dst_link_handler_thread, (void *) knet_h) != 0)
-		goto exit_fail7;
+		goto exit_fail6;
 
 	if (pthread_create(&knet_h->tap_to_links_thread, 0,
 				_handle_tap_to_links_thread, (void *) knet_h) != 0)
-		goto exit_fail8;
+		goto exit_fail7;
 
 	if (pthread_create(&knet_h->recv_from_links_thread, 0,
 				_handle_recv_from_links_thread, (void *) knet_h) != 0)
-		goto exit_fail9;
+		goto exit_fail8;
 
 	if (pthread_create(&knet_h->heartbt_thread, 0,
 				_handle_heartbt_thread, (void *) knet_h) != 0)
-		goto exit_fail10;
+		goto exit_fail9;
 
 	return knet_h;
 
-exit_fail10:
+exit_fail9:
 	pthread_cancel(knet_h->recv_from_links_thread);
 
-exit_fail9:
+exit_fail8:
 	pthread_cancel(knet_h->tap_to_links_thread);
 
-exit_fail8:
+exit_fail7:
 	pthread_cancel(knet_h->dst_link_handler_thread);
 
-exit_fail7:
+exit_fail6:
 	if (knet_h->tap_to_links_epollfd >= 0)
 		close(knet_h->tap_to_links_epollfd);
 	if (knet_h->recv_from_links_epollfd >= 0)
@@ -149,17 +146,14 @@ exit_fail7:
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
-exit_fail6:
+exit_fail5:
 	free(knet_h->pingbuf);
 
-exit_fail5:
+exit_fail4:
 	free(knet_h->recv_from_links_buf);
 
-exit_fail4:
-	free(knet_h->tap_to_links_buf);
-
 exit_fail3:
-	crypto_fini(knet_h);
+	free(knet_h->tap_to_links_buf);
 
 exit_fail2:
 	close(knet_h->pipefd[0]);
@@ -228,6 +222,14 @@ void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
 	knet_h->enabled = (enabled == 1) ? 1 : 0;
 }
 
+int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
+{
+	if (knet_h->enabled)
+		return -1;
+
+	return crypto_init(knet_h, knet_handle_crypto_cfg);
+}
+
 void knet_link_timeout(struct knet_link *lnk,
 				time_t interval, time_t timeout, int precision)
 {
@@ -246,6 +248,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
+	unsigned char *outbuf = (unsigned char *)knet_h->tap_to_links_buf;
 
 	inlen = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
 					KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
@@ -255,7 +258,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 		return;
 	}
 
-	len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
+	outlen = len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		return;
@@ -287,18 +290,21 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 			knet_h->tap_to_links_buf->kf_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
-			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
-					    (const unsigned char *)knet_h->tap_to_links_buf,
-					    len,
-					    knet_h->tap_to_links_buf_crypt,
-					    &outlen) < 0) {
-				pthread_rwlock_unlock(&knet_h->list_rwlock);
-				return;
+			if (knet_h->crypto_instance) {
+				if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+						    (const unsigned char *)knet_h->tap_to_links_buf,
+						    len,
+						    knet_h->tap_to_links_buf_crypt,
+						    &outlen) < 0) {
+					pthread_rwlock_unlock(&knet_h->list_rwlock);
+					return;
+				}
+				outbuf = knet_h->tap_to_links_buf_crypt;
 			}
 
 			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 				sendto(dst_host->link[dst_host->active_links[link_idx]].sock,
-						knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
+						outbuf, outlen, MSG_DONTWAIT,
 						(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
 						sizeof(struct sockaddr_storage));
 
@@ -316,19 +322,22 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 	} else {
 		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
-		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
-				    (const unsigned char *)knet_h->tap_to_links_buf,
-				    len,
-				    knet_h->tap_to_links_buf_crypt,
-				    &outlen) < 0) {
-			pthread_rwlock_unlock(&knet_h->list_rwlock);
-			return;
+		if (knet_h->crypto_instance) {
+			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+					    (const unsigned char *)knet_h->tap_to_links_buf,
+					    len,
+					    knet_h->tap_to_links_buf_crypt,
+					    &outlen) < 0) {
+				pthread_rwlock_unlock(&knet_h->list_rwlock);
+				return;
+			}
+			outbuf = knet_h->tap_to_links_buf_crypt;
 		}
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 				sendto(dst_host->link[dst_host->active_links[link_idx]].sock,
-					knet_h->tap_to_links_buf_crypt, outlen, MSG_DONTWAIT,
+					outbuf, outlen, MSG_DONTWAIT,
 					(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
 					sizeof(struct sockaddr_storage));
 
@@ -358,6 +367,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
+	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
 		return;
@@ -366,10 +376,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	len = recvfrom(sockfd, knet_h->recv_from_links_buf, KNET_DATABUFSIZE,
 		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
 
-	if (crypto_authenticate_and_decrypt(knet_h->crypto_instance,
-					    (unsigned char *)knet_h->recv_from_links_buf,
-					    &len) < 0)
-		goto exit_unlock;
+	if (knet_h->crypto_instance) {
+		if (crypto_authenticate_and_decrypt(knet_h->crypto_instance,
+						    (unsigned char *)knet_h->recv_from_links_buf,
+						    &len) < 0)
+			goto exit_unlock;
+	}
 
 	if (len < (KNET_FRAME_SIZE + 1))
 		goto exit_unlock;
@@ -439,17 +451,22 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		break;
 	case KNET_FRAME_PING:
+		outlen = KNET_PINGBUFSIZE;
 		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_PONG;
 		knet_h->recv_from_links_buf->kf_node = htons(knet_h->node_id);
 
-		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
-					    (const unsigned char *)knet_h->recv_from_links_buf,
-					    len,
-					    knet_h->recv_from_links_buf_crypt,
-					    &outlen) < 0)
-			break;
+		if (knet_h->crypto_instance) {
+			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+						    (const unsigned char *)knet_h->recv_from_links_buf,
+						    len,
+						    knet_h->recv_from_links_buf_crypt,
+						    &outlen) < 0)
+				break;
 
-		sendto(src_link->sock, knet_h->recv_from_links_buf_crypt, outlen, MSG_DONTWAIT,
+			outbuf = knet_h->recv_from_links_buf_crypt;
+		}
+
+		sendto(src_link->sock, outbuf, outlen, MSG_DONTWAIT,
 				(struct sockaddr *) &src_link->address,
 				sizeof(struct sockaddr_storage));
 
@@ -547,9 +564,10 @@ out_unlock:
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int len;
-	ssize_t outlen;
+	ssize_t outlen = KNET_PINGBUFSIZE;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
+	unsigned char *outbuf = (unsigned char *)knet_h->pingbuf;
 
 	/* caching last pong to avoid race conditions */
 	pong_last = dst_link->pong_last;
@@ -563,14 +581,18 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		knet_h->pingbuf->kf_time = clock_now;
 		knet_h->pingbuf->kf_link = dst_link->link_id;
 
-		if (crypto_encrypt_and_sign(knet_h->crypto_instance,
-					    (const unsigned char *)knet_h->pingbuf,
-					    KNET_PINGBUFSIZE,
-					    knet_h->pingbuf_crypt,
-					    &outlen) < 0)
-		return;
+		if (knet_h->crypto_instance) {
+			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+						    (const unsigned char *)knet_h->pingbuf,
+						    KNET_PINGBUFSIZE,
+						    knet_h->pingbuf_crypt,
+						    &outlen) < 0)
+				return;
 
-		len = sendto(dst_link->sock, knet_h->pingbuf_crypt, outlen,
+			outbuf = knet_h->pingbuf_crypt;
+		}
+
+		len = sendto(dst_link->sock, outbuf, outlen,
 			MSG_DONTWAIT, (struct sockaddr *) &dst_link->address,
 			sizeof(struct sockaddr_storage));
 

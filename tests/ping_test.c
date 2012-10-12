@@ -10,10 +10,10 @@
 
 #include "libknet.h"
 
-static unsigned char crypto_key[KNET_MAX_KEY_LEN];
 static int knet_sock[2];
 static knet_handle_t knet_h;
 static struct knet_handle_cfg knet_handle_cfg;
+static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 
 static in_port_t tok_inport(char *str)
 {
@@ -47,29 +47,37 @@ static void print_usage(char *name)
 	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 crypto:aes256,sha1\n", name);
 }
 
-static void set_crypto(int argc, char *argv[])
+static int set_crypto(int argc, char *argv[])
 {
 	int i, found = 0;
 
 	for (i = 0; i < argc; i++) {
 		if (!strncmp(argv[i], "crypto", 6)) {
-			printf("found crypto at: %i %s\n", i, argv[i]);
 			found = 1;
 			break;
 		}
 	}
-	if (!found) {
-		knet_handle_cfg.crypto_cipher_type = (char *)"none";
-		knet_handle_cfg.crypto_hash_type = (char *)"none";
-	} else {
+
+	if (found) {
 		char *tmp = NULL;
 		strtok_r(argv[i], ":", &tmp);
-		knet_handle_cfg.crypto_cipher_type = strtok_r(NULL, ",", &tmp);
-		knet_handle_cfg.crypto_hash_type = strtok_r(NULL, ",", &tmp);
+		strncpy(knet_handle_crypto_cfg.crypto_model,
+			strtok_r(NULL, ",", &tmp),
+			sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+		strncpy(knet_handle_crypto_cfg.crypto_cipher_type,
+			strtok_r(NULL, ",", &tmp),
+			sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+		strncpy(knet_handle_crypto_cfg.crypto_hash_type,
+			strtok_r(NULL, ",", &tmp),
+			sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+		printf("Setting up encryption: model: %s crypto: %s hmac: %s\n",
+			knet_handle_crypto_cfg.crypto_model,
+			knet_handle_crypto_cfg.crypto_cipher_type,
+			knet_handle_crypto_cfg.crypto_hash_type);
+		return 1;
 	}
-	printf("Setting up encryption: %s hmac: %s\n",
-		knet_handle_cfg.crypto_cipher_type,
-		knet_handle_cfg.crypto_hash_type);
+
+	return 0;
 }
 
 static void argv_to_hosts(int argc, char *argv[])
@@ -201,18 +209,21 @@ int main(int argc, char *argv[])
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = knet_sock[0];
 	knet_handle_cfg.node_id = 1;
-	set_crypto(argc, argv);
-	knet_handle_cfg.private_key = crypto_key;
-	knet_handle_cfg.private_key_len = sizeof(crypto_key);
-
-	/*
-	 * fake a 4KB key of all 0's
-	 */
-	memset(knet_handle_cfg.private_key, 0, sizeof(crypto_key));
 
 	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
+	}
+
+	if (set_crypto(argc, argv)) {
+		memset(knet_handle_crypto_cfg.private_key, 0, KNET_MAX_KEY_LEN);
+		knet_handle_crypto_cfg.private_key_len = KNET_MAX_KEY_LEN;	
+		if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
+			printf("Unable to init crypto\n");
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		printf("Crypto not activated\n");
 	}
 
 	argv_to_hosts(argc, argv);

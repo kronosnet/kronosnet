@@ -17,23 +17,24 @@
 #include "vty_cli_cmds.h"
 #include "vty_utils.h"
 
-#define KNET_VTY_MAX_MATCHES	64
-#define KNET_VTY_MATCH_HELP	0
-#define KNET_VTY_MATCH_EXEC	1
-#define KNET_VTY_MATCH_EXPAND	2
+#define KNET_VTY_MAX_MATCHES    64
+#define KNET_VTY_MATCH_HELP      0
+#define KNET_VTY_MATCH_EXEC      1
+#define KNET_VTY_MATCH_EXPAND    2
 
-#define CMDS_PARAM_NOMORE	0
-#define CMDS_PARAM_KNET		1
-#define CMDS_PARAM_IP		2
-#define CMDS_PARAM_IP_PREFIX	3
-#define CMDS_PARAM_IP_PORT	4
-#define CMDS_PARAM_BOOL		5
-#define CMDS_PARAM_INT		6
-#define CMDS_PARAM_NODEID	7
-#define CMDS_PARAM_NAME		8
-#define CMDS_PARAM_MTU		9
-#define CMDS_PARAM_CRYPTO	10
-#define CMDS_PARAM_HASH		11
+#define CMDS_PARAM_NOMORE        0
+#define CMDS_PARAM_KNET          1
+#define CMDS_PARAM_IP            2
+#define CMDS_PARAM_IP_PREFIX     3
+#define CMDS_PARAM_IP_PORT       4
+#define CMDS_PARAM_BOOL          5
+#define CMDS_PARAM_INT           6
+#define CMDS_PARAM_NODEID        7
+#define CMDS_PARAM_NAME          8
+#define CMDS_PARAM_MTU           9
+#define CMDS_PARAM_CRYPTO_MODEL 10
+#define CMDS_PARAM_CRYPTO_TYPE  11
+#define CMDS_PARAM_HASH_TYPE    12
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -225,7 +226,16 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
-		case CMDS_PARAM_CRYPTO:
+		case CMDS_PARAM_CRYPTO_MODEL:
+			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
+			if (!strncmp("none", buf, 4))
+				break;
+			if (!strncmp("nss", buf, 3))
+				break;
+			knet_vty_write(vty, "unknown encryption model: %s. Supported: none/nss%s", param, telnet_newline);
+			err = -1;
+			break;
+		case CMDS_PARAM_CRYPTO_TYPE:
 			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
 			if (!strncmp("none", buf, 4))
 				break;
@@ -234,7 +244,7 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			knet_vty_write(vty, "unknown encryption method: %s. Supported: none/aes256%s", param, telnet_newline);
 			err = -1;
 			break;
-		case CMDS_PARAM_HASH:
+		case CMDS_PARAM_HASH_TYPE:
 			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
 			if (!strncmp("none", buf, 4))
 				break;
@@ -289,10 +299,13 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 		case CMDS_PARAM_MTU:
 			knet_vty_write(vty, "MTU - a value between 576 and 65536 (note: max value depends on the media)%s", telnet_newline);
 			break;
-		case CMDS_PARAM_CRYPTO:
+		case CMDS_PARAM_CRYPTO_MODEL:
+			knet_vty_write(vty, "MODEL - define encryption backend: none or nss%s", telnet_newline);
+			break;
+		case CMDS_PARAM_CRYPTO_TYPE:
 			knet_vty_write(vty, "CRYPTO - define packets encryption method: none or aes256%s", telnet_newline);
 			break;
-		case CMDS_PARAM_HASH:
+		case CMDS_PARAM_HASH_TYPE:
 			knet_vty_write(vty, "HASH - define packets hashing method: none/md5/sha1/sha256/sha384/sha512%s", telnet_newline);
 			break;
 		default: /* this should never happen */
@@ -519,6 +532,7 @@ static int knet_cmd_peer(struct knet_vty *vty);
 static int knet_cmd_no_peer(struct knet_vty *vty);
 static int knet_cmd_start(struct knet_vty *vty);
 static int knet_cmd_stop(struct knet_vty *vty);
+static int knet_cmd_crypto(struct knet_vty *vty);
 
 /* peer node */
 static int knet_cmd_link(struct knet_vty *vty);
@@ -548,8 +562,6 @@ vty_node_cmds_t no_config_cmds[] = {
 vty_param_t int_params[] = {
 	{ CMDS_PARAM_KNET },
 	{ CMDS_PARAM_NODEID },
-	{ CMDS_PARAM_CRYPTO },
-	{ CMDS_PARAM_HASH },
 	{ CMDS_PARAM_NOMORE },
 };
 
@@ -596,8 +608,16 @@ vty_param_t baseport_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
+vty_param_t crypto_params[] = {
+	{ CMDS_PARAM_CRYPTO_MODEL },
+	{ CMDS_PARAM_CRYPTO_TYPE },
+	{ CMDS_PARAM_HASH_TYPE },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t interface_cmds[] = {
 	{ "baseport", "set base listening port for this interface", baseport_params, knet_cmd_baseport },
+	{ "crypto", "enable crypto/hmac", crypto_params, knet_cmd_crypto },
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "ip", "add ip address", ip_params, knet_cmd_ip },
@@ -1071,6 +1091,97 @@ static int knet_cmd_stop(struct knet_vty *vty)
 	return err;
 }
 
+static int knet_cmd_crypto(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+	int err = 0;
+
+	if (knet_iface->active) {
+		knet_vty_write(vty, "Error: Unable to activate encryption while interface is active%s", telnet_newline);
+		return -1;
+	}
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	param_to_str(knet_iface->knet_handle_crypto_cfg.crypto_model,
+		     sizeof(knet_iface->knet_handle_crypto_cfg.crypto_model), param, paramlen);
+
+	get_param(vty, 2, &param, &paramlen, &paramoffset);
+	param_to_str(knet_iface->knet_handle_crypto_cfg.crypto_cipher_type,
+		     sizeof(knet_iface->knet_handle_crypto_cfg.crypto_cipher_type), param, paramlen);
+
+	get_param(vty, 3, &param, &paramlen, &paramoffset);
+	param_to_str(knet_iface->knet_handle_crypto_cfg.crypto_hash_type,
+		     sizeof(knet_iface->knet_handle_crypto_cfg.crypto_hash_type), param, paramlen);
+
+	if ((strncmp("none", knet_iface->knet_handle_crypto_cfg.crypto_cipher_type, 4)) ||
+	    (strncmp("none", knet_iface->knet_handle_crypto_cfg.crypto_hash_type, 4))) {
+		int fd = -1;
+		char keyfile[PATH_MAX];
+		struct stat sb;
+
+		memset(keyfile, 0, PATH_MAX);
+		snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", tap_get_name(knet_iface->cfg_eth.tap));
+
+		fd = open(keyfile, O_RDONLY);
+		if (fd < 0) {
+			knet_vty_write(vty, "Error: Unable to open security key: %s%s", keyfile, telnet_newline);
+			err = -1;
+			return -1;
+		}
+
+		if (fstat(fd, &sb)) {
+			knet_vty_write(vty, "Error: Unable to verify security key: %s%s", keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		if (!S_ISREG(sb.st_mode)) {
+			knet_vty_write(vty, "Error: Key %s does not appear to be a regular file%s",
+				       keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		knet_iface->knet_handle_crypto_cfg.private_key_len = (unsigned int)sb.st_size;
+		if ((knet_iface->knet_handle_crypto_cfg.private_key_len < KNET_MIN_KEY_LEN) ||
+		    (knet_iface->knet_handle_crypto_cfg.private_key_len > KNET_MAX_KEY_LEN)) {
+			knet_vty_write(vty, "Error: Key %s is %u long. Must be %u <= key_len <= %u%s",
+				       keyfile, knet_iface->knet_handle_crypto_cfg.private_key_len,
+				       KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN, telnet_newline);
+			goto key_error;
+		}
+
+		if (((sb.st_mode & S_IRWXU) != S_IRUSR) ||
+		    (sb.st_mode & S_IRWXG) ||
+		    (sb.st_mode & S_IRWXO)) {
+			knet_vty_write(vty, "Error: Key %s does not have the correct permission (must be user read-only)%s",
+				       keyfile, telnet_newline);
+			goto key_error;
+		}
+		if (read(fd,
+			 &knet_iface->knet_handle_crypto_cfg.private_key,
+			 knet_iface->knet_handle_crypto_cfg.private_key_len) != knet_iface->knet_handle_crypto_cfg.private_key_len) {
+			knet_vty_write(vty, "Error: Unable to read key %s%s", keyfile, telnet_newline);
+			goto key_error;
+		}
+
+		close(fd);
+		goto key_clean;
+
+key_error:
+		close(fd);
+		err = -1;
+	}
+key_clean:
+
+	if (!err) {
+		err = knet_handle_crypto(knet_iface->cfg_ring.knet_h,
+					 &knet_iface->knet_handle_crypto_cfg);
+	}
+
+	return err;
+}
+
 static int knet_cmd_start(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
@@ -1185,8 +1296,6 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
 	char *param = NULL;
 	char device[IFNAMSIZ];
-	char crypto[16];
-	char hash[16];
 	char mac[18];
 	struct knet_cfg *knet_iface = NULL;
 	struct knet_handle_cfg knet_handle_cfg;
@@ -1202,22 +1311,6 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		knet_vty_write(vty, "Error: Unable to allocate memory for config structures%s",
 				telnet_newline);
 		return -1;
-	}
-
-	get_param(vty, 3, &param, &paramlen, &paramoffset);
-	param_to_str(crypto, sizeof(crypto), param, paramlen);
-	knet_iface->crypto_method = strdup(crypto);
-	if (!knet_iface->crypto_method) {
-		err = -1;
-		goto out_clean;
-	}
-
-	get_param(vty, 4, &param, &paramlen, &paramoffset);
-	param_to_str(hash, sizeof(hash), param, paramlen);
-	knet_iface->hash_method = strdup(hash);
-	if (!knet_iface->hash_method) {
-		err = -1;
-		goto out_clean;
 	}
 
 	if (knet_iface->cfg_eth.tap) {
@@ -1249,75 +1342,9 @@ tap_found:
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.fd = tap_get_fd(knet_iface->cfg_eth.tap);
 	knet_handle_cfg.node_id = requested_id;
-	knet_handle_cfg.crypto_cipher_type = knet_iface->crypto_method;
-	knet_handle_cfg.crypto_hash_type = knet_iface->hash_method;
 	knet_handle_cfg.dst_host_filter = KNET_DST_FILTER_ENABLE;
 	knet_handle_cfg.dst_host_filter_fn = ether_host_filter_fn;
 
-	if ((strncmp("none", knet_iface->crypto_method, 4)) ||
-	    (strncmp("none", knet_iface->hash_method, 4))) {
-		int fd = -1;
-		char keyfile[PATH_MAX];
-		unsigned char private_key[KNET_MAX_KEY_LEN];
-		struct stat sb;
-
-		memset(keyfile, 0, PATH_MAX);
-		snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", device);
-
-		fd = open(keyfile, O_RDONLY);
-		if (fd < 0) {
-			knet_vty_write(vty, "Error: Unable to open security key: %s%s", keyfile, telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-
-		if (fstat(fd, &sb)) {
-			knet_vty_write(vty, "Error: Unable to verify security key: %s%s", keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		if (!S_ISREG(sb.st_mode)) {
-			knet_vty_write(vty, "Error: Key %s does not appear to be a regular file%s",
-				       keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		knet_handle_cfg.private_key_len = (unsigned int)sb.st_size;
-		if ((knet_handle_cfg.private_key_len < KNET_MIN_KEY_LEN) ||
-		    (knet_handle_cfg.private_key_len > KNET_MAX_KEY_LEN)) {
-			knet_vty_write(vty, "Error: Key %s is %u long. Must be %u <= key_len <= %u%s",
-				       keyfile, knet_handle_cfg.private_key_len,
-				       KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN, telnet_newline);
-			goto key_error;
-		}
-
-		if (((sb.st_mode & S_IRWXU) != S_IRUSR) ||
-		    (sb.st_mode & S_IRWXG) ||
-		    (sb.st_mode & S_IRWXO)) {
-			knet_vty_write(vty, "Error: Key %s does not have the correct permission (must be user read-only)%s",
-				       keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		memset(&private_key, 0, sizeof(private_key));
-
-		if (read(fd, &private_key, knet_handle_cfg.private_key_len) != knet_handle_cfg.private_key_len) {
-			knet_vty_write(vty, "Error: Unable to read key %s%s", keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		knet_handle_cfg.private_key = private_key;
-
-		close(fd);
-		goto key_clean;
-
-key_error:
-		close(fd);
-		err = -1;
-		goto out_clean;
-	}
-
-key_clean:
 	knet_iface->cfg_ring.knet_h = knet_handle_new(&knet_handle_cfg);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
@@ -1387,10 +1414,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "configure%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, " interface %s %u %s %s%s", tap_get_name(knet_iface->cfg_eth.tap),
-								 knet_iface->cfg_eth.node_id,
-								 knet_iface->crypto_method,
-								 knet_iface->hash_method, nl);
+		knet_vty_write(vty, " interface %s %u%s", tap_get_name(knet_iface->cfg_eth.tap),
+							  knet_iface->cfg_eth.node_id, nl);
 
 		knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
 
@@ -1407,6 +1432,11 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 		}
 
 		knet_vty_write(vty, "  baseport %d%s", knet_iface->cfg_ring.base_port, nl);
+
+		knet_vty_write(vty, "  crypto %s %s %s%s",
+			       knet_iface->knet_handle_crypto_cfg.crypto_model,
+			       knet_iface->knet_handle_crypto_cfg.crypto_cipher_type,
+			       knet_iface->knet_handle_crypto_cfg.crypto_hash_type, nl);
 
 		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &host)) {
 			log_error("CLI ERROR: waiting for peer lock");
