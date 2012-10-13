@@ -27,22 +27,30 @@
 
 enum crypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
-	CRYPTO_CIPHER_TYPE_AES256 = 1
+	CRYPTO_CIPHER_TYPE_AES256 = 1,
+	CRYPTO_CIPHER_TYPE_AES192 = 2,
+	CRYPTO_CIPHER_TYPE_AES128 = 3
 };
 
 CK_MECHANISM_TYPE cipher_to_nss[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	CKM_AES_CBC_PAD			/* CRYPTO_CIPHER_TYPE_AES256 */
+	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES256 */
+	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES192 */
+	CKM_AES_CBC_PAD			/* CRYPTO_CIPHER_TYPE_AES128 */
 };
 
 size_t cipher_key_len[] = {
-	 0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	32,				/* CRYPTO_CIPHER_TYPE_AES256 */
+	0,				/* CRYPTO_CIPHER_TYPE_NONE */
+	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256 */
+	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192 */
+	AES_128_KEY_LENGTH		/* CRYPTO_CIPHER_TYPE_AES128 */
 };
 
 size_t cypher_block_len[] = {
-	 0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	AES_BLOCK_SIZE			/* CRYPTO_CIPHER_TYPE_AES256 */
+	0,				/* CRYPTO_CIPHER_TYPE_NONE */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES256 */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES192 */
+	AES_BLOCK_SIZE			/* CRYPTO_CIPHER_TYPE_AES128 */
 };
 
 /*
@@ -108,6 +116,10 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 		return CRYPTO_CIPHER_TYPE_NONE;
 	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
 		return CRYPTO_CIPHER_TYPE_AES256;
+	} else if (strcmp(crypto_cipher_type, "aes192") == 0) {
+		return CRYPTO_CIPHER_TYPE_AES192;
+	} else if (strcmp(crypto_cipher_type, "aes128") == 0) {
+		return CRYPTO_CIPHER_TYPE_AES128;
 	}
 	return -1;
 }
