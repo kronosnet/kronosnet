@@ -245,7 +245,9 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				break;
 			if (!strncmp("aes128", buf, 6))
 				break;
-			knet_vty_write(vty, "unknown encryption method: %s. Supported: none/aes256/aes192/aes128%s", param, telnet_newline);
+			if (!strncmp("3des", buf, 4))
+				break;
+			knet_vty_write(vty, "unknown encryption method: %s. Supported: none/aes256/aes192/aes128/3des%s", param, telnet_newline);
 			err = -1;
 			break;
 		case CMDS_PARAM_HASH_TYPE:
