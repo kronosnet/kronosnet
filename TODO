@@ -6,9 +6,9 @@ compress: should only compress user data, we will add a bit in the data
           this approach allow runtime change of compress.
           open questions are: methods? level? zlib? lzo? bz? lzma? xz?
                               how much do we save by compressin our header?
-                              custom compress callback_fn?
 
-cryto:    expand API to support dual key for rekey process.         
+cryto:    expand API to support dual key for rekey process
+          add more encryption methods
 
 compress must happen before encrypt
 
