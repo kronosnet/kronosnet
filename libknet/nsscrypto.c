@@ -46,7 +46,7 @@ size_t cipher_key_len[] = {
 	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256 */
 	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192 */
 	AES_128_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES128 */
-	16				/* CRYPTO_CIPHER_TYPE_3DES */
+	24				/* CRYPTO_CIPHER_TYPE_3DES */
 };
 
 size_t cypher_block_len[] = {
