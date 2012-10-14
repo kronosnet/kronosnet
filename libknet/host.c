@@ -153,6 +153,36 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 	return ret;
 }
 
+int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)
+{
+	int ret = 0;
+	struct knet_host *host = NULL;
+	int old_policy;
+
+	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0)
+		goto exit_clean;
+
+	host = knet_h->host_index[node_id];
+	if (host == NULL) {
+		errno = ret = EINVAL;
+		goto exit_unlock;
+	}
+
+	old_policy = host->link_handler_policy;
+	host->link_handler_policy = policy;
+
+	if (_dst_cache_update(knet_h, node_id)) {
+		ret = -1;
+		host->link_handler_policy = old_policy;
+	}
+
+ exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+ exit_clean:
+	return ret;
+}
+
 /* bcast = 0 -> unicast packet | 1 -> broadcast|mcast */
 
 /* make this bcast/ucast aware */

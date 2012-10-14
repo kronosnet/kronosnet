@@ -227,23 +227,15 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	if (knet_h->enabled)
 		return -1;
 
-	return crypto_init(knet_h, knet_handle_crypto_cfg);
-}
+	crypto_fini(knet_h);
 
-static int knet_dst_cache_update(knet_handle_t knet_h, uint16_t node_id)
-{
-	int write_retry = 0;
-
-try_again:
-	if (write(knet_h->pipefd[1], &node_id, sizeof(node_id)) != sizeof(node_id)) {
-		if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
-			write_retry++;
-			goto try_again;
-		} else {
-			return -1;
-		}
+	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) || 
+	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
+	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
+		return 0;
 	}
-	return 0;
+
+	return crypto_init(knet_h, knet_handle_crypto_cfg);
 }
 
 static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
@@ -252,7 +244,7 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 	if ((lnk->configured == configured) && (lnk->connected == connected))
 		return 0;
 
-	if (knet_dst_cache_update(knet_h, node_id))
+	if (_dst_cache_update(knet_h, node_id))
 		return -1;
 
 	lnk->configured = configured;

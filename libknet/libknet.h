@@ -152,6 +152,7 @@ int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host);
 int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
 int knet_host_release(knet_handle_t knet_h, struct knet_host **host);
 int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
+int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured);
 void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);

@@ -76,15 +76,18 @@ int crypto_init(
 	knet_h->crypto_instance->model = get_model(knet_handle_crypto_cfg->crypto_model);
 	if (knet_h->crypto_instance->model < 0) {
 		log_printf("model %s not supported", knet_handle_crypto_cfg->crypto_model);
-		return -1;
+		goto out_err;
 	}
 
-	if (modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg)) {
-		free(knet_h->crypto_instance);
-		return -1;
-	}
+	if (modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
+		goto out_err;
 
 	return 0;
+
+out_err:
+	free(knet_h->crypto_instance);
+	knet_h->crypto_instance = NULL;
+	return -1;
 }
 
 void crypto_fini(

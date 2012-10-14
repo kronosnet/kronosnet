@@ -55,6 +55,7 @@ struct knet_handle {
 
 int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);
+int _dst_cache_update(knet_handle_t knet_h, uint16_t node_id);
 int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
 void knet_has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
 

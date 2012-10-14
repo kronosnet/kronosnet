@@ -902,7 +902,7 @@ static int knet_cmd_peer(struct knet_vty *vty)
 		knet_host_release(knet_iface->cfg_ring.knet_h, &temp);
 		memcpy(host->name, nodename, strlen(nodename));
 
-		host->link_handler_policy = KNET_LINK_POLICY_PASSIVE;
+		knet_host_set_policy(knet_iface->cfg_ring.knet_h, requested_node_id, KNET_LINK_POLICY_PASSIVE);
 
 		listener = malloc(sizeof(struct knet_listener));
 		if (!listener) {
@@ -1102,89 +1102,97 @@ static int knet_cmd_crypto(struct knet_vty *vty)
 	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
 	int err = 0;
+	struct knet_handle_crypto_cfg knet_handle_crypto_cfg_new;
+	int fd = -1;
+	char keyfile[PATH_MAX];
+	struct stat sb;
 
 	if (knet_iface->active) {
 		knet_vty_write(vty, "Error: Unable to activate encryption while interface is active%s", telnet_newline);
 		return -1;
 	}
 
+	memset(&knet_handle_crypto_cfg_new, 0, sizeof(struct knet_handle_crypto_cfg));
+
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
-	param_to_str(knet_iface->knet_handle_crypto_cfg.crypto_model,
-		     sizeof(knet_iface->knet_handle_crypto_cfg.crypto_model), param, paramlen);
+	param_to_str(knet_handle_crypto_cfg_new.crypto_model,
+		     sizeof(knet_handle_crypto_cfg_new.crypto_model), param, paramlen);
 
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
-	param_to_str(knet_iface->knet_handle_crypto_cfg.crypto_cipher_type,
-		     sizeof(knet_iface->knet_handle_crypto_cfg.crypto_cipher_type), param, paramlen);
+	param_to_str(knet_handle_crypto_cfg_new.crypto_cipher_type,
+		     sizeof(knet_handle_crypto_cfg_new.crypto_cipher_type), param, paramlen);
 
 	get_param(vty, 3, &param, &paramlen, &paramoffset);
-	param_to_str(knet_iface->knet_handle_crypto_cfg.crypto_hash_type,
-		     sizeof(knet_iface->knet_handle_crypto_cfg.crypto_hash_type), param, paramlen);
+	param_to_str(knet_handle_crypto_cfg_new.crypto_hash_type,
+		     sizeof(knet_handle_crypto_cfg_new.crypto_hash_type), param, paramlen);
 
-	if ((strncmp("none", knet_iface->knet_handle_crypto_cfg.crypto_cipher_type, 4)) ||
-	    (strncmp("none", knet_iface->knet_handle_crypto_cfg.crypto_hash_type, 4))) {
-		int fd = -1;
-		char keyfile[PATH_MAX];
-		struct stat sb;
+	if ((!strncmp("none", knet_handle_crypto_cfg_new.crypto_model, 4)) ||
+	    ((!strncmp("none", knet_handle_crypto_cfg_new.crypto_cipher_type, 4)) &&
+	     ((!strncmp("none", knet_handle_crypto_cfg_new.crypto_hash_type, 4)))))
+		goto no_key;
 
-		memset(keyfile, 0, PATH_MAX);
-		snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", tap_get_name(knet_iface->cfg_eth.tap));
+	memset(keyfile, 0, PATH_MAX);
+	snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", tap_get_name(knet_iface->cfg_eth.tap));
 
-		fd = open(keyfile, O_RDONLY);
-		if (fd < 0) {
-			knet_vty_write(vty, "Error: Unable to open security key: %s%s", keyfile, telnet_newline);
-			err = -1;
-			return -1;
-		}
-
-		if (fstat(fd, &sb)) {
-			knet_vty_write(vty, "Error: Unable to verify security key: %s%s", keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		if (!S_ISREG(sb.st_mode)) {
-			knet_vty_write(vty, "Error: Key %s does not appear to be a regular file%s",
-				       keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		knet_iface->knet_handle_crypto_cfg.private_key_len = (unsigned int)sb.st_size;
-		if ((knet_iface->knet_handle_crypto_cfg.private_key_len < KNET_MIN_KEY_LEN) ||
-		    (knet_iface->knet_handle_crypto_cfg.private_key_len > KNET_MAX_KEY_LEN)) {
-			knet_vty_write(vty, "Error: Key %s is %u long. Must be %u <= key_len <= %u%s",
-				       keyfile, knet_iface->knet_handle_crypto_cfg.private_key_len,
-				       KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN, telnet_newline);
-			goto key_error;
-		}
-
-		if (((sb.st_mode & S_IRWXU) != S_IRUSR) ||
-		    (sb.st_mode & S_IRWXG) ||
-		    (sb.st_mode & S_IRWXO)) {
-			knet_vty_write(vty, "Error: Key %s does not have the correct permission (must be user read-only)%s",
-				       keyfile, telnet_newline);
-			goto key_error;
-		}
-		if (read(fd,
-			 &knet_iface->knet_handle_crypto_cfg.private_key,
-			 knet_iface->knet_handle_crypto_cfg.private_key_len) != knet_iface->knet_handle_crypto_cfg.private_key_len) {
-			knet_vty_write(vty, "Error: Unable to read key %s%s", keyfile, telnet_newline);
-			goto key_error;
-		}
-
-		close(fd);
-		goto key_clean;
-
-key_error:
-		close(fd);
+	fd = open(keyfile, O_RDONLY);
+	if (fd < 0) {
+		knet_vty_write(vty, "Error: Unable to open security key: %s%s", keyfile, telnet_newline);
 		err = -1;
+		return -1;
 	}
-key_clean:
+
+	if (fstat(fd, &sb)) {
+		knet_vty_write(vty, "Error: Unable to verify security key: %s%s", keyfile, telnet_newline);
+		goto key_error;
+	}
+
+	if (!S_ISREG(sb.st_mode)) {
+		knet_vty_write(vty, "Error: Key %s does not appear to be a regular file%s",
+			       keyfile, telnet_newline);
+		goto key_error;
+	}
+
+	knet_handle_crypto_cfg_new.private_key_len = (unsigned int)sb.st_size;
+	if ((knet_handle_crypto_cfg_new.private_key_len < KNET_MIN_KEY_LEN) ||
+	    (knet_handle_crypto_cfg_new.private_key_len > KNET_MAX_KEY_LEN)) {
+		knet_vty_write(vty, "Error: Key %s is %u long. Must be %u <= key_len <= %u%s",
+			       keyfile, knet_handle_crypto_cfg_new.private_key_len,
+			       KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN, telnet_newline);
+		goto key_error;
+	}
+
+	if (((sb.st_mode & S_IRWXU) != S_IRUSR) ||
+	    (sb.st_mode & S_IRWXG) ||
+	    (sb.st_mode & S_IRWXO)) {
+		knet_vty_write(vty, "Error: Key %s does not have the correct permission (must be user read-only)%s",
+			       keyfile, telnet_newline);
+		goto key_error;
+	}
+
+	if (read(fd,
+		 &knet_handle_crypto_cfg_new.private_key,
+		 knet_handle_crypto_cfg_new.private_key_len) != knet_handle_crypto_cfg_new.private_key_len) {
+		knet_vty_write(vty, "Error: Unable to read key %s%s", keyfile, telnet_newline);
+		goto key_error;
+	}
+
+	close(fd);
+
+no_key:
+	err = knet_handle_crypto(knet_iface->cfg_ring.knet_h,
+				 &knet_handle_crypto_cfg_new);
 
 	if (!err) {
-		err = knet_handle_crypto(knet_iface->cfg_ring.knet_h,
-					 &knet_iface->knet_handle_crypto_cfg);
+		memcpy(&knet_iface->knet_handle_crypto_cfg, &knet_handle_crypto_cfg_new, sizeof(struct knet_handle_crypto_cfg));
+	} else {
+		knet_vty_write(vty, "Error: Unable to initialize crypto module%s", telnet_newline);
 	}
 
 	return err;
+
+key_error:
+	close(fd);
+	return -1;
 }
 
 static int knet_cmd_start(struct knet_vty *vty)
