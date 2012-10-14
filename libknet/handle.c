@@ -230,16 +230,12 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	return crypto_init(knet_h, knet_handle_crypto_cfg);
 }
 
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
+static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
+			    struct knet_link *lnk, int configured, int connected)
 {
 	int write_retry = 0;
 
-	if (lnk->configured == configured)
-		return 0;
-
-	lnk->configured = configured;
-
-	if (configured)
+	if ((lnk->configured == configured) && (lnk->connected == connected))
 		return 0;
 
 try_again:
@@ -251,7 +247,16 @@ try_again:
 			return -1;
 		}
 	}
+
+	lnk->configured = configured;
+	lnk->connected = connected;
+
 	return 0;
+}
+
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
+{
+	return knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
 }
 
 void knet_link_timeout(struct knet_link *lnk,
@@ -509,17 +514,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (src_link->latency < src_link->pong_timeout) {
 			if (!src_link->connected) {
-				int write_retry = 0;
-
-				src_link->connected = 1;
-try_again:
-				if (write(knet_h->pipefd[1], &src_host->node_id,
-					  sizeof(src_host->node_id)) != sizeof(src_host->node_id)) {
-					if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
-						write_retry++;
-						goto try_again;
-					} /* define what to do if we can't add a link */
-				}
+				knet_link_updown(knet_h, src_host->node_id, src_link, src_link->configured, 1);
 			}
 		}
 
@@ -628,16 +623,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
-			int write_retry = 0;
-
-			dst_link->connected = 0;
-try_again:
-			if (write(knet_h->pipefd[1], &dst_host->node_id, sizeof(dst_host->node_id)) != sizeof(dst_host->node_id)) {
-				if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
-					write_retry++;
-					goto try_again;
-				} /* define what to do if we can't deactivate a link */
-			} 
+			knet_link_updown(knet_h, dst_host->node_id, dst_link, 1, 0);
 		}
 	}
 }
