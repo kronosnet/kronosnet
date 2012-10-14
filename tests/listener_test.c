@@ -50,7 +50,7 @@ static void test_add_host(void)
 	knet_host_get(knet_h, 1, &host);
 
 	host->link[0].sock = listener->sock;
-	host->link[0].configured = 1;
+	knet_link_enable(knet_h, host->node_id, &host->link[0], 1);
 
 	knet_host_release(knet_h, &host);
 }

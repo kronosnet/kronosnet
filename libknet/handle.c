@@ -230,6 +230,30 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	return crypto_init(knet_h, knet_handle_crypto_cfg);
 }
 
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
+{
+	int write_retry = 0;
+
+	if (lnk->configured == configured)
+		return 0;
+
+	lnk->configured = configured;
+
+	if (configured)
+		return 0;
+
+try_again:
+	if (write(knet_h->pipefd[1], &node_id, sizeof(node_id)) != sizeof(node_id)) {
+		if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
+			write_retry++;
+			goto try_again;
+		} else {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 void knet_link_timeout(struct knet_link *lnk,
 				time_t interval, time_t timeout, int precision)
 {

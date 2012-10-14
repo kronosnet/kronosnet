@@ -717,8 +717,7 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 		return -1;
 	}
 
-	host->link[j].configured = 0;
-	if (knet_host_dst_cache_update(knet_iface->cfg_ring.knet_h, host->node_id))
+	if (knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[j], 0))
 		knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
 
 	return 0;
@@ -769,7 +768,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 		knet_link_timeout(klink, 1000, 5000, 2048);
 
-		klink->configured = 1;
+		knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, klink, 1);
 	}
 
 	vty->link = (void *)klink;
@@ -1273,7 +1272,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		}
 
 		for (i = 0; i < KNET_MAX_LINK; i++)
-			host->link[i].configured = 0;
+			knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[i], 0);
 
 		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener);
 

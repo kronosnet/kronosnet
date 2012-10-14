@@ -129,7 +129,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		knet_link_timeout(&host->link[0], 1000, 5000, 2048);
 
-		host->link[0].configured = 1;
+		knet_link_enable(knet_h, host->node_id, &host->link[0], 1);
 
 		err = tok_inaddrport(argv[i],
 				(struct sockaddr_in *) &host->link[0].address);
