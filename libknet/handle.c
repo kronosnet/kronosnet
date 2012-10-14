@@ -623,7 +623,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
-			knet_link_updown(knet_h, dst_host->node_id, dst_link, 1, 0);
+			knet_link_updown(knet_h, dst_host->node_id, dst_link, dst_link->configured, 0);
 		}
 	}
 }
