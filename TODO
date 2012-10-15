@@ -11,7 +11,7 @@ cryto:    expand API to support dual key for rekey process
 
 compress must happen before encrypt
 
-config: we need ato add config/vty for link_handler_policy, link_timeout and link_priority for active/passive
+config: we need ato add config/vty for link_timeout and link_priority for active/passive
 
 Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
 

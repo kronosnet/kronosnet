@@ -35,6 +35,7 @@
 #define CMDS_PARAM_CRYPTO_MODEL 10
 #define CMDS_PARAM_CRYPTO_TYPE  11
 #define CMDS_PARAM_HASH_TYPE    12
+#define CMDS_PARAM_POLICY       13
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -267,6 +268,17 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			knet_vty_write(vty, "unknown hash method: %s. Supported none/md5/sha1/sha256/sha384/sha512%s", param, telnet_newline);
 			err = -1;
 			break;
+		case CMDS_PARAM_POLICY:
+			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
+			if (!strncmp("passive", buf, 7))
+				break;
+			if (!strncmp("active", buf, 6))
+				break;
+			if (!strncmp("round-robin", buf, 11))
+				break;
+			knet_vty_write(vty, "unknown switching policy: %s. Supported passive/active/round-robin%s", param, telnet_newline);
+			err = -1;
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -313,6 +325,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_HASH_TYPE:
 			knet_vty_write(vty, "HASH - define packets hashing method: none/md5/sha1/sha256/sha384/sha512%s", telnet_newline);
+			break;
+		case CMDS_PARAM_POLICY:
+			knet_vty_write(vty, "POLICY - define packets switching policy: passive/active/round-robin%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -543,6 +558,7 @@ static int knet_cmd_crypto(struct knet_vty *vty);
 /* peer node */
 static int knet_cmd_link(struct knet_vty *vty);
 static int knet_cmd_no_link(struct knet_vty *vty);
+static int knet_cmd_switch_policy(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -646,6 +662,11 @@ vty_param_t link_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
+vty_param_t switch_params[] = {
+	{ CMDS_PARAM_POLICY },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t no_peer_cmds[] = {
 	{ "link", "remove peer endpoint", link_params, knet_cmd_no_link},
 	{ NULL, NULL, NULL, NULL },
@@ -658,6 +679,7 @@ vty_node_cmds_t peer_cmds[] = {
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "switch-policy", "configure switching policy engine", switch_params, knet_cmd_switch_policy },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
@@ -775,6 +797,37 @@ static int knet_cmd_link(struct knet_vty *vty)
 	vty->node = NODE_LINK;
 
 out_clean:
+	return err;
+}
+
+static int knet_cmd_switch_policy(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_host *host = (struct knet_host *)vty->host;
+	int paramlen = 0, paramoffset = 0, err = 0;
+	char *param = NULL;
+	char policystr[16];
+	int policy = -1;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	param_to_str(policystr, KNET_MAX_HOST_LEN, param, paramlen);
+
+	if (!strncmp("passive", policystr, 7))
+		policy = KNET_LINK_POLICY_PASSIVE;
+	if (!strncmp("active", policystr, 6))
+		policy = KNET_LINK_POLICY_ACTIVE;
+	if (!strncmp("round-robin", policystr, 11))
+		policy = KNET_LINK_POLICY_RR;
+
+	if (policy < 0) {
+		knet_vty_write(vty, "Error: unknown switching policy method%s", telnet_newline);
+		return -1;
+	}
+
+	err = knet_host_set_policy(knet_iface->cfg_ring.knet_h, host->node_id, policy);
+	if (err)
+		knet_vty_write(vty, "Error: unable to set switching policy to %s%s", policystr, telnet_newline);
+
 	return err;
 }
 
@@ -1458,6 +1511,17 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		while (host != NULL) {
 			knet_vty_write(vty, "  peer %s %u%s", host->name, host->node_id, nl);
+			switch (host->link_handler_policy) {
+				case KNET_LINK_POLICY_PASSIVE:
+					knet_vty_write(vty, "   switch-policy passive%s", nl);
+					break;
+				case KNET_LINK_POLICY_ACTIVE:
+					knet_vty_write(vty, "   switch-policy active%s", nl);
+					break;
+				case KNET_LINK_POLICY_RR:
+					knet_vty_write(vty, "   switch-policy round-robin%s", nl);
+					break;
+			}
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].configured == 1) {
 					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);
