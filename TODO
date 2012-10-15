@@ -8,7 +8,6 @@ compress: should only compress user data, we will add a bit in the data
                               how much do we save by compressin our header?
 
 cryto:    expand API to support dual key for rekey process
-          add more encryption methods
 
 compress must happen before encrypt
 
