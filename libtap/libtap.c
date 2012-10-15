@@ -493,6 +493,7 @@ out_clean:
 int tap_set_mtu(tap_t tap, const int mtu)
 {
 	int err, oldmtu;
+	short oldflags;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -502,12 +503,16 @@ int tap_set_mtu(tap_t tap, const int mtu)
 		goto out_clean;
 	}
 
+	oldflags = tap->ifr.ifr_flags;
 	oldmtu = tap->ifr.ifr_mtu;
+	tap->ifr.ifr_flags = 0;
 	tap->ifr.ifr_mtu = mtu;
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &tap->ifr);
 	if (err)
 		tap->ifr.ifr_mtu = oldmtu;
+
+	tap->ifr.ifr_flags = oldflags;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
