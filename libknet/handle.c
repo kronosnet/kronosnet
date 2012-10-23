@@ -241,14 +241,20 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 			    struct knet_link *lnk, int configured, int connected)
 {
+	unsigned int old_configured = lnk->configured;
+	unsigned int old_connected = lnk->connected;
+
 	if ((lnk->configured == configured) && (lnk->connected == connected))
 		return 0;
 
-	if (_dst_cache_update(knet_h, node_id))
-		return -1;
-
 	lnk->configured = configured;
 	lnk->connected = connected;
+
+	if (_dst_cache_update(knet_h, node_id)) {
+		lnk->configured = old_configured;
+		lnk->connected = old_connected;
+		return -1;
+	}
 
 	return 0;
 }
@@ -256,6 +262,23 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
 {
 	return knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
+}
+
+int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority)
+{
+	uint8_t old_priority = lnk->priority;
+
+	if (lnk->priority == priority)
+		return 0;
+
+	lnk->priority = priority;
+
+	if (_dst_cache_update(knet_h, node_id)) {
+		lnk->priority = old_priority;
+		return -1;
+	}
+
+	return 0;
 }
 
 void knet_link_timeout(struct knet_link *lnk,

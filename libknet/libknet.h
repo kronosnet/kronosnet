@@ -156,6 +156,7 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured);
 void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
+int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority);
 
 #define KNET_HOST_FOREACH_NEXT 0	/* next host */
 #define KNET_HOST_FOREACH_FOUND 1	/* host found, exit loop */
