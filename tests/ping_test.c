@@ -44,7 +44,7 @@ static void print_usage(char *name)
 {
 	printf("usage: %s <localip>[:<port>] <remoteip>[:port] [...]\n", name);
 	printf("example: %s 0.0.0.0 192.168.0.2\n", name);
-	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 crypto:aes256,sha1\n", name);
+	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 crypto:nss,aes256,sha1\n", name);
 }
 
 static int set_crypto(int argc, char *argv[])
