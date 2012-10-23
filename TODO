@@ -11,8 +11,6 @@ cryto:    expand API to support dual key for rekey process
 
 compress must happen before encrypt
 
-config: we need to add config/vty for link_timeout
-
 Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
 
 ring:

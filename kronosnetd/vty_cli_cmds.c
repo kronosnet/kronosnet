@@ -37,6 +37,8 @@
 #define CMDS_PARAM_HASH_TYPE    12
 #define CMDS_PARAM_POLICY       13
 #define CMDS_PARAM_LINK_PRI     14
+#define CMDS_PARAM_LINK_KEEPAL  15
+#define CMDS_PARAM_LINK_HOLDTI  16
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -287,6 +289,20 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
+		case CMDS_PARAM_LINK_KEEPAL:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp <= 0) || (tmp > 60000)) {
+				knet_vty_write(vty, "link keepalive should be a value between 0 and 60000 (milliseconds). Default: 1000%s", telnet_newline);
+				err = -1;
+			}
+			break; 
+		case CMDS_PARAM_LINK_HOLDTI: 
+			tmp = param_to_int(param, paramlen);
+			if ((tmp <= 0) || (tmp > 60000)) {
+				knet_vty_write(vty, "link holdtimer should be a value between 0 and 60000 (milliseconds). Default: 5000%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -339,6 +355,12 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_LINK_PRI:
 			knet_vty_write(vty, "PRIORITY - specify the link priority for passive switching (0 to 255, default is 0). The higher value is preferred over lower value%s", telnet_newline);
+			break;
+		case CMDS_PARAM_LINK_KEEPAL:
+			knet_vty_write(vty, "KEEPALIVE - specify the keepalive interval for this link (0 to 60000 milliseconds, default is 1000).%s", telnet_newline);
+			break;
+		case CMDS_PARAM_LINK_HOLDTI:
+			knet_vty_write(vty, "HOLDTIME - specify how much time has to pass without connection before a link is considered dead (0 to 60000 milliseconds, default is 5000).%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -573,6 +595,7 @@ static int knet_cmd_switch_policy(struct knet_vty *vty);
 
 /* link node */
 static int knet_cmd_link_pri(struct knet_vty *vty);
+static int knet_cmd_link_timer(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -706,6 +729,12 @@ vty_param_t link_pri_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
+vty_param_t link_timer_params[] = {
+	{ CMDS_PARAM_LINK_KEEPAL },
+	{ CMDS_PARAM_LINK_HOLDTI },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t link_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
@@ -713,6 +742,7 @@ vty_node_cmds_t link_cmds[] = {
 	{ "no", "revert command", NULL, NULL },
 	{ "priority", "set priority of this link for passive switching", link_pri_params, knet_cmd_link_pri },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "timers", "set link keepalive and holdtime", link_timer_params, knet_cmd_link_timer },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
@@ -731,6 +761,24 @@ vty_nodes_t knet_vty_nodes[] = {
 /* command execution */
 
 /* links */
+
+static int knet_cmd_link_timer(struct knet_vty *vty)
+{
+	struct knet_link *klink = (struct knet_link *)vty->link;
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+	time_t keepalive, holdtime;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	keepalive = param_to_int(param, paramlen);
+
+	get_param(vty, 2, &param, &paramlen, &paramoffset);
+	holdtime = param_to_int(param, paramlen);
+
+	knet_link_timeout(klink, keepalive, holdtime, 2048);
+
+	return 0;
+}
 
 static int knet_cmd_link_pri(struct knet_vty *vty)
 {
@@ -1568,6 +1616,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].configured == 1) {
 					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);
+					knet_vty_write(vty, "    timers %llu %llu%s", host->link[i].ping_interval / 1000, host->link[i].pong_timeout / 1000, nl);
 					knet_vty_write(vty, "    priority %u%s", host->link[i].priority, nl);
 					/* print link properties */
 					knet_vty_write(vty, "    exit%s", nl);
