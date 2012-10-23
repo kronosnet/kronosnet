@@ -573,6 +573,7 @@ static int knet_cmd_config(struct knet_vty *vty);
 /* config node */
 static int knet_cmd_interface(struct knet_vty *vty);
 static int knet_cmd_no_interface(struct knet_vty *vty);
+static int knet_cmd_status(struct knet_vty *vty);
 static int knet_cmd_show_conf(struct knet_vty *vty);
 static int knet_cmd_write_conf(struct knet_vty *vty);
 
@@ -603,6 +604,7 @@ vty_node_cmds_t root_cmds[] = {
 	{ "exit", "exit from CLI", NULL, knet_cmd_logout },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
+	{ "status", "display current network status", NULL, knet_cmd_status },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ NULL, NULL, NULL, NULL },
 };
@@ -631,6 +633,7 @@ vty_node_cmds_t config_cmds[] = {
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
+	{ "status", "display current network status", NULL, knet_cmd_status },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
@@ -686,6 +689,7 @@ vty_node_cmds_t interface_cmds[] = {
 	{ "peer", "add peer endpoint", peer_params, knet_cmd_peer },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
 	{ "start", "start forwarding engine", NULL, knet_cmd_start },
+	{ "status", "display current network status", NULL, knet_cmd_status },
 	{ "stop", "stop forwarding engine", NULL, knet_cmd_stop },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
@@ -716,6 +720,7 @@ vty_node_cmds_t peer_cmds[] = {
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "status", "display current network status", NULL, knet_cmd_status },
 	{ "switch-policy", "configure switching policy engine", switch_params, knet_cmd_switch_policy },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
@@ -742,6 +747,7 @@ vty_node_cmds_t link_cmds[] = {
 	{ "no", "revert command", NULL, NULL },
 	{ "priority", "set priority of this link for passive switching", link_pri_params, knet_cmd_link_pri },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "status", "display current network status", NULL, knet_cmd_status },
 	{ "timers", "set link keepalive and holdtime", link_timer_params, knet_cmd_link_timer },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
@@ -1556,6 +1562,70 @@ static int knet_cmd_exit_node(struct knet_vty *vty)
 	return 0;
 }
 
+static int knet_cmd_status(struct knet_vty *vty)
+{
+	int i;
+	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+	struct knet_host *host = NULL;
+	const char *nl = telnet_newline;
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	knet_vty_write(vty, "Current knet status%s", nl);
+	knet_vty_write(vty, "-------------------%s", nl);
+
+	while (knet_iface != NULL) {
+		knet_vty_write(vty, "interface %s (active: %d)%s", tap_get_name(knet_iface->cfg_eth.tap), knet_iface->active, nl);
+
+		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &host)) {
+			log_error("CLI ERROR: waiting for peer lock");
+			sleep(1);
+		}
+
+		while (host != NULL) {
+			knet_vty_write(vty, "  peer %s ", host->name);
+			switch (host->link_handler_policy) {
+				case KNET_LINK_POLICY_PASSIVE:
+					knet_vty_write(vty, "(passive)%s", nl);
+					break;
+				case KNET_LINK_POLICY_ACTIVE:
+					knet_vty_write(vty, "(active)%s", nl);
+					break;
+				case KNET_LINK_POLICY_RR:
+					knet_vty_write(vty, "(round-robin)%s", nl);
+					break;
+			}
+			for (i = 0; i < KNET_MAX_LINK; i++) {
+				if (host->link[i].configured == 1) {
+					knet_vty_write(vty, "    link %s (connected: %d)%s", host->link[i].ipaddr, host->link[i].connected, nl);
+					if (host->link[i].connected) {
+						knet_vty_write(vty, "      average latency: %llu us%s", host->link[i].latency, nl);
+					} else {
+						knet_vty_write(vty, "      last heard: ");
+						if (host->link[i].pong_last.tv_sec) {
+							knet_vty_write(vty, "%lu s ago%s",
+								(long unsigned int)now.tv_sec - host->link[i].pong_last.tv_sec, nl);
+						} else {
+							knet_vty_write(vty, "never%s", nl);
+						}
+					}
+				}
+			}
+			host = host->next;
+		}
+
+		while (knet_host_release(knet_iface->cfg_ring.knet_h, &host) != 0) {
+			log_error("CLI ERROR: unable to release peer lock.. will retry in 1 sec");
+			sleep(1);
+		}
+
+		knet_iface = knet_iface->next;
+	}
+
+	return 0;
+}
+
 static int knet_cmd_print_conf(struct knet_vty *vty)
 {
 	int i;
@@ -1582,7 +1652,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 				knet_vty_write(vty, "  ip %s %s%s", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1, nl);
 				offset = offset + strlen(ip_list) + 1;
 				offset = offset + strlen(ip_list + offset) + 1;
-		}
+			}
 			free(ip_list);
 			ip_list = NULL;
 			ip_list_entries = 0;

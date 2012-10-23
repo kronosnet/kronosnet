@@ -32,6 +32,8 @@ vty:
 * basic show info
 * fix check_param for ip/prefix/crypto
 
+* add description commands for various levels
+
 0.2
 ---
 
