@@ -36,6 +36,7 @@
 #define CMDS_PARAM_CRYPTO_TYPE  11
 #define CMDS_PARAM_HASH_TYPE    12
 #define CMDS_PARAM_POLICY       13
+#define CMDS_PARAM_LINK_PRI     14
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -279,6 +280,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			knet_vty_write(vty, "unknown switching policy: %s. Supported passive/active/round-robin%s", param, telnet_newline);
 			err = -1;
 			break;
+		case CMDS_PARAM_LINK_PRI:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 0) || (tmp > 255)) {
+				knet_vty_write(vty, "link priority should be a value between 0 and 256%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -328,6 +336,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_POLICY:
 			knet_vty_write(vty, "POLICY - define packets switching policy: passive/active/round-robin%s", telnet_newline);
+			break;
+		case CMDS_PARAM_LINK_PRI:
+			knet_vty_write(vty, "PRIORITY - specify the link priority for passive switching (0 to 255, default is 0). The higher value is preferred over lower value%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -560,6 +571,9 @@ static int knet_cmd_link(struct knet_vty *vty);
 static int knet_cmd_no_link(struct knet_vty *vty);
 static int knet_cmd_switch_policy(struct knet_vty *vty);
 
+/* link node */
+static int knet_cmd_link_pri(struct knet_vty *vty);
+
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
 	{ "configure", "enter configuration mode", NULL, knet_cmd_config },
@@ -687,11 +701,17 @@ vty_node_cmds_t peer_cmds[] = {
 
 /* link node description */
 
+vty_param_t link_pri_params[] = {
+	{ CMDS_PARAM_LINK_PRI },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t link_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
+	{ "priority", "set priority of this link for passive switching", link_pri_params, knet_cmd_link_pri },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
@@ -711,6 +731,26 @@ vty_nodes_t knet_vty_nodes[] = {
 /* command execution */
 
 /* links */
+
+static int knet_cmd_link_pri(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_host *host = (struct knet_host *)vty->host;
+	struct knet_link *klink = (struct knet_link *)vty->link;
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+	uint8_t priority;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	priority = param_to_int(param, paramlen);
+
+	if (knet_link_priority(knet_iface->cfg_ring.knet_h, host->node_id, klink, priority)) {
+		knet_vty_write(vty, "Error: unable to update link priority%s", telnet_newline);
+		return -1;
+	}
+
+	return 0;
+}
 
 static int knet_cmd_no_link(struct knet_vty *vty)
 {
@@ -739,8 +779,10 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 		return -1;
 	}
 
-	if (knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[j], 0))
+	if (knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[j], 0)) {
 		knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
+		return -1;
+	}
 
 	return 0;
 }
@@ -766,6 +808,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 		}
 		if (!strcmp(host->link[j].ipaddr, ipaddr)
 					&& !strcmp(host->link[j].port, port)) {
+			klink = &host->link[j];
 			found = 1;
 			break;
 		}
@@ -1525,6 +1568,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].configured == 1) {
 					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);
+					knet_vty_write(vty, "    priority %u%s", host->link[i].priority, nl);
 					/* print link properties */
 					knet_vty_write(vty, "    exit%s", nl);
 				}
