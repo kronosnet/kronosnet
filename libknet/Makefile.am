@@ -15,6 +15,11 @@ sources			= \
 			  etherfilter.c
 
 include_HEADERS		= libknet.h
+
+pkgconfigdir		= $(libdir)/pkgconfig
+
+pkgconfig_DATA		= libknet.pc
+
 noinst_HEADERS		= libknet-private.h \
 			  crypto.h \
 			  nsscrypto.h
@@ -24,4 +29,4 @@ lib_LTLIBRARIES		= libknet.la
 libknet_la_SOURCES	= $(sources)
 
 libknet_la_CFLAGS	= $(nss_CFLAGS)
-libknet_la_LIBADD	= -lrt $(nss_LIBS)
+libknet_la_LIBADD	= $(nss_LIBS) -lrt
