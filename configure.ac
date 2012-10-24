@@ -287,7 +287,7 @@ done
 CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
 	$EXTRA_WARNINGS $WERROR_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic"
+LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic -Wl,--as-needed"
 
 AC_CONFIG_FILES([
 		Makefile
