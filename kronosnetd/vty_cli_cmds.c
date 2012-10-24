@@ -946,7 +946,7 @@ static int knet_cmd_switch_policy(struct knet_vty *vty)
 	int policy = -1;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
-	param_to_str(policystr, KNET_MAX_HOST_LEN, param, paramlen);
+	param_to_str(policystr, sizeof(policystr), param, paramlen);
 
 	if (!strncmp("passive", policystr, 7))
 		policy = KNET_LINK_POLICY_PASSIVE;
