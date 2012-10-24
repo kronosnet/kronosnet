@@ -24,6 +24,9 @@ m4
 missing
 libtool
 autoscan.log
+init/kronosnetd
+init/kronosnetd.service
+kronosnetd-*tar*
 kronosnetd/kronosnetd
 kronosnetd/knet-keygen
 *.swp
