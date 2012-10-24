@@ -2,6 +2,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 sources			= libtap.c
 
+EXTRA_DIST		= libtap_exported_sym
+
 libversion		= 1:0:0
 
 # override global LIBS that pulls in lots of craft we don't need here
