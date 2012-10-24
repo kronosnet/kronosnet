@@ -57,7 +57,7 @@ libtap:
 general:
 
 * add statistics
-* add init script / spec file
+* add spec file
 * v4/v6 (bindv6only check via cli)
 
 vty:

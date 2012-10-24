@@ -146,6 +146,16 @@ AC_ARG_ENABLE([publicandocs],
 	[  --enable-publicandocs   enable docs build. ],
 	[ default="no" ])
 
+AC_ARG_WITH([initddir],
+	[  --with-initddir=DIR     : path to init script directory. ],
+	[ INITDDIR="$withval" ],
+	[ INITDDIR="$sysconfdir/init.d" ])
+
+AC_ARG_WITH([systemddir],
+	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
+	[ SYSTEMDDIR="$withval" ],
+	[ SYSTEMDDIR="/lib/systemd/system" ])
+
 AC_ARG_WITH([syslogfacility],
 	[  --with-syslogfacility=FACILITY
 			  default syslog facility. ],
@@ -176,6 +186,9 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 AM_CONDITIONAL([BUILD_DOCS], [test "x${enable_publicandocs}" = xyes])
 
 AC_SUBST([DEFAULT_CONFIG_DIR])
+AC_SUBST([INITDDIR])
+AC_SUBST([SYSTEMDDIR])
+
 AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR],
 		   ["$(eval echo ${DEFAULT_CONFIG_DIR})"],
 		   [Default config directory])
@@ -278,6 +291,7 @@ LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic"
 
 AC_CONFIG_FILES([
 		Makefile
+		init/Makefile
 		libtap/Makefile
 		libtap/libtap.pc
 		kronosnetd/Makefile

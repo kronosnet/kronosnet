@@ -1,0 +1,12 @@
+[Unit]
+Description=kronosnetd
+Requires=network.target
+After=network.target syslog.target
+
+[Service]
+Type=forking
+EnvironmentFile=/etc/sysconfig/kronosnetd
+ExecStart=@SBINDIR@/kronosnetd
+
+[Install]
+WantedBy=multi-user.target

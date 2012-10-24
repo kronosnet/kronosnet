@@ -7,7 +7,7 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SUBDIRS			= libtap libknet kronosnetd tests
+SUBDIRS			= init libtap libknet kronosnetd tests
 
 if BUILD_DOCS
 SUBDIRS			+= docs
