@@ -24,4 +24,4 @@ lib_LTLIBRARIES		= libknet.la
 libknet_la_SOURCES	= $(sources)
 
 libknet_la_CFLAGS	= $(nss_CFLAGS)
-libknet_la_LIBADD	= $(nss_LIBS)
+libknet_la_LIBADD	= -lrt $(nss_LIBS)
