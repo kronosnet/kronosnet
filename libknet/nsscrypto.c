@@ -25,6 +25,21 @@
 #define SALT_SIZE 16
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
+/*
+ * This are defined in new NSS. For older one, we will define our own
+ */
+#ifndef AES_256_KEY_LENGTH
+#define AES_256_KEY_LENGTH 32
+#endif
+
+#ifndef AES_192_KEY_LENGTH
+#define AES_192_KEY_LENGTH 24
+#endif
+
+#ifndef AES_128_KEY_LENGTH
+#define AES_128_KEY_LENGTH 16
+#endif
+
 enum crypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
 	CRYPTO_CIPHER_TYPE_AES256 = 1,
