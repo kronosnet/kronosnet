@@ -13,6 +13,10 @@ compress must happen before encrypt
 
 Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
 
+Fix link_id handling between config and libknet
+
+Implement link auth via user/passwd
+
 ring:
 
 * support 8 listener per node.
@@ -29,7 +33,6 @@ general:
 vty:
 
 * split cmd_files
-* basic show info
 * fix check_param for ip/prefix/crypto
 
 * add description commands for various levels
@@ -60,18 +63,12 @@ general:
 vty:
 
 * add optional options
-* sorting
 * tab completion on options
 
 0.5
 ---
 
 * pong count
-
-0.6
----
-
-* dynip
 
 0.7
 ---

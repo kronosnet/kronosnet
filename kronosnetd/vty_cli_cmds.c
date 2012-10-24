@@ -39,6 +39,7 @@
 #define CMDS_PARAM_LINK_PRI     14
 #define CMDS_PARAM_LINK_KEEPAL  15
 #define CMDS_PARAM_LINK_HOLDTI  16
+#define CMDS_PARAM_LINK_DYN     17
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -303,6 +304,12 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
+		case CMDS_PARAM_LINK_DYN:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 0) || (tmp > 1)) {
+				knet_vty_write(vty, "link dynamic should be either 0 or 1. Default: 0%s", telnet_newline);
+			}
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -361,6 +368,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_LINK_HOLDTI:
 			knet_vty_write(vty, "HOLDTIME - specify how much time has to pass without connection before a link is considered dead (0 to 60000 milliseconds, default is 5000).%s", telnet_newline);
+			break;
+		case CMDS_PARAM_LINK_DYN:
+			knet_vty_write(vty, "DYNAMIC - specify if this link will traverse NAT or Dynamic IP connections.%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -597,6 +607,7 @@ static int knet_cmd_switch_policy(struct knet_vty *vty);
 /* link node */
 static int knet_cmd_link_pri(struct knet_vty *vty);
 static int knet_cmd_link_timer(struct knet_vty *vty);
+static int knet_cmd_link_dyn(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -740,7 +751,13 @@ vty_param_t link_timer_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
+vty_param_t link_dyn_params[] = {
+	{ CMDS_PARAM_LINK_DYN },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t link_cmds[] = {
+	{ "dynamic", "set link NAT/dynamic ip traversal code", link_dyn_params, knet_cmd_link_dyn },
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
@@ -767,6 +784,24 @@ vty_nodes_t knet_vty_nodes[] = {
 /* command execution */
 
 /* links */
+
+static int knet_cmd_link_dyn(struct knet_vty *vty)
+{
+	struct knet_link *klink = (struct knet_link *)vty->link;
+	int paramlen = 0, paramoffset = 0, dyn;
+	char *param = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	dyn = param_to_int(param, paramlen);
+
+	if (dyn) {
+		klink->dynamic = KNET_LINK_DYN_SRC;
+	} else {
+		klink->dynamic = KNET_LINK_STATIC;
+	}
+
+	return 0;
+}
 
 static int knet_cmd_link_timer(struct knet_vty *vty)
 {
@@ -877,10 +912,14 @@ static int knet_cmd_link(struct knet_vty *vty)
 		memcpy(klink->ipaddr, ipaddr, strlen(ipaddr));
 		memcpy(klink->port, port, strlen(port));
 
-		if (strtoaddr(klink->ipaddr, klink->port, (struct sockaddr *)&klink->address, sizeof(klink->address)) != 0) {
-			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
+		if (!strncmp(ipaddr, "dynamic", 7)) {
+			klink->dynamic = KNET_LINK_DYN_DST;
+		} else {
+			if (strtoaddr(klink->ipaddr, klink->port, (struct sockaddr *)&klink->address, sizeof(klink->address)) != 0) {
+				knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
+				err = -1;
+				goto out_clean;
+			}
 		}
 
 		klink->sock = host->listener->sock;
@@ -1601,6 +1640,19 @@ static int knet_cmd_status(struct knet_vty *vty)
 					knet_vty_write(vty, "    link %s (connected: %d)%s", host->link[i].ipaddr, host->link[i].connected, nl);
 					if (host->link[i].connected) {
 						knet_vty_write(vty, "      average latency: %llu us%s", host->link[i].latency, nl);
+						if ((host->link[i].dynamic == KNET_LINK_DYN_DST) &&
+						    (host->link[i].dynconnected)) {
+							char *src_ip[2];
+
+							src_ip[0] = NULL;
+							if (addrtostr((struct sockaddr *)&host->link[i].address,
+								      sizeof(struct sockaddr_storage), src_ip)) {
+								knet_vty_write(vty, "      source ip: unknown%s", nl);
+							} else {
+								knet_vty_write(vty, "      source ip: %s%s", src_ip[0], nl);
+								addrtostr_free(src_ip);
+							}
+						}
 					} else {
 						knet_vty_write(vty, "      last heard: ");
 						if (host->link[i].pong_last.tv_sec) {
@@ -1686,6 +1738,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].configured == 1) {
 					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);
+					if (host->link[i].dynamic != KNET_LINK_DYN_DST)
+						knet_vty_write(vty, "    dynamic %u%s", host->link[i].dynamic, nl);
 					knet_vty_write(vty, "    timers %llu %llu%s", host->link[i].ping_interval / 1000, host->link[i].pong_timeout / 1000, nl);
 					knet_vty_write(vty, "    priority %u%s", host->link[i].priority, nl);
 					/* print link properties */

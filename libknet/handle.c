@@ -256,6 +256,9 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 		return -1;
 	}
 
+	if ((lnk->dynconnected) && (!lnk->connected))
+		lnk->dynconnected = 0;
+
 	return 0;
 }
 
@@ -454,6 +457,11 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	if ((knet_h->recv_from_links_buf->kf_type & KNET_FRAME_PMSK) != 0) {
 		src_link = src_host->link +
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
+		if ((src_link->dynamic == KNET_LINK_DYN_DST) &&
+		    (knet_h->recv_from_links_buf->kf_dyn == 1)) {
+			memcpy(&src_link->address, &address, sizeof(struct sockaddr_storage));
+			src_link->dynconnected = 1;
+		}
 	}
 
 	switch (knet_h->recv_from_links_buf->kf_type) {
@@ -621,6 +629,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
 		knet_h->pingbuf->kf_time = clock_now;
 		knet_h->pingbuf->kf_link = dst_link->link_id;
+		knet_h->pingbuf->kf_dyn = dst_link->dynamic;
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
@@ -672,7 +681,9 @@ static void *_handle_heartbt_thread(void *data)
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if (dst_host->link[link_idx].configured != 1)
+				if ((dst_host->link[link_idx].configured != 1) ||
+				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYN_DST) &&
+				     (dst_host->link[link_idx].dynconnected != 1)))
 					continue;
 				_handle_check_each(knet_h, dst_host, &dst_host->link[link_idx]);
 			}

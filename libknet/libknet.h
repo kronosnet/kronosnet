@@ -21,6 +21,10 @@ typedef uint64_t seq_num_t;
 typedef uint16_t seq_num_t;
 #define SEQ_MAX UINT16_MAX
 
+#define KNET_LINK_STATIC  0 /* link com is static ip (default) */
+#define KNET_LINK_DYN_SRC 1 /* link com has src dynamic ip */
+#define KNET_LINK_DYN_DST 2 /* link com is dst from dyn src */
+
 struct knet_link {
 	uint8_t link_id;
 	int sock;
@@ -29,6 +33,8 @@ struct knet_link {
 	struct sockaddr_storage address;
 	unsigned int configured:1; /* link is configured and ready to be used */
 	unsigned int connected:1;	/* link is enabled for data */
+	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
+	unsigned int dynconnected:1; /* link has been activated by remote dynip */
 	uint8_t  priority; /* higher priority == preferred for A/P */
 	unsigned long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
@@ -74,6 +80,7 @@ union knet_frame_data {
 	} data;
 	struct {
 		uint8_t		kfd_link;
+		uint8_t		kfd_dyn;
 		struct timespec	kfd_time;
 	} ping;
 } __attribute__((packed));
@@ -90,6 +97,7 @@ struct knet_frame {
 #define kf_data kf_payload.data.kfd_data
 #define kf_link kf_payload.ping.kfd_link
 #define kf_time kf_payload.ping.kfd_time
+#define kf_dyn kf_payload.ping.kfd_dyn
 
 #define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
 
