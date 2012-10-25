@@ -16,7 +16,7 @@
 
 #define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
 
-#define OPTION_STRING "hdfVc:l:b:p:"
+#define OPTION_STRING "hdfVc:l:a:b:p:"
 
 static int debug = 0;
 static int daemonize = 1;
@@ -28,15 +28,16 @@ static void print_usage(void)
 	printf("Usage:\n\n");
 	printf(PACKAGE " [options]\n\n");
 	printf("Options:\n\n");
-	printf("  -b <ip_addr> Bind management VTY to ip_addr (default: all)\n");
-	printf("  -p <port>    Bind management VTY to port (default %d)\n",
+	printf("  -a <ipv6_addr> Bind management VTY to ipv6_addr (default: localhost)\n");
+	printf("  -b <ipv4_addr> Bind management VTY to ipv4_addr (default: localhost)\n");
+	printf("  -p <port>      Bind management VTY to port (default %d)\n",
 		KNET_VTY_DEFAULT_PORT);
-	printf("  -c <file>    Use config file (default "DEFAULT_CONFIG_FILE")\n");
-	printf("  -l <file>    Use log file (default "DEFAULT_LOG_FILE")\n");
-	printf("  -f           Do not fork in background\n");
-	printf("  -d           Enable debugging output\n");
-	printf("  -h           This help\n");
-	printf("  -V           Print program version information\n");
+	printf("  -c <file>      Use config file (default "DEFAULT_CONFIG_FILE")\n");
+	printf("  -l <file>      Use log file (default "DEFAULT_LOG_FILE")\n");
+	printf("  -f             Do not fork in background\n");
+	printf("  -d             Enable debugging output\n");
+	printf("  -h             This help\n");
+	printf("  -V             Print program version information\n");
 	return;
 }
 
@@ -51,9 +52,15 @@ static int read_arguments(int argc, char **argv)
 
 		switch (optchar) {
 
+		case 'a':
+			knet_cfg_head.vty_ipv6 = strdup(optarg);
+			if (!knet_cfg_head.vty_ipv6)
+				return -1;
+			break;
+
 		case 'b':
-			knet_cfg_head.vty_ip = strdup(optarg);
-			if (!knet_cfg_head.vty_ip)
+			knet_cfg_head.vty_ipv4 = strdup(optarg);
+			if (!knet_cfg_head.vty_ipv4)
 				return -1;
 			break;
 
@@ -250,9 +257,16 @@ static void set_cfg_defaults(void)
 		exit(EXIT_FAILURE);
 	}
 
-	if (!knet_cfg_head.vty_ip)
-		knet_cfg_head.vty_ip = strdup("::");
-	if (!knet_cfg_head.vty_ip) {
+	if (!knet_cfg_head.vty_ipv6)
+		knet_cfg_head.vty_ipv6 = strdup("::1");
+	if (!knet_cfg_head.vty_ipv6) {
+		fprintf(stderr, "Unable to allocate memory for default ip address\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (!knet_cfg_head.vty_ipv4)
+		knet_cfg_head.vty_ipv4 = strdup("127.0.0.1");
+	if (!knet_cfg_head.vty_ipv4) {
 		fprintf(stderr, "Unable to allocate memory for default ip address\n");
 		exit(EXIT_FAILURE);
 	}
@@ -310,8 +324,10 @@ out:
 		free(knet_cfg_head.logfile);
 	if (knet_cfg_head.conffile)
 		free(knet_cfg_head.conffile);
-	if (knet_cfg_head.vty_ip)
-		free(knet_cfg_head.vty_ip);
+	if (knet_cfg_head.vty_ipv6)
+		free(knet_cfg_head.vty_ipv6);
+	if (knet_cfg_head.vty_ipv4)
+		free(knet_cfg_head.vty_ipv4);
 	if (knet_cfg_head.vty_port)
 		free(knet_cfg_head.vty_port);
 

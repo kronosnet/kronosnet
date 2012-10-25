@@ -183,7 +183,10 @@ out_clean:
  */
 int knet_vty_main_loop(void)
 {
+	int vty_listener6_fd;
+	int vty_listener4_fd;
 	int vty_listener_fd;
+	int max_fd;
 	int vty_accept_fd;
 	struct sockaddr_storage incoming_sa;
 	socklen_t salen;
@@ -204,21 +207,36 @@ int knet_vty_main_loop(void)
 		return -1;
 	}
 
-	vty_listener_fd = knet_vty_init_listener(knet_cfg_head.vty_ip,
-						 knet_cfg_head.vty_port);
-	if (vty_listener_fd < 0) {
+	vty_listener6_fd = knet_vty_init_listener(knet_cfg_head.vty_ipv6,
+						  knet_cfg_head.vty_port);
+	if (vty_listener6_fd < 0) {
 		log_error("Unable to setup vty listener");
 		return -1;
 	}
 
+	max_fd = vty_listener6_fd;
+
+	vty_listener4_fd = knet_vty_init_listener(knet_cfg_head.vty_ipv4,
+						  knet_cfg_head.vty_port);
+
+	if ((vty_listener4_fd < 0) &&
+	    (errno != EADDRINUSE)) {
+		log_error("Unable to setup vty listener: %d", errno);
+		return -1;
+	}
+
+	if (vty_listener4_fd > vty_listener6_fd)
+		max_fd = vty_listener4_fd;
+
 	while (se_result >= 0 && !daemon_quit) {
 		FD_ZERO (&rfds);
-		FD_SET (vty_listener_fd, &rfds);
+		FD_SET (vty_listener6_fd, &rfds);
+		FD_SET (vty_listener4_fd, &rfds);
 
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
-		se_result = select((vty_listener_fd + 1), &rfds, 0, 0, &tv);
+		se_result = select((max_fd + 1), &rfds, 0, 0, &tv);
 
 		if ((se_result == -1) && (daemon_quit)) {
 			log_info("Got a SIGTERM, requesting CLI threads to exit");	
@@ -257,8 +275,13 @@ int knet_vty_main_loop(void)
 			continue;
 		}
 
-		if (!FD_ISSET(vty_listener_fd, &rfds))
+		if (FD_ISSET(vty_listener6_fd, &rfds)) {
+			vty_listener_fd = vty_listener6_fd;
+		} else if (FD_ISSET(vty_listener4_fd, &rfds)) {
+			vty_listener_fd = vty_listener4_fd;
+		} else {
 			continue;
+		}
 
 		memset(&incoming_sa, 0, sizeof(struct sockaddr_storage));
 		salen = sizeof(struct sockaddr_storage);
@@ -314,7 +337,8 @@ int knet_vty_main_loop(void)
 	}
 
 out:
-	knet_vty_close_listener(vty_listener_fd);
+	knet_vty_close_listener(vty_listener6_fd);
+	knet_vty_close_listener(vty_listener4_fd);
 
 	// reverse running config to close/release resources;
 
