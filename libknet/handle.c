@@ -421,6 +421,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
+	struct timespec recvtime;
 	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
@@ -533,7 +534,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &src_link->pong_last);
 
-		timespec_diff(knet_h->recv_from_links_buf->kf_time,
+		memcpy(&recvtime, &knet_h->recv_from_links_buf->kf_time[0], sizeof(struct timespec));
+		timespec_diff(recvtime,
 				src_link->pong_last, &latency_last);
 
 		src_link->latency =
@@ -627,7 +629,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
-		knet_h->pingbuf->kf_time = clock_now;
+		memcpy(&knet_h->pingbuf->kf_time[0], &clock_now, sizeof(struct timespec));
 		knet_h->pingbuf->kf_link = dst_link->link_id;
 		knet_h->pingbuf->kf_dyn = dst_link->dynamic;
 

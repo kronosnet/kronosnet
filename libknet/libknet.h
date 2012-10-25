@@ -81,7 +81,7 @@ union knet_frame_data {
 	struct {
 		uint8_t		kfd_link;
 		uint8_t		kfd_dyn;
-		struct timespec	kfd_time;
+		uint32_t	kfd_time[4];
 	} ping;
 } __attribute__((packed));
 
