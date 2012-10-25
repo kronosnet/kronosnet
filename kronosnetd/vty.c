@@ -221,8 +221,8 @@ int knet_vty_main_loop(void)
 
 	if ((vty_listener4_fd < 0) &&
 	    (errno != EADDRINUSE)) {
-		log_error("Unable to setup vty listener: %d", errno);
-		return -1;
+		log_error("Unable to setup vty listener");
+		goto out;
 	}
 
 	if (vty_listener4_fd > vty_listener6_fd)
