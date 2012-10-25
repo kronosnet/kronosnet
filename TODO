@@ -17,6 +17,8 @@ Fix link_id handling between config and libknet
 
 Fix mac generation for different interfaces or there will be collision on same box
 
+CLI timeout configurable
+
 Implement link auth via user/passwd
 
 ring:
