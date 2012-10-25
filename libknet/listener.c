@@ -32,6 +32,7 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 {
 	int value;
 	struct epoll_event ev;
+	int save_errno = 0;
 
 	listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
 
@@ -41,23 +42,31 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	value = KNET_RING_RCVBUFF;
 	setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
-	if (_fdset_cloexec(listener->sock) != 0)
+	if (_fdset_cloexec(listener->sock) != 0) {
+		save_errno = errno;
 		goto exit_fail1;
+	}
 
 	if (bind(listener->sock, (struct sockaddr *) &listener->address,
-					sizeof(struct sockaddr_storage)) != 0)
+					sizeof(struct sockaddr_storage)) != 0) {
+		save_errno = errno;
 		goto exit_fail1;
+	}
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	ev.events = EPOLLIN;
 	ev.data.fd = listener->sock;
 
-	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0)
+	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0) {
+		save_errno = errno;
 		goto exit_fail1;
+	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		save_errno = errno;
 		goto exit_fail2;
+	}
 
 	/* pushing new host to the front */
 	listener->next		= knet_h->listener_head;
@@ -72,6 +81,7 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 
  exit_fail1:
 	close(listener->sock);
+	errno = save_errno;
 	return -1;
 }
 

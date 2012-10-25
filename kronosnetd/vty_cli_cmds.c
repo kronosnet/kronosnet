@@ -922,7 +922,12 @@ static int knet_cmd_link(struct knet_vty *vty)
 			}
 		}
 
-		klink->sock = host->listener->sock;
+		if ((host->listener4) &&
+		    (klink->address.ss_family == AF_INET)) {
+			klink->sock = host->listener4->sock;
+		} else {
+			klink->sock = host->listener6->sock;
+		}
 
 		knet_link_timeout(klink, 1000, 5000, 2048);
 
@@ -1038,8 +1043,16 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 		goto out_clean;
 	}
 
-	if (host->listener) {
-		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener) == -EBUSY) {
+	if (host->listener6) {
+		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener6) == -EBUSY) {
+			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+	}
+
+	if (host->listener4) {
+		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener4) == -EBUSY) {
 			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
 			err = -1;
 			goto out_clean;
@@ -1062,7 +1075,8 @@ static int knet_cmd_peer(struct knet_vty *vty)
 	int paramlen = 0, paramoffset = 0, requested_node_id = 0, err = 0;
 	char *param = NULL;
 	struct knet_host *host, *temp = NULL;
-	struct knet_listener *listener = NULL;
+	struct knet_listener *listener6 = NULL;
+	struct knet_listener *listener4 = NULL;
 	char nodename[KNET_MAX_HOST_LEN];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
@@ -1093,26 +1107,52 @@ static int knet_cmd_peer(struct knet_vty *vty)
 
 		knet_host_set_policy(knet_iface->cfg_ring.knet_h, requested_node_id, KNET_LINK_POLICY_PASSIVE);
 
-		listener = malloc(sizeof(struct knet_listener));
-		if (!listener) {
+		listener6 = malloc(sizeof(struct knet_listener));
+		if (!listener6) {
 			knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
 			err = -1;
 			goto out_clean;
 		}
-		memset(listener, 0, sizeof(struct knet_listener));
-		snprintf(listener->ipaddr, KNET_MAX_HOST_LEN, "::");
-		snprintf(listener->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
-		if (strtoaddr(listener->ipaddr, listener->port, (struct sockaddr *)&listener->address, sizeof(listener->address)) != 0) {
+		memset(listener6, 0, sizeof(struct knet_listener));
+		snprintf(listener6->ipaddr, KNET_MAX_HOST_LEN, "::");
+		snprintf(listener6->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
+		if (strtoaddr(listener6->ipaddr, listener6->port, (struct sockaddr *)&listener6->address, sizeof(listener6->address)) != 0) {
 			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
 			err = -1;
 			goto out_clean;
 		}
-		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener) != 0) {
+		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener6) != 0) {
 			knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
 			err = -1;
 			goto out_clean;
 		}
-		host->listener = listener;
+		host->listener6 = listener6;
+
+		listener4 = malloc(sizeof(struct knet_listener));
+		if (!listener4) {
+			knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+		memset(listener4, 0, sizeof(struct knet_listener));
+		snprintf(listener4->ipaddr, KNET_MAX_HOST_LEN, "0.0.0.0");
+		snprintf(listener4->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
+		if (strtoaddr(listener4->ipaddr, listener4->port, (struct sockaddr *)&listener4->address, sizeof(listener4->address)) != 0) {
+			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
+		}
+		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener4) != 0) {
+			if (errno != EADDRINUSE) {
+				knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
+				err = -1;
+				goto out_clean;
+			} else {
+				host->listener4 = NULL;
+			}
+		} else {
+			host->listener4 = listener4;
+		}
 	}
 
 	vty->host = (void *)host;
@@ -1120,8 +1160,10 @@ static int knet_cmd_peer(struct knet_vty *vty)
 
 out_clean:
 	if (err < 0) {
-		if (listener)
-			free(listener);
+		if (listener6)
+			free(listener6);
+		if (listener4)
+			free(listener4);
 		if (host)
 			knet_host_remove(knet_iface->cfg_ring.knet_h, host->node_id);
 	}
@@ -1141,7 +1183,9 @@ static int active_listeners(struct knet_vty *vty)
 	}
 
 	while (head != NULL) {
-		if (head->listener)
+		if (head->listener6)
+			listeners++;
+		if (head->listener4)
 			listeners++;
 		head = head->next;
 	}
@@ -1471,7 +1515,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		for (i = 0; i < KNET_MAX_LINK; i++)
 			knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[i], 0);
 
-		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener);
+		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener6);
+		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener4);
 
 		while (knet_host_remove(knet_iface->cfg_ring.knet_h, host->node_id) != 0) {
 			log_error("CLI ERROR: unable to release peer.. will retry in 1 sec");

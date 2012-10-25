@@ -57,7 +57,8 @@ struct knet_host {
 	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
 	seq_num_t ucast_seq_num_tx;
 	seq_num_t ucast_seq_num_rx;
-	struct knet_listener *listener;
+	struct knet_listener *listener6;
+	struct knet_listener *listener4;
 	struct knet_link link[KNET_MAX_LINK];
 	uint8_t active_link_entries;
 	uint8_t active_links[KNET_MAX_LINK];
