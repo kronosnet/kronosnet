@@ -15,6 +15,8 @@ Look into link status changes notification (maybe a signal to a thread? or write
 
 Fix link_id handling between config and libknet
 
+Fix mac generation for different interfaces or there will be collision on same box
+
 Implement link auth via user/passwd
 
 ring:
