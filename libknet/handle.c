@@ -461,6 +461,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if ((src_link->dynamic == KNET_LINK_DYN_DST) &&
 		    (knet_h->recv_from_links_buf->kf_dyn == 1)) {
 			memcpy(&src_link->address, &address, sizeof(struct sockaddr_storage));
+			if ((src_host->listener4) &&
+			    (src_link->address.ss_family == AF_INET)) {
+				src_link->sock = src_host->listener4->sock;
+			} else {
+				src_link->sock = src_host->listener6->sock;
+			}
 			src_link->dynconnected = 1;
 		}
 	}
