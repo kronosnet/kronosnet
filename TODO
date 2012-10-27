@@ -13,8 +13,6 @@ compress must happen before encrypt
 
 Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
 
-Fix link_id handling between config and libknet
-
 Fix mac generation for different interfaces or there will be collision on same box
 
 check why RR and ACTIVE don't work with dynamic ip links
