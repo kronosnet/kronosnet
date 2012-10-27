@@ -42,6 +42,12 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	value = KNET_RING_RCVBUFF;
 	setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
 
+	if (listener->address.ss_family == AF_INET6) {
+		value = 1;
+		setsockopt(listener->sock, IPPROTO_IPV6, IPV6_V6ONLY,
+			   &value, sizeof(value));
+	}
+
 	if (_fdset_cloexec(listener->sock) != 0) {
 		save_errno = errno;
 		goto exit_fail1;

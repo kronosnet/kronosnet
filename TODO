@@ -17,8 +17,6 @@ Fix link_id handling between config and libknet
 
 Fix mac generation for different interfaces or there will be collision on same box
 
-IPV6_V6ONLY setsocketopt to avoid detecting dualbinding and make error report more reliable
-
 check why RR and ACTIVE don't work with dynamic ip links
 
 CLI timeout configurable

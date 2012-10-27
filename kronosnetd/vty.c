@@ -50,6 +50,13 @@ static int knet_vty_init_listener(const char *ip_addr, const char *port)
 		goto out_clean;
 	}
 
+	if (ss.ss_family == AF_INET6) {
+		err = setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
+				 (void *)&sockopt, sizeof(sockopt));
+		if (err)
+			goto out_clean;
+	}
+
 	err = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
 			 (void *)&sockopt, sizeof(sockopt));
 	if (err)
@@ -210,7 +217,7 @@ int knet_vty_main_loop(void)
 	vty_listener6_fd = knet_vty_init_listener(knet_cfg_head.vty_ipv6,
 						  knet_cfg_head.vty_port);
 	if (vty_listener6_fd < 0) {
-		log_error("Unable to setup vty listener");
+		log_error("Unable to setup vty listener for ipv6");
 		return -1;
 	}
 
@@ -219,9 +226,8 @@ int knet_vty_main_loop(void)
 	vty_listener4_fd = knet_vty_init_listener(knet_cfg_head.vty_ipv4,
 						  knet_cfg_head.vty_port);
 
-	if ((vty_listener4_fd < 0) &&
-	    (errno != EADDRINUSE)) {
-		log_error("Unable to setup vty listener");
+	if (vty_listener4_fd < 0) {
+		log_error("Unable to setup vty listener for ipv4");
 		goto out;
 	}
 

@@ -922,11 +922,10 @@ static int knet_cmd_link(struct knet_vty *vty)
 			}
 		}
 
-		if ((host->listener4) &&
-		    (klink->address.ss_family == AF_INET)) {
-			klink->sock = host->listener4->sock;
-		} else {
+		if (klink->address.ss_family == AF_INET6) {
 			klink->sock = host->listener6->sock;
+		} else {
+			klink->sock = host->listener4->sock;
 		}
 
 		knet_link_timeout(klink, 1000, 5000, 2048);
@@ -1143,16 +1142,11 @@ static int knet_cmd_peer(struct knet_vty *vty)
 			goto out_clean;
 		}
 		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener4) != 0) {
-			if (errno != EADDRINUSE) {
-				knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
-				err = -1;
-				goto out_clean;
-			} else {
-				host->listener4 = NULL;
-			}
-		} else {
-			host->listener4 = listener4;
+			knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
 		}
+		host->listener4 = listener4;
 	}
 
 	vty->host = (void *)host;
