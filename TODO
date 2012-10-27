@@ -11,7 +11,19 @@ cryto:    expand API to support dual key for rekey process
 
 compress must happen before encrypt
 
-Look into link status changes notification (maybe a signal to a thread? or write to a pipe)
+libknet logging infrastructure:
+- pass a pipe write fd to init
+- if fd libknet will write O_NONBLOCKING to that fd a struct
+log_msg {
+ header {
+  type: string|data?
+  level: error|warning|info|debug
+  size: data_size
+ }
+ data: ....
+}
+- macro for log_level(....)
+- level filtering can be changed runtime, done before write (saves time and memcpy around)
 
 Fix mac generation for different interfaces or there will be collision on same box
 
