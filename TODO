@@ -29,6 +29,9 @@ Fix mac generation for different interfaces or there will be collision on same b
 
 check why RR and ACTIVE don't work with dynamic ip links
 
+check again dynamic ip/link selection string management (need a memset on name/ip)
+and why udp appears to be stopping when IP changes
+
 CLI timeout configurable
 
 Implement link auth via user/passwd
