@@ -31,7 +31,7 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		return NULL;
 	}
 
-	if (knet_handle_cfg->fd <= 0) {
+	if (knet_handle_cfg->to_net_fd <= 0) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -42,7 +42,7 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
 	knet_h->node_id = knet_handle_cfg->node_id;
-	knet_h->sockfd = knet_handle_cfg->fd;
+	knet_h->sockfd = knet_handle_cfg->to_net_fd;
 
 	if (pipe(knet_h->pipefd))
 		goto exit_fail1;

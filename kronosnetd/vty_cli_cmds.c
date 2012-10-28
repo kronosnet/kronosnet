@@ -1581,7 +1581,7 @@ tap_found:
 		goto knet_found;
 
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
-	knet_handle_cfg.fd = tap_get_fd(knet_iface->cfg_eth.tap);
+	knet_handle_cfg.to_net_fd = tap_get_fd(knet_iface->cfg_eth.tap);
 	knet_handle_cfg.node_id = requested_id;
 	knet_handle_cfg.dst_host_filter = KNET_DST_FILTER_ENABLE;
 	knet_handle_cfg.dst_host_filter_fn = ether_host_filter_fn;

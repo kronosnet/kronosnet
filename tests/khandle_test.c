@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	}
 
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
-	knet_handle_cfg.fd = sock;
+	knet_handle_cfg.to_net_fd = sock;
 	knet_handle_cfg.node_id = 1;
 
 	knet_h = knet_handle_new(&knet_handle_cfg);

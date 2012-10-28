@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	}
 
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
-	knet_handle_cfg.fd = knet_sock[0];
+	knet_handle_cfg.to_net_fd = knet_sock[0];
 	knet_handle_cfg.node_id = 1;
 
 	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {

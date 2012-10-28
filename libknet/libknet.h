@@ -125,7 +125,7 @@ struct knet_frame {
  */
 
 struct knet_handle_cfg {
-	int		fd;
+	int		to_net_fd;
 	uint16_t	node_id;
 	uint8_t		dst_host_filter;
 	int		(*dst_host_filter_fn) (
