@@ -14,6 +14,7 @@ static int knet_sock[2];
 static knet_handle_t knet_h;
 static struct knet_handle_cfg knet_handle_cfg;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
+static uint8_t loglevel = KNET_LOG_INFO;
 
 static in_port_t tok_inport(char *str)
 {
@@ -45,6 +46,19 @@ static void print_usage(char *name)
 	printf("usage: %s <localip>[:<port>] <remoteip>[:port] [...]\n", name);
 	printf("example: %s 0.0.0.0 192.168.0.2\n", name);
 	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 crypto:nss,aes256,sha1\n", name);
+	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 debug\n", name);
+}
+
+static void set_debug(int argc, char *argv[])
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		if (!strncmp(argv[i], "debug", 5)) {
+			loglevel = KNET_LOG_DEBUG;
+			break;
+		}
+	}
 }
 
 static int set_crypto(int argc, char *argv[])
@@ -188,6 +202,7 @@ int main(int argc, char *argv[])
 	fd_set rfds;
 	struct timeval tv;
 	struct knet_host_search print_search;
+	int logpipefd[2];
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -199,6 +214,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (pipe(logpipefd)) {
+		printf("Unable to create log pipe\n");
+		exit(EXIT_FAILURE);
+	}
+
 	knet_h = NULL;
 
 	if (signal(SIGINT, sigint_handler) == SIG_ERR) {
@@ -206,9 +226,13 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	set_debug(argc, argv);
+
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.to_net_fd = knet_sock[0];
 	knet_handle_cfg.node_id = 1;
+	knet_handle_cfg.log_fd = logpipefd[1];
+	knet_handle_cfg.default_log_level = loglevel;
 
 	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
@@ -244,6 +268,7 @@ int main(int argc, char *argv[])
  select_loop:
 		FD_ZERO(&rfds);
 		FD_SET(knet_sock[1], &rfds);
+		FD_SET(logpipefd[0], &rfds);
 
 		len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
 
@@ -256,6 +281,24 @@ int main(int argc, char *argv[])
 		} else if (FD_ISSET(knet_sock[1], &rfds)) {
 			len = read(knet_sock[1], buff, sizeof(buff));
 			printf("Received data (%zu bytes): '%s'\n", len, buff);
+		} else if (FD_ISSET(logpipefd[0], &rfds)) {
+			struct knet_log_msg msg;
+			size_t bytes_read = 0;
+
+			while (bytes_read < sizeof(struct knet_log_msg)) {
+				len = read(logpipefd[0], &msg + bytes_read,
+					   sizeof(struct knet_log_msg) - bytes_read);
+				if (len <= 0) {
+					printf("Error from log fd, unable to read data\n");
+					exit(EXIT_FAILURE);
+				}
+				bytes_read += len;
+			}
+
+			printf("[%s] %s: %s\n",
+			       knet_get_loglevel_name(msg.msglevel),
+			       knet_get_subsystem_name(msg.subsystem),
+			       msg.msg);
 		}
 
 		if ((tv.tv_sec > 0) || (tv.tv_usec > 0))

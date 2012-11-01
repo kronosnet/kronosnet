@@ -43,6 +43,16 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	knet_h->node_id = knet_handle_cfg->node_id;
 	knet_h->sockfd = knet_handle_cfg->to_net_fd;
+	knet_h->logfd = knet_handle_cfg->log_fd;
+
+	memset(&knet_h->log_levels, knet_handle_cfg->default_log_level, KNET_MAX_SUBSYSTEMS);
+
+	if (knet_h->logfd > 0) {
+		if (_fdset_cloexec(knet_h->logfd) ||
+		    _fdset_nonblock(knet_h->logfd)) {
+			goto exit_fail1;
+		}
+	}
 
 	if (pipe(knet_h->pipefd))
 		goto exit_fail1;

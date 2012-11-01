@@ -23,6 +23,8 @@ struct knet_handle {
 	uint16_t node_id;
 	unsigned int enabled:1;
 	int sockfd;
+	int logfd;
+	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int pipefd[2];
 	int tap_to_links_epollfd;
 	int recv_from_links_epollfd;
@@ -58,5 +60,13 @@ int _fdset_nonblock(int fd);
 int _dst_cache_update(knet_handle_t knet_h, uint16_t node_id);
 int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
 void knet_has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
+
+void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
+	     const char *fmt, ...) __attribute__((format(printf, 4, 5)));;
+
+#define log_err(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_ERR, fmt, ##args)
+#define log_warn(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_WARN, fmt, ##args)
+#define log_info(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_INFO, fmt, ##args)
+#define log_debug(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_DEBUG, fmt, ##args)
 
 #endif
