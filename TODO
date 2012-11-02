@@ -11,20 +11,6 @@ cryto:    expand API to support dual key for rekey process
 
 compress must happen before encrypt
 
-libknet logging infrastructure:
-- pass a pipe write fd to init
-- if fd libknet will write O_NONBLOCKING to that fd a struct
-log_msg {
- header {
-  type: string|data?
-  level: error|warning|info|debug
-  size: data_size
- }
- data: ....
-}
-- macro for log_level(....)
-- level filtering can be changed runtime, done before write (saves time and memcpy around)
-
 Fix mac generation for different interfaces or there will be collision on same box
 
 check why RR and ACTIVE don't work with dynamic ip links
@@ -42,9 +28,9 @@ ring:
 * index pointer list
 
 general:
-
-* what to log
-  log to file: who logins, config changes and link status changes
+add log to vty:
+ - config (per subsystem/total)
+ - output to vty
   log to vty: cmd execution failure
 
 * consider splitting tests/* based on what they test (tap_test -> libtap/) ?
@@ -87,6 +73,12 @@ vty:
 ---
 
 * pong count
+* implement link switching via scoring system
+- latency
+- priority (auto/manual)
+- usage (over XX% traffic start RR)
+- flapping of the links (time/sec)
+
 
 0.7
 ---
