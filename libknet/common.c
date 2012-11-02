@@ -52,6 +52,7 @@ try_again:
 			write_retry++;
 			goto try_again;
 		} else {
+			log_debug(knet_h, KNET_SUB_COMMON, "Unable to write to comm pipe");
 			return -1;
 		}
 	}

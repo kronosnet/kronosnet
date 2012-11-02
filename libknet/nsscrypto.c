@@ -11,13 +11,6 @@
 #include "nsscrypto.h"
 #include "libknet-private.h"
 
-#ifdef CRYPTO_DEBUG
-#include <stdio.h>
-#define log_printf(format, args...) fprintf(stderr, format "\n", ##args);
-#else
-#define log_printf(format, args...);
-#endif
-
 /*
  * crypto definitions and conversion tables
  */
@@ -145,10 +138,11 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return -1;
 }
 
-static int init_nss_crypto(struct nsscrypto_instance *instance)
+static int init_nss_crypto(knet_handle_t knet_h)
 {
 	PK11SlotInfo*	crypt_slot = NULL;
 	SECItem		crypt_param;
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 
 	if (!cipher_to_nss[instance->crypto_cipher_type]) {
 		return 0;
@@ -160,7 +154,7 @@ static int init_nss_crypto(struct nsscrypto_instance *instance)
 
 	crypt_slot = PK11_GetBestSlot(cipher_to_nss[instance->crypto_cipher_type], NULL);
 	if (crypt_slot == NULL) {
-		log_printf("Unable to find security slot (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (err %d)",
 			   PR_GetError());
 		return -1;
 	}
@@ -170,7 +164,7 @@ static int init_nss_crypto(struct nsscrypto_instance *instance)
 						  PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
 						  &crypt_param, NULL);
 	if (instance->nss_sym_key == NULL) {
-		log_printf("Failure to import key into NSS (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (err %d)",
 			   PR_GetError());
 		return -1;
 	}
@@ -181,12 +175,13 @@ static int init_nss_crypto(struct nsscrypto_instance *instance)
 }
 
 static int encrypt_nss(
-	struct nsscrypto_instance *instance,
+	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 	PK11Context*	crypt_context = NULL;
 	SECItem		crypt_param;
 	SECItem		*nss_sec_param = NULL;
@@ -197,7 +192,7 @@ static int encrypt_nss(
 	int		err = -1;
 
 	if (PK11_GenerateRandom (salt, SALT_SIZE) != SECSuccess) {
-		log_printf("Failure to generate a random number %d",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to generate a random number %d",
 			   PR_GetError());
 		goto out;
 	}
@@ -209,7 +204,7 @@ static int encrypt_nss(
 	nss_sec_param = PK11_ParamFromIV (cipher_to_nss[instance->crypto_cipher_type],
 					  &crypt_param);
 	if (nss_sec_param == NULL) {
-		log_printf("Failure to set up PKCS11 param (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to set up PKCS11 param (err %d)",
 			   PR_GetError());
 		goto out;
 	}
@@ -222,7 +217,7 @@ static int encrypt_nss(
 						    instance->nss_sym_key,
 						    nss_sec_param);
 	if (!crypt_context) {
-		log_printf("PK11_CreateContext failed (encrypt) crypt_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext failed (encrypt) crypt_type=%d (err %d)",
 			   (int)cipher_to_nss[instance->crypto_cipher_type],
 			   PR_GetError());
 		goto out;
@@ -232,7 +227,7 @@ static int encrypt_nss(
 			  &tmp1_outlen,
 			  KNET_DATABUFSIZE_CRYPT,
 			  (unsigned char *)buf_in, buf_in_len) != SECSuccess) {
-		log_printf("PK11_CipherOp failed (encrypt) crypt_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d)",
 			   (int)cipher_to_nss[instance->crypto_cipher_type],
 			   PR_GetError());
 		goto out;
@@ -240,7 +235,7 @@ static int encrypt_nss(
 
 	if (PK11_DigestFinal(crypt_context, data + tmp1_outlen,
 			     &tmp2_outlen, KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
-		log_printf("PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d)",
 			   (int)cipher_to_nss[instance->crypto_cipher_type],
 			   PR_GetError());
 		goto out;
@@ -262,10 +257,11 @@ out:
 }
 
 static int decrypt_nss (
-	struct nsscrypto_instance *instance,
+	knet_handle_t knet_h,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 	PK11Context*	decrypt_context = NULL;
 	SECItem		decrypt_param;
 	int		tmp1_outlen = 0;
@@ -286,21 +282,21 @@ static int decrypt_nss (
 						     CKA_DECRYPT,
 						     instance->nss_sym_key, &decrypt_param);
 	if (!decrypt_context) {
-		log_printf("PK11_CreateContext (decrypt) failed (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext (decrypt) failed (err %d)",
 			   PR_GetError());
 		goto out;
 	}
 
 	if (PK11_CipherOp(decrypt_context, outbuf, &tmp1_outlen,
 			  sizeof(outbuf), data, datalen) != SECSuccess) {
-		log_printf("PK11_CipherOp (decrypt) failed (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d)",
 			   PR_GetError());
 		goto out;
 	}
 
 	if (PK11_DigestFinal(decrypt_context, outbuf + tmp1_outlen, &tmp2_outlen,
 			     sizeof(outbuf) - tmp1_outlen) != SECSuccess) {
-		log_printf("PK11_DigestFinal (decrypt) failed (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d)",
 			   PR_GetError()); 
 		goto out;
 	}
@@ -346,10 +342,11 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 	return -1;
 }
 
-static int init_nss_hash(struct nsscrypto_instance *instance)
+static int init_nss_hash(knet_handle_t knet_h)
 {
 	PK11SlotInfo*	hash_slot = NULL;
 	SECItem		hash_param;
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 
 	if (!hash_to_nss[instance->crypto_hash_type]) {
 		return 0;
@@ -361,7 +358,7 @@ static int init_nss_hash(struct nsscrypto_instance *instance)
 
 	hash_slot = PK11_GetBestSlot(hash_to_nss[instance->crypto_hash_type], NULL);
 	if (hash_slot == NULL) {
-		log_printf("Unable to find security slot (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (err %d)",
 			   PR_GetError());
 		return -1;
 	}
@@ -371,7 +368,7 @@ static int init_nss_hash(struct nsscrypto_instance *instance)
 						       PK11_OriginUnwrap, CKA_SIGN,
 						       &hash_param, NULL);
 	if (instance->nss_sym_key_sign == NULL) {
-		log_printf("Failure to import key into NSS (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (err %d)",
 			   PR_GetError());
 		return -1;
 	}
@@ -382,11 +379,12 @@ static int init_nss_hash(struct nsscrypto_instance *instance)
 }
 
 static int calculate_nss_hash(
-	struct nsscrypto_instance *instance,
+	knet_handle_t knet_h,
 	const unsigned char *buf,
 	const size_t buf_len,
 	unsigned char *hash)
 {
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 	PK11Context*	hash_context = NULL;
 	SECItem		hash_param;
 	unsigned int	hash_tmp_outlen = 0;
@@ -404,14 +402,14 @@ static int calculate_nss_hash(
 						 &hash_param);
 
 	if (!hash_context) {
-		log_printf("PK11_CreateContext failed (hash) hash_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext failed (hash) hash_type=%d (err %d)",
 			   (int)hash_to_nss[instance->crypto_hash_type],
 			   PR_GetError());
 		goto out;
 	}
 
 	if (PK11_DigestBegin(hash_context) != SECSuccess) {
-		log_printf("PK11_DigestBegin failed (hash) hash_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestBegin failed (hash) hash_type=%d (err %d)",
 			   (int)hash_to_nss[instance->crypto_hash_type],
 			   PR_GetError());
 		goto out;
@@ -420,7 +418,7 @@ static int calculate_nss_hash(
 	if (PK11_DigestOp(hash_context,
 			  buf,
 			  buf_len) != SECSuccess) {
-		log_printf("PK11_DigestOp failed (hash) hash_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestOp failed (hash) hash_type=%d (err %d)",
 			   (int)hash_to_nss[instance->crypto_hash_type],
 			   PR_GetError());
 		goto out;
@@ -430,7 +428,7 @@ static int calculate_nss_hash(
 			     hash_block,
 			     &hash_tmp_outlen,
 			     hash_block_len[instance->crypto_hash_type]) != SECSuccess) {
-		log_printf("PK11_DigestFinale failed (hash) hash_type=%d (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d)",
 			   (int)hash_to_nss[instance->crypto_hash_type],
 			   PR_GetError());
 		goto out;
@@ -451,15 +449,17 @@ out:
  * global/glue nss functions
  */
 
-static int init_nss_db(struct nsscrypto_instance *instance)
+static int init_nss_db(knet_handle_t knet_h)
 {
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
 	    (!hash_to_nss[instance->crypto_hash_type])) {
 		return 0;
 	}
 
 	if (NSS_NoDB_Init(".") != SECSuccess) {
-		log_printf("NSS DB initialization failed (err %d)",
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d)",
 			   PR_GetError());
 		return -1;
 	}
@@ -467,17 +467,17 @@ static int init_nss_db(struct nsscrypto_instance *instance)
 	return 0;
 }
 
-static int init_nss(struct nsscrypto_instance *instance)
+static int init_nss(knet_handle_t knet_h)
 {
-	if (init_nss_db(instance) < 0) {
+	if (init_nss_db(knet_h) < 0) {
 		return -1;
 	}
 
-	if (init_nss_crypto(instance) < 0) {
+	if (init_nss_crypto(knet_h) < 0) {
 		return -1;
 	}
 
-	if (init_nss_hash(instance) < 0) {
+	if (init_nss_hash(knet_h) < 0) {
 		return -1;
 	}
 
@@ -489,16 +489,16 @@ static int init_nss(struct nsscrypto_instance *instance)
  */
 
 int nsscrypto_encrypt_and_sign (
-	void *model_instance,
+	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	struct nsscrypto_instance *instance = model_instance;
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (encrypt_nss(instance, buf_in, buf_in_len, buf_out, buf_out_len) < 0) {
+		if (encrypt_nss(knet_h, buf_in, buf_in_len, buf_out, buf_out_len) < 0) {
 			return -1;
 		}
 	} else {
@@ -507,7 +507,7 @@ int nsscrypto_encrypt_and_sign (
 	}
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
-		if (calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
+		if (calculate_nss_hash(knet_h, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
 			return -1;
 		}
 		*buf_out_len = *buf_out_len + hash_len[instance->crypto_hash_type];
@@ -517,21 +517,21 @@ int nsscrypto_encrypt_and_sign (
 }
 
 int nsscrypto_authenticate_and_decrypt (
-	void *model_instance,
+	knet_handle_t knet_h,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
-	struct nsscrypto_instance *instance = model_instance;
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
 		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
 
-		if (calculate_nss_hash(instance, buf, *buf_len - hash_len[instance->crypto_hash_type], tmp_hash) < 0) {
+		if (calculate_nss_hash(knet_h, buf, *buf_len - hash_len[instance->crypto_hash_type], tmp_hash) < 0) {
 			return -1;
 		}
 
 		if (memcmp(tmp_hash, buf + (*buf_len - hash_len[instance->crypto_hash_type]), hash_len[instance->crypto_hash_type]) != 0) {
-			log_printf("Digest does not match");
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
 			return -1;
 		}
 
@@ -539,7 +539,7 @@ int nsscrypto_authenticate_and_decrypt (
 	}
 
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (decrypt_nss(instance, buf, buf_len) < 0) {
+		if (decrypt_nss(knet_h, buf, buf_len) < 0) {
 			return -1;
 		}
 	}
@@ -553,12 +553,14 @@ int nsscrypto_init(
 {
 	struct nsscrypto_instance *nsscrypto_instance = NULL;
 
-	log_printf("Initizializing nss crypto module [%s/%s]",
+	log_debug(knet_h, KNET_SUB_NSSCRYPTO,
+		  "Initizializing nss crypto module [%s/%s]",
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
 	knet_h->crypto_instance->model_instance = malloc(sizeof(struct nsscrypto_instance));
 	if (!knet_h->crypto_instance->model_instance) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to allocate memory for nss model instance");
 		return -1;
 	}
 
@@ -567,20 +569,24 @@ int nsscrypto_init(
 	memset(nsscrypto_instance, 0, sizeof(struct nsscrypto_instance));
 
 	if (!knet_handle_crypto_cfg->crypto_cipher_type) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "no crypto cipher type specified");
 		goto out_err;
 	}
 
 	nsscrypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (nsscrypto_instance->crypto_cipher_type < 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto cipher type requested");
 		goto out_err;
 	}
 
 	if (!knet_handle_crypto_cfg->crypto_hash_type) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "no crypto hash type specified");
 		goto out_err;
 	}
 
 	nsscrypto_instance->crypto_hash_type = string_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
 	if (nsscrypto_instance->crypto_hash_type < 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto hash type requested");
 		goto out_err;
 	}
 
@@ -592,26 +598,33 @@ int nsscrypto_init(
 		if ((!nsscrypto_instance->private_key) ||
 		    (nsscrypto_instance->private_key_len < KNET_MIN_KEY_LEN) ||
 		    (nsscrypto_instance->private_key_len > KNET_MAX_KEY_LEN)) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "crypto private key parameters are incorrect");
 			goto out_err;
 		}
 	}
 
 	knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->tap_to_links_buf_crypt)
+	if (!knet_h->tap_to_links_buf_crypt) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to allocate memory for crypto send buffer");
 		goto out_err;
+	}
 
 	knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->pingbuf_crypt)
+	if (!knet_h->pingbuf_crypt) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to allocate memory for crypto hb buffer");
 		goto out_err;
+	}
 
 	knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->recv_from_links_buf_crypt)
+	if (!knet_h->recv_from_links_buf_crypt) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to allocate memory for crypto recv buffer");
 		goto out_err;
+	}
 
 	nsscrypto_instance->private_key = knet_handle_crypto_cfg->private_key;
 	nsscrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
-	if (init_nss(nsscrypto_instance) < 0) {
+	if (init_nss(knet_h) < 0) {
 		goto out_err;
 	}
 

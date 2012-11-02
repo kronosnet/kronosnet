@@ -54,38 +54,52 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		}
 	}
 
-	if (pipe(knet_h->pipefd))
+	if (pipe(knet_h->pipefd)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal comm pipe");
 		goto exit_fail1;
+	}
 
 	if ((_fdset_cloexec(knet_h->pipefd[0])) ||
 	    (_fdset_cloexec(knet_h->pipefd[1])) ||
 	    (_fdset_nonblock(knet_h->pipefd[0])) ||
-	    (_fdset_nonblock(knet_h->pipefd[1])))
+	    (_fdset_nonblock(knet_h->pipefd[1]))) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set internal comm pipe sockopts");
 		goto exit_fail2;
+	}
 
 	knet_h->dst_host_filter = knet_handle_cfg->dst_host_filter;
 	knet_h->dst_host_filter_fn = knet_handle_cfg->dst_host_filter_fn;
 
-	if ((knet_h->dst_host_filter) && (!knet_h->dst_host_filter_fn))
+	if ((knet_h->dst_host_filter) && (!knet_h->dst_host_filter_fn)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Incorrect dst_host_filter config requested");
 		goto exit_fail2;
+	}
 
-	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
+	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for tap to link buffer");
 		goto exit_fail2;
+	}
 
 	memset(knet_h->tap_to_links_buf, 0, KNET_DATABUFSIZE);
 
-	if ((knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE))== NULL)
+	if ((knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE))== NULL) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for link to tap buffer");
 		goto exit_fail3;
+	}
 
 	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
-	if ((knet_h->pingbuf = malloc(KNET_PINGBUFSIZE))== NULL)
+	if ((knet_h->pingbuf = malloc(KNET_PINGBUFSIZE))== NULL) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for hearbeat buffer");
 		goto exit_fail4;
+	}
 
 	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
 
-	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0)
+	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize locks");
 		goto exit_fail5;
+	}
 
 	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
 	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
@@ -93,13 +107,17 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0) ||
-	    (knet_h->dst_link_handler_epollfd < 0))
+	    (knet_h->dst_link_handler_epollfd < 0)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to create epoll(s) fd(s)");
 		goto exit_fail6;
+	}
 
 	if ((_fdset_cloexec(knet_h->tap_to_links_epollfd) != 0) ||
 	    (_fdset_cloexec(knet_h->recv_from_links_epollfd) != 0) ||
-	    (_fdset_cloexec(knet_h->dst_link_handler_epollfd) != 0))
+	    (_fdset_cloexec(knet_h->dst_link_handler_epollfd) != 0)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set epoll(s) fd(s) opt(s)");
 		goto exit_fail6;
+	}
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -107,8 +125,10 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	ev.data.fd = knet_h->sockfd;
 
 	if (epoll_ctl(knet_h->tap_to_links_epollfd,
-				EPOLL_CTL_ADD, knet_h->sockfd, &ev) != 0)
+				EPOLL_CTL_ADD, knet_h->sockfd, &ev) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add tapfd to epoll pool");
 		goto exit_fail6;
+	}
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -116,24 +136,34 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	ev.data.fd = knet_h->pipefd[0];
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
-				EPOLL_CTL_ADD, knet_h->pipefd[0], &ev) != 0)
+				EPOLL_CTL_ADD, knet_h->pipefd[0], &ev) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add pipefd to epoll pool");
 		goto exit_fail6;
+	}
 
 	if (pthread_create(&knet_h->dst_link_handler_thread, 0,
-				_handle_dst_link_handler_thread, (void *) knet_h) != 0)
+				_handle_dst_link_handler_thread, (void *) knet_h) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start switching manager thread");
 		goto exit_fail6;
+	}
 
 	if (pthread_create(&knet_h->tap_to_links_thread, 0,
-				_handle_tap_to_links_thread, (void *) knet_h) != 0)
+				_handle_tap_to_links_thread, (void *) knet_h) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start sending thread");
 		goto exit_fail7;
+	}
 
 	if (pthread_create(&knet_h->recv_from_links_thread, 0,
-				_handle_recv_from_links_thread, (void *) knet_h) != 0)
+				_handle_recv_from_links_thread, (void *) knet_h) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start receiving thread");
 		goto exit_fail8;
+	}
 
 	if (pthread_create(&knet_h->heartbt_thread, 0,
-				_handle_heartbt_thread, (void *) knet_h) != 0)
+				_handle_heartbt_thread, (void *) knet_h) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start heartbeat thread");
 		goto exit_fail9;
+	}
 
 	return knet_h;
 
@@ -178,31 +208,41 @@ int knet_handle_free(knet_handle_t knet_h)
 {
 	void *retval;
 
-	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL))
+	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to free handle: host(s) or listener(s) are still active");
 		goto exit_busy;
+	}
 
 	pthread_cancel(knet_h->heartbt_thread);
 	pthread_join(knet_h->heartbt_thread, &retval);
 
-	if (retval != PTHREAD_CANCELED)
+	if (retval != PTHREAD_CANCELED) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to stop heartbeat thread");
 		goto exit_busy;
+	}
 
 	pthread_cancel(knet_h->tap_to_links_thread);
 	pthread_join(knet_h->tap_to_links_thread, &retval);
-	if (retval != PTHREAD_CANCELED)
+	if (retval != PTHREAD_CANCELED) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to stop sending thread");
 		goto exit_busy;
+	}
 
 	pthread_cancel(knet_h->recv_from_links_thread);
 	pthread_join(knet_h->recv_from_links_thread, &retval);
 
-	if (retval != PTHREAD_CANCELED)
+	if (retval != PTHREAD_CANCELED) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to stop receiving thread");
 		goto exit_busy;
+	}
 
 	pthread_cancel(knet_h->dst_link_handler_thread);
 	pthread_join(knet_h->dst_link_handler_thread, &retval);
 
-	if (retval != PTHREAD_CANCELED)
+	if (retval != PTHREAD_CANCELED) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to stop switching manager thread");
 		goto exit_busy;
+	}
 
 	close(knet_h->tap_to_links_epollfd);
 	close(knet_h->recv_from_links_epollfd);
@@ -234,14 +274,17 @@ void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
 
 int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	if (knet_h->enabled)
+	if (knet_h->enabled) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Cannot enable crypto while forwarding is enabled");
 		return -1;
+	}
 
 	crypto_fini(knet_h);
 
 	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) || 
 	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
 	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "crypto is not enabled");
 		return 0;
 	}
 
@@ -261,6 +304,12 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 	lnk->connected = connected;
 
 	if (_dst_cache_update(knet_h, node_id)) {
+		log_debug(knet_h, KNET_SUB_LINK,
+			  "Unable to update link status (host: %s link: %s configured: %u connected: %u)",
+			  knet_h->host_index[node_id]->name,
+			  lnk->ipaddr,
+			  lnk->configured,
+			  lnk->connected);
 		lnk->configured = old_configured;
 		lnk->connected = old_connected;
 		return -1;
@@ -274,6 +323,8 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
 {
+	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is enabled",
+		  knet_h->host_index[node_id]->name, lnk->ipaddr);
 	return knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
 }
 
@@ -287,14 +338,25 @@ int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 	lnk->priority = priority;
 
 	if (_dst_cache_update(knet_h, node_id)) {
+		log_debug(knet_h, KNET_SUB_LINK,
+			  "Unable to update link priority (host: %s link: %s priority: %u)",
+			  knet_h->host_index[node_id]->name,
+			  lnk->ipaddr,
+			  lnk->priority);
 		lnk->priority = old_priority;
 		return -1;
 	}
 
+	log_debug(knet_h, KNET_SUB_LINK,
+		  "host: %s link: %s priority set to: %u",
+		  knet_h->host_index[node_id]->name,
+		  lnk->ipaddr,
+		  lnk->priority);
+
 	return 0;
 }
 
-void knet_link_timeout(struct knet_link *lnk,
+void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk,
 				time_t interval, time_t timeout, int precision)
 {
 	lnk->ping_interval = interval * 1000; /* microseconds */
@@ -302,6 +364,10 @@ void knet_link_timeout(struct knet_link *lnk,
 	lnk->latency_fix = precision;
 	lnk->latency_exp = precision - \
 				((lnk->ping_interval * precision) / 8000000);
+	log_debug(knet_h, KNET_SUB_LINK,
+		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
+		  knet_h->host_index[node_id]->name, lnk->ipaddr,
+		  lnk->ping_interval, lnk->pong_timeout, precision);
 }
 
 static void _handle_tap_to_links(knet_handle_t knet_h)
@@ -318,6 +384,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 					KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
 
 	if (inlen == 0) {
+		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");
 		/* TODO: disconnection, should never happen! */
 		return;
 	}
@@ -334,32 +401,41 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 				knet_h->tap_to_links_buf->kf_node,
 				dst_host_ids,
 				&dst_host_ids_entries);
-		if (bcast < 0)
+		if (bcast < 0) {
+			log_debug(knet_h, KNET_SUB_TAP_T, "Error from dst_host_filter_fn: %d", bcast);
 			return;
+		}
 
-		if ((!bcast) && (!dst_host_ids_entries))
+		if ((!bcast) && (!dst_host_ids_entries)) {
+			log_debug(knet_h, KNET_SUB_TAP_T, "Message is unicast but no dst_host_ids_entries");
 			return;
+		}
 	}
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get read lock");
 		return;
+	}
 
 	if (!bcast) {
 		int host_idx;
 
 		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
-			if (!dst_host)
+			if (!dst_host) {
+				log_debug(knet_h, KNET_SUB_TAP_T, "unicast packet, host not found");
 				continue;
+			}
 
 			knet_h->tap_to_links_buf->kf_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
 			if (knet_h->crypto_instance) {
-				if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+				if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->tap_to_links_buf,
 						    len,
 						    knet_h->tap_to_links_buf_crypt,
 						    &outlen) < 0) {
+					log_debug(knet_h, KNET_SUB_TAP_T, "Unable to encrypt unicast packet");
 					pthread_rwlock_unlock(&knet_h->list_rwlock);
 					return;
 				}
@@ -387,11 +463,12 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
 		if (knet_h->crypto_instance) {
-			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+			if (crypto_encrypt_and_sign(knet_h,
 					    (const unsigned char *)knet_h->tap_to_links_buf,
 					    len,
 					    knet_h->tap_to_links_buf_crypt,
 					    &outlen) < 0) {
+				log_debug(knet_h, KNET_SUB_TAP_T, "Unable to encrypt mcast/bcast packet");
 				pthread_rwlock_unlock(&knet_h->list_rwlock);
 				return;
 			}
@@ -434,32 +511,43 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	struct timespec recvtime;
 	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
 		return;
+	}
 
 	addrlen = sizeof(struct sockaddr_storage);
 	len = recvfrom(sockfd, knet_h->recv_from_links_buf, KNET_DATABUFSIZE,
 		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
 
 	if (knet_h->crypto_instance) {
-		if (crypto_authenticate_and_decrypt(knet_h->crypto_instance,
+		if (crypto_authenticate_and_decrypt(knet_h,
 						    (unsigned char *)knet_h->recv_from_links_buf,
-						    &len) < 0)
+						    &len) < 0) {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to decrypt/auth packet");
 			goto exit_unlock;
+		}
 	}
 
-	if (len < (KNET_FRAME_SIZE + 1))
+	if (len < (KNET_FRAME_SIZE + 1)) {
+		log_debug(knet_h, KNET_SUB_LINK_T, "Packet is too short");
 		goto exit_unlock;
+	}
 
-	if (ntohl(knet_h->recv_from_links_buf->kf_magic) != KNET_FRAME_MAGIC)
+	if (ntohl(knet_h->recv_from_links_buf->kf_magic) != KNET_FRAME_MAGIC) {
+		log_debug(knet_h, KNET_SUB_LINK_T, "Packet does not contain knet magic number");
 		goto exit_unlock;
+	}
 
-	if (knet_h->recv_from_links_buf->kf_version != KNET_FRAME_VERSION)
+	if (knet_h->recv_from_links_buf->kf_version != KNET_FRAME_VERSION) {
+		log_debug(knet_h, KNET_SUB_LINK_T, "Packet version does not match");
 		goto exit_unlock;
+	}
 
 	knet_h->recv_from_links_buf->kf_node = ntohs(knet_h->recv_from_links_buf->kf_node);
 	src_host = knet_h->host_index[knet_h->recv_from_links_buf->kf_node];
 	if (src_host == NULL) {  /* host not found */
+		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to find source host for this packet");
 		goto exit_unlock;
 	}
 
@@ -497,11 +585,15 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 					knet_h->recv_from_links_buf->kf_node,
 					dst_host_ids,
 					&dst_host_ids_entries);
-			if (bcast < 0)
+			if (bcast < 0) {
+				log_debug(knet_h, KNET_SUB_LINK_T, "Error from dst_host_filter_fn: %d", bcast);
 				goto exit_unlock;
+			}
 
-			if ((!bcast) && (!dst_host_ids_entries))
+			if ((!bcast) && (!dst_host_ids_entries)) {
+				log_debug(knet_h, KNET_SUB_LINK_T, "Message is unicast but no dst_host_ids_entries");
 				goto exit_unlock;
+			}
 
 			/* check if we are dst for this packet */
 			if (!bcast) {
@@ -511,18 +603,25 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 						break;
 					}
 				}
-				if (!found)
+				if (!found) {
+					log_debug(knet_h, KNET_SUB_LINK_T, "Packet is not for us");
 					goto exit_unlock;
+				}
 			}
 		}
 
-		if (!knet_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num))
+		if (!knet_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num)) {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
 			goto exit_unlock;
+		}
 
 		if (write(knet_h->sockfd,
 			  knet_h->recv_from_links_buf->kf_data,
-			  len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) == len - (KNET_FRAME_SIZE + sizeof(seq_num_t)))
+			  len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) == len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) {
 			knet_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
+		} else {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
+		}
 
 		break;
 	case KNET_FRAME_PING:
@@ -531,13 +630,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		knet_h->recv_from_links_buf->kf_node = htons(knet_h->node_id);
 
 		if (knet_h->crypto_instance) {
-			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->recv_from_links_buf,
 						    len,
 						    knet_h->recv_from_links_buf_crypt,
-						    &outlen) < 0)
+						    &outlen) < 0) {
+				log_debug(knet_h, KNET_SUB_LINK_T, "Unable to encrypt pong packet");
 				break;
-
+			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
@@ -561,6 +661,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (src_link->latency < src_link->pong_timeout) {
 			if (!src_link->connected) {
+				log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is up",
+					 src_host->name, src_link->ipaddr);
 				knet_link_updown(knet_h, src_host->node_id, src_link, src_link->configured, 1);
 			}
 		}
@@ -581,15 +683,21 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	int link_idx;
 	int best_priority = -1;
 
-	if (read(knet_h->pipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id))
+	if (read(knet_h->pipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
 		return;
+	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to get read lock");
 		return;
+	}
 
 	dst_host = knet_h->host_index[dst_host_id];
-	if (!dst_host)
+	if (!dst_host) {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host");
 		goto out_unlock;
+	}
 
 	dst_host->active_link_entries = 0;
 
@@ -613,8 +721,18 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 		}
 	}
 
+	if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s (passive) best link: %s (%u)",
+			  dst_host->name, dst_host->link[dst_host->active_links[0]].ipaddr,
+			  dst_host->link[dst_host->active_links[0]].priority);
+	} else {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s has %u active links",
+			  dst_host->name, dst_host->active_link_entries);
+	}
+
 	/* no active links, we can clean the circular buffers and indexes */
 	if (!dst_host->active_link_entries) {
+		log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active links", dst_host->name);
 		memset(dst_host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
 		memset(dst_host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
 		dst_host->bcast_seq_num_rx = 0;
@@ -638,8 +756,10 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	/* caching last pong to avoid race conditions */
 	pong_last = dst_link->pong_last;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0)
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
+		log_debug(knet_h, KNET_SUB_HB_T, "Unable to get monotonic clock");
 		return;
+	}
 
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
@@ -649,12 +769,14 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		knet_h->pingbuf->kf_dyn = dst_link->dynamic;
 
 		if (knet_h->crypto_instance) {
-			if (crypto_encrypt_and_sign(knet_h->crypto_instance,
+			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->pingbuf,
 						    KNET_PINGBUFSIZE,
 						    knet_h->pingbuf_crypt,
-						    &outlen) < 0)
+						    &outlen) < 0) {
+				log_debug(knet_h, KNET_SUB_HB_T, "Unable to crypto ping packet");
 				return;
+			}
 
 			outbuf = knet_h->pingbuf_crypt;
 		}
@@ -663,14 +785,19 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			MSG_DONTWAIT, (struct sockaddr *) &dst_link->address,
 			sizeof(struct sockaddr_storage));
 
-		if (len == outlen)
+		if (len == outlen) {
 			dst_link->ping_last = clock_now;
+		} else {
+			log_warn(knet_h, KNET_SUB_HB_T, "Unable to send ping packet");
+		}
 	}
 
 	if (dst_link->connected == 1) {
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
+			log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is down",
+				 dst_host->name, dst_link->ipaddr);
 			knet_link_updown(knet_h, dst_host->node_id, dst_link, dst_link->configured, 0);
 		}
 	}
@@ -693,8 +820,10 @@ static void *_handle_heartbt_thread(void *data)
 	while (1) {
 		usleep(KNET_PING_TIMERES);
 
-		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0)
+		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+			log_debug(knet_h, KNET_SUB_HB_T, "Unable to get read lock");
 			continue;
+		}
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {

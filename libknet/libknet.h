@@ -132,9 +132,10 @@ struct knet_frame {
 #define KNET_SUB_TAP_T       5 /* tap thread */
 #define KNET_SUB_LINK_T      6 /* link thread */
 #define KNET_SUB_SWITCH_T    7 /* switching thread */
-#define KNET_SUB_FILTER      8 /* (ether)filter errors */
-#define KNET_SUB_CRYPTO      9 /* crypto.c generic layer */
-#define KNET_SUB_NSSCRYPTO  10 /* nsscrypto.c */
+#define KNET_SUB_HB_T        8 /* heartbeat thread */
+#define KNET_SUB_FILTER      9 /* (ether)filter errors */
+#define KNET_SUB_CRYPTO     10 /* crypto.c generic layer */
+#define KNET_SUB_NSSCRYPTO  11 /* nsscrypto.c */
 #define KNET_SUB_LAST        KNET_SUB_NSSCRYPTO
 #define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
 
@@ -193,7 +194,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
 int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured);
-void knet_link_timeout(struct knet_link *lnk, time_t interval, time_t timeout, int precision);
+void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, time_t interval, time_t timeout, int precision);
 int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority);
 
 #define KNET_HOST_FOREACH_NEXT 0	/* next host */

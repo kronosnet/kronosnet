@@ -5,14 +5,7 @@
 
 #include "crypto.h"
 #include "nsscrypto.h"
-#include "libknet.h"
-
-#ifdef CRYPTO_DEBUG
-#include <stdio.h>
-#define log_printf(format, args...) fprintf(stderr, format "\n", ##args);
-#else
-#define log_printf(format, args...);
-#endif
+#include "libknet-private.h"
 
 /*
  * internal module switch data
@@ -40,28 +33,29 @@ static int get_model(const char *model)
  */
 
 int crypto_encrypt_and_sign (
-	struct crypto_instance *instance,
+	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return modules_cmds[instance->model].crypt(instance->model_instance,
-					  buf_in, buf_in_len, buf_out, buf_out_len);
+	return modules_cmds[knet_h->crypto_instance->model].crypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
-int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
+int crypto_authenticate_and_decrypt (
+	knet_handle_t knet_h,
 	unsigned char *buf,
 	ssize_t *buf_len)
 {
-	return modules_cmds[instance->model].decrypt(instance->model_instance, buf, buf_len);
+	return modules_cmds[knet_h->crypto_instance->model].decrypt(knet_h, buf, buf_len);
 }
 
 int crypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	log_printf("Initizializing crypto module [%s/%s/%s]",
+	log_debug(knet_h, KNET_SUB_CRYPTO,
+		  "Initizializing crypto module [%s/%s/%s]",
 		  knet_handle_crypto_cfg->crypto_model,
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
@@ -69,13 +63,13 @@ int crypto_init(
 	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
 
 	if (!knet_h->crypto_instance) {
-		log_printf("no memory from crypto");
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
 		return -1;
 	}
 
 	knet_h->crypto_instance->model = get_model(knet_handle_crypto_cfg->crypto_model);
 	if (knet_h->crypto_instance->model < 0) {
-		log_printf("model %s not supported", knet_handle_crypto_cfg->crypto_model);
+		log_err(knet_h, KNET_SUB_CRYPTO, "model %s not supported", knet_handle_crypto_cfg->crypto_model);
 		goto out_err;
 	}
 

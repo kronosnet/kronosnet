@@ -20,6 +20,9 @@ int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int
 	if (head)
 		*head = (ret == 0) ? knet_h->listener_head : NULL;
 
+	if (ret)
+		log_debug(knet_h, KNET_SUB_LISTENER, "listener_acquire: Unable to acquire lock (%d)", writelock);
+
 	return ret;
 }
 
@@ -36,8 +39,10 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 
 	listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
 
-	if (listener->sock < 0)
+	if (listener->sock < 0) {
+		log_err(knet_h, KNET_SUB_LISTENER, "Unable to create listener socket");
 		return listener->sock;
+	}
 
 	value = KNET_RING_RCVBUFF;
 	setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
@@ -49,12 +54,14 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	}
 
 	if (_fdset_cloexec(listener->sock) != 0) {
+		log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener socket opts");
 		save_errno = errno;
 		goto exit_fail1;
 	}
 
 	if (bind(listener->sock, (struct sockaddr *) &listener->address,
 					sizeof(struct sockaddr_storage)) != 0) {
+		log_err(knet_h, KNET_SUB_LISTENER, "Unable to bind listener socket");
 		save_errno = errno;
 		goto exit_fail1;
 	}
@@ -65,11 +72,13 @@ int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener)
 	ev.data.fd = listener->sock;
 
 	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, listener->sock, &ev) != 0) {
+		log_err(knet_h, KNET_SUB_LISTENER, "Unable to add listener to epoll pool");
 		save_errno = errno;
 		goto exit_fail1;
 	}
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		log_err(knet_h, KNET_SUB_LISTENER, "listener_add: Unable to get write lock");
 		save_errno = errno;
 		goto exit_fail2;
 	}
@@ -98,8 +107,10 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 	struct knet_host *host;
 	struct knet_listener *tmp_listener;
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0)
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		log_err(knet_h, KNET_SUB_LISTENER, "listener_remove: Unable to get write lock");
 		return -EINVAL;
+	}
 
 	ret = 0;
 
@@ -110,6 +121,7 @@ int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener)
 				continue;
 
 			if (host->link[link_idx].sock == listener->sock) {
+				log_err(knet_h, KNET_SUB_LISTENER, "listener_remove: listener in use");
 				ret = -EBUSY;
 				goto exit_fail1;
 			}

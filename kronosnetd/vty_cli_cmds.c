@@ -805,6 +805,8 @@ static int knet_cmd_link_dyn(struct knet_vty *vty)
 
 static int knet_cmd_link_timer(struct knet_vty *vty)
 {
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	struct knet_host *host = (struct knet_host *)vty->host;
 	struct knet_link *klink = (struct knet_link *)vty->link;
 	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
@@ -816,7 +818,7 @@ static int knet_cmd_link_timer(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	holdtime = param_to_int(param, paramlen);
 
-	knet_link_timeout(klink, keepalive, holdtime, 2048);
+	knet_link_timeout(knet_iface->cfg_ring.knet_h, host->node_id, klink, keepalive, holdtime, 2048);
 
 	return 0;
 }
@@ -928,7 +930,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 			klink->sock = host->listener4->sock;
 		}
 
-		knet_link_timeout(klink, 1000, 5000, 2048);
+		knet_link_timeout(knet_iface->cfg_ring.knet_h, host->node_id, klink, 1000, 5000, 2048);
 
 		knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, klink, 1);
 	}

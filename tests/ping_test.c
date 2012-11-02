@@ -130,6 +130,8 @@ static void argv_to_hosts(int argc, char *argv[])
 	for (i = 2; i < argc; i++) {
 		if (!strncmp(argv[i], "crypto", 6))
 			continue;
+		if (!strncmp(argv[i], "debug", 5))
+			continue;
 
 		if (knet_host_add(knet_h, i - 1) != 0) {
 			printf("Unable to add new knet_host\n");
@@ -141,7 +143,7 @@ static void argv_to_hosts(int argc, char *argv[])
 		host->link[0].sock = listener->sock;
 		host->link[0].address.ss_family = AF_INET;
 
-		knet_link_timeout(&host->link[0], 1000, 5000, 2048);
+		knet_link_timeout(knet_h, host->node_id, &host->link[0], 1000, 5000, 2048);
 
 		knet_link_enable(knet_h, host->node_id, &host->link[0], 1);
 
