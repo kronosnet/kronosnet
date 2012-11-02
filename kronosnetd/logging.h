@@ -5,6 +5,8 @@
 
 #define log_debug(fmt, args...) qb_log(LOG_DEBUG, "(%s:%i|%s): " fmt, __FILE__, __LINE__, __FUNCTION__, ##args);
 
+#define log_kdebug(fmt, args...) qb_log(LOG_DEBUG, fmt, ##args);
+
 #define log_info(fmt, args...) qb_log(LOG_INFO, fmt, ##args);
 
 #define log_warn(fmt, args...) qb_log(LOG_WARNING, fmt, ##args);

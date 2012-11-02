@@ -333,7 +333,7 @@ int knet_vty_main_loop(int debug)
 					log_info("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
 					break;
 				case KNET_LOG_DEBUG:
-					log_debug("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					log_kdebug("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
 					break;
 				case KNET_LOG_ERR:
 				default:
