@@ -28,9 +28,25 @@ pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 int knet_vty_config = -1;
 struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
+static int _fdset_cloexec(int fd)
+{
+	int fdflags;
+
+	fdflags = fcntl(fd, F_GETFD, 0);
+	if (fdflags < 0)
+		return -1;
+
+	fdflags |= FD_CLOEXEC;
+
+	if (fcntl(fd, F_SETFD, fdflags) < 0)
+		return -1;
+
+	return 0;
+}
+
 static int knet_vty_init_listener(const char *ip_addr, const char *port)
 {
-	int sockfd = -1, sockopt = 1, sockflags = -1;
+	int sockfd = -1, sockopt = 1;
 	int socktype = SOCK_STREAM;
 	int err = 0;
 	struct sockaddr_storage ss;
@@ -62,13 +78,7 @@ static int knet_vty_init_listener(const char *ip_addr, const char *port)
 	if (err)
 		goto out_clean;
 
-	sockflags = fcntl(sockfd, F_GETFD, 0);
-	if (sockflags < 0) {
-		err = -1;
-		goto out_clean;
-	}
-	sockflags |= FD_CLOEXEC;
-	if (fcntl(sockfd, F_SETFD, sockflags) < 0) {
+	if (_fdset_cloexec(sockfd)) {
 		err = -1;
 		goto out_clean;
 	}
@@ -188,12 +198,12 @@ out_clean:
 /*
  * mainloop is not thread safe as there should only be one
  */
-int knet_vty_main_loop(void)
+int knet_vty_main_loop(int debug)
 {
+	int logfd[2];
 	int vty_listener6_fd;
 	int vty_listener4_fd;
 	int vty_listener_fd;
-	int max_fd;
 	int vty_accept_fd;
 	struct sockaddr_storage incoming_sa;
 	socklen_t salen;
@@ -207,7 +217,27 @@ int knet_vty_main_loop(void)
 	signal(SIGINT, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
+	if (pipe(logfd)) {
+		log_error("Unable to create logging pipe");
+		return -1;
+	}
+
+	if ((_fdset_cloexec(logfd[0])) ||
+	    (_fdset_cloexec(logfd[1]))) {
+		log_error("Unable to set FD_CLOEXEC on logfd pipe");
+		return -1;
+	}
+
 	memset(&knet_vtys, 0, sizeof(knet_vtys));
+
+	for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
+		knet_vtys[conn_index].logfd = logfd[1];
+		if (debug) {
+			knet_vtys[conn_index].loglevel = KNET_LOG_DEBUG;
+		} else {
+			knet_vtys[conn_index].loglevel = KNET_LOG_INFO;
+		}
+	}
 
 	if (knet_read_conf() < 0) {
 		log_error("Unable to read config file %s", knet_cfg_head.conffile);
@@ -221,8 +251,6 @@ int knet_vty_main_loop(void)
 		return -1;
 	}
 
-	max_fd = vty_listener6_fd;
-
 	vty_listener4_fd = knet_vty_init_listener(knet_cfg_head.vty_ipv4,
 						  knet_cfg_head.vty_port);
 
@@ -231,18 +259,16 @@ int knet_vty_main_loop(void)
 		goto out;
 	}
 
-	if (vty_listener4_fd > vty_listener6_fd)
-		max_fd = vty_listener4_fd;
-
 	while (se_result >= 0 && !daemon_quit) {
 		FD_ZERO (&rfds);
 		FD_SET (vty_listener6_fd, &rfds);
 		FD_SET (vty_listener4_fd, &rfds);
+		FD_SET (logfd[0], &rfds);
 
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
-		se_result = select((max_fd + 1), &rfds, 0, 0, &tv);
+		se_result = select(FD_SETSIZE, &rfds, 0, 0, &tv);
 
 		if ((se_result == -1) && (daemon_quit)) {
 			log_info("Got a SIGTERM, requesting CLI threads to exit");	
@@ -285,6 +311,35 @@ int knet_vty_main_loop(void)
 			vty_listener_fd = vty_listener6_fd;
 		} else if (FD_ISSET(vty_listener4_fd, &rfds)) {
 			vty_listener_fd = vty_listener4_fd;
+		} else if (FD_ISSET(logfd[0], &rfds))  {
+			struct knet_log_msg msg;
+			size_t bytes_read = 0;
+			size_t len;
+
+			while (bytes_read < sizeof(struct knet_log_msg)) {
+				len = read(logfd[0], &msg + bytes_read,
+					   sizeof(struct knet_log_msg) - bytes_read);
+				if (len <= 0) {
+					break;
+				}
+				bytes_read += len;
+			}
+
+			switch(msg.msglevel) {
+				case KNET_LOG_WARN:
+					log_warn("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					break;
+				case KNET_LOG_INFO:
+					log_info("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					break;
+				case KNET_LOG_DEBUG:
+					log_debug("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					break;
+				case KNET_LOG_ERR:
+				default:
+					log_error("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+			}
+			continue;
 		} else {
 			continue;
 		}
@@ -328,6 +383,12 @@ int knet_vty_main_loop(void)
 		memcpy(&knet_vtys[conn_index].src_sa, &incoming_sa, salen);
 		knet_vtys[conn_index].src_sa_len = salen;
 		knet_vtys[conn_index].active = 1;
+		knet_vtys[conn_index].logfd = logfd[1];
+		if (debug) {
+			knet_vtys[conn_index].loglevel = KNET_LOG_DEBUG;
+		} else {
+			knet_vtys[conn_index].loglevel = KNET_LOG_INFO;
+		}
 
 		err = pthread_create(&knet_vtys[conn_index].vty_thread,
 				     NULL, vty_accept_thread,
@@ -345,6 +406,8 @@ int knet_vty_main_loop(void)
 out:
 	knet_vty_close_listener(vty_listener6_fd);
 	knet_vty_close_listener(vty_listener4_fd);
+	close(logfd[0]);
+	close(logfd[1]);
 
 	// reverse running config to close/release resources;
 

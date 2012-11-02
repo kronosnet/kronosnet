@@ -40,6 +40,8 @@ struct knet_vty {
 	int			node;		/* node number of the menus */
 	void			*param;		/* pointer to cmd param */
 	int			paramoffset;	/* required if param is set */
+	int			logfd;		/* fd to pass to iface create */
+	int			loglevel;	/* loglevel (debug, etc) */
 	void			*iface;		/* pointer to iface we are working on */
 	void			*host;		/* pointer to peer/host we are working on */
 	void			*link;		/* pointer to link we are working on */
@@ -51,6 +53,6 @@ extern int knet_vty_config;
 
 extern struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 
-int knet_vty_main_loop(void);
+int knet_vty_main_loop(int debug);
 
 #endif

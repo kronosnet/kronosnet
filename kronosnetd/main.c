@@ -315,7 +315,7 @@ int main(int argc, char **argv)
 	if (err < 0)
 		goto out;
 
-	err = knet_vty_main_loop();
+	err = knet_vty_main_loop(debug);
 	if (err < 0)
 		log_error("Detected fatal error in main loop");
 
