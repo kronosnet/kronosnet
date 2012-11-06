@@ -80,7 +80,6 @@ union knet_frame_data {
 } __attribute__((packed));
 
 struct knet_frame {
-	uint32_t 		kf_magic;
 	uint8_t			kf_version;
 	uint8_t			kf_type;
 	uint16_t		kf_node;
@@ -95,7 +94,6 @@ struct knet_frame {
 
 #define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
 
-#define KNET_FRAME_MAGIC 0x12344321
 #define KNET_FRAME_VERSION 0x01
 
 #define KNET_FRAME_DATA 0x00

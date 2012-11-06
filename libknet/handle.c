@@ -551,11 +551,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		goto exit_unlock;
 	}
 
-	if (ntohl(knet_h->recv_from_links_buf->kf_magic) != KNET_FRAME_MAGIC) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Packet does not contain knet magic number");
-		goto exit_unlock;
-	}
-
 	if (knet_h->recv_from_links_buf->kf_version != KNET_FRAME_VERSION) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Packet version does not match");
 		goto exit_unlock;
@@ -824,7 +819,6 @@ static void *_handle_heartbt_thread(void *data)
 	int link_idx;
 
 	/* preparing ping buffer */
-	knet_h->pingbuf->kf_magic = htonl(KNET_FRAME_MAGIC);
 	knet_h->pingbuf->kf_version = KNET_FRAME_VERSION;
 	knet_h->pingbuf->kf_type = KNET_FRAME_PING;
 	knet_h->pingbuf->kf_node = htons(knet_h->node_id);
@@ -859,7 +853,6 @@ static void *_handle_tap_to_links_thread(void *data)
 	struct epoll_event events[KNET_MAX_EVENTS];
 
 	/* preparing data buffer */
-	knet_h->tap_to_links_buf->kf_magic = htonl(KNET_FRAME_MAGIC);
 	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
 	knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
 	knet_h->tap_to_links_buf->kf_node = htons(knet_h->node_id);
