@@ -821,6 +821,9 @@ static int knet_cmd_link_dyn(struct knet_vty *vty)
 	int paramlen = 0, paramoffset = 0, dyn;
 	char *param = NULL;
 
+	if (klink->dynamic == KNET_LINK_DYN_DST)
+		return 0;
+
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	dyn = param_to_int(param, paramlen);
 
