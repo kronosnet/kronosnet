@@ -19,6 +19,12 @@ do { \
 		*(diff) = end.tv_nsec - start.tv_nsec; \
 } while (0);
 
+struct knet_listener {
+	int sock;
+	struct sockaddr_storage address;
+	struct knet_listener *next;
+};
+
 struct knet_handle {
 	uint16_t node_id;
 	unsigned int enabled:1;
@@ -58,8 +64,11 @@ struct knet_handle {
 int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);
 int _dst_cache_update(knet_handle_t knet_h, uint16_t node_id);
-int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
-void knet_has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
+int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
+void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
+
+int _listener_add(knet_handle_t knet_h, struct knet_link *lnk);
+int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk);
 
 void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	     const char *fmt, ...) __attribute__((format(printf, 4, 5)));;

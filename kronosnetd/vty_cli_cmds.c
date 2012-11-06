@@ -36,10 +36,11 @@
 #define CMDS_PARAM_CRYPTO_TYPE  11
 #define CMDS_PARAM_HASH_TYPE    12
 #define CMDS_PARAM_POLICY       13
-#define CMDS_PARAM_LINK_PRI     14
-#define CMDS_PARAM_LINK_KEEPAL  15
-#define CMDS_PARAM_LINK_HOLDTI  16
-#define CMDS_PARAM_LINK_DYN     17
+#define CMDS_PARAM_LINK_ID      14
+#define CMDS_PARAM_LINK_PRI     15
+#define CMDS_PARAM_LINK_KEEPAL  16
+#define CMDS_PARAM_LINK_HOLDTI  17
+#define CMDS_PARAM_LINK_DYN     18
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -283,6 +284,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			knet_vty_write(vty, "unknown switching policy: %s. Supported passive/active/round-robin%s", param, telnet_newline);
 			err = -1;
 			break;
+		case CMDS_PARAM_LINK_ID:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 0) || (tmp > 7)) {
+				knet_vty_write(vty, "link id should be a value between 0 and 7%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		case CMDS_PARAM_LINK_PRI:
 			tmp = param_to_int(param, paramlen);
 			if ((tmp < 0) || (tmp > 255)) {
@@ -359,6 +367,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_POLICY:
 			knet_vty_write(vty, "POLICY - define packets switching policy: passive/active/round-robin%s", telnet_newline);
+			break;
+		case CMDS_PARAM_LINK_ID:
+			knet_vty_write(vty, "LINKID - specify the link identification number (0-7)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_LINK_PRI:
 			knet_vty_write(vty, "PRIORITY - specify the link priority for passive switching (0 to 255, default is 0). The higher value is preferred over lower value%s", telnet_newline);
@@ -709,7 +720,14 @@ vty_node_cmds_t interface_cmds[] = {
 
 /* peer node description */
 
+vty_param_t nolink_params[] = {
+	{ CMDS_PARAM_LINK_ID },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_param_t link_params[] = {
+	{ CMDS_PARAM_LINK_ID },
+	{ CMDS_PARAM_IP },
 	{ CMDS_PARAM_IP },
 	{ CMDS_PARAM_NOMORE },
 };
@@ -720,7 +738,7 @@ vty_param_t switch_params[] = {
 };
 
 vty_node_cmds_t no_peer_cmds[] = {
-	{ "link", "remove peer endpoint", link_params, knet_cmd_no_link},
+	{ "link", "remove peer endpoint", nolink_params, knet_cmd_no_link},
 	{ NULL, NULL, NULL, NULL },
 };
 
@@ -847,32 +865,21 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	struct knet_host *host = (struct knet_host *)vty->host;
-	int j, paramlen = 0, paramoffset = 0, found = 0;
+	struct knet_link *klink = NULL;
+	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
-	char ipaddr[KNET_MAX_HOST_LEN], port[6];
+	int link_id;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
-	param_to_str(ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
+	link_id = param_to_int(param, paramlen);
 
-	memset(port, 0, sizeof(port));
-	snprintf(port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+	klink = &host->link[link_id];
 
-	for (j = 0; j < KNET_MAX_LINK; j++) {
-		if (!strcmp(host->link[j].ipaddr, ipaddr)
-					&& !strcmp(host->link[j].port, port)) {
-			found = 1;
-			break;
+	if (klink->configured) {
+		if (knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, klink, 0)) {
+			knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
+			return -1;
 		}
-	}
-
-	if (!found) {
-		knet_vty_write(vty, "Error: unable to find link%s", telnet_newline);
-		return -1;
-	}
-
-	if (knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[j], 0)) {
-		knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
-		return -1;
 	}
 
 	return 0;
@@ -883,51 +890,50 @@ static int knet_cmd_link(struct knet_vty *vty)
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	struct knet_host *host = (struct knet_host *)vty->host;
 	struct knet_link *klink = NULL;
-	int j, paramlen = 0, paramoffset = 0, err = 0, found = 0;
+	int paramlen = 0, paramoffset = 0, err = 0;
 	char *param = NULL;
-	char ipaddr[KNET_MAX_HOST_LEN], port[6];
+	int link_id;
+	char src_ipaddr[KNET_MAX_HOST_LEN], src_port[6], dst_ipaddr[KNET_MAX_HOST_LEN], dst_port[6];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
-	param_to_str(ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
+	link_id = param_to_int(param, paramlen);
 
-	memset(port, 0, sizeof(port));
-	snprintf(port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+	get_param(vty, 2, &param, &paramlen, &paramoffset);
+	param_to_str(src_ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
 
-	for (j = 0; j < KNET_MAX_LINK; j++) {
-		if ((klink == NULL) && (host->link[j].configured == 0)) {
-			klink = &host->link[j];
+	memset(src_port, 0, sizeof(src_port));
+	snprintf(src_port, 6, "%d", knet_iface->cfg_ring.base_port + host->node_id);
+
+	get_param(vty, 3, &param, &paramlen, &paramoffset);
+	param_to_str(dst_ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
+
+	memset(dst_port, 0, sizeof(dst_port));
+	snprintf(dst_port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+
+	klink = &host->link[link_id];
+	if (!klink->configured) {
+		memset(klink, 0, sizeof(struct knet_link));
+		klink->link_id = link_id;
+
+		memcpy(klink->src_ipaddr, src_ipaddr, strlen(src_ipaddr));
+		memcpy(klink->src_port, src_port, strlen(src_port));
+		memcpy(klink->dst_ipaddr, dst_ipaddr, strlen(dst_ipaddr));
+		memcpy(klink->dst_port, dst_port, strlen(dst_port));
+
+		if (strtoaddr(klink->src_ipaddr, klink->src_port, (struct sockaddr *)&klink->src_addr, sizeof(klink->src_addr)) != 0) {
+			knet_vty_write(vty, "Error: unable to convert source ip addr to sockaddr!%s", telnet_newline);
+			err = -1;
+			goto out_clean;
 		}
-		if (!strcmp(host->link[j].ipaddr, ipaddr)
-					&& !strcmp(host->link[j].port, port)) {
-			klink = &host->link[j];
-			found = 1;
-			break;
-		}
-	}
 
-	if (!found) {
-		if (!klink) {
-			knet_vty_write(vty, "Error: all links are in use!%s", telnet_newline);
-			return -1;
-		}
-
-		memcpy(klink->ipaddr, ipaddr, strlen(ipaddr));
-		memcpy(klink->port, port, strlen(port));
-
-		if (!strncmp(ipaddr, "dynamic", 7)) {
+		if (!strncmp(dst_ipaddr, "dynamic", 7)) {
 			klink->dynamic = KNET_LINK_DYN_DST;
 		} else {
-			if (strtoaddr(klink->ipaddr, klink->port, (struct sockaddr *)&klink->address, sizeof(klink->address)) != 0) {
-				knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
+			if (strtoaddr(klink->dst_ipaddr, klink->dst_port, (struct sockaddr *)&klink->dst_addr, sizeof(klink->dst_addr)) != 0) {
+				knet_vty_write(vty, "Error: unable to convert destination ip addr to sockaddr!%s", telnet_newline);
 				err = -1;
 				goto out_clean;
 			}
-		}
-
-		if (klink->address.ss_family == AF_INET6) {
-			klink->sock = host->listener6->sock;
-		} else {
-			klink->sock = host->listener4->sock;
 		}
 
 		knet_link_timeout(knet_iface->cfg_ring.knet_h, host->node_id, klink, 1000, 5000, 2048);
@@ -1044,22 +1050,6 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 		goto out_clean;
 	}
 
-	if (host->listener6) {
-		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener6) == -EBUSY) {
-			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-	}
-
-	if (host->listener4) {
-		if (knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener4) == -EBUSY) {
-			knet_vty_write(vty, "Error: unable to remove listener from current peer%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-	}
-
 	if (knet_host_remove(knet_iface->cfg_ring.knet_h, requested_node_id) < 0) {
 		knet_vty_write(vty, "Error: unable to remove peer from current config%s", telnet_newline);
 		err = -1;
@@ -1076,8 +1066,6 @@ static int knet_cmd_peer(struct knet_vty *vty)
 	int paramlen = 0, paramoffset = 0, requested_node_id = 0, err = 0;
 	char *param = NULL;
 	struct knet_host *host, *temp = NULL;
-	struct knet_listener *listener6 = NULL;
-	struct knet_listener *listener4 = NULL;
 	char nodename[KNET_MAX_HOST_LEN];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
@@ -1107,48 +1095,6 @@ static int knet_cmd_peer(struct knet_vty *vty)
 		memcpy(host->name, nodename, strlen(nodename));
 
 		knet_host_set_policy(knet_iface->cfg_ring.knet_h, requested_node_id, KNET_LINK_POLICY_PASSIVE);
-
-		listener6 = malloc(sizeof(struct knet_listener));
-		if (!listener6) {
-			knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-		memset(listener6, 0, sizeof(struct knet_listener));
-		snprintf(listener6->ipaddr, KNET_MAX_HOST_LEN, "::");
-		snprintf(listener6->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
-		if (strtoaddr(listener6->ipaddr, listener6->port, (struct sockaddr *)&listener6->address, sizeof(listener6->address)) != 0) {
-			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener6) != 0) {
-			knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-		host->listener6 = listener6;
-
-		listener4 = malloc(sizeof(struct knet_listener));
-		if (!listener4) {
-			knet_vty_write(vty, "Error: unable to allocate memory for listener struct!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-		memset(listener4, 0, sizeof(struct knet_listener));
-		snprintf(listener4->ipaddr, KNET_MAX_HOST_LEN, "0.0.0.0");
-		snprintf(listener4->port, 6, "%d", knet_iface->cfg_ring.base_port + requested_node_id);
-		if (strtoaddr(listener4->ipaddr, listener4->port, (struct sockaddr *)&listener4->address, sizeof(listener4->address)) != 0) {
-			knet_vty_write(vty, "Error: unable to convert ip addr to sockaddr!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-		if (knet_listener_add(knet_iface->cfg_ring.knet_h, listener4) != 0) {
-			knet_vty_write(vty, "Error: unable to start listener!%s", telnet_newline);
-			err = -1;
-			goto out_clean;
-		}
-		host->listener4 = listener4;
 	}
 
 	vty->host = (void *)host;
@@ -1156,10 +1102,6 @@ static int knet_cmd_peer(struct knet_vty *vty)
 
 out_clean:
 	if (err < 0) {
-		if (listener6)
-			free(listener6);
-		if (listener4)
-			free(listener4);
 		if (host)
 			knet_host_remove(knet_iface->cfg_ring.knet_h, host->node_id);
 	}
@@ -1171,7 +1113,7 @@ static int active_listeners(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	struct knet_host *head = NULL;
-	int listeners = 0;
+	int listeners = 0, j = 0;
 
 	if (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head)) {
 		knet_vty_write(vty, "Error: unable to acquire lock on peer list!%s", telnet_newline);
@@ -1179,10 +1121,11 @@ static int active_listeners(struct knet_vty *vty)
 	}
 
 	while (head != NULL) {
-		if (head->listener6)
-			listeners++;
-		if (head->listener4)
-			listeners++;
+		for (j = 0; j < KNET_MAX_LINK; j++) {
+			if (head->link[j].configured) {
+				listeners++;
+			}
+		}
 		head = head->next;
 	}
 
@@ -1511,9 +1454,6 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		for (i = 0; i < KNET_MAX_LINK; i++)
 			knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[i], 0);
 
-		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener6);
-		knet_listener_remove(knet_iface->cfg_ring.knet_h, host->listener4);
-
 		while (knet_host_remove(knet_iface->cfg_ring.knet_h, host->node_id) != 0) {
 			log_error("CLI ERROR: unable to release peer.. will retry in 1 sec");
 			sleep (1);
@@ -1680,7 +1620,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 			}
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].configured == 1) {
-					knet_vty_write(vty, "    link %s (connected: %d)%s", host->link[i].ipaddr, host->link[i].connected, nl);
+					knet_vty_write(vty, "    link %s %s (connected: %d)%s", host->link[i].src_ipaddr, host->link[i].dst_ipaddr, host->link[i].connected, nl);
 					if (host->link[i].connected) {
 						knet_vty_write(vty, "      average latency: %llu us%s", host->link[i].latency, nl);
 						if ((host->link[i].dynamic == KNET_LINK_DYN_DST) &&
@@ -1688,7 +1628,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 							char *src_ip[2];
 
 							src_ip[0] = NULL;
-							if (addrtostr((struct sockaddr *)&host->link[i].address,
+							if (addrtostr((struct sockaddr *)&host->link[i].dst_addr,
 								      sizeof(struct sockaddr_storage), src_ip)) {
 								knet_vty_write(vty, "      source ip: unknown%s", nl);
 							} else {
@@ -1780,7 +1720,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			}
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				if (host->link[i].configured == 1) {
-					knet_vty_write(vty, "   link %s%s", host->link[i].ipaddr, nl);
+					knet_vty_write(vty, "   link %d %s %s%s", i, host->link[i].src_ipaddr , host->link[i].dst_ipaddr, nl);
 					if (host->link[i].dynamic != KNET_LINK_DYN_DST)
 						knet_vty_write(vty, "    dynamic %u%s", host->link[i].dynamic, nl);
 					knet_vty_write(vty, "    timers %llu %llu%s", host->link[i].ping_interval / 1000, host->link[i].pong_timeout / 1000, nl);

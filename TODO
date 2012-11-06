@@ -15,8 +15,11 @@ Fix mac generation for different interfaces or there will be collision on same b
 
 check why RR and ACTIVE don't work with dynamic ip links
 
-check again dynamic ip/link selection string management (need a memset on name/ip)
-and why udp appears to be stopping when IP changes
+need bind to interface for dynamic ip local interfaces vs src ip address or
+find a way to autodetect the new ip on that interface
+
+fix case where knetd restart is faster than link timeout, leads to packet loss due to
+cbuf counters not being cleared fast enough.
 
 CLI timeout configurable
 

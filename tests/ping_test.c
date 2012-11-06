@@ -15,6 +15,8 @@ static knet_handle_t knet_h;
 static struct knet_handle_cfg knet_handle_cfg;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 static uint8_t loglevel = KNET_LOG_INFO;
+static char *src_host = NULL;
+static char *src_port = NULL;
 
 static in_port_t tok_inport(char *str)
 {
@@ -31,7 +33,13 @@ static int tok_inaddrport(char *str, struct sockaddr_in *addr)
 	char *strhost, *strport, *tmp = NULL;
 
 	strhost = strtok_r(str, ":", &tmp);
+	if (!src_host)
+		src_host = strdup(strhost);
 	strport = strtok_r(NULL, ":", &tmp);
+	if (!src_port)
+		src_port = strdup(strport);
+
+	addr->sin_family = AF_INET;
 
 	if (strport == NULL)
 		addr->sin_port = htons(KNET_RING_DEFPORT);
@@ -97,35 +105,8 @@ static int set_crypto(int argc, char *argv[])
 static void argv_to_hosts(int argc, char *argv[])
 {
 	int err, i;
-	struct sockaddr_in *address;
 	struct knet_host *host;
-	struct knet_listener *listener;
-
-	listener = malloc(sizeof(struct knet_listener));
-
-	if (listener == NULL) {
-		printf("Unable to create listener\n");
-		exit(EXIT_FAILURE);
-	}
-
-	memset(listener, 0, sizeof(struct knet_listener));
-
-	address = (struct sockaddr_in *) &listener->address;
-
-	address->sin_family = AF_INET;
-	err = tok_inaddrport(argv[1], address);
-
-	if (err < 0) {
-		printf("Unable to convert ip address: %s\n", argv[1]);
-		exit(EXIT_FAILURE);
-	}
-
-	err = knet_listener_add(knet_h, listener);
-
-	if (err != 0) {
-		printf("Unable to start knet listener\n");
-		exit(EXIT_FAILURE);
-	}
+	struct knet_host *tmp_host;
 
 	for (i = 2; i < argc; i++) {
 		if (!strncmp(argv[i], "crypto", 6))
@@ -138,24 +119,26 @@ static void argv_to_hosts(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		knet_host_get(knet_h, i - 1, &host);
+		knet_host_get(knet_h, i - 1, &tmp_host);
+		host = tmp_host;
+		knet_host_release(knet_h, &tmp_host);
 
-		host->link[0].sock = listener->sock;
-		host->link[0].address.ss_family = AF_INET;
-
-		knet_link_timeout(knet_h, host->node_id, &host->link[0], 1000, 5000, 2048);
-
-		knet_link_enable(knet_h, host->node_id, &host->link[0], 1);
-
+		err = tok_inaddrport(argv[1], (struct sockaddr_in *) &host->link[0].src_addr);
+		if (err < 0) {
+			printf("Unable to convert ip address: %s", argv[i]);
+			exit(EXIT_FAILURE);
+		}
+		strncpy(host->link[0].src_ipaddr, src_host, KNET_MAX_HOST_LEN - 1);
+		strncpy(host->link[0].src_port, src_port, 5);
 		err = tok_inaddrport(argv[i],
-				(struct sockaddr_in *) &host->link[0].address);
-
+				(struct sockaddr_in *) &host->link[0].dst_addr);
 		if (err < 0) {
 			printf("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
 
-		knet_host_release(knet_h, &host);
+		knet_link_timeout(knet_h, host->node_id, &host->link[0], 1000, 5000, 2048);
+		knet_link_enable(knet_h, host->node_id, &host->link[0], 1);
 	}
 }
 

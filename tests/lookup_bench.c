@@ -32,14 +32,14 @@ int main(int argc, char *argv[])
 	address.sin_port = htons(KNET_PORT);
 	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	memmove(&head->address, &address, sizeof(address));
+	memmove(&head->dst_addr, &address, sizeof(address));
 
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &bench_start);
 
 	for (i = 0; i < KNET_BENCH_LOOPNUM; i++) {
 		cmpaddr((struct sockaddr_storage *) &address, sizeof(address),
-			(struct sockaddr_storage *) &head->address,
-							sizeof(head->address));
+			(struct sockaddr_storage *) &head->dst_addr,
+							sizeof(head->dst_addr));
 	}
 
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &bench_end);

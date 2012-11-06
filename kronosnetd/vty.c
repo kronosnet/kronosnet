@@ -325,6 +325,9 @@ int knet_vty_main_loop(int debug)
 				bytes_read += len;
 			}
 
+			if (bytes_read != sizeof(struct knet_log_msg))
+				continue;
+
 			switch(msg.msglevel) {
 				case KNET_LOG_WARN:
 					log_warn("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);

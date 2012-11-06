@@ -27,10 +27,13 @@ typedef uint16_t seq_num_t;
 
 struct knet_link {
 	uint8_t link_id;
-	int sock;
-	char ipaddr[KNET_MAX_HOST_LEN];
-	char port[6];
-	struct sockaddr_storage address;
+	int listener_sock;
+	char src_ipaddr[KNET_MAX_HOST_LEN];
+	char src_port[6];
+	struct sockaddr_storage src_addr;
+	char dst_ipaddr[KNET_MAX_HOST_LEN];
+	char dst_port[6];
+	struct sockaddr_storage dst_addr;
 	unsigned int configured:1; /* link is configured and ready to be used */
 	unsigned int connected:1;	/* link is enabled for data */
 	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
@@ -57,21 +60,11 @@ struct knet_host {
 	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
 	seq_num_t ucast_seq_num_tx;
 	seq_num_t ucast_seq_num_rx;
-	struct knet_listener *listener6;
-	struct knet_listener *listener4;
 	struct knet_link link[KNET_MAX_LINK];
 	uint8_t active_link_entries;
 	uint8_t active_links[KNET_MAX_LINK];
 	uint8_t link_handler_policy;
 	struct knet_host *next;
-};
-
-struct knet_listener {
-	int sock;
-	char ipaddr[KNET_MAX_HOST_LEN];
-	char port[6];
-	struct sockaddr_storage address;
-	struct knet_listener *next;
 };
 
 union knet_frame_data {
@@ -209,11 +202,6 @@ struct knet_host_search {
 
 typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, struct knet_host_search *data);
 int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data);
-
-int knet_listener_acquire(knet_handle_t knet_h, struct knet_listener **head, int writelock);
-int knet_listener_release(knet_handle_t knet_h);
-int knet_listener_add(knet_handle_t knet_h, struct knet_listener *listener);
-int knet_listener_remove(knet_handle_t knet_h, struct knet_listener *listener);
 
 /* logging */
 void knet_set_log_level(knet_handle_t knet_h, uint8_t subsystem, uint8_t level);

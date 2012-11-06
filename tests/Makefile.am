@@ -17,7 +17,6 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  netutils_test \
-		  listener_test \
 		  timediff_test
 
 TESTS = $(check_PROGRAMS)
@@ -37,8 +36,6 @@ khandle_test_SOURCES	= khandle_test.c
 
 lookup_bench_SOURCES	= lookup_bench.c \
 			  $(srcdir)/../kronosnetd/netutils.c
-
-listener_test_SOURCES	= listener_test.c
 
 netutils_test_SOURCES	= netutils_test.c \
 			  $(srcdir)/../kronosnetd/netutils.c

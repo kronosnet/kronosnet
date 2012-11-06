@@ -307,7 +307,7 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 		log_debug(knet_h, KNET_SUB_LINK,
 			  "Unable to update link status (host: %s link: %s configured: %u connected: %u)",
 			  knet_h->host_index[node_id]->name,
-			  lnk->ipaddr,
+			  lnk->dst_ipaddr,
 			  lnk->configured,
 			  lnk->connected);
 		lnk->configured = old_configured;
@@ -323,8 +323,25 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
 {
-	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is enabled",
-		  knet_h->host_index[node_id]->name, lnk->ipaddr);
+	if (configured) {
+		if (_listener_add(knet_h, lnk) < 0) {
+			log_err(knet_h, KNET_SUB_LINK, "Unable to setup listener for this link");
+			return -1;
+		}
+		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is enabled",
+			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+	} else {
+		int err = _listener_remove(knet_h, lnk);
+
+		if ((err) && (err != -EBUSY)) {
+			log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
+			log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is NOT disabled",
+				  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+			return -1;
+		}
+		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
+			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+	}
 	return knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
 }
 
@@ -341,7 +358,7 @@ int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 		log_debug(knet_h, KNET_SUB_LINK,
 			  "Unable to update link priority (host: %s link: %s priority: %u)",
 			  knet_h->host_index[node_id]->name,
-			  lnk->ipaddr,
+			  lnk->dst_ipaddr,
 			  lnk->priority);
 		lnk->priority = old_priority;
 		return -1;
@@ -350,7 +367,7 @@ int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 	log_debug(knet_h, KNET_SUB_LINK,
 		  "host: %s link: %s priority set to: %u",
 		  knet_h->host_index[node_id]->name,
-		  lnk->ipaddr,
+		  lnk->dst_ipaddr,
 		  lnk->priority);
 
 	return 0;
@@ -366,7 +383,7 @@ void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 				((lnk->ping_interval * precision) / 8000000);
 	log_debug(knet_h, KNET_SUB_LINK,
 		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
-		  knet_h->host_index[node_id]->name, lnk->ipaddr,
+		  knet_h->host_index[node_id]->name, lnk->dst_ipaddr,
 		  lnk->ping_interval, lnk->pong_timeout, precision);
 }
 
@@ -443,9 +460,9 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 			}
 
 			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-				sendto(dst_host->link[dst_host->active_links[link_idx]].sock,
+				sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
 						outbuf, outlen, MSG_DONTWAIT,
-						(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
+						(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].dst_addr,
 						sizeof(struct sockaddr_storage));
 
 				if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
@@ -477,9 +494,9 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-				sendto(dst_host->link[dst_host->active_links[link_idx]].sock,
+				sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
 					outbuf, outlen, MSG_DONTWAIT,
-					(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].address,
+					(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].dst_addr,
 					sizeof(struct sockaddr_storage));
 
 				if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
@@ -558,12 +575,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
 		if ((src_link->dynamic == KNET_LINK_DYN_DST) &&
 		    (knet_h->recv_from_links_buf->kf_dyn == 1)) {
-			memcpy(&src_link->address, &address, sizeof(struct sockaddr_storage));
-			if (src_link->address.ss_family == AF_INET6) {
-				src_link->sock = src_host->listener6->sock;
-			} else {
-				src_link->sock = src_host->listener4->sock;
-			}
+			memcpy(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage));
 			src_link->dynconnected = 1;
 		}
 	}
@@ -610,7 +622,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			}
 		}
 
-		if (!knet_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num)) {
+		if (!_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num)) {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
 			goto exit_unlock;
 		}
@@ -618,7 +630,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (write(knet_h->sockfd,
 			  knet_h->recv_from_links_buf->kf_data,
 			  len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) == len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) {
-			knet_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
+			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
 		} else {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
 		}
@@ -641,8 +653,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		sendto(src_link->sock, outbuf, outlen, MSG_DONTWAIT,
-				(struct sockaddr *) &src_link->address,
+		sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT,
+				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage));
 
 		break;
@@ -662,7 +674,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (src_link->latency < src_link->pong_timeout) {
 			if (!src_link->connected) {
 				log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is up",
-					 src_host->name, src_link->ipaddr);
+					 src_host->name, src_link->dst_ipaddr);
 				knet_link_updown(knet_h, src_host->node_id, src_link, src_link->configured, 1);
 			}
 		}
@@ -723,7 +735,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 
 	if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s (passive) best link: %s (%u)",
-			  dst_host->name, dst_host->link[dst_host->active_links[0]].ipaddr,
+			  dst_host->name, dst_host->link[dst_host->active_links[0]].dst_ipaddr,
 			  dst_host->link[dst_host->active_links[0]].priority);
 	} else {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s has %u active links",
@@ -781,14 +793,14 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			outbuf = knet_h->pingbuf_crypt;
 		}
 
-		len = sendto(dst_link->sock, outbuf, outlen,
-			MSG_DONTWAIT, (struct sockaddr *) &dst_link->address,
+		len = sendto(dst_link->listener_sock, outbuf, outlen,
+			MSG_DONTWAIT, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 
 		if (len == outlen) {
 			dst_link->ping_last = clock_now;
 		} else {
-			log_warn(knet_h, KNET_SUB_HB_T, "Unable to send ping packet");
+			log_debug(knet_h, KNET_SUB_HB_T, "Unable to send ping packet");
 		}
 	}
 
@@ -797,7 +809,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
 			log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is down",
-				 dst_host->name, dst_link->ipaddr);
+				 dst_host->name, dst_link->dst_ipaddr);
 			knet_link_updown(knet_h, dst_host->node_id, dst_link, dst_link->configured, 0);
 		}
 	}
@@ -805,11 +817,9 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 
 static void *_handle_heartbt_thread(void *data)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h = (knet_handle_t) data;
 	struct knet_host *dst_host;
 	int link_idx;
-
-	knet_h = (knet_handle_t) data;
 
 	/* preparing ping buffer */
 	knet_h->pingbuf->kf_magic = htonl(KNET_FRAME_MAGIC);
@@ -843,10 +853,8 @@ static void *_handle_heartbt_thread(void *data)
 
 static void *_handle_tap_to_links_thread(void *data)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_MAX_EVENTS];
-
-	knet_h = (knet_handle_t) data;
 
 	/* preparing data buffer */
 	knet_h->tap_to_links_buf->kf_magic = htonl(KNET_FRAME_MAGIC);

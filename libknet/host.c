@@ -206,7 +206,7 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)
 /* bcast = 0 -> unicast packet | 1 -> broadcast|mcast */
 
 /* make this bcast/ucast aware */
-int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num)
+int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num)
 {
 	size_t i, j; /* circular buffer indexes */
 	seq_num_t seq_dist;
@@ -248,7 +248,7 @@ int knet_should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num)
 	return 1;
 }
 
-void knet_has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num)
+void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num)
 {
 
 	if (bcast) {
