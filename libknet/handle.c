@@ -623,7 +623,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		if (!_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num)) {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
+			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
+				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
+			}
 			goto exit_unlock;
 		}
 
