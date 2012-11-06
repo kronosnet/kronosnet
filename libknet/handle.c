@@ -253,8 +253,11 @@ int knet_handle_free(knet_handle_t knet_h)
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
 	free(knet_h->tap_to_links_buf);
+	free(knet_h->tap_to_links_buf_crypt);
 	free(knet_h->recv_from_links_buf);
+	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);
+	free(knet_h->pingbuf_crypt);
 
 	crypto_fini(knet_h);
 
@@ -288,7 +291,40 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		return 0;
 	}
 
+	if (!knet_h->tap_to_links_buf_crypt) {
+		knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+		if (!knet_h->tap_to_links_buf_crypt) {
+			log_err(knet_h, KNET_SUB_CRYPTO, "unable to allocate memory for crypto send buffer");
+			return -1;
+		}
+	}
+
+	if (!knet_h->pingbuf_crypt) {
+		knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+		if (!knet_h->pingbuf_crypt) {
+			log_err(knet_h, KNET_SUB_CRYPTO, "unable to allocate memory for crypto hb buffer");
+			goto exit_fail1;
+		}
+	}
+
+	if (!knet_h->recv_from_links_buf_crypt) {
+		knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+		if (!knet_h->recv_from_links_buf_crypt) {
+			log_err(knet_h, KNET_SUB_CRYPTO, "unable to allocate memory for crypto recv buffer");
+			goto exit_fail2;
+		}
+	}
+
 	return crypto_init(knet_h, knet_handle_crypto_cfg);
+
+exit_fail2:
+	free(knet_h->pingbuf_crypt);
+	knet_h->pingbuf_crypt = NULL;
+
+exit_fail1:
+	free(knet_h->tap_to_links_buf_crypt);
+	knet_h->tap_to_links_buf_crypt = NULL;
+	return -1;
 }
 
 static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,

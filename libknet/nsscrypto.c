@@ -16,7 +16,6 @@
  */
 
 #define SALT_SIZE 16
-#define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
 /*
  * This are defined in new NSS. For older one, we will define our own
@@ -603,24 +602,6 @@ int nsscrypto_init(
 		}
 	}
 
-	knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->tap_to_links_buf_crypt) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to allocate memory for crypto send buffer");
-		goto out_err;
-	}
-
-	knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->pingbuf_crypt) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to allocate memory for crypto hb buffer");
-		goto out_err;
-	}
-
-	knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->recv_from_links_buf_crypt) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to allocate memory for crypto recv buffer");
-		goto out_err;
-	}
-
 	nsscrypto_instance->private_key = knet_handle_crypto_cfg->private_key;
 	nsscrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
@@ -649,19 +630,6 @@ void nsscrypto_fini(
 			PK11_FreeSymKey(nsscrypto_instance->nss_sym_key_sign);
 			nsscrypto_instance->nss_sym_key_sign = NULL;
 		}
-		if (knet_h->pingbuf_crypt) {
-			free(knet_h->pingbuf_crypt);
-			knet_h->pingbuf_crypt = NULL;
-		}
-		if (knet_h->tap_to_links_buf_crypt) {
-			free(knet_h->tap_to_links_buf_crypt);
-			knet_h->tap_to_links_buf_crypt = NULL;
-		}
-		if (knet_h->recv_from_links_buf_crypt) {
-			free(knet_h->recv_from_links_buf_crypt);
-			knet_h->recv_from_links_buf_crypt = NULL;
-		}
-
 		free(nsscrypto_instance);
 		knet_h->crypto_instance->model_instance = NULL;
 	}

@@ -8,6 +8,8 @@
 #include "libknet.h"
 
 #define KNET_DATABUFSIZE 131072 /* 128k */
+#define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
+
 #define KNET_PINGBUFSIZE sizeof(struct knet_frame)
 
 #define timespec_diff(start, end, diff) \
