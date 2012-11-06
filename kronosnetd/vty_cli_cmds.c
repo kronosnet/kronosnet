@@ -41,6 +41,7 @@
 #define CMDS_PARAM_LINK_KEEPAL  16
 #define CMDS_PARAM_LINK_HOLDTI  17
 #define CMDS_PARAM_LINK_DYN     18
+#define CMDS_PARAM_RINGID       19
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -220,6 +221,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
+		case CMDS_PARAM_RINGID:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 0) || (tmp > 255)) {
+				knet_vty_write(vty, "ring id must be a value between 0 and 255%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		case CMDS_PARAM_NAME:
 			if (paramlen >= KNET_MAX_HOST_LEN) {
 				knet_vty_write(vty, "name cannot exceed %d char in len%s", KNET_MAX_HOST_LEN - 1, telnet_newline);
@@ -349,6 +357,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_NODEID:
 			knet_vty_write(vty, "NODEID - unique identifier for this interface in this kronos network (value between 0 and 255)%s", telnet_newline);
+			break;
+		case CMDS_PARAM_RINGID:
+			knet_vty_write(vty, "RINGID - unique identifier for this ringid in this kronos network (value between 0 and 255)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_NAME:
 			knet_vty_write(vty, "NAME - unique name identifier for this entity (max %d chars)%s", KNET_MAX_HOST_LEN - 1, telnet_newline);
@@ -645,6 +656,7 @@ vty_node_cmds_t no_config_cmds[] = {
 vty_param_t int_params[] = {
 	{ CMDS_PARAM_KNET },
 	{ CMDS_PARAM_NODEID },
+	{ CMDS_PARAM_RINGID },
 	{ CMDS_PARAM_NOMORE },
 };
 
@@ -1476,7 +1488,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 static int knet_cmd_interface(struct knet_vty *vty)
 {
-	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
+	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id, ringid;
 	char *param = NULL;
 	char device[IFNAMSIZ];
 	char mac[18];
@@ -1488,6 +1500,9 @@ static int knet_cmd_interface(struct knet_vty *vty)
 
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	requested_id = param_to_int(param, paramlen);
+
+	get_param(vty, 3, &param, &paramlen, &paramoffset);
+	ringid = param_to_int(param, paramlen);
 
 	knet_iface = knet_get_iface(device, 1);
 	if (!knet_iface) {
@@ -1522,6 +1537,8 @@ tap_found:
 	if (knet_iface->cfg_ring.knet_h)
 		goto knet_found;
 
+	knet_iface->cfg_eth.ring_id = ringid;
+
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.to_net_fd = tap_get_fd(knet_iface->cfg_eth.tap);
 	knet_handle_cfg.node_id = requested_id;
@@ -1552,7 +1569,7 @@ knet_found:
 	}
 
 	memset(&mac, 0, sizeof(mac));
-	snprintf(mac, sizeof(mac) - 1, "54:54:0:0:0:%x", knet_iface->cfg_eth.node_id);
+	snprintf(mac, sizeof(mac) - 1, "54:54:0:%x:0:%x", knet_iface->cfg_eth.ring_id, knet_iface->cfg_eth.node_id);
 	if (tap_set_mac(knet_iface->cfg_eth.tap, mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
 				mac, device, telnet_newline); 
@@ -1676,8 +1693,9 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "configure%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, " interface %s %u%s", tap_get_name(knet_iface->cfg_eth.tap),
-							  knet_iface->cfg_eth.node_id, nl);
+		knet_vty_write(vty, " interface %s %u %u%s", tap_get_name(knet_iface->cfg_eth.tap),
+							     knet_iface->cfg_eth.node_id,
+							     knet_iface->cfg_eth.ring_id, nl);
 
 		knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
 

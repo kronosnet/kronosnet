@@ -10,6 +10,7 @@
 struct knet_cfg_eth {
 	tap_t tap;
 	uint16_t node_id;
+	uint8_t ring_id;
 };
 
 struct knet_cfg_ring {
