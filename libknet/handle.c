@@ -225,9 +225,25 @@ exit_fail1:
 int knet_handle_free(knet_handle_t knet_h)
 {
 	void *retval;
+	struct epoll_event ev;
 
 	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL)) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to free handle: host(s) or listener(s) are still active");
+		goto exit_busy;
+	}
+
+	if (epoll_ctl(knet_h->tap_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd, &ev)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to remove epoll sockfd");
+		goto exit_busy;
+	}
+
+	if (epoll_ctl(knet_h->tap_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostpipefd[0], &ev)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to remove epoll hostpipefd");
+		goto exit_busy;
+	}
+
+	if (epoll_ctl(knet_h->dst_link_handler_epollfd, EPOLL_CTL_DEL, knet_h->dstpipefd[0], &ev)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "knet_handle_free real: unable to remove epoll dstpipefd");
 		goto exit_busy;
 	}
 
@@ -379,6 +395,9 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
 {
+	if (lnk->configured == configured)
+		return 0;
+
 	if (configured) {
 		if (_listener_add(knet_h, lnk) < 0) {
 			log_err(knet_h, KNET_SUB_LINK, "Unable to setup listener for this link");
@@ -961,5 +980,5 @@ static void *_handle_dst_link_handler_thread(void *data)
 			_handle_dst_link_updates(knet_h);
 	}
 
-	return NULL;	
+	return NULL;
 }
