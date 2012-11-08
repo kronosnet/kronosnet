@@ -33,6 +33,7 @@ struct knet_handle {
 	int sockfd;
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
+	int hostpipefd[2];
 	int dstpipefd[2];
 	int tap_to_links_epollfd;
 	int recv_from_links_epollfd;

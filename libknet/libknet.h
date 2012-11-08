@@ -96,10 +96,11 @@ struct knet_frame {
 
 #define KNET_FRAME_VERSION 0x01
 
-#define KNET_FRAME_DATA 0x00
-#define KNET_FRAME_PING 0x81
-#define KNET_FRAME_PONG 0x82
-#define KNET_FRAME_PMSK 0x80 /* ping/pong packet mask */
+#define KNET_FRAME_DATA      0x00
+#define KNET_FRAME_HOST_INFO 0x01
+#define KNET_FRAME_PING      0x81
+#define KNET_FRAME_PONG      0x82
+#define KNET_FRAME_PMSK      0x80 /* ping/pong packet mask */
 
 #define KNET_MIN_KEY_LEN 1024
 #define KNET_MAX_KEY_LEN 4096

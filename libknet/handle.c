@@ -54,7 +54,8 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		}
 	}
 
-	if (pipe(knet_h->dstpipefd)) {
+	if (pipe(knet_h->dstpipefd) ||
+	    pipe(knet_h->hostpipefd)) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal comm pipe");
 		goto exit_fail1;
 	}
@@ -62,7 +63,11 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	if ((_fdset_cloexec(knet_h->dstpipefd[0])) ||
 	    (_fdset_cloexec(knet_h->dstpipefd[1])) ||
 	    (_fdset_nonblock(knet_h->dstpipefd[0])) ||
-	    (_fdset_nonblock(knet_h->dstpipefd[1]))) {
+	    (_fdset_nonblock(knet_h->dstpipefd[1])) ||
+	    (_fdset_cloexec(knet_h->hostpipefd[0])) ||
+	    (_fdset_cloexec(knet_h->hostpipefd[1])) ||
+	    (_fdset_nonblock(knet_h->hostpipefd[0])) ||
+	    (_fdset_nonblock(knet_h->hostpipefd[1]))) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set internal comm pipe sockopts");
 		goto exit_fail2;
 	}
@@ -133,11 +138,22 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	ev.events = EPOLLIN;
+	ev.data.fd = knet_h->hostpipefd[0];
+
+	if (epoll_ctl(knet_h->tap_to_links_epollfd,
+				EPOLL_CTL_ADD, knet_h->hostpipefd[0], &ev) != 0) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add hostpipefd to epoll pool");
+		goto exit_fail6;
+	}
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	ev.events = EPOLLIN;
 	ev.data.fd = knet_h->dstpipefd[0];
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
 				EPOLL_CTL_ADD, knet_h->dstpipefd[0], &ev) != 0) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add pipefd to epoll pool");
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add dstpipefd to epoll pool");
 		goto exit_fail6;
 	}
 
@@ -198,6 +214,8 @@ exit_fail3:
 exit_fail2:
 	close(knet_h->dstpipefd[0]);
 	close(knet_h->dstpipefd[1]);
+	close(knet_h->hostpipefd[0]);
+	close(knet_h->hostpipefd[1]);
 
 exit_fail1:
 	free(knet_h);
@@ -249,6 +267,8 @@ int knet_handle_free(knet_handle_t knet_h)
 	close(knet_h->dst_link_handler_epollfd);
 	close(knet_h->dstpipefd[0]);
 	close(knet_h->dstpipefd[1]);
+	close(knet_h->hostpipefd[0]);
+	close(knet_h->hostpipefd[1]);
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
@@ -423,7 +443,7 @@ void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 		  lnk->ping_interval, lnk->pong_timeout, precision);
 }
 
-static void _handle_tap_to_links(knet_handle_t knet_h)
+static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t inlen, len, outlen;
 	struct knet_host *dst_host;
@@ -433,8 +453,8 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 	int bcast = 1;
 	unsigned char *outbuf = (unsigned char *)knet_h->tap_to_links_buf;
 
-	inlen = read(knet_h->sockfd, knet_h->tap_to_links_buf->kf_data,
-					KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
+	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data,
+		     KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
 
 	if (inlen == 0) {
 		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");
@@ -447,7 +467,8 @@ static void _handle_tap_to_links(knet_handle_t knet_h)
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		return;
 
-	if (knet_h->dst_host_filter) {
+	if ((knet_h->tap_to_links_buf->kf_type == KNET_FRAME_DATA) &&
+	    (knet_h->dst_host_filter)) {
 		bcast = knet_h->dst_host_filter_fn(
 				(const unsigned char *)knet_h->tap_to_links_buf->kf_data,
 				inlen,
@@ -713,6 +734,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		break;
+	case KNET_FRAME_HOST_INFO:
+		log_debug(knet_h, KNET_SUB_LINK, "got host info message");
+		break;
 	default:
 		goto exit_unlock;
 	}
@@ -887,15 +911,23 @@ static void *_handle_tap_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_MAX_EVENTS];
+	int i, nev;
 
 	/* preparing data buffer */
 	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
-	knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
 	knet_h->tap_to_links_buf->kf_node = htons(knet_h->node_id);
 
 	while (1) {
-		if (epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_MAX_EVENTS, -1) >= 1)
-			_handle_tap_to_links(knet_h);
+		nev = epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_MAX_EVENTS, -1);
+
+		for (i = 0; i < nev; i++) {
+			if (events[i].data.fd == knet_h->sockfd) {
+				knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
+			} else {
+				knet_h->tap_to_links_buf->kf_type = KNET_FRAME_HOST_INFO;
+			}
+			_handle_tap_to_links(knet_h, events[i].data.fd);
+		}
 	}
 
 	return NULL;
