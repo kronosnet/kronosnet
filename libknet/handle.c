@@ -54,15 +54,15 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		}
 	}
 
-	if (pipe(knet_h->pipefd)) {
+	if (pipe(knet_h->dstpipefd)) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal comm pipe");
 		goto exit_fail1;
 	}
 
-	if ((_fdset_cloexec(knet_h->pipefd[0])) ||
-	    (_fdset_cloexec(knet_h->pipefd[1])) ||
-	    (_fdset_nonblock(knet_h->pipefd[0])) ||
-	    (_fdset_nonblock(knet_h->pipefd[1]))) {
+	if ((_fdset_cloexec(knet_h->dstpipefd[0])) ||
+	    (_fdset_cloexec(knet_h->dstpipefd[1])) ||
+	    (_fdset_nonblock(knet_h->dstpipefd[0])) ||
+	    (_fdset_nonblock(knet_h->dstpipefd[1]))) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set internal comm pipe sockopts");
 		goto exit_fail2;
 	}
@@ -133,10 +133,10 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 	memset(&ev, 0, sizeof(struct epoll_event));
 
 	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->pipefd[0];
+	ev.data.fd = knet_h->dstpipefd[0];
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
-				EPOLL_CTL_ADD, knet_h->pipefd[0], &ev) != 0) {
+				EPOLL_CTL_ADD, knet_h->dstpipefd[0], &ev) != 0) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add pipefd to epoll pool");
 		goto exit_fail6;
 	}
@@ -196,8 +196,8 @@ exit_fail3:
 	free(knet_h->tap_to_links_buf);
 
 exit_fail2:
-	close(knet_h->pipefd[0]);
-	close(knet_h->pipefd[1]);
+	close(knet_h->dstpipefd[0]);
+	close(knet_h->dstpipefd[1]);
 
 exit_fail1:
 	free(knet_h);
@@ -247,8 +247,8 @@ int knet_handle_free(knet_handle_t knet_h)
 	close(knet_h->tap_to_links_epollfd);
 	close(knet_h->recv_from_links_epollfd);
 	close(knet_h->dst_link_handler_epollfd);
-	close(knet_h->pipefd[0]);
-	close(knet_h->pipefd[1]);
+	close(knet_h->dstpipefd[0]);
+	close(knet_h->dstpipefd[1]);
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
 
@@ -728,7 +728,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	int link_idx;
 	int best_priority = -1;
 
-	if (read(knet_h->pipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
+	if (read(knet_h->dstpipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
 		return;
 	}
