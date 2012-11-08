@@ -1268,7 +1268,8 @@ static int knet_cmd_stop(struct knet_vty *vty)
 	if (err < 0) {
 		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
 	} else {
-		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
+		if (knet_iface->cfg_ring.knet_h)
+			knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 		knet_iface->active = 0;
 	}
 	if (error_down) {
@@ -1456,15 +1457,15 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 			sleep (1);
 		}
 
-		if (head == NULL)
-			break;
-
 		host = head;
 
 		while (knet_host_release(knet_iface->cfg_ring.knet_h, &head) != 0) {
 			log_error("CLI ERROR: unable to release peer lock.. will retry in 1 sec");
 			sleep (1);
 		}
+
+		if (host == NULL)
+			break;
 
 		for (i = 0; i < KNET_MAX_LINK; i++)
 			knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[i], 0);
@@ -1477,8 +1478,10 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	knet_cmd_stop(vty);
 
-	if (knet_iface->cfg_ring.knet_h)
+	if (knet_iface->cfg_ring.knet_h) {
 		knet_handle_free(knet_iface->cfg_ring.knet_h);
+		knet_iface->cfg_ring.knet_h = NULL;
+	}
 
 	if (knet_iface->cfg_eth.tap)
 		tap_close(knet_iface->cfg_eth.tap);
@@ -1898,6 +1901,30 @@ int knet_vty_execute_cmd(struct knet_vty *vty)
 	}
 
 	return match_command(vty, cmds, cmd, cmdlen, cmdoffset, KNET_VTY_MATCH_EXEC);
+}
+
+void knet_close_down(void)
+{
+	struct knet_vty *vty = &knet_vtys[0];
+	int err, loop = 0;
+
+	vty->node = NODE_CONFIG;
+	vty->vty_sock = 1;
+	vty->user_can_enable = 1;
+	vty->filemode = 1;
+	vty->got_epipe = 0;
+
+	while ((knet_cfg_head.knet_cfg) && (loop < 10)) {
+		memset(vty->line, 0, sizeof(vty->line));
+		snprintf(vty->line, sizeof(vty->line) - 1, "no interface %s", tap_get_name(knet_cfg_head.knet_cfg->cfg_eth.tap));
+		vty->line_idx = strlen(vty->line);
+		err = knet_vty_execute_cmd(vty);
+		if (err != 0)  {
+			log_error("error shutting down: %s", vty->line);
+			break;
+		}
+		loop++;
+	}
 }
 
 int knet_read_conf(void)

@@ -280,7 +280,8 @@ int knet_vty_main_loop(int debug)
 					knet_vtys[conn_index].got_epipe = 1;
 				}
 			}
-			sleep(2);
+			sleep(2); /* give time to all vty to exit */
+			knet_close_down();
 			log_info("Have a nice day! Goodbye");
 			goto out;
 		}
@@ -411,8 +412,6 @@ out:
 	knet_vty_close_listener(vty_listener4_fd);
 	close(logfd[0]);
 	close(logfd[1]);
-
-	// reverse running config to close/release resources;
 
 	return err;
 }
