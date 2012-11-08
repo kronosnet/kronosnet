@@ -21,11 +21,6 @@ CLI timeout configurable
 
 Implement link auth via user/passwd
 
-ring:
-
-* support 8 listener per node.
-* index pointer list
-
 general:
 add log to vty:
  - config (per subsystem/total)
