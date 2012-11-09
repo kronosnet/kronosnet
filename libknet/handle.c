@@ -395,6 +395,8 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
 {
+	int err;
+
 	if (lnk->configured == configured)
 		return 0;
 
@@ -405,19 +407,29 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *l
 		}
 		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is enabled",
 			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
-	} else {
-		int err = _listener_remove(knet_h, lnk);
-
-		if ((err) && (err != -EBUSY)) {
-			log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
-			log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is NOT disabled",
-				  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
-			return -1;
-		}
-		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
-			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
 	}
-	return knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
+
+	err = knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
+
+	if ((configured) && (!err))
+		return 0;
+
+	if (err)
+		return -1;
+
+	err = _listener_remove(knet_h, lnk);
+
+	if ((err) && (err != -EBUSY)) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
+		if (knet_link_updown(knet_h, node_id, lnk, 1, lnk->connected))
+			lnk->configured = 1;
+		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is NOT disabled",
+			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+		return -1;
+	}
+	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
+		  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+	return 0;
 }
 
 int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority)
