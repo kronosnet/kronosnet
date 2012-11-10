@@ -11,6 +11,8 @@ cryto:    expand API to support dual key for rekey process
 
 compress must happen before encrypt
 
+consider adding dhcp support for tap device
+
 need bind to interface for dynamic ip local interfaces vs src ip address or
 find a way to autodetect the new ip on that interface
 
