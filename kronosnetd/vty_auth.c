@@ -166,6 +166,13 @@ retry_auth:
 		goto out_fatal;
 	}
 
+	if (pam_set_item(pamh, PAM_USER_PROMPT, (const void *)"login: ") != PAM_SUCCESS) {
+		log_error("PAM fatal error: %s", pam_strerror(pamh, err));
+		knet_vty_write(vty, "PAM fatal error: %s",
+				pam_strerror(pamh, err));
+		goto out_fatal;
+	}
+
 	err = pam_authenticate(pamh, 0);
 	if (err != PAM_SUCCESS) {
 		if (vty->got_epipe) {
