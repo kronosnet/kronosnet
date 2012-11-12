@@ -1750,6 +1750,10 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 	knet_vty_write(vty, "configure%s", nl);
 
+	knet_vty_write(vty, " vty%s", nl);
+	knet_vty_write(vty, "  timeout %d%s", vty->idle_timeout, nl);
+	knet_vty_write(vty, "  exit%s", nl);
+
 	while (knet_iface != NULL) {
 		knet_vty_write(vty, " interface %s %u %u%s", tap_get_name(knet_iface->cfg_eth.tap),
 							     knet_iface->cfg_eth.node_id,
