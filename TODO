@@ -19,8 +19,6 @@ find a way to autodetect the new ip on that interface
 fix case where knetd restart is faster than link timeout, leads to packet loss due to
 cbuf counters not being cleared fast enough.
 
-kronosnetd: determine ringid via baseport for macaddress generation
-
 CLI timeout configurable
 
 Implement link auth via user/passwd
