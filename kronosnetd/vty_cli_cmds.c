@@ -631,6 +631,9 @@ static int knet_cmd_link_pri(struct knet_vty *vty);
 static int knet_cmd_link_timer(struct knet_vty *vty);
 static int knet_cmd_link_dyn(struct knet_vty *vty);
 
+/* vty node */
+static int knet_cmd_vty(struct knet_vty *vty);
+
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
 	{ "configure", "enter configuration mode", NULL, knet_cmd_config },
@@ -638,6 +641,7 @@ vty_node_cmds_t root_cmds[] = {
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "status", "display current network status", NULL, knet_cmd_status },
+	{ "vty", "enter vty configuration mode", NULL, knet_cmd_vty },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ NULL, NULL, NULL, NULL },
 };
@@ -668,6 +672,7 @@ vty_node_cmds_t config_cmds[] = {
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
 	{ "status", "display current network status", NULL, knet_cmd_status },
+	{ "vty", "enter vty configuration mode", NULL, knet_cmd_vty },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
@@ -801,6 +806,17 @@ vty_node_cmds_t link_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
+vty_node_cmds_t vty_cmds[] = {
+	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
+	{ "help", "display basic help", NULL, knet_cmd_help },
+	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
+	{ "show", "show running config", NULL, knet_cmd_show_conf },
+	{ "status", "display current network status", NULL, knet_cmd_status },
+	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
+	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
+	{ NULL, NULL, NULL, NULL },
+};
+
 /* nodes */
 vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_ROOT, "knet", root_cmds, NULL },
@@ -808,10 +824,21 @@ vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_INTERFACE, "iface", interface_cmds, no_interface_cmds },
 	{ NODE_PEER, "peer", peer_cmds, no_peer_cmds },
 	{ NODE_LINK, "link", link_cmds, NULL },
+	{ NODE_VTY, "vty", vty_cmds, NULL },
 	{ -1, NULL, NULL },
 };
 
 /* command execution */
+
+/* vty */
+static int knet_cmd_vty(struct knet_vty *vty)
+{
+	pthread_mutex_lock(&knet_vty_mutex);
+	vty->prevnode = vty->node;
+	vty->node = NODE_VTY;
+	pthread_mutex_unlock(&knet_vty_mutex);
+	return 0;
+}
 
 /* links */
 

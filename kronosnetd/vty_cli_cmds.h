@@ -26,7 +26,8 @@ enum vty_nodes {
 	NODE_CONFIG,
 	NODE_INTERFACE,
 	NODE_PEER,
-	NODE_LINK
+	NODE_LINK,
+	NODE_VTY
 };
 
 int knet_vty_execute_cmd(struct knet_vty *vty);

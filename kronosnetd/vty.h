@@ -38,6 +38,7 @@ struct knet_vty {
 	int			idle;		/* idle time */
 	int			disable_idle;	/* disable automatic logout */
 	int			node;		/* node number of the menus */
+	int			prevnode;	/* node number of the menus (used by VTY node) */
 	void			*param;		/* pointer to cmd param */
 	int			paramoffset;	/* required if param is set */
 	int			logfd;		/* fd to pass to iface create */
