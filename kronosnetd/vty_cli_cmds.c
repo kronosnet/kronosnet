@@ -42,6 +42,7 @@
 #define CMDS_PARAM_LINK_HOLDTI  17
 #define CMDS_PARAM_LINK_DYN     18
 #define CMDS_PARAM_RINGID       19
+#define CMDS_PARAM_VTY_TIMEOUT  20
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -326,6 +327,12 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				knet_vty_write(vty, "link dynamic should be either 0 or 1. Default: 0%s", telnet_newline);
 			}
 			break;
+		case CMDS_PARAM_VTY_TIMEOUT:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 0) || (tmp > 3600)) {
+				knet_vty_write(vty, "vty logout timeout should be a value between 0 (disabled) and 3600 seconds. Default: %d%s", KNET_VTY_CLI_TIMEOUT, telnet_newline);
+			}
+			break;
 		default:
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
 			err = -1;
@@ -393,6 +400,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_LINK_DYN:
 			knet_vty_write(vty, "DYNAMIC - specify if this link will traverse NAT or Dynamic IP connections.%s", telnet_newline);
+			break;
+		case CMDS_PARAM_VTY_TIMEOUT:
+			knet_vty_write(vty, "VTY_TIMEOUT - specify the number of seconds before a session is automatically closed.%s", telnet_newline);
 			break;
 		default: /* this should never happen */
 			knet_vty_write(vty, "CLI ERROR: unknown parameter type%s", telnet_newline);
@@ -633,6 +643,7 @@ static int knet_cmd_link_dyn(struct knet_vty *vty);
 
 /* vty node */
 static int knet_cmd_vty(struct knet_vty *vty);
+static int knet_cmd_vty_timeout(struct knet_vty *vty);
 
 /* root node description */
 vty_node_cmds_t root_cmds[] = {
@@ -806,12 +817,18 @@ vty_node_cmds_t link_cmds[] = {
 	{ NULL, NULL, NULL, NULL },
 };
 
+vty_param_t vty_timeout_params[] = {
+	{ CMDS_PARAM_VTY_TIMEOUT },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t vty_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
 	{ "status", "display current network status", NULL, knet_cmd_status },
+	{ "timeout", "set number of seconds before session is automatically closed", vty_timeout_params, knet_cmd_vty_timeout },
 	{ "who", "display users connected to CLI", NULL, knet_cmd_who },
 	{ "write", "write current config to file", NULL, knet_cmd_write_conf },
 	{ NULL, NULL, NULL, NULL },
@@ -831,12 +848,20 @@ vty_nodes_t knet_vty_nodes[] = {
 /* command execution */
 
 /* vty */
+static int knet_cmd_vty_timeout(struct knet_vty *vty)
+{
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	vty->idle_timeout = param_to_int(param, paramlen);
+	return 0;
+}
+
 static int knet_cmd_vty(struct knet_vty *vty)
 {
-	pthread_mutex_lock(&knet_vty_mutex);
 	vty->prevnode = vty->node;
 	vty->node = NODE_VTY;
-	pthread_mutex_unlock(&knet_vty_mutex);
 	return 0;
 }
 

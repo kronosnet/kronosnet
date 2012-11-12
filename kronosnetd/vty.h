@@ -36,7 +36,7 @@ struct knet_vty {
 	int			active;		/* vty is active */
 	int			got_epipe;	/* vty_sock has been closed */
 	int			idle;		/* idle time */
-	int			disable_idle;	/* disable automatic logout */
+	int			idle_timeout;	/* in seconds or 0 to disable automatic logout */
 	int			node;		/* node number of the menus */
 	int			prevnode;	/* node number of the menus (used by VTY node) */
 	void			*param;		/* pointer to cmd param */

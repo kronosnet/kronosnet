@@ -232,6 +232,7 @@ int knet_vty_main_loop(int debug)
 
 	for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 		knet_vtys[conn_index].logfd = logfd[1];
+		knet_vtys[conn_index].idle_timeout = KNET_VTY_CLI_TIMEOUT;
 		if (debug) {
 			knet_vtys[conn_index].loglevel = KNET_LOG_DEBUG;
 		} else {
@@ -296,9 +297,9 @@ int knet_vty_main_loop(int debug)
 			pthread_mutex_lock(&knet_vty_mutex);
 			for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 				if ((knet_vtys[conn_index].active) &&
-				    (!knet_vtys[conn_index].disable_idle)) {
+				    (knet_vtys[conn_index].idle_timeout)) {
 					knet_vtys[conn_index].idle++;
-					if (knet_vtys[conn_index].idle > KNET_VTY_CLI_TIMEOUT) {
+					if (knet_vtys[conn_index].idle > knet_vtys[conn_index].idle_timeout) {
 						knet_vty_close(&knet_vtys[conn_index]);
 						knet_vtys[conn_index].got_epipe = 1;
 					}
@@ -388,6 +389,7 @@ int knet_vty_main_loop(int debug)
 		knet_vtys[conn_index].src_sa_len = salen;
 		knet_vtys[conn_index].active = 1;
 		knet_vtys[conn_index].logfd = logfd[1];
+		knet_vtys[conn_index].idle_timeout = KNET_VTY_CLI_TIMEOUT;
 		if (debug) {
 			knet_vtys[conn_index].loglevel = KNET_LOG_DEBUG;
 		} else {
