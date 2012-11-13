@@ -36,6 +36,7 @@ struct _ip {
 struct _iface {
 	struct ifreq ifr;
 	int fd;
+	char tapname[IFNAMSIZ];
 	char default_mac[MAX_MAC_CHAR];
 	int default_mtu;
 	char updownpath[PATH_MAX];
@@ -194,7 +195,7 @@ static int _exec_updown(const tap_t tap, const char *action, char **error_string
 
 	memset(command, 0, PATH_MAX);
 
-	snprintf(command, PATH_MAX, "%s%s/%s", tap->updownpath, action, tap->ifname);
+	snprintf(command, PATH_MAX, "%s%s/%s", tap->updownpath, action, tap->tapname);
 
 	err = stat(command, &sb);
 	if ((err < 0) && (errno == ENOENT))
@@ -251,6 +252,9 @@ static int _get_mtu(const tap_t tap)
 {
 	int err;
 
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+
 	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &tap->ifr);
 	if (err)
 		goto out_clean;
@@ -265,6 +269,9 @@ static int _get_mac(const tap_t tap, char **ether_addr)
 {
 	int err;
 	char mac[MAX_MAC_CHAR];
+
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
 
 	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
 	if (err)
@@ -304,7 +311,7 @@ tap_t tap_find(char *dev, size_t dev_size)
 
 	tap = lib_cfg.head;
 	while (tap != NULL) {
-		if (!strcmp(dev, tap->ifname))
+		if (!strcmp(dev, tap->tapname))
 			break;
 		tap = tap->next;
 	}
@@ -357,6 +364,8 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 	if ((tap->fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
 
+	strncpy(tap->tapname, dev, IFNAMSIZ);
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
 	strncpy(tap->ifname, dev, IFNAMSIZ);
 	tap->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
@@ -369,6 +378,7 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 	}
 
 	strcpy(dev, tap->ifname);
+	strcpy(tap->tapname, tap->ifname);
 
 	if (!lib_init) {
 		lib_cfg.head = NULL;
@@ -378,6 +388,8 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		lib_init = 1;
 	}
 
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
 	if (ioctl(lib_cfg.sockfd, SIOGIFINDEX, &tap->ifr) < 0)
 		goto out_error;
 
@@ -492,8 +504,7 @@ out_clean:
 
 int tap_set_mtu(tap_t tap, const int mtu)
 {
-	int err, oldmtu;
-	short oldflags;
+	int err;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -503,16 +514,16 @@ int tap_set_mtu(tap_t tap, const int mtu)
 		goto out_clean;
 	}
 
-	oldflags = tap->ifr.ifr_flags;
-	oldmtu = tap->ifr.ifr_mtu;
-	tap->ifr.ifr_flags = 0;
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+
+	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &tap->ifr);
+	if (err)
+		goto out_clean;
+
 	tap->ifr.ifr_mtu = mtu;
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &tap->ifr);
-	if (err)
-		tap->ifr.ifr_mtu = oldmtu;
-
-	tap->ifr.ifr_flags = oldflags;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -547,7 +558,6 @@ out_clean:
 
 int tap_set_mac(tap_t tap, const char *ether_addr)
 {
-	struct ether_addr oldmac;
 	int err;
 
 	pthread_mutex_lock(&lib_mutex);
@@ -558,12 +568,15 @@ int tap_set_mac(tap_t tap, const char *ether_addr)
 		goto out_clean;
 	}
 
-	memcpy(&oldmac, tap->ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
+	if (err)
+		goto out_clean;
+
 	memcpy(tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &tap->ifr);
-	if (err)
-		memcpy(tap->ifr.ifr_hwaddr.sa_data, &oldmac, ETH_ALEN);
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -579,7 +592,6 @@ int tap_reset_mac(tap_t tap)
 int tap_set_up(tap_t tap, char **error_preup, char **error_up)
 {
 	int err = 0;
-	short int oldflags;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -592,14 +604,20 @@ int tap_set_up(tap_t tap, char **error_preup, char **error_up)
 	if (tap->up)
 		goto out_clean;
 
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+
+	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &tap->ifr);
+	if (err)
+		goto out_clean;
+
 	_exec_updown(tap, "pre-up.d", error_preup);
 
-	oldflags = tap->ifr.ifr_flags;
 	tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
 	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &tap->ifr);
 
 	if (err)
-		tap->ifr.ifr_flags = oldflags;
+		goto out_clean;
 
 	_exec_updown(tap, "up.d", error_up);
 
@@ -613,21 +631,24 @@ out_clean:
 static int _set_down(tap_t tap, char **error_down, char **error_postdown)
 {
 	int err = 0;
-	short int oldflags;
 
 	if (!tap->up)
 		goto out_clean;
 
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+
+	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &tap->ifr);
+	if (err)
+		goto out_clean;
+
 	_exec_updown(tap, "down.d", error_down);
 
-	oldflags = tap->ifr.ifr_flags;
 	tap->ifr.ifr_flags &= ~IFF_UP;
 	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &tap->ifr);
 
-	if (err) {
-		tap->ifr.ifr_flags = oldflags;
+	if (err)
 		goto out_clean;
-	}
 
 	_exec_updown(tap, "post-down.d", error_postdown);
 
@@ -701,13 +722,13 @@ static int _set_ip(tap_t tap, const char *command,
 		snprintf(cmdline, sizeof(cmdline)-1,
 			"ip addr %s %s/%s dev %s broadcast %s",
 			 command, ip_addr, prefix,
-			 tap->ifname, broadcast);
+			 tap->tapname, broadcast);
 		free(broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			"ip addr %s %s/%s dev %s",
 			command, ip_addr, prefix,
-			tap->ifname);
+			tap->tapname);
 	}
 
 	return _execute_shell(cmdline, error_string);
@@ -846,7 +867,7 @@ const char *tap_get_name(const tap_t tap)
 		goto out_clean;
 	}
 
-	name = tap->ifname;
+	name = tap->tapname;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);

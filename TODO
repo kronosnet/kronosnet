@@ -11,8 +11,6 @@ cryto:    expand API to support dual key for rekey process
 
 compress must happen before encrypt
 
-fix libtap init when creating a new interface live (flags issues in libtap)
-
 consider adding dhcp support for tap device
 
 need bind to interface for dynamic ip local interfaces vs src ip address or
