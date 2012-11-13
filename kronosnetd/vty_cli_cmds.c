@@ -1743,7 +1743,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	struct knet_host *host = NULL;
 	const char *nl = telnet_newline;
 	char *ip_list = NULL;
-	int ip_list_entries = 0, offset = 0;
+	int ip_list_entries = 0;
 
 	if (vty->filemode)
 		nl = file_newline;
@@ -1763,10 +1763,12 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
 		if ((ip_list) && (ip_list_entries > 0)) {
+			char *ipaddr = NULL, *prefix = NULL, *next = ip_list;
 			for (i = 1; i <= ip_list_entries; i++) {
-				knet_vty_write(vty, "  ip %s %s%s", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1, nl);
-				offset = offset + strlen(ip_list) + 1;
-				offset = offset + strlen(ip_list + offset) + 1;
+				ipaddr = next;
+				prefix = ipaddr + strlen(ipaddr) + 1;
+				next = prefix + strlen(prefix) + 1;
+				knet_vty_write(vty, "  ip %s %s%s", ipaddr, prefix, nl);
 			}
 			free(ip_list);
 			ip_list = NULL;
