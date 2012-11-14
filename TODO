@@ -21,8 +21,6 @@ cbuf counters not being cleared fast enough.
 
 fix config save ordering (interfaces/ip are out of order)
 
-CLI timeout configurable
-
 Implement link auth via user/passwd
 
 general:

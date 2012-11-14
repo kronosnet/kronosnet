@@ -15,6 +15,10 @@
 
 #define KNET_VTY_MAX_HIST		50
 
+struct knet_vty_global_conf {
+	int	idle_timeout;
+};
+
 struct knet_vty {
 	pthread_t		vty_thread;	/* thread struct for this vty */
 	struct sockaddr_storage	src_sa;		/* source IP */
@@ -47,6 +51,7 @@ struct knet_vty {
 	void			*host;		/* pointer to peer/host we are working on */
 	void			*link;		/* pointer to link we are working on */
 	int			filemode;	/* tell print_conf to add or not carriage return */
+	struct knet_vty_global_conf *vty_global_conf; /* pointer to vty global config */
 };
 
 extern pthread_mutex_t knet_vty_mutex;

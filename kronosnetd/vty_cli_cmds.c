@@ -850,11 +850,17 @@ vty_nodes_t knet_vty_nodes[] = {
 /* vty */
 static int knet_cmd_vty_timeout(struct knet_vty *vty)
 {
-	int paramlen = 0, paramoffset = 0;
+	int paramlen = 0, paramoffset = 0, timeout;
 	char *param = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
-	vty->idle_timeout = param_to_int(param, paramlen);
+	timeout = param_to_int(param, paramlen);
+
+	if ((vty->filemode) || (vty->prevnode == NODE_CONFIG)) {
+		vty->vty_global_conf->idle_timeout = timeout;
+	}
+	vty->idle_timeout = timeout;
+
 	return 0;
 }
 

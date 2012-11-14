@@ -27,6 +27,7 @@ static int daemon_quit = 0;
 pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 int knet_vty_config = -1;
 struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
+struct knet_vty_global_conf vty_global_conf;
 
 static int _fdset_cloexec(int fd)
 {
@@ -229,10 +230,12 @@ int knet_vty_main_loop(int debug)
 	}
 
 	memset(&knet_vtys, 0, sizeof(knet_vtys));
+	memset(&vty_global_conf, 0, sizeof(struct knet_vty_global_conf));
+	vty_global_conf.idle_timeout = KNET_VTY_CLI_TIMEOUT;
 
 	for(conn_index = 0; conn_index < KNET_VTY_TOTAL_MAX_CONN; conn_index++) {
 		knet_vtys[conn_index].logfd = logfd[1];
-		knet_vtys[conn_index].idle_timeout = KNET_VTY_CLI_TIMEOUT;
+		knet_vtys[conn_index].vty_global_conf = &vty_global_conf;
 		if (debug) {
 			knet_vtys[conn_index].loglevel = KNET_LOG_DEBUG;
 		} else {
@@ -389,7 +392,8 @@ int knet_vty_main_loop(int debug)
 		knet_vtys[conn_index].src_sa_len = salen;
 		knet_vtys[conn_index].active = 1;
 		knet_vtys[conn_index].logfd = logfd[1];
-		knet_vtys[conn_index].idle_timeout = KNET_VTY_CLI_TIMEOUT;
+		knet_vtys[conn_index].vty_global_conf = &vty_global_conf;
+		knet_vtys[conn_index].idle_timeout = vty_global_conf.idle_timeout;
 		if (debug) {
 			knet_vtys[conn_index].loglevel = KNET_LOG_DEBUG;
 		} else {
