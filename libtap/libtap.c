@@ -763,7 +763,7 @@ static int _find_ip(tap_t tap,
 int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
-	struct _ip *ip = NULL, *ip_prev = NULL;
+	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -793,8 +793,15 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 		goto out_clean;
 	}
 
-	ip->next = tap->ip;
-	tap->ip = ip;
+	if (tap->ip) {
+		ip_last = tap->ip;
+		while (ip_last->next != NULL) {
+			ip_last = ip_last->next;
+		}
+		ip_last->next = ip;
+	} else {
+		tap->ip = ip;
+	}
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
