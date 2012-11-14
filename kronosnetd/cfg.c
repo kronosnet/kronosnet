@@ -42,8 +42,16 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 			"none",
 			sizeof(knet_iface->knet_handle_crypto_cfg.crypto_hash_type) - 1);
 
-		knet_iface->next = knet_cfg_head.knet_cfg;
-		knet_cfg_head.knet_cfg = knet_iface;
+		if (knet_cfg_head.knet_cfg) {
+			struct knet_cfg *knet_iface_last = knet_cfg_head.knet_cfg;
+
+			while (knet_iface_last->next != NULL) {
+				knet_iface_last = knet_iface_last->next;
+			}
+			knet_iface_last->next = knet_iface;
+		} else {
+			knet_cfg_head.knet_cfg = knet_iface;
+		}
 	}
 
 out_clean:
