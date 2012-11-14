@@ -81,9 +81,8 @@ vty:
 0.7
 ---
 
-* review ring api for libknetring shared lib
-* review tap api for libknettap shared lib
-* review vty api for libknetvty shared lib
+* review ring api for libknet shared lib
+* review tap api for libtap shared lib
 
 1.0-pre
 -------
