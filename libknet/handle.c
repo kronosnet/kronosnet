@@ -101,7 +101,10 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
 
-	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0) {
+	if ((pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0) ||
+	    (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0) ||
+	    (pthread_mutex_init(&knet_h->host_mutex, NULL) != 0) ||
+	    (pthread_cond_init(&knet_h->host_cond, NULL) != 0)) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize locks");
 		goto exit_fail5;
 	}
@@ -201,6 +204,9 @@ exit_fail6:
 		close(knet_h->dst_link_handler_epollfd);
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
+	pthread_rwlock_destroy(&knet_h->host_rwlock);
+	pthread_mutex_destroy(&knet_h->host_mutex);
+	pthread_cond_destroy(&knet_h->host_cond);
 
 exit_fail5:
 	free(knet_h->pingbuf);
@@ -287,6 +293,9 @@ int knet_handle_free(knet_handle_t knet_h)
 	close(knet_h->hostpipefd[1]);
 
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
+	pthread_rwlock_destroy(&knet_h->host_rwlock);
+	pthread_mutex_destroy(&knet_h->host_mutex);
+	pthread_cond_destroy(&knet_h->host_cond);
 
 	free(knet_h->tap_to_links_buf);
 	free(knet_h->tap_to_links_buf_crypt);
@@ -599,6 +608,14 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 			}
 		}
 	}
+
+	if (knet_h->tap_to_links_buf->kf_type == KNET_FRAME_HOST_INFO) {
+		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
+			log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get mutex lock");
+		pthread_cond_signal(&knet_h->host_cond);
+		pthread_mutex_unlock(&knet_h->host_mutex);
+	}
+
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 

@@ -50,6 +50,9 @@ struct knet_handle {
 	pthread_t heartbt_thread;
 	pthread_t dst_link_handler_thread;
 	pthread_rwlock_t list_rwlock;
+	pthread_rwlock_t host_rwlock;
+	pthread_mutex_t host_mutex;
+	pthread_cond_t host_cond;
 	struct crypto_instance *crypto_instance;
 	unsigned char *tap_to_links_buf_crypt;
 	unsigned char *recv_from_links_buf_crypt;
@@ -67,6 +70,7 @@ struct knet_handle {
 int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);
 int _dst_cache_update(knet_handle_t knet_h, uint16_t node_id);
+int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen);
 int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
 void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
 

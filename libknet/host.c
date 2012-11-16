@@ -203,6 +203,41 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)
 	return ret;
 }
 
+int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
+{
+	size_t byte_cnt = 0;
+	int len;
+
+	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to get write lock");
+		return -1;
+	}
+
+	if (pthread_mutex_lock(&knet_h->host_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to get mutex lock");
+		pthread_rwlock_unlock(&knet_h->host_rwlock);
+		return -1;
+	}
+
+	while (byte_cnt < datalen) {
+		len = write(knet_h->hostpipefd[1], &data, datalen - byte_cnt);
+		if (len <= 0) {
+			log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
+			pthread_mutex_unlock(&knet_h->host_mutex);
+			pthread_rwlock_unlock(&knet_h->host_rwlock);
+			return -1;
+		}
+
+		byte_cnt += len;
+	}
+
+	pthread_cond_wait(&knet_h->host_cond, &knet_h->host_mutex);
+	pthread_mutex_unlock(&knet_h->host_mutex);
+	pthread_rwlock_unlock(&knet_h->host_rwlock);
+
+	return 0;
+}
+
 /* bcast = 0 -> unicast packet | 1 -> broadcast|mcast */
 
 /* make this bcast/ucast aware */
