@@ -41,8 +41,7 @@
 #define CMDS_PARAM_LINK_KEEPAL  16
 #define CMDS_PARAM_LINK_HOLDTI  17
 #define CMDS_PARAM_LINK_DYN     18
-#define CMDS_PARAM_RINGID       19
-#define CMDS_PARAM_VTY_TIMEOUT  20
+#define CMDS_PARAM_VTY_TIMEOUT  19
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -222,13 +221,6 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
-		case CMDS_PARAM_RINGID:
-			tmp = param_to_int(param, paramlen);
-			if ((tmp < 0) || (tmp > 255)) {
-				knet_vty_write(vty, "ring id must be a value between 0 and 255%s", telnet_newline);
-				err = -1;
-			}
-			break;
 		case CMDS_PARAM_NAME:
 			if (paramlen >= KNET_MAX_HOST_LEN) {
 				knet_vty_write(vty, "name cannot exceed %d char in len%s", KNET_MAX_HOST_LEN - 1, telnet_newline);
@@ -364,9 +356,6 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_NODEID:
 			knet_vty_write(vty, "NODEID - unique identifier for this interface in this kronos network (value between 0 and 255)%s", telnet_newline);
-			break;
-		case CMDS_PARAM_RINGID:
-			knet_vty_write(vty, "RINGID - unique identifier for this ringid in this kronos network (value between 0 and 255)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_NAME:
 			knet_vty_write(vty, "NAME - unique name identifier for this entity (max %d chars)%s", KNET_MAX_HOST_LEN - 1, telnet_newline);
@@ -624,7 +613,6 @@ static int knet_cmd_mtu(struct knet_vty *vty);
 static int knet_cmd_no_mtu(struct knet_vty *vty);
 static int knet_cmd_ip(struct knet_vty *vty);
 static int knet_cmd_no_ip(struct knet_vty *vty);
-static int knet_cmd_baseport(struct knet_vty *vty);
 static int knet_cmd_peer(struct knet_vty *vty);
 static int knet_cmd_no_peer(struct knet_vty *vty);
 static int knet_cmd_start(struct knet_vty *vty);
@@ -671,7 +659,7 @@ vty_node_cmds_t no_config_cmds[] = {
 vty_param_t int_params[] = {
 	{ CMDS_PARAM_KNET },
 	{ CMDS_PARAM_NODEID },
-	{ CMDS_PARAM_RINGID },
+	{ CMDS_PARAM_IP_PORT },
 	{ CMDS_PARAM_NOMORE },
 };
 
@@ -715,11 +703,6 @@ vty_param_t mtu_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
-vty_param_t baseport_params[] = {
-	{ CMDS_PARAM_IP_PORT },
-	{ CMDS_PARAM_NOMORE },
-};
-
 vty_param_t crypto_params[] = {
 	{ CMDS_PARAM_CRYPTO_MODEL },
 	{ CMDS_PARAM_CRYPTO_TYPE },
@@ -728,7 +711,6 @@ vty_param_t crypto_params[] = {
 };
 
 vty_node_cmds_t interface_cmds[] = {
-	{ "baseport", "set base listening port for this interface", baseport_params, knet_cmd_baseport },
 	{ "crypto", "enable crypto/hmac", crypto_params, knet_cmd_crypto },
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
@@ -1182,55 +1164,6 @@ out_clean:
 	return err;
 }
 
-static int active_listeners(struct knet_vty *vty)
-{
-	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *head = NULL;
-	int listeners = 0, j = 0;
-
-	if (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head)) {
-		knet_vty_write(vty, "Error: unable to acquire lock on peer list!%s", telnet_newline);
-		return -1;
-	}
-
-	while (head != NULL) {
-		for (j = 0; j < KNET_MAX_LINK; j++) {
-			if (head->link[j].configured) {
-				listeners++;
-			}
-		}
-		head = head->next;
-	}
-
-	while (knet_host_release(knet_iface->cfg_ring.knet_h, &head) != 0) {
-		knet_vty_write(vty, "Error: unable to release lock on peer list!%s", telnet_newline);
-		sleep(1);
-	}
-
-	return listeners;
-}
-
-static int knet_cmd_baseport(struct knet_vty *vty)
-{
-	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	int paramlen = 0, paramoffset = 0, err = 0;
-	char *param = NULL;
-
-	get_param(vty, 1, &param, &paramlen, &paramoffset);
-
-	/* need to check if baseport is in use by other interfaces */
-	err = active_listeners(vty);
-	if (!err) {
-		knet_iface->cfg_ring.base_port = param_to_int(param, paramlen);
-	}
-	if (err > 0) {
-		knet_vty_write(vty, "Error: cannot switch baseport when listeners are active%s", telnet_newline);
-		err = -1;
-	}
-
-	return err;
-}
-
 static int knet_cmd_no_ip(struct knet_vty *vty)
 {
 	int paramlen = 0, paramoffset = 0;
@@ -1552,7 +1485,9 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 static int knet_cmd_interface(struct knet_vty *vty)
 {
-	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id, ringid;
+	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
+	uint16_t baseport;
+	uint8_t *bport = (uint8_t *)&baseport;
 	char *param = NULL;
 	char device[IFNAMSIZ];
 	char mac[18];
@@ -1566,7 +1501,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	requested_id = param_to_int(param, paramlen);
 
 	get_param(vty, 3, &param, &paramlen, &paramoffset);
-	ringid = param_to_int(param, paramlen);
+	baseport = param_to_int(param, paramlen);
 
 	knet_iface = knet_get_iface(device, 1);
 	if (!knet_iface) {
@@ -1601,7 +1536,7 @@ tap_found:
 	if (knet_iface->cfg_ring.knet_h)
 		goto knet_found;
 
-	knet_iface->cfg_eth.ring_id = ringid;
+	knet_iface->cfg_ring.base_port = baseport;
 
 	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
 	knet_handle_cfg.to_net_fd = tap_get_fd(knet_iface->cfg_eth.tap);
@@ -1633,7 +1568,7 @@ knet_found:
 	}
 
 	memset(&mac, 0, sizeof(mac));
-	snprintf(mac, sizeof(mac) - 1, "54:54:0:%x:0:%x", knet_iface->cfg_eth.ring_id, knet_iface->cfg_eth.node_id);
+	snprintf(mac, sizeof(mac) - 1, "54:54:%x:%x:0:%x", bport[0], bport[1], knet_iface->cfg_eth.node_id);
 	if (tap_set_mac(knet_iface->cfg_eth.tap, mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
 				mac, device, telnet_newline); 
@@ -1763,7 +1698,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	while (knet_iface != NULL) {
 		knet_vty_write(vty, " interface %s %u %u%s", tap_get_name(knet_iface->cfg_eth.tap),
 							     knet_iface->cfg_eth.node_id,
-							     knet_iface->cfg_eth.ring_id, nl);
+							     knet_iface->cfg_ring.base_port, nl);
 
 		knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
 
@@ -1780,8 +1715,6 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			ip_list = NULL;
 			ip_list_entries = 0;
 		}
-
-		knet_vty_write(vty, "  baseport %d%s", knet_iface->cfg_ring.base_port, nl);
 
 		knet_vty_write(vty, "  crypto %s %s %s%s",
 			       knet_iface->knet_handle_crypto_cfg.crypto_model,
