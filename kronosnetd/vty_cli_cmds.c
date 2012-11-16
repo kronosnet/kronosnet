@@ -1567,6 +1567,7 @@ knet_found:
 		knet_iface->cfg_eth.node_id = requested_id;
 	}
 
+	baseport = htons(baseport);
 	memset(&mac, 0, sizeof(mac));
 	snprintf(mac, sizeof(mac) - 1, "54:54:%x:%x:0:%x", bport[0], bport[1], knet_iface->cfg_eth.node_id);
 	if (tap_set_mac(knet_iface->cfg_eth.tap, mac) < 0) {
