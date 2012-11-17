@@ -71,12 +71,12 @@ union knet_frame_data {
 	struct {
 		seq_num_t	kfd_seq_num;
 		uint8_t		kfd_data[0];
-	} data;
+	} data __attribute__((packed));
 	struct {
 		uint8_t		kfd_link;
 		uint8_t		kfd_dyn;
 		uint32_t	kfd_time[4];
-	} ping;
+	} ping __attribute__((packed));
 } __attribute__((packed));
 
 struct knet_frame {
