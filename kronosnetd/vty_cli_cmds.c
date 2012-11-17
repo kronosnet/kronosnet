@@ -948,7 +948,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	int paramlen = 0, paramoffset = 0, err = 0;
 	char *param = NULL;
 	int link_id;
-	char src_ipaddr[KNET_MAX_HOST_LEN], src_port[6], dst_ipaddr[KNET_MAX_HOST_LEN], dst_port[6];
+	char src_ipaddr[KNET_MAX_HOST_LEN], src_port[KNET_MAX_PORT_LEN], dst_ipaddr[KNET_MAX_HOST_LEN], dst_port[KNET_MAX_PORT_LEN];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	link_id = param_to_int(param, paramlen);
@@ -957,13 +957,13 @@ static int knet_cmd_link(struct knet_vty *vty)
 	param_to_str(src_ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
 
 	memset(src_port, 0, sizeof(src_port));
-	snprintf(src_port, 6, "%d", knet_iface->cfg_ring.base_port + host->node_id);
+	snprintf(src_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + host->node_id);
 
 	get_param(vty, 3, &param, &paramlen, &paramoffset);
 	param_to_str(dst_ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
 
 	memset(dst_port, 0, sizeof(dst_port));
-	snprintf(dst_port, 6, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+	snprintf(dst_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
 
 	klink = &host->link[link_id];
 	if (!klink->configured) {

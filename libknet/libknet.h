@@ -12,6 +12,7 @@ typedef struct knet_handle *knet_handle_t;
 #define KNET_MAX_HOST 65536
 #define KNET_MAX_LINK 8
 #define KNET_MAX_HOST_LEN 64
+#define KNET_MAX_PORT_LEN 6
 
 #define KNET_CBUFFER_SIZE 4096
 /*
@@ -29,10 +30,10 @@ struct knet_link {
 	uint8_t link_id;
 	int listener_sock;
 	char src_ipaddr[KNET_MAX_HOST_LEN];
-	char src_port[6];
+	char src_port[KNET_MAX_PORT_LEN];
 	struct sockaddr_storage src_addr;
 	char dst_ipaddr[KNET_MAX_HOST_LEN];
-	char dst_port[6];
+	char dst_port[KNET_MAX_PORT_LEN];
 	struct sockaddr_storage dst_addr;
 	unsigned int configured:1; /* link is configured and ready to be used */
 	unsigned int connected:1;	/* link is enabled for data */
@@ -76,7 +77,7 @@ struct knet_hinfo_link {
 	uint8_t			khl_link_priority;
 	uint64_t		khl_link_latency;
 	char			khl_link_dst_ipaddr[KNET_MAX_HOST_LEN];
-	char			khl_link_dst_port[6];
+	char			khl_link_dst_port[KNET_MAX_PORT_LEN];
 } __attribute__((packed));
 
 struct knet_hinfo_link_table {
