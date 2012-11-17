@@ -18,8 +18,7 @@ find a way to autodetect the new ip on that interface
 
 fix case where knetd restart is faster than link timeout, leads to packet loss due to
 cbuf counters not being cleared fast enough.
-(sync message host to host is done, need to fix unlocking on errors - tap_to_links
- and make message structures)
+(sync message host to host is done, need to make message structures)
 
 Implement link auth via user/passwd
 

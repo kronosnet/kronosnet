@@ -499,13 +499,13 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	if (inlen == 0) {
 		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");
 		/* TODO: disconnection, should never happen! */
-		return;
+		goto host_unlock;
 	}
 
 	outlen = len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
-		return;
+		goto host_unlock;
 
 	if ((knet_h->tap_to_links_buf->kf_type == KNET_FRAME_DATA) &&
 	    (knet_h->dst_host_filter)) {
@@ -517,18 +517,18 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 				&dst_host_ids_entries);
 		if (bcast < 0) {
 			log_debug(knet_h, KNET_SUB_TAP_T, "Error from dst_host_filter_fn: %d", bcast);
-			return;
+			goto host_unlock;
 		}
 
 		if ((!bcast) && (!dst_host_ids_entries)) {
 			log_debug(knet_h, KNET_SUB_TAP_T, "Message is unicast but no dst_host_ids_entries");
-			return;
+			goto host_unlock;
 		}
 	}
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get read lock");
-		return;
+		goto host_unlock;
 	}
 
 	if (!bcast) {
@@ -550,8 +550,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 						    knet_h->tap_to_links_buf_crypt,
 						    &outlen) < 0) {
 					log_debug(knet_h, KNET_SUB_TAP_T, "Unable to encrypt unicast packet");
-					pthread_rwlock_unlock(&knet_h->list_rwlock);
-					return;
+					goto out_unlock;
 				}
 				outbuf = knet_h->tap_to_links_buf_crypt;
 			}
@@ -583,8 +582,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 					    knet_h->tap_to_links_buf_crypt,
 					    &outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_TAP_T, "Unable to encrypt mcast/bcast packet");
-				pthread_rwlock_unlock(&knet_h->list_rwlock);
-				return;
+				goto out_unlock;
 			}
 			outbuf = knet_h->tap_to_links_buf_crypt;
 		}
@@ -609,14 +607,16 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 		}
 	}
 
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+host_unlock:
 	if (knet_h->tap_to_links_buf->kf_type == KNET_FRAME_HOST_INFO) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
 			log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);
 		pthread_mutex_unlock(&knet_h->host_mutex);
 	}
-
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
