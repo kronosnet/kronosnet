@@ -220,7 +220,7 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 	}
 
 	while (byte_cnt < datalen) {
-		len = write(knet_h->hostpipefd[1], &data, datalen - byte_cnt);
+		len = write(knet_h->hostpipefd[1], data, datalen - byte_cnt);
 		if (len <= 0) {
 			log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
 			pthread_mutex_unlock(&knet_h->host_mutex);
