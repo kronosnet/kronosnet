@@ -492,6 +492,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	unsigned char *outbuf = (unsigned char *)knet_h->tap_to_links_buf;
+	struct knet_hinfo_data *knet_hinfo_data;
 
 	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data,
 		     KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
@@ -507,23 +508,38 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	if (knet_h->enabled != 1) /* data forward is disabled */
 		goto host_unlock;
 
-	if ((knet_h->tap_to_links_buf->kf_type == KNET_FRAME_DATA) &&
-	    (knet_h->dst_host_filter)) {
-		bcast = knet_h->dst_host_filter_fn(
-				(const unsigned char *)knet_h->tap_to_links_buf->kf_data,
-				inlen,
-				knet_h->tap_to_links_buf->kf_node,
-				dst_host_ids,
-				&dst_host_ids_entries);
-		if (bcast < 0) {
-			log_debug(knet_h, KNET_SUB_TAP_T, "Error from dst_host_filter_fn: %d", bcast);
-			goto host_unlock;
-		}
+	switch(knet_h->tap_to_links_buf->kf_type) {
+		case KNET_FRAME_DATA:
+			if (knet_h->dst_host_filter) {
+				bcast = knet_h->dst_host_filter_fn(
+						(const unsigned char *)knet_h->tap_to_links_buf->kf_data,
+						inlen,
+						knet_h->tap_to_links_buf->kf_node,
+						dst_host_ids,
+						&dst_host_ids_entries);
+				if (bcast < 0) {
+					log_debug(knet_h, KNET_SUB_TAP_T, "Error from dst_host_filter_fn: %d", bcast);
+					goto host_unlock;
+				}
 
-		if ((!bcast) && (!dst_host_ids_entries)) {
-			log_debug(knet_h, KNET_SUB_TAP_T, "Message is unicast but no dst_host_ids_entries");
+				if ((!bcast) && (!dst_host_ids_entries)) {
+					log_debug(knet_h, KNET_SUB_TAP_T, "Message is unicast but no dst_host_ids_entries");
+					goto host_unlock;
+				}
+			}
+			break;
+		case KNET_FRAME_HOST_INFO:
+			knet_hinfo_data = (struct knet_hinfo_data *)knet_h->tap_to_links_buf->kf_data;
+			if (!knet_hinfo_data->khd_bcast) {
+				bcast = 0;
+				dst_host_ids[0] = ntohs(knet_hinfo_data->khd_dst_node_id);
+				dst_host_ids_entries = 1;
+			}
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_TAP_T, "Receiving unknown messages from tap");
 			goto host_unlock;
-		}
+			break;
 	}
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
