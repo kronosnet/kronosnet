@@ -418,6 +418,18 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *l
 			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
 	}
 
+	if (!configured) {
+		struct knet_hinfo_data knet_hinfo_data;
+
+		knet_hinfo_data.khd_type = KNET_HOST_INFO_LINK_UP_DOWN;
+		knet_hinfo_data.khd_bcast = 0;
+		knet_hinfo_data.khd_dst_node_id = htons(node_id);
+		knet_hinfo_data.khd_dype.link_up_down.khdt_link_id = lnk->link_id;
+		knet_hinfo_data.khd_dype.link_up_down.khdt_link_status = 0;
+
+		_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
+	}
+
 	err = knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
 
 	if ((configured) && (!err))
@@ -438,6 +450,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *l
 	}
 	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
 		  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+	lnk->host_info_up_sent = 0;
 	return 0;
 }
 
@@ -648,6 +661,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	int bcast = 1;
 	struct timespec recvtime;
 	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
+	struct knet_hinfo_data *knet_hinfo_data;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
@@ -800,6 +814,21 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_HOST_INFO:
 		log_debug(knet_h, KNET_SUB_LINK, "got host info message");
+		knet_hinfo_data = (struct knet_hinfo_data *)knet_h->recv_from_links_buf->kf_data;
+		if (!knet_hinfo_data->khd_bcast) {
+			knet_hinfo_data->khd_dst_node_id = ntohs(knet_hinfo_data->khd_dst_node_id);
+		}
+		switch(knet_hinfo_data->khd_type) {
+			case KNET_HOST_INFO_LINK_UP_DOWN:
+				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %u link: %u status: %u",
+					  src_host->node_id, knet_hinfo_data->khd_dype.link_up_down.khdt_link_id, knet_hinfo_data->khd_dype.link_up_down.khdt_link_status);
+				break;
+			case KNET_HOST_INFO_LINK_TABLE:
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %s", src_host->name);
+				break;
+		}
 		break;
 	default:
 		goto exit_unlock;
@@ -815,6 +844,8 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	struct knet_host *dst_host;
 	int link_idx;
 	int best_priority = -1;
+	int send_link_idx = 0;
+	uint8_t send_link_status[KNET_MAX_LINK];
 
 	if (read(knet_h->dstpipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
@@ -839,6 +870,11 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 			continue;
 		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
 			continue;
+
+		if (!dst_host->link[link_idx].host_info_up_sent) {
+			send_link_status[send_link_idx] = link_idx;
+			send_link_idx++;
+		}
 
 		if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
 			/* for passive we look for the only active link with higher priority */
@@ -874,6 +910,22 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	if (send_link_idx) {
+		int i;
+		struct knet_hinfo_data knet_hinfo_data;
+
+		knet_hinfo_data.khd_type = KNET_HOST_INFO_LINK_UP_DOWN;
+		knet_hinfo_data.khd_bcast = 0;
+		knet_hinfo_data.khd_dst_node_id = htons(dst_host_id);
+		knet_hinfo_data.khd_dype.link_up_down.khdt_link_status = 1;
+
+		for (i=0; i < send_link_idx; i++) {
+			knet_hinfo_data.khd_dype.link_up_down.khdt_link_id = send_link_status[i];
+			_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
+			dst_host->link[send_link_status[i]].host_info_up_sent = 1;
+		}
+	}
 
 	return;
 }

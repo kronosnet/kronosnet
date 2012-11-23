@@ -40,6 +40,7 @@ struct knet_link {
 	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
 	unsigned int dynconnected:1; /* link has been activated by remote dynip */
 	uint8_t  priority; /* higher priority == preferred for A/P */
+	unsigned int host_info_up_sent:1; /* 0 if we need to notify remote that link is up */
 	unsigned long long latency; /* average latency computed by fix/exp */
 	unsigned int latency_exp;
 	unsigned int latency_fix;
