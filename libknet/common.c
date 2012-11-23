@@ -153,7 +153,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	va_list ap;
 	struct knet_log_msg msg;
 	size_t byte_cnt = 0;
-	int len;
+	int len, err;
 
 	if ((knet_h->logfd <= 0) ||
 	    (msglevel > knet_h->log_levels[subsystem]))
@@ -162,6 +162,10 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
 
+	err = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (err == EINVAL)
+		return;
+
 	va_start(ap, fmt);
 	vsnprintf(msg.msg, sizeof(msg.msg) - 1, fmt, ap);
 	va_end(ap);
@@ -169,10 +173,14 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
 		if (len <= 0)
-			return;
+			goto out_unlock;
 
 		byte_cnt += len;
 	}
+
+out_unlock:
+	if (!err)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 	return;
 }
