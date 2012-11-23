@@ -22,6 +22,9 @@ cbuf counters not being cleared fast enough.
 
 Implement link auth via user/passwd
 
+add link up/down script execution (similar to tap up/down?), might be useful
+in case after tot sec, link is not up, reset the router (or something)
+
 general:
 add log to vty:
  - config (per subsystem/total)
