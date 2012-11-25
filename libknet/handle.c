@@ -857,6 +857,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	int best_priority = -1;
 	int send_link_idx = 0;
 	uint8_t send_link_status[KNET_MAX_LINK];
+	int remote_is_active = 0;
 
 	if (read(knet_h->dstpipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
@@ -879,6 +880,8 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (dst_host->link[link_idx].configured != 1) /* link is not configured */
 			continue;
+		if (dst_host->link[link_idx].remoteconnected) /* track if remote is alive */
+			remote_is_active = 1;
 		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
 			continue;
 
@@ -911,7 +914,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */
-	if (!dst_host->active_link_entries) {
+	if ((!dst_host->active_link_entries) || (!remote_is_active)) {
 		log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active links", dst_host->name);
 		memset(dst_host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
 		memset(dst_host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
