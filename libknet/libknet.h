@@ -36,7 +36,8 @@ struct knet_link {
 	char dst_port[KNET_MAX_PORT_LEN];
 	struct sockaddr_storage dst_addr;
 	unsigned int configured:1; /* link is configured and ready to be used */
-	unsigned int connected:1;	/* link is enabled for data */
+	unsigned int connected:1;	/* link is enabled for data (local view) */
+	unsigned int remoteconnected:1; /* link is enabled for data (peer view) */
 	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
 	unsigned int dynconnected:1; /* link has been activated by remote dynip */
 	uint8_t  priority; /* higher priority == preferred for A/P */

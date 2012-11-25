@@ -813,15 +813,26 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		break;
 	case KNET_FRAME_HOST_INFO:
-		log_debug(knet_h, KNET_SUB_LINK, "got host info message");
 		knet_hinfo_data = (struct knet_hinfo_data *)knet_h->recv_from_links_buf->kf_data;
 		if (!knet_hinfo_data->khd_bcast) {
 			knet_hinfo_data->khd_dst_node_id = ntohs(knet_hinfo_data->khd_dst_node_id);
 		}
 		switch(knet_hinfo_data->khd_type) {
 			case KNET_HOST_INFO_LINK_UP_DOWN:
-				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %u link: %u status: %u",
-					  src_host->node_id, knet_hinfo_data->khd_dype.link_up_down.khdt_link_id, knet_hinfo_data->khd_dype.link_up_down.khdt_link_status);
+				src_link = src_host->link +
+					(knet_hinfo_data->khd_dype.link_up_down.khdt_link_id % KNET_MAX_LINK);
+				src_link->remoteconnected = knet_hinfo_data->khd_dype.link_up_down.khdt_link_status;
+				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %s link: %s remote connected: %u",
+					  src_host->name,
+					  src_link->dst_ipaddr,
+					  src_link->remoteconnected);
+				if (_dst_cache_update(knet_h, src_host->node_id)) {
+					log_debug(knet_h, KNET_SUB_LINK,
+						  "Unable to update switch cache (host: %s link: %s remote connected: %u)",
+						  src_host->name,
+						  src_link->dst_ipaddr,
+						  src_link->remoteconnected);
+				}
 				break;
 			case KNET_HOST_INFO_LINK_TABLE:
 				break;
