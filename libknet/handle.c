@@ -821,6 +821,17 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			case KNET_HOST_INFO_LINK_UP_DOWN:
 				src_link = src_host->link +
 					(knet_hinfo_data->khd_dype.link_up_down.khdt_link_id % KNET_MAX_LINK);
+				/*
+				 * not fully satisfied with this solution yet, but it works
+				 * basically if the node is coming back to life from a crash
+				 * we should receive a host info where local previous status == remote current status
+				 * and so we can detect that node is showing up again
+				 * we need to clear cbuffers and notify the node of our status by resending our host info
+				 */
+				if ((src_link->remoteconnected) &&
+				    (src_link->remoteconnected == knet_hinfo_data->khd_dype.link_up_down.khdt_link_status)) {
+					src_link->host_info_up_sent = 0;
+				}
 				src_link->remoteconnected = knet_hinfo_data->khd_dype.link_up_down.khdt_link_status;
 				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %s link: %s remote connected: %u",
 					  src_host->name,
@@ -849,6 +860,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
+static void _clear_cbuffers(struct knet_host *host)
+{
+	memset(host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
+	memset(host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
+	host->bcast_seq_num_rx = 0;
+	host->ucast_seq_num_rx = 0;
+}
+
 static void _handle_dst_link_updates(knet_handle_t knet_h)
 {
 	uint16_t dst_host_id;
@@ -857,7 +876,8 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	int best_priority = -1;
 	int send_link_idx = 0;
 	uint8_t send_link_status[KNET_MAX_LINK];
-	int remote_is_active = 0;
+	int clear_cbuffer = 0;
+	int host_has_remote = 0;
 
 	if (read(knet_h->dstpipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
@@ -880,14 +900,20 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (dst_host->link[link_idx].configured != 1) /* link is not configured */
 			continue;
-		if (dst_host->link[link_idx].remoteconnected) /* track if remote is alive */
-			remote_is_active = 1;
+		if (dst_host->link[link_idx].remoteconnected) /* track if remote is connected */
+			host_has_remote = 1;
 		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
 			continue;
 
 		if (!dst_host->link[link_idx].host_info_up_sent) {
 			send_link_status[send_link_idx] = link_idx;
 			send_link_idx++;
+			/*
+			 * detect node coming back to life and reset the buffers
+			 */
+			if (dst_host->link[link_idx].remoteconnected) {
+				clear_cbuffer = 1;
+			}
 		}
 
 		if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
@@ -914,12 +940,17 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */
-	if ((!dst_host->active_link_entries) || (!remote_is_active)) {
-		log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active links", dst_host->name);
-		memset(dst_host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-		memset(dst_host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-		dst_host->bcast_seq_num_rx = 0;
-		dst_host->ucast_seq_num_rx = 0;
+	if ((!dst_host->active_link_entries) || (clear_cbuffer) || (!host_has_remote)) {
+		if (!host_has_remote) {
+			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active remote links", dst_host->name);
+		}
+		if (!dst_host->active_link_entries) {
+			log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active links", dst_host->name);
+		}
+		if (clear_cbuffer) {
+			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s is coming back to life", dst_host->name);
+		}
+		_clear_cbuffers(dst_host);
 	}
 
 out_unlock:
