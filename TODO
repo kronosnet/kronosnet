@@ -58,7 +58,6 @@ libtap:
 general:
 
 * add statistics
-* add spec file
 
 vty:
 
