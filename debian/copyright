@@ -6,10 +6,6 @@ Files: *
 Copyright: 2010-2012 Red Hat, Inc.  All rights reserved.
 License: GPL-2.0+, LGPL-2.0+
 
-Files: debian/*
-Copyright: 2012 Fabio M. Di Nitto <fabbione@debian.org>
-License: GPL-2.0+, LGPL-2.0+
-
 License: GPL-2.0+, LGPL-2.0+
  This package is free software; you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public

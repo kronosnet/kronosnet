@@ -1,3 +1,11 @@
+#
+# Copyright (C) 2010-2012 Red Hat, Inc.  All rights reserved.
+#
+# Author: Federico Simoncelli <fsimon@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
+
 prefix=@prefix@
 exec_prefix=${prefix}
 libdir=@libdir@
