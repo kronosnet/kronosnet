@@ -1869,7 +1869,7 @@ static int knet_cmd_who(struct knet_vty *vty)
 
 static int knet_cmd_help(struct knet_vty *vty)
 {
-	knet_vty_write(vty, PACKAGE " VTY provides advanced help feature.%s%s"
+	knet_vty_write(vty, PACKAGE "d VTY provides advanced help feature.%s%s"
 			    "When you need help, anytime at the command line please press '?'.%s%s"
 			    "If nothing matches, the help list will be empty and you must backup%s"
 			    " until entering a '?' shows the available options.%s",

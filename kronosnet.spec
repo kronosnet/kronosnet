@@ -13,8 +13,11 @@
 # keep around ready for later user
 ## global alphatag rc4
 
-Name: kronosnetd
-Summary: Multipoint-to-multipoint VPN daemon
+# main (empty) package
+# http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html
+
+Name: kronosnet
+Summary: Multipoint-to-Multipoint VPN daemon
 Version: 0.1
 Release: 1%{?alphatag:.%{alphatag}}%{?dist}
 License: GPLv2+ and LGPLv2+
@@ -51,12 +54,22 @@ find %{buildroot} -name "*.la" -exec rm {} \;
 # remove systemd specific bits
 find %{buildroot} -name "*.service" -exec rm {} \;
 # remove docs
-rm -rf %{buildroot}/usr/share/doc/kronosnetd
+rm -rf %{buildroot}/usr/share/doc/kronosnet
 
 %clean
 rm -rf %{buildroot}
 
+# main empty package
+%description
+kronosnet source
+
 ## Runtime and subpackages section
+%package -n kronosnetd
+Group: System Environment/Base
+Summary: Multipoint-to-Multipoint VPN daemon
+Requires(post): chkconfig, shadow-utils
+Requires(preun): chkconfig, shadow-utils, initscripts
+
 %description -n kronosnetd
  The kronosnet daemon is a bridge between kronosnet switching engine
  and kernel network tap devices, to create and administer a
@@ -75,12 +88,11 @@ rm -rf %{buildroot}
 if [ "$1" = 0 ]; then
 	/sbin/service kronosnetd stop >/dev/null 2>&1
 	/sbin/chkconfig --del kronosnetd
-	groupdel kronosnetadm
 fi
 
 %files -n kronosnetd
 %defattr(-,root,root,-)
-%doc COPYING.* COPYRIGHT
+%doc COPYING.* COPYRIGHT 
 %dir %{_sysconfdir}/kronosnet
 %dir %{_sysconfdir}/kronosnet/*
 %{_sysconfdir}/rc.d/init.d/kronosnetd

@@ -14,7 +14,7 @@
 #include "vty.h"
 #include "logging.h"
 
-#define LOCKFILE_NAME RUNDIR PACKAGE ".pid"
+#define LOCKFILE_NAME RUNDIR PACKAGE "d.pid"
 
 #define OPTION_STRING "hdfVc:l:a:b:p:"
 
@@ -26,7 +26,7 @@ struct knet_cfg_top knet_cfg_head;
 static void print_usage(void)
 {
 	printf("Usage:\n\n");
-	printf(PACKAGE " [options]\n\n");
+	printf(PACKAGE "d [options]\n\n");
 	printf("Options:\n\n");
 	printf("  -a <ipv6_addr> Bind management VTY to ipv6_addr (default: localhost)\n");
 	printf("  -b <ipv4_addr> Bind management VTY to ipv4_addr (default: localhost)\n");
@@ -101,7 +101,7 @@ static int read_arguments(int argc, char **argv)
 			break;
 
 		case 'V':
-			printf(PACKAGE " " PACKAGE_VERSION " (built " __DATE__
+			printf(PACKAGE "d " PACKAGE_VERSION " (built " __DATE__
 			       " " __TIME__ ")\n");
 			exit(EXIT_SUCCESS);
 			break;
@@ -309,7 +309,7 @@ int main(int argc, char **argv)
 	}
 
 	logging_init_defaults(debug, daemonize, knet_cfg_head.logfile);
-	log_info(PACKAGE " version " VERSION);
+	log_info(PACKAGE "d version " VERSION);
 
 	err = set_scheduler();
 	if (err < 0)

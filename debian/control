@@ -1,4 +1,4 @@
-Source: kronosnetd
+Source: kronosnet
 Priority: extra
 Maintainer: Fabio M. Di Nitto <fabbione@kronosnet.org>
 Build-Depends: debhelper (>= 7.0.50~), autotools-dev, libqb-dev (>= 0.14.3), libnss3-dev, libnspr4-dev, pkg-config, libpam-dev
@@ -9,7 +9,7 @@ Package: kronosnetd
 Section: admin
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Multipoint-to-multipoint VPN daemon
+Description: Multipoint-to-Multipoint VPN daemon
  The kronosnet daemon is a bridge between kronosnet switching engine
  and kernel network tap devices, to create and administer a
  distributed LAN over multipoint-to-multipoint VPNs.
@@ -18,6 +18,8 @@ Description: Multipoint-to-multipoint VPN daemon
  Beside looking horrific, it allows runtime changes and
  reconfiguration of the kronosnet(s) without daemon reload
  or service disruption.
+ .
+ This package contains the kronosnet daemon and utils.
 
 Package: libtap1
 Section: libs
@@ -27,6 +29,8 @@ Description: Simple userland wrapper around kernel tap devices
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
  pre-up.d/up.d/down.d/post-down.d infrastructure.
+ .
+ This package contains libraries that should be used by libtap clients.
 
 Package: libtap-dev
 Section: libdevel
@@ -36,6 +40,8 @@ Description: Simple userland wrapper around kernel tap devices (developer files)
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
  pre-up.d/up.d/down.d/post-down.d infrastructure.
+ .
+ This package contains header files required to build clients for libtap clients.
 
 Package: libknet0
 Section: libs
@@ -45,6 +51,8 @@ Description: kronosnet core switching implementation
  The whole kronosnet core is implemented in this library.
  Please refer to the not-yet-existing documentation for further
  information.
+ .
+ This package contains libraries that should be used by libknet clients.
 
 Package: libknet-dev
 Section: libdevel
@@ -54,4 +62,6 @@ Description: kronosnet core switching implementation (developer files)
  The whole kronosnet core is implemented in this library.
  Please refer to the not-yet-existing documentation for further
  information.
-
+ .
+ This package contains header files required to build clients for
+ libknet clients.

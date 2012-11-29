@@ -11,7 +11,7 @@ void logging_init_defaults(int debug, int daemonize, const char *logfile)
 		level = LOG_DEBUG;
 	}
 
-	qb_log_init(PACKAGE_NAME, SYSLOGFACILITY, level);
+	qb_log_init(PACKAGE "d", SYSLOGFACILITY, level);
 
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_TRUE);
 	if (debug) {
