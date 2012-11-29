@@ -39,6 +39,8 @@ knet_keygen_SOURCES	= keygen.c
 
 knet_keygen_CPPFLAGS	= -I$(top_srcdir)/libknet
 
+dist_man_MANS		= kronosnetd.8 knet-keygen.8
+
 install-exec-local:
 	$(INSTALL) -d -m 0700 $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d
