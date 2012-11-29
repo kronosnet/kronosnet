@@ -1,0 +1,4 @@
+usr/include/libtap.h
+usr/lib/libtap.a
+usr/lib/libtap.so
+usr/lib/pkgconfig/libtap.pc

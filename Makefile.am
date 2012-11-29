@@ -9,6 +9,8 @@ ACLOCAL_AMFLAGS		= -I m4
 
 SUBDIRS			= init libtap libknet kronosnetd tests
 
+EXTRA_DIST		= debian
+
 if BUILD_DOCS
 SUBDIRS			+= docs
 endif

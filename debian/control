@@ -1,0 +1,57 @@
+Source: kronosnetd
+Priority: extra
+Maintainer: Fabio M. Di Nitto <fabbione@kronosnet.org>
+Build-Depends: debhelper (>= 7.0.50~), autotools-dev, libqb-dev (>= 0.14.3), libnss3-dev, libnspr4-dev, pkg-config, libpam-dev
+Standards-Version: 3.8.4
+Section: admin
+
+Package: kronosnetd
+Section: admin
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Multipoint-to-multipoint VPN daemon
+ The kronosnet daemon is a bridge between kronosnet switching engine
+ and kernel network tap devices, to create and administer a
+ distributed LAN over multipoint-to-multipoint VPNs.
+ The daemon does a poor attempt to provide a configure UI similar
+ to other known network devices/tools (Cisco, quagga).
+ Beside looking horrific, it allows runtime changes and
+ reconfiguration of the kronosnet(s) without daemon reload
+ or service disruption.
+
+Package: libtap1
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Simple userland wrapper around kernel tap devices
+ This is an over-engineered commodity library to manage a pool
+ of tap devices and provides the basic
+ pre-up.d/up.d/down.d/post-down.d infrastructure.
+
+Package: libtap-dev
+Section: libdevel
+Architecture: any
+Depends: libtap1 (= ${binary:Version}), ${misc:Depends}
+Description: Simple userland wrapper around kernel tap devices (developer files)
+ This is an over-engineered commodity library to manage a pool
+ of tap devices and provides the basic
+ pre-up.d/up.d/down.d/post-down.d infrastructure.
+
+Package: libknet0
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: kronosnet core switching implementation
+ The whole kronosnet core is implemented in this library.
+ Please refer to the not-yet-existing documentation for further
+ information.
+
+Package: libknet-dev
+Section: libdevel
+Architecture: any
+Depends: libknet0 (= ${binary:Version}), ${misc:Depends}
+Description: kronosnet core switching implementation (developer files)
+ The whole kronosnet core is implemented in this library.
+ Please refer to the not-yet-existing documentation for further
+ information.
+

@@ -1,0 +1,4 @@
+etc/kronosnet/*
+etc/init.d/kronosnetd
+usr/sbin/*
+usr/share/man/man8/*

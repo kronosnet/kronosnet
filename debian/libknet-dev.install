@@ -1,0 +1,4 @@
+usr/include/libknet.h
+usr/lib/libknet.a
+usr/lib/libknet.so
+usr/lib/pkgconfig/libknet.pc
