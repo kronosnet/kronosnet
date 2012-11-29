@@ -1,8 +1,6 @@
 0.1
 ---
 
-ship logrotate file for the love of disk-space
-
 compress: should only compress user data, we will add a bit in the data
           header to indicate if the pckt is compressed or not (save time).
           this approach allow runtime change of compress.

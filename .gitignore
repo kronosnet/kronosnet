@@ -30,6 +30,7 @@ init/kronosnetd.service
 kronosnetd-*tar*
 kronosnetd/kronosnetd
 kronosnetd/knet-keygen
+kronosnetd/kronosnetd.logrotate
 *.swp
 *_test
 *_bench

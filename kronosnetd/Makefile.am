@@ -1,4 +1,6 @@
-MAINTAINERCLEANFILES	= Makefile.in
+MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
+
+EXTRA_DISTS		= kronostnetd.logrotate.in
 
 noinst_HEADERS		= \
 			  cfg.h \
@@ -44,7 +46,11 @@ dist_man_MANS		= kronosnetd.8 knet-keygen.8
 install-exec-local:
 	$(INSTALL) -d -m 0700 $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d
+	$(INSTALL) -d -m 0755 $(DESTDIR)/$(sysconfdir)/logrotate.d
+	$(INSTALL) -m 644 kronosnetd.logrotate $(DESTDIR)/$(sysconfdir)/logrotate.d/kronosnetd
 
 uninstall-local:
 	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d || :;
 	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || :;
+	rm -f $(DESTDIR)/$(sysconfdir)/logrotate.d/kronosnetd
+	rmdir $(DESTDIR)/$(sysconfdir)/logrotate.d || :;

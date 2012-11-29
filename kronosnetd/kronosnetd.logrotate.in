@@ -1,0 +1,9 @@
+@LOGDIR@kronosnetd.log {
+	missingok
+	compress
+	copytruncate
+	daily
+	rotate 31
+	minsize 2048
+	notifempty
+}

@@ -191,6 +191,7 @@ AM_CONDITIONAL([BUILD_DOCS], [test "x${enable_publicandocs}" = xyes])
 AC_SUBST([DEFAULT_CONFIG_DIR])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
+AC_SUBST([LOGDIR])
 
 AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR],
 		   ["$(eval echo ${DEFAULT_CONFIG_DIR})"],
@@ -298,6 +299,7 @@ AC_CONFIG_FILES([
 		libtap/Makefile
 		libtap/libtap.pc
 		kronosnetd/Makefile
+		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
 		libknet/libknet.pc
 		docs/Makefile

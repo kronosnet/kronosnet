@@ -95,6 +95,7 @@ fi
 %doc COPYING.* COPYRIGHT 
 %dir %{_sysconfdir}/kronosnet
 %dir %{_sysconfdir}/kronosnet/*
+%{_sysconfdir}/logrotate.d/kronosnetd
 %{_sysconfdir}/rc.d/init.d/kronosnetd
 %{_sbindir}/*
 %{_mandir}/man8/*
