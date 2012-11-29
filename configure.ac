@@ -107,6 +107,8 @@ AC_TYPE_SSIZE_T
 AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_INT32_T
 
 # Checks for library functions.
 AC_FUNC_ALLOCA
@@ -127,6 +129,7 @@ AC_CHECK_FUNCS([ftruncate])
 AC_CHECK_FUNCS([strrchr])
 AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNCS([clock_gettime])
+AC_CHECK_FUNCS([strcasecmp])
 
 # PAM check
 AC_CHECK_HEADERS([security/pam_appl.h],
