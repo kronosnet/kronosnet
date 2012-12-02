@@ -36,7 +36,7 @@ vty:
 
 * add description commands for various levels
 
-* update configure.ac/spec/debian to grab version from git tag
+* update debian/ to grab version from git tag
 
 0.2
 ---

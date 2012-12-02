@@ -9,6 +9,8 @@ Makefile.in
 Makefile
 .deps
 .libs
+.version
+.tarball-version
 aclocal.m4
 autoconf
 autoheader
@@ -31,6 +33,7 @@ kronosnetd-*tar*
 kronosnetd/kronosnetd
 kronosnetd/knet-keygen
 kronosnetd/kronosnetd.logrotate
+kronosnet.spec
 *.swp
 *_test
 *_bench

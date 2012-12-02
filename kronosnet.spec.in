@@ -11,19 +11,21 @@
 ###############################################################################
 
 # keep around ready for later user
-## global alphatag rc4
+%global alphatag @alphatag@
+%global numcomm @numcomm@
+%global dirty @dirty@
 
 # main (empty) package
 # http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html
 
 Name: kronosnet
 Summary: Multipoint-to-Multipoint VPN daemon
-Version: 0.1
-Release: 1%{?alphatag:.%{alphatag}}%{?dist}
+Version: @version@
+Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Base
 URL: https://github.com/fabbione/kronosnet/
-Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}.tar.xz
+Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
 Requires(post): chkconfig, shadow-utils
 Requires(preun): chkconfig, shadow-utils, initscripts
 
@@ -32,10 +34,10 @@ Requires(preun): chkconfig, shadow-utils, initscripts
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
-BuildRequires: libqb-devel nss-devel
+BuildRequires: libqb-devel nss-devel pam-devel
 
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
 %{configure} --with-initddir=%{_sysconfdir}/rc.d/init.d/
@@ -173,6 +175,6 @@ Requires: pkgconfig
 %{_libdir}/pkgconfig/libknet.pc
 
 %changelog
-* Thu Nov 29 2012 Fabio M. Di Nitto <fabbione@kronosnet.org> - 0.1-1
-- commodity package
+* @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
+- Autotools generated version
 
