@@ -49,7 +49,7 @@ distclean-local:
 
 maintainer-clean-local:
 	make -f debian/rules clean
-	rm -rf m4 $(DEBCHANGELOG)
+	rm -rf m4 $(DEBCHANGELOG) debian/patches
 
 ## make rpm/srpm section.
 

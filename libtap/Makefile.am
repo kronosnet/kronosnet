@@ -10,7 +10,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 sources			= libtap.c
 
-EXTRA_DIST		= libtap_exported_sym
+EXTRA_DIST		= libtap_exported_sym tap_updown_bad tap_updown_good
 
 libversion		= 1:0:0
 

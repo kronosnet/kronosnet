@@ -8,7 +8,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
-EXTRA_DISTS		= kronostnetd.logrotate.in
+EXTRA_DIST		= kronosnetd.logrotate.in vty_test.c
 
 noinst_HEADERS		= \
 			  cfg.h \
