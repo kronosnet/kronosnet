@@ -176,5 +176,5 @@ Requires: pkgconfig
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
-- Autotools generated version
+- These aren't the droids you're looking for.
 

@@ -17,9 +17,13 @@ ACLOCAL_AMFLAGS		= -I m4
 
 SPEC			= $(PACKAGE_NAME).spec
 
+DEBCHANGELOG		= debian/changelog
+
 TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
-EXTRA_DIST		= debian build-aux $(SPEC) $(SPEC).in autogen.sh .version
+EXTRA_DIST		= build-aux autogen.sh .version \
+			  debian $(DEBCHANGELOG) \
+			  $(SPEC) $(SPEC).in
 
 SUBDIRS			= init libtap libknet kronosnetd tests
 
@@ -35,7 +39,7 @@ dist_doc_DATA		= \
 			  README \
 			  TODO
 
-all-local: $(SPEC)
+all-local: $(SPEC) $(DEBCHANGELOG)
 
 clean-local:
 	rm -f $(SPEC)
@@ -44,11 +48,12 @@ distclean-local:
 	rm -f $(PACKAGE_NAME)-*.tar.*
 
 maintainer-clean-local:
-	rm -rf m4
+	make -f debian/rules clean
+	rm -rf m4 $(DEBCHANGELOG)
 
 ## make rpm/srpm section.
 
-$(SPEC): $(SPEC).in
+$(SPEC): $(SPEC).in .version
 	rm -f $@-t $@
 	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
 	if [ -f .tarball-version ]; then \
@@ -104,6 +109,61 @@ srpm: clean
 rpm: clean
 	$(MAKE) $(SPEC) $(TARGZFILE)
 	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
+
+## make deb
+
+$(DEBCHANGELOG): $(DEBCHANGELOG).in .version
+	rm -f $@-t $@
+	date="$(shell LC_ALL=C date -R)" && \
+	if [ -f .tarball-version ]; then \
+		gitver="$(shell cat .tarball-version)" && \
+		debver=$$gitver && \
+		alphatag="" && \
+		dirty="" && \
+		numcomm="0"; \
+	else \
+		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		debver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
+		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
+		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
+		numcomm=`git rev-list $$vtag..HEAD | wc -l` && \
+		git update-index --refresh > /dev/null 2>&1 || true && \
+		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
+	fi && \
+	if [ -n "$$dirty" ]; then dirty=".dirty"; else dirty=""; fi && \
+	if [ "$$numcomm" = "0" ]; then \
+		sed \
+			-e "s#@version@#$$debver#g" \
+			-e "s#.@alphatag@##g" \
+			-e "s#.@numcomm@##g" \
+			-e "s#@dirty@#$$dirty#g" \
+			-e "s#@date@#$$date#g" \
+		$< > $@-t; \
+	else \
+		sed \
+			-e "s#@version@#$$debver#g" \
+			-e "s#@alphatag@#$$alphatag#g" \
+			-e "s#@numcomm@#$$numcomm#g" \
+			-e "s#@dirty@#$$dirty#g" \
+			-e "s#@date@#$$date#g" \
+		$< > $@-t; \
+	fi;
+	chmod a-w $@-t
+	mv $@-t $@
+
+deb-clean:
+	make -f debian/rules clean
+	./configure
+
+debs: deb-clean dist
+	if [ -f .tarball-version ]; then \
+		gitver="$(shell cat .tarball-version)"; \
+	else \
+		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		gitver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"`; \
+	fi && \
+	cp $(TARGZFILE) ../$(PACKAGE_NAME)_$$gitver.orig.tar.gz
+	dpkg-buildpackage -uc -us
 
 # release/versioning
 BUILT_SOURCES	= .version
