@@ -36,8 +36,6 @@ vty:
 
 * add description commands for various levels
 
-* update debian/ to grab version from git tag
-
 0.2
 ---
 
