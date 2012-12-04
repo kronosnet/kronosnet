@@ -21,7 +21,7 @@ Description: Multipoint-to-Multipoint VPN daemon
  .
  This package contains the kronosnet daemon and utils.
 
-Package: libtap1
+Package: libtap0
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -35,7 +35,7 @@ Description: Simple userland wrapper around kernel tap devices
 Package: libtap-dev
 Section: libdevel
 Architecture: any
-Depends: libtap1 (= ${binary:Version}), ${misc:Depends}
+Depends: libtap0 (= ${binary:Version}), ${misc:Depends}
 Description: Simple userland wrapper around kernel tap devices (developer files)
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
