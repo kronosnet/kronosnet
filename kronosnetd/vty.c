@@ -59,13 +59,13 @@ static int _fdset_nonblock(int fd)
 {
 	int fdflags;
 
-	fdflags = fcntl(fd, F_GETFD, 0);
+	fdflags = fcntl(fd, F_GETFL, 0);
 	if (fdflags < 0)
 		return -1;
 
 	fdflags |= O_NONBLOCK;
 
-	if (fcntl(fd, F_SETFD, fdflags) < 0)
+	if (fcntl(fd, F_SETFL, fdflags) < 0)
 		return -1;
 
 	return 0;
