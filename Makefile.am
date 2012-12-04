@@ -130,11 +130,11 @@ $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
 		git update-index --refresh > /dev/null 2>&1 || true && \
 		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
 	fi && \
-	if [ -n "$$dirty" ]; then dirty=".dirty"; else dirty=""; fi && \
+	if [ -n "$$dirty" ]; then dirty="-dirty"; else dirty=""; fi && \
 	if [ "$$numcomm" = "0" ]; then \
 		sed \
 			-e "s#@version@#$$debver#g" \
-			-e "s#.@alphatag@##g" \
+			-e "s#-@alphatag@##g" \
 			-e "s#.@numcomm@##g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
@@ -160,7 +160,7 @@ debs: deb-clean dist
 		gitver="$(shell cat .tarball-version)"; \
 	else \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
-		gitver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"`; \
+		gitver=`echo $$gitver | sed -e "s/^v//"`; \
 	fi && \
 	cp $(TARGZFILE) ../$(PACKAGE_NAME)_$$gitver.orig.tar.gz
 	dpkg-buildpackage -uc -us
