@@ -48,7 +48,7 @@ distclean-local:
 	rm -f $(PACKAGE_NAME)-*.tar.*
 
 maintainer-clean-local:
-	make -f debian/rules clean
+	make -f debian/rules clean || true
 	rm -rf m4 $(DEBCHANGELOG) debian/patches
 
 ## make rpm/srpm section.
