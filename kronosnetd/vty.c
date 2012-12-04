@@ -37,6 +37,7 @@ pthread_mutex_t knet_vty_mutex = PTHREAD_MUTEX_INITIALIZER;
 int knet_vty_config = -1;
 struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 struct knet_vty_global_conf vty_global_conf;
+pthread_t logging_thread;
 
 static int _fdset_cloexec(int fd)
 {
@@ -52,6 +53,84 @@ static int _fdset_cloexec(int fd)
 		return -1;
 
 	return 0;
+}
+
+static int _fdset_nonblock(int fd)
+{
+	int fdflags;
+
+	fdflags = fcntl(fd, F_GETFD, 0);
+	if (fdflags < 0)
+		return -1;
+
+	fdflags |= O_NONBLOCK;
+
+	if (fcntl(fd, F_SETFD, fdflags) < 0)
+		return -1;
+
+	return 0;
+}
+
+static void *_handle_logging_thread(void *data)
+{
+	int logfd;
+	int se_result = 0;
+	fd_set rfds;
+	struct timeval tv;
+
+	memcpy(&logfd, data, sizeof(int));
+
+	while (se_result >= 0 && !daemon_quit){
+		FD_ZERO (&rfds);
+		FD_SET (logfd, &rfds);
+
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+
+		se_result = select(FD_SETSIZE, &rfds, 0, 0, &tv);
+
+		if (se_result == -1)
+			goto out;
+
+		if (se_result == 0)
+			continue;
+
+		if (FD_ISSET(logfd, &rfds))  {
+			struct knet_log_msg msg;
+			size_t bytes_read = 0;
+			size_t len;
+
+			while (bytes_read < sizeof(struct knet_log_msg)) {
+				len = read(logfd, &msg + bytes_read,
+					   sizeof(struct knet_log_msg) - bytes_read);
+				if (len <= 0) {
+					break;
+				}
+				bytes_read += len;
+			}
+
+			if (bytes_read != sizeof(struct knet_log_msg))
+				continue;
+
+			switch(msg.msglevel) {
+				case KNET_LOG_WARN:
+					log_warn("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					break;
+				case KNET_LOG_INFO:
+					log_info("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					break;
+				case KNET_LOG_DEBUG:
+					log_kdebug("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					break;
+				case KNET_LOG_ERR:
+				default:
+					log_error("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+			}
+		}
+	}
+
+out:
+	return NULL;
 }
 
 static int knet_vty_init_listener(const char *ip_addr, const char *port)
@@ -233,8 +312,18 @@ int knet_vty_main_loop(int debug)
 	}
 
 	if ((_fdset_cloexec(logfd[0])) ||
-	    (_fdset_cloexec(logfd[1]))) {
-		log_error("Unable to set FD_CLOEXEC on logfd pipe");
+	    (_fdset_nonblock(logfd[0])) ||
+	    (_fdset_cloexec(logfd[1])) ||
+	    (_fdset_nonblock(logfd[1]))) {
+		log_error("Unable to set FD_CLOEXEX / O_NONBLOCK on logfd pipe");
+		return -1;
+	}
+
+	err = pthread_create(&logging_thread,
+			     NULL, _handle_logging_thread,
+			     (void *)&logfd[0]);
+	if (err) {
+		log_error("Unable to create logging thread");
 		return -1;
 	}
 
@@ -276,7 +365,6 @@ int knet_vty_main_loop(int debug)
 		FD_ZERO (&rfds);
 		FD_SET (vty_listener6_fd, &rfds);
 		FD_SET (vty_listener4_fd, &rfds);
-		FD_SET (logfd[0], &rfds);
 
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
@@ -325,38 +413,6 @@ int knet_vty_main_loop(int debug)
 			vty_listener_fd = vty_listener6_fd;
 		} else if (FD_ISSET(vty_listener4_fd, &rfds)) {
 			vty_listener_fd = vty_listener4_fd;
-		} else if (FD_ISSET(logfd[0], &rfds))  {
-			struct knet_log_msg msg;
-			size_t bytes_read = 0;
-			size_t len;
-
-			while (bytes_read < sizeof(struct knet_log_msg)) {
-				len = read(logfd[0], &msg + bytes_read,
-					   sizeof(struct knet_log_msg) - bytes_read);
-				if (len <= 0) {
-					break;
-				}
-				bytes_read += len;
-			}
-
-			if (bytes_read != sizeof(struct knet_log_msg))
-				continue;
-
-			switch(msg.msglevel) {
-				case KNET_LOG_WARN:
-					log_warn("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
-					break;
-				case KNET_LOG_INFO:
-					log_info("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
-					break;
-				case KNET_LOG_DEBUG:
-					log_kdebug("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
-					break;
-				case KNET_LOG_ERR:
-				default:
-					log_error("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
-			}
-			continue;
 		} else {
 			continue;
 		}
@@ -423,6 +479,7 @@ int knet_vty_main_loop(int debug)
 	}
 
 out:
+	pthread_cancel(logging_thread);
 	knet_vty_close_listener(vty_listener6_fd);
 	knet_vty_close_listener(vty_listener4_fd);
 	close(logfd[0]);

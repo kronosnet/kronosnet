@@ -178,17 +178,16 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	vsnprintf(msg.msg, sizeof(msg.msg) - 1, fmt, ap);
 	va_end(ap);
 
+	if (!err)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
 		if (len <= 0)
-			goto out_unlock;
+			return;
 
 		byte_cnt += len;
 	}
-
-out_unlock:
-	if (!err)
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 	return;
 }

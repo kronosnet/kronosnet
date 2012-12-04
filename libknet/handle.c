@@ -56,13 +56,6 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	memset(&knet_h->log_levels, knet_handle_cfg->default_log_level, KNET_MAX_SUBSYSTEMS);
 
-	if (knet_h->logfd > 0) {
-		if (_fdset_cloexec(knet_h->logfd) ||
-		    _fdset_nonblock(knet_h->logfd)) {
-			goto exit_fail1;
-		}
-	}
-
 	if (pipe(knet_h->dstpipefd) ||
 	    pipe(knet_h->hostpipefd)) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal comm pipe");
