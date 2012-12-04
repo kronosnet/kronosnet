@@ -113,6 +113,7 @@ rpm: clean
 ## make deb
 
 $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
+	mkdir -p debian
 	rm -f $@-t $@
 	date="$(shell LC_ALL=C date -R)" && \
 	if [ -f .tarball-version ]; then \
