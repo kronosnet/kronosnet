@@ -527,8 +527,11 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 
 	outlen = len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
 
-	if (knet_h->enabled != 1) /* data forward is disabled */
+	if ((knet_h->enabled != 1) &&
+	    (knet_h->tap_to_links_buf->kf_type != KNET_FRAME_HOST_INFO)) { /* data forward is disabled */
+		log_debug(knet_h, KNET_SUB_TAP_T, "Received data packet but forwarding is disabled");
 		goto host_unlock;
+	}
 
 	switch(knet_h->tap_to_links_buf->kf_type) {
 		case KNET_FRAME_DATA:
