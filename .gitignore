@@ -19,6 +19,7 @@ automake
 compile
 config.*
 configure*
+debian/changelog
 depcomp
 install-sh
 libtoolize
