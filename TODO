@@ -7,19 +7,21 @@ compress: should only compress user data, we will add a bit in the data
           open questions are: methods? level? zlib? lzo? bz? lzma? xz?
                               how much do we save by compressin our header?
 
-cryto:    expand API to support dual key for rekey process
-
 compress must happen before encrypt
+
+we can express compress data in packet type without adding extra
+flags to the headers. DATA -> BZ/GZDATA and we can change that
+right before encrypting. Using a similar approach to PING_MASK
+
+cryto:    expand API to support dual key for rekey process
 
 consider adding dhcp support for tap device
 
 need bind to interface for dynamic ip local interfaces vs src ip address or
 find a way to autodetect the new ip on that interface
+(listen to kernel netlink?)
 
 Implement link auth via user/passwd
-
-add link up/down script execution (similar to tap up/down?), might be useful
-in case after tot sec, link is not up, reset the router (or something)
 
 general:
 add log to vty:
