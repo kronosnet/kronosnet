@@ -23,8 +23,6 @@ find a way to autodetect the new ip on that interface
 
 Implement link auth via user/passwd
 
-check build out-of-tree for spec file
-
 general:
 add log to vty:
  - config (per subsystem/total)

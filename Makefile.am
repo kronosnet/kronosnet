@@ -63,6 +63,9 @@ $(SPEC): $(SPEC).in .version
 		dirty="" && \
 		numcomm="0"; \
 	else \
+		if [ ! -d .git ]; then \
+			export GIT_DIR="$(abs_srcdir)/.git";\
+		fi && \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
 		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
 		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
@@ -122,6 +125,9 @@ $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
 		dirty="" && \
 		numcomm="0"; \
 	else \
+		if [ ! -d .git ]; then \
+			export GIT_DIR="$(abs_srcdir)/.git";\
+		fi && \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
 		debver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
 		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
