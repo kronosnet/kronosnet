@@ -123,13 +123,16 @@ rtrn=0
 case "$1" in
 start)
 	start
+	rtrn=$?
 ;;
 restart|reload|force-reload)
 	restart
+	rtrn=$?
 ;;
 condrestart|try-restart)
 	if status $prog > /dev/null 2>&1; then
 		restart
+		rtrn=$?
 	fi
 ;;
 status)
@@ -138,6 +141,7 @@ status)
 ;;
 stop)
 	stop
+	rtrn=$?
 ;;
 *)
 	echo "usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
