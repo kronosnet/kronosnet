@@ -21,6 +21,8 @@ need bind to interface for dynamic ip local interfaces vs src ip address or
 find a way to autodetect the new ip on that interface
 (listen to kernel netlink?)
 
+Check IPV6_NEXTHOP for v6 sockets and find equivalent for v4 (Jesper?)
+
 Implement link auth via user/passwd
 
 general:
