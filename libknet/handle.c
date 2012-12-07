@@ -827,7 +827,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				src_link = src_host->link +
 					(knet_hinfo_data->khd_dype.link_up_down.khdt_link_id % KNET_MAX_LINK);
 				/*
-				 * not fully satisfied with this solution yet, but it works
 				 * basically if the node is coming back to life from a crash
 				 * we should receive a host info where local previous status == remote current status
 				 * and so we can detect that node is showing up again
@@ -838,6 +837,17 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 					src_link->host_info_up_sent = 0;
 				}
 				src_link->remoteconnected = knet_hinfo_data->khd_dype.link_up_down.khdt_link_status;
+				if (!src_link->remoteconnected) {
+					/*
+					 * if a host is disconnecting clean, we note that in donnotremoteupdate
+					 * so that we don't send host info back immediately but we wait
+					 * for the node to send an update when it's alive again
+					 */
+					src_link->host_info_up_sent = 0;
+					src_link->donnotremoteupdate = 1;
+				} else {
+					src_link->donnotremoteupdate = 0;
+				}
 				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %s link: %s remote connected: %u",
 					  src_host->name,
 					  src_link->dst_ipaddr,
@@ -910,7 +920,8 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
 			continue;
 
-		if (!dst_host->link[link_idx].host_info_up_sent) {
+		if ((!dst_host->link[link_idx].host_info_up_sent) &&
+		    (!dst_host->link[link_idx].donnotremoteupdate)) {
 			send_link_status[send_link_idx] = link_idx;
 			send_link_idx++;
 			/*
@@ -974,6 +985,7 @@ out_unlock:
 			knet_hinfo_data.khd_dype.link_up_down.khdt_link_id = send_link_status[i];
 			_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
 			dst_host->link[send_link_status[i]].host_info_up_sent = 1;
+			dst_host->link[send_link_status[i]].donnotremoteupdate = 0;
 		}
 	}
 
