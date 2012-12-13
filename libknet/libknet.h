@@ -207,12 +207,6 @@ struct knet_handle_cfg {
 				size_t *dst_host_ids_entries);
 };
 
-int ether_host_filter_fn (const unsigned char *outdata,
-			  ssize_t outdata_len,
-			  uint16_t src_node_id,
-			  uint16_t *dst_host_ids,
-			  size_t *dst_host_ids_entries);
-
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);

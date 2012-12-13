@@ -20,8 +20,7 @@ sources			= \
 			  host.c \
 			  listener.c \
 			  crypto.c \
-			  nsscrypto.c \
-			  etherfilter.c
+			  nsscrypto.c
 
 include_HEADERS		= libknet.h
 

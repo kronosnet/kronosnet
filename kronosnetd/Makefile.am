@@ -12,6 +12,7 @@ EXTRA_DIST		= kronosnetd.logrotate.in vty_test.c
 
 noinst_HEADERS		= \
 			  cfg.h \
+			  etherfilter.h \
 			  logging.h \
 			  netutils.h \
 			  vty.h \
@@ -25,6 +26,7 @@ sbin_PROGRAMS		= kronosnetd \
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
+			  etherfilter.c \
 			  main.c \
 			  logging.c \
 			  netutils.c \

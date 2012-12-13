@@ -8,10 +8,11 @@
 
 #include "config.h"
 
-#include "libknet.h"
-
+#include <arpa/inet.h>
 #include <netinet/ether.h>
 #include <string.h>
+
+#include "etherfilter.h"
 
 /*
  * stole from linux kernel/include/linux/etherdevice.h

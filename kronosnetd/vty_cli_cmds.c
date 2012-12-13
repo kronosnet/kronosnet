@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include "cfg.h"
+#include "etherfilter.h"
 #include "logging.h"
 #include "libtap.h"
 #include "netutils.h"
