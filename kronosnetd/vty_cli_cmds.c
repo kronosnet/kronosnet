@@ -1553,7 +1553,6 @@ tap_found:
 	knet_handle_cfg.node_id = requested_id;
 	knet_handle_cfg.log_fd = vty->logfd;
 	knet_handle_cfg.default_log_level = vty->loglevel;
-	knet_handle_cfg.dst_host_filter = KNET_DST_FILTER_ENABLE;
 	knet_handle_cfg.dst_host_filter_fn = ether_host_filter_fn;
 
 	knet_iface->cfg_ring.knet_h = knet_handle_new(&knet_handle_cfg);

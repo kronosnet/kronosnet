@@ -75,12 +75,12 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		goto exit_fail2;
 	}
 
-	knet_h->dst_host_filter = knet_handle_cfg->dst_host_filter;
 	knet_h->dst_host_filter_fn = knet_handle_cfg->dst_host_filter_fn;
 
-	if ((knet_h->dst_host_filter) && (!knet_h->dst_host_filter_fn)) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Incorrect dst_host_filter config requested");
-		goto exit_fail2;
+	if (knet_h->dst_host_filter_fn) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn disabled");
 	}
 
 	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL) {
@@ -529,7 +529,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 
 	switch(knet_h->tap_to_links_buf->kf_type) {
 		case KNET_FRAME_DATA:
-			if (knet_h->dst_host_filter) {
+			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
 						(const unsigned char *)knet_h->tap_to_links_buf->kf_data,
 						inlen,
@@ -723,7 +723,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		knet_h->recv_from_links_buf->kf_seq_num = ntohs(knet_h->recv_from_links_buf->kf_seq_num);
 
-		if (knet_h->dst_host_filter) {
+		if (knet_h->dst_host_filter_fn) {
 			int host_idx;
 			int found = 0;
 

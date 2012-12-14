@@ -82,10 +82,6 @@ struct knet_host {
 #define KNET_MIN_KEY_LEN 1024
 #define KNET_MAX_KEY_LEN 4096
 
-#define KNET_DST_FILTER_DISABLE 0 /* pckt goes everywhere */
-#define KNET_DST_FILTER_ENABLE  1 /* pckt goes via dst_host_filter,
-				     see knet_ether_filter for example */
-
 /*
  * dst_host_filter_fn should return
  * -1 on error, pkt is discarded

@@ -65,7 +65,6 @@ struct knet_handle {
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;
 	seq_num_t bcast_seq_num_tx;
-	uint8_t dst_host_filter;
 	int (*dst_host_filter_fn) (
 		const unsigned char *outdata,
 		ssize_t outdata_len,
