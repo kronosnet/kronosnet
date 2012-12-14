@@ -315,7 +315,6 @@ AC_CONFIG_FILES([
 		libknet/Makefile
 		libknet/libknet.pc
 		docs/Makefile
-		tests/Makefile
 		])
 
 AC_OUTPUT
