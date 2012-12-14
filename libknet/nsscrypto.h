@@ -6,11 +6,11 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef NSSCRYPTO_H_DEFINED
-#define NSSCRYPTO_H_DEFINED
+#ifndef __NSSCRYPTO_H__
+#define __NSSCRYPTO_H__
 
 #include <sys/types.h>
-#include "libknet.h"
+#include "internals.h"
 
 struct nsscrypto_instance;
 
@@ -33,4 +33,4 @@ int nsscrypto_init(
 void nsscrypto_fini(
 	knet_handle_t knet_h);
 
-#endif /* NSSCRYPTO_H_DEFINED */
+#endif

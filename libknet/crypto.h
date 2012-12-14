@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef CRYPTO_H_DEFINED
-#define CRYPTO_H_DEFINED
+#ifndef __CRYPTO_H__
+#define __CRYPTO_H__
 
 #include <sys/types.h>
 #include "internals.h"
@@ -51,4 +51,4 @@ int crypto_init(
 void crypto_fini(
 	knet_handle_t knet_h);
 
-#endif /* CRYPTO_H_DEFINED */
+#endif
