@@ -97,12 +97,12 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 
 	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
-	if ((knet_h->pingbuf = malloc(KNET_PINGBUFSIZE))== NULL) {
+	if ((knet_h->pingbuf = malloc(KNET_PING_SIZE))== NULL) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for hearbeat buffer");
 		goto exit_fail4;
 	}
 
-	memset(knet_h->pingbuf, 0, KNET_PINGBUFSIZE);
+	memset(knet_h->pingbuf, 0, KNET_PING_SIZE);
 
 	if ((pthread_rwlock_init(&knet_h->list_rwlock, NULL) != 0) ||
 	    (pthread_rwlock_init(&knet_h->host_rwlock, NULL) != 0) ||
@@ -775,7 +775,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		break;
 	case KNET_FRAME_PING:
-		outlen = KNET_PINGBUFSIZE;
+		outlen = KNET_PING_SIZE;
 		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_PONG;
 		knet_h->recv_from_links_buf->kf_node = htons(knet_h->node_id);
 
@@ -996,7 +996,7 @@ out_unlock:
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int len;
-	ssize_t outlen = KNET_PINGBUFSIZE;
+	ssize_t outlen = KNET_PING_SIZE;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
 	unsigned char *outbuf = (unsigned char *)knet_h->pingbuf;
@@ -1019,7 +1019,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->pingbuf,
-						    KNET_PINGBUFSIZE,
+						    KNET_PING_SIZE,
 						    knet_h->pingbuf_crypt,
 						    &outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_HB_T, "Unable to crypto ping packet");

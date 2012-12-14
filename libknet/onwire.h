@@ -73,6 +73,7 @@ struct knet_frame {
 #define kf_time kf_payload.ping.kfd_time
 #define kf_dyn kf_payload.ping.kfd_dyn
 
+#define KNET_PING_SIZE sizeof(struct knet_frame)
 #define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
 
 #define KNET_FRAME_VERSION 0x01
