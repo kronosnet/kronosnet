@@ -9,14 +9,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-VALGRIND = valgrind -q --error-exitcode=127 --track-fds=yes --leak-check=full
-HELGRIND = valgrind -v --tool=helgrind
-
-check-valgrind: $(check_PROGRAMS)
-	$(MAKE) TESTS_ENVIRONMENT="$(VALGRIND)" check
-
-check-helgrind: $(check_PROGRAMS)
-	$(MAKE) TESTS_ENVIRONMENT="$(HELGRIND)" check
+include $(top_srcdir)/build-aux/check.mk
 
 noinst_PROGRAMS = \
 		  ping_test \
@@ -25,6 +18,8 @@ noinst_PROGRAMS = \
 
 check_PROGRAMS = \
 		  timediff_test
+
+TESTS = $(check_PROGRAMS)
 
 AM_CPPFLAGS		= -I$(srcdir)/../libknet/
 

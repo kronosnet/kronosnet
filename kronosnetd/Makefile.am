@@ -10,6 +10,8 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 EXTRA_DIST		= kronosnetd.logrotate.in
 
+include $(top_srcdir)/build-aux/check.mk
+
 noinst_HEADERS		= \
 			  cfg.h \
 			  etherfilter.h \
@@ -27,6 +29,8 @@ sbin_PROGRAMS		= kronosnetd \
 check_PROGRAMS		= netutils_test
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
+
+TESTS			= $(check_PROGRAMS)
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
