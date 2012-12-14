@@ -11,7 +11,6 @@
 #define __ONWIRE_H__
 
 #include <stdint.h>
-#include <netinet/in.h>
 
 #define KNET_HOST_INFO_LINK_UP_DOWN 0
 #define KNET_HOST_INFO_LINK_TABLE   1
