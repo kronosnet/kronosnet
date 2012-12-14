@@ -15,7 +15,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "libknet-private.h"
+#include "internals.h"
 
 int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
 {

@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "libknet-private.h"
+#include "internals.h"
 
 int _listener_add(knet_handle_t knet_h, struct knet_link *lnk)
 {

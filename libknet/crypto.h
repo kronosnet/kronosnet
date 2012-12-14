@@ -10,7 +10,7 @@
 #define CRYPTO_H_DEFINED
 
 #include <sys/types.h>
-#include "libknet-private.h"
+#include "internals.h"
 
 struct crypto_instance {
 	int	model;

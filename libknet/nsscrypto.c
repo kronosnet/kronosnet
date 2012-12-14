@@ -17,7 +17,7 @@
 
 #include "crypto.h"
 #include "nsscrypto.h"
-#include "libknet-private.h"
+#include "internals.h"
 
 /*
  * crypto definitions and conversion tables

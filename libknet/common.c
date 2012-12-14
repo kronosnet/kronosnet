@@ -16,7 +16,7 @@
 #include <pthread.h>
 #include <strings.h>
 
-#include "libknet-private.h"
+#include "internals.h"
 
 int _fdset_cloexec(int fd)
 {

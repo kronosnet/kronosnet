@@ -13,7 +13,7 @@
 
 #include "crypto.h"
 #include "nsscrypto.h"
-#include "libknet-private.h"
+#include "internals.h"
 
 /*
  * internal module switch data

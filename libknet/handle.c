@@ -16,7 +16,7 @@
 #include <pthread.h>
 #include <sys/epoll.h>
 
-#include "libknet-private.h"
+#include "internals.h"
 #include "crypto.h"
 
 #define KNET_MAX_EVENTS 8

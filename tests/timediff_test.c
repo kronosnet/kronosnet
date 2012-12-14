@@ -13,7 +13,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "libknet-private.h"
+#include "internals.h"
 
 #define timespec_set(x, sec, nsec) \
 do { \

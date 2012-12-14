@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "libknet.h"
-#include "libknet-private.h"
+#include "internals.h"
 #include "netutils.h"
 
 #define KNET_PORT 50000
