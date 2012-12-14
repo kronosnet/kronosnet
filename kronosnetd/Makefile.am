@@ -8,7 +8,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
-EXTRA_DIST		= kronosnetd.logrotate.in vty_test.c
+EXTRA_DIST		= kronosnetd.logrotate.in
 
 noinst_HEADERS		= \
 			  cfg.h \
@@ -23,6 +23,10 @@ noinst_HEADERS		= \
 
 sbin_PROGRAMS		= kronosnetd \
 			  knet-keygen
+
+check_PROGRAMS		= netutils_test
+
+noinst_PROGRAMS		= $(check_PROGRAMS)
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
@@ -52,6 +56,9 @@ knet_keygen_SOURCES	= keygen.c
 knet_keygen_CPPFLAGS	= -I$(top_srcdir)/libknet
 
 dist_man_MANS		= kronosnetd.8 knet-keygen.8
+
+netutils_test_SOURCES	= netutils_test.c \
+			  netutils.c
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)

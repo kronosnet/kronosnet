@@ -24,25 +24,14 @@ noinst_PROGRAMS = \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
-		  netutils_test \
 		  timediff_test
 
-TESTS = $(check_PROGRAMS)
+AM_CPPFLAGS		= -I$(srcdir)/../libknet/
 
-AM_CPPFLAGS		= -DTEST \
-			  -I$(srcdir)/../libtap/ \
-			  -I$(srcdir)/../libknet/ \
-			  -I$(srcdir)/../kronosnetd/
-
-AM_LDFLAGS		= \
-			  $(top_builddir)/libtap/libtap.la \
-			  $(top_builddir)/libknet/libknet.la 
+AM_LDFLAGS		= $(top_builddir)/libknet/libknet.la 
 
 ping_test_SOURCES	= ping_test.c
 
 khandle_test_SOURCES	= khandle_test.c
-
-netutils_test_SOURCES	= netutils_test.c \
-			  $(srcdir)/../kronosnetd/netutils.c
 
 timediff_test_SOURCES	= timediff_test.c
