@@ -22,13 +22,48 @@ typedef struct knet_handle *knet_handle_t;
 #define KNET_MAX_HOST_LEN 64
 #define KNET_MAX_PORT_LEN 6
 
-#define KNET_CBUFFER_SIZE 4096
+/* handle */
+
 /*
-typedef uint64_t seq_num_t;
-#define SEQ_MAX UINT64_MAX
-*/
-typedef uint16_t seq_num_t;
-#define SEQ_MAX UINT16_MAX
+ * dst_host_filter_fn should return
+ * -1 on error, pkt is discarded
+ *  0 all good, send pkt to dst_host_ids and there are dst_host_ids_entries in buffer ready
+ *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
+ */
+
+struct knet_handle_cfg {
+	int		to_net_fd;
+	int		log_fd;
+	uint8_t		default_log_level;
+	uint16_t	node_id;
+	int		(*dst_host_filter_fn) (
+				const unsigned char *outdata,
+				ssize_t outdata_len,
+				uint16_t src_node_id,
+				uint16_t *dst_host_ids,
+				size_t *dst_host_ids_entries);
+};
+
+knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
+void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
+int knet_handle_free(knet_handle_t knet_h);
+
+/* crypto */
+
+#define KNET_MIN_KEY_LEN 1024
+#define KNET_MAX_KEY_LEN 4096
+
+struct knet_handle_crypto_cfg {
+	char		crypto_model[16];
+	char		crypto_cipher_type[16];
+	char		crypto_hash_type[16];
+	unsigned char	private_key[KNET_MAX_KEY_LEN];
+	unsigned int	private_key_len;
+};
+
+int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+
+/* link */
 
 #define KNET_LINK_STATIC  0 /* link com is static ip (default) */
 #define KNET_LINK_DYN_SRC 1 /* link com has src dynamic ip */
@@ -60,6 +95,20 @@ struct knet_link {
 	struct timespec pong_last;
 };
 
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured);
+void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, time_t interval, time_t timeout, int precision);
+int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority);
+
+/* host */
+
+#define KNET_CBUFFER_SIZE 4096
+/*
+typedef uint64_t seq_num_t;
+#define SEQ_MAX UINT64_MAX
+*/
+typedef uint16_t seq_num_t;
+#define SEQ_MAX UINT16_MAX
+
 #define KNET_LINK_POLICY_PASSIVE 0
 #define KNET_LINK_POLICY_ACTIVE  1
 #define KNET_LINK_POLICY_RR      2
@@ -79,54 +128,6 @@ struct knet_host {
 	struct knet_host *next;
 };
 
-#define KNET_MIN_KEY_LEN 1024
-#define KNET_MAX_KEY_LEN 4096
-
-/*
- * dst_host_filter_fn should return
- * -1 on error, pkt is discarded
- *  0 all good, send pkt to dst_host_ids and there are dst_host_ids_entries in buffer ready
- *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
- */
-
-struct knet_handle_cfg {
-	int		to_net_fd;
-	int		log_fd;
-	uint8_t		default_log_level;
-	uint16_t	node_id;
-	int		(*dst_host_filter_fn) (
-				const unsigned char *outdata,
-				ssize_t outdata_len,
-				uint16_t src_node_id,
-				uint16_t *dst_host_ids,
-				size_t *dst_host_ids_entries);
-};
-
-knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
-void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
-int knet_handle_free(knet_handle_t knet_h);
-
-struct knet_handle_crypto_cfg {
-	char		crypto_model[16];
-	char		crypto_cipher_type[16];
-	char		crypto_hash_type[16];
-	unsigned char	private_key[KNET_MAX_KEY_LEN];
-	unsigned int	private_key_len;
-};
-
-int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
-
-int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
-int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host);
-int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
-int knet_host_release(knet_handle_t knet_h, struct knet_host **host);
-int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
-int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
-
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured);
-void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, time_t interval, time_t timeout, int precision);
-int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority);
-
 #define KNET_HOST_FOREACH_NEXT 0	/* next host */
 #define KNET_HOST_FOREACH_FOUND 1	/* host found, exit loop */
 
@@ -138,7 +139,15 @@ struct knet_host_search {
 };
 
 typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, struct knet_host_search *data);
+
 int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data);
+int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
+int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host);
+int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
+int knet_host_release(knet_handle_t knet_h, struct knet_host **host);
+int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
+int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
+
 
 /* logging */
 
