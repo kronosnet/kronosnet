@@ -45,16 +45,21 @@ static int tok_inaddrport(char *str, struct sockaddr_in *addr)
 	if (!src_host)
 		src_host = strdup(strhost);
 	strport = strtok_r(NULL, ":", &tmp);
-	if (!src_port)
-		src_port = strdup(strport);
 
 	addr->sin_family = AF_INET;
 
-	if (strport == NULL)
+	if (strport == NULL) {
+		src_port = malloc(KNET_MAX_PORT_LEN);
+		if (!src_port) {
+			printf("no mem?\n");
+			exit(1);
+		}
+		snprintf(src_port, KNET_MAX_PORT_LEN, "%d", KNET_RING_DEFPORT);
 		addr->sin_port = htons(KNET_RING_DEFPORT);
-	else
+	} else {
+		src_port = strdup(strport);
 		addr->sin_port = htons(tok_inport(strport));
-
+	}
 	return inet_aton(strhost, &addr->sin_addr);
 }
 
