@@ -89,34 +89,6 @@ struct knet_host {
  *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
  */
 
-#define KNET_SUB_COMMON      0 /* common.c */
-#define KNET_SUB_HANDLE      1 /* handle.c alloc/dealloc config changes */
-#define KNET_SUB_HOST        2 /* host add/del/modify */
-#define KNET_SUB_LISTENER    3 /* listeners add/del/modify... */
-#define KNET_SUB_LINK        4 /* link add/del/modify */
-#define KNET_SUB_TAP_T       5 /* tap thread */
-#define KNET_SUB_LINK_T      6 /* link thread */
-#define KNET_SUB_SWITCH_T    7 /* switching thread */
-#define KNET_SUB_HB_T        8 /* heartbeat thread */
-#define KNET_SUB_FILTER      9 /* (ether)filter errors */
-#define KNET_SUB_CRYPTO     10 /* crypto.c generic layer */
-#define KNET_SUB_NSSCRYPTO  11 /* nsscrypto.c */
-#define KNET_SUB_LAST        KNET_SUB_NSSCRYPTO
-#define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
-
-#define KNET_LOG_ERR         0 /* unrecoverable errors/conditions */
-#define KNET_LOG_WARN        1 /* recoverable errors/conditions */
-#define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
-#define KNET_LOG_DEBUG       3
-
-#define KNET_MAX_LOG_MSG_SIZE    1024
-
-struct knet_log_msg {
-	uint8_t	subsystem;	/* KNET_SUB_* */
-	uint8_t msglevel;	/* KNET_LOG_* */
-	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
-};
-
 struct knet_handle_cfg {
 	int		to_net_fd;
 	int		log_fd;
@@ -170,6 +142,35 @@ typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, stru
 int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data);
 
 /* logging */
+
+#define KNET_SUB_COMMON      0 /* common.c */
+#define KNET_SUB_HANDLE      1 /* handle.c alloc/dealloc config changes */
+#define KNET_SUB_HOST        2 /* host add/del/modify */
+#define KNET_SUB_LISTENER    3 /* listeners add/del/modify... */
+#define KNET_SUB_LINK        4 /* link add/del/modify */
+#define KNET_SUB_TAP_T       5 /* tap thread */
+#define KNET_SUB_LINK_T      6 /* link thread */
+#define KNET_SUB_SWITCH_T    7 /* switching thread */
+#define KNET_SUB_HB_T        8 /* heartbeat thread */
+#define KNET_SUB_FILTER      9 /* (ether)filter errors */
+#define KNET_SUB_CRYPTO     10 /* crypto.c generic layer */
+#define KNET_SUB_NSSCRYPTO  11 /* nsscrypto.c */
+#define KNET_SUB_LAST        KNET_SUB_NSSCRYPTO
+#define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
+
+#define KNET_LOG_ERR         0 /* unrecoverable errors/conditions */
+#define KNET_LOG_WARN        1 /* recoverable errors/conditions */
+#define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
+#define KNET_LOG_DEBUG       3
+
+#define KNET_MAX_LOG_MSG_SIZE    1024
+
+struct knet_log_msg {
+	uint8_t	subsystem;	/* KNET_SUB_* */
+	uint8_t msglevel;	/* KNET_LOG_* */
+	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
+};
+
 void knet_set_log_level(knet_handle_t knet_h, uint8_t subsystem, uint8_t level);
 const char *knet_get_subsystem_name(uint8_t subsystem);
 const char *knet_get_loglevel_name(uint8_t level);
