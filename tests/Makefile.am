@@ -21,7 +21,6 @@ check-helgrind: $(check_PROGRAMS)
 noinst_PROGRAMS = \
 		  ping_test \
 		  khandle_test \
-		  lookup_bench \
 		  $(check_PROGRAMS)
 
 check_PROGRAMS = \
@@ -42,9 +41,6 @@ AM_LDFLAGS		= \
 ping_test_SOURCES	= ping_test.c
 
 khandle_test_SOURCES	= khandle_test.c
-
-lookup_bench_SOURCES	= lookup_bench.c \
-			  $(srcdir)/../kronosnetd/netutils.c
 
 netutils_test_SOURCES	= netutils_test.c \
 			  $(srcdir)/../kronosnetd/netutils.c

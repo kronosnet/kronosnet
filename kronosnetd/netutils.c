@@ -28,6 +28,10 @@ static int is_v4_mapped(struct sockaddr_storage *ss, socklen_t salen)
 	return memcmp(&addr6->sin6_addr, map, 12);
 }
 
+/*
+ * unused now - move to libknet for ACL
+ */
+
 int cmpaddr(struct sockaddr_storage *ss1, socklen_t sslen1,
 	    struct sockaddr_storage *ss2, socklen_t sslen2)
 {
