@@ -94,7 +94,6 @@ struct knet_handle_cfg {
 	int		log_fd;
 	uint8_t		default_log_level;
 	uint16_t	node_id;
-	uint8_t		dst_host_filter;
 	int		(*dst_host_filter_fn) (
 				const unsigned char *outdata,
 				ssize_t outdata_len,
