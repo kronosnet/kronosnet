@@ -30,7 +30,8 @@ pkgconfig_DATA		= libknet.pc
 
 noinst_HEADERS		= internals.h \
 			  crypto.h \
-			  nsscrypto.h
+			  nsscrypto.h \
+			  onwire.h
 
 lib_LTLIBRARIES		= libknet.la
 

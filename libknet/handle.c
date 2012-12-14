@@ -17,6 +17,7 @@
 #include <sys/epoll.h>
 
 #include "internals.h"
+#include "onwire.h"
 #include "crypto.h"
 
 #define KNET_MAX_EVENTS 8
