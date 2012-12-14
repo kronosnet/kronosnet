@@ -31,8 +31,6 @@ add log to vty:
  - output to vty
   log to vty: cmd execution failure
 
-* consider splitting tests/* based on what they test (tap_test -> libtap/) ?
-
 vty:
 
 * split cmd_files
