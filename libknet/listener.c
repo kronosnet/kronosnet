@@ -18,6 +18,8 @@
 
 #include "internals.h"
 
+#define KNET_RING_RCVBUFF 8388608
+
 int _listener_add(knet_handle_t knet_h, struct knet_link *lnk)
 {
 	int value;
