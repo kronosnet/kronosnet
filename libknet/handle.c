@@ -405,9 +405,15 @@ static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 	return 0;
 }
 
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured)
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured)
 {
 	int err;
+	struct knet_link *lnk;
+
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	lnk = &knet_h->host_index[node_id]->link[link_id];
 
 	if (lnk->configured == configured)
 		return 0;
@@ -457,9 +463,16 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *l
 	return 0;
 }
 
-int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority)
+int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority)
 {
-	uint8_t old_priority = lnk->priority;
+	struct knet_link *lnk;
+	uint8_t old_priority;
+
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	lnk = &knet_h->host_index[node_id]->link[link_id];
+	old_priority = lnk->priority;
 
 	if (lnk->priority == priority)
 		return 0;
@@ -485,9 +498,16 @@ int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 	return 0;
 }
 
-void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk,
+void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
 				time_t interval, time_t timeout, int precision)
 {
+	struct knet_link *lnk;
+
+	if (!knet_h->host_index[node_id])
+		return;
+
+	lnk = &knet_h->host_index[node_id]->link[link_id];
+
 	lnk->ping_interval = interval * 1000; /* microseconds */
 	lnk->pong_timeout = timeout * 1000; /* microseconds */
 	lnk->latency_fix = precision;
@@ -497,6 +517,36 @@ void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link 
 		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
 		  knet_h->host_index[node_id]->name, lnk->dst_ipaddr,
 		  lnk->ping_interval, lnk->pong_timeout, precision);
+}
+
+/* HACK FEST.. see libknet.h */
+
+int knet_link_config(knet_handle_t knet_h,
+		     uint16_t node_id,
+		     uint8_t link_id,
+		     struct sockaddr_storage *src_addr,
+		     struct sockaddr_storage *dst_addr)
+{
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	memcpy(&knet_h->host_index[node_id]->link[link_id].src_addr, src_addr, sizeof(struct sockaddr_storage));
+	memcpy(&knet_h->host_index[node_id]->link[link_id].dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+
+	return 0;
+}
+
+int knet_link_get_link(knet_handle_t knet_h,
+		       uint16_t node_id,
+		       uint8_t link_id,
+		       struct knet_link **knet_link)
+{
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	*knet_link = &knet_h->host_index[node_id]->link[link_id];
+
+	return 0;
 }
 
 static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)

@@ -14,79 +14,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "internals.h"
-
-int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host)
-{
-	int ret;
-
-	if ((ret = pthread_rwlock_rdlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_get: Unable to get read lock");
-		return ret;
-	}
-
-	*host = knet_h->host_index[node_id];
-
-	if (*host == NULL) {
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
-		errno = ENOENT;
-		return ENOENT;
-	}
-
-	return 0;
-}
-
-int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host)
-{
-	int ret;
-
-	if ((ret = pthread_rwlock_rdlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_acquire: Unable to get read lock");
-		return ret;
-	}
-
-	*host = knet_h->host_head;
-
-	return 0;
-}
-
-int knet_host_release(knet_handle_t knet_h, struct knet_host **host)
-{
-	int ret;
-
-	*host = NULL;
-
-	if ((ret = pthread_rwlock_unlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_release: Unable to release lock");
-		return ret;
-	}
-
-	return 0;
-}
-
-int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data)
-{
-	int lockstatus;
-	struct knet_host *host;
-
-	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
-
-	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_foreach: Unable to get lock");
-		return lockstatus;
-	}
-
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
-		if ((linkfun(knet_h, host, data)) != KNET_HOST_FOREACH_NEXT)
-			break;
-	}
-
-	if (lockstatus == 0)
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	return 0;
-}
 
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 {
@@ -112,6 +42,7 @@ int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 	memset(host, 0, sizeof(struct knet_host));
 
 	host->node_id = node_id;
+	snprintf(host->name, KNET_MAX_HOST_LEN - 1, "%u", node_id);
 
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++)
 		host->link[link_idx].link_id = link_idx;
@@ -178,6 +109,115 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 	return ret;
 }
 
+int knet_host_set_name(knet_handle_t knet_h, uint16_t node_id, const char *name)
+{
+	int lockstatus, ret;
+	struct knet_host *host;
+
+	lockstatus = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+
+	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_set_name: Unable to get lock");
+		return lockstatus;
+	}
+
+	host = knet_h->host_index[node_id];
+	if (host == NULL) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_set_name: host not found");
+		errno = ret = EINVAL;
+		goto exit_unlock;
+	}
+
+	snprintf(host->name, KNET_MAX_HOST_LEN - 1, "%s", name);
+
+exit_unlock:
+	if (lockstatus == 0)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return ret;
+}
+
+int knet_host_get_name(knet_handle_t knet_h, uint16_t node_id, char *name)
+{
+	int lockstatus, ret = 0;
+	struct knet_host *host;
+
+	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+
+	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_get_name: Unable to get lock");
+		return lockstatus;
+	}
+
+	host = knet_h->host_index[node_id];
+	if (host == NULL) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_get_name: host not found");
+		goto exit_unlock;
+	}
+
+	snprintf(name, KNET_MAX_HOST_LEN - 1, "%s", host->name);
+	ret = 1;
+
+exit_unlock:
+	if (lockstatus == 0)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return ret;
+}
+
+int knet_host_get_id(knet_handle_t knet_h, const char *name, uint16_t *node_id)
+{
+	int lockstatus, ret = 0;
+	struct knet_host *host;
+
+	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+
+	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_list: Unable to get lock");
+		return lockstatus;
+	}
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		if (!strcmp(name, host->name)) {
+			*node_id = host->node_id;
+			ret = 1;
+			break;
+		}
+	}
+
+	if (lockstatus == 0)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return ret;
+}
+
+int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries)
+{
+	int lockstatus, entries;
+	struct knet_host *host;
+
+	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+
+	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_list: Unable to get lock");
+		return lockstatus;
+	}
+
+	entries = 0;
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		host_ids[entries] = host->node_id;
+		entries++;
+	}
+
+	*ids_entries = entries;
+
+	if (lockstatus == 0)
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return 0;
+}
+
 int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)
 {
 	int ret = 0;
@@ -206,6 +246,31 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)
 	}
 
  exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+ exit_clean:
+	return ret;
+}
+
+int knet_host_get_policy(knet_handle_t knet_h, uint16_t node_id, int *policy)
+{
+	int ret = 0;
+	struct knet_host *host = NULL;
+
+	if ((ret = pthread_rwlock_rdlock(&knet_h->list_rwlock)) != 0) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_set_policy: Unable to get read lock");
+		goto exit_clean;
+	}
+
+	host = knet_h->host_index[node_id];
+
+	if (host == NULL) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_get_policy: host not found");
+		errno = ret = EINVAL;
+	} else {
+		*policy = host->link_handler_policy;
+	}
+
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
  exit_clean:

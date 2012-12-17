@@ -889,7 +889,6 @@ static int knet_cmd_link_dyn(struct knet_vty *vty)
 static int knet_cmd_link_timer(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *host = (struct knet_host *)vty->host;
 	struct knet_link *klink = (struct knet_link *)vty->link;
 	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
@@ -901,7 +900,7 @@ static int knet_cmd_link_timer(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	holdtime = param_to_int(param, paramlen);
 
-	knet_link_timeout(knet_iface->cfg_ring.knet_h, host->node_id, klink, keepalive, holdtime, 2048);
+	knet_link_timeout(knet_iface->cfg_ring.knet_h, vty->host_id, klink->link_id, keepalive, holdtime, 2048);
 
 	return 0;
 }
@@ -909,7 +908,6 @@ static int knet_cmd_link_timer(struct knet_vty *vty)
 static int knet_cmd_link_pri(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *host = (struct knet_host *)vty->host;
 	struct knet_link *klink = (struct knet_link *)vty->link;
 	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
@@ -918,7 +916,7 @@ static int knet_cmd_link_pri(struct knet_vty *vty)
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	priority = param_to_int(param, paramlen);
 
-	if (knet_link_priority(knet_iface->cfg_ring.knet_h, host->node_id, klink, priority)) {
+	if (knet_link_priority(knet_iface->cfg_ring.knet_h, vty->host_id, klink->link_id, priority)) {
 		knet_vty_write(vty, "Error: unable to update link priority%s", telnet_newline);
 		return -1;
 	}
@@ -929,7 +927,6 @@ static int knet_cmd_link_pri(struct knet_vty *vty)
 static int knet_cmd_no_link(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *host = (struct knet_host *)vty->host;
 	struct knet_link *klink = NULL;
 	int paramlen = 0, paramoffset = 0;
 	char *param = NULL;
@@ -938,10 +935,10 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	link_id = param_to_int(param, paramlen);
 
-	klink = &host->link[link_id];
+	knet_link_get_link(knet_iface->cfg_ring.knet_h, vty->host_id, link_id, &klink);
 
 	if (klink->configured) {
-		if (knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, klink, 0)) {
+		if (knet_link_enable(knet_iface->cfg_ring.knet_h, vty->host_id, link_id, 0)) {
 			knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
 			return -1;
 		}
@@ -953,7 +950,6 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 static int knet_cmd_link(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *host = (struct knet_host *)vty->host;
 	struct knet_link *klink = NULL;
 	int paramlen = 0, paramoffset = 0, err = 0;
 	char *param = NULL;
@@ -967,7 +963,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	param_to_str(src_ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
 
 	memset(src_port, 0, sizeof(src_port));
-	snprintf(src_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + host->node_id);
+	snprintf(src_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + vty->host_id);
 
 	get_param(vty, 3, &param, &paramlen, &paramoffset);
 	param_to_str(dst_ipaddr, KNET_MAX_HOST_LEN, param, paramlen);
@@ -975,7 +971,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	memset(dst_port, 0, sizeof(dst_port));
 	snprintf(dst_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
 
-	klink = &host->link[link_id];
+	knet_link_get_link(knet_iface->cfg_ring.knet_h, vty->host_id, link_id, &klink);
 	if (!klink->configured) {
 		memset(klink, 0, sizeof(struct knet_link));
 		klink->link_id = link_id;
@@ -1001,9 +997,9 @@ static int knet_cmd_link(struct knet_vty *vty)
 			}
 		}
 
-		knet_link_timeout(knet_iface->cfg_ring.knet_h, host->node_id, klink, 1000, 5000, 2048);
+		knet_link_timeout(knet_iface->cfg_ring.knet_h, vty->host_id, link_id, 1000, 5000, 2048);
 
-		knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, klink, 1);
+		knet_link_enable(knet_iface->cfg_ring.knet_h, vty->host_id, link_id, 1);
 	}
 
 	vty->link = (void *)klink;
@@ -1016,7 +1012,6 @@ out_clean:
 static int knet_cmd_switch_policy(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *host = (struct knet_host *)vty->host;
 	int paramlen = 0, paramoffset = 0, err = 0;
 	char *param = NULL;
 	char policystr[16];
@@ -1037,54 +1032,45 @@ static int knet_cmd_switch_policy(struct knet_vty *vty)
 		return -1;
 	}
 
-	err = knet_host_set_policy(knet_iface->cfg_ring.knet_h, host->node_id, policy);
+	err = knet_host_set_policy(knet_iface->cfg_ring.knet_h, vty->host_id, policy);
 	if (err)
 		knet_vty_write(vty, "Error: unable to set switching policy to %s%s", policystr, telnet_newline);
 
 	return err;
 }
 
-static int knet_find_host(struct knet_vty *vty, struct knet_host **host,
-					const char *nodename, const uint16_t requested_node_id)
+static int knet_find_host(struct knet_vty *vty,	const char *nodename, const uint16_t requested_node_id)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	struct knet_host *head = NULL;
-	int err = 0;
+	int have_nodeid, have_name;
+	uint16_t node_id;
+	char name[KNET_MAX_HOST_LEN];
 
-	*host = NULL;
-	if (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head)) {
-		knet_vty_write(vty, "Error: unable to acquire lock on peer list!%s", telnet_newline);
+	have_nodeid = knet_host_get_id(knet_iface->cfg_ring.knet_h, nodename, &node_id);
+	have_name = knet_host_get_name(knet_iface->cfg_ring.knet_h, requested_node_id, name);
+
+	/*
+	 * internal error.. get out
+	 */
+	if ((have_nodeid < 0) || (have_name < 0)) {
+		knet_vty_write(vty, "Error: unable to query libknet for name/nodeid info%s", telnet_newline);
 		return -1;
 	}
 
-	while (head != NULL) {
-		if (!strcmp(head->name, nodename)) {
-			if (head->node_id == requested_node_id) {
-				*host = head;
-				err = 1;
-				goto out_clean;
-			} else {
-				knet_vty_write(vty, "Error: requested peer exists with another nodeid%s", telnet_newline);
-				err = -1;
-				goto out_clean;
-			}
-		} else {
-			if (head->node_id == requested_node_id) {
-				knet_vty_write(vty, "Error: requested peer nodeid already exists%s", telnet_newline);
-				err = -1;
-				goto out_clean;
-			}
-		}
-		head = head->next;
+	/*
+	 * node does not exists in knet
+	 */
+	if ((!have_nodeid) && (!have_name))
+		return 0;
+
+	if ((have_name) && (have_nodeid)) {
+		if (!strcmp(name, nodename) && (node_id == requested_node_id))
+			return 1;
 	}
 
-out_clean:
-	while (knet_host_release(knet_iface->cfg_ring.knet_h, &head) != 0) {
-		knet_vty_write(vty, "Error: unable to release lock on peer list!%s", telnet_newline);
-		sleep(1);
-	}
+	knet_vty_write(vty, "Error: requested nodename or id already exists in libknet%s", telnet_newline);
 
-	return err;
+	return -1;
 }
 
 static int knet_cmd_no_peer(struct knet_vty *vty)
@@ -1092,7 +1078,6 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	int paramlen = 0, paramoffset = 0, requested_node_id = 0, err = 0;
 	char *param = NULL;
-	struct knet_host *host = NULL;
 	char nodename[KNET_MAX_HOST_LEN];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
@@ -1106,7 +1091,7 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 		return -1;
 	}
 
-	err = knet_find_host(vty, &host, nodename, requested_node_id);
+	err = knet_find_host(vty, nodename, requested_node_id);
 	if (err < 0)
 		goto out_clean;
 
@@ -1115,9 +1100,9 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 		goto out_clean;
 	}
 
-	if (knet_host_remove(knet_iface->cfg_ring.knet_h, requested_node_id) < 0) {
+	err = knet_host_remove(knet_iface->cfg_ring.knet_h, requested_node_id);
+	if (err < 0) {
 		knet_vty_write(vty, "Error: unable to remove peer from current config%s", telnet_newline);
-		err = -1;
 		goto out_clean;
 	}
 
@@ -1128,9 +1113,8 @@ out_clean:
 static int knet_cmd_peer(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	int paramlen = 0, paramoffset = 0, requested_node_id = 0, err = 0;
+	int paramlen = 0, paramoffset = 0, requested_node_id = 0, err = 0, host = 0;
 	char *param = NULL;
-	struct knet_host *host, *temp = NULL;
 	char nodename[KNET_MAX_HOST_LEN];
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
@@ -1144,31 +1128,28 @@ static int knet_cmd_peer(struct knet_vty *vty)
 		return -1;
 	}
 
-	err = knet_find_host(vty, &host, nodename, requested_node_id);
+	err = knet_find_host(vty, nodename, requested_node_id);
 	if (err < 0)
 		goto out_clean;
 
 	if (err == 0) {
-		if (knet_host_add(knet_iface->cfg_ring.knet_h, requested_node_id) < 0) {
+		err = knet_host_add(knet_iface->cfg_ring.knet_h, requested_node_id);
+		if (err < 0) {
 			knet_vty_write(vty, "Error: unable to allocate memory for host struct!%s", telnet_newline);
-			err = -1;
 			goto out_clean;
 		}
-		knet_host_get(knet_iface->cfg_ring.knet_h, requested_node_id, &temp);
-		host = temp;
-		knet_host_release(knet_iface->cfg_ring.knet_h, &temp);
-		memcpy(host->name, nodename, strlen(nodename));
-
+		host = 1;
+		knet_host_set_name(knet_iface->cfg_ring.knet_h, requested_node_id, nodename);
 		knet_host_set_policy(knet_iface->cfg_ring.knet_h, requested_node_id, KNET_LINK_POLICY_PASSIVE);
 	}
 
-	vty->host = (void *)host;
+	vty->host_id = requested_node_id;
 	vty->node = NODE_PEER;
 
 out_clean:
 	if (err < 0) {
 		if (host)
-			knet_host_remove(knet_iface->cfg_ring.knet_h, host->node_id);
+			knet_host_remove(knet_iface->cfg_ring.knet_h, requested_node_id);
 	}
 
 	return err;
@@ -1416,10 +1397,11 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	char *param = NULL;
 	char device[IFNAMSIZ];
 	struct knet_cfg *knet_iface = NULL;
-	struct knet_host *host;
 	char *ip_list = NULL;
-	int ip_list_entries = 0, i, offset = 0;
+	int ip_list_entries = 0, j, i, offset = 0;
 	char *error_string = NULL;
+	uint16_t host_ids[KNET_MAX_HOST];
+	size_t host_ids_entries = 0;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(device, IFNAMSIZ, param, paramlen);
@@ -1450,30 +1432,10 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		ip_list_entries = 0;
 	}
 
-	while (1) {
-		struct knet_host *head;
-
-		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &head) != 0) {
-			log_error("CLI ERROR: unable to acquire peer lock.. will retry in 1 sec"); 
-			sleep (1);
-		}
-
-		host = head;
-
-		while (knet_host_release(knet_iface->cfg_ring.knet_h, &head) != 0) {
-			log_error("CLI ERROR: unable to release peer lock.. will retry in 1 sec");
-			sleep (1);
-		}
-
-		if (host == NULL)
-			break;
-
-		for (i = 0; i < KNET_MAX_LINK; i++)
-			knet_link_enable(knet_iface->cfg_ring.knet_h, host->node_id, &host->link[i], 0);
-
-		while (knet_host_remove(knet_iface->cfg_ring.knet_h, host->node_id) != 0) {
-			log_error("CLI ERROR: unable to release peer.. will retry in 1 sec");
-			sleep (1);
+	knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
+	for (j = 0; j < host_ids_entries; j++) {
+		for (i = 0; i < KNET_MAX_LINK; i++) {
+			knet_link_enable(knet_iface->cfg_ring.knet_h, host_ids[j], i, 0);
 		}
 	}
 
@@ -1612,11 +1574,15 @@ static int knet_cmd_exit_node(struct knet_vty *vty)
 
 static int knet_cmd_status(struct knet_vty *vty)
 {
-	int i;
+	int i, j;
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
-	struct knet_host *host = NULL;
+	struct knet_link *klink;
 	const char *nl = telnet_newline;
 	struct timespec now;
+	char nodename[KNET_MAX_HOST_LEN];
+	uint16_t host_ids[KNET_MAX_HOST];
+	size_t host_ids_entries = 0;
+	int policy;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -1626,14 +1592,14 @@ static int knet_cmd_status(struct knet_vty *vty)
 	while (knet_iface != NULL) {
 		knet_vty_write(vty, "interface %s (active: %d)%s", tap_get_name(knet_iface->cfg_eth.tap), knet_iface->active, nl);
 
-		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &host)) {
-			log_error("CLI ERROR: waiting for peer lock");
-			sleep(1);
-		}
+		knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 
-		while (host != NULL) {
-			knet_vty_write(vty, "  peer %s ", host->name);
-			switch (host->link_handler_policy) {
+		for (j = 0; j < host_ids_entries; j++) {
+			knet_host_get_name(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
+			knet_vty_write(vty, "  peer %s ", nodename);
+
+			knet_host_get_policy(knet_iface->cfg_ring.knet_h, host_ids[j], &policy);
+			switch (policy) {
 				case KNET_LINK_POLICY_PASSIVE:
 					knet_vty_write(vty, "(passive)%s", nl);
 					break;
@@ -1644,17 +1610,19 @@ static int knet_cmd_status(struct knet_vty *vty)
 					knet_vty_write(vty, "(round-robin)%s", nl);
 					break;
 			}
+
 			for (i = 0; i < KNET_MAX_LINK; i++) {
-				if (host->link[i].configured == 1) {
-					knet_vty_write(vty, "    link %s %s (connected: %d)%s", host->link[i].src_ipaddr, host->link[i].dst_ipaddr, host->link[i].connected, nl);
-					if (host->link[i].connected) {
-						knet_vty_write(vty, "      average latency: %llu us%s", host->link[i].latency, nl);
-						if ((host->link[i].dynamic == KNET_LINK_DYN_DST) &&
-						    (host->link[i].dynconnected)) {
+				knet_link_get_link(knet_iface->cfg_ring.knet_h, host_ids[j], i, &klink);
+				if (klink->configured == 1) {
+					knet_vty_write(vty, "    link %s %s (connected: %d)%s", klink->src_ipaddr, klink->dst_ipaddr, klink->connected, nl);
+					if (klink->connected) {
+						knet_vty_write(vty, "      average latency: %llu us%s", klink->latency, nl);
+						if ((klink->dynamic == KNET_LINK_DYN_DST) &&
+						    (klink->dynconnected)) {
 							char *src_ip[2];
 
 							src_ip[0] = NULL;
-							if (addrtostr((struct sockaddr *)&host->link[i].dst_addr,
+							if (addrtostr((struct sockaddr *)&klink->dst_addr,
 								      sizeof(struct sockaddr_storage), src_ip)) {
 								knet_vty_write(vty, "      source ip: unknown%s", nl);
 							} else {
@@ -1664,21 +1632,15 @@ static int knet_cmd_status(struct knet_vty *vty)
 						}
 					} else {
 						knet_vty_write(vty, "      last heard: ");
-						if (host->link[i].pong_last.tv_sec) {
+						if (klink->pong_last.tv_sec) {
 							knet_vty_write(vty, "%lu s ago%s",
-								(long unsigned int)now.tv_sec - host->link[i].pong_last.tv_sec, nl);
+								(long unsigned int)now.tv_sec - klink->pong_last.tv_sec, nl);
 						} else {
 							knet_vty_write(vty, "never%s", nl);
 						}
 					}
 				}
 			}
-			host = host->next;
-		}
-
-		while (knet_host_release(knet_iface->cfg_ring.knet_h, &host) != 0) {
-			log_error("CLI ERROR: unable to release peer lock.. will retry in 1 sec");
-			sleep(1);
 		}
 
 		knet_iface = knet_iface->next;
@@ -1689,12 +1651,16 @@ static int knet_cmd_status(struct knet_vty *vty)
 
 static int knet_cmd_print_conf(struct knet_vty *vty)
 {
-	int i;
+	int i, j;
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
-	struct knet_host *host = NULL;
+	struct knet_link *klink;
 	const char *nl = telnet_newline;
 	char *ip_list = NULL;
 	int ip_list_entries = 0;
+	uint16_t host_ids[KNET_MAX_HOST];
+	size_t host_ids_entries = 0;
+	char nodename[KNET_MAX_HOST_LEN];
+	int policy;
 
 	if (vty->filemode)
 		nl = file_newline;
@@ -1731,14 +1697,13 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			       knet_iface->knet_handle_crypto_cfg.crypto_cipher_type,
 			       knet_iface->knet_handle_crypto_cfg.crypto_hash_type, nl);
 
-		while (knet_host_acquire(knet_iface->cfg_ring.knet_h, &host)) {
-			log_error("CLI ERROR: waiting for peer lock");
-			sleep(1);
-		}
+		knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
+		for (j = 0; j < host_ids_entries; j++) {
+			knet_host_get_name(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
+			knet_vty_write(vty, "  peer %s %u%s", nodename, host_ids[j], nl);
 
-		while (host != NULL) {
-			knet_vty_write(vty, "  peer %s %u%s", host->name, host->node_id, nl);
-			switch (host->link_handler_policy) {
+			knet_host_get_policy(knet_iface->cfg_ring.knet_h, host_ids[j], &policy);
+			switch (policy) {
 				case KNET_LINK_POLICY_PASSIVE:
 					knet_vty_write(vty, "   switch-policy passive%s", nl);
 					break;
@@ -1749,24 +1714,20 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 					knet_vty_write(vty, "   switch-policy round-robin%s", nl);
 					break;
 			}
+
 			for (i = 0; i < KNET_MAX_LINK; i++) {
-				if (host->link[i].configured == 1) {
-					knet_vty_write(vty, "   link %d %s %s%s", i, host->link[i].src_ipaddr , host->link[i].dst_ipaddr, nl);
-					if (host->link[i].dynamic != KNET_LINK_DYN_DST)
-						knet_vty_write(vty, "    dynamic %u%s", host->link[i].dynamic, nl);
-					knet_vty_write(vty, "    timers %llu %llu%s", host->link[i].ping_interval / 1000, host->link[i].pong_timeout / 1000, nl);
-					knet_vty_write(vty, "    priority %u%s", host->link[i].priority, nl);
+				knet_link_get_link(knet_iface->cfg_ring.knet_h, host_ids[j], i, &klink);
+				if (klink->configured == 1) {
+					knet_vty_write(vty, "   link %d %s %s%s", i, klink->src_ipaddr , klink->dst_ipaddr, nl);
+					if (klink->dynamic != KNET_LINK_DYN_DST)
+						knet_vty_write(vty, "    dynamic %u%s", klink->dynamic, nl);
+					knet_vty_write(vty, "    timers %llu %llu%s", klink->ping_interval / 1000, klink->pong_timeout / 1000, nl);
+					knet_vty_write(vty, "    priority %u%s", klink->priority, nl);
 					/* print link properties */
 					knet_vty_write(vty, "    exit%s", nl);
 				}
 			}
 			knet_vty_write(vty, "   exit%s", nl);
-			host = host->next;
-		}
-
-		while (knet_host_release(knet_iface->cfg_ring.knet_h, &host) != 0) {
-			log_error("CLI ERROR: unable to release peer lock.. will retry in 1 sec");
-			sleep(1);
 		}
 
 		if (knet_iface->active)

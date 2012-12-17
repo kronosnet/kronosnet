@@ -34,6 +34,32 @@ struct knet_listener {
 	struct knet_listener *next;
 };
 
+#define KNET_CBUFFER_SIZE 4096
+/*
+typedef uint64_t seq_num_t;
+#define SEQ_MAX UINT64_MAX
+*/
+typedef uint16_t seq_num_t;
+#define SEQ_MAX UINT16_MAX
+
+struct knet_host {
+	/* required */
+	uint16_t node_id;
+	/* configurable */
+	uint8_t link_handler_policy;
+	char name[KNET_MAX_HOST_LEN];
+	/* internals */
+	char bcast_circular_buffer[KNET_CBUFFER_SIZE];
+	seq_num_t bcast_seq_num_rx;
+	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
+	seq_num_t ucast_seq_num_tx;
+	seq_num_t ucast_seq_num_rx;
+	struct knet_link link[KNET_MAX_LINK];
+	uint8_t active_link_entries;
+	uint8_t active_links[KNET_MAX_LINK];
+	struct knet_host *next;
+};
+
 struct knet_handle {
 	uint16_t node_id;
 	unsigned int enabled:1;
@@ -75,6 +101,7 @@ struct knet_handle {
 
 int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);
+
 int _dst_cache_update(knet_handle_t knet_h, uint16_t node_id);
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen);
 int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);

@@ -95,59 +95,48 @@ struct knet_link {
 	struct timespec pong_last;
 };
 
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, int configured);
-void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, time_t interval, time_t timeout, int precision);
-int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, struct knet_link *lnk, uint8_t priority);
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured);
+void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t interval, time_t timeout, int precision);
+int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority);
+
+/* HACK FEST - transition calls as we move things to internal.h */
+int knet_link_config(knet_handle_t knet_h,
+		     uint16_t node_id,
+		     uint8_t link_id,
+		     struct sockaddr_storage *src_addr,
+		     struct sockaddr_storage *dst_addr);
+
+int knet_link_get_link(knet_handle_t knet_h,
+		       uint16_t node_id,
+		       uint8_t link_id,
+		       struct knet_link **knet_link);
 
 /* host */
 
-#define KNET_CBUFFER_SIZE 4096
-/*
-typedef uint64_t seq_num_t;
-#define SEQ_MAX UINT64_MAX
-*/
-typedef uint16_t seq_num_t;
-#define SEQ_MAX UINT16_MAX
+int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
+int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
 
+/* name must be <= KNET_MAX_HOST_LEN */
+int knet_host_set_name(knet_handle_t knet_h, uint16_t node_id, const char *name);
+
+/* name must be at least = KNET_MAX_HOST_LEN */
+int knet_host_get_name(knet_handle_t knet_h, uint16_t node_id, char *name);
+
+/* name must be <= KNET_MAX_HOST_LEN */
+int knet_host_get_id(knet_handle_t knet_h, const char *name, uint16_t *node_id);
+
+/* get a list of configured hosts in an array of uint16_t of size MAX_HOST */
+int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries);
+
+/*
+ * define switching policies
+ */
 #define KNET_LINK_POLICY_PASSIVE 0
 #define KNET_LINK_POLICY_ACTIVE  1
 #define KNET_LINK_POLICY_RR      2
 
-struct knet_host {
-	uint16_t node_id;
-	char name[KNET_MAX_HOST_LEN];
-	char bcast_circular_buffer[KNET_CBUFFER_SIZE];
-	seq_num_t bcast_seq_num_rx;
-	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
-	seq_num_t ucast_seq_num_tx;
-	seq_num_t ucast_seq_num_rx;
-	struct knet_link link[KNET_MAX_LINK];
-	uint8_t active_link_entries;
-	uint8_t active_links[KNET_MAX_LINK];
-	uint8_t link_handler_policy;
-	struct knet_host *next;
-};
-
-#define KNET_HOST_FOREACH_NEXT 0	/* next host */
-#define KNET_HOST_FOREACH_FOUND 1	/* host found, exit loop */
-
-struct knet_host_search {
-	int 			param1;	/* user parameter 1 */
-	void 			*data1;	/* user data pointer 1 */
-	void 			*data2;	/* user data pointer 2 */
-	int 			retval;	/* search return value */
-};
-
-typedef int (*knet_link_fn_t)(knet_handle_t knet_h, struct knet_host *host, struct knet_host_search *data);
-
-int knet_host_foreach(knet_handle_t knet_h, knet_link_fn_t linkfun, struct knet_host_search *data);
-int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
-int knet_host_acquire(knet_handle_t knet_h, struct knet_host **host);
-int knet_host_get(knet_handle_t knet_h, uint16_t node_id, struct knet_host **host);
-int knet_host_release(knet_handle_t knet_h, struct knet_host **host);
-int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
 int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
-
+int knet_host_get_policy(knet_handle_t knet_h, uint16_t node_id, int *policy);
 
 /* logging */
 

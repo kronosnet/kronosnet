@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <alloca.h>
 #include <signal.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include "libknet.h"
@@ -119,8 +120,9 @@ static int set_crypto(int argc, char *argv[])
 static void argv_to_hosts(int argc, char *argv[])
 {
 	int err, i;
-	struct knet_host *host;
-	struct knet_host *tmp_host;
+	uint16_t node_id;
+	struct sockaddr_storage src_addr;
+	struct sockaddr_storage dst_addr;
 
 	for (i = 2; i < argc; i++) {
 		if (!strncmp(argv[i], "crypto", 6))
@@ -128,31 +130,31 @@ static void argv_to_hosts(int argc, char *argv[])
 		if (!strncmp(argv[i], "debug", 5))
 			continue;
 
-		if (knet_host_add(knet_h, i - 1) != 0) {
+		node_id = i - 1;
+
+		if (knet_host_add(knet_h, node_id) != 0) {
 			printf("Unable to add new knet_host\n");
 			exit(EXIT_FAILURE);
 		}
 
-		knet_host_get(knet_h, i - 1, &tmp_host);
-		host = tmp_host;
-		knet_host_release(knet_h, &tmp_host);
+		knet_host_set_name(knet_h, node_id, argv[i]);
 
-		err = tok_inaddrport(argv[1], (struct sockaddr_in *) &host->link[0].src_addr);
+		err = tok_inaddrport(argv[1], (struct sockaddr_in *) &src_addr);
 		if (err < 0) {
 			printf("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
-		strncpy(host->link[0].src_ipaddr, src_host, KNET_MAX_HOST_LEN - 1);
-		strncpy(host->link[0].src_port, src_port, 5);
+
 		err = tok_inaddrport(argv[i],
-				(struct sockaddr_in *) &host->link[0].dst_addr);
+				(struct sockaddr_in *) &dst_addr);
 		if (err < 0) {
 			printf("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
 
-		knet_link_timeout(knet_h, host->node_id, &host->link[0], 1000, 5000, 2048);
-		knet_link_enable(knet_h, host->node_id, &host->link[0], 1);
+		knet_link_config(knet_h, node_id, 0, &src_addr, &dst_addr);
+		knet_link_timeout(knet_h, node_id, 0, 1000, 5000, 2048);
+		knet_link_enable(knet_h, node_id, 0, 1);
 	}
 }
 
@@ -161,19 +163,23 @@ static void argv_to_hosts(int argc, char *argv[])
  *   # tc -d qdisc show dev lo
  *   # tc qdisc del dev lo root
  */
-static int print_link(knet_handle_t khandle, struct knet_host *host, struct knet_host_search *data)
+static int print_link(knet_handle_t khandle, uint16_t host_id)
 {
 	int i;
+	struct knet_link *lnk;
 
 	for (i = 0; i < KNET_MAX_LINK; i++) {
-		if (host->link[i].configured != 1) continue;
+		if (knet_link_get_link(knet_h, host_id, i, &lnk) < 0)
+			return -1;
 
-		printf("host %p, link %p latency is %llu us, status: %s\n",
-			host, &host->link[i], host->link[i].latency,
-			(host->link[i].connected == 0) ? "disconnected" : "connected");
+		if (lnk->configured != 1) continue;
+
+		printf("host %u, link %u latency is %llu us, status: %s\n",
+			host_id, i, lnk->latency,
+			(lnk->connected == 0) ? "disconnected" : "connected");
 	}
 
-	return KNET_HOST_FOREACH_NEXT;
+	return 0;
 }
 
 static void sigint_handler(int signum)
@@ -200,8 +206,9 @@ int main(int argc, char *argv[])
 	size_t len;
 	fd_set rfds;
 	struct timeval tv;
-	struct knet_host_search print_search;
 	int logpipefd[2];
+	uint16_t host_ids[KNET_MAX_HOST];
+	size_t host_ids_entries = 0;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -254,7 +261,12 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		ssize_t wlen;
-		knet_host_foreach(knet_h, print_link, &print_search);
+		size_t i;
+
+		knet_host_list(knet_h, host_ids, &host_ids_entries);
+		for (i = 0; i < host_ids_entries; i++) {
+			print_link(knet_h, host_ids[i]);
+		}
 
 		printf("Sending 'Hello World!' frame\n");
 		wlen = write(knet_sock[1], "Hello World!", 13);
