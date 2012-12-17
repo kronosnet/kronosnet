@@ -11,8 +11,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-LIBS			= -lpthread \
-			  -version-info $(libversion)
+LIBS			= -lpthread
 
 libversion		= 0:0:0
 
@@ -39,6 +38,7 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
+libknet_la_LIBS		= -version-info $(libversion)
 libknet_la_CFLAGS	= $(nss_CFLAGS)
 libknet_la_LIBADD	= $(nss_LIBS) -lrt
 
