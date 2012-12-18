@@ -54,6 +54,7 @@ typedef struct knet_handle *knet_handle_t;
  *            must be specified (0 to UINT16T_MAX are all valid).
  *            It is user responsibility to check that the value
  *            is unique, or bad might happen.
+ *
  * net_fd   - read/write file descriptor (must be > 0).
  *            knet will read data here to send to the other hosts
  *            and will write data received from the network.
