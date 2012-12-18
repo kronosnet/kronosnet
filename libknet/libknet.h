@@ -13,14 +13,32 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
-typedef struct knet_handle *knet_handle_t;
+/*
+ * libknet limits
+ */
 
+/*
+ * maximum number of hosts
+ */
 #define KNET_MAX_HOST 65536
+
+/*
+ * maximum number of links between 2 hosts
+ */
 #define KNET_MAX_LINK 8
+
+/*
+ * buffers used for pretty logging
+ *  host is used to store both ip addresses and hostnames
+ */
 #define KNET_MAX_HOST_LEN 64
 #define KNET_MAX_PORT_LEN 6
 
-/* handle */
+typedef struct knet_handle *knet_handle_t;
+
+/*
+ * handle structs/API calls
+ */
 
 struct knet_handle_cfg {
 	int		to_net_fd;
