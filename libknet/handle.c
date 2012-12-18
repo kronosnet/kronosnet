@@ -32,8 +32,8 @@ static void *_handle_heartbt_thread(void *data);
 static void *_handle_dst_link_handler_thread(void *data);
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      netfd,
-			      int      logfd,
+			      int      net_fd,
+			      int      log_fd,
 			      uint8_t  default_log_level)
 {
 	knet_handle_t knet_h;
@@ -43,12 +43,12 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	 * validate incoming request
 	 */
 
-	if (netfd <= 0) {
+	if (net_fd <= 0) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	if ((logfd > 0) && (default_log_level > KNET_LOG_DEBUG)) {
+	if ((log_fd > 0) && (default_log_level > KNET_LOG_DEBUG)) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -60,8 +60,8 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
 	knet_h->node_id = host_id;
-	knet_h->sockfd = netfd;
-	knet_h->logfd = logfd;
+	knet_h->sockfd = net_fd;
+	knet_h->logfd = log_fd;
 
 	if (knet_h->logfd > 0) {
 		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);

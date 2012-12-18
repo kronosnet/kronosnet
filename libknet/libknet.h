@@ -54,14 +54,14 @@ typedef struct knet_handle *knet_handle_t;
  *            must be specified (0 to UINT16T_MAX are all valid).
  *            It is user responsibility to check that the value
  *            is unique, or bad might happen.
- * netfd    - read/write file descriptor (must be > 0).
+ * net_fd   - read/write file descriptor (must be > 0).
  *            knet will read data here to send to the other hosts
  *            and will write data received from the network.
  *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
  *            Applications might be able to write more data at a time
  *            but they will be delivered in KNET_MAX_PACKET_SIZE chunks.
  *
- * logfd    - write file descriptor. If set to a value > 0, it will be used
+ * log_fd   - write file descriptor. If set to a value > 0, it will be used
  *            to write log packets (see below) from libknet to the application.
  *            Set to 0 will disable logging from libknet.
  *            It is possible to enable logging at any given time (see logging API
@@ -79,8 +79,8 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      netfd,
-			      int      logfd,
+			      int      net_fd,
+			      int      log_fd,
 			      uint8_t  default_log_level);
 
 /*
