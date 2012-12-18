@@ -34,6 +34,25 @@ struct knet_listener {
 	struct knet_listener *next;
 };
 
+
+struct knet_link {
+	uint8_t link_id;
+	int listener_sock;
+	struct sockaddr_storage src_addr;
+	struct sockaddr_storage dst_addr;
+	unsigned int remoteconnected:1; /* link is enabled for data (peer view) */
+	unsigned int donnotremoteupdate:1;    /* define source of the update */
+	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
+	uint8_t  priority; /* higher priority == preferred for A/P */
+	unsigned int host_info_up_sent:1; /* 0 if we need to notify remote that link is up */
+	unsigned int latency_exp;
+	unsigned int latency_fix;
+	unsigned long long ping_interval;
+	unsigned long long pong_timeout;
+	struct timespec ping_last;
+	struct knet_link_status status;
+};
+
 #define KNET_CBUFFER_SIZE 4096
 /*
 typedef uint64_t seq_num_t;

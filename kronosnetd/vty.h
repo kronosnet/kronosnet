@@ -58,7 +58,7 @@ struct knet_vty {
 	int			loglevel;	/* loglevel (debug, etc) */
 	void			*iface;		/* pointer to iface we are working on */
 	uint16_t		host_id;	/* peer/host we are working on */
-	void			*link;		/* pointer to link we are working on */
+	uint8_t			link_id;	/* link id we are working on */
 	int			filemode;	/* tell print_conf to add or not carriage return */
 	struct knet_vty_global_conf *vty_global_conf; /* pointer to vty global config */
 };

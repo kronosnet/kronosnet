@@ -15,6 +15,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <stdio.h>
 
 #include "internals.h"
 #include "onwire.h"
@@ -378,29 +381,29 @@ exit_fail1:
 static int knet_link_updown(knet_handle_t knet_h, uint16_t node_id,
 			    struct knet_link *lnk, int configured, int connected)
 {
-	unsigned int old_configured = lnk->configured;
-	unsigned int old_connected = lnk->connected;
+	unsigned int old_configured = lnk->status.configured;
+	unsigned int old_connected = lnk->status.connected;
 
-	if ((lnk->configured == configured) && (lnk->connected == connected))
+	if ((lnk->status.configured == configured) && (lnk->status.connected == connected))
 		return 0;
 
-	lnk->configured = configured;
-	lnk->connected = connected;
+	lnk->status.configured = configured;
+	lnk->status.connected = connected;
 
 	if (_dst_cache_update(knet_h, node_id)) {
 		log_debug(knet_h, KNET_SUB_LINK,
 			  "Unable to update link status (host: %s link: %s configured: %u connected: %u)",
 			  knet_h->host_index[node_id]->name,
-			  lnk->dst_ipaddr,
-			  lnk->configured,
-			  lnk->connected);
-		lnk->configured = old_configured;
-		lnk->connected = old_connected;
+			  lnk->status.dst_ipaddr,
+			  lnk->status.configured,
+			  lnk->status.connected);
+		lnk->status.configured = old_configured;
+		lnk->status.connected = old_connected;
 		return -1;
 	}
 
-	if ((lnk->dynconnected) && (!lnk->connected))
-		lnk->dynconnected = 0;
+	if ((lnk->status.dynconnected) && (!lnk->status.connected))
+		lnk->status.dynconnected = 0;
 
 	return 0;
 }
@@ -415,7 +418,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 
 	lnk = &knet_h->host_index[node_id]->link[link_id];
 
-	if (lnk->configured == configured)
+	if (lnk->status.configured == configured)
 		return 0;
 
 	if (configured) {
@@ -424,7 +427,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 			return -1;
 		}
 		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is enabled",
-			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+			  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr);
 	}
 
 	if (!configured) {
@@ -439,7 +442,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 		_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
 	}
 
-	err = knet_link_updown(knet_h, node_id, lnk, configured, lnk->connected);
+	err = knet_link_updown(knet_h, node_id, lnk, configured, lnk->status.connected);
 
 	if ((configured) && (!err))
 		return 0;
@@ -451,19 +454,29 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 
 	if ((err) && (err != -EBUSY)) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
-		if (knet_link_updown(knet_h, node_id, lnk, 1, lnk->connected))
-			lnk->configured = 1;
+		if (knet_link_updown(knet_h, node_id, lnk, 1, lnk->status.connected))
+			lnk->status.configured = 1;
 		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is NOT disabled",
-			  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+			  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr);
 		return -1;
 	}
 	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
-		  knet_h->host_index[node_id]->name, lnk->dst_ipaddr);
+		  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr);
 	lnk->host_info_up_sent = 0;
 	return 0;
 }
 
-int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority)
+int knet_link_get_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t *priority)
+{
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	*priority = knet_h->host_index[node_id]->link[link_id].priority;
+
+	return 0;
+}
+
+int knet_link_set_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority)
 {
 	struct knet_link *lnk;
 	uint8_t old_priority;
@@ -483,7 +496,7 @@ int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, 
 		log_debug(knet_h, KNET_SUB_LINK,
 			  "Unable to update link priority (host: %s link: %s priority: %u)",
 			  knet_h->host_index[node_id]->name,
-			  lnk->dst_ipaddr,
+			  lnk->status.dst_ipaddr,
 			  lnk->priority);
 		lnk->priority = old_priority;
 		return -1;
@@ -492,19 +505,19 @@ int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, 
 	log_debug(knet_h, KNET_SUB_LINK,
 		  "host: %s link: %s priority set to: %u",
 		  knet_h->host_index[node_id]->name,
-		  lnk->dst_ipaddr,
+		  lnk->status.dst_ipaddr,
 		  lnk->priority);
 
 	return 0;
 }
 
-void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
-				time_t interval, time_t timeout, int precision)
+int knet_link_set_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
+				time_t interval, time_t timeout, unsigned int precision)
 {
 	struct knet_link *lnk;
 
 	if (!knet_h->host_index[node_id])
-		return;
+		return -1;
 
 	lnk = &knet_h->host_index[node_id]->link[link_id];
 
@@ -515,8 +528,27 @@ void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
 				((lnk->ping_interval * precision) / 8000000);
 	log_debug(knet_h, KNET_SUB_LINK,
 		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
-		  knet_h->host_index[node_id]->name, lnk->dst_ipaddr,
+		  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr,
 		  lnk->ping_interval, lnk->pong_timeout, precision);
+
+	return 0;
+}
+
+int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
+				time_t *interval, time_t *timeout, unsigned int *precision)
+{
+	struct knet_link *lnk;
+
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	lnk = &knet_h->host_index[node_id]->link[link_id];
+
+	*interval = lnk->ping_interval / 1000; /* microseconds */
+	*timeout = lnk->pong_timeout / 1000;
+	*precision = lnk->latency_fix;
+
+	return 0;
 }
 
 /* HACK FEST.. see libknet.h */
@@ -531,23 +563,73 @@ int knet_link_config(knet_handle_t knet_h,
 		return -1;
 
 	memcpy(&knet_h->host_index[node_id]->link[link_id].src_addr, src_addr, sizeof(struct sockaddr_storage));
+
+	if (getnameinfo((const struct sockaddr *)src_addr, sizeof(struct sockaddr_storage),
+			knet_h->host_index[node_id]->link[link_id].status.src_ipaddr, KNET_MAX_HOST_LEN,
+			knet_h->host_index[node_id]->link[link_id].status.src_port, KNET_MAX_PORT_LEN,
+			NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+		log_debug(knet_h, KNET_SUB_LINK,
+			  "Unable to resolve host: %s link: %u source addr/port",
+			  knet_h->host_index[node_id]->name,
+			  link_id);
+		snprintf(knet_h->host_index[node_id]->link[link_id].status.src_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
+		snprintf(knet_h->host_index[node_id]->link[link_id].status.src_ipaddr, KNET_MAX_PORT_LEN - 1, "??");
+		return -1;
+	}
+
+	if (knet_h->host_index[node_id]->link[link_id].dynamic == KNET_LINK_DYN_DST)
+		return 0;
+
 	memcpy(&knet_h->host_index[node_id]->link[link_id].dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+	if (getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
+			knet_h->host_index[node_id]->link[link_id].status.dst_ipaddr, KNET_MAX_HOST_LEN,
+			knet_h->host_index[node_id]->link[link_id].status.dst_port, KNET_MAX_PORT_LEN,
+			NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+		log_debug(knet_h, KNET_SUB_LINK,
+			  "Unable to resolve host: %s link: %u destination addr/port",
+			  knet_h->host_index[node_id]->name,
+			  link_id);
+		snprintf(knet_h->host_index[node_id]->link[link_id].status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
+		snprintf(knet_h->host_index[node_id]->link[link_id].status.dst_ipaddr, KNET_MAX_PORT_LEN - 1, "??");
+		return -1;
+	}
 
 	return 0;
 }
 
-int knet_link_get_link(knet_handle_t knet_h,
-		       uint16_t node_id,
-		       uint8_t link_id,
-		       struct knet_link **knet_link)
+int knet_link_get_status(knet_handle_t knet_h,
+			 uint16_t node_id,
+			 uint8_t link_id,
+			 struct knet_link_status *status)
 {
 	if (!knet_h->host_index[node_id])
 		return -1;
 
-	*knet_link = &knet_h->host_index[node_id]->link[link_id];
+	memcpy(status, &knet_h->host_index[node_id]->link[link_id].status, sizeof(struct knet_link_status));
 
 	return 0;
 }
+
+int knet_link_set_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int dynamic)
+{
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	knet_h->host_index[node_id]->link[link_id].dynamic = dynamic;
+
+	return 0;
+}
+
+int knet_link_get_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int *dynamic)
+{
+	if (!knet_h->host_index[node_id])
+		return -1;
+
+	*dynamic = knet_h->host_index[node_id]->link[link_id].dynamic;
+
+	return 0;
+}
+
 
 static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 {
@@ -761,8 +843,20 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
 		if ((src_link->dynamic == KNET_LINK_DYN_DST) &&
 		    (knet_h->recv_from_links_buf->kf_dyn == 1)) {
-			memcpy(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage));
-			src_link->dynconnected = 1;
+			if (memcmp(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage)) != 0) {
+				log_debug(knet_h, KNET_SUB_LINK_T, "host: %s link: %u appears to have changed ip address",
+					  src_host->name, src_link->link_id);
+				memcpy(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage));
+				if (getnameinfo((const struct sockaddr *)&src_link->dst_addr, sizeof(struct sockaddr_storage),
+						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
+						src_link->status.dst_port, KNET_MAX_PORT_LEN,
+						NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+					log_debug(knet_h, KNET_SUB_LINK_T, "Unable to resolve ???");
+					snprintf(src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
+					snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
+				}
+			}
+			src_link->status.dynconnected = 1;
 		}
 	}
 
@@ -847,23 +941,23 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		break;
 	case KNET_FRAME_PONG:
-		clock_gettime(CLOCK_MONOTONIC, &src_link->pong_last);
+		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
 		memcpy(&recvtime, &knet_h->recv_from_links_buf->kf_time[0], sizeof(struct timespec));
 		timespec_diff(recvtime,
-				src_link->pong_last, &latency_last);
+				src_link->status.pong_last, &latency_last);
 
-		src_link->latency =
-			((src_link->latency * src_link->latency_exp) +
+		src_link->status.latency =
+			((src_link->status.latency * src_link->latency_exp) +
 			((latency_last / 1000llu) *
 				(src_link->latency_fix - src_link->latency_exp))) /
 					src_link->latency_fix;
 
-		if (src_link->latency < src_link->pong_timeout) {
-			if (!src_link->connected) {
+		if (src_link->status.latency < src_link->pong_timeout) {
+			if (!src_link->status.connected) {
 				log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is up",
-					 src_host->name, src_link->dst_ipaddr);
-				knet_link_updown(knet_h, src_host->node_id, src_link, src_link->configured, 1);
+					 src_host->name, src_link->status.dst_ipaddr);
+				knet_link_updown(knet_h, src_host->node_id, src_link, src_link->status.configured, 1);
 			}
 		}
 
@@ -901,13 +995,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				}
 				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %s link: %s remote connected: %u",
 					  src_host->name,
-					  src_link->dst_ipaddr,
+					  src_link->status.dst_ipaddr,
 					  src_link->remoteconnected);
 				if (_dst_cache_update(knet_h, src_host->node_id)) {
 					log_debug(knet_h, KNET_SUB_LINK,
 						  "Unable to update switch cache (host: %s link: %s remote connected: %u)",
 						  src_host->name,
-						  src_link->dst_ipaddr,
+						  src_link->status.dst_ipaddr,
 						  src_link->remoteconnected);
 				}
 				break;
@@ -964,11 +1058,11 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	dst_host->active_link_entries = 0;
 
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-		if (dst_host->link[link_idx].configured != 1) /* link is not configured */
+		if (dst_host->link[link_idx].status.configured != 1) /* link is not configured */
 			continue;
 		if (dst_host->link[link_idx].remoteconnected) /* track if remote is connected */
 			host_has_remote = 1;
-		if (dst_host->link[link_idx].connected != 1) /* link is not enabled */
+		if (dst_host->link[link_idx].status.connected != 1) /* link is not enabled */
 			continue;
 
 		if ((!dst_host->link[link_idx].host_info_up_sent) &&
@@ -999,7 +1093,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 
 	if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s (passive) best link: %s (%u)",
-			  dst_host->name, dst_host->link[dst_host->active_links[0]].dst_ipaddr,
+			  dst_host->name, dst_host->link[dst_host->active_links[0]].status.dst_ipaddr,
 			  dst_host->link[dst_host->active_links[0]].priority);
 	} else {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s has %u active links",
@@ -1052,7 +1146,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	unsigned char *outbuf = (unsigned char *)knet_h->pingbuf;
 
 	/* caching last pong to avoid race conditions */
-	pong_last = dst_link->pong_last;
+	pong_last = dst_link->status.pong_last;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
 		log_debug(knet_h, KNET_SUB_HB_T, "Unable to get monotonic clock");
@@ -1090,13 +1184,13 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 	}
 
-	if (dst_link->connected == 1) {
+	if (dst_link->status.connected == 1) {
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
 			log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is down",
-				 dst_host->name, dst_link->dst_ipaddr);
-			knet_link_updown(knet_h, dst_host->node_id, dst_link, dst_link->configured, 0);
+				 dst_host->name, dst_link->status.dst_ipaddr);
+			knet_link_updown(knet_h, dst_host->node_id, dst_link, dst_link->status.configured, 0);
 		}
 	}
 }
@@ -1122,9 +1216,9 @@ static void *_handle_heartbt_thread(void *data)
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if ((dst_host->link[link_idx].configured != 1) ||
+				if ((dst_host->link[link_idx].status.configured != 1) ||
 				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYN_DST) &&
-				     (dst_host->link[link_idx].dynconnected != 1)))
+				     (dst_host->link[link_idx].status.dynconnected != 1)))
 					continue;
 				_handle_check_each(knet_h, dst_host, &dst_host->link[link_idx]);
 			}

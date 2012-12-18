@@ -63,54 +63,6 @@ struct knet_handle_crypto_cfg {
 
 int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
-/* link */
-
-#define KNET_LINK_STATIC  0 /* link com is static ip (default) */
-#define KNET_LINK_DYN_SRC 1 /* link com has src dynamic ip */
-#define KNET_LINK_DYN_DST 2 /* link com is dst from dyn src */
-
-struct knet_link {
-	uint8_t link_id;
-	int listener_sock;
-	char src_ipaddr[KNET_MAX_HOST_LEN];
-	char src_port[KNET_MAX_PORT_LEN];
-	struct sockaddr_storage src_addr;
-	char dst_ipaddr[KNET_MAX_HOST_LEN];
-	char dst_port[KNET_MAX_PORT_LEN];
-	struct sockaddr_storage dst_addr;
-	unsigned int configured:1; /* link is configured and ready to be used */
-	unsigned int connected:1;	/* link is enabled for data (local view) */
-	unsigned int remoteconnected:1; /* link is enabled for data (peer view) */
-	unsigned int donnotremoteupdate:1;    /* define source of the update */
-	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
-	unsigned int dynconnected:1; /* link has been activated by remote dynip */
-	uint8_t  priority; /* higher priority == preferred for A/P */
-	unsigned int host_info_up_sent:1; /* 0 if we need to notify remote that link is up */
-	unsigned long long latency; /* average latency computed by fix/exp */
-	unsigned int latency_exp;
-	unsigned int latency_fix;
-	unsigned long long ping_interval;
-	unsigned long long pong_timeout;
-	struct timespec ping_last;
-	struct timespec pong_last;
-};
-
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured);
-void knet_link_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t interval, time_t timeout, int precision);
-int knet_link_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority);
-
-/* HACK FEST - transition calls as we move things to internal.h */
-int knet_link_config(knet_handle_t knet_h,
-		     uint16_t node_id,
-		     uint8_t link_id,
-		     struct sockaddr_storage *src_addr,
-		     struct sockaddr_storage *dst_addr);
-
-int knet_link_get_link(knet_handle_t knet_h,
-		       uint16_t node_id,
-		       uint8_t link_id,
-		       struct knet_link **knet_link);
-
 /* host */
 
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id);
@@ -137,6 +89,44 @@ int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries
 
 int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
 int knet_host_get_policy(knet_handle_t knet_h, uint16_t node_id, int *policy);
+
+/* link */
+
+int knet_link_config(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
+		     struct sockaddr_storage *src_addr,
+		     struct sockaddr_storage *dst_addr);
+
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured);
+
+int knet_link_set_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t interval, time_t timeout, unsigned int precision);
+int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t *interval, time_t *timeout, unsigned int *precision);
+
+int knet_link_set_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority);
+int knet_link_get_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t *priority);
+
+#define KNET_LINK_STATIC  0 /* link com is static ip (default) */
+#define KNET_LINK_DYN_SRC 1 /* link com has src dynamic ip */
+#define KNET_LINK_DYN_DST 2 /* link com is dst from dyn src */
+
+int knet_link_set_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int dynamic);
+int knet_link_get_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int *dynamic);
+
+struct knet_link_status {
+	char src_ipaddr[KNET_MAX_HOST_LEN];
+	char src_port[KNET_MAX_PORT_LEN];
+	char dst_ipaddr[KNET_MAX_HOST_LEN];
+	char dst_port[KNET_MAX_PORT_LEN];
+	unsigned int configured:1; /* link is configured and ready to be used */
+	unsigned int connected:1;       /* link is enabled for data (local view) */
+	unsigned int dynconnected:1; /* link has been activated by remote dynip */
+	unsigned long long latency; /* average latency computed by fix/exp */
+	struct timespec pong_last;
+};
+
+int knet_link_get_status(knet_handle_t knet_h,
+			 uint16_t node_id,
+			 uint8_t link_id,
+			 struct knet_link_status *status);
 
 /* logging */
 

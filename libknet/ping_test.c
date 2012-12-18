@@ -153,7 +153,7 @@ static void argv_to_hosts(int argc, char *argv[])
 		}
 
 		knet_link_config(knet_h, node_id, 0, &src_addr, &dst_addr);
-		knet_link_timeout(knet_h, node_id, 0, 1000, 5000, 2048);
+		knet_link_set_timeout(knet_h, node_id, 0, 1000, 5000, 2048);
 		knet_link_enable(knet_h, node_id, 0, 1);
 	}
 }
@@ -166,17 +166,17 @@ static void argv_to_hosts(int argc, char *argv[])
 static int print_link(knet_handle_t khandle, uint16_t host_id)
 {
 	int i;
-	struct knet_link *lnk;
+	struct knet_link_status status;
 
 	for (i = 0; i < KNET_MAX_LINK; i++) {
-		if (knet_link_get_link(knet_h, host_id, i, &lnk) < 0)
+		if (knet_link_get_status(knet_h, host_id, i, &status) < 0)
 			return -1;
 
-		if (lnk->configured != 1) continue;
+		if (status.configured != 1) continue;
 
 		printf("host %u, link %u latency is %llu us, status: %s\n",
-			host_id, i, lnk->latency,
-			(lnk->connected == 0) ? "disconnected" : "connected");
+			host_id, i, status.latency,
+			(status.connected == 0) ? "disconnected" : "connected");
 	}
 
 	return 0;
