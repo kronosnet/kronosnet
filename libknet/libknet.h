@@ -28,6 +28,12 @@
 #define KNET_MAX_LINK 8
 
 /*
+ * maximum packet size that should be written to netfd
+ *  see knet_handle_new for details
+ */
+#define KNET_MAX_PACKET_SIZE 131072
+
+/*
  * buffers used for pretty logging
  *  host is used to store both ip addresses and hostnames
  */
@@ -40,14 +46,42 @@ typedef struct knet_handle *knet_handle_t;
  * handle structs/API calls
  */
 
-struct knet_handle_cfg {
-	int		to_net_fd;
-	int		log_fd;
-	uint8_t		default_log_level;
-	uint16_t	node_id;
-};
+/*
+ * knet_handle_new
+ *
+ *  host_id - each host in a knet is identified with a unique
+ *            ID. when creating a new handle local host_id
+ *            must be specified (0 to UINT16T_MAX are all valid).
+ *            It is user responsibility to check that the value
+ *            is unique, or bad might happen.
+ * netfd    - read/write file descriptor (must be > 0).
+ *            knet will read data here to send to the other hosts
+ *            and will write data received from the network.
+ *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
+ *            Applications might be able to write more data at a time
+ *            but they will be delivered in KNET_MAX_PACKET_SIZE chunks.
+ *
+ * logfd    - write file descriptor. If set to a value > 0, it will be used
+ *            to write log packets (see below) from libknet to the application.
+ *            Set to 0 will disable logging from libknet.
+ *            It is possible to enable logging at any given time (see logging API
+ *            below).
+ *            make sure to either read from this filedescriptor properly and/or
+ *            mark it O_NONBLOCK, otherwise if the fd becomes full, libknet could
+ *            block.
+ *
+ * default_log_level -
+ *            if logfd is specified, it will initialize all subsystems to log
+ *            at default_log_level value. (see logging API below)
+ *
+ * on success, a new knet_handle_t is returned.
+ * on failure, NULL is returned and errno is set.
+ */
 
-knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
+knet_handle_t knet_handle_new(uint16_t host_id,
+			      int      netfd,
+			      int      logfd,
+			      uint8_t  default_log_level);
 
 /*
  * dst_host_filter_fn should return

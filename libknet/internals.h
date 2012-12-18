@@ -16,7 +16,7 @@
 
 #include "libknet.h"
 
-#define KNET_DATABUFSIZE 131072 /* 128k */
+#define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_FRAME_SIZE + sizeof(seq_num_t)
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
 #define timespec_diff(start, end, diff) \

@@ -24,7 +24,6 @@
 
 static int knet_sock[2];
 static knet_handle_t knet_h;
-static struct knet_handle_cfg knet_handle_cfg;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 static uint8_t loglevel = KNET_LOG_INFO;
 static char *src_host = NULL;
@@ -236,13 +235,7 @@ int main(int argc, char *argv[])
 
 	set_debug(argc, argv);
 
-	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
-	knet_handle_cfg.to_net_fd = knet_sock[0];
-	knet_handle_cfg.node_id = 1;
-	knet_handle_cfg.log_fd = logpipefd[1];
-	knet_handle_cfg.default_log_level = loglevel;
-
-	if ((knet_h = knet_handle_new(&knet_handle_cfg)) == NULL) {
+	if ((knet_h = knet_handle_new(1, knet_sock[0], logpipefd[1], loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}

@@ -18,6 +18,7 @@
 #include "crypto.h"
 #include "nsscrypto.h"
 #include "internals.h"
+#include "onwire.h"
 
 /*
  * crypto definitions and conversion tables

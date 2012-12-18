@@ -31,34 +31,41 @@ static void *_handle_recv_from_links_thread(void *data);
 static void *_handle_heartbt_thread(void *data);
 static void *_handle_dst_link_handler_thread(void *data);
 
-knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
+knet_handle_t knet_handle_new(uint16_t host_id,
+			      int      netfd,
+			      int      logfd,
+			      uint8_t  default_log_level)
 {
 	knet_handle_t knet_h;
 	struct epoll_event ev;
 
 	/*
-	 * validate incoming config request
+	 * validate incoming request
 	 */
-	if (knet_handle_cfg == NULL) {
+
+	if (netfd <= 0) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	if (knet_handle_cfg->to_net_fd <= 0) {
+	if ((logfd > 0) && (default_log_level > KNET_LOG_DEBUG)) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	if ((knet_h = malloc(sizeof(struct knet_handle))) == NULL)
+	if ((knet_h = malloc(sizeof(struct knet_handle))) == NULL) {
 		return NULL;
+	}
 
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
-	knet_h->node_id = knet_handle_cfg->node_id;
-	knet_h->sockfd = knet_handle_cfg->to_net_fd;
-	knet_h->logfd = knet_handle_cfg->log_fd;
+	knet_h->node_id = host_id;
+	knet_h->sockfd = netfd;
+	knet_h->logfd = logfd;
 
-	memset(&knet_h->log_levels, knet_handle_cfg->default_log_level, KNET_MAX_SUBSYSTEMS);
+	if (knet_h->logfd > 0) {
+		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
+	}
 
 	if (pipe(knet_h->dstpipefd) ||
 	    pipe(knet_h->hostpipefd)) {
@@ -651,8 +658,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	unsigned char *outbuf = (unsigned char *)knet_h->tap_to_links_buf;
 	struct knet_hinfo_data *knet_hinfo_data;
 
-	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data,
-		     KNET_DATABUFSIZE - (KNET_FRAME_SIZE + sizeof(seq_num_t)));
+	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data, KNET_MAX_PACKET_SIZE);
 
 	if (inlen == 0) {
 		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");

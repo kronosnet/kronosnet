@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
 {
 	int sock, i;
 	knet_handle_t knet_h;
-	struct knet_handle_cfg knet_handle_cfg;
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
@@ -30,11 +29,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	memset(&knet_handle_cfg, 0, sizeof(struct knet_handle_cfg));
-	knet_handle_cfg.to_net_fd = sock;
-	knet_handle_cfg.node_id = 1;
-
-	knet_h = knet_handle_new(&knet_handle_cfg);
+	knet_h = knet_handle_new(1, sock, 0, 0);
 
 	for (i = 0; i < KNET_MAX_HOST; i++)
 		knet_host_add(knet_h, i);
