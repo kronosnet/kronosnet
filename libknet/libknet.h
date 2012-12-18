@@ -22,13 +22,6 @@ typedef struct knet_handle *knet_handle_t;
 
 /* handle */
 
-/*
- * dst_host_filter_fn should return
- * -1 on error, pkt is discarded
- *  0 all good, send pkt to dst_host_ids and there are dst_host_ids_entries in buffer ready
- *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
- */
-
 struct knet_handle_cfg {
 	int		to_net_fd;
 	int		log_fd;
@@ -37,6 +30,15 @@ struct knet_handle_cfg {
 };
 
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
+
+/*
+ * dst_host_filter_fn should return
+ * -1 on error, pkt is discarded
+ *  0 all good, send pkt to dst_host_ids and there are dst_host_ids_entries in buffer ready
+ *    dst_host_ids must be at least KNET_MAX_HOST big.
+ *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
+ */
+
 int knet_handle_enable_filter(knet_handle_t knet_h,
 			      int (*dst_host_filter_fn) (
 					const unsigned char *outdata,
