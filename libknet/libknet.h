@@ -150,7 +150,7 @@ int knet_link_get_status(knet_handle_t knet_h,
 #define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
 #define KNET_LOG_DEBUG       3
 
-#define KNET_MAX_LOG_MSG_SIZE    1024
+#define KNET_MAX_LOG_MSG_SIZE    256
 
 struct knet_log_msg {
 	uint8_t	subsystem;	/* KNET_SUB_* */
