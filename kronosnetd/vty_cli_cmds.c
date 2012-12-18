@@ -1509,7 +1509,6 @@ tap_found:
 	knet_handle_cfg.node_id = requested_id;
 	knet_handle_cfg.log_fd = vty->logfd;
 	knet_handle_cfg.default_log_level = vty->loglevel;
-	knet_handle_cfg.dst_host_filter_fn = ether_host_filter_fn;
 
 	knet_iface->cfg_ring.knet_h = knet_handle_new(&knet_handle_cfg);
 	if (!knet_iface->cfg_ring.knet_h) {
@@ -1518,6 +1517,8 @@ tap_found:
 		err = -1;
 		goto out_clean;
 	}
+
+	knet_handle_enable_filter(knet_iface->cfg_ring.knet_h, ether_host_filter_fn);
 
 knet_found:
 	if (found) {

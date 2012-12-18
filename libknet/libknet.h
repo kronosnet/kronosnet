@@ -34,15 +34,17 @@ struct knet_handle_cfg {
 	int		log_fd;
 	uint8_t		default_log_level;
 	uint16_t	node_id;
-	int		(*dst_host_filter_fn) (
-				const unsigned char *outdata,
-				ssize_t outdata_len,
-				uint16_t src_node_id,
-				uint16_t *dst_host_ids,
-				size_t *dst_host_ids_entries);
 };
 
 knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg);
+int knet_handle_enable_filter(knet_handle_t knet_h,
+			      int (*dst_host_filter_fn) (
+					const unsigned char *outdata,
+					ssize_t outdata_len,
+					uint16_t src_node_id,
+					uint16_t *dst_host_ids,
+					size_t *dst_host_ids_entries));
+
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 int knet_handle_free(knet_handle_t knet_h);
 

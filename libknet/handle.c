@@ -78,14 +78,6 @@ knet_handle_t knet_handle_new(const struct knet_handle_cfg *knet_handle_cfg)
 		goto exit_fail2;
 	}
 
-	knet_h->dst_host_filter_fn = knet_handle_cfg->dst_host_filter_fn;
-
-	if (knet_h->dst_host_filter_fn) {
-		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn enabled");
-	} else {
-		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn disabled");
-	}
-
 	if ((knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE))== NULL) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for tap to link buffer");
 		goto exit_fail2;
@@ -319,6 +311,23 @@ int knet_handle_free(knet_handle_t knet_h)
  exit_busy:
 	errno = EBUSY;
 	return -EBUSY;
+}
+
+int knet_handle_enable_filter(knet_handle_t knet_h,
+			      int (*dst_host_filter_fn) (
+					const unsigned char *outdata,
+					ssize_t outdata_len,
+					uint16_t src_node_id,
+					uint16_t *dst_host_ids,
+					size_t *dst_host_ids_entries))
+{
+	knet_h->dst_host_filter_fn = dst_host_filter_fn;
+	if (knet_h->dst_host_filter_fn) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn disabled");
+	}
+	return 0;
 }
 
 void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
