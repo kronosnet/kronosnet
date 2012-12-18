@@ -28,7 +28,7 @@
 #define KNET_MAX_LINK 8
 
 /*
- * maximum packet size that should be written to netfd
+ * maximum packet size that should be written to net_fd
  *  see knet_handle_new for details
  */
 #define KNET_MAX_PACKET_SIZE 131072
@@ -49,7 +49,7 @@ typedef struct knet_handle *knet_handle_t;
 /*
  * knet_handle_new
  *
- *  host_id - each host in a knet is identified with a unique
+ * host_id  - each host in a knet is identified with a unique
  *            ID. when creating a new handle local host_id
  *            must be specified (0 to UINT16T_MAX are all valid).
  *            It is user responsibility to check that the value
@@ -85,18 +85,45 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 			      uint8_t  default_log_level);
 
 /*
+ * knet_handle_enable_filter
+ * 
+ * knet_h   - pointer to knet_handle_t
+ *
+ * dst_host_filter_fn -
+ *            is a callback function that is invoked every time
+ *            a packet hits net_fd (see knet_handle_new).
+ *            the function allows users to tell libknet where the
+ *            packet has to be delivered.
+ *
+ *            const unsigned char *outdata - is a pointer to the
+ *                                           current packet
+ *            ssize_t outdata_len          - lenght of the above data
+ *            uint16_t src_host_id         - host_id that generated the
+ *                                           packet
+ *            uint16_t *dst_host_ids       - array of KNET_MAX_HOST uint16_t
+ *                                           where to store the destinations
+ *            size_t *dst_host_ids_entries - number of hosts to send the message
+ *
  * dst_host_filter_fn should return
- * -1 on error, pkt is discarded
- *  0 all good, send pkt to dst_host_ids and there are dst_host_ids_entries in buffer ready
- *    dst_host_ids must be at least KNET_MAX_HOST big.
- *  1 send it to all hosts. contents of dst_host_ids and dst_host_ids_entries is ignored.
+ * -1 on error, packet is discarded
+ *  0 packet is unicast and should be sent to dst_host_ids and there are
+ *    dst_host_ids_entries in buffer ready
+ *  1 packet is broadcast/multicast and is sent all hosts.
+ *    contents of dst_host_ids and dst_host_ids_entries is ignored.
+ *  (see also kronosnetd/etherfilter.* for an example that filters based
+ *   on ether protocol)
+ *
+ * knet_handle_enable_filter returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
  */
 
 int knet_handle_enable_filter(knet_handle_t knet_h,
 			      int (*dst_host_filter_fn) (
 					const unsigned char *outdata,
 					ssize_t outdata_len,
-					uint16_t src_node_id,
+					uint16_t src_host_id,
 					uint16_t *dst_host_ids,
 					size_t *dst_host_ids_entries));
 

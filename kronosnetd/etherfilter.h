@@ -13,7 +13,7 @@
 
 int ether_host_filter_fn (const unsigned char *outdata,
 			  ssize_t outdata_len,
-			  uint16_t src_node_id,
+			  uint16_t src_host_id,
 			  uint16_t *dst_host_ids,
 			  size_t *dst_host_ids_entries);
 
