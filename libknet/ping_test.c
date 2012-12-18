@@ -20,6 +20,8 @@
 
 #include "libknet.h"
 
+#define KNET_RING_DEFPORT 50000
+
 static int knet_sock[2];
 static knet_handle_t knet_h;
 static struct knet_handle_cfg knet_handle_cfg;

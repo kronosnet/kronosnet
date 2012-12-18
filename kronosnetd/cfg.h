@@ -16,6 +16,8 @@
 #include "libtap.h"
 #include "libknet.h"
 
+#define KNET_RING_DEFPORT 50000
+
 struct knet_cfg_eth {
 	tap_t tap;
 	uint16_t node_id;

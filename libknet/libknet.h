@@ -15,8 +15,6 @@
 
 typedef struct knet_handle *knet_handle_t;
 
-#define KNET_RING_DEFPORT 50000
-
 #define KNET_MAX_HOST 65536
 #define KNET_MAX_LINK 8
 #define KNET_MAX_HOST_LEN 64
