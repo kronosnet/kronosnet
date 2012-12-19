@@ -59,7 +59,7 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
-	knet_h->node_id = host_id;
+	knet_h->host_id = host_id;
 	knet_h->sockfd = net_fd;
 	knet_h->logfd = log_fd;
 
@@ -907,7 +907,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			/* check if we are dst for this packet */
 			if (!bcast) {
 				for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
-					if (dst_host_ids[host_idx] == knet_h->node_id) {
+					if (dst_host_ids[host_idx] == knet_h->host_id) {
 						found = 1;
 						break;
 					}
@@ -938,7 +938,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	case KNET_FRAME_PING:
 		outlen = KNET_PING_SIZE;
 		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_PONG;
-		knet_h->recv_from_links_buf->kf_node = htons(knet_h->node_id);
+		knet_h->recv_from_links_buf->kf_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -1221,7 +1221,7 @@ static void *_handle_heartbt_thread(void *data)
 	/* preparing ping buffer */
 	knet_h->pingbuf->kf_version = KNET_FRAME_VERSION;
 	knet_h->pingbuf->kf_type = KNET_FRAME_PING;
-	knet_h->pingbuf->kf_node = htons(knet_h->node_id);
+	knet_h->pingbuf->kf_node = htons(knet_h->host_id);
 
 	while (1) {
 		usleep(KNET_PING_TIMERES);
@@ -1255,7 +1255,7 @@ static void *_handle_tap_to_links_thread(void *data)
 
 	/* preparing data buffer */
 	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
-	knet_h->tap_to_links_buf->kf_node = htons(knet_h->node_id);
+	knet_h->tap_to_links_buf->kf_node = htons(knet_h->host_id);
 
 	while (1) {
 		nev = epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_MAX_EVENTS, -1);

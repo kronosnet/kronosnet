@@ -84,7 +84,7 @@ struct knet_host {
 };
 
 struct knet_handle {
-	uint16_t node_id;
+	uint16_t host_id;
 	unsigned int enabled:1;
 	int sockfd;
 	int logfd;
