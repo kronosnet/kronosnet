@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include "internals.h"
+#include "common.h"
 
 #define KNET_RING_RCVBUFF 8388608
 

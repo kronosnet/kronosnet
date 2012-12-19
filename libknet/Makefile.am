@@ -29,8 +29,10 @@ pkgconfigdir		= $(libdir)/pkgconfig
 
 pkgconfig_DATA		= libknet.pc
 
-noinst_HEADERS		= internals.h \
+noinst_HEADERS		= \
+			  common.h \
 			  crypto.h \
+			  internals.h \
 			  nsscrypto.h \
 			  onwire.h
 

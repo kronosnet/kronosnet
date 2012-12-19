@@ -17,6 +17,7 @@
 #include <stdio.h>
 
 #include "internals.h"
+#include "common.h"
 
 int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 {

@@ -17,6 +17,7 @@
 #include <strings.h>
 
 #include "internals.h"
+#include "common.h"
 
 int _fdset_cloexec(int fd)
 {
