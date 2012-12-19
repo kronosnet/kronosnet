@@ -122,7 +122,4 @@ struct knet_handle {
 		size_t *dst_host_ids_entries);
 };
 
-int _listener_add(knet_handle_t knet_h, struct knet_link *lnk);
-int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk);
-
 #endif

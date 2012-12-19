@@ -19,6 +19,7 @@
 #include "internals.h"
 #include "common.h"
 #include "logging.h"
+#include "listener.h"
 
 #define KNET_RING_RCVBUFF 8388608
 

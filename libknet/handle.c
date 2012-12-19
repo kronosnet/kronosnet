@@ -25,6 +25,7 @@
 #include "common.h"
 #include "host.h"
 #include "logging.h"
+#include "listener.h"
 
 #define KNET_MAX_EVENTS 8
 #define KNET_PING_TIMERES 200000
