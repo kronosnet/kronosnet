@@ -23,7 +23,8 @@ sources			= \
 			  listener.c \
 			  link.c \
 			  logging.c \
-			  nsscrypto.c
+			  nsscrypto.c \
+			  threads.c
 
 include_HEADERS		= libknet.h
 
@@ -39,7 +40,8 @@ noinst_HEADERS		= \
 			  listener.h \
 			  logging.h \
 			  nsscrypto.h \
-			  onwire.h
+			  onwire.h \
+			  threads.h
 
 lib_LTLIBRARIES		= libknet.la
 
