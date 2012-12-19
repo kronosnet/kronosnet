@@ -106,9 +106,9 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		goto exit_fail5;
 	}
 
-	knet_h->tap_to_links_epollfd = epoll_create(KNET_MAX_EVENTS);
-	knet_h->recv_from_links_epollfd = epoll_create(KNET_MAX_EVENTS);
-	knet_h->dst_link_handler_epollfd = epoll_create(KNET_MAX_EVENTS);
+	knet_h->tap_to_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
+	knet_h->recv_from_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
+	knet_h->dst_link_handler_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
 
 	if ((knet_h->tap_to_links_epollfd < 0) ||
 	    (knet_h->recv_from_links_epollfd < 0) ||

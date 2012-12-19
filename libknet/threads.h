@@ -10,7 +10,7 @@
 #ifndef __THREADS_H__
 #define __THREADS_H__
 
-#define KNET_MAX_EVENTS 8
+#define KNET_EPOLL_MAX_EVENTS 8
 
 void *_handle_tap_to_links_thread(void *data);
 void *_handle_recv_from_links_thread(void *data);

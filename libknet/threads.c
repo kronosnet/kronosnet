@@ -632,7 +632,7 @@ void *_handle_heartbt_thread(void *data)
 void *_handle_tap_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
-	struct epoll_event events[KNET_MAX_EVENTS];
+	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 	int i, nev;
 
 	/* preparing data buffer */
@@ -640,7 +640,7 @@ void *_handle_tap_to_links_thread(void *data)
 	knet_h->tap_to_links_buf->kf_node = htons(knet_h->host_id);
 
 	while (1) {
-		nev = epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_MAX_EVENTS, -1);
+		nev = epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sockfd) {
@@ -660,10 +660,10 @@ void *_handle_recv_from_links_thread(void *data)
 {
 	int i, nev;
 	knet_handle_t knet_h = (knet_handle_t) data;
-	struct epoll_event events[KNET_MAX_EVENTS];
+	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
 	while (1) {
-		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_MAX_EVENTS, -1);
+		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
 			_handle_recv_from_links(knet_h, events[i].data.fd);
@@ -676,10 +676,10 @@ void *_handle_recv_from_links_thread(void *data)
 void *_handle_dst_link_handler_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
-	struct epoll_event events[KNET_MAX_EVENTS];
+	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
 	while (1) {
-		if (epoll_wait(knet_h->dst_link_handler_epollfd, events, KNET_MAX_EVENTS, -1) >= 1)
+		if (epoll_wait(knet_h->dst_link_handler_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1) >= 1)
 			_handle_dst_link_updates(knet_h);
 	}
 
