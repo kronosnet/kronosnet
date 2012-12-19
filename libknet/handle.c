@@ -337,9 +337,11 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 	return 0;
 }
 
-void knet_handle_setfwd(knet_handle_t knet_h, int enabled)
+int knet_handle_setfwd(knet_handle_t knet_h, int enabled)
 {
 	knet_h->enabled = (enabled == 1) ? 1 : 0;
+
+	return 0;
 }
 
 int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)

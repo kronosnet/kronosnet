@@ -85,6 +85,21 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 			      uint8_t  default_log_level);
 
 /*
+ * knet_handle_free
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * destroy a knet handle, free all resources
+ *
+ * knet_handle_free returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_free(knet_handle_t knet_h);
+
+/*
  * knet_handle_enable_filter
  * 
  * knet_h   - pointer to knet_handle_t
@@ -127,8 +142,24 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					uint16_t *dst_host_ids,
 					size_t *dst_host_ids_entries));
 
-void knet_handle_setfwd(knet_handle_t knet_h, int enabled);
-int knet_handle_free(knet_handle_t knet_h);
+/*
+ * knet_handle_setfwd
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * enable   - set to 1 to allow data forwarding, 0 to disable data forwarding.
+ *
+ * knet_handle_setfwd returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ * Some special config operations, such as enable/disable crypto, requires
+ * data forwarding to be disabled.
+ * By default data forwarding is off.
+ */
+
+int knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 
 /* crypto */
 
