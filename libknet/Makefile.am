@@ -21,6 +21,7 @@ sources			= \
 			  handle.c \
 			  host.c \
 			  listener.c \
+			  link.c \
 			  logging.c \
 			  nsscrypto.c
 
