@@ -14,6 +14,7 @@
 #include "crypto.h"
 #include "nsscrypto.h"
 #include "internals.h"
+#include "logging.h"
 
 /*
  * internal module switch data

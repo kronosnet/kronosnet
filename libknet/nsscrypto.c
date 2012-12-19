@@ -19,6 +19,7 @@
 #include "nsscrypto.h"
 #include "internals.h"
 #include "onwire.h"
+#include "logging.h"
 
 /*
  * crypto definitions and conversion tables

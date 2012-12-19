@@ -17,10 +17,11 @@ libversion		= 0:0:0
 
 sources			= \
 			  common.c \
+			  crypto.c \
 			  handle.c \
 			  host.c \
 			  listener.c \
-			  crypto.c \
+			  logging.c \
 			  nsscrypto.c
 
 include_HEADERS		= libknet.h
@@ -32,7 +33,9 @@ pkgconfig_DATA		= libknet.pc
 noinst_HEADERS		= \
 			  common.h \
 			  crypto.h \
+			  host.h \
 			  internals.h \
+			  logging.h \
 			  nsscrypto.h \
 			  onwire.h
 
