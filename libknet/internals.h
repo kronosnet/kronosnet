@@ -19,21 +19,11 @@
 #define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_FRAME_SIZE + sizeof(seq_num_t)
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
-#define timespec_diff(start, end, diff) \
-do { \
-	if (end.tv_sec > start.tv_sec) \
-		*(diff) = ((end.tv_sec - start.tv_sec) * 1000000000llu) \
-					+ end.tv_nsec - start.tv_nsec; \
-	else \
-		*(diff) = end.tv_nsec - start.tv_nsec; \
-} while (0);
-
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
 	struct knet_listener *next;
 };
-
 
 struct knet_link {
 	/* required */
