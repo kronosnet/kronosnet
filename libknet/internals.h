@@ -122,9 +122,6 @@ struct knet_handle {
 		size_t *dst_host_ids_entries);
 };
 
-int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
-void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
-
 int _listener_add(knet_handle_t knet_h, struct knet_link *lnk);
 int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk);
 
