@@ -33,7 +33,7 @@
 
 static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 {
-	ssize_t inlen, len, outlen;
+	ssize_t inlen = 0, len, outlen;
 	struct knet_host *dst_host;
 	int link_idx;
 	uint16_t dst_host_ids[KNET_MAX_HOST];
@@ -42,12 +42,17 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	unsigned char *outbuf = (unsigned char *)knet_h->tap_to_links_buf;
 	struct knet_hinfo_data *knet_hinfo_data;
 
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get read lock");
+		goto host_unlock;
+	}
+
 	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data, KNET_MAX_PACKET_SIZE);
 
 	if (inlen == 0) {
 		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");
 		/* TODO: disconnection, should never happen! */
-		goto host_unlock;
+		goto out_unlock;
 	}
 
 	outlen = len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
@@ -55,7 +60,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	if ((knet_h->enabled != 1) &&
 	    (knet_h->tap_to_links_buf->kf_type != KNET_FRAME_HOST_INFO)) { /* data forward is disabled */
 		log_debug(knet_h, KNET_SUB_TAP_T, "Received data packet but forwarding is disabled");
-		goto host_unlock;
+		goto out_unlock;
 	}
 
 	switch(knet_h->tap_to_links_buf->kf_type) {
@@ -69,12 +74,12 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 						&dst_host_ids_entries);
 				if (bcast < 0) {
 					log_debug(knet_h, KNET_SUB_TAP_T, "Error from dst_host_filter_fn: %d", bcast);
-					goto host_unlock;
+					goto out_unlock;
 				}
 
 				if ((!bcast) && (!dst_host_ids_entries)) {
 					log_debug(knet_h, KNET_SUB_TAP_T, "Message is unicast but no dst_host_ids_entries");
-					goto host_unlock;
+					goto out_unlock;
 				}
 			}
 			break;
@@ -88,13 +93,8 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 			break;
 		default:
 			log_warn(knet_h, KNET_SUB_TAP_T, "Receiving unknown messages from tap");
-			goto host_unlock;
+			goto out_unlock;
 			break;
-	}
-
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get read lock");
-		goto host_unlock;
 	}
 
 	if (!bcast) {
@@ -177,7 +177,7 @@ out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 host_unlock:
-	if (knet_h->tap_to_links_buf->kf_type == KNET_FRAME_HOST_INFO) {
+	if ((inlen > 0) && (knet_h->tap_to_links_buf->kf_type == KNET_FRAME_HOST_INFO)) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
 			log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);

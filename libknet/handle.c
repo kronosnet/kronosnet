@@ -551,26 +551,76 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					uint16_t *dst_host_ids,
 					size_t *dst_host_ids_entries))
 {
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		return -1;
+	}
+
 	knet_h->dst_host_filter_fn = dst_host_filter_fn;
 	if (knet_h->dst_host_filter_fn) {
 		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn enabled");
 	} else {
 		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn disabled");
 	}
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
 	return 0;
 }
 
-int knet_handle_setfwd(knet_handle_t knet_h, int enabled)
+int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 {
-	knet_h->enabled = (enabled == 1) ? 1 : 0;
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		return -1;
+	}
+
+	if (enabled) {
+		knet_h->enabled = 1;
+		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is enabled");
+	} else {
+		knet_h->enabled = 0;
+		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 	return 0;
 }
 
 int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	if (knet_h->enabled) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Cannot enable crypto while forwarding is enabled");
+	int savederrno = 0;
+	int err;
+
+	if ((!knet_h) || (!knet_handle_crypto_cfg)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
 		return -1;
 	}
 
@@ -580,8 +630,17 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
 	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
 		log_debug(knet_h, KNET_SUB_CRYPTO, "crypto is not enabled");
-		return 0;
+		err = 0;
+		goto exit_unlock;
 	}
 
-	return crypto_init(knet_h, knet_handle_crypto_cfg);
+	err = crypto_init(knet_h, knet_handle_crypto_cfg);
+
+	if (err) {
+		err = -2;
+	}
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	return err;
 }

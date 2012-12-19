@@ -158,12 +158,10 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
  * 0 on success
  * -1 on error and errno is set.
  *
- * Some special config operations, such as enable/disable crypto, requires
- * data forwarding to be disabled.
  * By default data forwarding is off.
  */
 
-int knet_handle_setfwd(knet_handle_t knet_h, int enabled);
+int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 
 /*
  * knet_handle_crypto
@@ -202,19 +200,26 @@ int knet_handle_setfwd(knet_handle_t knet_h, int enabled);
  *   to processed.
  * - enabling crypto might reduce the overall throughtput
  *   due to crypto data overhead.
- * - re-keying is not implemented yet. Current workaround is:
- *   - disable data forward
- *   - issue a new crypto config
- *   - enable data forward
+ * - re-keying is not implemented yet.
  * - private/public key encryption/hashing is not currently
  *   planned.
  * - crypto key must be the same for all hosts in the same
  *   knet instance.
+ * - it is safe to call knet_handle_crypto multiple times at runtime.
+ *   The last config will be used.
+ *   IMPORTANT: a call to knet_handle_crypto can fail due:
+ *              1) obtain locking to change config
+ *              2) errors to initializes the crypto level.
+ *   This can happen even in subsequent calls to knet_handle_crypto.
+ *   A failure in crypto init, might leave your traffic unencrypted!
+ *   It's best to stop data forwarding (see above), change crypto config,
+ *   start forward again.
  *
  * knet_handle_crypto returns:
  *
  * 0 on success
- * -1 on error and errno is set.
+ * -1 on locking error and errno is set.
+ * -2 on crypto initialization error. No errno is provided at the moment.
  */
 
 #define KNET_MIN_KEY_LEN 1024
