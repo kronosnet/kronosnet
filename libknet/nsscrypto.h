@@ -9,7 +9,6 @@
 #ifndef __NSSCRYPTO_H__
 #define __NSSCRYPTO_H__
 
-#include <sys/types.h>
 #include "internals.h"
 
 struct nsscrypto_instance;

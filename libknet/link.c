@@ -9,18 +9,16 @@
 
 #include "config.h"
 
-#include <stdint.h>
 #include <errno.h>
 #include <netdb.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "internals.h"
-#include "link.h"
 #include "logging.h"
-#include "onwire.h"
+#include "link.h"
 #include "listener.h"
-#include "common.h"
+#include "onwire.h"
 #include "host.h"
 
 int _link_updown(knet_handle_t knet_h, uint16_t node_id,

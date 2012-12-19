@@ -15,19 +15,13 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/epoll.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <stdio.h>
 
 #include "internals.h"
-#include "onwire.h"
 #include "crypto.h"
 #include "common.h"
-#include "host.h"
-#include "logging.h"
-#include "listener.h"
-#include "link.h"
 #include "threads.h"
+#include "logging.h"
+#include "onwire.h"
 
 knet_handle_t knet_handle_new(uint16_t host_id,
 			      int      net_fd,

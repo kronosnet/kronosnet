@@ -10,6 +10,8 @@
 #ifndef __LINK_H__
 #define __LINK_H__
 
+#include "internals.h"
+
 int _link_updown(knet_handle_t knet_h, uint16_t node_id,
 		 struct knet_link *lnk, int configured, int connected);
 

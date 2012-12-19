@@ -9,7 +9,6 @@
 #ifndef __CRYPTO_H__
 #define __CRYPTO_H__
 
-#include <sys/types.h>
 #include "internals.h"
 
 struct crypto_instance {

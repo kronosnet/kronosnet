@@ -10,6 +10,8 @@
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
+#include "internals.h"
+
 void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	     const char *fmt, ...) __attribute__((format(printf, 4, 5)));;
 

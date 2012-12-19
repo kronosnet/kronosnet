@@ -10,6 +10,8 @@
 #ifndef __LISTENER_H__
 #define __LISTENER_H__
 
+#include "internals.h"
+
 int _listener_add(knet_handle_t knet_h, struct knet_link *lnk);
 int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk);
 

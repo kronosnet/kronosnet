@@ -10,6 +10,8 @@
 #ifndef __HOST_H__
 #define __HOST_H__
 
+#include "internals.h"
+
 int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
 void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen);
