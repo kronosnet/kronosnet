@@ -121,7 +121,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	msg.msglevel = msglevel;
 
 	err = pthread_rwlock_rdlock(&knet_h->list_rwlock);
-	if (err == EINVAL)
+	if ((err == EINVAL) && (knet_h->lock_init_done))
 		return;
 
 	va_start(ap, fmt);

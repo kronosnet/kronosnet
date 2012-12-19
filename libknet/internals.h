@@ -95,6 +95,7 @@ struct knet_handle {
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
 	pthread_t dst_link_handler_thread;
+	int lock_init_done;
 	pthread_rwlock_t list_rwlock;
 	pthread_rwlock_t host_rwlock;
 	pthread_mutex_t host_mutex;
