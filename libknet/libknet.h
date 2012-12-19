@@ -20,23 +20,27 @@
 /*
  * maximum number of hosts
  */
+
 #define KNET_MAX_HOST 65536
 
 /*
  * maximum number of links between 2 hosts
  */
+
 #define KNET_MAX_LINK 8
 
 /*
  * maximum packet size that should be written to net_fd
  *  see knet_handle_new for details
  */
+
 #define KNET_MAX_PACKET_SIZE 131072
 
 /*
  * buffers used for pretty logging
  *  host is used to store both ip addresses and hostnames
  */
+
 #define KNET_MAX_HOST_LEN 64
 #define KNET_MAX_PORT_LEN 6
 
@@ -161,7 +165,57 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 
 int knet_handle_setfwd(knet_handle_t knet_h, int enabled);
 
-/* crypto */
+/*
+ * knet_handle_crypto
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * knet_handle_crypto_cfg -
+ *            pointer to a knet_handle_crypto_cfg structure
+ *
+ *            crypto_model should contain the model name.
+ *                         Currently only "nss" is supported.
+ *                         Setting to "none" will disable crypto.
+ *
+ *            crypto_cipher_type
+ *                         should contain the cipher algo name.
+ *                         It can be set to "none" to disable
+ *                         encryption.
+ *                         Currently supported by "nss" model:
+ *                         "3des", "aes128", "aes192" and "aes256".
+ *
+ *            crypto_hash_type
+ *                         should contain the hashing algo name.
+ *                         It can be set to "none" to disable
+ *                         hashing.
+ *                         Currently supported by "nss" model:
+ *                         "md5", "sha1", "sha256", "sha384" and "sha512".
+ *
+ *            private_key  will contain the private shared key.
+ *                         It has to be at least KNET_MIN_KEY_LEN long.
+ *
+ *            private_key_len
+ *                         lenght of the provided private_key.
+ *
+ * Implementation notes/current limitations:
+ * - enabling crypto, will increase latency as packets have
+ *   to processed.
+ * - enabling crypto might reduce the overall throughtput
+ *   due to crypto data overhead.
+ * - re-keying is not implemented yet. Current workaround is:
+ *   - disable data forward
+ *   - issue a new crypto config
+ *   - enable data forward
+ * - private/public key encryption/hashing is not currently
+ *   planned.
+ * - crypto key must be the same for all hosts in the same
+ *   knet instance.
+ *
+ * knet_handle_crypto returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
 
 #define KNET_MIN_KEY_LEN 1024
 #define KNET_MAX_KEY_LEN 4096
@@ -174,7 +228,8 @@ struct knet_handle_crypto_cfg {
 	unsigned int	private_key_len;
 };
 
-int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+int knet_handle_crypto(knet_handle_t knet_h,
+		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
 /* host */
 
