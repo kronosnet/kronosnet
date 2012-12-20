@@ -31,8 +31,8 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 		return -1;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
@@ -108,8 +108,8 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 		return -1;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
@@ -169,8 +169,8 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 {
 	int savederrno = 0, err = 0;
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;

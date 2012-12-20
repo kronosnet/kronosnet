@@ -27,8 +27,8 @@ static int _init_locks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	if (pthread_rwlock_init(&knet_h->list_rwlock, NULL)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_init(&knet_h->list_rwlock, NULL);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize list rwlock: %s",
 			strerror(savederrno));
 		goto exit_fail;
@@ -36,22 +36,22 @@ static int _init_locks(knet_handle_t knet_h)
 
 	knet_h->lock_init_done = 1;
 
-	if (pthread_rwlock_init(&knet_h->host_rwlock, NULL)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_init(&knet_h->host_rwlock, NULL);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host rwlock: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (pthread_mutex_init(&knet_h->host_mutex, NULL)) {
-		savederrno = errno;
+	savederrno = pthread_mutex_init(&knet_h->host_mutex, NULL);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host mutex: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
-		
-	if (pthread_cond_init(&knet_h->host_cond, NULL)) {
-		savederrno = errno;
+
+	savederrno = pthread_cond_init(&knet_h->host_cond, NULL);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host conditional mutex: %s",
 			strerror(savederrno));
 		goto exit_fail;
@@ -343,33 +343,33 @@ static int _start_threads(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	if (pthread_create(&knet_h->dst_link_handler_thread, 0,
-			   _handle_dst_link_handler_thread, (void *) knet_h)) {
-		savederrno = errno;
+	savederrno = pthread_create(&knet_h->dst_link_handler_thread, 0,
+				    _handle_dst_link_handler_thread, (void *) knet_h);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start dst cache thread: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (pthread_create(&knet_h->tap_to_links_thread, 0,
-			   _handle_tap_to_links_thread, (void *) knet_h)) {
-		savederrno = errno; 
+	savederrno = pthread_create(&knet_h->tap_to_links_thread, 0,
+				    _handle_tap_to_links_thread, (void *) knet_h);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start net_fd to link thread: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (pthread_create(&knet_h->recv_from_links_thread, 0,
-			   _handle_recv_from_links_thread, (void *) knet_h)) {
-		savederrno = errno;
+	savederrno = pthread_create(&knet_h->recv_from_links_thread, 0,
+				    _handle_recv_from_links_thread, (void *) knet_h);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start link to net_fd thread: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (pthread_create(&knet_h->heartbt_thread, 0,
-			   _handle_heartbt_thread, (void *) knet_h)) {
-		savederrno = errno;
+	savederrno = pthread_create(&knet_h->heartbt_thread, 0,
+				    _handle_heartbt_thread, (void *) knet_h);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start heartbeat thread: %s",
 			strerror(savederrno));
 		goto exit_fail;
@@ -512,8 +512,8 @@ int knet_handle_free(knet_handle_t knet_h)
 		goto exit_nolock;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
@@ -521,10 +521,12 @@ int knet_handle_free(knet_handle_t knet_h)
 	}
 
 	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL)) {
+		savederrno = EBUSY;
 		log_err(knet_h, KNET_SUB_HANDLE,
-			"Unable to free handle: host(s) or listener(s) are still active");
+			"Unable to free handle: host(s) or listener(s) are still active: %s",
+			strerror(savederrno));
 		pthread_rwlock_unlock(&knet_h->list_rwlock);
-		errno = EBUSY;
+		errno = savederrno;
 		return -1;
 	}
 
@@ -558,8 +560,8 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 		return -1;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
@@ -587,8 +589,8 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		return -1;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
@@ -618,8 +620,8 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		return -1;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
-		savederrno = errno;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
