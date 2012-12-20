@@ -165,32 +165,32 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_set_name(knet_handle_t knet_h, uint16_t node_id, const char *name)
+int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 {
-	int lockstatus, ret;
-	struct knet_host *host;
+	int savederrno = 0, err = 0;
 
-	lockstatus = pthread_rwlock_wrlock(&knet_h->list_rwlock);
-
-	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_set_name: Unable to get lock");
-		return lockstatus;
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
 	}
 
-	host = knet_h->host_index[node_id];
-	if (host == NULL) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_set_name: host not found");
-		errno = ret = EINVAL;
+	if (!knet_h->host_index[host_id]) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to set name for host %u: %s",
+			host_id, strerror(savederrno));
 		goto exit_unlock;
 	}
 
-	snprintf(host->name, KNET_MAX_HOST_LEN - 1, "%s", name);
+	snprintf(knet_h->host_index[host_id]->name, KNET_MAX_HOST_LEN - 1, "%s", name);
 
 exit_unlock:
-	if (lockstatus == 0)
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	return ret;
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
 }
 
 int knet_host_get_name(knet_handle_t knet_h, uint16_t node_id, char *name)
