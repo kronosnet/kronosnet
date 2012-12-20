@@ -111,6 +111,7 @@ struct knet_handle {
 		uint16_t src_node_id,
 		uint16_t *dst_host_ids,
 		size_t *dst_host_ids_entries);
+	int fini_in_progress;
 };
 
 #endif

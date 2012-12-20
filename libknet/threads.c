@@ -605,7 +605,7 @@ void *_handle_heartbt_thread(void *data)
 	knet_h->pingbuf->kf_type = KNET_FRAME_PING;
 	knet_h->pingbuf->kf_node = htons(knet_h->host_id);
 
-	while (1) {
+	while (!knet_h->fini_in_progress) {
 		usleep(KNET_PING_TIMERES);
 
 		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
@@ -639,7 +639,7 @@ void *_handle_tap_to_links_thread(void *data)
 	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
 	knet_h->tap_to_links_buf->kf_node = htons(knet_h->host_id);
 
-	while (1) {
+	while (!knet_h->fini_in_progress) {
 		nev = epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
@@ -662,7 +662,7 @@ void *_handle_recv_from_links_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
-	while (1) {
+	while (!knet_h->fini_in_progress) {
 		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
@@ -678,7 +678,7 @@ void *_handle_dst_link_handler_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
-	while (1) {
+	while (!knet_h->fini_in_progress) {
 		if (epoll_wait(knet_h->dst_link_handler_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1) >= 1)
 			_handle_dst_link_updates(knet_h);
 	}

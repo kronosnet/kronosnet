@@ -23,6 +23,8 @@
 #include "logging.h"
 #include "onwire.h"
 
+static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static int _init_locks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -498,14 +500,30 @@ int knet_handle_free(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
+	savederrno = pthread_mutex_lock(&handle_config_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
 	if (!knet_h) {
+		pthread_mutex_unlock(&handle_config_mutex);
 		errno = EINVAL;
+		return -1;
+	}
+
+	if (knet_h->fini_in_progress) {
+		pthread_mutex_unlock(&handle_config_mutex);
+		errno = EBUSY;
 		return -1;
 	}
 
 	/*
 	 * we take a chance here to read a value that should be 0
-	 * only if we could not init properly.
+	 * only if we could not init properly. Nothing else
+	 * is started if lock_init_done is 0.
 	 */
 
 	if (!knet_h->lock_init_done) {
@@ -530,6 +548,10 @@ int knet_handle_free(knet_handle_t knet_h)
 		return -1;
 	}
 
+	knet_h->fini_in_progress = 1;
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
 	_stop_threads(knet_h);
 	_close_epolls(knet_h);
 	_destroy_buffers(knet_h);
@@ -541,7 +563,7 @@ int knet_handle_free(knet_handle_t knet_h)
 exit_nolock:
 	free(knet_h);
 	knet_h = NULL;
-
+	pthread_mutex_unlock(&handle_config_mutex);
 	return 0;
 }
 
