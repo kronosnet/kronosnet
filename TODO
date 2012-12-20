@@ -3,9 +3,6 @@
 
 review locking handling policies (attempt locks vs deadlocks and so on)
 
-investigate crash in _listener_remove from:
-"./ping_test 127.0.0.1 127.0.0.1 127.0.0.1"
-
 sort out read buf from recv_from_links since it might be too small vs
 sending out 128k (+header+encryption+....)
 
