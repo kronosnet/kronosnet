@@ -149,7 +149,8 @@ int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk)
 		}
 	}
 
-	if (listener_cnt > 1) {
+	if (listener_cnt) {
+		lnk->listener_sock = 0;
 		log_debug(knet_h, KNET_SUB_LISTENER, "listener_remove: listener still in use");
 		ret = EBUSY;
 		goto exit_unlock;

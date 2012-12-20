@@ -95,7 +95,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 
 	err = _listener_remove(knet_h, lnk);
 
-	if ((err) && (err != -EBUSY)) {
+	if ((err) && (err != EBUSY)) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
 		if (_link_updown(knet_h, node_id, lnk, 1, lnk->status.connected))
 			lnk->status.configured = 1;

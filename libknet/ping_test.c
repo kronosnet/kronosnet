@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "libknet.h"
 
@@ -190,22 +191,27 @@ static void sigint_handler(int signum)
 	size_t host_ids_entries = 0;
 	struct knet_link_status status;
 
-	printf("Cleaning up...\n");
+	printf("Cleaning up... got signal: %d\n", signum);
 
 	if (knet_h != NULL) {
-		knet_host_get_host_list(knet_h, host_ids, &host_ids_entries);
+		if (knet_host_get_host_list(knet_h, host_ids, &host_ids_entries))
+			printf("Unable to get host list: %s\n",strerror(errno));
+
 		for (i = 0; i < host_ids_entries; i++) {
 			for (j = 0; j < KNET_MAX_LINK; j++) {
-				knet_link_get_status(knet_h, host_ids[i], j, &status);
+				if (knet_link_get_status(knet_h, host_ids[i], j, &status))
+					printf("Unable to get link data: %s\n",strerror(errno));
 				if (status.configured != 1) continue;
 
-				knet_link_enable(knet_h, host_ids[i], j, 0);
+				if (knet_link_enable(knet_h, host_ids[i], j, 0))
+					printf("Unable to remove link: %s\n",strerror(errno));
 			}
-			knet_host_remove(knet_h, host_ids[i]);
+			if (knet_host_remove(knet_h, host_ids[i]))
+				printf("Unable to remove host: %s\n",strerror(errno));
 		}
 
 		if (knet_handle_free(knet_h)) {
-			printf("Unable to cleanup before exit\n");
+			printf("Unable to cleanup before exit: %s\n",strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
