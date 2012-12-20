@@ -20,38 +20,63 @@
 #include "internals.h"
 #include "logging.h"
 
-int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
+int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 {
-	int link_idx, ret = 0; /* success */
+	uint8_t link_idx, savederrno = 0, err = 0;
 	struct knet_host *host;
 
-	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_add: Unable to get write lock");
-		goto exit_clean;
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
 	}
 
-	if (knet_h->host_index[node_id] != NULL) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_add: host already exists");
-		errno = ret = EEXIST;
+	if (knet_h->host_index[host_id]) {
+		err = -1;
+		savederrno = EEXIST;
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to add host %u: %s",
+			  host_id, strerror(savederrno));
 		goto exit_unlock;
 	}
 
-	if ((host = malloc(sizeof(struct knet_host))) == NULL) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_add: unable to allocate memory for host");
+	host = malloc(sizeof(struct knet_host));
+	if (!host) {
+		err = -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to allocate memory for host %u: %s",
+			host_id, strerror(savederrno));
 		goto exit_unlock;
 	}
 
 	memset(host, 0, sizeof(struct knet_host));
 
-	host->node_id = node_id;
-	snprintf(host->name, KNET_MAX_HOST_LEN - 1, "%u", node_id);
+	/*
+	 * set host_id
+	 */
+	host->host_id = host_id;
 
-	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++)
+	/*
+	 * set default host->name to host_id for logging
+	 */
+	snprintf(host->name, KNET_MAX_HOST_LEN - 1, "%u", host_id);
+
+	/*
+	 * initialize links internal data
+	 */
+	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		host->link[link_idx].link_id = link_idx;
+	}
 
-	/* adding new host to the index */
-	knet_h->host_index[node_id] = host;
+	/*
+	 * add new host to the index
+	 */
+	knet_h->host_index[host_id] = host;
 
+	/*
+	 * add new host to host list
+	 */
 	if (!knet_h->host_head) {
 		knet_h->host_head = host;
 		knet_h->host_tail = host;
@@ -60,11 +85,10 @@ int knet_host_add(knet_handle_t knet_h, uint16_t node_id)
 		knet_h->host_tail = host;
 	}
 
- exit_unlock:
+exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
- exit_clean:
-	return ret;
+	errno = savederrno;
+	return err;
 }
 
 int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
@@ -86,12 +110,12 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 	removed = NULL;
 
 	/* removing host from list */
-	if (knet_h->host_head->node_id == node_id) {
+	if (knet_h->host_head->host_id == node_id) {
 		removed = knet_h->host_head;
 		knet_h->host_head = removed->next;
 	} else {
 		for (host = knet_h->host_head; host->next != NULL; host = host->next) {
-			if (host->next->node_id == node_id) {
+			if (host->next->host_id == node_id) {
 				removed = host->next;
 				host->next = removed->next;
 				break;
@@ -181,7 +205,7 @@ int knet_host_get_id(knet_handle_t knet_h, const char *name, uint16_t *node_id)
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		if (!strcmp(name, host->name)) {
-			*node_id = host->node_id;
+			*node_id = host->host_id;
 			ret = 1;
 			break;
 		}
@@ -208,7 +232,7 @@ int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries
 	entries = 0;
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
-		host_ids[entries] = host->node_id;
+		host_ids[entries] = host->host_id;
 		entries++;
 	}
 

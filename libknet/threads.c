@@ -356,7 +356,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			if (!src_link->status.connected) {
 				log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is up",
 					 src_host->name, src_link->status.dst_ipaddr);
-				_link_updown(knet_h, src_host->node_id, src_link, src_link->status.configured, 1);
+				_link_updown(knet_h, src_host->host_id, src_link, src_link->status.configured, 1);
 			}
 		}
 
@@ -396,7 +396,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 					  src_host->name,
 					  src_link->status.dst_ipaddr,
 					  src_link->remoteconnected);
-				if (_dst_cache_update(knet_h, src_host->node_id)) {
+				if (_dst_cache_update(knet_h, src_host->host_id)) {
 					log_debug(knet_h, KNET_SUB_LINK,
 						  "Unable to update switch cache (host: %s link: %s remote connected: %u)",
 						  src_host->name,
@@ -589,7 +589,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
 			log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is down",
 				 dst_host->name, dst_link->status.dst_ipaddr);
-			_link_updown(knet_h, dst_host->node_id, dst_link, dst_link->status.configured, 0);
+			_link_updown(knet_h, dst_host->host_id, dst_link, dst_link->status.configured, 0);
 		}
 	}
 }

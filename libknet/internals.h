@@ -57,7 +57,7 @@ typedef uint16_t seq_num_t;
 
 struct knet_host {
 	/* required */
-	uint16_t node_id;
+	uint16_t host_id;
 	/* configurable */
 	uint8_t link_handler_policy;
 	char name[KNET_MAX_HOST_LEN];
