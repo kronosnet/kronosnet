@@ -1426,7 +1426,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		ip_list_entries = 0;
 	}
 
-	knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
+	knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 	for (j = 0; j < host_ids_entries; j++) {
 		for (i = 0; i < KNET_MAX_LINK; i++) {
 			knet_link_enable(knet_iface->cfg_ring.knet_h, host_ids[j], i, 0);
@@ -1580,7 +1580,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 	while (knet_iface != NULL) {
 		knet_vty_write(vty, "interface %s (active: %d)%s", tap_get_name(knet_iface->cfg_eth.tap), knet_iface->active, nl);
 
-		knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
+		knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 
 		for (j = 0; j < host_ids_entries; j++) {
 			knet_host_get_name_by_host_id(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
@@ -1682,7 +1682,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			       knet_iface->knet_handle_crypto_cfg.crypto_cipher_type,
 			       knet_iface->knet_handle_crypto_cfg.crypto_hash_type, nl);
 
-		knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
+		knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 		for (j = 0; j < host_ids_entries; j++) {
 			knet_host_get_name_by_host_id(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
 			knet_vty_write(vty, "  peer %s %u%s", nodename, host_ids[j], nl);

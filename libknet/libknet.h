@@ -333,7 +333,24 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 				  uint16_t *host_id);
 
 /* get a list of configured hosts in an array of uint16_t of size MAX_HOST */
-int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries);
+/* 
+ * knet_host_get_host_list
+ * 
+ * knet_h   - pointer to knet_handle_t
+ *
+ * host_ids - array of at lest KNET_MAX_HOST size
+ *
+ * host_ids_entries -
+ *            number of entries writted in host_ids
+ *
+ * knet_host_get_host_list returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_host_get_host_list(knet_handle_t knet_h,
+			    uint16_t *host_ids, size_t *host_ids_entries);
 
 /*
  * define switching policies

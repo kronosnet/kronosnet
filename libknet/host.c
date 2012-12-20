@@ -287,31 +287,44 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries)
+int knet_host_get_host_list(knet_handle_t knet_h,
+			    uint16_t *host_ids, size_t *host_ids_entries)
 {
-	int lockstatus, entries;
+	int savederrno = 0, err = 0, entries = 0;
 	struct knet_host *host;
 
-	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
-
-	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_list: Unable to get lock");
-		return lockstatus;
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	entries = 0;
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if ((!host_ids) || (!host_ids_entries)) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get host list: %s",
+			strerror(savederrno));
+		goto exit_unlock;
+	}
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		host_ids[entries] = host->host_id;
 		entries++;
 	}
 
-	*ids_entries = entries;
+	*host_ids_entries = entries;
 
-	if (lockstatus == 0)
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	return 0;
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
 }
 
 int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)

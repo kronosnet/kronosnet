@@ -193,7 +193,7 @@ static void sigint_handler(int signum)
 	printf("Cleaning up...\n");
 
 	if (knet_h != NULL) {
-		knet_host_list(knet_h, host_ids, &host_ids_entries);
+		knet_host_get_host_list(knet_h, host_ids, &host_ids_entries);
 		for (i = 0; i < host_ids_entries; i++) {
 			for (j = 0; j < KNET_MAX_LINK; j++) {
 				knet_link_get_status(knet_h, host_ids[i], j, &status);
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
 		ssize_t wlen;
 		size_t i;
 
-		knet_host_list(knet_h, host_ids, &host_ids_entries);
+		knet_host_get_host_list(knet_h, host_ids, &host_ids_entries);
 		for (i = 0; i < host_ids_entries; i++) {
 			print_link(knet_h, host_ids[i]);
 		}
