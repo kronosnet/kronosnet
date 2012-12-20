@@ -292,8 +292,26 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id);
 int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id,
 		       const char *name);
 
-/* name must be at least = KNET_MAX_HOST_LEN */
-int knet_host_get_name(knet_handle_t knet_h, uint16_t node_id, char *name);
+/*
+ * knet_host_get_name_by_host_id
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * host_id  - see above
+ *
+ * name     - pointer to a preallocated buffer of atleast size KNET_MAX_HOST_LEN
+ *            where the current host name will be stored
+ *            (as set by knet_host_set_name or default by knet_host_add)
+ *
+ * knet_host_get_name_by_host_id returns:
+ *
+ * 1 if host is found and name is valid
+ * 0 if host is not found. name is left untouched.
+ * -1 on error and errno is set.
+ */
+
+int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
+				  char *name);
 
 /* name must be <= KNET_MAX_HOST_LEN */
 int knet_host_get_id(knet_handle_t knet_h, const char *name, uint16_t *node_id);

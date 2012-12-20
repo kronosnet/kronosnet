@@ -1041,7 +1041,7 @@ static int knet_find_host(struct knet_vty *vty,	const char *nodename, const uint
 	char name[KNET_MAX_HOST_LEN];
 
 	have_nodeid = knet_host_get_id(knet_iface->cfg_ring.knet_h, nodename, &node_id);
-	have_name = knet_host_get_name(knet_iface->cfg_ring.knet_h, requested_node_id, name);
+	have_name = knet_host_get_name_by_host_id(knet_iface->cfg_ring.knet_h, requested_node_id, name);
 
 	/*
 	 * internal error.. get out
@@ -1583,7 +1583,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 		knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 
 		for (j = 0; j < host_ids_entries; j++) {
-			knet_host_get_name(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
+			knet_host_get_name_by_host_id(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
 			knet_vty_write(vty, "  peer %s ", nodename);
 
 			knet_host_get_policy(knet_iface->cfg_ring.knet_h, host_ids[j], &policy);
@@ -1684,7 +1684,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		knet_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 		for (j = 0; j < host_ids_entries; j++) {
-			knet_host_get_name(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
+			knet_host_get_name_by_host_id(knet_iface->cfg_ring.knet_h, host_ids[j], nodename);
 			knet_vty_write(vty, "  peer %s %u%s", nodename, host_ids[j], nl);
 
 			knet_host_get_policy(knet_iface->cfg_ring.knet_h, host_ids[j], &policy);
