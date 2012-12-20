@@ -509,7 +509,7 @@ try_again:
 			goto try_again;
 		} else {
 			savederrno = errno;
-			log_debug(knet_h, KNET_SUB_COMMON, "Unable to write to dstpipefd[1]: %s",
+			log_debug(knet_h, KNET_SUB_HOST, "Unable to write to dstpipefd[1]: %s",
 				  strerror(savederrno));
 			errno = savederrno;
 			return -1;
