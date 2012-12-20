@@ -562,6 +562,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
+		errno = savederrno;
 		return -1;
 	}
 
@@ -590,6 +591,7 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
+		errno = savederrno;
 		return -1;
 	}
 
