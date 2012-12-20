@@ -238,30 +238,53 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_get_id(knet_handle_t knet_h, const char *name, uint16_t *node_id)
+int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
+				  uint16_t *host_id)
 {
-	int lockstatus, ret = 0;
+	int savederrno = 0, err = 0;
 	struct knet_host *host;
 
-	lockstatus = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if ((lockstatus != 0) && (lockstatus != EDEADLK)) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_list: Unable to get lock");
-		return lockstatus;
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!name) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get id for unknown host: %s",
+			strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	if (!host_id) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get id for host %s: %s",
+			name, strerror(savederrno));
+		goto exit_unlock;
 	}
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		if (!strcmp(name, host->name)) {
-			*node_id = host->host_id;
-			ret = 1;
+			*host_id = host->host_id;
+			err = 1;
 			break;
 		}
 	}
 
-	if (lockstatus == 0)
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	return ret;
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
 }
 
 int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries)

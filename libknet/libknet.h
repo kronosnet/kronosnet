@@ -313,8 +313,24 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id,
 int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
 				  char *name);
 
-/* name must be <= KNET_MAX_HOST_LEN */
-int knet_host_get_id(knet_handle_t knet_h, const char *name, uint16_t *node_id);
+/*
+ * knet_host_get_id_by_host_name
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * name     - name to lookup, max len KNET_MAX_HOST_LEN
+ *
+ * host_id  - where to store the result
+ *
+ * knet_host_get_id_by_host_name returns:
+ *
+ * 1 if host is found and name is valid
+ * 0 if host is not found. name is left untouched.
+ * -1 on error and errno is set.
+ */
+
+int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
+				  uint16_t *host_id);
 
 /* get a list of configured hosts in an array of uint16_t of size MAX_HOST */
 int knet_host_list(knet_handle_t knet_h, uint16_t *host_ids, size_t *ids_entries);
