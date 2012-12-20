@@ -352,6 +352,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 int knet_host_get_host_list(knet_handle_t knet_h,
 			    uint16_t *host_ids, size_t *host_ids_entries);
 
+
 /*
  * define switching policies
  */
@@ -359,8 +360,56 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 #define KNET_LINK_POLICY_ACTIVE  1
 #define KNET_LINK_POLICY_RR      2
 
-int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy);
-int knet_host_get_policy(knet_handle_t knet_h, uint16_t node_id, int *policy);
+/*
+ * knet_host_set_policy
+ *
+ * knet_h   - pointer to knet_handle_t 
+ * 
+ * host_id  - see above
+ *
+ * policy   - there are currently 3 kind of simple switching policies
+ *            as defined above, based on link configuration.
+ *            KNET_LINK_POLICY_PASSIVE - the active link with the lowest
+ *                                       priority will be used.
+ *                                       if one or more active links share
+ *                                       the same priority, the one with
+ *                                       lowest link_id will be used.
+ *
+ *            KNET_LINK_POLICY_ACTIVE  - all active links will be used
+ *                                       simultaneously to send traffic.
+ *                                       link priority is ignored.
+ *
+ *            KNET_LINK_POLICY_RR      - round-robin policy, every packet
+ *                                       will be send on a different active
+ *                                       link.
+ *
+ * knet_host_set_policy returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */ 
+
+int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
+			 int policy);
+
+/*
+ * knet_host_get_policy
+ *
+ * knet_h   - pointer to knet_handle_t 
+ * 
+ * host_id  - see above
+ *
+ * policy   - will contain the current configured switching policy.
+ *            Default is passive when creating a new host.
+ *
+ * knet_host_get_policy returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */ 
+
+int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
+			 int *policy);
 
 /* link */
 

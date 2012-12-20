@@ -327,63 +327,82 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_set_policy(knet_handle_t knet_h, uint16_t node_id, int policy)
+int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
+			 int policy)
 {
-	int ret = 0;
-	struct knet_host *host = NULL;
+	int savederrno = 0, err = 0;
 	int old_policy;
 
-	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_set_policy: Unable to get write lock");
-		goto exit_clean;
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	host = knet_h->host_index[node_id];
-	if (host == NULL) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_set_policy: host not found");
-		errno = ret = EINVAL;
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->host_index[host_id]) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to set name for host %u: %s",
+			host_id, strerror(savederrno));
 		goto exit_unlock;
 	}
 
-	old_policy = host->link_handler_policy;
-	host->link_handler_policy = policy;
+	old_policy = knet_h->host_index[host_id]->link_handler_policy;
+	knet_h->host_index[host_id]->link_handler_policy = policy;
 
-	if (_dst_cache_update(knet_h, node_id)) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_set_policy: unable to update switch cache");
-		ret = -1;
-		host->link_handler_policy = old_policy;
+	if (_dst_cache_update(knet_h, host_id)) {
+		savederrno = errno;
+		err = -1;
+		knet_h->host_index[host_id]->link_handler_policy = old_policy;
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to update switch cache for host %u: %s",
+			  host_id, strerror(savederrno));
 	}
 
- exit_unlock:
+exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
- exit_clean:
-	return ret;
+	errno = savederrno;
+	return err;
 }
 
-int knet_host_get_policy(knet_handle_t knet_h, uint16_t node_id, int *policy)
+int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
+			 int *policy)
 {
-	int ret = 0;
-	struct knet_host *host = NULL;
+	int savederrno = 0, err = 0;
 
-	if ((ret = pthread_rwlock_rdlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_set_policy: Unable to get read lock");
-		goto exit_clean;
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	host = knet_h->host_index[node_id];
-
-	if (host == NULL) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_get_policy: host not found");
-		errno = ret = EINVAL;
-	} else {
-		*policy = host->link_handler_policy;
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
 	}
 
+	if ((!knet_h->host_index[host_id]) || (!policy)) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get name for host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	*policy = knet_h->host_index[host_id]->link_handler_policy;
+
+exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
- exit_clean:
-	return ret;
+	errno = savederrno;
+	return err;
 }
 
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
@@ -478,17 +497,21 @@ void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num)
 	return;
 }
 
-int _dst_cache_update(knet_handle_t knet_h, uint16_t node_id)
+int _dst_cache_update(knet_handle_t knet_h, uint16_t host_id)
 {
 	int write_retry = 0;
+	int savederrno = 0;
 
 try_again:
-	if (write(knet_h->dstpipefd[1], &node_id, sizeof(node_id)) != sizeof(node_id)) {
+	if (write(knet_h->dstpipefd[1], &host_id, sizeof(host_id)) != sizeof(host_id)) {
 		if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
 			write_retry++;
 			goto try_again;
 		} else {
-			log_debug(knet_h, KNET_SUB_COMMON, "Unable to write to comm pipe");
+			savederrno = errno;
+			log_debug(knet_h, KNET_SUB_COMMON, "Unable to write to dstpipefd[1]: %s",
+				  strerror(savederrno));
+			errno = savederrno;
 			return -1;
 		}
 	}
