@@ -22,8 +22,14 @@
 
 int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 {
-	uint8_t link_idx, savederrno = 0, err = 0;
+	int savederrno = 0, err = 0;
 	struct knet_host *host;
+	uint8_t link_idx;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
 		savederrno = errno;
@@ -36,7 +42,7 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 	if (knet_h->host_index[host_id]) {
 		err = -1;
 		savederrno = EEXIST;
-		log_debug(knet_h, KNET_SUB_HOST, "Unable to add host %u: %s",
+		log_err(knet_h, KNET_SUB_HOST, "Unable to add host %u: %s",
 			  host_id, strerror(savederrno));
 		goto exit_unlock;
 	}
@@ -91,31 +97,58 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
+int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 {
-	int ret = 0; /* success */
+	int savederrno = 0, err = 0;
 	struct knet_host *host, *removed;
+	uint8_t link_idx;
 
-	if ((ret = pthread_rwlock_wrlock(&knet_h->list_rwlock)) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_remove: Unable to get write lock");
-		goto exit_clean;
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	if (knet_h->host_index[node_id] == NULL) {
-		log_debug(knet_h, KNET_SUB_HOST, "host_remove: host unknown");
-		errno = ret = EINVAL;
+	if (pthread_rwlock_wrlock(&knet_h->list_rwlock)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->host_index[host_id]) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to remove host %u: %s",
+			host_id, strerror(savederrno));
 		goto exit_unlock;
+	}
+
+	/*
+	 * if links are configured we cannot release the host
+	 */
+	
+	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+		if (knet_h->host_index[host_id]->link[link_idx].status.configured) {
+			err = -1;
+			savederrno = EBUSY;
+			log_err(knet_h, KNET_SUB_HOST, "Unable to remove host %u, links are still configuerd: %s",
+				host_id, strerror(savederrno));
+			goto exit_unlock;
+		}
 	}
 
 	removed = NULL;
 
-	/* removing host from list */
-	if (knet_h->host_head->host_id == node_id) {
+	/*
+	 * removing host from list
+	 */
+	if (knet_h->host_head->host_id == host_id) {
 		removed = knet_h->host_head;
 		knet_h->host_head = removed->next;
 	} else {
 		for (host = knet_h->host_head; host->next != NULL; host = host->next) {
-			if (host->next->host_id == node_id) {
+			if (host->next->host_id == host_id) {
 				removed = host->next;
 				host->next = removed->next;
 				break;
@@ -123,16 +156,13 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t node_id)
 		}
 	}
 
-	if (removed != NULL) {
-		knet_h->host_index[node_id] = NULL;
-		free(removed);
-	}
+	knet_h->host_index[host_id] = NULL;
+	free(removed);
 
- exit_unlock:
+exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
- exit_clean:
-	return ret;
+	errno = savederrno;
+	return err;
 }
 
 int knet_host_set_name(knet_handle_t knet_h, uint16_t node_id, const char *name)

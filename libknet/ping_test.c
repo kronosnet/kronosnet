@@ -185,14 +185,26 @@ static int print_link(knet_handle_t khandle, uint16_t host_id)
 
 static void sigint_handler(int signum)
 {
-	int err;
+	int i, j;
+	uint16_t host_ids[KNET_MAX_HOST];
+	size_t host_ids_entries = 0;
+	struct knet_link_status status;
 
 	printf("Cleaning up...\n");
 
 	if (knet_h != NULL) {
-		err = knet_handle_free(knet_h);
+		knet_host_list(knet_h, host_ids, &host_ids_entries);
+		for (i = 0; i < host_ids_entries; i++) {
+			for (j = 0; j < KNET_MAX_LINK; j++) {
+				knet_link_get_status(knet_h, host_ids[i], j, &status);
+				if (status.configured != 1) continue;
 
-		if (err != 0) {
+				knet_link_enable(knet_h, host_ids[i], j, 0);
+			}
+			knet_host_remove(knet_h, host_ids[i]);
+		}
+
+		if (knet_handle_free(knet_h)) {
 			printf("Unable to cleanup before exit\n");
 			exit(EXIT_FAILURE);
 		}

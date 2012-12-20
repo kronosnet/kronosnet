@@ -256,7 +256,21 @@ int knet_handle_crypto(knet_handle_t knet_h,
 
 int knet_host_add(knet_handle_t knet_h, uint16_t host_id);
 
-int knet_host_remove(knet_handle_t knet_h, uint16_t node_id);
+/*
+ * knet_host_remove
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * host_id  - each host in a knet is identified with a unique ID
+ *            (see also knet_handle_new documentation above)
+ *
+ * knet_host_remove returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_host_remove(knet_handle_t knet_h, uint16_t host_id);
 
 /* name must be <= KNET_MAX_HOST_LEN */
 int knet_host_set_name(knet_handle_t knet_h, uint16_t node_id, const char *name);
