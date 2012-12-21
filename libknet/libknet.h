@@ -411,7 +411,29 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
 int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
 			 int *policy);
 
-/* link */
+/*
+ * link structs/API calls
+ *
+ * every host allocated/managed by knet_host_* has
+ * KNET_MAX_LINK structures to define the network
+ * paths that connect 2 hosts.
+ *
+ * Each link is identified by a link_id that has a
+ * values between 0 and KNET_MAX_LINK included.
+ *
+ * KNOWN LIMITATIONS:
+ *
+ * - let's assume the scenario where two hosts are connected
+ *   with any number of links. link_id must match on both sides.
+ *   If host_id 0 link_id 0 is configured to connect IP1 to IP2 and
+ *   host_id 0 link_id 1 is configured to connect IP3 to IP4,
+ *   host_id 1 link_id 0 _must_ connect IP2 to IP1 and likewise
+ *   host_id 1 link_id 1 _must_ connect IP4 to IP3.
+ *   We might be able to lift this restriction in future, by using
+ *   other data to determine src/dst link_id, but for now deal with it.
+ *
+ * - 
+ */
 
 int knet_link_config(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
 		     struct sockaddr_storage *src_addr,
