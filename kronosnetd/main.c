@@ -137,14 +137,14 @@ static int set_scheduler(void)
 
 	err = sched_get_priority_max(SCHED_RR);
 	if (err < 0) {
-		log_error("Could not get maximum scheduler priority");
+		log_warn("Could not get maximum scheduler priority");
 		return err;
 	}
 
 	sched_param.sched_priority = err;
 	err = sched_setscheduler(0, SCHED_RR, &sched_param);
 	if (err < 0)
-		log_error("could not set SCHED_RR priority %d",
+		log_warn("could not set SCHED_RR priority %d",
 			   sched_param.sched_priority);
 
 	return err;
@@ -320,15 +320,16 @@ int main(int argc, char **argv)
 	logging_init_defaults(debug, daemonize, knet_cfg_head.logfile);
 	log_info(PACKAGE "d version " VERSION);
 
-	err = set_scheduler();
-	if (err < 0)
-		goto out;
+	/*
+	 * don't fail if scheduler is not RR because systemd is
+	 * an utter piece of shit that refuses us to set RR via init script
+	 */
+	set_scheduler();
 
 	err = knet_vty_main_loop(debug);
 	if (err < 0)
 		log_error("Detected fatal error in main loop");
 
-out:
 	if (knet_cfg_head.logfile)
 		free(knet_cfg_head.logfile);
 	if (knet_cfg_head.conffile)
