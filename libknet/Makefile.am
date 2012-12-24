@@ -37,6 +37,7 @@ noinst_HEADERS		= \
 			  crypto.h \
 			  host.h \
 			  internals.h \
+			  link.h \
 			  listener.h \
 			  logging.h \
 			  nsscrypto.h \
