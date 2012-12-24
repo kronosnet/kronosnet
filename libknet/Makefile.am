@@ -62,9 +62,9 @@ noinst_PROGRAMS		= \
 TESTS			= $(check_PROGRAMS)
 
 ping_test_SOURCES	= ping_test.c
-ping_test_LDFLAGS	= libknet.la
+ping_test_LDADD		= libknet.la
 
 khandle_test_SOURCES	= khandle_test.c
-khandle_test_LDFLAGS	= libknet.la
+khandle_test_LDADD	= libknet.la
 
 timediff_test_SOURCES	= timediff_test.c
