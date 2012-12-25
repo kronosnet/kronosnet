@@ -165,7 +165,7 @@ static int knet_vty_pam_auth_user(struct knet_vty *vty, const char *user)
 	conv.appdata_ptr = (void *)vty;
 
 retry_auth:
-	err = pam_start("kronosnet", user, &conv, &pamh);
+	err = pam_start("kronosnetd", user, &conv, &pamh);
 	if (err != PAM_SUCCESS) {
 		errno = EINVAL;
 		log_error("PAM fatal error: %s", pam_strerror(pamh, err));

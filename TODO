@@ -1,10 +1,7 @@
 0.1
 ---
 
-spotted on F17 due to missing /etc/pam.conf, a symlink in /etc/pam.d/kronosnet
-to /etc/pam.d/passwd is necessary to enable telnet to CLI authentication.
-Odd that fedora is missing a frigging default...... B A H. Check how
-other rpm ship those files or make one for our own.
+Check debian policy on /etc/pam.d/* install/usage
 
 review locking handling policies (attempt locks vs deadlocks and so on)
 

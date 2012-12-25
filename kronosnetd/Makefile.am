@@ -73,8 +73,9 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d
 	$(INSTALL) -d -m 0755 $(DESTDIR)/$(sysconfdir)/logrotate.d
 	$(INSTALL) -m 644 kronosnetd.logrotate $(DESTDIR)/$(sysconfdir)/logrotate.d/kronosnetd
-	
-
+	$(INSTALL) -d -m 0755 $(DESTDIR)/$(sysconfdir)/pam.d
+	cd $(DESTDIR)/$(sysconfdir)/pam.d && \
+		$(LN_S) passwd kronosnetd
 
 uninstall-local:
 	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR)/cryptokeys.d || :;
@@ -85,3 +86,5 @@ uninstall-local:
 	rmdir $(DESTDIR)/$(DEFAULT_CONFIG_DIR) || :;
 	rm -f $(DESTDIR)/$(sysconfdir)/logrotate.d/kronosnetd
 	rmdir $(DESTDIR)/$(sysconfdir)/logrotate.d || :;
+	rm -f $(DESTDIR)/$(sysconfdir)/pam.d/kronosnetd || :;
+	rmdir $(DESTDIR)/$(sysconfdir)/pam.d || :;

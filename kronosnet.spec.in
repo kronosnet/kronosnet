@@ -71,6 +71,7 @@ Group: System Environment/Base
 Summary: Multipoint-to-Multipoint VPN daemon
 Requires(post): chkconfig, shadow-utils
 Requires(preun): chkconfig, shadow-utils, initscripts
+Requires: pam, /etc/pam.d/passwd
 
 %description -n kronosnetd
  The kronosnet daemon is a bridge between kronosnet switching engine
@@ -97,8 +98,9 @@ fi
 %doc COPYING.* COPYRIGHT 
 %dir %{_sysconfdir}/kronosnet
 %dir %{_sysconfdir}/kronosnet/*
-%{_sysconfdir}/logrotate.d/kronosnetd
-%{_sysconfdir}/rc.d/init.d/kronosnetd
+%config(noreplace) %{_sysconfdir}/pam.d/kronosnetd
+%config(noreplace) %{_sysconfdir}/logrotate.d/kronosnetd
+%config(noreplace) %{_sysconfdir}/rc.d/init.d/kronosnetd
 %{_sbindir}/*
 %{_mandir}/man8/*
 
