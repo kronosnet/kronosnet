@@ -1,7 +1,12 @@
 0.1
 ---
 
-Check debian policy on /etc/pam.d/* install/usage
+
+debian:
+ Check policy on /etc/pam.d/* install/usage
+ Make groupadd kronosnetadm silent and dynamic
+ systemd packaging in debian?
+ install /etc/default/kronosnetd
 
 review locking handling policies (attempt locks vs deadlocks and so on)
 

@@ -1,0 +1,3 @@
+# kronosnetd startup options (see man kronosnetd.8)
+
+KNETD_OPTS=""

@@ -161,6 +161,11 @@ AC_ARG_ENABLE([publicandocs],
 	[  --enable-publicandocs   enable docs build. ],
 	[ default="no" ])
 
+AC_ARG_WITH([initdefaultdir],
+	[  --with-initdefaultdir   : path to /etc/sysconfig/.. or /etc/default dir. ],
+	[ INITDEFAULTDIR="$withval" ],
+	[ INITDEFAULTDIR="$sysconfdir/default" ])
+
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
@@ -201,9 +206,11 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 AM_CONDITIONAL([BUILD_DOCS], [test "x${enable_publicandocs}" = xyes])
 
 AC_SUBST([DEFAULT_CONFIG_DIR])
+AC_SUBST([INITDEFAULTDIR])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
 AC_SUBST([LOGDIR])
+AC_SUBST([DEFAULTADMGROUP])
 
 AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR],
 		   ["$(eval echo ${DEFAULT_CONFIG_DIR})"],

@@ -38,10 +38,12 @@ BuildRequires: libqb-devel nss-devel pam-devel
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
+%{configure} \
+	--with-initdefaultdir=%{_sysconfdir}/sysconfig/ \
 %if %{defined _unitdir}
-%{configure} --with-systemddir=%{_unitdir}
+	--with-systemddir=%{_unitdir}
 %else
-%{configure} --with-initddir=%{_sysconfdir}/rc.d/init.d/
+	--with-initddir=%{_sysconfdir}/rc.d/init.d/
 %endif
 
 make %{_smp_mflags}
@@ -113,7 +115,7 @@ Requires: pam, /etc/pam.d/passwd
 %else
 /sbin/chkconfig --add kronosnetd
 %endif
-/usr/sbin/groupadd --force --system kronosnetadm
+/usr/sbin/groupadd --force --system @defaultadmgroup@
 
 %preun -n kronosnetd
 %if %{defined _unitdir}
@@ -137,6 +139,7 @@ fi
 %doc COPYING.* COPYRIGHT 
 %dir %{_sysconfdir}/kronosnet
 %dir %{_sysconfdir}/kronosnet/*
+%config(noreplace) %{_sysconfdir}/sysconfig/kronosnetd
 %config(noreplace) %{_sysconfdir}/pam.d/kronosnetd
 %config(noreplace) %{_sysconfdir}/logrotate.d/kronosnetd
 %if %{defined _unitdir}

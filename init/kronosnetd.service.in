@@ -14,7 +14,7 @@ After=network.target syslog.target
 [Service]
 Type=forking
 EnvironmentFile=/etc/sysconfig/kronosnetd
-ExecStart=@SBINDIR@/kronosnetd
+ExecStart=@SBINDIR@/kronosnetd $KNETD_OPTS
 
 [Install]
 WantedBy=multi-user.target
