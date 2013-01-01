@@ -1,12 +1,13 @@
 0.1
 ---
 
-
 debian:
  Check policy on /etc/pam.d/* install/usage
  Make groupadd kronosnetadm silent and dynamic
  systemd packaging in debian?
  install /etc/default/kronosnetd
+
+implement tap automtu test (1500 - knet_frame + crypto_hash_size?)
 
 review locking handling policies (attempt locks vs deadlocks and so on)
 
