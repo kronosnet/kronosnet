@@ -7,7 +7,9 @@ debian:
  systemd packaging in debian?
  install /etc/default/kronosnetd
 
-implement tap automtu test (1500 - knet_frame + crypto_hash_size?)
+implement packet fragmentation via IP_MTU_DISCOVER/IP_MTU, is the only
+solution to avoid conflicts with tun/tap mtu setting and various
+others buffer sizes.
 
 review locking handling policies (attempt locks vs deadlocks and so on)
 
