@@ -11,10 +11,10 @@ implement packet fragmentation via IP_MTU_DISCOVER/IP_MTU, is the only
 solution to avoid conflicts with tun/tap mtu setting and various
 others buffer sizes.
 
-review locking handling policies (attempt locks vs deadlocks and so on)
-
 sort out read buf from recv_from_links since it might be too small vs
 sending out 128k (+header+encryption+....)
+
+review locking handling policies (attempt locks vs deadlocks and so on)
 
 compress: should only compress user data, we will add a bit in the data
           header to indicate if the pckt is compressed or not (save time).
