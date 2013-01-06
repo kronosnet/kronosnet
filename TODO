@@ -1,34 +1,37 @@
 0.1
 ---
 
-debian:
- Check policy on /etc/pam.d/* install/usage
- Make groupadd kronosnetadm silent and dynamic
- systemd packaging in debian?
- install /etc/default/kronosnetd
+debian packaging (mostly resync from rpm packaging):
+ - (sync)  Check policy on /etc/pam.d/* install/usage
+ - (sync)  Make groupadd kronosnetadm silent and dynamic
+ - (sync)  systemd packaging in debian?
+ - (sync)  install /etc/default/kronosnetd
 
-implement packet fragmentation via IP_MTU_DISCOVER/IP_MTU, is the only
-solution to avoid conflicts with tun/tap mtu setting and various
-others buffer sizes.
+rpm packaging:
+ - (issue) check why systemd doesn't let me set scheduler priority
 
-sort out read buf from recv_from_links since it might be too small vs
-sending out 128k (+header+encryption+....)
+link/host level:
+ - (issue) implement packet fragmentation via IP_MTU_DISCOVER/IP_MTU, is the only
+           solution to avoid conflicts with tun/tap mtu setting and various
+           others buffer sizes.
+ - (issue) sort out read buf from recv_from_links since it might be too small vs
+           sending out 128k (+header+encryption+....). this is also related
+           to max PMTU
+ - (rfe)   compress: should only compress user data, we will add a bit in the data
+                     header to indicate if the pckt is compressed or not (save time).
+                     this approach allow runtime change of compress.
+                     open questions are: methods? level? zlib? lzo? bz? lzma? xz?
+                                        how much do we save by compressin our header?
+           compress must happen before encrypt
+
+           we can express compress data in packet type without adding extra
+           flags to the headers. DATA -> BZ/GZDATA and we can change that
+           right before encrypting. Using a similar approach to PING_MASK
+ - (rfe)   crypto: expand API to support dual key for rekey process
+ - (issue) crypto: we need to port again "crypto header size" from corosync
+                   necessary for MTU handling
 
 review locking handling policies (attempt locks vs deadlocks and so on)
-
-compress: should only compress user data, we will add a bit in the data
-          header to indicate if the pckt is compressed or not (save time).
-          this approach allow runtime change of compress.
-          open questions are: methods? level? zlib? lzo? bz? lzma? xz?
-                              how much do we save by compressin our header?
-
-compress must happen before encrypt
-
-we can express compress data in packet type without adding extra
-flags to the headers. DATA -> BZ/GZDATA and we can change that
-right before encrypting. Using a similar approach to PING_MASK
-
-cryto:    expand API to support dual key for rekey process
 
 consider adding dhcp support for tap device
 
