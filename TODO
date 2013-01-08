@@ -59,6 +59,8 @@ libknet:
  - (issue) review locking handling policies (attempt locks vs deadlocks and so on)
            almost done, needs knet_link_* bits done
  - (issue) add .3 man pages
+ - (issue) fix logging packet format to allow direct output to a fd
+           (change packet structure to have string first basically)
 
 libtap:
  - (rfe)   consider adding dhcp support for tap device
