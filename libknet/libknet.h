@@ -496,9 +496,9 @@ int knet_link_get_status(knet_handle_t knet_h,
 #define KNET_MAX_LOG_MSG_SIZE    256
 
 struct knet_log_msg {
+	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
 	uint8_t	subsystem;	/* KNET_SUB_* */
 	uint8_t msglevel;	/* KNET_LOG_* */
-	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
 };
 
 void knet_set_log_level(knet_handle_t knet_h, uint8_t subsystem, uint8_t level);

@@ -9,6 +9,7 @@
 #include "config.h"
 
 #include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -117,6 +118,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	    (msglevel > knet_h->log_levels[subsystem]))
 			return;
 
+	memset(&msg, 0, sizeof(struct knet_log_msg));
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
 
