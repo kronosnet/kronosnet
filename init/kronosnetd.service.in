@@ -13,6 +13,7 @@ After=network.target syslog.target
 
 [Service]
 Type=forking
+ControlGroup=cpu:/
 EnvironmentFile=/etc/sysconfig/kronosnetd
 ExecStart=@SBINDIR@/kronosnetd $KNETD_OPTS
 
