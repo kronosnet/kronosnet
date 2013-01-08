@@ -6,6 +6,7 @@ debian packaging (mostly resync from rpm packaging):
 
 rpm packaging:
  - (issue) check why systemd doesn't let me set scheduler priority
+           https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
  - (issue) implement packet fragmentation via IP_MTU_DISCOVER/IP_MTU, is the only
