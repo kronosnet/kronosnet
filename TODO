@@ -1,7 +1,6 @@
 debian packaging (mostly resync from rpm packaging):
  - (sync)  Check policy on /etc/pam.d/* install/usage
  - (sync)  Make groupadd kronosnetadm silent and dynamic
- - (sync)  systemd packaging in debian?
  - (sync)  install /etc/default/kronosnetd
 
 rpm packaging:
