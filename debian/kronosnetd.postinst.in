@@ -4,7 +4,7 @@ set -e
 
 case "$1" in
 	configure)
-		groupadd --force --system kronosnetadm
+		groupadd --force --system @defaultadmgroup@ > /dev/null 2>&1
 		;;
 	purge|abort-upgrade|abort-remove|abort-deconfigure)
 		;;

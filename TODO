@@ -1,8 +1,3 @@
-debian packaging (mostly resync from rpm packaging):
- - (sync)  Check policy on /etc/pam.d/* install/usage
- - (sync)  Make groupadd kronosnetadm silent and dynamic
- - (sync)  install /etc/default/kronosnetd
-
 rpm packaging:
  - (issue) check why systemd doesn't let me set scheduler priority
            fixed for systemd unit file, LSB init + systemd still fails

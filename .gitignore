@@ -20,6 +20,8 @@ compile
 config.*
 configure*
 debian/changelog
+debian/kronosnetd.postinst
+debian/patches
 depcomp
 install-sh
 libtoolize

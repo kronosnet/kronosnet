@@ -18,11 +18,12 @@ ACLOCAL_AMFLAGS		= -I m4
 SPEC			= $(PACKAGE_NAME).spec
 
 DEBCHANGELOG		= debian/changelog
+DEBPOSTINST		= debian/kronosnetd.postinst
 
 TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
 EXTRA_DIST		= build-aux autogen.sh .version \
-			  debian $(DEBCHANGELOG) \
+			  debian $(DEBCHANGELOG) $(DEBPOSTINST) \
 			  $(SPEC) $(SPEC).in
 
 SUBDIRS			= init libtap libknet kronosnetd
@@ -113,6 +114,13 @@ rpm: clean
 
 ## make deb
 
+$(DEBPOSTINST): $(DEBPOSTINST).in config.h
+	mkdir -p debian
+	rm -f $@-t $@
+	sed -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $< > $@-t
+	chmod a-w $@-t
+	mv $@-t $@
+
 $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
 	mkdir -p debian
 	rm -f $@-t $@
@@ -162,7 +170,7 @@ debs: deb-clean dist
 		gitver="$(shell cat .tarball-version)"; \
 	else \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
-		gitver=`echo $$gitver | sed -e "s/^v//"`; \
+		gitver=`echo $$gitver | sed -e "s/^v//" -e "s/-g/-/" -e "s/-/./"`; \
 	fi && \
 	cp $(TARGZFILE) ../$(PACKAGE_NAME)_$$gitver.orig.tar.gz
 	dpkg-buildpackage -uc -us
