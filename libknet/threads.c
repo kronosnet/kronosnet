@@ -240,8 +240,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	if ((knet_h->recv_from_links_buf->kf_type & KNET_FRAME_PMSK) != 0) {
 		src_link = src_host->link +
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
-		if ((src_link->dynamic == KNET_LINK_DYN_DST) &&
-		    (knet_h->recv_from_links_buf->kf_dyn == 1)) {
+		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (memcmp(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage)) != 0) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "host: %s link: %u appears to have changed ip address",
 					  src_host->name, src_link->link_id);
@@ -557,7 +556,6 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
 		memcpy(&knet_h->pingbuf->kf_time[0], &clock_now, sizeof(struct timespec));
 		knet_h->pingbuf->kf_link = dst_link->link_id;
-		knet_h->pingbuf->kf_dyn = dst_link->dynamic;
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -616,7 +614,7 @@ void *_handle_heartbt_thread(void *data)
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				if ((dst_host->link[link_idx].status.configured != 1) ||
-				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYN_DST) &&
+				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
 				     (dst_host->link[link_idx].status.dynconnected != 1)))
 					continue;
 				_handle_check_each(knet_h, dst_host, &dst_host->link[link_idx]);

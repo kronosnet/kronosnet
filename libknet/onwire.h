@@ -55,7 +55,6 @@ union knet_frame_data {
 	} data __attribute__((packed));
 	struct {
 		uint8_t		kfd_link;
-		uint8_t		kfd_dyn;
 		uint32_t	kfd_time[4];
 	} ping __attribute__((packed));
 } __attribute__((packed));

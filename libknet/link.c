@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include "internals.h"
 #include "logging.h"
@@ -194,50 +195,166 @@ int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_i
 	return 0;
 }
 
-/* HACK FEST.. see libknet.h */
-
-int knet_link_config(knet_handle_t knet_h,
-		     uint16_t node_id,
-		     uint8_t link_id,
-		     struct sockaddr_storage *src_addr,
-		     struct sockaddr_storage *dst_addr)
+int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 struct sockaddr_storage *src_addr,
+			 struct sockaddr_storage *dst_addr)
 {
-	if (!knet_h->host_index[node_id])
-		return -1;
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
 
-	memcpy(&knet_h->host_index[node_id]->link[link_id].src_addr, src_addr, sizeof(struct sockaddr_storage));
-
-	if (getnameinfo((const struct sockaddr *)src_addr, sizeof(struct sockaddr_storage),
-			knet_h->host_index[node_id]->link[link_id].status.src_ipaddr, KNET_MAX_HOST_LEN,
-			knet_h->host_index[node_id]->link[link_id].status.src_port, KNET_MAX_PORT_LEN,
-			NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
-		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to resolve host: %s link: %u source addr/port",
-			  knet_h->host_index[node_id]->name,
-			  link_id);
-		snprintf(knet_h->host_index[node_id]->link[link_id].status.src_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
-		snprintf(knet_h->host_index[node_id]->link[link_id].status.src_ipaddr, KNET_MAX_PORT_LEN - 1, "??");
+	if (!knet_h) {
+		errno = EINVAL;
 		return -1;
 	}
 
-	if (knet_h->host_index[node_id]->link[link_id].dynamic == KNET_LINK_DYN_DST)
-		return 0;
-
-	memcpy(&knet_h->host_index[node_id]->link[link_id].dst_addr, dst_addr, sizeof(struct sockaddr_storage));
-	if (getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
-			knet_h->host_index[node_id]->link[link_id].status.dst_ipaddr, KNET_MAX_HOST_LEN,
-			knet_h->host_index[node_id]->link[link_id].status.dst_port, KNET_MAX_PORT_LEN,
-			NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
-		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to resolve host: %s link: %u destination addr/port",
-			  knet_h->host_index[node_id]->name,
-			  link_id);
-		snprintf(knet_h->host_index[node_id]->link[link_id].status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
-		snprintf(knet_h->host_index[node_id]->link[link_id].status.dst_ipaddr, KNET_MAX_PORT_LEN - 1, "??");
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
 		return -1;
 	}
 
-	return 0;
+	if (!src_addr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	/* rememeber to check if link is on traffic before allowing reconfig */
+
+	memcpy(&link->src_addr, src_addr, sizeof(struct sockaddr_storage));
+
+	err = getnameinfo((const struct sockaddr *)src_addr, sizeof(struct sockaddr_storage),
+			  link->status.src_ipaddr, KNET_MAX_HOST_LEN,
+			  link->status.src_port, KNET_MAX_PORT_LEN,
+			  NI_NUMERICHOST | NI_NUMERICSERV);
+	if (err) {
+		if (err == EAI_SYSTEM) {
+			savederrno = errno;
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "Unable to resolve host: %s link: %u source addr/port: %s",
+				 host->name, link_id, strerror(savederrno));
+		} else {
+			savederrno = EINVAL;
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "Unable to resolve host: %s link: %u source addr/port: %s",
+				 host->name, link_id, gai_strerror(err));
+		}
+		err = -1;
+		goto exit_unlock;
+	}
+
+	if (!dst_addr) {
+		link->dynamic = KNET_LINK_DYNIP;
+		err = 0;
+		goto exit_unlock;
+	}
+
+	link->dynamic = KNET_LINK_STATIC;
+
+	memcpy(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+	err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
+			  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
+			  link->status.dst_port, KNET_MAX_PORT_LEN,
+			  NI_NUMERICHOST | NI_NUMERICSERV);
+	if (err) {
+		if (err == EAI_SYSTEM) {
+			savederrno = errno;
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "Unable to resolve host: %s link: %u destination addr/port: %s",
+				 host->name, link_id, strerror(savederrno));
+		} else {
+			savederrno = EINVAL;
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "Unable to resolve host: %s link: %u destination addr/port: %s",
+				 host->name, link_id, gai_strerror(err));
+		}
+		err = -1;
+	}
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 struct sockaddr_storage *src_addr,
+			 struct sockaddr_storage *dst_addr)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!src_addr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!dst_addr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	memcpy(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
+
+	if (link->dynamic == KNET_LINK_DYNIP) {
+		err = 1;
+		goto exit_unlock;
+	}
+
+	memcpy(dst_addr, &link->dst_addr, sizeof(struct sockaddr_storage));
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
 }
 
 int knet_link_get_status(knet_handle_t knet_h,
@@ -249,26 +366,6 @@ int knet_link_get_status(knet_handle_t knet_h,
 		return -1;
 
 	memcpy(status, &knet_h->host_index[node_id]->link[link_id].status, sizeof(struct knet_link_status));
-
-	return 0;
-}
-
-int knet_link_set_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int dynamic)
-{
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	knet_h->host_index[node_id]->link[link_id].dynamic = dynamic;
-
-	return 0;
-}
-
-int knet_link_get_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int *dynamic)
-{
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	*dynamic = knet_h->host_index[node_id]->link[link_id].dynamic;
 
 	return 0;
 }

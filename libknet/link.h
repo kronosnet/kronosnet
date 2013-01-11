@@ -12,6 +12,9 @@
 
 #include "internals.h"
 
+#define KNET_LINK_STATIC  0 /* link has static ip on both ends */
+#define KNET_LINK_DYNIP   1 /* link has dynamic destination ip */
+
 int _link_updown(knet_handle_t knet_h, uint16_t node_id,
 		 struct knet_link *lnk, int configured, int connected);
 

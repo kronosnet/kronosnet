@@ -50,8 +50,7 @@
 #define CMDS_PARAM_LINK_PRI     15
 #define CMDS_PARAM_LINK_KEEPAL  16
 #define CMDS_PARAM_LINK_HOLDTI  17
-#define CMDS_PARAM_LINK_DYN     18
-#define CMDS_PARAM_VTY_TIMEOUT  19
+#define CMDS_PARAM_VTY_TIMEOUT  18
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -323,12 +322,6 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
-		case CMDS_PARAM_LINK_DYN:
-			tmp = param_to_int(param, paramlen);
-			if ((tmp < 0) || (tmp > 1)) {
-				knet_vty_write(vty, "link dynamic should be either 0 or 1. Default: 0%s", telnet_newline);
-			}
-			break;
 		case CMDS_PARAM_VTY_TIMEOUT:
 			tmp = param_to_int(param, paramlen);
 			if ((tmp < 0) || (tmp > 3600)) {
@@ -396,9 +389,6 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_LINK_HOLDTI:
 			knet_vty_write(vty, "HOLDTIME - specify how much time has to pass without connection before a link is considered dead (0 to 60000 milliseconds, default is 5000).%s", telnet_newline);
-			break;
-		case CMDS_PARAM_LINK_DYN:
-			knet_vty_write(vty, "DYNAMIC - specify if this link will traverse NAT or Dynamic IP connections.%s", telnet_newline);
 			break;
 		case CMDS_PARAM_VTY_TIMEOUT:
 			knet_vty_write(vty, "VTY_TIMEOUT - specify the number of seconds before a session is automatically closed.%s", telnet_newline);
@@ -637,7 +627,6 @@ static int knet_cmd_switch_policy(struct knet_vty *vty);
 /* link node */
 static int knet_cmd_link_pri(struct knet_vty *vty);
 static int knet_cmd_link_timer(struct knet_vty *vty);
-static int knet_cmd_link_dyn(struct knet_vty *vty);
 
 /* vty node */
 static int knet_cmd_vty(struct knet_vty *vty);
@@ -789,13 +778,7 @@ vty_param_t link_timer_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
-vty_param_t link_dyn_params[] = {
-	{ CMDS_PARAM_LINK_DYN },
-	{ CMDS_PARAM_NOMORE },
-};
-
 vty_node_cmds_t link_cmds[] = {
-	{ "dynamic", "set link NAT/dynamic ip traversal code", link_dyn_params, knet_cmd_link_dyn },
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
@@ -865,30 +848,6 @@ static int knet_cmd_vty(struct knet_vty *vty)
 
 /* links */
 
-static int knet_cmd_link_dyn(struct knet_vty *vty)
-{
-	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	int paramlen = 0, paramoffset = 0, dyn;
-	char *param = NULL;
-	unsigned int dynamic;
-
-	knet_link_get_dynamic(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &dynamic);
-
-	if (dynamic == KNET_LINK_DYN_DST)
-		return 0;
-
-	get_param(vty, 1, &param, &paramlen, &paramoffset);
-	dyn = param_to_int(param, paramlen);
-
-	if (dyn) {
-		dynamic = KNET_LINK_DYN_SRC;
-	} else {
-		dynamic = KNET_LINK_STATIC;
-	}
-
-	return knet_link_set_dynamic(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, dynamic);
-}
-
 static int knet_cmd_link_timer(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
@@ -956,6 +915,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	char src_ipaddr[KNET_MAX_HOST_LEN], src_port[KNET_MAX_PORT_LEN], dst_ipaddr[KNET_MAX_HOST_LEN], dst_port[KNET_MAX_PORT_LEN];
 	struct sockaddr_storage src_addr;
 	struct sockaddr_storage dst_addr;
+	struct sockaddr_storage *dst = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	vty->link_id = param_to_int(param, paramlen);
@@ -981,16 +941,17 @@ static int knet_cmd_link(struct knet_vty *vty)
 		}
 
 		if (!strncmp(dst_ipaddr, "dynamic", 7)) {
-			knet_link_set_dynamic(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, KNET_LINK_DYN_DST);
+			dst = NULL;
 		} else {
 			if (strtoaddr(dst_ipaddr, dst_port, (struct sockaddr *)&dst_addr, sizeof(struct sockaddr_storage)) != 0) {
 				knet_vty_write(vty, "Error: unable to convert destination ip addr to sockaddr!%s", telnet_newline);
 				err = -1;
 				goto out_clean;
 			}
+			dst = &dst_addr;
 		}
 
-		knet_link_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &src_addr, &dst_addr);
+		knet_link_set_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &src_addr, dst);
 
 		knet_link_set_timeout(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 1000, 5000, 2048);
 
@@ -1601,19 +1562,21 @@ static int knet_cmd_status(struct knet_vty *vty)
 
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				unsigned int dynamic;
+				struct sockaddr_storage src_addr;
+				struct sockaddr_storage dst_addr;
+
+				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
 				knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
-				knet_link_get_dynamic(knet_iface->cfg_ring.knet_h, host_ids[j], i, &dynamic);
 				if (status.configured == 1) {
-					if (dynamic == KNET_LINK_DYN_DST) {
+					if (dynamic) {
 						knet_vty_write(vty, "    link %s dynamic (connected: %d)%s", status.src_ipaddr, status.connected, nl);
 					} else {
 						knet_vty_write(vty, "    link %s %s (connected: %d)%s", status.src_ipaddr, status.dst_ipaddr, status.connected, nl);
 					}
 					if (status.connected) {
 						knet_vty_write(vty, "      average latency: %llu us%s", status.latency, nl);
-						if ((dynamic == KNET_LINK_DYN_DST) &&
-						    (status.dynconnected)) {
-								knet_vty_write(vty, "      source ip: %s%s", status.dst_ipaddr, nl);
+						if ((dynamic) && (status.dynconnected)) {
+							knet_vty_write(vty, "      source ip: %s%s", status.dst_ipaddr, nl);
 						}
 					} else {
 						knet_vty_write(vty, "      last heard: ");
@@ -1706,13 +1669,14 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 					uint8_t priority;
 					unsigned int dynamic, precision;
 					time_t interval, timeout;
+					struct sockaddr_storage src_addr;
+					struct sockaddr_storage dst_addr;
 
-					knet_link_get_dynamic(knet_iface->cfg_ring.knet_h, host_ids[j], i, &dynamic);
-					if (dynamic == KNET_LINK_DYN_DST) {
+					dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
+					if (dynamic) {
 						knet_vty_write(vty, "   link %d %s dynamic%s", i, status.src_ipaddr, nl);
 					} else {
 						knet_vty_write(vty, "   link %d %s %s%s", i, status.src_ipaddr, status.dst_ipaddr, nl);
-						knet_vty_write(vty, "    dynamic %u%s", dynamic, nl);
 					}
 					knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], i, &interval, &timeout, &precision);
 					knet_vty_write(vty, "    timers %llu %llu%s", (unsigned long long)interval, (unsigned long long)timeout, nl);

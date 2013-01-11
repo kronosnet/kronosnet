@@ -356,6 +356,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 /*
  * define switching policies
  */
+
 #define KNET_LINK_POLICY_PASSIVE 0
 #define KNET_LINK_POLICY_ACTIVE  1
 #define KNET_LINK_POLICY_RR      2
@@ -419,7 +420,7 @@ int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
  * paths that connect 2 hosts.
  *
  * Each link is identified by a link_id that has a
- * values between 0 and KNET_MAX_LINK included.
+ * values between 0 and KNET_MAX_LINK - 1.
  *
  * KNOWN LIMITATIONS:
  *
@@ -435,9 +436,58 @@ int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
  * - 
  */
 
-int knet_link_config(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
-		     struct sockaddr_storage *src_addr,
-		     struct sockaddr_storage *dst_addr);
+/*
+ * knet_link_set_config
+ *
+ * knet_h    - pointer to knet_handle_t 
+ * 
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
+ *
+ * dst_addr  - sockaddr_storage that can be either IPv4 or IPv6
+ *             this can be null if we don't know the incoming
+ *             IP address/port and the link will remain quiet
+ *             till the node on the other end will initiate a
+ *             connection
+ *
+ * knet_link_set_config returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 struct sockaddr_storage *src_addr,
+			 struct sockaddr_storage *dst_addr);
+
+/*
+ * knet_link_get_config
+ *
+ * knet_h    - pointer to knet_handle_t 
+ * 
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
+ *
+ * dst_addr  - sockaddr_storage that can be either IPv4 or IPv6
+ *             this can be null if the link has dynamic incoming connection
+ *
+ * knet_link_set_config returns:
+ *
+ * 1 on success and the link is dynamic, dst_addr is unknown/unconfigured
+ * 0 on success and both src and dst have been configured by set_config
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 struct sockaddr_storage *src_addr,
+			 struct sockaddr_storage *dst_addr);
+
 
 int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured);
 
@@ -446,13 +496,6 @@ int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_i
 
 int knet_link_set_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority);
 int knet_link_get_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t *priority);
-
-#define KNET_LINK_STATIC  0 /* link com is static ip (default) */
-#define KNET_LINK_DYN_SRC 1 /* link com has src dynamic ip */
-#define KNET_LINK_DYN_DST 2 /* link com is dst from dyn src */
-
-int knet_link_set_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int dynamic);
-int knet_link_get_dynamic(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, unsigned int *dynamic);
 
 struct knet_link_status {
 	char src_ipaddr[KNET_MAX_HOST_LEN];
