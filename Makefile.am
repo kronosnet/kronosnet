@@ -40,7 +40,7 @@ dist_doc_DATA		= \
 			  README \
 			  TODO
 
-all-local: $(SPEC) $(DEBCHANGELOG)
+all-local: $(SPEC) $(DEBCHANGELOG) $(DEBPOSTINST)
 
 clean-local:
 	rm -f $(SPEC)
@@ -50,7 +50,7 @@ distclean-local:
 
 maintainer-clean-local:
 	make -f debian/rules clean || true
-	rm -rf m4 $(DEBCHANGELOG) debian/patches
+	rm -rf m4 $(DEBCHANGELOG) $(DEBPOSTINST) debian/patches
 
 ## make rpm/srpm section.
 
