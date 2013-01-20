@@ -896,7 +896,7 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 
 	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status);
 
-	if (status.configured) {
+	if (status.enabled) {
 		if (knet_link_enable(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 0)) {
 			knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
 			return -1;
@@ -933,7 +933,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	snprintf(dst_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
 
 	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status);
-	if (!status.configured) {
+	if (!status.enabled) {
 		if (strtoaddr(src_ipaddr, src_port, (struct sockaddr *)&src_addr, sizeof(struct sockaddr_storage)) != 0) {
 			knet_vty_write(vty, "Error: unable to convert source ip addr to sockaddr!%s", telnet_newline);
 			err = -1;
@@ -1567,7 +1567,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 
 				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
 				knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
-				if (status.configured == 1) {
+				if (status.enabled == 1) {
 					if (dynamic) {
 						knet_vty_write(vty, "    link %s dynamic (connected: %d)%s", status.src_ipaddr, status.connected, nl);
 					} else {
@@ -1665,7 +1665,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 			for (i = 0; i < KNET_MAX_LINK; i++) {
 				knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
-				if (status.configured == 1) {
+				if (status.enabled == 1) {
 					uint8_t priority;
 					unsigned int dynamic, precision;
 					time_t interval, timeout;

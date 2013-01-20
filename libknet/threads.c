@@ -355,7 +355,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			if (!src_link->status.connected) {
 				log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is up",
 					 src_host->name, src_link->status.dst_ipaddr);
-				_link_updown(knet_h, src_host->host_id, src_link, src_link->status.configured, 1);
+				_link_updown(knet_h, src_host->host_id, src_link, src_link->status.enabled, 1);
 			}
 		}
 
@@ -456,7 +456,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	dst_host->active_link_entries = 0;
 
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-		if (dst_host->link[link_idx].status.configured != 1) /* link is not configured */
+		if (dst_host->link[link_idx].status.enabled != 1) /* link is not enabled */
 			continue;
 		if (dst_host->link[link_idx].remoteconnected) /* track if remote is connected */
 			host_has_remote = 1;
@@ -587,7 +587,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
 			log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is down",
 				 dst_host->name, dst_link->status.dst_ipaddr);
-			_link_updown(knet_h, dst_host->host_id, dst_link, dst_link->status.configured, 0);
+			_link_updown(knet_h, dst_host->host_id, dst_link, dst_link->status.enabled, 0);
 		}
 	}
 }
@@ -613,7 +613,7 @@ void *_handle_heartbt_thread(void *data)
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if ((dst_host->link[link_idx].status.configured != 1) ||
+				if ((dst_host->link[link_idx].status.enabled != 1) ||
 				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
 				     (dst_host->link[link_idx].status.dynconnected != 1)))
 					continue;

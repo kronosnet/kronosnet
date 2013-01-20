@@ -23,25 +23,25 @@
 #include "host.h"
 
 int _link_updown(knet_handle_t knet_h, uint16_t node_id,
-			    struct knet_link *lnk, int configured, int connected)
+			    struct knet_link *lnk, int enabled, int connected)
 {
-	unsigned int old_configured = lnk->status.configured;
+	unsigned int old_enabled = lnk->status.enabled;
 	unsigned int old_connected = lnk->status.connected;
 
-	if ((lnk->status.configured == configured) && (lnk->status.connected == connected))
+	if ((lnk->status.enabled == enabled) && (lnk->status.connected == connected))
 		return 0;
 
-	lnk->status.configured = configured;
+	lnk->status.enabled = enabled;
 	lnk->status.connected = connected;
 
 	if (_dst_cache_update(knet_h, node_id)) {
 		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to update link status (host: %s link: %s configured: %u connected: %u)",
+			  "Unable to update link status (host: %s link: %s enabled: %u connected: %u)",
 			  knet_h->host_index[node_id]->name,
 			  lnk->status.dst_ipaddr,
-			  lnk->status.configured,
+			  lnk->status.enabled,
 			  lnk->status.connected);
-		lnk->status.configured = old_configured;
+		lnk->status.enabled = old_enabled;
 		lnk->status.connected = old_connected;
 		return -1;
 	}
@@ -52,7 +52,7 @@ int _link_updown(knet_handle_t knet_h, uint16_t node_id,
 	return 0;
 }
 
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured)
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int enabled)
 {
 	int err;
 	struct knet_link *lnk;
@@ -62,10 +62,10 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 
 	lnk = &knet_h->host_index[node_id]->link[link_id];
 
-	if (lnk->status.configured == configured)
+	if (lnk->status.enabled == enabled)
 		return 0;
 
-	if (configured) {
+	if (enabled) {
 		if (_listener_add(knet_h, lnk) < 0) {
 			log_err(knet_h, KNET_SUB_LINK, "Unable to setup listener for this link");
 			return -1;
@@ -74,7 +74,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 			  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr);
 	}
 
-	if (!configured) {
+	if (!enabled) {
 		struct knet_hinfo_data knet_hinfo_data;
 
 		knet_hinfo_data.khd_type = KNET_HOST_INFO_LINK_UP_DOWN;
@@ -86,9 +86,9 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 		_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
 	}
 
-	err = _link_updown(knet_h, node_id, lnk, configured, lnk->status.connected);
+	err = _link_updown(knet_h, node_id, lnk, enabled, lnk->status.connected);
 
-	if ((configured) && (!err))
+	if ((enabled) && (!err))
 		return 0;
 
 	if (err)
@@ -99,7 +99,7 @@ int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, in
 	if ((err) && (err != EBUSY)) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
 		if (_link_updown(knet_h, node_id, lnk, 1, lnk->status.connected))
-			lnk->status.configured = 1;
+			lnk->status.enabled = 1;
 		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is NOT disabled",
 			  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr);
 		return -1;

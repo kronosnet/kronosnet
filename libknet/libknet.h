@@ -489,7 +489,8 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			 struct sockaddr_storage *dst_addr);
 
 
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, int configured);
+int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
+		     int enabled);
 
 int knet_link_set_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t interval, time_t timeout, unsigned int precision);
 int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t *interval, time_t *timeout, unsigned int *precision);
@@ -502,10 +503,10 @@ struct knet_link_status {
 	char src_port[KNET_MAX_PORT_LEN];
 	char dst_ipaddr[KNET_MAX_HOST_LEN];
 	char dst_port[KNET_MAX_PORT_LEN];
-	unsigned int configured:1; /* link is configured and ready to be used */
-	unsigned int connected:1;       /* link is enabled for data (local view) */
-	unsigned int dynconnected:1; /* link has been activated by remote dynip */
-	unsigned long long latency; /* average latency computed by fix/exp */
+	unsigned int enabled:1;		/* link is configured and admin enabled for traffic */
+	unsigned int connected:1;       /* link is connected for data (local view) */
+	unsigned int dynconnected:1;	/* link has been activated by remote dynip */
+	unsigned long long latency;	/* average latency computed by fix/exp */
 	struct timespec pong_last;
 };
 

@@ -129,7 +129,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 	 */
 	
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-		if (knet_h->host_index[host_id]->link[link_idx].status.configured) {
+		if (knet_h->host_index[host_id]->link[link_idx].status.enabled) {
 			err = -1;
 			savederrno = EBUSY;
 			log_err(knet_h, KNET_SUB_HOST, "Unable to remove host %u, links are still configured: %s",

@@ -174,7 +174,7 @@ static int print_link(knet_handle_t khandle, uint16_t host_id)
 		if (knet_link_get_status(knet_h, host_id, i, &status) < 0)
 			return -1;
 
-		if (status.configured != 1) continue;
+		if (status.enabled != 1) continue;
 
 		printf("host %u, link %u latency is %llu us, status: %s\n",
 			host_id, i, status.latency,
@@ -201,7 +201,7 @@ static void sigint_handler(int signum)
 			for (j = 0; j < KNET_MAX_LINK; j++) {
 				if (knet_link_get_status(knet_h, host_ids[i], j, &status))
 					printf("Unable to get link data: %s\n",strerror(errno));
-				if (status.configured != 1) continue;
+				if (status.enabled != 1) continue;
 
 				if (knet_link_enable(knet_h, host_ids[i], j, 0))
 					printf("Unable to remove link: %s\n",strerror(errno));
