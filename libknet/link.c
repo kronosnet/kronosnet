@@ -237,7 +237,13 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	link = &host->link[link_id];
 
-	/* rememeber to check if link is on traffic before allowing reconfig */
+	if (link->status.enabled != 0) {
+		err =-1;
+		savederrno = EBUSY;
+		log_err(knet_h, KNET_SUB_LINK, "Host %u link %u is currently in use: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
 
 	memcpy(&link->src_addr, src_addr, sizeof(struct sockaddr_storage));
 
@@ -290,6 +296,9 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 exit_unlock:
+	if (!err) {
+		link->configured = 1;
+	}
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 	errno = savederrno;
 	return err;
@@ -341,6 +350,14 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	link = &host->link[link_id];
+
+	if (!link->configured) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
 
 	memcpy(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
 

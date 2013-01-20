@@ -40,6 +40,7 @@ struct knet_link {
 	/* internals */
 	uint8_t link_id;
 	int listener_sock;
+	unsigned int configured:1; /* set to 1 if src/dst have been configured */
 	unsigned int remoteconnected:1; /* link is enabled for data (peer view) */
 	unsigned int donnotremoteupdate:1;    /* define source of the update */
 	unsigned int host_info_up_sent:1; /* 0 if we need to notify remote that link is up */
