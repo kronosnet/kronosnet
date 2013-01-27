@@ -54,6 +54,8 @@ link/host level:
 libknet:
  - (issue) review locking handling policies (attempt locks vs deadlocks and so on)
            almost done, needs knet_link_* bits done
+ - (rfe)   cleanup internal (not-exported) api (pointers vs indexes)
+ - (rfe)   make logging info consistent (name vs id)
  - (issue) add .3 man pages
 
 libtap:
