@@ -12,7 +12,7 @@
 
 #include "internals.h"
 
-int _listener_add(knet_handle_t knet_h, struct knet_link *link);
-int _listener_remove(knet_handle_t knet_h, struct knet_link *link);
+int _listener_add(knet_handle_t knet_h, struct knet_link *lnk);
+int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk);
 
 #endif

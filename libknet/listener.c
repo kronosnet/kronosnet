@@ -23,7 +23,7 @@
 
 #define KNET_RING_RCVBUFF 8388608
 
-int _listener_add(knet_handle_t knet_h, struct knet_link *link)
+int _listener_add(knet_handle_t knet_h, struct knet_link *lnk)
 {
 	int value, count = 0;
 	struct epoll_event ev;
@@ -43,7 +43,7 @@ int _listener_add(knet_handle_t knet_h, struct knet_link *link)
 	while (listener) {
 		count++;
 		log_debug(knet_h, KNET_SUB_LISTENER, "checking listener: %d", count);
-		if (!memcmp(&link->src_addr, &listener->address, sizeof(struct sockaddr_storage))) {
+		if (!memcmp(&lnk->src_addr, &listener->address, sizeof(struct sockaddr_storage))) {
 			log_debug(knet_h, KNET_SUB_LISTENER, "found active listener");
 			break;
 		}
@@ -61,7 +61,7 @@ int _listener_add(knet_handle_t knet_h, struct knet_link *link)
 		}
 
 		memset(listener, 0, sizeof(struct knet_listener));
-		memcpy(&listener->address, &link->src_addr, sizeof(struct sockaddr_storage));
+		memcpy(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
 
 		listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
 		if (listener->sock < 0) {
@@ -114,7 +114,7 @@ int _listener_add(knet_handle_t knet_h, struct knet_link *link)
 		listener->next		= knet_h->listener_head;
 		knet_h->listener_head	= listener;
 	}
-	link->listener_sock = listener->sock;
+	lnk->listener_sock = listener->sock;
 
 exit_unlock:
 	if ((err) && (listener)) {
@@ -129,7 +129,7 @@ exit_unlock:
 	return err;
 }
 
-int _listener_remove(knet_handle_t knet_h, struct knet_link *link)
+int _listener_remove(knet_handle_t knet_h, struct knet_link *lnk)
 {
 	int err = 0, savederrno = 0;
 	int link_idx;
@@ -153,14 +153,14 @@ int _listener_remove(knet_handle_t knet_h, struct knet_link *link)
 			if (host->link[link_idx].status.enabled != 1)
 				continue;
 
-			if (host->link[link_idx].listener_sock == link->listener_sock) {
+			if (host->link[link_idx].listener_sock == lnk->listener_sock) {
 				listener_cnt++;
 			}
 		}
 	}
 
 	if (listener_cnt) {
-		link->listener_sock = 0;
+		lnk->listener_sock = 0;
 		log_debug(knet_h, KNET_SUB_LISTENER, "listener_remove: listener still in use");
 		savederrno = EBUSY;
 		err = -1;
@@ -169,7 +169,7 @@ int _listener_remove(knet_handle_t knet_h, struct knet_link *link)
 
 	listener = knet_h->listener_head;
 	while (listener) {
-		if (listener->sock == link->listener_sock)
+		if (listener->sock == lnk->listener_sock)
 			break;
 		listener = listener->next;
 	}
