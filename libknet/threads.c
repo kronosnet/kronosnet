@@ -449,7 +449,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 
 	dst_host = knet_h->host_index[dst_host_id];
 	if (!dst_host) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host");
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %d", dst_host_id);
 		goto out_unlock;
 	}
 
