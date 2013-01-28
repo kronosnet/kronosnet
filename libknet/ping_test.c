@@ -27,6 +27,7 @@ static int knet_sock[2];
 static knet_handle_t knet_h;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 static uint8_t loglevel = KNET_LOG_INFO;
+static uint8_t use_stdout = 0;
 static char *src_host = NULL;
 static char *src_port = NULL;
 
@@ -40,9 +41,16 @@ static in_port_t tok_inport(char *str)
 	return (in_port_t) value;
 }
 
-static int tok_inaddrport(char *str, struct sockaddr_in *addr)
+static int tok_inaddrport(char *strin, struct sockaddr_in *addr)
 {
 	char *strhost, *strport, *tmp = NULL;
+	char *str;
+
+	str = strdup(strin);
+	if (!str) {
+		printf("no mem?\n");
+		exit(1);
+	}
 
 	strhost = strtok_r(str, ":", &tmp);
 	if (!src_host)
@@ -63,6 +71,7 @@ static int tok_inaddrport(char *str, struct sockaddr_in *addr)
 		src_port = strdup(strport);
 		addr->sin_port = htons(tok_inport(strport));
 	}
+	free(str);
 	return inet_aton(strhost, &addr->sin_addr);
 }
 
@@ -72,6 +81,18 @@ static void print_usage(char *name)
 	printf("example: %s 0.0.0.0 192.168.0.2\n", name);
 	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 crypto:nss,aes256,sha1\n", name);
 	printf("example: %s 127.0.0.1:50000 127.0.0.1:50000 debug\n", name);
+}
+
+static void set_log(int argc, char *argv[])
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		if (!strncmp(argv[i], "stdout", 6)) {
+			use_stdout = 1;
+			break;
+		}
+	}
 }
 
 static void set_debug(int argc, char *argv[])
@@ -229,6 +250,7 @@ int main(int argc, char *argv[])
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries = 0;
 	int has_crypto = 0;
+	int logfd;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -252,9 +274,16 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	set_log(argc, argv);
+	if (use_stdout) {
+		logfd = 1;
+	} else {
+		logfd = logpipefd[1];
+	}
+
 	set_debug(argc, argv);
 
-	if ((knet_h = knet_handle_new(1, knet_sock[0], logpipefd[1], loglevel)) == NULL) {
+	if ((knet_h = knet_handle_new(1, knet_sock[0], logfd, loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
