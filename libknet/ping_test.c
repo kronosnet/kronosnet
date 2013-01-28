@@ -156,7 +156,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		knet_link_set_config(knet_h, node_id, 0, &src_addr, &dst_addr);
 		knet_link_set_timeout(knet_h, node_id, 0, 1000, 5000, 2048);
-		knet_link_enable(knet_h, node_id, 0, 1);
+		knet_link_set_enable(knet_h, node_id, 0, 1);
 	}
 }
 
@@ -203,7 +203,7 @@ static void sigint_handler(int signum)
 					printf("Unable to get link data: %s\n",strerror(errno));
 				if (status.enabled != 1) continue;
 
-				if (knet_link_enable(knet_h, host_ids[i], j, 0))
+				if (knet_link_set_enable(knet_h, host_ids[i], j, 0))
 					printf("Unable to remove link: %s\n",strerror(errno));
 			}
 			if (knet_host_remove(knet_h, host_ids[i]))

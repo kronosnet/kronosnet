@@ -38,6 +38,13 @@ static int _init_locks(knet_handle_t knet_h)
 
 	knet_h->lock_init_done = 1;
 
+	savederrno = pthread_rwlock_init(&knet_h->listener_rwlock, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize listener rwlock: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_rwlock_init(&knet_h->host_rwlock, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host rwlock: %s",
@@ -70,6 +77,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 {
 	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->list_rwlock);
+	pthread_rwlock_destroy(&knet_h->listener_rwlock);
 	pthread_rwlock_destroy(&knet_h->host_rwlock);
 	pthread_mutex_destroy(&knet_h->host_mutex);
 	pthread_cond_destroy(&knet_h->host_cond);

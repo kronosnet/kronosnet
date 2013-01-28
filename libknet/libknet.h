@@ -488,9 +488,25 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr);
 
+/*
+ * knet_link_set_enable
+ *
+ * knet_h    - pointer to knet_handle_t 
+ * 
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * enabled   - 0 disable the link, 1 enable the link
+ *
+ * knet_link_set_enable returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
 
-int knet_link_enable(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
-		     int enabled);
+int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 int enabled);
 
 int knet_link_set_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t interval, time_t timeout, unsigned int precision);
 int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, time_t *interval, time_t *timeout, unsigned int *precision);
