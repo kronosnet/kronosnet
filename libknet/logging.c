@@ -127,8 +127,11 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 		return;
 
 	va_start(ap, fmt);
-	vsnprintf(msg.msg, sizeof(msg.msg) - 1, fmt, ap);
+	vsnprintf(msg.msg, sizeof(msg.msg) - 2, fmt, ap);
 	va_end(ap);
+
+	len = strlen(msg.msg);
+	msg.msg[len+1] = '\n';
 
 	if (!err)
 		pthread_rwlock_unlock(&knet_h->list_rwlock);
