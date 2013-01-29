@@ -440,7 +440,11 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			  knet_h->host_index[host_id]->name, link->status.dst_ipaddr);
 		err = -1;
 		goto exit_unlock;
+	} else {
+		err = 0;
+		savederrno = 0;
 	}
+
 	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
 		  knet_h->host_index[host_id]->name, link->status.dst_ipaddr);
 	link->host_info_up_sent = 0;
