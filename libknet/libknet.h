@@ -332,7 +332,6 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
 int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 				  uint16_t *host_id);
 
-/* get a list of configured hosts in an array of uint16_t of size MAX_HOST */
 /* 
  * knet_host_get_host_list
  * 
@@ -351,7 +350,6 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 
 int knet_host_get_host_list(knet_handle_t knet_h,
 			    uint16_t *host_ids, size_t *host_ids_entries);
-
 
 /*
  * define switching policies
@@ -621,6 +619,26 @@ int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_
 
 int knet_link_get_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			   uint8_t *priority);
+
+/*
+ * knet_link_get_link_list
+ * 
+ * knet_h   - pointer to knet_handle_t
+ *
+ * link_ids - array of at lest KNET_MAX_LINK size
+ *            with the list of configured links for a certain host.
+ *
+ * link_ids_entries -
+ *            number of entries writted in link_ids
+ *
+ * knet_link_get_link_list returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_link_get_link_list(knet_handle_t knet_h, uint16_t host_id,
+			    uint8_t *link_ids, size_t *link_ids_entries);
 
 /*
  * define link status structure for quick lookup

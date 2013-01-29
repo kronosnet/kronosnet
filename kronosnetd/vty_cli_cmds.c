@@ -1356,7 +1356,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	int ip_list_entries = 0, j, i, offset = 0;
 	char *error_string = NULL;
 	uint16_t host_ids[KNET_MAX_HOST];
-	size_t host_ids_entries = 0;
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t host_ids_entries = 0, link_ids_entries = 0;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(device, IFNAMSIZ, param, paramlen);
@@ -1389,8 +1390,9 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 	for (j = 0; j < host_ids_entries; j++) {
-		for (i = 0; i < KNET_MAX_LINK; i++) {
-			knet_link_set_enable(knet_iface->cfg_ring.knet_h, host_ids[j], i, 0);
+		knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
+		for (i = 0; i < link_ids_entries; i++) {
+			knet_link_set_enable(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], 0);
 		}
 	}
 
@@ -1530,7 +1532,8 @@ static int knet_cmd_status(struct knet_vty *vty)
 	struct timespec now;
 	char nodename[KNET_MAX_HOST_LEN];
 	uint16_t host_ids[KNET_MAX_HOST];
-	size_t host_ids_entries = 0;
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t host_ids_entries = 0, link_ids_entries = 0;
 	int policy;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -1560,14 +1563,15 @@ static int knet_cmd_status(struct knet_vty *vty)
 					break;
 			}
 
-			for (i = 0; i < KNET_MAX_LINK; i++) {
+			knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
+			for (i = 0; i < link_ids_entries; i++) {
 				int dynamic;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
-				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
+				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &src_addr, &dst_addr);
 				if (dynamic >= 0) {
-					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
+					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
 						if (dynamic) {
 							knet_vty_write(vty, "    link %s dynamic (connected: %d)%s", status.src_ipaddr, status.connected, nl);
@@ -1608,7 +1612,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	char *ip_list = NULL;
 	int ip_list_entries = 0;
 	uint16_t host_ids[KNET_MAX_HOST];
-	size_t host_ids_entries = 0;
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t host_ids_entries = 0, link_ids_entries = 0;
 	char nodename[KNET_MAX_HOST_LEN];
 	int policy;
 
@@ -1665,27 +1670,28 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 					break;
 			}
 
-			for (i = 0; i < KNET_MAX_LINK; i++) {
+			knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
+			for (i = 0; i < link_ids_entries; i++) {
 				int dynamic;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
-				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
+				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &src_addr, &dst_addr);
 				if (dynamic >= 0) {
-					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
+					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
 						uint8_t priority;
 						unsigned int precision;
 						time_t interval, timeout;
 
 						if (dynamic) {
-							knet_vty_write(vty, "   link %d %s dynamic%s", i, status.src_ipaddr, nl);
+							knet_vty_write(vty, "   link %d %s dynamic%s", link_ids[i], status.src_ipaddr, nl);
 						} else {
-							knet_vty_write(vty, "   link %d %s %s%s", i, status.src_ipaddr, status.dst_ipaddr, nl);
+							knet_vty_write(vty, "   link %d %s %s%s", link_ids[i], status.src_ipaddr, status.dst_ipaddr, nl);
 						}
-						knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], i, &interval, &timeout, &precision);
+						knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &interval, &timeout, &precision);
 						knet_vty_write(vty, "    timers %llu %llu%s", (unsigned long long)interval, (unsigned long long)timeout, nl);
-						knet_link_get_priority(knet_iface->cfg_ring.knet_h, host_ids[j], i, &priority);
+						knet_link_get_priority(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &priority);
 						knet_vty_write(vty, "    priority %u%s", priority, nl);
 						/* print link properties */
 						knet_vty_write(vty, "    exit%s", nl);

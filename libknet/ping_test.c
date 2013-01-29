@@ -197,9 +197,16 @@ static int print_link(knet_handle_t khandle, uint16_t host_id)
 {
 	int i;
 	struct knet_link_status status;
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t link_ids_entries;
 
-	for (i = 0; i < KNET_MAX_LINK; i++) {
-		if (knet_link_get_status(knet_h, host_id, i, &status) < 0)
+	if (knet_link_get_link_list(khandle, host_id, link_ids, &link_ids_entries)) {
+		printf("unable to get list of configured links\n");
+		return -1;
+	}
+
+	for (i = 0; i < link_ids_entries; i++) {
+		if (knet_link_get_status(knet_h, host_id, link_ids[i], &status) < 0)
 			return -1;
 
 		if (status.enabled != 1) continue;
@@ -216,7 +223,8 @@ static void sigint_handler(int signum)
 {
 	int i, j;
 	uint16_t host_ids[KNET_MAX_HOST];
-	size_t host_ids_entries = 0;
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t host_ids_entries = 0, link_ids_entries = 0;
 	struct knet_link_status status;
 
 	printf("Cleaning up... got signal: %d\n", signum);
@@ -226,8 +234,11 @@ static void sigint_handler(int signum)
 			printf("Unable to get host list: %s\n",strerror(errno));
 
 		for (i = 0; i < host_ids_entries; i++) {
-			for (j = 0; j < KNET_MAX_LINK; j++) {
-				if (knet_link_get_status(knet_h, host_ids[i], j, &status)) {
+			if (knet_link_get_link_list(knet_h, host_ids[i], link_ids, &link_ids_entries)) {
+				printf("Unable to get link list: %s\n",strerror(errno));
+			}
+			for (j = 0; j < link_ids_entries; j++) {
+				if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status)) {
 					if (errno != EINVAL) {
 						printf("Unable to get link data: %s\n",strerror(errno));
 					}
