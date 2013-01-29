@@ -103,46 +103,6 @@ int knet_link_set_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_
 	return 0;
 }
 
-int knet_link_set_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
-				time_t interval, time_t timeout, unsigned int precision)
-{
-	struct knet_link *lnk;
-
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	lnk = &knet_h->host_index[node_id]->link[link_id];
-
-	lnk->ping_interval = interval * 1000; /* microseconds */
-	lnk->pong_timeout = timeout * 1000; /* microseconds */
-	lnk->latency_fix = precision;
-	lnk->latency_exp = precision - \
-				((lnk->ping_interval * precision) / 8000000);
-	log_debug(knet_h, KNET_SUB_LINK,
-		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
-		  knet_h->host_index[node_id]->name, lnk->status.dst_ipaddr,
-		  lnk->ping_interval, lnk->pong_timeout, precision);
-
-	return 0;
-}
-
-int knet_link_get_timeout(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
-				time_t *interval, time_t *timeout, unsigned int *precision)
-{
-	struct knet_link *lnk;
-
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	lnk = &knet_h->host_index[node_id]->link[link_id];
-
-	*interval = lnk->ping_interval / 1000; /* microseconds */
-	*timeout = lnk->pong_timeout / 1000;
-	*precision = lnk->latency_fix;
-
-	return 0;
-}
-
 int knet_link_get_status(knet_handle_t knet_h,
 			 uint16_t node_id,
 			 uint8_t link_id,
@@ -500,6 +460,151 @@ int knet_link_get_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	*enabled = link->status.enabled;
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_link_set_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			  time_t interval, time_t timeout, unsigned int precision)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!interval) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!timeout) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!precision) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	if (!link->configured) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link->ping_interval = interval * 1000; /* microseconds */
+	link->pong_timeout = timeout * 1000; /* microseconds */
+	link->latency_fix = precision;
+	link->latency_exp = precision - \
+			    ((link->ping_interval * precision) / 8000000);
+
+	log_debug(knet_h, KNET_SUB_LINK,
+		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
+		  host->name, link->status.dst_ipaddr,
+		  link->ping_interval, link->pong_timeout, precision);
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_link_get_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			  time_t *interval, time_t *timeout, unsigned int *precision)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!interval) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!timeout) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!precision) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	if (!link->configured) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+       *interval = link->ping_interval / 1000; /* microseconds */
+       *timeout = link->pong_timeout / 1000;
+       *precision = link->latency_fix;
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
