@@ -58,19 +58,6 @@ int _link_updown(knet_handle_t knet_h, uint16_t node_id,
 	return 0;
 }
 
-int knet_link_get_status(knet_handle_t knet_h,
-			 uint16_t node_id,
-			 uint8_t link_id,
-			 struct knet_link_status *status)
-{
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	memcpy(status, &knet_h->host_index[node_id]->link[link_id].status, sizeof(struct knet_link_status));
-
-	return 0;
-}
-
 int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr)
@@ -696,6 +683,63 @@ int knet_link_get_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_
 	}
 
 	*priority = link->priority;
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 struct knet_link_status *status)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!status) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	if (!link->configured) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	memcpy(status, &link->status, sizeof(struct knet_link_status));
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);

@@ -622,6 +622,33 @@ int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_
 int knet_link_get_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			   uint8_t *priority);
 
+/*
+ * define link status structure for quick lookup
+ * struct is in flux as more stats will be added soon
+ *
+ * src/dst_{ipaddr,port} strings are filled by
+ *                       getnameinfo(3) when configuring the link.
+ *                       if the link is dynamic (see knet_link_set_config)
+ *                       dst_ipaddr/port will contain ipaddr/port of the currently
+ *                       connected peer or "Unknown" if it was not possible
+ *                       to determine the ipaddr/port at runtime.
+ *
+ * enabled               see also knet_link_set/get_enable.
+ *
+ * connected             the link is connected to a peer and ping/pong traffic
+ *                       is flowing.
+ *
+ * dynconnected          the link has dynamic ip on the other end, and
+ *                       we can see the other host is sending ping to us.
+ *
+ * latency               average latency of this link
+ *                       see also kent_link_set/get_timeout.
+ *
+ * pong_last             in case the link is down, this value tells us how long
+ *                       ago this link was active. A value of 0 means that the link
+ *                       has never been active.
+ */
+
 struct knet_link_status {
 	char src_ipaddr[KNET_MAX_HOST_LEN];
 	char src_port[KNET_MAX_PORT_LEN];
@@ -634,9 +661,24 @@ struct knet_link_status {
 	struct timespec pong_last;
 };
 
-int knet_link_get_status(knet_handle_t knet_h,
-			 uint16_t node_id,
-			 uint8_t link_id,
+/*
+ * knet_link_get_status
+ *
+ * knet_h    - pointer to knet_handle_t 
+ * 
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * status    - pointer to knet_link_status struct (see above)
+ *
+ * knet_link_get_status returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			 struct knet_link_status *status);
 
 /* logging */
