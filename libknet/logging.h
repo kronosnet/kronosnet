@@ -15,9 +15,16 @@
 void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	     const char *fmt, ...) __attribute__((format(printf, 4, 5)));;
 
-#define log_err(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_ERR, fmt, ##args)
-#define log_warn(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_WARN, fmt, ##args)
-#define log_info(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_INFO, fmt, ##args)
-#define log_debug(knet_h, subsys, fmt, args...) log_msg(knet_h, subsys, KNET_LOG_DEBUG, fmt, ##args)
+#define log_err(knet_h, subsys, fmt, args...) \
+	log_msg(knet_h, subsys, KNET_LOG_ERR, fmt, ##args)
+
+#define log_warn(knet_h, subsys, fmt, args...) \
+	log_msg(knet_h, subsys, KNET_LOG_WARN, fmt, ##args)
+
+#define log_info(knet_h, subsys, fmt, args...) \
+	log_msg(knet_h, subsys, KNET_LOG_INFO, fmt, ##args)
+
+#define log_debug(knet_h, subsys, fmt, args...) \
+	log_msg(knet_h, subsys, KNET_LOG_DEBUG, fmt, ##args)
 
 #endif

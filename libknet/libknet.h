@@ -695,7 +695,7 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_FILTER      9 /* (ether)filter errors */
 #define KNET_SUB_CRYPTO     10 /* crypto.c generic layer */
 #define KNET_SUB_NSSCRYPTO  11 /* nsscrypto.c */
-#define KNET_SUB_LAST        KNET_SUB_NSSCRYPTO
+#define KNET_SUB_LAST       KNET_SUB_NSSCRYPTO
 #define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
 
 #define KNET_LOG_ERR         0 /* unrecoverable errors/conditions */
