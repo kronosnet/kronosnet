@@ -580,8 +580,47 @@ int knet_link_set_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_i
 int knet_link_get_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			  time_t *interval, time_t *timeout, unsigned int *precision);
 
-int knet_link_set_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority);
-int knet_link_get_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t *priority);
+/*
+ * knet_link_set_priority
+ *
+ * knet_h    - pointer to knet_handle_t 
+ * 
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * priority  - specify the switching priority for this link
+ *             see also knet_host_set_policy
+ *
+ * knet_link_set_priority returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			   uint8_t priority);
+
+/*
+ * knet_link_get_priority
+ *
+ * knet_h    - pointer to knet_handle_t 
+ * 
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * priority  - gather the switching priority for this link
+ *             see also knet_host_set_policy
+ *
+ * knet_link_get_priority returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_get_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			   uint8_t *priority);
 
 struct knet_link_status {
 	char src_ipaddr[KNET_MAX_HOST_LEN];

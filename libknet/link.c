@@ -58,51 +58,6 @@ int _link_updown(knet_handle_t knet_h, uint16_t node_id,
 	return 0;
 }
 
-int knet_link_get_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t *priority)
-{
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	*priority = knet_h->host_index[node_id]->link[link_id].priority;
-
-	return 0;
-}
-
-int knet_link_set_priority(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id, uint8_t priority)
-{
-	struct knet_link *lnk;
-	uint8_t old_priority;
-
-	if (!knet_h->host_index[node_id])
-		return -1;
-
-	lnk = &knet_h->host_index[node_id]->link[link_id];
-	old_priority = lnk->priority;
-
-	if (lnk->priority == priority)
-		return 0;
-
-	lnk->priority = priority;
-
-	if (_dst_cache_update(knet_h, node_id)) {
-		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to update link priority (host: %s link: %s priority: %u)",
-			  knet_h->host_index[node_id]->name,
-			  lnk->status.dst_ipaddr,
-			  lnk->priority);
-		lnk->priority = old_priority;
-		return -1;
-	}
-
-	log_debug(knet_h, KNET_SUB_LINK,
-		  "host: %s link: %s priority set to: %u",
-		  knet_h->host_index[node_id]->name,
-		  lnk->status.dst_ipaddr,
-		  lnk->priority);
-
-	return 0;
-}
-
 int knet_link_get_status(knet_handle_t knet_h,
 			 uint16_t node_id,
 			 uint8_t link_id,
@@ -605,6 +560,142 @@ int knet_link_get_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_i
        *interval = link->ping_interval / 1000; /* microseconds */
        *timeout = link->pong_timeout / 1000;
        *precision = link->latency_fix;
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			   uint8_t priority)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+	uint8_t old_priority;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	if (!link->configured) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	old_priority = link->priority;
+
+	if (link->priority == priority) {
+		err = 0;
+		goto exit_unlock;
+	}
+
+	link->priority = priority;
+
+	if (_dst_cache_update(knet_h, host_id)) {
+		savederrno = errno;
+		log_debug(knet_h, KNET_SUB_LINK,
+			  "Unable to update link priority (host: %s link: %s priority: %u): %s",
+			  host->name,
+			  link->status.dst_ipaddr,
+			  link->priority,
+			  strerror(savederrno));
+		link->priority = old_priority;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	log_debug(knet_h, KNET_SUB_LINK,
+		  "host: %s link: %s priority set to: %u",
+		  host->name,
+		  link->status.dst_ipaddr,
+		  link->priority);
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_link_get_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			   uint8_t *priority)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!priority) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	if (!link->configured) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	*priority = link->priority;
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
