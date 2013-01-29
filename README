@@ -19,7 +19,7 @@ QUICK SETUP
 -----------
 
 * build/install
-* create /etc/pam.d/kronosnet
+* create /etc/pam.d/kronosnetd
   - the users that can login with those credentials will gain access
     to kronosnetd read only view of the setup
 * add kronosnetadm system group
