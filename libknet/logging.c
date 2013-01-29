@@ -40,7 +40,7 @@ static struct pretty_names subsystem_names[] =
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO }
 };
 
-const char *knet_get_subsystem_name(uint8_t subsystem)
+const char *knet_log_get_subsystem_name(uint8_t subsystem)
 {
 	unsigned int i;
 
@@ -52,7 +52,7 @@ const char *knet_get_subsystem_name(uint8_t subsystem)
 	return "unknown";
 }
 
-uint8_t knet_get_subsystem_id(const char *name)
+uint8_t knet_log_get_subsystem_id(const char *name)
 {
 	unsigned int i;
 
@@ -72,7 +72,7 @@ static struct pretty_names loglevel_names[] =
 	{ "debug", KNET_LOG_DEBUG }
 };
 
-const char *knet_get_loglevel_name(uint8_t level)
+const char *knet_log_get_loglevel_name(uint8_t level)
 {
 	unsigned int i;
 
@@ -84,7 +84,7 @@ const char *knet_get_loglevel_name(uint8_t level)
 	return "unknown";
 }
 
-uint8_t knet_get_loglevel_id(const char *name)
+uint8_t knet_log_get_loglevel_id(const char *name)
 {
 	unsigned int i;
 

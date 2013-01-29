@@ -372,8 +372,8 @@ int main(int argc, char *argv[])
 			}
 
 			printf("[%s] %s: %s\n",
-			       knet_get_loglevel_name(msg.msglevel),
-			       knet_get_subsystem_name(msg.subsystem),
+			       knet_log_get_loglevel_name(msg.msglevel),
+			       knet_log_get_subsystem_name(msg.subsystem),
 			       msg.msg);
 		}
 

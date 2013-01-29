@@ -114,17 +114,17 @@ static void *_handle_logging_thread(void *data)
 
 			switch(msg.msglevel) {
 				case KNET_LOG_WARN:
-					log_warn("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					log_warn("(%s) %s", knet_log_get_subsystem_name(msg.subsystem), msg.msg);
 					break;
 				case KNET_LOG_INFO:
-					log_info("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					log_info("(%s) %s", knet_log_get_subsystem_name(msg.subsystem), msg.msg);
 					break;
 				case KNET_LOG_DEBUG:
-					log_kdebug("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					log_kdebug("(%s) %s", knet_log_get_subsystem_name(msg.subsystem), msg.msg);
 					break;
 				case KNET_LOG_ERR:
 				default:
-					log_error("(%s) %s", knet_get_subsystem_name(msg.subsystem), msg.msg);
+					log_error("(%s) %s", knet_log_get_subsystem_name(msg.subsystem), msg.msg);
 			}
 		}
 	}

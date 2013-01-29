@@ -681,7 +681,15 @@ struct knet_link_status {
 int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			 struct knet_link_status *status);
 
-/* logging */
+/*
+ * logging structs/API calls
+ */
+
+/*
+ * libknet is composed of several subsystems. In order
+ * to easily distinguish log messages coming from different
+ * places, each subsystem has its own ID.
+ */
 
 #define KNET_SUB_COMMON      0 /* common.c */
 #define KNET_SUB_HANDLE      1 /* handle.c alloc/dealloc config changes */
@@ -698,10 +706,61 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_LAST       KNET_SUB_NSSCRYPTO
 #define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
 
+/*
+ * Convert between subsystem IDs and names
+ */
+
+/*
+ * knet_log_get_subsystem_name
+ *
+ * return internal name of the subsystem or "unknown"
+ */
+
+const char *knet_log_get_subsystem_name(uint8_t subsystem);
+
+/*
+ * knet_log_get_subsystem_id
+ *
+ * return internal ID of the subsystem or KNET_SUB_COMMON
+ */
+
+uint8_t knet_log_get_subsystem_id(const char *name);
+
+/*
+ * 4 log levels are enough for everybody
+ */
+
 #define KNET_LOG_ERR         0 /* unrecoverable errors/conditions */
 #define KNET_LOG_WARN        1 /* recoverable errors/conditions */
 #define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
 #define KNET_LOG_DEBUG       3
+
+/*
+ * Convert between log level values and names
+ */
+
+/*
+ * knet_log_get_loglevel_name
+ *
+ * return internal name of the log level or "unknown"
+ */
+
+const char *knet_log_get_loglevel_name(uint8_t level);
+
+/*
+ * knet_log_get_loglevel_id
+ *
+ * return internal ID of the subsystem or KNET_SUB_COMMON
+ */
+
+uint8_t knet_log_get_loglevel_id(const char *name);
+
+/*
+ * every log message is composed by a text message (including a trailing \n)
+ * and message level/subsystem IDs.
+ * In order to make debugging easier it is possible to send those packets
+ * straight to stdout/stderr (see ping_test.c stdout option).
+ */
 
 #define KNET_MAX_LOG_MSG_SIZE    256
 
@@ -712,9 +771,5 @@ struct knet_log_msg {
 };
 
 void knet_set_log_level(knet_handle_t knet_h, uint8_t subsystem, uint8_t level);
-const char *knet_get_subsystem_name(uint8_t subsystem);
-const char *knet_get_loglevel_name(uint8_t level);
-uint8_t knet_get_subsystem_id(const char *name);
-uint8_t knet_get_loglevel_id(const char *name);
 
 #endif
