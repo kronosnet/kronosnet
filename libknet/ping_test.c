@@ -227,9 +227,15 @@ static void sigint_handler(int signum)
 
 		for (i = 0; i < host_ids_entries; i++) {
 			for (j = 0; j < KNET_MAX_LINK; j++) {
-				if (knet_link_get_status(knet_h, host_ids[i], j, &status))
-					printf("Unable to get link data: %s\n",strerror(errno));
-				if (status.enabled != 1) continue;
+				if (knet_link_get_status(knet_h, host_ids[i], j, &status)) {
+					if (errno != EINVAL) {
+						printf("Unable to get link data: %s\n",strerror(errno));
+					}
+					continue;
+				}
+				if (status.enabled != 1) {
+					continue;
+				}
 
 				if (knet_link_set_enable(knet_h, host_ids[i], j, 0))
 					printf("Unable to remove link: %s\n",strerror(errno));
