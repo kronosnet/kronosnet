@@ -96,14 +96,38 @@ uint8_t knet_log_get_loglevel_id(const char *name)
 	return KNET_LOG_ERR;
 }
 
-void knet_set_log_level(knet_handle_t knet_h, uint8_t subsystem, uint8_t level)
+int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
+			  uint8_t level)
 {
-	if ((!knet_h) ||
-	    (subsystem > KNET_SUB_LAST) ||
-	    (level > KNET_LOG_DEBUG))
-		return;
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (subsystem > KNET_SUB_LAST) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (level > KNET_LOG_DEBUG) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, subsystem, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
 
 	knet_h->log_levels[subsystem] = level;
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	return 0;
 }
 
 void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
@@ -114,7 +138,9 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	size_t byte_cnt = 0;
 	int len, err;
 
-	if ((knet_h->logfd <= 0) ||
+	if ((!knet_h) ||
+	    (knet_h->logfd <= 0) ||
+	    (subsystem > KNET_SUB_LAST) ||
 	    (msglevel > knet_h->log_levels[subsystem]))
 			return;
 
@@ -122,6 +148,11 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
 
+	/*
+	 * most logging calls will take place with locking in place.
+	 * if we get an EINVAL and locking is initialized, then
+	 * we are getting a real error and we need to stop
+	 */
 	err = pthread_rwlock_rdlock(&knet_h->list_rwlock);
 	if ((err == EINVAL) && (knet_h->lock_init_done))
 		return;
@@ -133,6 +164,9 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	len = strlen(msg.msg);
 	msg.msg[len+1] = '\n';
 
+	/*
+	 * unlock only if we are holding the lock
+	 */
 	if (!err)
 		pthread_rwlock_unlock(&knet_h->list_rwlock);
 

@@ -770,6 +770,25 @@ struct knet_log_msg {
 	uint8_t msglevel;	/* KNET_LOG_* */
 };
 
-void knet_set_log_level(knet_handle_t knet_h, uint8_t subsystem, uint8_t level);
+/*
+ * knet_log_set_log_level
+ *
+ * knet_h     - same as above
+ *
+ * subsystem  - same as above
+ *
+ * level      - same as above
+ *
+ * knet_log_set_loglevel allows fine control of log levels by subsystem.
+ *                       See also knet_handle_new for defaults.
+ * 
+ * knet_log_set_loglevel returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
+			  uint8_t level);
 
 #endif
