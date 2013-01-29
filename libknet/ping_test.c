@@ -53,6 +53,11 @@ static int tok_inaddrport(char *strin, struct sockaddr_in *addr)
 	}
 
 	strhost = strtok_r(str, ":", &tmp);
+	if (inet_aton(strhost, &addr->sin_addr) == 0) {
+		printf("inet_aton error\n");
+		exit(1);
+	}
+
 	if (!src_host)
 		src_host = strdup(strhost);
 	strport = strtok_r(NULL, ":", &tmp);
@@ -72,7 +77,7 @@ static int tok_inaddrport(char *strin, struct sockaddr_in *addr)
 		addr->sin_port = htons(tok_inport(strport));
 	}
 	free(str);
-	return inet_aton(strhost, &addr->sin_addr);
+	return 0;
 }
 
 static void print_usage(char *name)
@@ -151,6 +156,8 @@ static void argv_to_hosts(int argc, char *argv[])
 		if (!strncmp(argv[i], "crypto", 6))
 			continue;
 		if (!strncmp(argv[i], "debug", 5))
+			continue;
+		if (!strncmp(argv[i], "stdout", 6))
 			continue;
 
 		node_id = i - 1;
