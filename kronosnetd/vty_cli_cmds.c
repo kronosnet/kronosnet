@@ -1561,30 +1561,32 @@ static int knet_cmd_status(struct knet_vty *vty)
 			}
 
 			for (i = 0; i < KNET_MAX_LINK; i++) {
-				unsigned int dynamic;
+				int dynamic;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
 				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
-				knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
-				if (status.enabled == 1) {
-					if (dynamic) {
-						knet_vty_write(vty, "    link %s dynamic (connected: %d)%s", status.src_ipaddr, status.connected, nl);
-					} else {
-						knet_vty_write(vty, "    link %s %s (connected: %d)%s", status.src_ipaddr, status.dst_ipaddr, status.connected, nl);
-					}
-					if (status.connected) {
-						knet_vty_write(vty, "      average latency: %llu us%s", status.latency, nl);
-						if ((dynamic) && (status.dynconnected)) {
-							knet_vty_write(vty, "      source ip: %s%s", status.dst_ipaddr, nl);
-						}
-					} else {
-						knet_vty_write(vty, "      last heard: ");
-						if (status.pong_last.tv_sec) {
-							knet_vty_write(vty, "%lu s ago%s",
-								(long unsigned int)now.tv_sec - status.pong_last.tv_sec, nl);
+				if (dynamic >= 0) {
+					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
+					if (status.enabled == 1) {
+						if (dynamic) {
+							knet_vty_write(vty, "    link %s dynamic (connected: %d)%s", status.src_ipaddr, status.connected, nl);
 						} else {
-							knet_vty_write(vty, "never%s", nl);
+							knet_vty_write(vty, "    link %s %s (connected: %d)%s", status.src_ipaddr, status.dst_ipaddr, status.connected, nl);
+						}
+						if (status.connected) {
+							knet_vty_write(vty, "      average latency: %llu us%s", status.latency, nl);
+							if ((dynamic) && (status.dynconnected)) {
+								knet_vty_write(vty, "      source ip: %s%s", status.dst_ipaddr, nl);
+							}
+						} else {
+							knet_vty_write(vty, "      last heard: ");
+							if (status.pong_last.tv_sec) {
+								knet_vty_write(vty, "%lu s ago%s",
+									(long unsigned int)now.tv_sec - status.pong_last.tv_sec, nl);
+							} else {
+								knet_vty_write(vty, "never%s", nl);
+							}
 						}
 					}
 				}
@@ -1664,26 +1666,30 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			}
 
 			for (i = 0; i < KNET_MAX_LINK; i++) {
-				knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
-				if (status.enabled == 1) {
-					uint8_t priority;
-					unsigned int dynamic, precision;
-					time_t interval, timeout;
-					struct sockaddr_storage src_addr;
-					struct sockaddr_storage dst_addr;
+				int dynamic;
+				struct sockaddr_storage src_addr;
+				struct sockaddr_storage dst_addr;
 
-					dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
-					if (dynamic) {
-						knet_vty_write(vty, "   link %d %s dynamic%s", i, status.src_ipaddr, nl);
-					} else {
-						knet_vty_write(vty, "   link %d %s %s%s", i, status.src_ipaddr, status.dst_ipaddr, nl);
+				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], i, &src_addr, &dst_addr);
+				if (dynamic >= 0) {
+					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], i, &status);
+					if (status.enabled == 1) {
+						uint8_t priority;
+						unsigned int precision;
+						time_t interval, timeout;
+
+						if (dynamic) {
+							knet_vty_write(vty, "   link %d %s dynamic%s", i, status.src_ipaddr, nl);
+						} else {
+							knet_vty_write(vty, "   link %d %s %s%s", i, status.src_ipaddr, status.dst_ipaddr, nl);
+						}
+						knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], i, &interval, &timeout, &precision);
+						knet_vty_write(vty, "    timers %llu %llu%s", (unsigned long long)interval, (unsigned long long)timeout, nl);
+						knet_link_get_priority(knet_iface->cfg_ring.knet_h, host_ids[j], i, &priority);
+						knet_vty_write(vty, "    priority %u%s", priority, nl);
+						/* print link properties */
+						knet_vty_write(vty, "    exit%s", nl);
 					}
-					knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], i, &interval, &timeout, &precision);
-					knet_vty_write(vty, "    timers %llu %llu%s", (unsigned long long)interval, (unsigned long long)timeout, nl);
-					knet_link_get_priority(knet_iface->cfg_ring.knet_h, host_ids[j], i, &priority);
-					knet_vty_write(vty, "    priority %u%s", priority, nl);
-					/* print link properties */
-					knet_vty_write(vty, "    exit%s", nl);
 				}
 			}
 			knet_vty_write(vty, "   exit%s", nl);
