@@ -50,10 +50,10 @@ link/host level:
            this requires complex rules setting and a super efficent way to look
            up destination links
  - (rfe)   benchmark tests for all critical paths in switching threads
+ - (rfe)   network convergence protocol (host exchange)
+ - (rfe)   reswitching of packets
 
 libknet:
- - (issue) review locking handling policies (attempt locks vs deadlocks and so on)
-           almost done, needs knet_link_* bits done
  - (rfe)   cleanup internal (not-exported) api (pointers vs indexes)
  - (rfe)   make logging info consistent (name vs id)
  - (issue) review logging policy/levels in public api call
