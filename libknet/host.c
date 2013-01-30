@@ -20,6 +20,17 @@
 #include "internals.h"
 #include "logging.h"
 
+static void _host_list_update(knet_handle_t knet_h)
+{
+	struct knet_host *host;
+	knet_h->host_ids_entries = 0;
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		knet_h->host_ids[knet_h->host_ids_entries] = host->host_id;
+		knet_h->host_ids_entries++;
+	}
+}
+
 int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 {
 	int savederrno = 0, err = 0;
@@ -91,6 +102,8 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 		knet_h->host_tail = host;
 	}
 
+	_host_list_update(knet_h);
+
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 	errno = savederrno;
@@ -158,6 +171,8 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 
 	knet_h->host_index[host_id] = NULL;
 	free(removed);
+
+	_host_list_update(knet_h);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
@@ -290,8 +305,7 @@ exit_unlock:
 int knet_host_get_host_list(knet_handle_t knet_h,
 			    uint16_t *host_ids, size_t *host_ids_entries)
 {
-	int savederrno = 0, err = 0, entries = 0;
-	struct knet_host *host;
+	int savederrno = 0, err = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -314,12 +328,8 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 		goto exit_unlock;
 	}
 
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
-		host_ids[entries] = host->host_id;
-		entries++;
-	}
-
-	*host_ids_entries = entries;
+	memcpy(host_ids, knet_h->host_ids, sizeof(knet_h->host_ids));
+	*host_ids_entries = knet_h->host_ids_entries;
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);

@@ -88,6 +88,8 @@ struct knet_handle {
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
+	uint16_t host_ids[KNET_MAX_HOST];
+	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
 	struct knet_frame *tap_to_links_buf;
 	struct knet_frame *recv_from_links_buf;
