@@ -54,8 +54,6 @@ link/host level:
  - (rfe)   reswitching of packets
 
 libknet:
- - (rfe)   cleanup internal (not-exported) api (pointers vs indexes)
- - (rfe)   make logging info consistent (name vs id)
  - (issue) review logging policy/levels in public api call
            example is scanning for active links in a host that would return
            a half gazzillion useless log entries

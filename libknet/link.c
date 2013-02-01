@@ -22,10 +22,11 @@
 #include "onwire.h"
 #include "host.h"
 
-int _link_updown(knet_handle_t knet_h, uint16_t node_id,
-		 struct knet_link *link, int enabled, int connected)
+int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+		 int enabled, int connected)
 {
 	int savederrno = 0, err = 0;
+	struct knet_link *link = &knet_h->host_index[host_id]->link[link_id];
 	unsigned int old_enabled = link->status.enabled;
 	unsigned int old_connected = link->status.connected;
 
@@ -36,13 +37,13 @@ int _link_updown(knet_handle_t knet_h, uint16_t node_id,
 	link->status.enabled = enabled;
 	link->status.connected = connected;
 
-	err = _dst_cache_update(knet_h, node_id);
+	err = _dst_cache_update(knet_h, host_id);
 	if (err) {
 		savederrno = errno;
 		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to update link status (host: %s link: %s enabled: %u connected: %u)",
-			  knet_h->host_index[node_id]->name,
-			  link->status.dst_ipaddr,
+			  "Unable to update link status for host: %u link: %u enabled: %u connected: %u)",
+			  host_id,
+			  link_id,
 			  link->status.enabled,
 			  link->status.connected);
 		link->status.enabled = old_enabled;
@@ -118,13 +119,13 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		if (err == EAI_SYSTEM) {
 			savederrno = errno;
 			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %s link: %u source addr/port: %s",
-				 host->name, link_id, strerror(savederrno));
+				 "Unable to resolve host: %u link: %u source addr/port: %s",
+				 host_id, link_id, strerror(savederrno));
 		} else {
 			savederrno = EINVAL;
 			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %s link: %u source addr/port: %s",
-				 host->name, link_id, gai_strerror(err));
+				 "Unable to resolve host: %u link: %u source addr/port: %s",
+				 host_id, link_id, gai_strerror(err));
 		}
 		err = -1;
 		goto exit_unlock;
@@ -147,13 +148,13 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		if (err == EAI_SYSTEM) {
 			savederrno = errno;
 			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %s link: %u destination addr/port: %s",
-				 host->name, link_id, strerror(savederrno));
+				 "Unable to resolve host: %u link: %u destination addr/port: %s",
+				 host_id, link_id, strerror(savederrno));
 		} else {
 			savederrno = EINVAL;
 			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %s link: %u destination addr/port: %s",
-				 host->name, link_id, gai_strerror(err));
+				 "Unable to resolve host: %u link: %u destination addr/port: %s",
+				 host_id, link_id, gai_strerror(err));
 		}
 		err = -1;
 	}
@@ -295,7 +296,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	if (enabled) {
-		if (_listener_add(knet_h, link) < 0) {
+		if (_listener_add(knet_h, host_id, link_id) < 0) {
 			savederrno = errno;
 			err = -1;
 			log_err(knet_h, KNET_SUB_LINK, "Unable to setup listener for this link");
@@ -316,7 +317,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
 	}
 
-	err = _link_updown(knet_h, host_id, link, enabled, link->status.connected);
+	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected);
 	savederrno = errno;
 
 	if ((!err) && (enabled)) {
@@ -329,17 +330,17 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	err = _listener_remove(knet_h, link);
+	err = _listener_remove(knet_h, host_id, link_id);
 	savederrno = errno;
 
 	if ((err) && (savederrno != EBUSY)) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
-		if (_link_updown(knet_h, host_id, link, 1, link->status.connected)) {
+		if (_link_updown(knet_h, host_id, link_id, 1, link->status.connected)) {
 			/* force link status the hard way */
 			link->status.enabled = 1;
 		}
-		log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is NOT disabled",
-			  knet_h->host_index[host_id]->name, link->status.dst_ipaddr);
+		log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is NOT disabled",
+			  host_id, link_id);
 		err = -1;
 		goto exit_unlock;
 	} else {
@@ -347,8 +348,8 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		savederrno = 0;
 	}
 
-	log_debug(knet_h, KNET_SUB_LINK, "host: %s link: %s is disabled",
-		  knet_h->host_index[host_id]->name, link->status.dst_ipaddr);
+	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is disabled",
+		  host_id, link_id);
 	link->host_info_up_sent = 0;
 
 exit_unlock:
@@ -475,9 +476,8 @@ int knet_link_set_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_i
 			    ((link->ping_interval * precision) / 8000000);
 
 	log_debug(knet_h, KNET_SUB_LINK,
-		  "host: %s link: %s timeout update - interval: %llu timeout: %llu precision: %d",
-		  host->name, link->status.dst_ipaddr,
-		  link->ping_interval, link->pong_timeout, precision);
+		  "host: %u link: %u timeout update - interval: %llu timeout: %llu precision: %d",
+		  host_id, link_id, link->ping_interval, link->pong_timeout, precision);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
@@ -611,21 +611,16 @@ int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_
 	if (_dst_cache_update(knet_h, host_id)) {
 		savederrno = errno;
 		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to update link priority (host: %s link: %s priority: %u): %s",
-			  host->name,
-			  link->status.dst_ipaddr,
-			  link->priority,
-			  strerror(savederrno));
+			  "Unable to update link priority (host: %u link: %u priority: %u): %s",
+			  host_id, link_id, link->priority, strerror(savederrno));
 		link->priority = old_priority;
 		err = -1;
 		goto exit_unlock;
 	}
 
 	log_debug(knet_h, KNET_SUB_LINK,
-		  "host: %s link: %s priority set to: %u",
-		  host->name,
-		  link->status.dst_ipaddr,
-		  link->priority);
+		  "host: %u link: %u priority set to: %u",
+		  host_id, link_id, link->priority);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);

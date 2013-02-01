@@ -242,8 +242,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (memcmp(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage)) != 0) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "host: %s link: %u appears to have changed ip address",
-					  src_host->name, src_link->link_id);
+				log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u appears to have changed ip address",
+					  src_host->host_id, src_link->link_id);
 				memcpy(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage));
 				if (getnameinfo((const struct sockaddr *)&src_link->dst_addr, sizeof(struct sockaddr_storage),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
@@ -353,9 +353,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (src_link->status.latency < src_link->pong_timeout) {
 			if (!src_link->status.connected) {
-				log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is up",
-					 src_host->name, src_link->status.dst_ipaddr);
-				_link_updown(knet_h, src_host->host_id, src_link, src_link->status.enabled, 1);
+				log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is up",
+					 src_host->host_id, src_link->link_id);
+				_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
 			}
 		}
 
@@ -391,22 +391,22 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				} else {
 					src_link->donnotremoteupdate = 0;
 				}
-				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %s link: %s remote connected: %u",
-					  src_host->name,
-					  src_link->status.dst_ipaddr,
+				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %u link: %u remote connected: %u",
+					  src_host->host_id,
+					  src_link->link_id,
 					  src_link->remoteconnected);
 				if (_dst_cache_update(knet_h, src_host->host_id)) {
 					log_debug(knet_h, KNET_SUB_LINK,
-						  "Unable to update switch cache (host: %s link: %s remote connected: %u)",
-						  src_host->name,
-						  src_link->status.dst_ipaddr,
+						  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
+						  src_host->host_id,
+						  src_link->link_id,
 						  src_link->remoteconnected);
 				}
 				break;
 			case KNET_HOST_INFO_LINK_TABLE:
 				break;
 			default:
-				log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %s", src_host->name);
+				log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %u", src_host->host_id);
 				break;
 		}
 		break;
@@ -449,7 +449,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 
 	dst_host = knet_h->host_index[dst_host_id];
 	if (!dst_host) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %d", dst_host_id);
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %u", dst_host_id);
 		goto out_unlock;
 	}
 
@@ -490,24 +490,24 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	}
 
 	if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s (passive) best link: %s (%u)",
-			  dst_host->name, dst_host->link[dst_host->active_links[0]].status.dst_ipaddr,
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u (passive) best link: %u (pri: %u)",
+			  dst_host->host_id, dst_host->link[dst_host->active_links[0]].link_id,
 			  dst_host->link[dst_host->active_links[0]].priority);
 	} else {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s has %u active links",
-			  dst_host->name, dst_host->active_link_entries);
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u has %u active links",
+			  dst_host->host_id, dst_host->active_link_entries);
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */
 	if ((!dst_host->active_link_entries) || (clear_cbuffer) || (!host_has_remote)) {
 		if (!host_has_remote) {
-			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active remote links", dst_host->name);
+			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u has no active remote links", dst_host->host_id);
 		}
 		if (!dst_host->active_link_entries) {
-			log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %s has no active links", dst_host->name);
+			log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %u has no active links", dst_host->host_id);
 		}
 		if (clear_cbuffer) {
-			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %s is coming back to life", dst_host->name);
+			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u is coming back to life", dst_host->host_id);
 		}
 		_clear_cbuffers(dst_host);
 	}
@@ -585,9 +585,9 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		timespec_diff(pong_last, clock_now, &diff_ping);
 
 		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
-			log_info(knet_h, KNET_SUB_LINK, "host: %s link: %s is down",
-				 dst_host->name, dst_link->status.dst_ipaddr);
-			_link_updown(knet_h, dst_host->host_id, dst_link, dst_link->status.enabled, 0);
+			log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is down",
+				 dst_host->host_id, dst_link->link_id);
+			_link_updown(knet_h, dst_host->host_id, dst_link->link_id, dst_link->status.enabled, 0);
 		}
 	}
 }
