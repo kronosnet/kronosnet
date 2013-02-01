@@ -809,4 +809,22 @@ struct knet_log_msg {
 int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 			  uint8_t level);
 
+/*
+ * knet_log_get_log_level
+ *
+ * knet_h     - same as above
+ *
+ * subsystem  - same as above
+ *
+ * level      - same as above
+ *
+ * knet_log_get_loglevel returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_log_get_loglevel(knet_handle_t knet_h, uint8_t subsystem,
+			  uint8_t *level);
+
 #endif

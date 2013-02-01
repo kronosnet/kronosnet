@@ -130,6 +130,40 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 	return 0;
 }
 
+int knet_log_get_loglevel(knet_handle_t knet_h, uint8_t subsystem,
+			  uint8_t *level)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (subsystem > KNET_SUB_LAST) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!level) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, subsystem, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*level = knet_h->log_levels[subsystem];
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	return 0;
+}
+
 void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	     const char *fmt, ...)
 {
