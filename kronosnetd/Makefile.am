@@ -76,9 +76,11 @@ install-exec-local:
 	$(INSTALL) -d -m 0755 $(DESTDIR)/$(sysconfdir)/pam.d
 	if [ -a $(sysconfdir)/pam.d/password-auth ]; then \
 		cd $(DESTDIR)/$(sysconfdir)/pam.d && \
+			rm -f kronosnetd && \
 			$(LN_S) password-auth kronosnetd; \
 	else \
 		cd $(DESTDIR)/$(sysconfdir)/pam.d && \
+			rm -f kronosnetd && \
 			$(LN_S) passwd kronosnetd; \
 	fi
 

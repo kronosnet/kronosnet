@@ -29,7 +29,7 @@ initscript_SCRIPTS	= kronosnetd
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(INITDEFAULTDIR)
-	$(INSTALL) -m 644 kronosnetd.default $(DESTDIR)/$(INITDEFAULTDIR)/kronosnetd
+	$(INSTALL) -m 644 $(srcdir)/kronosnetd.default $(DESTDIR)/$(INITDEFAULTDIR)/kronosnetd
 
 uninstall-local:
 	rm -f $(DESTDIR)/$(INITDEFAULTDIR)/kronosnetd
