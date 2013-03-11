@@ -49,9 +49,12 @@ link/host level:
            4) flapping of the links (time/sec)
            this requires complex rules setting and a super efficent way to look
            up destination links
+	   5) if links are stable, reduce the number of links in a-a
+              min 2
  - (rfe)   benchmark tests for all critical paths in switching threads
  - (rfe)   network convergence protocol (host exchange)
  - (rfe)   reswitching of packets
+ - (rfe)   look into UDP+ECN bit set to avoid overloading sockets?
 
 libknet:
  - (issue) review logging policy/levels in public api call
