@@ -105,6 +105,7 @@ struct knet_handle {
 	pthread_mutex_t host_mutex;
 	pthread_cond_t host_cond;
 	struct crypto_instance *crypto_instance;
+	uint16_t sec_header_size;
 	unsigned char *tap_to_links_buf_crypt;
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;

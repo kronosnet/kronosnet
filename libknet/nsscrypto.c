@@ -619,6 +619,14 @@ int nsscrypto_init(
 		goto out_err;
 	}
 
+	knet_h->sec_header_size = 0;
+	if (nsscrypto_instance->crypto_hash_type > 0) {
+		knet_h->sec_header_size += hash_len[nsscrypto_instance->crypto_hash_type];
+	}
+	if (nsscrypto_instance->crypto_cipher_type > 0) {
+		knet_h->sec_header_size += cypher_block_len[nsscrypto_instance->crypto_cipher_type];
+	}
+
 	return 0;
 
 out_err:
@@ -642,6 +650,7 @@ void nsscrypto_fini(
 		}
 		free(nsscrypto_instance);
 		knet_h->crypto_instance->model_instance = NULL;
+		knet_h->sec_header_size = 0;
 	}
 
 	return;

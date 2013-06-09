@@ -85,6 +85,8 @@ int crypto_init(
 	if (modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
 		goto out_err;
 
+	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %u", knet_h->sec_header_size);
+
 	return 0;
 
 out_err:
