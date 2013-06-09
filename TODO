@@ -21,8 +21,6 @@ link/host level:
            flags to the headers. DATA -> BZ/GZDATA and we can change that
            right before encrypting. Using a similar approach to PING_MASK
  - (rfe)   crypto: expand API to support dual key for rekey process
- - (issue) crypto: we need to port again "crypto header size" from corosync
-                   necessary for MTU handling
  - (rfe)   link id made optional? right now we need the link id to match
            on both sides of the connection. this is somewhat annoying
            from a user perspective. Evaluate if we can make it optional.
