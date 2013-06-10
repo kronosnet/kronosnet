@@ -34,8 +34,6 @@ link/host level:
            this would allow using one IP address as destination via multiple links
  - (rfe)   add statistics at different levels (pckt per host/link, bytes, crypto
            overhead, frame overhead, pure data...)
- - (issue) pong count to consider a link active and stable
-           (avoid excessive flapping if a link is unstable)
  - (rfe)   link connection access-list
            (chrissie is working on generic code for this one)
  - (rfe)   improve host-to-host communication. Right now I am not satisfied with

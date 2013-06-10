@@ -527,6 +527,47 @@ int knet_link_get_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			 int *enabled);
 
 /*
+ * knet_link_set_pong_count
+ *
+ * knet_h     - pointer to knet_handle_t 
+ * 
+ * host_id    - see above
+ *
+ * link_id    - see above
+ *
+ * pong_count - how many valid ping/pong before a link is marked UP. 
+ *              default: 5, value should be > 0
+ *
+ * knet_link_set_pong_count returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_set_pong_count(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			     uint8_t pong_count);
+
+/*
+ * knet_link_get_pong_count
+ *
+ * knet_h     - pointer to knet_handle_t 
+ * 
+ * host_id    - see above
+ *
+ * link_id    - see above
+ *
+ * pong_count - see above
+ *
+ * knet_link_get_pong_count returns:
+ *
+ * 0 on success 
+ * -1 on error and errno is set. 
+ */
+
+int knet_link_get_pong_count(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			     uint8_t *pong_count);
+
+/*
  * knet_link_set_timeout
  *
  * knet_h    - pointer to knet_handle_t 

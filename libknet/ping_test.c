@@ -184,6 +184,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		knet_link_set_config(knet_h, node_id, 0, &src_addr, &dst_addr);
 		knet_link_set_timeout(knet_h, node_id, 0, 1000, 5000, 2048);
+		//knet_link_set_pong_count(knet_h, node_id, 0, 10);
 		knet_link_set_enable(knet_h, node_id, 0, 1);
 	}
 }

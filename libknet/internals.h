@@ -35,6 +35,7 @@ struct knet_link {
 	unsigned long long ping_interval; /* interval */
 	unsigned long long pong_timeout; /* timeout */
 	unsigned int latency_fix; /* precision */
+	uint8_t pong_count; /* how many ping/pong to send/receive before link is up */
 	/* status */
 	struct knet_link_status status;
 	/* internals */
@@ -45,6 +46,7 @@ struct knet_link {
 	unsigned int donnotremoteupdate:1;    /* define source of the update */
 	unsigned int host_info_up_sent:1; /* 0 if we need to notify remote that link is up */
 	unsigned int latency_exp;
+	uint8_t received_pong;
 	struct timespec ping_last;
 };
 

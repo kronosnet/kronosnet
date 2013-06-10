@@ -353,9 +353,15 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (src_link->status.latency < src_link->pong_timeout) {
 			if (!src_link->status.connected) {
-				log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is up",
-					 src_host->host_id, src_link->link_id);
-				_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
+				if (src_link->received_pong >= src_link->pong_count) {
+					log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is up",
+						 src_host->host_id, src_link->link_id);
+					_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
+				} else {
+					src_link->received_pong++;
+					log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u received pong: %u",
+						  src_host->host_id, src_link->link_id, src_link->received_pong);
+				}
 			}
 		}
 
@@ -581,10 +587,12 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 	}
 
-	if (dst_link->status.connected == 1) {
-		timespec_diff(pong_last, clock_now, &diff_ping);
-
-		if (diff_ping >= (dst_link->pong_timeout * 1000llu)) {
+	timespec_diff(pong_last, clock_now, &diff_ping);
+	if ((pong_last.tv_nsec) && 
+	    (diff_ping >= (dst_link->pong_timeout * 1000llu))) {
+		dst_link->received_pong = 0;
+		dst_link->status.pong_last.tv_nsec = 0;
+		if (dst_link->status.connected == 1) {
 			log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is down",
 				 dst_host->host_id, dst_link->link_id);
 			_link_updown(knet_h, dst_host->host_id, dst_link->link_id, dst_link->status.enabled, 0);
