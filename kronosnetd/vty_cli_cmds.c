@@ -50,7 +50,8 @@
 #define CMDS_PARAM_LINK_PRI     15
 #define CMDS_PARAM_LINK_KEEPAL  16
 #define CMDS_PARAM_LINK_HOLDTI  17
-#define CMDS_PARAM_VTY_TIMEOUT  18
+#define CMDS_PARAM_LINK_PONG    18
+#define CMDS_PARAM_VTY_TIMEOUT  19
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -319,6 +320,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			tmp = param_to_int(param, paramlen);
 			if ((tmp <= 0) || (tmp > 60000)) {
 				knet_vty_write(vty, "link holdtimer should be a value between 0 and 60000 (milliseconds). Default: 5000%s", telnet_newline);
+				err = -1;
+			}
+			break;
+		case CMDS_PARAM_LINK_PONG:
+			tmp = param_to_int(param, paramlen);
+			if (tmp < 1) {
+				knet_vty_write(vty, "pong_count must be a value between 0 and 255%s", telnet_newline);
 				err = -1;
 			}
 			break;
@@ -626,6 +634,7 @@ static int knet_cmd_switch_policy(struct knet_vty *vty);
 
 /* link node */
 static int knet_cmd_link_pri(struct knet_vty *vty);
+static int knet_cmd_link_pong(struct knet_vty *vty);
 static int knet_cmd_link_timer(struct knet_vty *vty);
 
 /* vty node */
@@ -778,11 +787,17 @@ vty_param_t link_timer_params[] = {
 	{ CMDS_PARAM_NOMORE },
 };
 
+vty_param_t pong_count_params[] = {
+	{ CMDS_PARAM_LINK_PONG },
+	{ CMDS_PARAM_NOMORE },
+};
+
 vty_node_cmds_t link_cmds[] = {
 	{ "exit", "exit configuration mode", NULL, knet_cmd_exit_node },
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "no", "revert command", NULL, NULL },
+	{ "pong_count", "set number of pongs to be received before a link is considered alive", pong_count_params, knet_cmd_link_pong },
 	{ "priority", "set priority of this link for passive switching", link_pri_params, knet_cmd_link_pri },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
 	{ "status", "display current network status", NULL, knet_cmd_status },
@@ -847,6 +862,21 @@ static int knet_cmd_vty(struct knet_vty *vty)
 }
 
 /* links */
+
+static int knet_cmd_link_pong(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	int paramlen = 0, paramoffset = 0;
+	char *param = NULL;
+	uint8_t pong_count;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	pong_count = param_to_int(param, paramlen);
+
+	knet_link_set_pong_count(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, pong_count);
+
+	return 0;
+}
 
 static int knet_cmd_link_timer(struct knet_vty *vty)
 {
@@ -1680,7 +1710,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 				if (dynamic >= 0) {
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
-						uint8_t priority;
+						uint8_t priority, pong_count;
 						unsigned int precision;
 						time_t interval, timeout;
 
@@ -1689,6 +1719,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 						} else {
 							knet_vty_write(vty, "   link %d %s %s%s", link_ids[i], status.src_ipaddr, status.dst_ipaddr, nl);
 						}
+						knet_link_get_pong_count(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &pong_count);
+						knet_vty_write(vty, "    pong_count %u%s", pong_count, nl);
 						knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &interval, &timeout, &precision);
 						knet_vty_write(vty, "    timers %llu %llu%s", (unsigned long long)interval, (unsigned long long)timeout, nl);
 						knet_link_get_priority(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &priority);
