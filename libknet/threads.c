@@ -49,6 +49,11 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 
 	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data, KNET_MAX_PACKET_SIZE);
 
+	if (inlen < 0) {
+		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error: %s", strerror(errno));
+		goto out_unlock;
+	}
+
 	if (inlen == 0) {
 		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");
 		/* TODO: disconnection, should never happen! */
