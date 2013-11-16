@@ -1934,7 +1934,7 @@ int knet_read_conf(void)
 
 	fclose(file);
 
-	memset(vty, 0, sizeof(vty));
+	memset(vty, 0, sizeof(*vty));
 
 	return err;
 }
