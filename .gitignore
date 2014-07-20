@@ -40,3 +40,4 @@ kronosnet.spec
 *.swp
 *_test
 *_bench
+test-driver

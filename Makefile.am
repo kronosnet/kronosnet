@@ -9,7 +9,7 @@
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  ltmain.sh compile config.h.in config.h.in~ \
-			  autoscan.log configure.scan
+			  autoscan.log configure.scan test-driver
 
 AUTOMAKE_OPTIONS	= foreign
 
