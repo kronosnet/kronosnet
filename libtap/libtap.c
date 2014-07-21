@@ -603,7 +603,8 @@ int tap_set_up(tap_t tap, char **error_preup, char **error_up)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap) || (!error_preup) || (!error_up)) {
+	if (!_check(tap) &&
+	    ((tap->hasupdown) && ((!error_preup) || (!error_up)))) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -672,7 +673,8 @@ int tap_set_down(tap_t tap, char **error_down, char **error_postdown)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap) || (!error_down) || (!error_postdown)) {
+	if (!_check(tap) &&
+	    ((tap->hasupdown) && ((!error_down) || (!error_postdown)))) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
