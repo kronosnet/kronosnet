@@ -9,6 +9,8 @@
 #ifndef __LIBTAP_H__
 #define __LIBTAP_H__
 
+#include <sys/types.h>
+
 typedef struct _iface *tap_t;
 
 tap_t tap_open(char *dev, size_t dev_size, const char *updownpath);
