@@ -602,6 +602,12 @@ int nsscrypto_init(
 	nsscrypto_instance->private_key = knet_handle_crypto_cfg->private_key;
 	nsscrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
+	if ((nsscrypto_instance->crypto_cipher_type > 0) &&
+	    (nsscrypto_instance->crypto_hash_type == 0)) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "crypto communication requires hash specified");
+		goto out_err;
+	}
+
 	if ((nsscrypto_instance->crypto_cipher_type > 0) ||
 	    (nsscrypto_instance->crypto_hash_type > 0)) {
 		if ((!nsscrypto_instance->private_key) ||
