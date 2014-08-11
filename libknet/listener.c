@@ -74,12 +74,25 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		}
 
 		value = KNET_RING_RCVBUFF;
-		setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value));
+		if (setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener receive buffer: %s",
+				strerror(savederrno));
+			goto exit_unlock;
+		}
 
 		if (listener->address.ss_family == AF_INET6) {
 			value = 1;
-			setsockopt(listener->sock, IPPROTO_IPV6, IPV6_V6ONLY,
-				   &value, sizeof(value));
+			if (setsockopt(listener->sock, IPPROTO_IPV6, IPV6_V6ONLY,
+				       &value, sizeof(value)) < 0) {
+				savederrno = errno;
+				err = -1;
+				log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener IPv6 only: %s",
+					strerror(savederrno));
+				goto exit_unlock;
+
+			}
 		}
 
 		if (_fdset_cloexec(listener->sock)) {
