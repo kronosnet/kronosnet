@@ -48,6 +48,11 @@ struct knet_link {
 	unsigned int latency_exp;
 	uint8_t received_pong;
 	struct timespec ping_last;
+	/* used by PMTUD thread as temp per-link variables */
+	uint16_t last_good_mtu;
+	uint16_t last_bad_mtu;
+	uint16_t last_sent_mtu;
+	uint16_t last_recv_mtu;
 };
 
 #define KNET_CBUFFER_SIZE 4096
@@ -87,6 +92,9 @@ struct knet_handle {
 	int tap_to_links_epollfd;
 	int recv_from_links_epollfd;
 	int dst_link_handler_epollfd;
+	int pmtud_in_progress;
+	int pmtud_fini_requested;
+	unsigned int mtu;
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
@@ -96,21 +104,26 @@ struct knet_handle {
 	struct knet_frame *tap_to_links_buf;
 	struct knet_frame *recv_from_links_buf;
 	struct knet_frame *pingbuf;
+	struct knet_frame *pmtudbuf;
 	pthread_t tap_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
 	pthread_t dst_link_handler_thread;
+	pthread_t pmtud_link_handler_thread;
 	int lock_init_done;
 	pthread_rwlock_t list_rwlock;
 	pthread_rwlock_t listener_rwlock;
 	pthread_rwlock_t host_rwlock;
 	pthread_mutex_t host_mutex;
 	pthread_cond_t host_cond;
+	pthread_mutex_t pmtud_mutex;
+	pthread_cond_t pmtud_cond;
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
 	unsigned char *tap_to_links_buf_crypt;
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;
+	unsigned char *pmtudbuf_crypt;
 	seq_num_t bcast_seq_num_tx;
 	int (*dst_host_filter_fn) (
 		const unsigned char *outdata,

@@ -61,6 +61,11 @@ union knet_frame_data {
 		uint8_t		kfd_link;
 		uint32_t	kfd_time[4];
 	} ping __attribute__((packed));
+	struct {
+		uint8_t		kfd_link;
+		uint16_t	kfd_pmtud_size;
+		uint8_t		kfd_data[0];
+	} pmtud __attribute__((packed));
 } __attribute__((packed));
 
 struct knet_frame {
@@ -71,20 +76,33 @@ struct knet_frame {
 } __attribute__((packed));
 
 #define kf_seq_num kf_payload.data.kfd_seq_num
-#define kf_data kf_payload.data.kfd_data
-#define kf_link kf_payload.ping.kfd_link
-#define kf_time kf_payload.ping.kfd_time
-#define kf_dyn kf_payload.ping.kfd_dyn
+#define kf_data    kf_payload.data.kfd_data
+#define kf_link    kf_payload.ping.kfd_link
+#define kf_time    kf_payload.ping.kfd_time
+#define kf_dyn     kf_payload.ping.kfd_dyn
+#define kf_plink   kf_payload.pmtud.kfd_link
+#define kf_psize   kf_payload.pmtud.kfd_pmtud_size
+#define kf_pdata   kf_payload.pmtud.kfd_data
 
 #define KNET_PING_SIZE sizeof(struct knet_frame)
 #define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
 
+/* taken from tracepath6 */
+#define KNET_PMTUD_SIZE_V4 65535
+#define KNET_PMTUD_SIZE_V6 128000
+#define KNET_PMTUD_OVERHEAD_V4 28
+#define KNET_PMTUD_OVERHEAD_V6 48
+#define KNET_PMTUD_MIN_MTU_V4 576
+#define KNET_PMTUD_MIN_MTU_V6 1280
+
 #define KNET_FRAME_VERSION 0x01
 
-#define KNET_FRAME_DATA      0x00
-#define KNET_FRAME_HOST_INFO 0x01
-#define KNET_FRAME_PING      0x81
-#define KNET_FRAME_PONG      0x82
-#define KNET_FRAME_PMSK      0x80 /* ping/pong packet mask */
+#define KNET_FRAME_DATA        0x00
+#define KNET_FRAME_HOST_INFO   0x01
+#define KNET_FRAME_PING        0x81
+#define KNET_FRAME_PONG        0x82
+#define KNET_FRAME_PMTUD       0x83
+#define KNET_FRAME_PMTUD_REPLY 0x84
+#define KNET_FRAME_PMSK        0x80 /* ping/pong packet mask */
 
 #endif

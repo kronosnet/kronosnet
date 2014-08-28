@@ -93,6 +93,23 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 				goto exit_unlock;
 
 			}
+			value = IPV6_PMTUDISC_PROBE;
+			if (setsockopt(listener->sock, SOL_IPV6, IPV6_MTU_DISCOVER, &value, sizeof(value)) <0) {
+				savederrno = errno;
+				err = -1;
+				log_err(knet_h, KNET_SUB_LISTENER, "Unable to set PMTUDISC on listener socket: %s",
+					strerror(savederrno));
+				goto exit_unlock;
+			}
+		} else {
+			value = IP_PMTUDISC_PROBE;
+			if (setsockopt(listener->sock, SOL_IP, IP_MTU_DISCOVER, &value, sizeof(value)) <0) {
+				savederrno = errno;
+				err = -1;
+				log_err(knet_h, KNET_SUB_LISTENER, "Unable to set PMTUDISC on listener socket: %s",
+					strerror(savederrno));
+				goto exit_unlock;
+			}
 		}
 
 		if (_fdset_cloexec(listener->sock)) {

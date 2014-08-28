@@ -31,10 +31,12 @@ static struct pretty_names subsystem_names[] =
 	{ "host", KNET_SUB_HOST },
 	{ "listener", KNET_SUB_LISTENER },
 	{ "link", KNET_SUB_LINK },
+	{ "pmtud", KNET_SUB_PMTUD },
 	{ "tap_t", KNET_SUB_TAP_T },
 	{ "link_t", KNET_SUB_LINK_T },
 	{ "hb_t", KNET_SUB_HB_T },
 	{ "switch_t", KNET_SUB_SWITCH_T },
+	{ "pmtud_t", KNET_SUB_PMTUD_T },
 	{ "filter", KNET_SUB_FILTER },
 	{ "crypto", KNET_SUB_CRYPTO },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO }

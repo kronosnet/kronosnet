@@ -718,6 +718,7 @@ struct knet_link_status {
 	unsigned int dynconnected:1;	/* link has been activated by remote dynip */
 	unsigned long long latency;	/* average latency computed by fix/exp */
 	struct timespec pong_last;
+	unsigned int mtu;		/* current detected MTU on this link */
 };
 
 /*
@@ -755,13 +756,15 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_HOST        2 /* host add/del/modify */
 #define KNET_SUB_LISTENER    3 /* listeners add/del/modify... */
 #define KNET_SUB_LINK        4 /* link add/del/modify */
-#define KNET_SUB_TAP_T       5 /* tap thread */
-#define KNET_SUB_LINK_T      6 /* link thread */
-#define KNET_SUB_SWITCH_T    7 /* switching thread */
-#define KNET_SUB_HB_T        8 /* heartbeat thread */
-#define KNET_SUB_FILTER      9 /* (ether)filter errors */
-#define KNET_SUB_CRYPTO     10 /* crypto.c generic layer */
-#define KNET_SUB_NSSCRYPTO  11 /* nsscrypto.c */
+#define KNET_SUB_PMTUD       5 /* Path MTU Discovery */
+#define KNET_SUB_TAP_T       6 /* tap thread */
+#define KNET_SUB_LINK_T      7 /* link thread */
+#define KNET_SUB_SWITCH_T    8 /* switching thread */
+#define KNET_SUB_HB_T        9 /* heartbeat thread */
+#define KNET_SUB_PMTUD_T    10 /* Path MTU Discovery thread */
+#define KNET_SUB_FILTER     11 /* (ether)filter errors */
+#define KNET_SUB_CRYPTO     12 /* crypto.c generic layer */
+#define KNET_SUB_NSSCRYPTO  13 /* nsscrypto.c */
 #define KNET_SUB_LAST       KNET_SUB_NSSCRYPTO
 #define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
 

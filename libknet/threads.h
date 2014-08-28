@@ -25,5 +25,6 @@ void *_handle_tap_to_links_thread(void *data);
 void *_handle_recv_from_links_thread(void *data);
 void *_handle_heartbt_thread(void *data);
 void *_handle_dst_link_handler_thread(void *data);
+void *_handle_pmtud_link_thread(void *data);
 
 #endif

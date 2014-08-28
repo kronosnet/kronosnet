@@ -66,6 +66,20 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->pmtud_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	savederrno = pthread_cond_init(&knet_h->pmtud_cond, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud conditional mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	return 0;
 
 exit_fail:
@@ -81,6 +95,8 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_rwlock_destroy(&knet_h->host_rwlock);
 	pthread_mutex_destroy(&knet_h->host_mutex);
 	pthread_cond_destroy(&knet_h->host_cond);
+	pthread_mutex_destroy(&knet_h->pmtud_mutex);
+	pthread_cond_destroy(&knet_h->pmtud_cond);
 }
 
 static int _init_pipes(knet_handle_t knet_h)
@@ -203,6 +219,15 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pingbuf, 0, KNET_PING_SIZE);
 
+	knet_h->pmtudbuf = malloc(KNET_PMTUD_SIZE_V6);
+	if (!knet_h->pmtudbuf) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for pmtud buffer: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+	memset(knet_h->pmtudbuf, 0, KNET_PMTUD_SIZE_V6);
+
 	knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
 	if (!knet_h->tap_to_links_buf_crypt) {
 		savederrno = errno;
@@ -219,6 +244,7 @@ static int _init_buffers(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	memset(knet_h->recv_from_links_buf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
 
 	knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
 	if (!knet_h->pingbuf_crypt) {
@@ -227,6 +253,16 @@ static int _init_buffers(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	memset(knet_h->pingbuf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
+
+	knet_h->pmtudbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+	if (!knet_h->pmtudbuf_crypt) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for crypto pmtud buffer: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+	memset(knet_h->pmtudbuf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
 
 	return 0;
 
@@ -243,6 +279,8 @@ static void _destroy_buffers(knet_handle_t knet_h)
 	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);
 	free(knet_h->pingbuf_crypt);
+	free(knet_h->pmtudbuf);
+	free(knet_h->pmtudbuf_crypt);
 }
 
 static int _init_epolls(knet_handle_t knet_h)
@@ -353,6 +391,14 @@ static int _start_threads(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
+	savederrno = pthread_create(&knet_h->pmtud_link_handler_thread, 0,
+				    _handle_pmtud_link_thread, (void *) knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start pmtud link thread: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_create(&knet_h->dst_link_handler_thread, 0,
 				    _handle_dst_link_handler_thread, (void *) knet_h);
 	if (savederrno) {
@@ -406,6 +452,9 @@ static void _stop_threads(knet_handle_t knet_h)
 
 	pthread_cancel(knet_h->dst_link_handler_thread);
 	pthread_join(knet_h->dst_link_handler_thread, &retval);
+
+	pthread_cancel(knet_h->pmtud_link_handler_thread);
+	pthread_join(knet_h->pmtud_link_handler_thread, &retval);
 }
 
 knet_handle_t knet_handle_new(uint16_t host_id,
