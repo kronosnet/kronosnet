@@ -120,6 +120,7 @@ struct knet_handle {
 	pthread_cond_t pmtud_cond;
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
+	uint16_t sec_block_size;
 	unsigned char *tap_to_links_buf_crypt;
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;

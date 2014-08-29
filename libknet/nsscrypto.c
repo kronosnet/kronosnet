@@ -630,7 +630,20 @@ int nsscrypto_init(
 		knet_h->sec_header_size += hash_len[nsscrypto_instance->crypto_hash_type];
 	}
 	if (nsscrypto_instance->crypto_cipher_type > 0) {
-		knet_h->sec_header_size += cypher_block_len[nsscrypto_instance->crypto_cipher_type];
+		int block_size;
+
+		if (cypher_block_len[nsscrypto_instance->crypto_cipher_type]) {
+			block_size = cypher_block_len[nsscrypto_instance->crypto_cipher_type];
+		} else {
+			block_size = PK11_GetBlockSize(nsscrypto_instance->crypto_cipher_type, NULL);
+			if (block_size < 0) {
+				goto out_err;
+			}
+		}
+
+		knet_h->sec_header_size += block_size;
+		knet_h->sec_header_size += SALT_SIZE;
+		knet_h->sec_block_size = block_size;
 	}
 
 	return 0;
