@@ -48,7 +48,7 @@ struct knet_link {
 	unsigned int latency_exp;
 	uint8_t received_pong;
 	struct timespec ping_last;
-	/* used by PMTUD thread as temp per-link variables */
+	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
 	uint16_t last_good_mtu;
 	uint16_t last_bad_mtu;
 	uint16_t last_sent_mtu;
@@ -121,6 +121,8 @@ struct knet_handle {
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
 	uint16_t sec_block_size;
+	uint16_t sec_hash_size;
+	uint16_t sec_salt_size;
 	unsigned char *tap_to_links_buf_crypt;
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;

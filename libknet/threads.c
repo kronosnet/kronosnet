@@ -377,6 +377,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_PMTUD_REPLY;
 		knet_h->recv_from_links_buf->kf_node = htons(knet_h->host_id);
 
+		log_debug(knet_h, KNET_SUB_LINK_T, "PMTUD pckt size: %zu, recorded size: %u", len,  knet_h->recv_from_links_buf->kf_psize);
+
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->recv_from_links_buf,
@@ -400,6 +402,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			break;
 		}
 		src_link->last_recv_mtu = knet_h->recv_from_links_buf->kf_psize;
+		log_debug(knet_h, KNET_SUB_LINK_T, "PMTUD_REPLY recorded size: %u", src_link->last_recv_mtu);
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
@@ -731,11 +734,20 @@ void *_handle_dst_link_handler_thread(void *data)
 
 static void _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
-	int len, overhead, savederrno, ret, mutex_retry_limit, failsafe;
-	ssize_t outlen, max_mtu;
+	int ret, savederrno, mutex_retry_limit, failsafe;
+	ssize_t onwire_len;   /* current packet onwire size */
+	ssize_t overhead_len; /* onwire packet overhead (protocol based) */
+	ssize_t max_mtu_len;  /* max mtu for protocol */
+	ssize_t data_len;     /* how much data we can send in the packet
+			       * generally would be onwire_len - overhead_len
+			       * needs to be adjusted for crypto
+			       */
+	//ssize_t pad_len;      /* crypto packet pad size, needs to move into crypto.c callbacks */
+	int len;	      /* len of what we were able to sendto onwire */
+
 	struct timespec ts;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
-	
+
 	mutex_retry_limit = 0;
 	failsafe = 0;
 
@@ -745,20 +757,25 @@ static void _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
-			outlen = KNET_PMTUD_SIZE_V6;
-			overhead = KNET_PMTUD_OVERHEAD_V6;
+			max_mtu_len = KNET_PMTUD_SIZE_V6;
+			overhead_len = KNET_PMTUD_OVERHEAD_V6;
 			dst_link->last_good_mtu = KNET_PMTUD_MIN_MTU_V6;
 			break;
 		case AF_INET:
-			outlen = KNET_PMTUD_SIZE_V4;
-			overhead = KNET_PMTUD_OVERHEAD_V4;
+			max_mtu_len = KNET_PMTUD_SIZE_V4;
+			overhead_len = KNET_PMTUD_OVERHEAD_V4;
 			dst_link->last_good_mtu = KNET_PMTUD_MIN_MTU_V4;
 			break;
 		default:
 			return;
 	}
 
-	max_mtu = outlen;
+	/*
+	 * discovery starts from the top because kernel will
+	 * refuse to send packets > current iface mtu.
+	 * this saves us some time and network bw.
+	 */ 
+	onwire_len = max_mtu_len;
 
 restart:
 
@@ -771,15 +788,45 @@ restart:
 	 */
 
 	if (failsafe == 30) {
-		log_err(knet_h, KNET_SUB_PMTUD_T, "Aborting PMTUD process: Too many attempts");
+		log_err(knet_h, KNET_SUB_PMTUD_T,
+			"Aborting PMTUD process: Too many attempts. MTU might have changed during discovery.");
 		return;
 	} else {
 		failsafe++;
 	}
 
-	knet_h->pmtudbuf->kf_psize = outlen;
+	data_len = onwire_len - overhead_len;
 
+#if 0
 	if (knet_h->crypto_instance) {
+
+		/*
+		 * PMTUd crypto pckt final outlen is:
+		 * input buffer - (hash + salt + block)
+		 * input buffer + pad
+		 * input buffer + block
+		 * input buffer + hash
+		 * input buffer + salt
+		 */
+
+		outlen = outlen - (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size);
+
+		pad_len = knet_h->sec_block_size - (outlen % knet_h->sec_block_size);
+		if (pad_len == knet_h->sec_block_size) {
+			pad_len = 0;
+		}
+
+		outlen = outlen + pad_len;
+
+		while (outlen + knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size + overhead >= max_mtu) {
+			outlen = outlen - knet_h->sec_block_size;
+		}
+
+		log_debug(knet_h, KNET_SUB_PMTUD_T, "DEBUG1 PRE CRYPTO: insize %zu block size: %u",
+			  outlen + knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size, knet_h->sec_block_size);
+
+		knet_h->pmtudbuf->kf_psize = outlen + overhead;
+
 		if (crypto_encrypt_and_sign(knet_h,
 					    (const unsigned char *)knet_h->pmtudbuf,
 					    outlen,
@@ -789,8 +836,13 @@ restart:
 			return;
 		}
 
-		outbuf = knet_h->pingbuf_crypt;
-	}
+		log_debug(knet_h, KNET_SUB_PMTUD_T, "DEBUG1 POST CRYPTO: %zu", outlen);
+
+		outbuf = knet_h->pmtudbuf_crypt;
+	} else {
+#endif
+		knet_h->pmtudbuf->kf_psize = onwire_len;
+//	}
 
 	/* link has gone down, aborting pmtud */
 	if (dst_link->status.connected != 1) {
@@ -802,7 +854,9 @@ restart:
 		return;
 	}
 
-	len = sendto(dst_link->listener_sock, outbuf, outlen - overhead,
+	log_debug(knet_h, KNET_SUB_PMTUD_T, "Sending: %zu %zu", onwire_len, overhead_len);
+
+	len = sendto(dst_link->listener_sock, outbuf, data_len,
 			MSG_DONTWAIT, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;
@@ -812,18 +866,18 @@ restart:
 		return;
 	}
 
-	/*
-	 * this is coming from "localhost" already.
-	 */
-
-	if (len != outlen - overhead) {
+	if (len != data_len) {
+		/*
+		 * this is coming from "localhost" already.
+		 */
 		if (savederrno == EMSGSIZE) {
-			dst_link->last_bad_mtu = outlen;
+			dst_link->last_bad_mtu = onwire_len;
+			log_debug(knet_h, KNET_SUB_PMTUD_T, "EMSGSIZE?");
 		} else {
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to send pmtu packet len: %d err: %s", len, strerror(savederrno));
+			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
 		}
 	} else {
-		dst_link->last_sent_mtu = outlen;
+		dst_link->last_sent_mtu = onwire_len;
 		dst_link->last_recv_mtu = 0;
 
 		if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
@@ -848,20 +902,22 @@ restart:
 			goto restart;
 		}
 
-		if ((dst_link->last_recv_mtu != outlen) || (ret)) {
-			dst_link->last_bad_mtu = outlen;
+		log_debug(knet_h, KNET_SUB_PMTUD_T, "got: %u sent: %u outlen: %zu", dst_link->last_recv_mtu, dst_link->last_sent_mtu, onwire_len);
+
+		if ((dst_link->last_recv_mtu != onwire_len) || (ret)) {
+			dst_link->last_bad_mtu = onwire_len;
 		} else {
-			if ((outlen == max_mtu) ||
-			    ((dst_link->last_bad_mtu) && (dst_link->last_bad_mtu == (outlen + 1)))) {
-				dst_link->status.mtu = outlen;
+			if ((onwire_len == max_mtu_len) ||
+			    ((dst_link->last_bad_mtu) && (dst_link->last_bad_mtu == (onwire_len + 1)))) {
+				dst_link->status.mtu = onwire_len;
 				pthread_mutex_unlock(&knet_h->pmtud_mutex);
 				return;
 			}
-			dst_link->last_good_mtu = outlen;
+			dst_link->last_good_mtu = onwire_len;
 		}
 	}
 
-	outlen = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
+	onwire_len = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 
 	goto restart;
@@ -885,7 +941,7 @@ void *_handle_pmtud_link_thread(void *data)
 		 * make this configurable, with default to 60
 		 * and triggered by link status changes
 		 */
-		sleep(60);
+		sleep(5);
 
 		min_mtu = KNET_PMTUD_SIZE_V6;
 

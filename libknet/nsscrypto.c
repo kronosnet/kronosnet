@@ -626,9 +626,12 @@ int nsscrypto_init(
 	}
 
 	knet_h->sec_header_size = 0;
+
 	if (nsscrypto_instance->crypto_hash_type > 0) {
 		knet_h->sec_header_size += hash_len[nsscrypto_instance->crypto_hash_type];
+		knet_h->sec_hash_size = hash_len[nsscrypto_instance->crypto_hash_type];
 	}
+
 	if (nsscrypto_instance->crypto_cipher_type > 0) {
 		int block_size;
 
@@ -641,8 +644,9 @@ int nsscrypto_init(
 			}
 		}
 
-		knet_h->sec_header_size += block_size;
+		knet_h->sec_header_size += (block_size * 2);
 		knet_h->sec_header_size += SALT_SIZE;
+		knet_h->sec_salt_size = SALT_SIZE;
 		knet_h->sec_block_size = block_size;
 	}
 
