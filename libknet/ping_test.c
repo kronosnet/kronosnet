@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
 	int logpipefd[2];
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries = 0;
-	int has_crypto = 0;
+	//int has_crypto = 0;
 	int logfd;
 
 	if (argc < 3) {
@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
 			printf("Unable to init crypto\n");
 			exit(EXIT_FAILURE);
 		}
-		has_crypto = 1;
+		//has_crypto = 1;
 	} else {
 		printf("Crypto not activated\n");
 	}
@@ -361,6 +361,7 @@ int main(int argc, char *argv[])
 		} else if (FD_ISSET(knet_sock[1], &rfds)) {
 			len = read(knet_sock[1], buff, sizeof(buff));
 			printf("Received data (%zu bytes): '%s'\n", len, buff);
+#if 0
 			if (has_crypto) {
 				printf("changing crypto key\n");
 				memset(knet_handle_crypto_cfg.private_key, has_crypto, KNET_MAX_KEY_LEN);
@@ -369,6 +370,7 @@ int main(int argc, char *argv[])
 					has_crypto++;
 				}
 			}
+#endif
 		} else if (FD_ISSET(logpipefd[0], &rfds)) {
 			struct knet_log_msg msg;
 			size_t bytes_read = 0;
