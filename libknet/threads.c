@@ -991,7 +991,7 @@ void *_handle_pmtud_link_thread(void *data)
 				knet_h->mtu = min_mtu;
 			}
 		} else {
-			log_info(knet_h, KNET_SUB_PMTUD_T, "No MTU information available yet.");
+			log_info(knet_h, KNET_SUB_PMTUD_T, "No MTU information available.");
 		}
 
 interrupt:
