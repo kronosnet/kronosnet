@@ -881,6 +881,11 @@ restart:
 		ts.tv_sec += 2;
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
+		if (knet_h->fini_in_progress) {
+			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+			return;
+		}
+
 		if ((ret != 0) && (ret != ETIMEDOUT)) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			if (mutex_retry_limit == 3) {
@@ -930,6 +935,9 @@ void *_handle_pmtud_link_thread(void *data)
 	struct knet_link *dst_link;
 	int link_idx;
 	unsigned int saved_pmtud, min_mtu, have_mtu;
+	struct timespec ts;
+	int ret, have_timer;
+	unsigned int old_interval;
 
 	/* preparing pmtu buffer */
 	knet_h->pmtudbuf->kf_version = KNET_FRAME_VERSION;
@@ -938,10 +946,45 @@ void *_handle_pmtud_link_thread(void *data)
 
 	while (!knet_h->fini_in_progress) {
 		/*
-		 * make this configurable, with default to 60
-		 * and triggered by link status changes
+		 * make this also triggered by link status changes
 		 */
-		sleep(5);
+timer_restart:
+
+		have_timer = 0;
+
+		if (!pthread_mutex_lock(&knet_h->pmtud_timer_mutex)) {
+			if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
+				log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get current time: %s", strerror(errno));
+				pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
+			} else {
+				old_interval = knet_h->pmtud_interval;
+				ts.tv_sec += knet_h->pmtud_interval;
+
+				ret = pthread_cond_timedwait(&knet_h->pmtud_timer_cond, &knet_h->pmtud_timer_mutex, &ts);
+
+				if (knet_h->pmtud_fini_requested) {
+					pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
+					goto interrupt;
+				}
+
+				if ((ret != 0) && (ret != ETIMEDOUT)) {
+					log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to wait for PMTUd timer cond/mutex");
+				} else {
+					have_timer = 1;
+					if (old_interval != knet_h->pmtud_interval) {
+						log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUd interval change detected, restarting");
+						pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
+						goto timer_restart;
+					}
+				}
+				pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
+			}
+		}
+
+		if (!have_timer) {
+			log_debug(knet_h, KNET_SUB_PMTUD_T, "Sleeping %u seconds", knet_h->pmtud_interval);
+			sleep(knet_h->pmtud_interval);
+		}
 
 		min_mtu = KNET_PMTUD_SIZE_V6;
 		have_mtu = 0;

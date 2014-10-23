@@ -164,6 +164,26 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 
 /*
+ * knet_handle_pmtud_setfreq
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * interval - define the interval in seconds between PMTUd scans
+ *            range from 1 to 86400 (24h)
+ *
+ * knet_handle_pmtud_setfreq returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ * default interval is 60.
+ */
+
+#define KNET_PMTUD_DEFAULT_INTERVAL 60
+
+int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
+
+/*
  * knet_handle_crypto
  *
  * knet_h   - pointer to knet_handle_t

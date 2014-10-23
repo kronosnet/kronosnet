@@ -94,6 +94,7 @@ struct knet_handle {
 	int dst_link_handler_epollfd;
 	int pmtud_in_progress;
 	int pmtud_fini_requested;
+	unsigned int pmtud_interval;
 	unsigned int mtu;
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
@@ -118,6 +119,8 @@ struct knet_handle {
 	pthread_cond_t host_cond;
 	pthread_mutex_t pmtud_mutex;
 	pthread_cond_t pmtud_cond;
+	pthread_mutex_t pmtud_timer_mutex;
+	pthread_cond_t pmtud_timer_cond;
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
 	uint16_t sec_block_size;

@@ -80,6 +80,20 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->pmtud_timer_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud timer mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	savederrno = pthread_cond_init(&knet_h->pmtud_timer_cond, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud timer conditional mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	return 0;
 
 exit_fail:
@@ -97,6 +111,8 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_cond_destroy(&knet_h->host_cond);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
 	pthread_cond_destroy(&knet_h->pmtud_cond);
+	pthread_mutex_destroy(&knet_h->pmtud_timer_mutex);
+	pthread_cond_destroy(&knet_h->pmtud_timer_cond);
 }
 
 static int _init_pipes(knet_handle_t knet_h)
@@ -441,6 +457,10 @@ static void _stop_threads(knet_handle_t knet_h)
 {
 	void *retval;
 
+	pthread_mutex_lock(&knet_h->host_mutex);
+	pthread_cond_signal(&knet_h->host_cond);
+	pthread_mutex_unlock(&knet_h->host_mutex);
+
 	pthread_cancel(knet_h->heartbt_thread);
 	pthread_join(knet_h->heartbt_thread, &retval);
 
@@ -452,6 +472,14 @@ static void _stop_threads(knet_handle_t knet_h)
 
 	pthread_cancel(knet_h->dst_link_handler_thread);
 	pthread_join(knet_h->dst_link_handler_thread, &retval);
+
+	pthread_mutex_lock(&knet_h->pmtud_mutex);
+	pthread_cond_signal(&knet_h->pmtud_cond);
+	pthread_mutex_unlock(&knet_h->pmtud_mutex);
+
+	pthread_mutex_lock(&knet_h->pmtud_timer_mutex);
+	pthread_cond_signal(&knet_h->pmtud_timer_cond);
+	pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
 
 	pthread_cancel(knet_h->pmtud_link_handler_thread);
 	pthread_join(knet_h->pmtud_link_handler_thread, &retval);
@@ -499,6 +527,11 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	if (knet_h->logfd > 0) {
 		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
 	}
+
+	/*
+	 * set pmtud default timers
+	 */
+	knet_h->pmtud_interval = KNET_PMTUD_DEFAULT_INTERVAL;
 
 	/*
 	 * init main locking structures
@@ -682,6 +715,44 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 	} else {
 		knet_h->enabled = 0;
 		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return 0;
+}
+
+int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((!interval) || (interval > 86400)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->pmtud_interval = interval;
+	log_debug(knet_h, KNET_SUB_HANDLE, "PMTUd interval set to: %u seconds", interval);
+
+	/*
+	 * errors here are not fatal and the value will be picked up in the next run
+	 */
+	if (!pthread_mutex_lock(&knet_h->pmtud_timer_mutex)) {
+		pthread_cond_signal(&knet_h->pmtud_timer_cond);
+		pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
 	}
 
 	pthread_rwlock_unlock(&knet_h->list_rwlock);

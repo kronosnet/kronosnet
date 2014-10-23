@@ -420,6 +420,10 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 	size_t byte_cnt = 0;
 	int len;
 
+	if (knet_h->fini_in_progress) {
+		return 0;
+	}
+
 	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_HOST, "Unable to get write lock");
 		return -1;

@@ -313,6 +313,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (knet_handle_pmtud_setfreq(knet_h, 5)) {
+		printf("Unable to set PMTUd interval\n");
+		exit(EXIT_FAILURE);
+	}
+
 	if (set_crypto(argc, argv)) {
 		memset(knet_handle_crypto_cfg.private_key, 0, KNET_MAX_KEY_LEN);
 		knet_handle_crypto_cfg.private_key_len = KNET_MAX_KEY_LEN;	
