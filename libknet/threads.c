@@ -911,7 +911,6 @@ restart:
 				dst_link->status.mtu = onwire_len;
 				pthread_mutex_unlock(&knet_h->pmtud_mutex);
 				return;
-
 			}
 
 			dst_link->last_good_mtu = onwire_len;
@@ -930,7 +929,7 @@ void *_handle_pmtud_link_thread(void *data)
 	struct knet_host *dst_host;
 	struct knet_link *dst_link;
 	int link_idx;
-	unsigned int saved_pmtud, min_mtu;
+	unsigned int saved_pmtud, min_mtu, have_mtu;
 
 	/* preparing pmtu buffer */
 	knet_h->pmtudbuf->kf_version = KNET_FRAME_VERSION;
@@ -945,6 +944,7 @@ void *_handle_pmtud_link_thread(void *data)
 		sleep(5);
 
 		min_mtu = KNET_PMTUD_SIZE_V6;
+		have_mtu = 0;
 
 		if (knet_h->pmtud_fini_requested)
 			continue;
@@ -969,7 +969,6 @@ void *_handle_pmtud_link_thread(void *data)
 				saved_pmtud = dst_link->status.mtu;
 				log_debug(knet_h, KNET_SUB_PMTUD_T, "Starting PMTUD for host: %u link: %u", dst_host->host_id, link_idx);
 				_handle_check_pmtud(knet_h, dst_host, dst_link);
-				log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u", dst_host->host_id, link_idx);
 				if ((saved_pmtud) && (saved_pmtud != dst_link->status.mtu)) {
 					log_info(knet_h, KNET_SUB_PMTUD_T, "PMTUD change for host: %u link: %u from %u to %u",
 						 dst_host->host_id, link_idx, saved_pmtud, dst_link->status.mtu);
@@ -979,15 +978,20 @@ void *_handle_pmtud_link_thread(void *data)
 				if (dst_link->status.mtu < min_mtu) {
 					min_mtu = dst_link->status.mtu;
 				}
+				have_mtu = 1;
 			}
 		}
 
-		if (knet_h->mtu != min_mtu) {
-			/*
-			 * plug call back here for notification
-			 */ 
-			log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->mtu, min_mtu);
-			knet_h->mtu = min_mtu;
+		if (have_mtu) {
+			if (knet_h->mtu != min_mtu) {
+				/*
+				 * plug call back here for notification
+				 */ 
+				log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->mtu, min_mtu);
+				knet_h->mtu = min_mtu;
+			}
+		} else {
+			log_info(knet_h, KNET_SUB_PMTUD_T, "No MTU information available yet.");
 		}
 
 interrupt:
