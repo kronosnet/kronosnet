@@ -1026,12 +1026,13 @@ timer_restart:
 		}
 
 		if (have_mtu) {
-			if (knet_h->mtu != min_mtu) {
+			if (knet_h->link_mtu != min_mtu) {
 				/*
 				 * plug call back here for notification
 				 */ 
-				log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->mtu, min_mtu);
-				knet_h->mtu = min_mtu;
+				log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->link_mtu, min_mtu);
+				knet_h->link_mtu = min_mtu;
+				knet_h->data_mtu = min_mtu - KNET_PING_SIZE - knet_h->sec_header_size;
 			}
 		} else {
 			log_info(knet_h, KNET_SUB_PMTUD_T, "No MTU information available.");

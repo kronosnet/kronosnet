@@ -95,7 +95,8 @@ struct knet_handle {
 	int pmtud_in_progress;
 	int pmtud_fini_requested;
 	unsigned int pmtud_interval;
-	unsigned int mtu;
+	unsigned int link_mtu;
+	unsigned int data_mtu;
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
