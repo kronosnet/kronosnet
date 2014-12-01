@@ -138,6 +138,9 @@ struct knet_handle {
 		uint16_t src_node_id,
 		uint16_t *dst_host_ids,
 		size_t *dst_host_ids_entries);
+	void (*pmtud_notify_fn) (
+		unsigned int link_mtu,
+		unsigned int data_mtu);
 	int fini_in_progress;
 };
 

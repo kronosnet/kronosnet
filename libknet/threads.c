@@ -1033,6 +1033,10 @@ timer_restart:
 				log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->link_mtu, min_mtu);
 				knet_h->link_mtu = min_mtu;
 				knet_h->data_mtu = min_mtu - KNET_PING_SIZE - knet_h->sec_header_size;
+
+				if (knet_h->pmtud_notify_fn) {
+					knet_h->pmtud_notify_fn(knet_h->link_mtu, knet_h->data_mtu);
+				}
 			}
 		} else {
 			log_info(knet_h, KNET_SUB_PMTUD_T, "No MTU information available.");

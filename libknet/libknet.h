@@ -184,6 +184,33 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
 
 /*
+ * knet_handle_enable_pmtud_notify
+ * 
+ * knet_h   - pointer to knet_handle_t
+ *
+ * pmtud_notify_fn
+ *            is a callback function that is invoked every time
+ *            a path mtu size change is detected.
+ *            the function allows libknet to notify the user
+ *            of both link mtu (for debugging purposes) and data mtu
+ *            (that's the max value that can be send onwire without
+ *            fragmentation). data mtu will always be lower than
+ *            link mtu because it accounts for knet packet header
+ *            and (if configured) crypto overhead,
+ *            This function MUST NEVER block or add substantial delays.
+ *
+ * knet_handle_pmtud_notify returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
+			      void (*pmtud_notify_fn) (
+					unsigned int link_mtu,
+					unsigned int data_mtu));
+
+/*
  * knet_handle_crypto
  *
  * knet_h   - pointer to knet_handle_t

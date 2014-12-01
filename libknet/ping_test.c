@@ -265,6 +265,12 @@ static void sigint_handler(int signum)
 	exit(EXIT_SUCCESS);
 }
 
+static void pmtud_notify(unsigned int link_mtu, unsigned int data_mtu)
+{
+	printf("New mtu change notification: link %u data %u\n", link_mtu, data_mtu);
+	return;
+}
+
 int main(int argc, char *argv[])
 {
 	char buff[1024];
@@ -310,6 +316,11 @@ int main(int argc, char *argv[])
 
 	if ((knet_h = knet_handle_new(1, knet_sock[0], logfd, loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (knet_handle_enable_pmtud_notify(knet_h, pmtud_notify)) {
+		printf("Unable to install PMTUd notification callback\n");
 		exit(EXIT_FAILURE);
 	}
 
