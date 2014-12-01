@@ -282,6 +282,7 @@ int main(int argc, char *argv[])
 	size_t host_ids_entries = 0;
 	//int has_crypto = 0;
 	int logfd;
+	unsigned int link_mtu = 0, data_mtu = 0;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -317,6 +318,13 @@ int main(int argc, char *argv[])
 	if ((knet_h = knet_handle_new(1, knet_sock[0], logfd, loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
+	}
+
+	if (knet_handle_pmtud_get(knet_h, &link_mtu, &data_mtu)) {
+		printf("Unable to get PMTUd current values\n");
+		exit(EXIT_FAILURE);
+	} else {
+		printf("Current PMTUd: link %u data %u\n", link_mtu, data_mtu);
 	}
 
 	if (knet_handle_enable_pmtud_notify(knet_h, pmtud_notify)) {

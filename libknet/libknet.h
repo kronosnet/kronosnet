@@ -211,6 +211,24 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 					unsigned int data_mtu));
 
 /*
+ * knet_handle_pmtud_get
+ * 
+ * knet_h   - pointer to knet_handle_t
+ *
+ * link_mtu - pointer where to store link_mtu
+ * data_mtu - pointer where to store data_mtu (see above)
+ *
+ * knet_handle_pmtud_get returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_pmtud_get(knet_handle_t knet_h,
+				unsigned int *link_mtu,
+				unsigned int *data_mtu);
+
+/*
  * knet_handle_crypto
  *
  * knet_h   - pointer to knet_handle_t
