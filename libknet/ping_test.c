@@ -265,9 +265,9 @@ static void sigint_handler(int signum)
 	exit(EXIT_SUCCESS);
 }
 
-static void pmtud_notify(unsigned int link_mtu, unsigned int data_mtu)
+static void pmtud_notify(void *private_data, unsigned int link_mtu, unsigned int data_mtu)
 {
-	printf("New mtu change notification: link %u data %u\n", link_mtu, data_mtu);
+	printf("New mtu change notification: data: %p link %u data %u\n", private_data, link_mtu, data_mtu);
 	return;
 }
 
@@ -327,7 +327,7 @@ int main(int argc, char *argv[])
 		printf("Current PMTUd: link %u data %u\n", link_mtu, data_mtu);
 	}
 
-	if (knet_handle_enable_pmtud_notify(knet_h, pmtud_notify)) {
+	if (knet_handle_enable_pmtud_notify(knet_h, NULL, pmtud_notify)) {
 		printf("Unable to install PMTUd notification callback\n");
 		exit(EXIT_FAILURE);
 	}

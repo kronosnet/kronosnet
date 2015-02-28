@@ -188,6 +188,10 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
  * 
  * knet_h   - pointer to knet_handle_t
  *
+ * pmtud_notify_fn_private_data
+ *            void pointer to data that can be used to identify
+ *            the callback.
+ *
  * pmtud_notify_fn
  *            is a callback function that is invoked every time
  *            a path mtu size change is detected.
@@ -206,7 +210,9 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
  */
 
 int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
+			      void *pmtud_notify_fn_private_data,
 			      void (*pmtud_notify_fn) (
+					void *private_data,
 					unsigned int link_mtu,
 					unsigned int data_mtu));
 

@@ -1035,7 +1035,8 @@ timer_restart:
 				knet_h->data_mtu = min_mtu - KNET_PING_SIZE - knet_h->sec_header_size;
 
 				if (knet_h->pmtud_notify_fn) {
-					knet_h->pmtud_notify_fn(knet_h->link_mtu, knet_h->data_mtu);
+					knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,
+								knet_h->link_mtu, knet_h->data_mtu);
 				}
 			}
 		} else {

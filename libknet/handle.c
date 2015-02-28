@@ -761,7 +761,9 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 }
 
 int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
+				    void *pmtud_notify_fn_private_data,
 				    void (*pmtud_notify_fn) (
+						void *private_data,
 						unsigned int link_mtu,
 						unsigned int data_mtu))
 {
@@ -780,6 +782,7 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 		return -1;
 	}
 
+	knet_h->pmtud_notify_fn_private_data = pmtud_notify_fn_private_data;
 	knet_h->pmtud_notify_fn = pmtud_notify_fn;
 	if (knet_h->pmtud_notify_fn) {
 		log_debug(knet_h, KNET_SUB_HANDLE, "pmtud_notify_fn enabled");
