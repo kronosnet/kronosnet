@@ -1,10 +1,10 @@
-rpm packaging:
+distro/packaging:
  - (issue) check why systemd doesn't let me set scheduler priority
            fixed for systemd unit file, LSB init + systemd still fails
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
- - (issue) implement packet fragmentation via IP_MTU_DISCOVER/IP_MTU, is the only
+ - (issue) implement packet fragmentation?, is the only
            solution to avoid conflicts with tun/tap mtu setting and various
            others buffer sizes.
  - (issue) sort out read buf from recv_from_links since it might be too small vs
@@ -35,7 +35,7 @@ link/host level:
  - (rfe)   add statistics at different levels (pckt per host/link, bytes, crypto
            overhead, frame overhead, pure data...)
  - (rfe)   link connection access-list
-           (chrissie is working on generic code for this one)
+           (chrissie has working generic code for this one, needs merging and API)
  - (rfe)   improve host-to-host communication. Right now I am not satisfied with
            the current implementation, even if it works.
  - (rfe)   implement link switching via scoring system based on:
