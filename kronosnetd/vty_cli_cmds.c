@@ -52,6 +52,7 @@
 #define CMDS_PARAM_LINK_HOLDTI  17
 #define CMDS_PARAM_LINK_PONG    18
 #define CMDS_PARAM_VTY_TIMEOUT  19
+#define CMDS_PARAM_PMTU_FREQ    20
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -243,6 +244,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
+		case CMDS_PARAM_PMTU_FREQ:
+			tmp = param_to_int(param, paramlen);
+			if ((tmp < 5) || (tmp > 600)) {
+				knet_vty_write(vty, "PMTUd frequency should be a value between 5 and 600%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		case CMDS_PARAM_CRYPTO_MODEL:
 			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
 			if (!strncmp("none", buf, 4))
@@ -373,6 +381,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_MTU:
 			knet_vty_write(vty, "MTU - a value between 576 and 65536 (note: max value depends on the media)%s", telnet_newline);
+			break;
+		case CMDS_PARAM_PMTU_FREQ:
+			knet_vty_write(vty, "PMTUd frequency - a value in seconds between 5 and 600 (default: 5)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_CRYPTO_MODEL:
 			knet_vty_write(vty, "MODEL - define encryption backend: none or nss%s", telnet_newline);
@@ -626,6 +637,9 @@ static int knet_cmd_no_peer(struct knet_vty *vty);
 static int knet_cmd_start(struct knet_vty *vty);
 static int knet_cmd_stop(struct knet_vty *vty);
 static int knet_cmd_crypto(struct knet_vty *vty);
+static int knet_cmd_pmtufreq(struct knet_vty *vty);
+static int knet_cmd_no_pmtufreq(struct knet_vty *vty);
+
 
 /* peer node */
 static int knet_cmd_link(struct knet_vty *vty);
@@ -702,12 +716,18 @@ vty_param_t peer_params[] = {
 vty_node_cmds_t no_interface_cmds[] = {
 	{ "ip", "remove ip address", ip_params, knet_cmd_no_ip },
 	{ "mtu", "revert to default MTU", NULL, knet_cmd_no_mtu },
+	{ "pmtudfreq", "revert to default PMTUd frequency (default: 5)", NULL, knet_cmd_no_pmtufreq },
 	{ "peer", "remove peer from this interface", peer_params, knet_cmd_no_peer },
 	{ NULL, NULL, NULL, NULL },
 };
 
 vty_param_t mtu_params[] = {
 	{ CMDS_PARAM_MTU },
+	{ CMDS_PARAM_NOMORE },
+};
+
+vty_param_t pmtu_params[] = {
+	{ CMDS_PARAM_PMTU_FREQ },
 	{ CMDS_PARAM_NOMORE },
 };
 
@@ -725,6 +745,7 @@ vty_node_cmds_t interface_cmds[] = {
 	{ "ip", "add ip address", ip_params, knet_cmd_ip },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
 	{ "mtu", "set mtu (default: auto)", mtu_params, knet_cmd_mtu },
+	{ "pmtudfreq", "PMTUd frequency (default: 5)", pmtu_params, knet_cmd_pmtufreq },
 	{ "no", "revert command", NULL, NULL },
 	{ "peer", "add peer endpoint", peer_params, knet_cmd_peer },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
@@ -1226,6 +1247,37 @@ static void knet_cmd_auto_mtu_notify(void *private_data,
 	}
 }
 
+static int knet_cmd_no_pmtufreq(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+
+	if (knet_handle_pmtud_setfreq(knet_iface->cfg_ring.knet_h, 5) < 0) {
+		knet_vty_write(vty, "Error: Unable to reset PMTUd frequency to 5 seconds on device %s%s",
+				tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+				return -1;
+	}
+
+	return 0;
+}
+
+static int knet_cmd_pmtufreq(struct knet_vty *vty)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
+	int paramlen = 0, paramoffset = 0, pmtufreq = 5;
+	char *param = NULL;
+
+	get_param(vty, 1, &param, &paramlen, &paramoffset);
+	pmtufreq = param_to_int(param, paramlen);
+
+	if (knet_handle_pmtud_setfreq(knet_iface->cfg_ring.knet_h, pmtufreq) < 0) {
+		knet_vty_write(vty, "Error: Unable to set PMTUd frequency to %d seconds on device %s%s",
+				pmtufreq, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+				return -1;
+	}
+
+	return 0;
+}
+
 static int knet_cmd_no_mtu(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
@@ -1721,6 +1773,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	char nodename[KNET_MAX_HOST_LEN];
 	int policy;
+	unsigned int pmtudfreq = 0;
 
 	if (vty->filemode)
 		nl = file_newline;
@@ -1738,6 +1791,10 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		if (!knet_iface->cfg_eth.auto_mtu)
 			knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
+
+		knet_handle_pmtud_getfreq(knet_iface->cfg_ring.knet_h, &pmtudfreq);
+		if ((pmtudfreq > 0) && (pmtudfreq != 5))
+			knet_vty_write(vty, "  pmtudfreq %d%s", pmtudfreq, nl);
 
 		tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
 		if ((ip_list) && (ip_list_entries > 0)) {
