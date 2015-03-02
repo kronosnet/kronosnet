@@ -184,6 +184,22 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
 
 /*
+ * knet_handle_pmtud_getfreq
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * interval - pointer where to store the current interval value
+ *
+ * knet_handle_pmtud_setfreq returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+
+int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
+
+/*
  * knet_handle_enable_pmtud_notify
  * 
  * knet_h   - pointer to knet_handle_t

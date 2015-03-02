@@ -722,6 +722,30 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 	return 0;
 }
 
+int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*interval = knet_h->pmtud_interval;
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return 0;
+}
+
 int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 {
 	int savederrno = 0;
