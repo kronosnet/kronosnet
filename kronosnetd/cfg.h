@@ -20,11 +20,13 @@
 
 struct knet_cfg_eth {
 	tap_t tap;
+	int auto_mtu;
 	uint16_t node_id;
 };
 
 struct knet_cfg_ring {
 	knet_handle_t knet_h;
+	int data_mtu;
 	int base_port;
 };
 

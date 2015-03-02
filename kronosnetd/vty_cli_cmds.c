@@ -724,7 +724,7 @@ vty_node_cmds_t interface_cmds[] = {
 	{ "help", "display basic help", NULL, knet_cmd_help },
 	{ "ip", "add ip address", ip_params, knet_cmd_ip },
 	{ "logout", "exit from CLI", NULL, knet_cmd_logout },
-	{ "mtu", "set mtu", mtu_params, knet_cmd_mtu },
+	{ "mtu", "set mtu (default: auto)", mtu_params, knet_cmd_mtu },
 	{ "no", "revert command", NULL, NULL },
 	{ "peer", "add peer endpoint", peer_params, knet_cmd_peer },
 	{ "show", "show running config", NULL, knet_cmd_show_conf },
@@ -1194,14 +1194,59 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	return 0;
 }
 
+static void knet_cmd_auto_mtu_notify(void *private_data,
+				     unsigned int link_mtu, unsigned int data_mtu)
+{
+	struct knet_cfg *knet_iface = (struct knet_cfg *)private_data;
+
+	knet_iface->cfg_ring.data_mtu = data_mtu;
+
+	if (!knet_iface->cfg_eth.auto_mtu) {
+		int mtu = 0;
+
+		mtu = tap_get_mtu(knet_iface->cfg_eth.tap);
+		if (mtu < 0) {
+			log_debug("Unable to get current MTU?");
+		} else {
+			if (data_mtu < mtu) {
+				log_debug("Manually configured MTU (%d) is higher than automatically detected MTU (%d)",
+					  mtu, data_mtu);
+			}
+		}
+
+		return;
+	}
+
+	if (tap_set_mtu(knet_iface->cfg_eth.tap, knet_iface->cfg_ring.data_mtu) < 0) {
+		log_warn("Error: Unable to set requested mtu %d on device %s via mtu notify",
+			 knet_iface->cfg_ring.data_mtu, tap_get_name(knet_iface->cfg_eth.tap));
+	} else {
+		log_info("Device %s new mtu: %d (via mtu notify)",
+			 tap_get_name(knet_iface->cfg_eth.tap), knet_iface->cfg_ring.data_mtu);
+	}
+}
+
 static int knet_cmd_no_mtu(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
-	if (tap_reset_mtu(knet_iface->cfg_eth.tap) < 0) {
-		knet_vty_write(vty, "Error: Unable to set default mtu on device %s%s",
-				tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
-				return -1;
+	/* allow automatic updates of mtu */
+	knet_iface->cfg_eth.auto_mtu = 1;
+
+	if (knet_iface->cfg_ring.data_mtu > 0) {
+		if (tap_set_mtu(knet_iface->cfg_eth.tap, knet_iface->cfg_ring.data_mtu) < 0) {
+			knet_iface->cfg_eth.auto_mtu = 0;
+			knet_vty_write(vty, "Error: Unable to set auto detected mtu on device %s%s",
+					tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+					return -1;
+		}
+	} else {
+		if (tap_reset_mtu(knet_iface->cfg_eth.tap) < 0) {
+			knet_iface->cfg_eth.auto_mtu = 0;
+			knet_vty_write(vty, "Error: Unable to reset mtu on device %s%s",
+					tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+					return -1;
+		}
 	}
 
 	return 0;
@@ -1216,7 +1261,17 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	expected_mtu = param_to_int(param, paramlen);
 
+	/* disable mtu auto updates */
+	knet_iface->cfg_eth.auto_mtu = 0;
+
+	if ((knet_iface->cfg_ring.data_mtu) &&
+	    (expected_mtu > knet_iface->cfg_ring.data_mtu)) {
+		knet_vty_write(vty, "WARNING: Manually configured MTU (%d) is higher than automatically detected MTU (%d)%s",
+			       expected_mtu, knet_iface->cfg_ring.data_mtu, telnet_newline);
+	}
+
 	if (tap_set_mtu(knet_iface->cfg_eth.tap, expected_mtu) < 0) {
+		knet_iface->cfg_eth.auto_mtu = 1;
 		knet_vty_write(vty, "Error: Unable to set requested mtu %d on device %s%s",
 				expected_mtu, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
 				return -1;
@@ -1400,6 +1455,11 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	vty->iface = (void *)knet_iface;
 
+	/*
+	 * disable PTMUd notification before shutting down the tap device
+	 */
+	knet_handle_enable_pmtud_notify(knet_iface->cfg_ring.knet_h, NULL, NULL);
+
 	tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
 	if ((ip_list) && (ip_list_entries > 0)) {
 		for (i = 1; i <= ip_list_entries; i++) {
@@ -1505,6 +1565,21 @@ tap_found:
 	}
 
 	knet_handle_enable_filter(knet_iface->cfg_ring.knet_h, ether_host_filter_fn);
+
+	if (knet_handle_enable_pmtud_notify(knet_iface->cfg_ring.knet_h,
+					    knet_iface,
+					    knet_cmd_auto_mtu_notify) < 0) {
+		knet_vty_write(vty, "Error: Unable to configure auto mtu notification for device %s%s",
+				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+	knet_iface->cfg_eth.auto_mtu = 1;
+
+	/*
+	 * make this configurable
+	 */
+	knet_handle_pmtud_setfreq(knet_iface->cfg_ring.knet_h, 5);
 
 knet_found:
 	if (found) {
@@ -1661,7 +1736,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 							     knet_iface->cfg_eth.node_id,
 							     knet_iface->cfg_ring.base_port, nl);
 
-		knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
+		if (!knet_iface->cfg_eth.auto_mtu)
+			knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
 
 		tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
 		if ((ip_list) && (ip_list_entries > 0)) {
