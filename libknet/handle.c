@@ -208,14 +208,14 @@ static int _init_buffers(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	knet_h->tap_to_links_buf = malloc(KNET_DATABUFSIZE);
-	if (!knet_h->tap_to_links_buf) {
+	knet_h->send_to_links_buf = malloc(KNET_DATABUFSIZE);
+	if (!knet_h->send_to_links_buf) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory net_fd to link buffer: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
-	memset(knet_h->tap_to_links_buf, 0, KNET_DATABUFSIZE);
+	memset(knet_h->send_to_links_buf, 0, KNET_DATABUFSIZE);
 
 	knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE);
 	if (!knet_h->recv_from_links_buf) {
@@ -244,14 +244,14 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pmtudbuf, 0, KNET_PMTUD_SIZE_V6);
 
-	knet_h->tap_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->tap_to_links_buf_crypt) {
+	knet_h->send_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
+	if (!knet_h->send_to_links_buf_crypt) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for crypto net_fd to link buffer: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
-	memset(knet_h->tap_to_links_buf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
+	memset(knet_h->send_to_links_buf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
 
 	knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
 	if (!knet_h->recv_from_links_buf_crypt) {
@@ -289,8 +289,8 @@ exit_fail:
 
 static void _destroy_buffers(knet_handle_t knet_h)
 {
-	free(knet_h->tap_to_links_buf);
-	free(knet_h->tap_to_links_buf_crypt);
+	free(knet_h->send_to_links_buf);
+	free(knet_h->send_to_links_buf_crypt);
 	free(knet_h->recv_from_links_buf);
 	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);
@@ -304,8 +304,8 @@ static int _init_epolls(knet_handle_t knet_h)
 	struct epoll_event ev;
 	int savederrno = 0;
 
-	knet_h->tap_to_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
-	if (knet_h->tap_to_links_epollfd < 0) {
+	knet_h->send_to_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
+	if (knet_h->send_to_links_epollfd < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to create epoll net_fd to link fd: %s",
 			strerror(savederrno));
@@ -328,7 +328,7 @@ static int _init_epolls(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	if (_fdset_cloexec(knet_h->tap_to_links_epollfd)) {
+	if (_fdset_cloexec(knet_h->send_to_links_epollfd)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on net_fd to link epoll fd: %s",
 			strerror(savederrno)); 
@@ -353,7 +353,7 @@ static int _init_epolls(knet_handle_t knet_h)
 	ev.events = EPOLLIN;
 	ev.data.fd = knet_h->sockfd;
 
-	if (epoll_ctl(knet_h->tap_to_links_epollfd,
+	if (epoll_ctl(knet_h->send_to_links_epollfd,
 		      EPOLL_CTL_ADD, knet_h->sockfd, &ev)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add net_fd to link fd to epoll pool: %s",
@@ -365,7 +365,7 @@ static int _init_epolls(knet_handle_t knet_h)
 	ev.events = EPOLLIN;
 	ev.data.fd = knet_h->hostpipefd[0];
 
-	if (epoll_ctl(knet_h->tap_to_links_epollfd,
+	if (epoll_ctl(knet_h->send_to_links_epollfd,
 		      EPOLL_CTL_ADD, knet_h->hostpipefd[0], &ev)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add hostpipefd[0] to epoll pool: %s",
@@ -395,10 +395,10 @@ static void _close_epolls(knet_handle_t knet_h)
 {
 	struct epoll_event ev;
 
-	epoll_ctl(knet_h->tap_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd, &ev);
-	epoll_ctl(knet_h->tap_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostpipefd[0], &ev);
+	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd, &ev);
+	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostpipefd[0], &ev);
 	epoll_ctl(knet_h->dst_link_handler_epollfd, EPOLL_CTL_DEL, knet_h->dstpipefd[0], &ev);
-	close(knet_h->tap_to_links_epollfd);
+	close(knet_h->send_to_links_epollfd);
 	close(knet_h->recv_from_links_epollfd);
 	close(knet_h->dst_link_handler_epollfd);
 }
@@ -423,8 +423,8 @@ static int _start_threads(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	savederrno = pthread_create(&knet_h->tap_to_links_thread, 0,
-				    _handle_tap_to_links_thread, (void *) knet_h);
+	savederrno = pthread_create(&knet_h->send_to_links_thread, 0,
+				    _handle_send_to_links_thread, (void *) knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start net_fd to link thread: %s",
 			strerror(savederrno));
@@ -464,8 +464,8 @@ static void _stop_threads(knet_handle_t knet_h)
 	pthread_cancel(knet_h->heartbt_thread);
 	pthread_join(knet_h->heartbt_thread, &retval);
 
-	pthread_cancel(knet_h->tap_to_links_thread);
-	pthread_join(knet_h->tap_to_links_thread, &retval);
+	pthread_cancel(knet_h->send_to_links_thread);
+	pthread_join(knet_h->send_to_links_thread, &retval);
 
 	pthread_cancel(knet_h->recv_from_links_thread);
 	pthread_join(knet_h->recv_from_links_thread, &retval);

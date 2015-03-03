@@ -89,7 +89,7 @@ struct knet_handle {
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int hostpipefd[2];
 	int dstpipefd[2];
-	int tap_to_links_epollfd;
+	int send_to_links_epollfd;
 	int recv_from_links_epollfd;
 	int dst_link_handler_epollfd;
 	int pmtud_in_progress;
@@ -103,11 +103,11 @@ struct knet_handle {
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
-	struct knet_frame *tap_to_links_buf;
+	struct knet_frame *send_to_links_buf;
 	struct knet_frame *recv_from_links_buf;
 	struct knet_frame *pingbuf;
 	struct knet_frame *pmtudbuf;
-	pthread_t tap_to_links_thread;
+	pthread_t send_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;
 	pthread_t dst_link_handler_thread;
@@ -127,7 +127,7 @@ struct knet_handle {
 	uint16_t sec_block_size;
 	uint16_t sec_hash_size;
 	uint16_t sec_salt_size;
-	unsigned char *tap_to_links_buf_crypt;
+	unsigned char *send_to_links_buf_crypt;
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;

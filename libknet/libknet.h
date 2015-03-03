@@ -844,8 +844,8 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_LISTENER    3 /* listeners add/del/modify... */
 #define KNET_SUB_LINK        4 /* link add/del/modify */
 #define KNET_SUB_PMTUD       5 /* Path MTU Discovery */
-#define KNET_SUB_TAP_T       6 /* tap thread */
-#define KNET_SUB_LINK_T      7 /* link thread */
+#define KNET_SUB_SEND_T      6 /* send to link thread */
+#define KNET_SUB_LINK_T      7 /* recv from link thread */
 #define KNET_SUB_SWITCH_T    8 /* switching thread */
 #define KNET_SUB_HB_T        9 /* heartbeat thread */
 #define KNET_SUB_PMTUD_T    10 /* Path MTU Discovery thread */

@@ -32,7 +32,7 @@ static struct pretty_names subsystem_names[] =
 	{ "listener", KNET_SUB_LISTENER },
 	{ "link", KNET_SUB_LINK },
 	{ "pmtud", KNET_SUB_PMTUD },
-	{ "tap_t", KNET_SUB_TAP_T },
+	{ "send_t", KNET_SUB_SEND_T },
 	{ "link_t", KNET_SUB_LINK_T },
 	{ "hb_t", KNET_SUB_HB_T },
 	{ "switch_t", KNET_SUB_SWITCH_T },

@@ -32,7 +32,7 @@
 
 #define KNET_PING_TIMERES 200000
 
-static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
+static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t inlen = 0, len, outlen;
 	struct knet_host *dst_host;
@@ -40,23 +40,23 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
-	unsigned char *outbuf = (unsigned char *)knet_h->tap_to_links_buf;
+	unsigned char *outbuf = (unsigned char *)knet_h->send_to_links_buf;
 	struct knet_hinfo_data *knet_hinfo_data;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get read lock");
+		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
 		goto host_unlock;
 	}
 
-	inlen = read(sockfd, knet_h->tap_to_links_buf->kf_data, KNET_MAX_PACKET_SIZE);
+	inlen = read(sockfd, knet_h->send_to_links_buf->kf_data, KNET_MAX_PACKET_SIZE);
 
 	if (inlen < 0) {
-		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error: %s", strerror(errno));
+		log_err(knet_h, KNET_SUB_SEND_T, "Unrecoverable error: %s", strerror(errno));
 		goto out_unlock;
 	}
 
 	if (inlen == 0) {
-		log_err(knet_h, KNET_SUB_TAP_T, "Unrecoverable error! Got 0 bytes from tap device!");
+		log_err(knet_h, KNET_SUB_SEND_T, "Unrecoverable error! Got 0 bytes from socket!");
 		/* TODO: disconnection, should never happen! */
 		goto out_unlock;
 	}
@@ -64,33 +64,33 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 	outlen = len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
 
 	if ((knet_h->enabled != 1) &&
-	    (knet_h->tap_to_links_buf->kf_type != KNET_FRAME_HOST_INFO)) { /* data forward is disabled */
-		log_debug(knet_h, KNET_SUB_TAP_T, "Received data packet but forwarding is disabled");
+	    (knet_h->send_to_links_buf->kf_type != KNET_FRAME_HOST_INFO)) { /* data forward is disabled */
+		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
 		goto out_unlock;
 	}
 
-	switch(knet_h->tap_to_links_buf->kf_type) {
+	switch(knet_h->send_to_links_buf->kf_type) {
 		case KNET_FRAME_DATA:
 			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
-						(const unsigned char *)knet_h->tap_to_links_buf->kf_data,
+						(const unsigned char *)knet_h->send_to_links_buf->kf_data,
 						inlen,
-						knet_h->tap_to_links_buf->kf_node,
+						knet_h->send_to_links_buf->kf_node,
 						dst_host_ids,
 						&dst_host_ids_entries);
 				if (bcast < 0) {
-					log_debug(knet_h, KNET_SUB_TAP_T, "Error from dst_host_filter_fn: %d", bcast);
+					log_debug(knet_h, KNET_SUB_SEND_T, "Error from dst_host_filter_fn: %d", bcast);
 					goto out_unlock;
 				}
 
 				if ((!bcast) && (!dst_host_ids_entries)) {
-					log_debug(knet_h, KNET_SUB_TAP_T, "Message is unicast but no dst_host_ids_entries");
+					log_debug(knet_h, KNET_SUB_SEND_T, "Message is unicast but no dst_host_ids_entries");
 					goto out_unlock;
 				}
 			}
 			break;
 		case KNET_FRAME_HOST_INFO:
-			knet_hinfo_data = (struct knet_hinfo_data *)knet_h->tap_to_links_buf->kf_data;
+			knet_hinfo_data = (struct knet_hinfo_data *)knet_h->send_to_links_buf->kf_data;
 			if (!knet_hinfo_data->khd_bcast) {
 				bcast = 0;
 				dst_host_ids[0] = ntohs(knet_hinfo_data->khd_dst_node_id);
@@ -98,7 +98,7 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 			}
 			break;
 		default:
-			log_warn(knet_h, KNET_SUB_TAP_T, "Receiving unknown messages from tap");
+			log_warn(knet_h, KNET_SUB_SEND_T, "Receiving unknown messages from socket");
 			goto out_unlock;
 			break;
 	}
@@ -109,22 +109,22 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
 			if (!dst_host) {
-				log_debug(knet_h, KNET_SUB_TAP_T, "unicast packet, host not found");
+				log_debug(knet_h, KNET_SUB_SEND_T, "unicast packet, host not found");
 				continue;
 			}
 
-			knet_h->tap_to_links_buf->kf_seq_num = htons(++dst_host->ucast_seq_num_tx);
+			knet_h->send_to_links_buf->kf_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
 			if (knet_h->crypto_instance) {
 				if (crypto_encrypt_and_sign(knet_h,
-						    (const unsigned char *)knet_h->tap_to_links_buf,
+						    (const unsigned char *)knet_h->send_to_links_buf,
 						    len,
-						    knet_h->tap_to_links_buf_crypt,
+						    knet_h->send_to_links_buf_crypt,
 						    &outlen) < 0) {
-					log_debug(knet_h, KNET_SUB_TAP_T, "Unable to encrypt unicast packet");
+					log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
 					goto out_unlock;
 				}
-				outbuf = knet_h->tap_to_links_buf_crypt;
+				outbuf = knet_h->send_to_links_buf_crypt;
 			}
 
 			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
@@ -145,18 +145,18 @@ static void _handle_tap_to_links(knet_handle_t knet_h, int sockfd)
 			}
 		}
 	} else {
-		knet_h->tap_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
+		knet_h->send_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
-					    (const unsigned char *)knet_h->tap_to_links_buf,
+					    (const unsigned char *)knet_h->send_to_links_buf,
 					    len,
-					    knet_h->tap_to_links_buf_crypt,
+					    knet_h->send_to_links_buf_crypt,
 					    &outlen) < 0) {
-				log_debug(knet_h, KNET_SUB_TAP_T, "Unable to encrypt mcast/bcast packet");
+				log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt mcast/bcast packet");
 				goto out_unlock;
 			}
-			outbuf = knet_h->tap_to_links_buf_crypt;
+			outbuf = knet_h->send_to_links_buf_crypt;
 		}
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
@@ -183,9 +183,9 @@ out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 host_unlock:
-	if ((inlen > 0) && (knet_h->tap_to_links_buf->kf_type == KNET_FRAME_HOST_INFO)) {
+	if ((inlen > 0) && (knet_h->send_to_links_buf->kf_type == KNET_FRAME_HOST_INFO)) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
-			log_debug(knet_h, KNET_SUB_TAP_T, "Unable to get mutex lock");
+			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);
 		pthread_mutex_unlock(&knet_h->host_mutex);
 	}
@@ -672,26 +672,26 @@ void *_handle_heartbt_thread(void *data)
 	return NULL;
 }
 
-void *_handle_tap_to_links_thread(void *data)
+void *_handle_send_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 	int i, nev;
 
 	/* preparing data buffer */
-	knet_h->tap_to_links_buf->kf_version = KNET_FRAME_VERSION;
-	knet_h->tap_to_links_buf->kf_node = htons(knet_h->host_id);
+	knet_h->send_to_links_buf->kf_version = KNET_FRAME_VERSION;
+	knet_h->send_to_links_buf->kf_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {
-		nev = epoll_wait(knet_h->tap_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
+		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sockfd) {
-				knet_h->tap_to_links_buf->kf_type = KNET_FRAME_DATA;
+				knet_h->send_to_links_buf->kf_type = KNET_FRAME_DATA;
 			} else {
-				knet_h->tap_to_links_buf->kf_type = KNET_FRAME_HOST_INFO;
+				knet_h->send_to_links_buf->kf_type = KNET_FRAME_HOST_INFO;
 			}
-			_handle_tap_to_links(knet_h, events[i].data.fd);
+			_handle_send_to_links(knet_h, events[i].data.fd);
 		}
 	}
 
