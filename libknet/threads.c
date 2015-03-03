@@ -617,10 +617,10 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			MSG_DONTWAIT, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 
-		if (len == outlen) {
-			dst_link->ping_last = clock_now;
-		} else {
-			log_debug(knet_h, KNET_SUB_HB_T, "Unable to send ping packet");
+		dst_link->ping_last = clock_now;
+
+		if (len != outlen) {
+			log_debug(knet_h, KNET_SUB_HB_T, "Unable to send ping packet (sendto): %d %s", errno, strerror(errno));
 		}
 	}
 
