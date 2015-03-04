@@ -852,6 +852,7 @@ restart:
 
 	if ((len < 0) && (savederrno != EMSGSIZE)) {
 		log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		return;
 	}
 
