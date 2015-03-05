@@ -1220,7 +1220,10 @@ static void knet_cmd_auto_mtu_notify(void *private_data,
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)private_data;
 
-	knet_iface->cfg_ring.data_mtu = data_mtu;
+	/*
+	 * 48 is the magic number! yes it is.. it's the magic number...
+	 */
+	knet_iface->cfg_ring.data_mtu = data_mtu - 48;
 
 	if (!knet_iface->cfg_eth.auto_mtu) {
 		int mtu = 0;
