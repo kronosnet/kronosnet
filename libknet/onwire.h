@@ -72,9 +72,9 @@ struct knet_header_payload_ping {
 }  __attribute__((packed));
 
 struct knet_header_payload_pmtud {
-	uint8_t		kfd_link;
-	uint16_t	kfd_pmtud_size;
-	uint8_t		kfd_data[0];
+	uint8_t		khp_pmtud_link;		/* source link id */
+	uint16_t	khp_pmtud_size;		/* size of the current packet */
+	uint8_t		khp_pmtud_data[0];	/* pointer to empty/random data/fill buffer */
 } __attribute__((packed));
 
 /*
@@ -116,9 +116,9 @@ struct knet_header {
 #define kf_time    kh_payload.khp_ping.kfd_time
 #define kf_dyn     kh_payload.khp_ping.kfd_dyn
 
-#define kf_plink   kh_payload.khp_pmtud.kfd_link
-#define kf_psize   kh_payload.khp_pmtud.kfd_pmtud_size
-#define kf_pdata   kh_payload.khp_pmtud.kfd_data
+#define kf_plink   kh_payload.khp_pmtud.khp_pmtud_link
+#define kf_psize   kh_payload.khp_pmtud.khp_pmtud_size
+#define kf_pdata   kh_payload.khp_pmtud.khp_pmtud_data
 
 #define KNET_PING_SIZE sizeof(struct knet_header)
 #define KNET_FRAME_SIZE (sizeof(struct knet_header) - sizeof(union knet_header_payload))
