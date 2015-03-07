@@ -98,10 +98,10 @@ struct knet_handle {
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
-	struct knet_frame *send_to_links_buf;
-	struct knet_frame *recv_from_links_buf;
-	struct knet_frame *pingbuf;
-	struct knet_frame *pmtudbuf;
+	struct knet_header *send_to_links_buf;
+	struct knet_header *recv_from_links_buf;
+	struct knet_header *pingbuf;
+	struct knet_header *pmtudbuf;
 	pthread_t send_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;

@@ -62,20 +62,20 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	if ((knet_h->enabled != 1) &&
-	    (knet_h->send_to_links_buf->kf_type != KNET_FRAME_TYPE_HOST_INFO)) { /* data forward is disabled */
+	    (knet_h->send_to_links_buf->kh_type != KNET_FRAME_TYPE_HOST_INFO)) { /* data forward is disabled */
 		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
 		goto out_unlock;
 	}
 
 	outlen = len = inlen + KNET_FRAME_DATA_SIZE;
 
-	switch(knet_h->send_to_links_buf->kf_type) {
+	switch(knet_h->send_to_links_buf->kh_type) {
 		case KNET_FRAME_TYPE_DATA:
 			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
 						(const unsigned char *)knet_h->send_to_links_buf->kf_data,
 						inlen,
-						knet_h->send_to_links_buf->kf_node,
+						knet_h->send_to_links_buf->kh_node,
 						dst_host_ids,
 						&dst_host_ids_entries);
 				if (bcast < 0) {
@@ -183,7 +183,7 @@ out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 host_unlock:
-	if ((inlen > 0) && (knet_h->send_to_links_buf->kf_type == KNET_FRAME_TYPE_HOST_INFO)) {
+	if ((inlen > 0) && (knet_h->send_to_links_buf->kh_type == KNET_FRAME_TYPE_HOST_INFO)) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);
@@ -229,13 +229,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		goto exit_unlock;
 	}
 
-	if (knet_h->recv_from_links_buf->kf_version != KNET_FRAME_VERSION) {
+	if (knet_h->recv_from_links_buf->kh_version != KNET_FRAME_VERSION) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Packet version does not match");
 		goto exit_unlock;
 	}
 
-	knet_h->recv_from_links_buf->kf_node = ntohs(knet_h->recv_from_links_buf->kf_node);
-	src_host = knet_h->host_index[knet_h->recv_from_links_buf->kf_node];
+	knet_h->recv_from_links_buf->kh_node = ntohs(knet_h->recv_from_links_buf->kh_node);
+	src_host = knet_h->host_index[knet_h->recv_from_links_buf->kh_node];
 	if (src_host == NULL) {  /* host not found */
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to find source host for this packet");
 		goto exit_unlock;
@@ -243,7 +243,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 	src_link = NULL;
 
-	if ((knet_h->recv_from_links_buf->kf_type & KNET_FRAME_TYPE_PMSK) != 0) {
+	if ((knet_h->recv_from_links_buf->kh_type & KNET_FRAME_TYPE_PMSK) != 0) {
 		src_link = src_host->link +
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
@@ -264,7 +264,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 	}
 
-	switch (knet_h->recv_from_links_buf->kf_type) {
+	switch (knet_h->recv_from_links_buf->kh_type) {
 	case KNET_FRAME_TYPE_DATA:
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
@@ -278,7 +278,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			bcast = knet_h->dst_host_filter_fn(
 					(const unsigned char *)knet_h->recv_from_links_buf->kf_data,
 					len,
-					knet_h->recv_from_links_buf->kf_node,
+					knet_h->recv_from_links_buf->kh_node,
 					dst_host_ids,
 					&dst_host_ids_entries);
 			if (bcast < 0) {
@@ -324,8 +324,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_TYPE_PING:
 		outlen = KNET_PING_SIZE;
-		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_TYPE_PONG;
-		knet_h->recv_from_links_buf->kf_node = htons(knet_h->host_id);
+		knet_h->recv_from_links_buf->kh_type = KNET_FRAME_TYPE_PONG;
+		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -374,8 +374,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_FRAME_TYPE_PMTUD:
 		outlen = KNET_PING_SIZE;
-		knet_h->recv_from_links_buf->kf_type = KNET_FRAME_TYPE_PMTUD_REPLY;
-		knet_h->recv_from_links_buf->kf_node = htons(knet_h->host_id);
+		knet_h->recv_from_links_buf->kh_type = KNET_FRAME_TYPE_PMTUD_REPLY;
+		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -644,9 +644,9 @@ void *_handle_heartbt_thread(void *data)
 	int link_idx;
 
 	/* preparing ping buffer */
-	knet_h->pingbuf->kf_version = KNET_FRAME_VERSION;
-	knet_h->pingbuf->kf_type = KNET_FRAME_TYPE_PING;
-	knet_h->pingbuf->kf_node = htons(knet_h->host_id);
+	knet_h->pingbuf->kh_version = KNET_FRAME_VERSION;
+	knet_h->pingbuf->kh_type = KNET_FRAME_TYPE_PING;
+	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {
 		usleep(KNET_PING_TIMERES);
@@ -679,17 +679,17 @@ void *_handle_send_to_links_thread(void *data)
 	int i, nev;
 
 	/* preparing data buffer */
-	knet_h->send_to_links_buf->kf_version = KNET_FRAME_VERSION;
-	knet_h->send_to_links_buf->kf_node = htons(knet_h->host_id);
+	knet_h->send_to_links_buf->kh_version = KNET_FRAME_VERSION;
+	knet_h->send_to_links_buf->kh_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {
 		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sockfd) {
-				knet_h->send_to_links_buf->kf_type = KNET_FRAME_TYPE_DATA;
+				knet_h->send_to_links_buf->kh_type = KNET_FRAME_TYPE_DATA;
 			} else {
-				knet_h->send_to_links_buf->kf_type = KNET_FRAME_TYPE_HOST_INFO;
+				knet_h->send_to_links_buf->kh_type = KNET_FRAME_TYPE_HOST_INFO;
 			}
 			_handle_send_to_links(knet_h, events[i].data.fd);
 		}
@@ -941,9 +941,9 @@ void *_handle_pmtud_link_thread(void *data)
 	unsigned int old_interval;
 
 	/* preparing pmtu buffer */
-	knet_h->pmtudbuf->kf_version = KNET_FRAME_VERSION;
-	knet_h->pmtudbuf->kf_type = KNET_FRAME_TYPE_PMTUD;
-	knet_h->pmtudbuf->kf_node = htons(knet_h->host_id);
+	knet_h->pmtudbuf->kh_version = KNET_FRAME_VERSION;
+	knet_h->pmtudbuf->kh_type = KNET_FRAME_TYPE_PMTUD;
+	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {
 		/*
