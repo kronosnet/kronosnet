@@ -52,20 +52,33 @@ struct knet_hinfo_data {			/* this is sent in kf_data */
 	union knet_hinfo_dtype  khd_dype;
 } __attribute__((packed));
 
+/*
+ * typedef uint64_t seq_num_t;
+ * #define SEQ_MAX UINT64_MAX
+ */
+typedef uint16_t seq_num_t;
+#define SEQ_MAX UINT16_MAX
+
+struct kfd_data {
+	seq_num_t	kfd_seq_num;
+	uint8_t		kfd_data[0];
+} __attribute__((packed));
+
+struct kfd_ping {
+	uint8_t		kfd_link;
+	uint32_t	kfd_time[4];
+}  __attribute__((packed));
+
+struct kfd_pmtud {
+	uint8_t		kfd_link;
+	uint16_t	kfd_pmtud_size;
+	uint8_t		kfd_data[0];
+} __attribute__((packed));
+
 union knet_frame_data {
-	struct {
-		seq_num_t	kfd_seq_num;
-		uint8_t		kfd_data[0];
-	} data __attribute__((packed));
-	struct {
-		uint8_t		kfd_link;
-		uint32_t	kfd_time[4];
-	} ping __attribute__((packed));
-	struct {
-		uint8_t		kfd_link;
-		uint16_t	kfd_pmtud_size;
-		uint8_t		kfd_data[0];
-	} pmtud __attribute__((packed));
+	struct kfd_data data;
+	struct kfd_ping ping;
+	struct kfd_pmtud pmtud;
 } __attribute__((packed));
 
 struct knet_frame {
@@ -86,6 +99,7 @@ struct knet_frame {
 
 #define KNET_PING_SIZE sizeof(struct knet_frame)
 #define KNET_FRAME_SIZE (sizeof(struct knet_frame) - sizeof(union knet_frame_data))
+#define KNET_FRAME_DATA_SIZE KNET_FRAME_SIZE + sizeof(struct kfd_data)
 
 /* taken from tracepath6 */
 #define KNET_PMTUD_SIZE_V4 65535

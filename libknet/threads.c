@@ -61,13 +61,13 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		goto out_unlock;
 	}
 
-	outlen = len = inlen + KNET_FRAME_SIZE + sizeof(seq_num_t);
-
 	if ((knet_h->enabled != 1) &&
 	    (knet_h->send_to_links_buf->kf_type != KNET_FRAME_HOST_INFO)) { /* data forward is disabled */
 		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
 		goto out_unlock;
 	}
+
+	outlen = len = inlen + KNET_FRAME_DATA_SIZE;
 
 	switch(knet_h->send_to_links_buf->kf_type) {
 		case KNET_FRAME_DATA:
@@ -315,7 +315,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (write(knet_h->sockfd,
 			  knet_h->recv_from_links_buf->kf_data,
-			  len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) == len - (KNET_FRAME_SIZE + sizeof(seq_num_t))) {
+			  len - KNET_FRAME_DATA_SIZE) == len - KNET_FRAME_DATA_SIZE) {
 			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
 		} else {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");

@@ -15,8 +15,9 @@
  */
 
 #include "libknet.h"
+#include "onwire.h"
 
-#define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_FRAME_SIZE + sizeof(seq_num_t)
+#define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_FRAME_DATA_SIZE
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
 struct knet_listener {
@@ -56,12 +57,6 @@ struct knet_link {
 };
 
 #define KNET_CBUFFER_SIZE 4096
-/*
-typedef uint64_t seq_num_t;
-#define SEQ_MAX UINT64_MAX
-*/
-typedef uint16_t seq_num_t;
-#define SEQ_MAX UINT16_MAX
 
 struct knet_host {
 	/* required */
