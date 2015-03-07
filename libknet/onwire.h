@@ -81,9 +81,9 @@ struct knet_header_payload_pmtud {
  */
 
 union knet_header_payload {
-	struct knet_header_payload_data		khp_data;
-	struct knet_header_payload_ping		khp_ping;
-	struct knet_header_payload_pmtud 	khp_pmtud;
+	struct knet_header_payload_data		khp_data;  /* pure data packet struct */
+	struct knet_header_payload_ping		khp_ping;  /* heartbeat packet struct */
+	struct knet_header_payload_pmtud 	khp_pmtud; /* Path MTU discovery packet struct */
 } __attribute__((packed));
 
 /*
