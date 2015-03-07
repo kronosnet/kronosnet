@@ -23,7 +23,7 @@
 #include "host.h"
 
 int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-		 int enabled, int connected)
+		 unsigned int enabled, unsigned int connected)
 {
 	int savederrno = 0, err = 0;
 	struct knet_link *link = &knet_h->host_index[host_id]->link[link_id];
@@ -240,7 +240,7 @@ exit_unlock:
 }
 
 int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			 int enabled)
+			 unsigned int enabled)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
@@ -360,7 +360,7 @@ exit_unlock:
 }
 
 int knet_link_get_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			 int *enabled)
+			 unsigned int *enabled)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;

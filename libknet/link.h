@@ -17,6 +17,6 @@
 #define KNET_LINK_DEFAULT_PONG_COUNT 5
 
 int _link_updown(knet_handle_t knet_h, uint16_t node_id, uint8_t link_id,
-		 int enabled, int connected);
+		 unsigned int enabled, unsigned int connected);
 
 #endif

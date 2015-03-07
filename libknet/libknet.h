@@ -591,7 +591,7 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  */
 
 int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			 int enabled);
+			 unsigned int enabled);
 
 /*
  * knet_link_get_enable
@@ -611,7 +611,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  */
 
 int knet_link_get_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			 int *enabled);
+			 unsigned int *enabled);
 
 /*
  * knet_link_set_pong_count
