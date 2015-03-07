@@ -60,26 +60,30 @@ struct knet_hinfo_data {			/* this is sent in kf_data */
 typedef uint16_t seq_num_t;
 #define SEQ_MAX UINT16_MAX
 
-struct kfd_data {
+struct knet_header_payload_data {
 	seq_num_t	kfd_seq_num;
 	uint8_t		kfd_data[0];
 } __attribute__((packed));
 
-struct kfd_ping {
+struct knet_header_payload_ping {
 	uint8_t		kfd_link;
 	uint32_t	kfd_time[4];
 }  __attribute__((packed));
 
-struct kfd_pmtud {
+struct knet_header_payload_pmtud {
 	uint8_t		kfd_link;
 	uint16_t	kfd_pmtud_size;
 	uint8_t		kfd_data[0];
 } __attribute__((packed));
 
+/*
+ * union to reference possible individual payloads
+ */
+
 union knet_header_payload {
-	struct kfd_data data;
-	struct kfd_ping ping;
-	struct kfd_pmtud pmtud;
+	struct knet_header_payload_data		khp_data;
+	struct knet_header_payload_ping		khp_ping;
+	struct knet_header_payload_pmtud 	khp_pmtud;
 } __attribute__((packed));
 
 /*
@@ -104,20 +108,20 @@ struct knet_header {
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 
-#define kf_seq_num kh_payload.data.kfd_seq_num
-#define kf_data    kh_payload.data.kfd_data
+#define kf_seq_num kh_payload.khp_data.kfd_seq_num
+#define kf_data    kh_payload.khp_data.kfd_data
 
-#define kf_link    kh_payload.ping.kfd_link
-#define kf_time    kh_payload.ping.kfd_time
-#define kf_dyn     kh_payload.ping.kfd_dyn
+#define kf_link    kh_payload.khp_ping.kfd_link
+#define kf_time    kh_payload.khp_ping.kfd_time
+#define kf_dyn     kh_payload.khp_ping.kfd_dyn
 
-#define kf_plink   kh_payload.pmtud.kfd_link
-#define kf_psize   kh_payload.pmtud.kfd_pmtud_size
-#define kf_pdata   kh_payload.pmtud.kfd_data
+#define kf_plink   kh_payload.khp_pmtud.kfd_link
+#define kf_psize   kh_payload.khp_pmtud.kfd_pmtud_size
+#define kf_pdata   kh_payload.khp_pmtud.kfd_data
 
 #define KNET_PING_SIZE sizeof(struct knet_header)
 #define KNET_FRAME_SIZE (sizeof(struct knet_header) - sizeof(union knet_header_payload))
-#define KNET_FRAME_DATA_SIZE KNET_FRAME_SIZE + sizeof(struct kfd_data)
+#define KNET_FRAME_DATA_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_data)
 
 /* taken from tracepath6 */
 #define KNET_PMTUD_SIZE_V4 65535
