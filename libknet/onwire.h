@@ -11,7 +11,8 @@
 #define __ONWIRE_H__
 
 /*
- * data structures to define network packets
+ * data structures to define network packets.
+ * Start from knet_header at the bottom
  */
 
 #include <stdint.h>
