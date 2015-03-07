@@ -76,7 +76,7 @@ struct kfd_pmtud {
 	uint8_t		kfd_data[0];
 } __attribute__((packed));
 
-union knet_frame_data {
+union knet_header_payload {
 	struct kfd_data data;
 	struct kfd_ping ping;
 	struct kfd_pmtud pmtud;
@@ -98,10 +98,10 @@ union knet_frame_data {
 #define KNET_FRAME_TYPE_PMTUD_REPLY 0x84 /* reply from remote host */
 
 struct knet_header {
-	uint8_t			kh_version; /* pckt format/version */
-	uint8_t			kh_type;    /* from above defines. Tells what kind of pckt it is */
-	uint16_t		kh_node;    /* host id of the source host for this pckt */
-	union knet_frame_data	kh_payload; /* union of potential data struct based on kh_type */
+	uint8_t				kh_version; /* pckt format/version */
+	uint8_t				kh_type;    /* from above defines. Tells what kind of pckt it is */
+	uint16_t			kh_node;    /* host id of the source host for this pckt */
+	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 
 #define kf_seq_num kh_payload.data.kfd_seq_num
@@ -116,7 +116,7 @@ struct knet_header {
 #define kf_pdata   kh_payload.pmtud.kfd_data
 
 #define KNET_PING_SIZE sizeof(struct knet_header)
-#define KNET_FRAME_SIZE (sizeof(struct knet_header) - sizeof(union knet_frame_data))
+#define KNET_FRAME_SIZE (sizeof(struct knet_header) - sizeof(union knet_header_payload))
 #define KNET_FRAME_DATA_SIZE KNET_FRAME_SIZE + sizeof(struct kfd_data)
 
 /* taken from tracepath6 */
