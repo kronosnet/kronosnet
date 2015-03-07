@@ -12,9 +12,6 @@
 
 #include <stdint.h>
 
-#define KNET_HOST_INFO_LINK_UP_DOWN 0
-#define KNET_HOST_INFO_LINK_TABLE   1
-
 #if 0
 struct knet_hinfo_link {
 	uint8_t			khl_link_id;
@@ -90,9 +87,11 @@ struct knet_frame {
 
 #define kf_seq_num kf_payload.data.kfd_seq_num
 #define kf_data    kf_payload.data.kfd_data
+
 #define kf_link    kf_payload.ping.kfd_link
 #define kf_time    kf_payload.ping.kfd_time
 #define kf_dyn     kf_payload.ping.kfd_dyn
+
 #define kf_plink   kf_payload.pmtud.kfd_link
 #define kf_psize   kf_payload.pmtud.kfd_pmtud_size
 #define kf_pdata   kf_payload.pmtud.kfd_data
@@ -111,12 +110,16 @@ struct knet_frame {
 
 #define KNET_FRAME_VERSION 0x01
 
-#define KNET_FRAME_DATA        0x00
-#define KNET_FRAME_HOST_INFO   0x01
-#define KNET_FRAME_PING        0x81
-#define KNET_FRAME_PONG        0x82
-#define KNET_FRAME_PMTUD       0x83
-#define KNET_FRAME_PMTUD_REPLY 0x84
-#define KNET_FRAME_PMSK        0x80 /* ping/pong packet mask */
+#define KNET_FRAME_TYPE_DATA        0x00
+#define KNET_FRAME_TYPE_HOST_INFO   0x01
+
+#define KNET_FRAME_TYPE_PMSK        0x80 /* ping/pong packet mask */
+#define KNET_FRAME_TYPE_PING        0x81
+#define KNET_FRAME_TYPE_PONG        0x82
+#define KNET_FRAME_TYPE_PMTUD       0x83
+#define KNET_FRAME_TYPE_PMTUD_REPLY 0x84
+
+#define KNET_HOST_INFO_LINK_UP_DOWN 0
+#define KNET_HOST_INFO_LINK_TABLE   1
 
 #endif
