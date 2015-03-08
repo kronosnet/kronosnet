@@ -121,6 +121,8 @@ struct knet_header {
 
 #define KNET_PING_SIZE sizeof(struct knet_header)
 #define KNET_FRAME_SIZE (sizeof(struct knet_header) - sizeof(union knet_header_payload))
+#define KNET_FRAME_PING_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_ping)
+#define KNET_FRAME_PMTUD_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_pmtud)
 #define KNET_FRAME_DATA_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_data)
 
 /* taken from tracepath6 */
