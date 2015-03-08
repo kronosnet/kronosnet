@@ -18,6 +18,11 @@
 #include <stdint.h>
 
 #if 0
+
+/*
+ * for future protocol extension (re-switching table calculation)
+ */
+
 struct knet_hinfo_link {
 	uint8_t			khl_link_id;
 	uint8_t			khl_link_dynamic;
