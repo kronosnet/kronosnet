@@ -67,8 +67,8 @@ struct knet_header_payload_data {
 } __attribute__((packed));
 
 struct knet_header_payload_ping {
-	uint8_t		kfd_link;
-	uint32_t	kfd_time[4];
+	uint8_t		khp_ping_link;		/* source link id */
+	uint32_t	khp_ping_time[4];	/* ping timestamp */
 }  __attribute__((packed));
 
 struct knet_header_payload_pmtud {
@@ -112,9 +112,8 @@ struct knet_header {
 #define kf_seq_num kh_payload.khp_data.kfd_seq_num
 #define kf_data    kh_payload.khp_data.kfd_data
 
-#define kf_link    kh_payload.khp_ping.kfd_link
-#define kf_time    kh_payload.khp_ping.kfd_time
-#define kf_dyn     kh_payload.khp_ping.kfd_dyn
+#define kf_link    kh_payload.khp_ping.khp_ping_link
+#define kf_time    kh_payload.khp_ping.khp_ping_time
 
 #define kf_plink   kh_payload.khp_pmtud.khp_pmtud_link
 #define kf_psize   kh_payload.khp_pmtud.khp_pmtud_size
