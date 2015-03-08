@@ -32,19 +32,20 @@ struct knet_hinfo_link_table {
 	uint8_t			khlt_local; /* we have this node connected locally */
 	struct knet_hinfo_link	khlt_link[KNET_MAX_LINK]; /* info we send about each link in the node */
 } __attribute__((packed));
+
+struct link_table {
+	uint16_t	khdt_host_entries;
+	uint8_t		khdt_host_maps[0]; /* array of knet_hinfo_link_table[khdt_host_entries] */
+} __attribute__((packed));
 #endif
 
+struct link_up_down {
+	uint8_t		khdt_link_id;
+	uint8_t		khdt_link_status;
+} __attribute__((packed));
+
 union knet_hinfo_dtype {
-	struct {
-		uint8_t		khdt_link_id;
-		uint8_t		khdt_link_status;
-	} link_up_down;
-#if 0
-	struct {
-		uint16_t	khdt_host_entries;
-		uint8_t		khdt_host_maps[0]; /* array of knet_hinfo_link_table[khdt_host_entries] */
-	} link_table __attribute__((packed));
-#endif
+	struct link_up_down link_up_down;
 } __attribute__((packed));
 
 struct knet_hinfo_data {			/* this is sent in kf_data */
