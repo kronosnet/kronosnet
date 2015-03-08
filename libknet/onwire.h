@@ -62,8 +62,8 @@ typedef uint16_t seq_num_t;
 #define SEQ_MAX UINT16_MAX
 
 struct knet_header_payload_data {
-	seq_num_t	kfd_seq_num;
-	uint8_t		kfd_data[0];
+	seq_num_t	khp_data_seq_num;	/* pckt seq number used to deduplicate pkcts */
+	uint8_t		khp_data_userdata[0];	/* pointer to the real user data */
 } __attribute__((packed));
 
 struct knet_header_payload_ping {
@@ -109,8 +109,8 @@ struct knet_header {
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 
-#define kf_seq_num kh_payload.khp_data.kfd_seq_num
-#define kf_data    kh_payload.khp_data.kfd_data
+#define kf_seq_num kh_payload.khp_data.khp_data_seq_num
+#define kf_data    kh_payload.khp_data.khp_data_userdata
 
 #define kf_link    kh_payload.khp_ping.khp_ping_link
 #define kf_time    kh_payload.khp_ping.khp_ping_time
