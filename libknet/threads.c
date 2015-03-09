@@ -62,7 +62,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	if ((knet_h->enabled != 1) &&
-	    (knet_h->send_to_links_buf->kh_type != KNET_FRAME_TYPE_HOST_INFO)) { /* data forward is disabled */
+	    (knet_h->send_to_links_buf->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
 		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
 		goto out_unlock;
 	}
@@ -70,7 +70,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	outlen = len = inlen + KNET_FRAME_DATA_SIZE;
 
 	switch(knet_h->send_to_links_buf->kh_type) {
-		case KNET_FRAME_TYPE_DATA:
+		case KNET_HEADER_TYPE_DATA:
 			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
 						(const unsigned char *)knet_h->send_to_links_buf->kf_data,
@@ -89,7 +89,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 				}
 			}
 			break;
-		case KNET_FRAME_TYPE_HOST_INFO:
+		case KNET_HEADER_TYPE_HOST_INFO:
 			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf->kf_data;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
@@ -183,7 +183,7 @@ out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 host_unlock:
-	if ((inlen > 0) && (knet_h->send_to_links_buf->kh_type == KNET_FRAME_TYPE_HOST_INFO)) {
+	if ((inlen > 0) && (knet_h->send_to_links_buf->kh_type == KNET_HEADER_TYPE_HOST_INFO)) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);
@@ -229,7 +229,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		goto exit_unlock;
 	}
 
-	if (knet_h->recv_from_links_buf->kh_version != KNET_FRAME_VERSION) {
+	if (knet_h->recv_from_links_buf->kh_version != KNET_HEADER_VERSION) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Packet version does not match");
 		goto exit_unlock;
 	}
@@ -243,7 +243,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 	src_link = NULL;
 
-	if ((knet_h->recv_from_links_buf->kh_type & KNET_FRAME_TYPE_PMSK) != 0) {
+	if ((knet_h->recv_from_links_buf->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
 		src_link = src_host->link +
 				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
@@ -265,7 +265,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	switch (knet_h->recv_from_links_buf->kh_type) {
-	case KNET_FRAME_TYPE_DATA:
+	case KNET_HEADER_TYPE_DATA:
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
@@ -322,9 +322,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		break;
-	case KNET_FRAME_TYPE_PING:
+	case KNET_HEADER_TYPE_PING:
 		outlen = KNET_PING_SIZE;
-		knet_h->recv_from_links_buf->kh_type = KNET_FRAME_TYPE_PONG;
+		knet_h->recv_from_links_buf->kh_type = KNET_HEADER_TYPE_PONG;
 		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
@@ -344,7 +344,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				sizeof(struct sockaddr_storage));
 
 		break;
-	case KNET_FRAME_TYPE_PONG:
+	case KNET_HEADER_TYPE_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
 		memcpy(&recvtime, &knet_h->recv_from_links_buf->kf_time[0], sizeof(struct timespec));
@@ -372,9 +372,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		break;
-	case KNET_FRAME_TYPE_PMTUD:
+	case KNET_HEADER_TYPE_PMTUD:
 		outlen = KNET_PING_SIZE;
-		knet_h->recv_from_links_buf->kh_type = KNET_FRAME_TYPE_PMTUD_REPLY;
+		knet_h->recv_from_links_buf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
 		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
@@ -394,7 +394,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				sizeof(struct sockaddr_storage));
 
 		break;
-	case KNET_FRAME_TYPE_PMTUD_REPLY:
+	case KNET_HEADER_TYPE_PMTUD_REPLY:
 		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get mutex lock");
 			break;
@@ -403,7 +403,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
-	case KNET_FRAME_TYPE_HOST_INFO:
+	case KNET_HEADER_TYPE_HOST_INFO:
 		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf->kf_data;
 		if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 			knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
@@ -644,8 +644,8 @@ void *_handle_heartbt_thread(void *data)
 	int link_idx;
 
 	/* preparing ping buffer */
-	knet_h->pingbuf->kh_version = KNET_FRAME_VERSION;
-	knet_h->pingbuf->kh_type = KNET_FRAME_TYPE_PING;
+	knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
+	knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
 	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {
@@ -679,7 +679,7 @@ void *_handle_send_to_links_thread(void *data)
 	int i, nev;
 
 	/* preparing data buffer */
-	knet_h->send_to_links_buf->kh_version = KNET_FRAME_VERSION;
+	knet_h->send_to_links_buf->kh_version = KNET_HEADER_VERSION;
 	knet_h->send_to_links_buf->kh_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {
@@ -687,9 +687,9 @@ void *_handle_send_to_links_thread(void *data)
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sockfd) {
-				knet_h->send_to_links_buf->kh_type = KNET_FRAME_TYPE_DATA;
+				knet_h->send_to_links_buf->kh_type = KNET_HEADER_TYPE_DATA;
 			} else {
-				knet_h->send_to_links_buf->kh_type = KNET_FRAME_TYPE_HOST_INFO;
+				knet_h->send_to_links_buf->kh_type = KNET_HEADER_TYPE_HOST_INFO;
 			}
 			_handle_send_to_links(knet_h, events[i].data.fd);
 		}
@@ -941,8 +941,8 @@ void *_handle_pmtud_link_thread(void *data)
 	unsigned int old_interval;
 
 	/* preparing pmtu buffer */
-	knet_h->pmtudbuf->kh_version = KNET_FRAME_VERSION;
-	knet_h->pmtudbuf->kh_type = KNET_FRAME_TYPE_PMTUD;
+	knet_h->pmtudbuf->kh_version = KNET_HEADER_VERSION;
+	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
 	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 
 	while (!knet_h->fini_in_progress) {

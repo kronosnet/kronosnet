@@ -127,16 +127,16 @@ union knet_header_payload {
  * starting point
  */
 
-#define KNET_FRAME_VERSION          0x01 /* we currently support only one version */
+#define KNET_HEADER_VERSION          0x01 /* we currently support only one version */
 
-#define KNET_FRAME_TYPE_DATA        0x00 /* pure data packet */
-#define KNET_FRAME_TYPE_HOST_INFO   0x01 /* host status information pckt */
+#define KNET_HEADER_TYPE_DATA        0x00 /* pure data packet */
+#define KNET_HEADER_TYPE_HOST_INFO   0x01 /* host status information pckt */
 
-#define KNET_FRAME_TYPE_PMSK        0x80 /* packet mask */
-#define KNET_FRAME_TYPE_PING        0x81 /* heartbeat */
-#define KNET_FRAME_TYPE_PONG        0x82 /* reply to heartbeat */
-#define KNET_FRAME_TYPE_PMTUD       0x83 /* Used to determine Path MTU */
-#define KNET_FRAME_TYPE_PMTUD_REPLY 0x84 /* reply from remote host */
+#define KNET_HEADER_TYPE_PMSK        0x80 /* packet mask */
+#define KNET_HEADER_TYPE_PING        0x81 /* heartbeat */
+#define KNET_HEADER_TYPE_PONG        0x82 /* reply to heartbeat */
+#define KNET_HEADER_TYPE_PMTUD       0x83 /* Used to determine Path MTU */
+#define KNET_HEADER_TYPE_PMTUD_REPLY 0x84 /* reply from remote host */
 
 struct knet_header {
 	uint8_t				kh_version; /* pckt format/version */
