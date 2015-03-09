@@ -418,12 +418,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				 * and so we can detect that node is showing up again
 				 * we need to clear cbuffers and notify the node of our status by resending our host info
 				 */
-				if ((src_link->remoteconnected) &&
+				if ((src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) &&
 				    (src_link->remoteconnected == knet_hostinfo->khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status)) {
 					src_link->host_info_up_sent = 0;
 				}
 				src_link->remoteconnected = knet_hostinfo->khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status;
-				if (!src_link->remoteconnected) {
+				if (src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_DOWN) {
 					/*
 					 * if a host is disconnecting clean, we note that in donnotremoteupdate
 					 * so that we don't send host info back immediately but we wait
@@ -501,7 +501,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (dst_host->link[link_idx].status.enabled != 1) /* link is not enabled */
 			continue;
-		if (dst_host->link[link_idx].remoteconnected) /* track if remote is connected */
+		if (dst_host->link[link_idx].remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) /* track if remote is connected */
 			host_has_remote = 1;
 		if (dst_host->link[link_idx].status.connected != 1) /* link is not enabled */
 			continue;
@@ -513,7 +513,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 			/*
 			 * detect node coming back to life and reset the buffers
 			 */
-			if (dst_host->link[link_idx].remoteconnected) {
+			if (dst_host->link[link_idx].remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) {
 				clear_cbuffer = 1;
 			}
 		}
@@ -565,7 +565,7 @@ out_unlock:
 		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
 		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
 		knet_hostinfo.khi_dst_node_id = htons(dst_host_id);
-		knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status = 1;
+		knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_UP;
 
 		for (i=0; i < send_link_idx; i++) {
 			knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id = send_link_status[i];

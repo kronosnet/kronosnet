@@ -44,6 +44,9 @@ struct link_table {
 } __attribute__((packed));
 #endif
 
+#define KNET_HOSTINFO_LINK_STATUS_DOWN 0
+#define KNET_HOSTINFO_LINK_STATUS_UP   1
+
 struct knet_hostinfo_payload_link_status {
 	uint8_t		khip_link_status_link_id;	/* link id */
 	uint8_t		khip_link_status_status;	/* up/down status */
@@ -96,6 +99,14 @@ struct knet_header_payload_ping {
 	uint32_t	khp_ping_time[4];	/* ping timestamp */
 }  __attribute__((packed));
 
+/* taken from tracepath6 */
+#define KNET_PMTUD_SIZE_V4 65535
+#define KNET_PMTUD_SIZE_V6 128000
+#define KNET_PMTUD_OVERHEAD_V4 28
+#define KNET_PMTUD_OVERHEAD_V6 48
+#define KNET_PMTUD_MIN_MTU_V4 576
+#define KNET_PMTUD_MIN_MTU_V6 1280
+
 struct knet_header_payload_pmtud {
 	uint8_t		khp_pmtud_link;		/* source link id */
 	uint16_t	khp_pmtud_size;		/* size of the current packet */
@@ -134,6 +145,11 @@ struct knet_header {
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 
+/*
+ * commodoty defines to hide structure nesting
+ * (needs review and cleanup)
+ */
+
 #define kf_seq_num kh_payload.khp_data.khp_data_seq_num
 #define kf_data    kh_payload.khp_data.khp_data_userdata
 
@@ -149,13 +165,5 @@ struct knet_header {
 #define KNET_FRAME_PING_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_ping)
 #define KNET_FRAME_PMTUD_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_pmtud)
 #define KNET_FRAME_DATA_SIZE KNET_FRAME_SIZE + sizeof(struct knet_header_payload_data)
-
-/* taken from tracepath6 */
-#define KNET_PMTUD_SIZE_V4 65535
-#define KNET_PMTUD_SIZE_V6 128000
-#define KNET_PMTUD_OVERHEAD_V4 28
-#define KNET_PMTUD_OVERHEAD_V6 48
-#define KNET_PMTUD_MIN_MTU_V4 576
-#define KNET_PMTUD_MIN_MTU_V6 1280
 
 #endif
