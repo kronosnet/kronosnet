@@ -44,13 +44,17 @@ struct link_table {
 } __attribute__((packed));
 #endif
 
-struct link_up_down {
-	uint8_t		khdt_link_id;
-	uint8_t		khdt_link_status;
+struct knet_hostinfo_payload_link_status {
+	uint8_t		khip_link_status_link_id;	/* link id */
+	uint8_t		khip_link_status_status;	/* up/down status */
 } __attribute__((packed));
 
+/*
+ * union to reference possible individual payloads
+ */
+
 union knet_hostinfo_payload {
-	struct link_up_down link_up_down;
+	struct knet_hostinfo_payload_link_status knet_hostinfo_payload_link_status;
 } __attribute__((packed));
 
 /*
