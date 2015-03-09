@@ -41,7 +41,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	unsigned char *outbuf = (unsigned char *)knet_h->send_to_links_buf;
-	struct knet_hinfo_data *knet_hinfo_data;
+	struct knet_hostinfo *knet_hostinfo;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
@@ -90,10 +90,10 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 			}
 			break;
 		case KNET_FRAME_TYPE_HOST_INFO:
-			knet_hinfo_data = (struct knet_hinfo_data *)knet_h->send_to_links_buf->kf_data;
-			if (!knet_hinfo_data->khd_bcast) {
+			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf->kf_data;
+			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
-				dst_host_ids[0] = ntohs(knet_hinfo_data->khd_dst_node_id);
+				dst_host_ids[0] = ntohs(knet_hostinfo->khi_dst_node_id);
 				dst_host_ids_entries = 1;
 			}
 			break;
@@ -204,7 +204,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	int bcast = 1;
 	struct timespec recvtime;
 	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
-	struct knet_hinfo_data *knet_hinfo_data;
+	struct knet_hostinfo *knet_hostinfo;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
@@ -404,14 +404,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
 	case KNET_FRAME_TYPE_HOST_INFO:
-		knet_hinfo_data = (struct knet_hinfo_data *)knet_h->recv_from_links_buf->kf_data;
-		if (!knet_hinfo_data->khd_bcast) {
-			knet_hinfo_data->khd_dst_node_id = ntohs(knet_hinfo_data->khd_dst_node_id);
+		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf->kf_data;
+		if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
+			knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 		}
-		switch(knet_hinfo_data->khd_type) {
-			case KNET_HOST_INFO_LINK_UP_DOWN:
+		switch(knet_hostinfo->khi_type) {
+			case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
 				src_link = src_host->link +
-					(knet_hinfo_data->khd_dype.link_up_down.khdt_link_id % KNET_MAX_LINK);
+					(knet_hostinfo->khi_payload.link_up_down.khdt_link_id % KNET_MAX_LINK);
 				/*
 				 * basically if the node is coming back to life from a crash
 				 * we should receive a host info where local previous status == remote current status
@@ -419,10 +419,10 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				 * we need to clear cbuffers and notify the node of our status by resending our host info
 				 */
 				if ((src_link->remoteconnected) &&
-				    (src_link->remoteconnected == knet_hinfo_data->khd_dype.link_up_down.khdt_link_status)) {
+				    (src_link->remoteconnected == knet_hostinfo->khi_payload.link_up_down.khdt_link_status)) {
 					src_link->host_info_up_sent = 0;
 				}
-				src_link->remoteconnected = knet_hinfo_data->khd_dype.link_up_down.khdt_link_status;
+				src_link->remoteconnected = knet_hostinfo->khi_payload.link_up_down.khdt_link_status;
 				if (!src_link->remoteconnected) {
 					/*
 					 * if a host is disconnecting clean, we note that in donnotremoteupdate
@@ -446,7 +446,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 						  src_link->remoteconnected);
 				}
 				break;
-			case KNET_HOST_INFO_LINK_TABLE:
+			case KNET_HOSTINFO_TYPE_LINK_TABLE:
 				break;
 			default:
 				log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %u", src_host->host_id);
@@ -560,16 +560,16 @@ out_unlock:
 
 	if (send_link_idx) {
 		int i;
-		struct knet_hinfo_data knet_hinfo_data;
+		struct knet_hostinfo knet_hostinfo; 
 
-		knet_hinfo_data.khd_type = KNET_HOST_INFO_LINK_UP_DOWN;
-		knet_hinfo_data.khd_bcast = 0;
-		knet_hinfo_data.khd_dst_node_id = htons(dst_host_id);
-		knet_hinfo_data.khd_dype.link_up_down.khdt_link_status = 1;
+		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
+		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
+		knet_hostinfo.khi_dst_node_id = htons(dst_host_id);
+		knet_hostinfo.khi_payload.link_up_down.khdt_link_status = 1;
 
 		for (i=0; i < send_link_idx; i++) {
-			knet_hinfo_data.khd_dype.link_up_down.khdt_link_id = send_link_status[i];
-			_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
+			knet_hostinfo.khi_payload.link_up_down.khdt_link_id = send_link_status[i];
+			_send_host_info(knet_h, &knet_hostinfo, sizeof(struct knet_hostinfo));
 			dst_host->link[send_link_status[i]].host_info_up_sent = 1;
 			dst_host->link[send_link_status[i]].donnotremoteupdate = 0;
 		}

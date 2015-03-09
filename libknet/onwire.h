@@ -49,15 +49,30 @@ struct link_up_down {
 	uint8_t		khdt_link_status;
 } __attribute__((packed));
 
-union knet_hinfo_dtype {
+union knet_hostinfo_payload {
 	struct link_up_down link_up_down;
 } __attribute__((packed));
 
-struct knet_hinfo_data {			/* this is sent in kf_data */
-	uint8_t			khd_type;	/* link_up_down / link_table */
-	uint8_t			khd_bcast;	/* bcast/ucast */
-	uint16_t		khd_dst_node_id;/* used only if in ucast mode */
-	union knet_hinfo_dtype  khd_dype;
+/*
+ * due to the nature of knet_hostinfo, we are currently
+ * sending those data as part of knet_header_payload_data.khp_data_userdata
+ * and avoid a union that increses knet_header_payload_data size
+ * unnecessarely.
+ * This might change later on depending on how we implement
+ * host info exchange
+ */
+
+#define KNET_HOSTINFO_TYPE_LINK_UP_DOWN 0
+#define KNET_HOSTINFO_TYPE_LINK_TABLE   1 // NOT IMPLEMENTED
+
+#define KNET_HOSTINFO_UCAST 0	/* send info to a specific host */
+#define KNET_HOSTINFO_BCAST 1	/* send info to all known / connected hosts */
+
+struct knet_hostinfo {
+	uint8_t				khi_type;	/* type of hostinfo we are sending */
+	uint8_t				khi_bcast;	/* hostinfo destination bcast/ucast */
+	uint16_t			khi_dst_node_id;/* used only if in ucast mode */
+	union knet_hostinfo_payload	khi_payload;
 } __attribute__((packed));
 
 /*
@@ -138,8 +153,5 @@ struct knet_header {
 #define KNET_PMTUD_OVERHEAD_V6 48
 #define KNET_PMTUD_MIN_MTU_V4 576
 #define KNET_PMTUD_MIN_MTU_V6 1280
-
-#define KNET_HOST_INFO_LINK_UP_DOWN 0
-#define KNET_HOST_INFO_LINK_TABLE   1
 
 #endif

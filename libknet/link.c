@@ -308,14 +308,14 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	if (!enabled) {
-		struct knet_hinfo_data knet_hinfo_data;
+		struct knet_hostinfo knet_hostinfo;
 
-		knet_hinfo_data.khd_type = KNET_HOST_INFO_LINK_UP_DOWN;
-		knet_hinfo_data.khd_bcast = 0;
-		knet_hinfo_data.khd_dst_node_id = htons(host_id);
-		knet_hinfo_data.khd_dype.link_up_down.khdt_link_id = link_id;
-		knet_hinfo_data.khd_dype.link_up_down.khdt_link_status = 0;
-		_send_host_info(knet_h, &knet_hinfo_data, sizeof(struct knet_hinfo_data));
+		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
+		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
+		knet_hostinfo.khi_dst_node_id = htons(host_id);
+		knet_hostinfo.khi_payload.link_up_down.khdt_link_id = link_id;
+		knet_hostinfo.khi_payload.link_up_down.khdt_link_status = 0;
+		_send_host_info(knet_h, &knet_hostinfo, sizeof(struct knet_hostinfo));
 	}
 
 	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected);
