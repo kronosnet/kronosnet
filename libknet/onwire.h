@@ -150,8 +150,8 @@ struct knet_header {
  * (needs review and cleanup)
  */
 
-#define kf_seq_num kh_payload.khp_data.khp_data_seq_num
-#define kf_data    kh_payload.khp_data.khp_data_userdata
+#define khp_data_seq_num  kh_payload.khp_data.khp_data_seq_num
+#define khp_data_userdata kh_payload.khp_data.khp_data_userdata
 
 #define kf_link    kh_payload.khp_ping.khp_ping_link
 #define kf_time    kh_payload.khp_ping.khp_ping_time

@@ -48,7 +48,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		goto host_unlock;
 	}
 
-	inlen = read(sockfd, knet_h->send_to_links_buf->kf_data, KNET_MAX_PACKET_SIZE);
+	inlen = read(sockfd, knet_h->send_to_links_buf->khp_data_userdata, KNET_MAX_PACKET_SIZE);
 
 	if (inlen < 0) {
 		log_err(knet_h, KNET_SUB_SEND_T, "Unrecoverable error: %s", strerror(errno));
@@ -73,7 +73,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		case KNET_HEADER_TYPE_DATA:
 			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
-						(const unsigned char *)knet_h->send_to_links_buf->kf_data,
+						(const unsigned char *)knet_h->send_to_links_buf->khp_data_userdata,
 						inlen,
 						knet_h->send_to_links_buf->kh_node,
 						dst_host_ids,
@@ -90,7 +90,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 			}
 			break;
 		case KNET_HEADER_TYPE_HOST_INFO:
-			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf->kf_data;
+			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
 				dst_host_ids[0] = ntohs(knet_hostinfo->khi_dst_node_id);
@@ -113,7 +113,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 				continue;
 			}
 
-			knet_h->send_to_links_buf->kf_seq_num = htons(++dst_host->ucast_seq_num_tx);
+			knet_h->send_to_links_buf->khp_data_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
 			if (knet_h->crypto_instance) {
 				if (crypto_encrypt_and_sign(knet_h,
@@ -145,7 +145,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 			}
 		}
 	} else {
-		knet_h->send_to_links_buf->kf_seq_num = htons(++knet_h->bcast_seq_num_tx);
+		knet_h->send_to_links_buf->khp_data_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -269,14 +269,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
-		knet_h->recv_from_links_buf->kf_seq_num = ntohs(knet_h->recv_from_links_buf->kf_seq_num);
+		knet_h->recv_from_links_buf->khp_data_seq_num = ntohs(knet_h->recv_from_links_buf->khp_data_seq_num);
 
 		if (knet_h->dst_host_filter_fn) {
 			int host_idx;
 			int found = 0;
 
 			bcast = knet_h->dst_host_filter_fn(
-					(const unsigned char *)knet_h->recv_from_links_buf->kf_data,
+					(const unsigned char *)knet_h->recv_from_links_buf->khp_data_userdata,
 					len,
 					knet_h->recv_from_links_buf->kh_node,
 					dst_host_ids,
@@ -306,7 +306,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			}
 		}
 
-		if (!_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num)) {
+		if (!_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->khp_data_seq_num)) {
 			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
 			}
@@ -314,9 +314,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		if (write(knet_h->sockfd,
-			  knet_h->recv_from_links_buf->kf_data,
+			  knet_h->recv_from_links_buf->khp_data_userdata,
 			  len - KNET_HEADER_DATA_SIZE) == len - KNET_HEADER_DATA_SIZE) {
-			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
+			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->khp_data_seq_num);
 		} else {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
 		}
@@ -404,7 +404,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
 	case KNET_HEADER_TYPE_HOST_INFO:
-		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf->kf_data;
+		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf->khp_data_userdata;
 		if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 			knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 		}
