@@ -156,9 +156,9 @@ struct knet_header {
 #define khp_ping_link     kh_payload.khp_ping.khp_ping_link
 #define khp_ping_time     kh_payload.khp_ping.khp_ping_time
 
-#define kf_plink   kh_payload.khp_pmtud.khp_pmtud_link
-#define kf_psize   kh_payload.khp_pmtud.khp_pmtud_size
-#define kf_pdata   kh_payload.khp_pmtud.khp_pmtud_data
+#define khp_pmtud_link    kh_payload.khp_pmtud.khp_pmtud_link
+#define khp_pmtud_size    kh_payload.khp_pmtud.khp_pmtud_size
+#define khp_pmtud_data    kh_payload.khp_pmtud.khp_pmtud_data
 
 /*
  * extra defines to avoid mingling with sizeof() too much

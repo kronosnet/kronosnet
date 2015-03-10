@@ -399,7 +399,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get mutex lock");
 			break;
 		}
-		src_link->last_recv_mtu = knet_h->recv_from_links_buf->kf_psize;
+		src_link->last_recv_mtu = knet_h->recv_from_links_buf->khp_pmtud_size;
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
@@ -750,7 +750,7 @@ static void _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host
 
 	dst_link->last_bad_mtu = 0;
 
-	knet_h->pmtudbuf->khp_ping_link = dst_link->link_id;
+	knet_h->pmtudbuf->khp_pmtud_link = dst_link->link_id;
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
@@ -816,7 +816,7 @@ restart:
 		}
 
 		onwire_len = data_len + overhead_len;
-		knet_h->pmtudbuf->kf_psize = onwire_len;
+		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 
 		if (crypto_encrypt_and_sign(knet_h,
 					    (const unsigned char *)knet_h->pmtudbuf,
@@ -831,7 +831,7 @@ restart:
 
 	} else {
 
-		knet_h->pmtudbuf->kf_psize = onwire_len;
+		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 
 	}
 
