@@ -160,6 +160,10 @@ struct knet_header {
 #define kf_psize   kh_payload.khp_pmtud.khp_pmtud_size
 #define kf_pdata   kh_payload.khp_pmtud.khp_pmtud_data
 
+/*
+ * extra defines to avoid mingling with sizeof() too much
+ */
+
 #define KNET_HEADER_ALL_SIZE sizeof(struct knet_header)
 #define KNET_HEADER_SIZE (sizeof(struct knet_header) - sizeof(union knet_header_payload))
 #define KNET_HEADER_PING_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping)
