@@ -153,8 +153,8 @@ struct knet_header {
 #define khp_data_seq_num  kh_payload.khp_data.khp_data_seq_num
 #define khp_data_userdata kh_payload.khp_data.khp_data_userdata
 
-#define kf_link    kh_payload.khp_ping.khp_ping_link
-#define kf_time    kh_payload.khp_ping.khp_ping_time
+#define khp_ping_link     kh_payload.khp_ping.khp_ping_link
+#define khp_ping_time     kh_payload.khp_ping.khp_ping_time
 
 #define kf_plink   kh_payload.khp_pmtud.khp_pmtud_link
 #define kf_psize   kh_payload.khp_pmtud.khp_pmtud_size

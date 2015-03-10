@@ -245,7 +245,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 	if ((knet_h->recv_from_links_buf->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
 		src_link = src_host->link +
-				(knet_h->recv_from_links_buf->kf_link % KNET_MAX_LINK);
+				(knet_h->recv_from_links_buf->khp_ping_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (memcmp(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage)) != 0) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u appears to have changed ip address",
@@ -347,7 +347,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	case KNET_HEADER_TYPE_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
-		memcpy(&recvtime, &knet_h->recv_from_links_buf->kf_time[0], sizeof(struct timespec));
+		memcpy(&recvtime, &knet_h->recv_from_links_buf->khp_ping_time[0], sizeof(struct timespec));
 		timespec_diff(recvtime,
 				src_link->status.pong_last, &latency_last);
 
@@ -597,8 +597,8 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
-		memcpy(&knet_h->pingbuf->kf_time[0], &clock_now, sizeof(struct timespec));
-		knet_h->pingbuf->kf_link = dst_link->link_id;
+		memcpy(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
+		knet_h->pingbuf->khp_ping_link = dst_link->link_id;
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -750,7 +750,7 @@ static void _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host
 
 	dst_link->last_bad_mtu = 0;
 
-	knet_h->pmtudbuf->kf_link = dst_link->link_id;
+	knet_h->pmtudbuf->khp_ping_link = dst_link->link_id;
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
