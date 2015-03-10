@@ -67,7 +67,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		goto out_unlock;
 	}
 
-	outlen = len = inlen + KNET_FRAME_DATA_SIZE;
+	outlen = len = inlen + KNET_HEADER_DATA_SIZE;
 
 	switch(knet_h->send_to_links_buf->kh_type) {
 		case KNET_HEADER_TYPE_DATA:
@@ -224,7 +224,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 	}
 
-	if (len < (KNET_FRAME_SIZE + 1)) {
+	if (len < (KNET_HEADER_SIZE + 1)) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Packet is too short");
 		goto exit_unlock;
 	}
@@ -315,7 +315,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		if (write(knet_h->sockfd,
 			  knet_h->recv_from_links_buf->kf_data,
-			  len - KNET_FRAME_DATA_SIZE) == len - KNET_FRAME_DATA_SIZE) {
+			  len - KNET_HEADER_DATA_SIZE) == len - KNET_HEADER_DATA_SIZE) {
 			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->kf_seq_num);
 		} else {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
@@ -323,7 +323,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		break;
 	case KNET_HEADER_TYPE_PING:
-		outlen = KNET_PING_SIZE;
+		outlen = KNET_HEADER_PING_SIZE;
 		knet_h->recv_from_links_buf->kh_type = KNET_HEADER_TYPE_PONG;
 		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
 
@@ -373,7 +373,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 		break;
 	case KNET_HEADER_TYPE_PMTUD:
-		outlen = KNET_PING_SIZE;
+		outlen = KNET_HEADER_PMTUD_SIZE;
 		knet_h->recv_from_links_buf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
 		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
 
@@ -581,7 +581,7 @@ out_unlock:
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int len;
-	ssize_t outlen = KNET_PING_SIZE;
+	ssize_t outlen = KNET_HEADER_PING_SIZE;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
 	unsigned char *outbuf = (unsigned char *)knet_h->pingbuf;
@@ -603,7 +603,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->pingbuf,
-						    KNET_PING_SIZE,
+						    outlen,
 						    knet_h->pingbuf_crypt,
 						    &outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_HB_T, "Unable to crypto ping packet");
@@ -1028,12 +1028,9 @@ timer_restart:
 
 		if (have_mtu) {
 			if (knet_h->link_mtu != min_mtu) {
-				/*
-				 * plug call back here for notification
-				 */ 
 				log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->link_mtu, min_mtu);
 				knet_h->link_mtu = min_mtu;
-				knet_h->data_mtu = min_mtu - KNET_PING_SIZE - knet_h->sec_header_size;
+				knet_h->data_mtu = min_mtu - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 
 				if (knet_h->pmtud_notify_fn) {
 					knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,

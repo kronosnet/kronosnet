@@ -226,14 +226,14 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
-	knet_h->pingbuf = malloc(KNET_PING_SIZE);
+	knet_h->pingbuf = malloc(KNET_HEADER_PING_SIZE);
 	if (!knet_h->pingbuf) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for hearbeat buffer: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
-	memset(knet_h->pingbuf, 0, KNET_PING_SIZE);
+	memset(knet_h->pingbuf, 0, KNET_HEADER_PING_SIZE);
 
 	knet_h->pmtudbuf = malloc(KNET_PMTUD_SIZE_V6);
 	if (!knet_h->pmtudbuf) {
