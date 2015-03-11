@@ -11,7 +11,9 @@ int main(void)
 	printf("KNET_HEADER_PMTUD_SIZE: %zu (%zu)\n", KNET_HEADER_PMTUD_SIZE, sizeof(struct knet_header_payload_pmtud));
 	printf("KNET_HEADER_DATA_SIZE: %zu (%zu)\n", KNET_HEADER_DATA_SIZE, sizeof(struct knet_header_payload_data));
 	printf("\n");
-	printf("knet_hostinfo: %zu\n", sizeof(struct knet_hostinfo));
+	printf("KNET_HOSTINFO_ALL_SIZE: %zu\n", KNET_HOSTINFO_ALL_SIZE);
+	printf("KNET_HOSTINFO_SIZE: %zu\n", KNET_HOSTINFO_SIZE);
+	printf("KNET_HOSTINFO_LINK_STATUS_SIZE: %zu (%zu)\n", KNET_HOSTINFO_LINK_STATUS_SIZE, sizeof(struct knet_hostinfo_payload_link_status));
 
 	return 0;
 }

@@ -82,6 +82,10 @@ struct knet_hostinfo {
 	union knet_hostinfo_payload	khi_payload;
 } __attribute__((packed));
 
+#define KNET_HOSTINFO_ALL_SIZE sizeof(struct knet_hostinfo)
+#define KNET_HOSTINFO_SIZE KNET_HOSTINFO_ALL_SIZE - sizeof(union knet_hostinfo_payload)
+#define KNET_HOSTINFO_LINK_STATUS_SIZE KNET_HOSTINFO_SIZE + sizeof(struct knet_hostinfo_payload_link_status)
+
 /*
  * typedef uint64_t seq_num_t;
  * #define SEQ_MAX UINT64_MAX
@@ -165,7 +169,7 @@ struct knet_header {
  */
 
 #define KNET_HEADER_ALL_SIZE sizeof(struct knet_header)
-#define KNET_HEADER_SIZE (sizeof(struct knet_header) - sizeof(union knet_header_payload))
+#define KNET_HEADER_SIZE KNET_HEADER_ALL_SIZE - sizeof(union knet_header_payload)
 #define KNET_HEADER_PING_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping)
 #define KNET_HEADER_PMTUD_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud)
 #define KNET_HEADER_DATA_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_data)

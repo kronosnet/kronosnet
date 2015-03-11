@@ -315,7 +315,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		knet_hostinfo.khi_dst_node_id = htons(host_id);
 		knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id = link_id;
 		knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_DOWN;
-		_send_host_info(knet_h, &knet_hostinfo, sizeof(struct knet_hostinfo));
+		_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
 	}
 
 	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected);

@@ -569,7 +569,7 @@ out_unlock:
 
 		for (i=0; i < send_link_idx; i++) {
 			knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id = send_link_status[i];
-			_send_host_info(knet_h, &knet_hostinfo, sizeof(struct knet_hostinfo));
+			_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
 			dst_host->link[send_link_status[i]].host_info_up_sent = 1;
 			dst_host->link[send_link_status[i]].donnotremoteupdate = 0;
 		}
