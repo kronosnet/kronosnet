@@ -411,7 +411,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		switch(knet_hostinfo->khi_type) {
 			case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
 				src_link = src_host->link +
-					(knet_hostinfo->khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id % KNET_MAX_LINK);
+					(knet_hostinfo->khip_link_status_link_id % KNET_MAX_LINK);
 				/*
 				 * basically if the node is coming back to life from a crash
 				 * we should receive a host info where local previous status == remote current status
@@ -419,10 +419,10 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				 * we need to clear cbuffers and notify the node of our status by resending our host info
 				 */
 				if ((src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) &&
-				    (src_link->remoteconnected == knet_hostinfo->khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status)) {
+				    (src_link->remoteconnected == knet_hostinfo->khip_link_status_status)) {
 					src_link->host_info_up_sent = 0;
 				}
-				src_link->remoteconnected = knet_hostinfo->khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status;
+				src_link->remoteconnected = knet_hostinfo->khip_link_status_status;
 				if (src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_DOWN) {
 					/*
 					 * if a host is disconnecting clean, we note that in donnotremoteupdate
@@ -565,10 +565,10 @@ out_unlock:
 		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
 		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
 		knet_hostinfo.khi_dst_node_id = htons(dst_host_id);
-		knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_UP;
+		knet_hostinfo.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_UP;
 
 		for (i=0; i < send_link_idx; i++) {
-			knet_hostinfo.khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id = send_link_status[i];
+			knet_hostinfo.khip_link_status_link_id = send_link_status[i];
 			_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
 			dst_host->link[send_link_status[i]].host_info_up_sent = 1;
 			dst_host->link[send_link_status[i]].donnotremoteupdate = 0;

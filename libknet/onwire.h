@@ -86,6 +86,9 @@ struct knet_hostinfo {
 #define KNET_HOSTINFO_SIZE KNET_HOSTINFO_ALL_SIZE - sizeof(union knet_hostinfo_payload)
 #define KNET_HOSTINFO_LINK_STATUS_SIZE KNET_HOSTINFO_SIZE + sizeof(struct knet_hostinfo_payload_link_status)
 
+#define khip_link_status_status khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status
+#define khip_link_status_link_id khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id
+
 /*
  * typedef uint64_t seq_num_t;
  * #define SEQ_MAX UINT64_MAX
