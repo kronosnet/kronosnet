@@ -32,11 +32,34 @@
 
 #define KNET_PING_TIMERES 200000
 
+static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, unsigned char *outbuf, ssize_t outlen)
+{
+	int link_idx;
+
+	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
+		sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
+				outbuf, outlen, MSG_DONTWAIT,
+				(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].dst_addr,
+				sizeof(struct sockaddr_storage));
+
+		if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
+		    (dst_host->active_link_entries > 1)) {
+			uint8_t cur_link_id = dst_host->active_links[0];
+
+			memmove(&dst_host->active_links[0], &dst_host->active_links[1], KNET_MAX_LINK - 1);
+			dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
+
+			break;
+		}
+	}
+
+	return;
+}
+
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t inlen = 0, len, outlen;
 	struct knet_host *dst_host;
-	int link_idx;
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
@@ -127,22 +150,8 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 				outbuf = knet_h->send_to_links_buf_crypt;
 			}
 
-			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-				sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
-						outbuf, outlen, MSG_DONTWAIT,
-						(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].dst_addr,
-						sizeof(struct sockaddr_storage));
+			_dispatch_to_links(knet_h, dst_host, outbuf, outlen);
 
-				if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
-				    (dst_host->active_link_entries > 1)) {
-					uint8_t cur_link_id = dst_host->active_links[0];
-
-					memmove(&dst_host->active_links[0], &dst_host->active_links[1], KNET_MAX_LINK - 1);
-					dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
-
-					break;
-				}
-			}
 		}
 	} else {
 		knet_h->send_to_links_buf->khp_data_seq_num = htons(++knet_h->bcast_seq_num_tx);
@@ -160,22 +169,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-			for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-				sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
-					outbuf, outlen, MSG_DONTWAIT,
-					(struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].dst_addr,
-					sizeof(struct sockaddr_storage));
-
-				if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
-				    (dst_host->active_link_entries > 1)) {
-					uint8_t cur_link_id = dst_host->active_links[0];
-
-					memmove(&dst_host->active_links[0], &dst_host->active_links[1], KNET_MAX_LINK - 1);
-					dst_host->active_links[dst_host->active_link_entries - 1] = cur_link_id;
-
-					break;
-				}
-			}
+			_dispatch_to_links(knet_h, dst_host, outbuf, outlen);
 		}
 	}
 
