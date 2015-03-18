@@ -83,8 +83,8 @@ struct knet_hostinfo {
 } __attribute__((packed));
 
 #define KNET_HOSTINFO_ALL_SIZE sizeof(struct knet_hostinfo)
-#define KNET_HOSTINFO_SIZE KNET_HOSTINFO_ALL_SIZE - sizeof(union knet_hostinfo_payload)
-#define KNET_HOSTINFO_LINK_STATUS_SIZE KNET_HOSTINFO_SIZE + sizeof(struct knet_hostinfo_payload_link_status)
+#define KNET_HOSTINFO_SIZE (KNET_HOSTINFO_ALL_SIZE - sizeof(union knet_hostinfo_payload))
+#define KNET_HOSTINFO_LINK_STATUS_SIZE (KNET_HOSTINFO_SIZE + sizeof(struct knet_hostinfo_payload_link_status))
 
 #define khip_link_status_status khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status
 #define khip_link_status_link_id khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id
@@ -172,9 +172,9 @@ struct knet_header {
  */
 
 #define KNET_HEADER_ALL_SIZE sizeof(struct knet_header)
-#define KNET_HEADER_SIZE KNET_HEADER_ALL_SIZE - sizeof(union knet_header_payload)
-#define KNET_HEADER_PING_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping)
-#define KNET_HEADER_PMTUD_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud)
-#define KNET_HEADER_DATA_SIZE KNET_HEADER_SIZE + sizeof(struct knet_header_payload_data)
+#define KNET_HEADER_SIZE (KNET_HEADER_ALL_SIZE - sizeof(union knet_header_payload))
+#define KNET_HEADER_PING_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping))
+#define KNET_HEADER_PMTUD_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud))
+#define KNET_HEADER_DATA_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_data))
 
 #endif
