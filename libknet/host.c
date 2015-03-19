@@ -557,7 +557,7 @@ static void _clear_cbuffers(struct knet_host *host)
 	host->ucast_seq_num_rx = 0;
 }
 
-void _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
+int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 {
 	int link_idx;
 	int best_priority = -1;
@@ -567,8 +567,8 @@ void _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	int host_has_remote = 0;
 
 	if (pthread_mutex_lock(&host->active_links_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to get active links mutex!");
-		return;
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to get active links mutex!");
+		return -1;
 	}
 
 	host->active_link_entries = 0;
@@ -608,24 +608,24 @@ void _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	}
 
 	if (host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u (passive) best link: %u (pri: %u)",
+		log_debug(knet_h, KNET_SUB_HOST, "host: %u (passive) best link: %u (pri: %u)",
 			  host->host_id, host->link[host->active_links[0]].link_id,
 			  host->link[host->active_links[0]].priority);
 	} else {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u has %u active links",
+		log_debug(knet_h, KNET_SUB_HOST, "host: %u has %u active links",
 			  host->host_id, host->active_link_entries);
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */
 	if ((!host->active_link_entries) || (clear_cbuffer) || (!host_has_remote)) {
 		if (!host_has_remote) {
-			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u has no active remote links", host->host_id);
+			log_debug(knet_h, KNET_SUB_HOST, "host: %u has no active remote links", host->host_id);
 		}
 		if (!host->active_link_entries) {
-			log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %u has no active links", host->host_id);
+			log_warn(knet_h, KNET_SUB_HOST, "host: %u has no active links", host->host_id);
 		}
 		if (clear_cbuffer) {
-			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u is coming back to life", host->host_id);
+			log_debug(knet_h, KNET_SUB_HOST, "host: %u is coming back to life", host->host_id);
 		}
 		_clear_cbuffers(host);
 	}
@@ -648,4 +648,6 @@ void _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 			host->link[send_link_status[i]].donnotremoteupdate = 0;
 		}
 	}
+
+	return 0;
 }
