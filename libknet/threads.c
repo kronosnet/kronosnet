@@ -36,6 +36,11 @@ static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host,
 {
 	int link_idx;
 
+	if (pthread_mutex_lock(&dst_host->active_links_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get active links mutex");
+		return;
+	}
+
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 		sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
 				outbuf, outlen, MSG_DONTWAIT,
@@ -52,6 +57,8 @@ static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host,
 			break;
 		}
 	}
+
+	pthread_mutex_unlock(&dst_host->active_links_mutex);
 
 	return;
 }
@@ -432,7 +439,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 					  src_host->host_id,
 					  src_link->link_id,
 					  src_link->remoteconnected);
-				if (_dst_cache_update(knet_h, src_host->host_id)) {
+				if (_host_dstcache_update_async(knet_h, src_host)) {
 					log_debug(knet_h, KNET_SUB_LINK,
 						  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
 						  src_host->host_id,
@@ -455,119 +462,31 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static void _clear_cbuffers(struct knet_host *host)
-{
-	memset(host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-	memset(host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-	host->bcast_seq_num_rx = 0;
-	host->ucast_seq_num_rx = 0;
-}
-
 static void _handle_dst_link_updates(knet_handle_t knet_h)
 {
-	uint16_t dst_host_id;
-	struct knet_host *dst_host;
-	int link_idx;
-	int best_priority = -1;
-	int send_link_idx = 0;
-	uint8_t send_link_status[KNET_MAX_LINK];
-	int clear_cbuffer = 0;
-	int host_has_remote = 0;
+	uint16_t host_id;
+	struct knet_host *host;
 
-	if (read(knet_h->dstpipefd[0], &dst_host_id, sizeof(dst_host_id)) != sizeof(dst_host_id)) {
+	if (read(knet_h->dstpipefd[0], &host_id, sizeof(host_id)) != sizeof(host_id)) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
 		return;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to get read lock");
 		return;
 	}
 
-	dst_host = knet_h->host_index[dst_host_id];
-	if (!dst_host) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %u", dst_host_id);
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %u", host_id);
 		goto out_unlock;
 	}
 
-	dst_host->active_link_entries = 0;
-
-	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-		if (dst_host->link[link_idx].status.enabled != 1) /* link is not enabled */
-			continue;
-		if (dst_host->link[link_idx].remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) /* track if remote is connected */
-			host_has_remote = 1;
-		if (dst_host->link[link_idx].status.connected != 1) /* link is not enabled */
-			continue;
-
-		if ((!dst_host->link[link_idx].host_info_up_sent) &&
-		    (!dst_host->link[link_idx].donnotremoteupdate)) {
-			send_link_status[send_link_idx] = link_idx;
-			send_link_idx++;
-			/*
-			 * detect node coming back to life and reset the buffers
-			 */
-			if (dst_host->link[link_idx].remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) {
-				clear_cbuffer = 1;
-			}
-		}
-
-		if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
-			/* for passive we look for the only active link with higher priority */
-			if (dst_host->link[link_idx].priority > best_priority) {
-				dst_host->active_links[0] = link_idx;
-				best_priority = dst_host->link[link_idx].priority;
-			}
-			dst_host->active_link_entries = 1;
-		} else {
-			/* for RR and ACTIVE we need to copy all available links */
-			dst_host->active_links[dst_host->active_link_entries] = link_idx;
-			dst_host->active_link_entries++;
-		}
-	}
-
-	if (dst_host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u (passive) best link: %u (pri: %u)",
-			  dst_host->host_id, dst_host->link[dst_host->active_links[0]].link_id,
-			  dst_host->link[dst_host->active_links[0]].priority);
-	} else {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u has %u active links",
-			  dst_host->host_id, dst_host->active_link_entries);
-	}
-
-	/* no active links, we can clean the circular buffers and indexes */
-	if ((!dst_host->active_link_entries) || (clear_cbuffer) || (!host_has_remote)) {
-		if (!host_has_remote) {
-			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u has no active remote links", dst_host->host_id);
-		}
-		if (!dst_host->active_link_entries) {
-			log_warn(knet_h, KNET_SUB_SWITCH_T, "host: %u has no active links", dst_host->host_id);
-		}
-		if (clear_cbuffer) {
-			log_debug(knet_h, KNET_SUB_SWITCH_T, "host: %u is coming back to life", dst_host->host_id);
-		}
-		_clear_cbuffers(dst_host);
-	}
+	_host_dstcache_update_sync(knet_h, host);
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	if (send_link_idx) {
-		int i;
-		struct knet_hostinfo knet_hostinfo; 
-
-		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
-		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
-		knet_hostinfo.khi_dst_node_id = htons(dst_host_id);
-		knet_hostinfo.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_UP;
-
-		for (i=0; i < send_link_idx; i++) {
-			knet_hostinfo.khip_link_status_link_id = send_link_status[i];
-			_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
-			dst_host->link[send_link_status[i]].host_info_up_sent = 1;
-			dst_host->link[send_link_status[i]].donnotremoteupdate = 0;
-		}
-	}
 
 	return;
 }

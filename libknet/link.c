@@ -25,10 +25,7 @@
 int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected)
 {
-	int savederrno = 0, err = 0;
 	struct knet_link *link = &knet_h->host_index[host_id]->link[link_id];
-	unsigned int old_enabled = link->status.enabled;
-	unsigned int old_connected = link->status.connected;
 
 	if ((link->status.enabled == enabled) &&
 	    (link->status.connected == connected))
@@ -37,20 +34,7 @@ int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 	link->status.enabled = enabled;
 	link->status.connected = connected;
 
-	err = _dst_cache_update(knet_h, host_id);
-	if (err) {
-		savederrno = errno;
-		log_debug(knet_h, KNET_SUB_LINK,
-			  "Unable to update link status for host: %u link: %u enabled: %u connected: %u)",
-			  host_id,
-			  link_id,
-			  link->status.enabled,
-			  link->status.connected);
-		link->status.enabled = old_enabled;
-		link->status.connected = old_connected;
-		errno = savederrno;
-		return -1;
-	}
+	_host_dstcache_update_sync(knet_h, knet_h->host_index[host_id]);
 
 	if ((link->status.dynconnected) &&
 	    (!link->status.connected))
@@ -727,7 +711,7 @@ int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_
 
 	link->priority = priority;
 
-	if (_dst_cache_update(knet_h, host_id)) {
+	if (_host_dstcache_update_async(knet_h, host)) {
 		savederrno = errno;
 		log_debug(knet_h, KNET_SUB_LINK,
 			  "Unable to update link priority (host: %u link: %u priority: %u): %s",

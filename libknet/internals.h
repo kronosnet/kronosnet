@@ -71,6 +71,7 @@ struct knet_host {
 	seq_num_t ucast_seq_num_tx;
 	seq_num_t ucast_seq_num_rx;
 	struct knet_link link[KNET_MAX_LINK];
+	pthread_mutex_t active_links_mutex;
 	uint8_t active_link_entries;
 	uint8_t active_links[KNET_MAX_LINK];
 	struct knet_host *next;
