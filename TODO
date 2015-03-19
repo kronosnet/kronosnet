@@ -4,6 +4,8 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) check listener sock bind. It seems to succeed but then sendto gets
+           an invalid socket and binding (based on netstat) didn't happen
  - (issue) implement packet fragmentation?, is the only
            solution to avoid conflicts with tun/tap mtu setting and various
            others buffer sizes.
