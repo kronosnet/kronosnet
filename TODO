@@ -18,7 +18,6 @@ link/host level:
                      open questions are: methods? level? zlib? lzo? bz? lzma? xz?
                                         how much do we save by compressin our header?
            compress must happen before encrypt
-
            we can express compress data in packet type without adding extra
            flags to the headers. DATA -> BZ/GZDATA and we can change that
            right before encrypting. Using a similar approach to PING_MASK
