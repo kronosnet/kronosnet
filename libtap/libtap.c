@@ -160,17 +160,18 @@ static int _execute_shell(const char *command, char **error_string)
 		close(fd[1]);
 		err = _read_pipe(fd[0], error_string, &size);
 		if (err)
-			goto out_clean;
+			goto out_clean0;
 
 		waitpid(pid, &status, 0);
 		if (!WIFEXITED(status)) {
 			err = -1;
-			goto out_clean;
+			goto out_clean0;
 		}
 		if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
 			err = WEXITSTATUS(status);
-			goto out_clean;
+			goto out_clean0;
 		}
+		goto out_clean0;
 	} else { /* child */
 		close(0);
 		close(1);
@@ -186,8 +187,9 @@ static int _execute_shell(const char *command, char **error_string)
 	}
 
 out_clean:
-	close(fd[0]);
 	close(fd[1]);
+out_clean0:
+	close(fd[0]);
 
 	return err;
 }
