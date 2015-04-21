@@ -533,7 +533,11 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		dst_link->ping_last = clock_now;
 
 		if (len != outlen) {
-			log_debug(knet_h, KNET_SUB_HB_T, "Unable to send ping packet (sendto): %d %s", errno, strerror(errno));
+			log_debug(knet_h, KNET_SUB_HB_T,
+				  "Unable to send ping (sock: %d) packet (sendto): %d %s\nrecorded src ip: %s src port: %s dst ip: %s dst port: %s",
+				  dst_link->listener_sock, errno, strerror(errno),
+				  dst_link->status.src_ipaddr, dst_link->status.src_port,
+				  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
 		}
 	}
 
