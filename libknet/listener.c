@@ -129,7 +129,7 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 			goto exit_unlock;
 		}
 
-		if (bind(listener->sock, (struct sockaddr *)&listener->address, sizeof(struct sockaddr_storage))) {
+		if (bind(listener->sock, (struct sockaddr *)&listener->address, sizeof(struct sockaddr_storage)) < 0) {
 			savederrno = errno;
 			err = -1;
 			log_err(knet_h, KNET_SUB_LISTENER, "Unable to bind listener socket: %s",
@@ -158,8 +158,9 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 
 exit_unlock:
 	if ((err) && (listener)) {
-		if (listener->sock >= 0)
+		if (listener->sock >= 0) {
 			close(listener->sock);
+		}
 		free(listener);
 		listener = NULL;
 	}
@@ -237,3 +238,31 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 	errno = savederrno;
 	return err;
 }
+
+#if 0
+void socket_debug(knet_handle_t knet_h, int sockfd)
+{
+	struct sockaddr_storage sock;
+	char host[KNET_MAX_HOST_LEN];
+	char port[KNET_MAX_PORT_LEN];
+	socklen_t socklen = sizeof(struct sockaddr_storage);
+	int err;
+
+	memset(&host, 0, KNET_MAX_HOST_LEN);
+	memset(&port, 0, KNET_MAX_PORT_LEN);
+
+	if (getsockname(sockfd, (struct sockaddr *)&sock, &socklen) < 0) {
+		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to getsockname: %s", strerror(errno));
+	} else {
+		err = getnameinfo((const struct sockaddr *)&sock, sizeof(struct sockaddr_storage),
+				(char *)&host, KNET_MAX_HOST_LEN, (char *)&port, KNET_MAX_PORT_LEN, NI_NUMERICHOST | NI_NUMERICSERV);
+		if (err) {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to getnameinfo: %d", err);
+		} else {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Sock host: %s port: %s", host, port);
+		}
+	}
+
+	return;
+}
+#endif
