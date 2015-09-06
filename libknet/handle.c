@@ -513,6 +513,7 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 
 	knet_h = malloc(sizeof(struct knet_handle));
 	if (!knet_h) {
+		errno = ENOMEM;
 		return NULL;
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
