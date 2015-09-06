@@ -224,8 +224,9 @@ static int _check(const tap_t tap)
 {
 	tap_t temp = lib_cfg.head;
 
-	if (!tap)
+	if (!tap) {
 		return 0;
+	}
 
 	while (temp != NULL) {
 		if (tap == temp)
@@ -605,8 +606,13 @@ int tap_set_up(tap_t tap, char **error_preup, char **error_up)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap) &&
-	    ((tap->hasupdown) && ((!error_preup) || (!error_up)))) {
+	if (!_check(tap)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	if ((tap->hasupdown) && ((!error_preup) || (!error_up))) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -675,8 +681,13 @@ int tap_set_down(tap_t tap, char **error_down, char **error_postdown)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap) &&
-	    ((tap->hasupdown) && ((!error_down) || (!error_postdown)))) {
+	if (!_check(tap)) {
+		errno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	if ((tap->hasupdown) && ((!error_down) || (!error_postdown))) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
