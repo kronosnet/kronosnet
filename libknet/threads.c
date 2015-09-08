@@ -19,6 +19,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/uio.h>
 
 #include "internals.h"
 #include "onwire.h"
@@ -72,13 +73,18 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	int bcast = 1;
 	unsigned char *outbuf = (unsigned char *)knet_h->send_to_links_buf;
 	struct knet_hostinfo *knet_hostinfo;
+	struct iovec iov_in;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
 		goto host_unlock;
 	}
 
-	inlen = read(sockfd, knet_h->send_to_links_buf->khp_data_userdata, KNET_MAX_PACKET_SIZE);
+	memset(&iov_in, 0, sizeof(iov_in));
+	iov_in.iov_base = (void *)knet_h->send_to_links_buf->khp_data_userdata;
+	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
+
+	inlen = readv(sockfd, &iov_in, 1);
 
 	if (inlen < 0) {
 		log_err(knet_h, KNET_SUB_SEND_T, "Unrecoverable error: %s", strerror(errno));
@@ -206,6 +212,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	struct timespec recvtime;
 	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
 	struct knet_hostinfo *knet_hostinfo;
+	struct iovec iov_out[1];
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
@@ -314,9 +321,11 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			goto exit_unlock;
 		}
 
-		if (write(knet_h->sockfd,
-			  knet_h->recv_from_links_buf->khp_data_userdata,
-			  len - KNET_HEADER_DATA_SIZE) == len - KNET_HEADER_DATA_SIZE) {
+		memset(iov_out, 0, sizeof(iov_out));
+		iov_out[0].iov_base = (void *) knet_h->recv_from_links_buf->khp_data_userdata;
+		iov_out[0].iov_len = len - KNET_HEADER_DATA_SIZE;
+
+		if (writev(knet_h->sockfd, iov_out, 1) == iov_out[0].iov_len) {
 			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->khp_data_seq_num);
 		} else {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
