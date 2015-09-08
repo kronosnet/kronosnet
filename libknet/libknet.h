@@ -30,7 +30,7 @@
 #define KNET_MAX_LINK 8
 
 /*
- * maximum packet size that should be written to net_fd
+ * maximum packet size that should be written to datafd
  *  see knet_handle_new for details
  */
 
@@ -59,7 +59,7 @@ typedef struct knet_handle *knet_handle_t;
  *            It is user responsibility to check that the value
  *            is unique, or bad might happen.
  *
- * net_fd   - read/write file descriptor (must be > 0).
+ * datafd   - read/write file descriptor (must be > 0).
  *            knet will read data here to send to the other hosts
  *            and will write data received from the network.
  *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
@@ -84,7 +84,7 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      net_fd,
+			      int      datafd,
 			      int      log_fd,
 			      uint8_t  default_log_level);
 
@@ -110,7 +110,7 @@ int knet_handle_free(knet_handle_t knet_h);
  *
  * dst_host_filter_fn -
  *            is a callback function that is invoked every time
- *            a packet hits net_fd (see knet_handle_new).
+ *            a packet hits datafd (see knet_handle_new).
  *            the function allows users to tell libknet where the
  *            packet has to be delivered.
  *
