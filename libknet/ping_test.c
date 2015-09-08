@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <sys/uio.h>
 
 #include "libknet.h"
 
@@ -273,23 +274,25 @@ static void pmtud_notify(void *private_data, unsigned int link_mtu, unsigned int
 
 int main(int argc, char *argv[])
 {
-	char buff[1024];
+	char out_big_buff[65000], out_big_frag[64000], hello_world[16];
+	char recvbuff[65000];
 	size_t len;
 	fd_set rfds;
 	struct timeval tv;
 	int logpipefd[2];
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries = 0;
-	//int has_crypto = 0;
+	int has_crypto = 0;
 	int logfd;
 	unsigned int link_mtu = 0, data_mtu = 0;
+	int big = 0;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, IPPROTO_IP, knet_sock) != 0) {
+	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, knet_sock) != 0) {
 		printf("Unable to create socket\n");
 		exit(EXIT_FAILURE);
 	}
@@ -344,7 +347,7 @@ int main(int argc, char *argv[])
 			printf("Unable to init crypto\n");
 			exit(EXIT_FAILURE);
 		}
-		//has_crypto = 1;
+		has_crypto = 1;
 	} else {
 		printf("Crypto not activated\n");
 	}
@@ -355,19 +358,39 @@ int main(int argc, char *argv[])
 	while (1) {
 		ssize_t wlen;
 		size_t i;
+		struct iovec iov_out[1];
 
 		knet_host_get_host_list(knet_h, host_ids, &host_ids_entries);
 		for (i = 0; i < host_ids_entries; i++) {
 			print_link(knet_h, host_ids[i]);
 		}
 
-		printf("Sending 'Hello World!' frame\n");
-		wlen = write(knet_sock[1], "Hello World!", 13);
-		if (wlen != 13)
-			printf("Unable to send Hello World! to socket!\n");
+		memset(iov_out, 0, sizeof(iov_out));
 
-		tv.tv_sec = 5;
-		tv.tv_usec = 0;
+		memset(&out_big_frag, 0, sizeof(out_big_frag));
+		memset(&out_big_buff, 0, sizeof(out_big_buff));
+		memset(&hello_world, 0, sizeof(hello_world));
+
+		snprintf(hello_world, sizeof(hello_world), "Hello world!");
+
+		if (big) {
+			iov_out[0].iov_base = (void *)out_big_frag;
+			iov_out[0].iov_len = sizeof(out_big_frag);
+			big = 0;
+		} else {
+			iov_out[0].iov_base = (void *)hello_world;
+			iov_out[0].iov_len = 13;
+			big = 1;
+		}
+
+		wlen = writev(knet_sock[1], iov_out, 1);
+		if (wlen != iov_out[0].iov_len) {
+			printf("Unable to send messages to socket\n");
+			exit(1);
+		}
+
+		tv.tv_sec = 0;
+		tv.tv_usec = 5000;
 
  select_loop:
 		FD_ZERO(&rfds);
@@ -383,9 +406,27 @@ int main(int argc, char *argv[])
 			printf("Unable select over knet_handle_t\n");
 			exit(EXIT_FAILURE);
 		} else if (FD_ISSET(knet_sock[1], &rfds)) {
-			len = read(knet_sock[1], buff, sizeof(buff));
-			printf("Received data (%zu bytes): '%s'\n", len, buff);
-#if 0
+			struct iovec iov_in;
+			ssize_t rlen = 0;
+
+			memset(&iov_in, 0, sizeof(iov_in));
+
+			iov_in.iov_base = (void *)recvbuff;
+			iov_in.iov_len = sizeof(recvbuff);
+
+			rlen = readv(knet_sock[1], &iov_in, 1);
+
+			if (!rlen) {
+				printf("EOF\n");
+				break;
+			}
+			if ((rlen < 0) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
+				printf("NO MORE DATA TO READ\n");
+				break;
+			}
+
+			printf("Received data (%zu bytes): '%s'\n", rlen, (char *)iov_in.iov_base);
+
 			if (has_crypto) {
 				printf("changing crypto key\n");
 				memset(knet_handle_crypto_cfg.private_key, has_crypto, KNET_MAX_KEY_LEN);
@@ -394,7 +435,7 @@ int main(int argc, char *argv[])
 					has_crypto++;
 				}
 			}
-#endif
+
 		} else if (FD_ISSET(logpipefd[0], &rfds)) {
 			struct knet_log_msg msg;
 			size_t bytes_read = 0;

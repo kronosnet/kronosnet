@@ -65,6 +65,7 @@ typedef struct knet_handle *knet_handle_t;
  *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
  *            Applications might be able to write more data at a time
  *            but they will be delivered in KNET_MAX_PACKET_SIZE chunks.
+ *            Please refer to ping_test.c on how to setup socketpair.
  *
  * log_fd   - write file descriptor. If set to a value > 0, it will be used
  *            to write log packets (see below) from libknet to the application.
