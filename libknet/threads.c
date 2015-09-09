@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <sys/uio.h>
+#include <math.h>
 
 #include "internals.h"
 #include "onwire.h"
@@ -74,6 +75,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	unsigned char *outbuf = (unsigned char *)knet_h->send_to_links_buf;
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_in;
+	uint16_t pckt_frag = 0;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
@@ -137,6 +139,19 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 			log_warn(knet_h, KNET_SUB_SEND_T, "Receiving unknown messages from socket");
 			goto out_unlock;
 			break;
+	}
+
+	if (!knet_h->data_mtu) {
+		log_debug(knet_h, KNET_SUB_SEND_T,
+			  "Received data packet but data MTU is still unknown. Packet might not be delivered");
+	}
+
+	if ((knet_h->data_mtu) &&
+	    (inlen > knet_h->data_mtu)) {
+		log_debug(knet_h, KNET_SUB_SEND_T, "Frag code is still not implemented");
+		pckt_frag = ceil((float)inlen / knet_h->data_mtu);
+		log_debug(knet_h, KNET_SUB_SEND_T, "Current inlen: %zu data mtu: %u frags: %d", inlen, knet_h->data_mtu, pckt_frag);
+		goto out_unlock;
 	}
 
 	if (!bcast) {

@@ -86,6 +86,7 @@ AC_C_INLINE
 
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create])
+AC_CHECK_LIB([m], [ceil])
 AC_CHECK_LIB([rt], [clock_gettime])
 
 PKG_CHECK_MODULES([nss],[nss])

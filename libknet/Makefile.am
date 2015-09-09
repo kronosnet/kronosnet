@@ -11,7 +11,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-LIBS			= -lpthread
+LIBS			= -lpthread -lm
 
 libversion		= 0:0:0
 

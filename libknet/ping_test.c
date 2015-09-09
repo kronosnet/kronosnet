@@ -274,8 +274,8 @@ static void pmtud_notify(void *private_data, unsigned int link_mtu, unsigned int
 
 int main(int argc, char *argv[])
 {
-	char out_big_buff[65000], out_big_frag[64000], hello_world[16];
-	char recvbuff[65000];
+	char out_big_buff[64000], out_big_frag[66000], hello_world[16];
+	char recvbuff[66000];
 	size_t len;
 	fd_set rfds;
 	struct timeval tv;
@@ -373,14 +373,27 @@ int main(int argc, char *argv[])
 
 		snprintf(hello_world, sizeof(hello_world), "Hello world!");
 
-		if (big) {
-			iov_out[0].iov_base = (void *)out_big_frag;
-			iov_out[0].iov_len = sizeof(out_big_frag);
-			big = 0;
-		} else {
-			iov_out[0].iov_base = (void *)hello_world;
-			iov_out[0].iov_len = 13;
-			big = 1;
+
+		switch(big) {
+			case 0: /* hello world */
+				iov_out[0].iov_base = (void *)hello_world;
+				iov_out[0].iov_len = 13;
+				big = 1;
+				break;
+			case 1: /* big but does not require frag */
+				iov_out[0].iov_base = (void *)out_big_buff;
+				iov_out[0].iov_len = sizeof(out_big_buff);
+				big = 2;
+				break;
+			case 2: /* big and requires frag */
+				iov_out[0].iov_base = (void *)out_big_frag;
+				iov_out[0].iov_len = sizeof(out_big_frag);
+				big = 0;
+				break;
+			default:
+				printf("unknown packet size?\n");
+				exit(1);
+				break;
 		}
 
 		wlen = writev(knet_sock[1], iov_out, 1);
@@ -389,8 +402,8 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		tv.tv_sec = 0;
-		tv.tv_usec = 5000;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
  select_loop:
 		FD_ZERO(&rfds);
