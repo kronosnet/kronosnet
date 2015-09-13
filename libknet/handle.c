@@ -994,6 +994,7 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len)
 ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len)
 {
 	struct iovec iov_out[1];
+	int sock;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -1010,5 +1011,11 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len)
 	iov_out[0].iov_base = (void *)buff;
 	iov_out[0].iov_len = buff_len;
 
-	return writev(knet_h->sockfd, iov_out, 1);
+	if (knet_h->sockpair[1]) {
+		sock = knet_h->sockpair[1];
+	} else {
+		sock = knet_h->sockfd;
+	}
+
+	return writev(sock, iov_out, 1);
 }
