@@ -27,27 +27,48 @@ static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int _init_socketpair(knet_handle_t knet_h)
 {
+	int savederrno = 0;
+
 	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, knet_h->sockpair) != 0) {
-		return -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize socketpair: %s",
+			strerror(savederrno));
+		goto exit_fail;
 	}
 
 	if (_fdset_cloexec(knet_h->sockpair[0])) {
-		return -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sockpair[0]: %s",
+			strerror(savederrno));
+		goto exit_fail;
 	}
 
 	if (_fdset_nonblock(knet_h->sockpair[0])) {
-		return -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sockpair[0]: %s", 
+			strerror(savederrno));
+		goto exit_fail;
 	}
 
 	if (_fdset_cloexec(knet_h->sockpair[1])) {
-		return -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sockpair[1]: %s",
+			strerror(savederrno));
+		goto exit_fail;
 	}
 
 	if (_fdset_nonblock(knet_h->sockpair[1])) {
-		return -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sockpair[1]: %s", 
+			strerror(savederrno));
+		goto exit_fail;
 	}
 
 	return 0;
+
+exit_fail:
+	errno = savederrno;
+	return -1;
 }
 
 static void _close_socketpair(knet_handle_t knet_h)
@@ -565,6 +586,10 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	 */
 
 	knet_h->host_id = host_id;
+	knet_h->logfd = log_fd;
+	if (knet_h->logfd > 0) {
+		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
+	}
 
 	if (*datafd == 0) {
 		if (_init_socketpair(knet_h)) {
@@ -575,11 +600,6 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		*datafd = knet_h->sockpair[1];
 	} else {
 		knet_h->sockfd = *datafd;
-	}
-
-	knet_h->logfd = log_fd;
-	if (knet_h->logfd > 0) {
-		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
 	}
 
 	/*
