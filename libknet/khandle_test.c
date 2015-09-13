@@ -19,23 +19,20 @@
 
 int main(int argc, char *argv[])
 {
-	int sock, i;
+	int sock = 0, i;
 	knet_handle_t knet_h;
 
-	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	knet_h = knet_handle_new(1, &sock, 0, 0);
 
-	if (sock < 0) {
-		printf("Unable to create new socket\n");
-		exit(EXIT_FAILURE);
+	for (i = 0; i < KNET_MAX_HOST; i++) {
+		printf("add host: %d\n", i);
+		knet_host_add(knet_h, i);
 	}
 
-	knet_h = knet_handle_new(1, sock, 0, 0);
-
-	for (i = 0; i < KNET_MAX_HOST; i++)
-		knet_host_add(knet_h, i);
-
-	for (i = 0; i < KNET_MAX_HOST; i++)
+	for (i = 0; i < KNET_MAX_HOST; i++) {
+		printf("del host: %d\n", i);
 		knet_host_remove(knet_h, i);
+	}
 
 	if (knet_handle_free(knet_h) != 0) {
 		printf("Unable to free knet_handle\n");

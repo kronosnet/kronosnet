@@ -24,7 +24,7 @@
 
 #define KNET_RING_DEFPORT 50000
 
-static int knet_sock[2];
+static int knet_sock = 0;
 static knet_handle_t knet_h;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 static uint8_t loglevel = KNET_LOG_INFO;
@@ -292,11 +292,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, knet_sock) != 0) {
-		printf("Unable to create socket\n");
-		exit(EXIT_FAILURE);
-	}
-
 	if (pipe(logpipefd)) {
 		printf("Unable to create log pipe\n");
 		exit(EXIT_FAILURE);
@@ -318,7 +313,7 @@ int main(int argc, char *argv[])
 
 	set_debug(argc, argv);
 
-	if ((knet_h = knet_handle_new(1, knet_sock[0], logfd, loglevel)) == NULL) {
+	if ((knet_h = knet_handle_new(1, &knet_sock, logfd, loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
@@ -373,7 +368,6 @@ int main(int argc, char *argv[])
 
 		snprintf(hello_world, sizeof(hello_world), "Hello world!");
 
-
 		switch(big) {
 			case 0: /* hello world */
 				iov_out[0].iov_base = (void *)hello_world;
@@ -396,7 +390,7 @@ int main(int argc, char *argv[])
 				break;
 		}
 
-		wlen = writev(knet_sock[1], iov_out, 1);
+		wlen = writev(knet_sock, iov_out, 1);
 		if (wlen != iov_out[0].iov_len) {
 			printf("Unable to send messages to socket\n");
 			exit(1);
@@ -407,7 +401,7 @@ int main(int argc, char *argv[])
 
  select_loop:
 		FD_ZERO(&rfds);
-		FD_SET(knet_sock[1], &rfds);
+		FD_SET(knet_sock, &rfds);
 		FD_SET(logpipefd[0], &rfds);
 
 		len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
@@ -418,7 +412,7 @@ int main(int argc, char *argv[])
 		if (len < 0) {
 			printf("Unable select over knet_handle_t\n");
 			exit(EXIT_FAILURE);
-		} else if (FD_ISSET(knet_sock[1], &rfds)) {
+		} else if (FD_ISSET(knet_sock, &rfds)) {
 			struct iovec iov_in;
 			ssize_t rlen = 0;
 
@@ -427,7 +421,7 @@ int main(int argc, char *argv[])
 			iov_in.iov_base = (void *)recvbuff;
 			iov_in.iov_len = sizeof(recvbuff);
 
-			rlen = readv(knet_sock[1], &iov_in, 1);
+			rlen = readv(knet_sock, &iov_in, 1);
 
 			if (!rlen) {
 				printf("EOF\n");

@@ -1559,7 +1559,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 static int knet_cmd_interface(struct knet_vty *vty)
 {
-	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id;
+	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id, tapfd;
 	uint16_t baseport;
 	uint8_t *bport = (uint8_t *)&baseport;
 	char *param = NULL;
@@ -1611,7 +1611,9 @@ tap_found:
 
 	knet_iface->cfg_ring.base_port = baseport;
 
-	knet_iface->cfg_ring.knet_h = knet_handle_new(requested_id, tap_get_fd(knet_iface->cfg_eth.tap), vty->logfd, vty->loglevel);
+	tapfd = tap_get_fd(knet_iface->cfg_eth.tap);
+
+	knet_iface->cfg_ring.knet_h = knet_handle_new(requested_id, &tapfd, vty->logfd, vty->loglevel);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);

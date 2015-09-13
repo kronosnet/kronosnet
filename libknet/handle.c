@@ -25,6 +25,43 @@
 
 static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static int _init_socketpair(knet_handle_t knet_h)
+{
+	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, knet_h->sockpair) != 0) {
+		return -1;
+	}
+
+	if (_fdset_cloexec(knet_h->sockpair[0])) {
+		return -1;
+	}
+
+	if (_fdset_nonblock(knet_h->sockpair[0])) {
+		return -1;
+	}
+
+	if (_fdset_cloexec(knet_h->sockpair[1])) {
+		return -1;
+	}
+
+	if (_fdset_nonblock(knet_h->sockpair[1])) {
+		return -1;
+	}
+
+	return 0;
+}
+
+static void _close_socketpair(knet_handle_t knet_h)
+{
+	if (knet_h->sockpair[0]) {
+		close(knet_h->sockpair[0]);
+		knet_h->sockpair[0] = 0;
+	}
+	if (knet_h->sockpair[1]) {
+		close(knet_h->sockpair[1]);
+		knet_h->sockpair[1] = 0;
+	}
+}
+
 static int _init_locks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -486,7 +523,7 @@ static void _stop_threads(knet_handle_t knet_h)
 }
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      datafd,
+			      int      *datafd,
 			      int      log_fd,
 			      uint8_t  default_log_level)
 {
@@ -497,7 +534,12 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	 * validate incoming request
 	 */
 
-	if (datafd <= 0) {
+	if (datafd == NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	if (*datafd < 0) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -523,7 +565,18 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	 */
 
 	knet_h->host_id = host_id;
-	knet_h->sockfd = datafd;
+
+	if (*datafd == 0) {
+		if (_init_socketpair(knet_h)) {
+			savederrno = errno;
+			goto exit_fail;
+		}
+		knet_h->sockfd = knet_h->sockpair[0];
+		*datafd = knet_h->sockpair[1];
+	} else {
+		knet_h->sockfd = *datafd;
+	}
+
 	knet_h->logfd = log_fd;
 	if (knet_h->logfd > 0) {
 		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
@@ -650,6 +703,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	crypto_fini(knet_h);
 
 	_destroy_locks(knet_h);
+	_close_socketpair(knet_h);
 
 exit_nolock:
 	free(knet_h);

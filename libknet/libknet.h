@@ -59,13 +59,19 @@ typedef struct knet_handle *knet_handle_t;
  *            It is user responsibility to check that the value
  *            is unique, or bad might happen.
  *
- * datafd   - read/write file descriptor (must be > 0).
+ * datafd   - read/write file descriptor.
  *            knet will read data here to send to the other hosts
  *            and will write data received from the network.
  *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
  *            Applications might be able to write more data at a time
  *            but they will be delivered in KNET_MAX_PACKET_SIZE chunks.
  *            Please refer to ping_test.c on how to setup socketpair.
+ *            datafd can be 0, and knet_handle_new will create a properly
+ *            populated socket pair the same way as ping_test, or a value
+ *            higher than 0. Negative number will return error.
+ *            knet_handle_new will take care to cleanup the socketpair
+ *            only if it's been created by knet_handle_new, when calling
+ *            knet_handle_free.
  *
  * log_fd   - write file descriptor. If set to a value > 0, it will be used
  *            to write log packets (see below) from libknet to the application.
@@ -85,7 +91,7 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      datafd,
+			      int      *datafd,
 			      int      log_fd,
 			      uint8_t  default_log_level);
 

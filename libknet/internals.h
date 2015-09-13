@@ -81,6 +81,7 @@ struct knet_handle {
 	uint16_t host_id;
 	unsigned int enabled:1;
 	int sockfd;
+	int sockpair[2];
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int hostpipefd[2];
