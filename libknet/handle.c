@@ -939,3 +939,56 @@ exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 	return err;
 }
+
+ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len)
+{
+	struct iovec iov_in;
+	int sock;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((buff == NULL) || (buff_len == 0)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	memset(&iov_in, 0, sizeof(iov_in));
+	iov_in.iov_base = (void *)buff;
+	iov_in.iov_len = buff_len;
+
+	/*
+	 * workaround magic of the socketpair
+	 */
+	if (knet_h->sockpair[1]) {
+		sock = knet_h->sockpair[1];
+	} else {
+		sock = knet_h->sockfd;
+	}
+
+	return readv(sock, &iov_in, 1);
+}
+
+ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len)
+{
+	struct iovec iov_out[1];
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((buff == NULL) || (buff_len == 0)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	memset(iov_out, 0, sizeof(iov_out));
+
+	iov_out[0].iov_base = (void *)buff;
+	iov_out[0].iov_len = buff_len;
+
+	return writev(knet_h->sockfd, iov_out, 1);
+}

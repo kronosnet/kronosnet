@@ -18,7 +18,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <sys/uio.h>
 
 #include "libknet.h"
 
@@ -352,15 +351,13 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		ssize_t wlen;
-		size_t i;
-		struct iovec iov_out[1];
+		size_t i, buff_len;
+		char *buff;
 
 		knet_host_get_host_list(knet_h, host_ids, &host_ids_entries);
 		for (i = 0; i < host_ids_entries; i++) {
 			print_link(knet_h, host_ids[i]);
 		}
-
-		memset(iov_out, 0, sizeof(iov_out));
 
 		memset(&out_big_frag, 0, sizeof(out_big_frag));
 		memset(&out_big_buff, 0, sizeof(out_big_buff));
@@ -370,18 +367,18 @@ int main(int argc, char *argv[])
 
 		switch(big) {
 			case 0: /* hello world */
-				iov_out[0].iov_base = (void *)hello_world;
-				iov_out[0].iov_len = 13;
+				buff = hello_world;
+				buff_len = 13;
 				big = 1;
 				break;
 			case 1: /* big but does not require frag */
-				iov_out[0].iov_base = (void *)out_big_buff;
-				iov_out[0].iov_len = sizeof(out_big_buff);
+				buff = out_big_buff;
+				buff_len = sizeof(out_big_buff);
 				big = 2;
 				break;
 			case 2: /* big and requires frag */
-				iov_out[0].iov_base = (void *)out_big_frag;
-				iov_out[0].iov_len = sizeof(out_big_frag);
+				buff = out_big_frag;
+				buff_len = sizeof(out_big_frag);
 				big = 0;
 				break;
 			default:
@@ -390,8 +387,8 @@ int main(int argc, char *argv[])
 				break;
 		}
 
-		wlen = writev(knet_sock, iov_out, 1);
-		if (wlen != iov_out[0].iov_len) {
+		wlen = knet_send(knet_h, buff, buff_len);
+		if (wlen != buff_len) {
 			printf("Unable to send messages to socket\n");
 			exit(1);
 		}
@@ -413,26 +410,21 @@ int main(int argc, char *argv[])
 			printf("Unable select over knet_handle_t\n");
 			exit(EXIT_FAILURE);
 		} else if (FD_ISSET(knet_sock, &rfds)) {
-			struct iovec iov_in;
 			ssize_t rlen = 0;
 
-			memset(&iov_in, 0, sizeof(iov_in));
-
-			iov_in.iov_base = (void *)recvbuff;
-			iov_in.iov_len = sizeof(recvbuff);
-
-			rlen = readv(knet_sock, &iov_in, 1);
+			rlen = knet_recv(knet_h, recvbuff, sizeof(recvbuff));
 
 			if (!rlen) {
 				printf("EOF\n");
 				break;
 			}
+
 			if ((rlen < 0) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
-				printf("NO MORE DATA TO READ\n");
+				printf("NO MORE DATA TO READ: %s\n", strerror(errno));
 				break;
 			}
 
-			printf("Received data (%zu bytes): '%s'\n", rlen, (char *)iov_in.iov_base);
+			printf("Received data (%zu bytes): '%s'\n", rlen, buff);
 
 			if (has_crypto) {
 				printf("changing crypto key\n");

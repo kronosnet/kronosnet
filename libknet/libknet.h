@@ -111,6 +111,40 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 int knet_handle_free(knet_handle_t knet_h);
 
 /*
+ * knet_recv
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * buff     - pointer to buffer where to store the data
+ *
+ * buff_len - buffer lenght
+ *
+ * knet_recv is a commodity function to wrap iovec operations
+ * around a socket. It returns a call to readv(2).
+ */
+
+ssize_t knet_recv(knet_handle_t knet_h,
+		  char *buff,
+		  const size_t buff_len);
+
+/*
+ * knet_send
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * buff     - pointer to the buffer of data to send
+ *
+ * buff_len - lenght of data to send
+ *
+ * knet_send is a commodity function to wrap iovec operations
+ * around a socket. It returns a call to writev(2).
+ */
+
+ssize_t knet_send(knet_handle_t knet_h,
+		  const char *buff,
+		  const size_t buff_len);
+
+/*
  * knet_handle_enable_filter
  * 
  * knet_h   - pointer to knet_handle_t
