@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sys/epoll.h>
+#include <sys/uio.h>
 
 #include "internals.h"
 #include "crypto.h"
