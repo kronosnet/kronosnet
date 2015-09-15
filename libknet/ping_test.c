@@ -429,12 +429,14 @@ int main(int argc, char *argv[])
 			printf("Received data (%zu bytes): '%s'\n", rlen, recvbuff);
 
 			if (has_crypto) {
+#if 0
 				printf("changing crypto key\n");
 				memset(knet_handle_crypto_cfg.private_key, has_crypto, KNET_MAX_KEY_LEN);
 				if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
 					printf("Unable to change key on the fly\n");
 					has_crypto++;
 				}
+#endif
 			}
 
 		} else if (FD_ISSET(logpipefd[0], &rfds)) {
