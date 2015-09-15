@@ -364,6 +364,8 @@ int main(int argc, char *argv[])
 		memset(&hello_world, 0, sizeof(hello_world));
 
 		snprintf(hello_world, sizeof(hello_world), "Hello world!");
+		snprintf(out_big_buff, sizeof(out_big_buff), "%zu", sizeof(out_big_buff));
+		snprintf(out_big_frag, sizeof(out_big_frag), "%zu", sizeof(out_big_frag));
 
 		switch(big) {
 			case 0: /* hello world */
@@ -424,7 +426,7 @@ int main(int argc, char *argv[])
 				break;
 			}
 
-			printf("Received data (%zu bytes): '%s'\n", rlen, buff);
+			printf("Received data (%zu bytes): '%s'\n", rlen, recvbuff);
 
 			if (has_crypto) {
 				printf("changing crypto key\n");
