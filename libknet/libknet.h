@@ -34,7 +34,7 @@
  *  see knet_handle_new for details
  */
 
-#define KNET_MAX_PACKET_SIZE 131072
+#define KNET_MAX_PACKET_SIZE 65536
 
 /*
  * buffers used for pretty logging
@@ -63,8 +63,14 @@ typedef struct knet_handle *knet_handle_t;
  *            knet will read data here to send to the other hosts
  *            and will write data received from the network.
  *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
- *            Applications might be able to write more data at a time
- *            but they will be delivered in KNET_MAX_PACKET_SIZE chunks.
+ *            Applications using knet_send/knet_recv will receive
+ *            proper error in case of packet size is not within boundaries.
+ *            Applications using their own functions to write to the
+ *            datafd should NOT write more than KNET_MAX_PACKET_SIZE
+ *            or the packet will be fragmented by readv inside the
+ *            delivery thread. Be aware that while you can write
+ *            more than KNET_MAX_PACKET_SIZE, that can break any
+ *            custom delivery filters (see below) due to data offset.
  *            Please refer to ping_test.c on how to setup socketpair.
  *            datafd can be 0, and knet_handle_new will create a properly
  *            populated socket pair the same way as ping_test, or a value

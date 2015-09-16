@@ -273,7 +273,7 @@ static void pmtud_notify(void *private_data, unsigned int link_mtu, unsigned int
 
 int main(int argc, char *argv[])
 {
-	char out_big_buff[64000], out_big_frag[66000], hello_world[16];
+	char out_big_buff[64000], out_big_frag[65536], hello_world[16];
 	char recvbuff[66000];
 	size_t len;
 	fd_set rfds;

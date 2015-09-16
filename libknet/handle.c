@@ -997,12 +997,9 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len)
 	struct iovec iov_out[1];
 	int sock;
 
-	if (!knet_h) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if ((buff == NULL) || (buff_len == 0)) {
+	if ((!knet_h) ||
+	    (buff == NULL) ||
+	    (buff_len == 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
 		errno = EINVAL;
 		return -1;
 	}
