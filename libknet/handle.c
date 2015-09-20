@@ -21,6 +21,7 @@
 #include "crypto.h"
 #include "common.h"
 #include "threads.h"
+#include "threads_heartbeat.h"
 #include "logging.h"
 #include "onwire.h"
 
