@@ -26,7 +26,6 @@
 #include "threads_dsthandler.h"
 #include "threads_send_recv.h"
 #include "logging.h"
-#include "onwire.h"
 
 static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 

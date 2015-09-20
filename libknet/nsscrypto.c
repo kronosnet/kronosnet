@@ -17,8 +17,6 @@
 
 #include "crypto.h"
 #include "nsscrypto.h"
-#include "internals.h"
-#include "onwire.h"
 #include "logging.h"
 
 /*

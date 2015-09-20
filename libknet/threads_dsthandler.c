@@ -9,27 +9,12 @@
 
 #include "config.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <errno.h>
 #include <pthread.h>
 #include <sys/epoll.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <time.h>
-#include <sys/uio.h>
-#include <math.h>
 
-#include "internals.h"
-#include "onwire.h"
-#include "crypto.h"
-#include "common.h"
 #include "host.h"
 #include "logging.h"
-#include "listener.h"
-#include "link.h"
 #include "threads_common.h"
 #include "threads_dsthandler.h"
 

@@ -19,7 +19,6 @@
 #include "logging.h"
 #include "link.h"
 #include "listener.h"
-#include "onwire.h"
 #include "host.h"
 
 int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
