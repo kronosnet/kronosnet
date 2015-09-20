@@ -7,9 +7,6 @@ link/host level:
  - (issue) implement packet fragmentation?, is the only
            solution to avoid conflicts with tun/tap mtu setting and various
            others buffer sizes.
- - (issue) sort out read buf from recv_from_links since it might be too small vs
-           sending out 128k (+header+encryption+....). this is also related
-           to max PMTU
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
                      this approach allow runtime change of compress.
