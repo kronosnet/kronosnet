@@ -20,10 +20,11 @@
 #include "internals.h"
 #include "crypto.h"
 #include "common.h"
-#include "threads.h"
+#include "threads_common.h"
 #include "threads_heartbeat.h"
 #include "threads_pmtud.h"
 #include "threads_dsthandler.h"
+#include "threads_send_recv.h"
 #include "logging.h"
 #include "onwire.h"
 

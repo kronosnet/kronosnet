@@ -13,7 +13,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "threads.h"
+#include "threads_common.h"
 
 #define timespec_set(x, sec, nsec) \
 do { \

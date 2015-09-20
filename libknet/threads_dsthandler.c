@@ -30,7 +30,7 @@
 #include "logging.h"
 #include "listener.h"
 #include "link.h"
-#include "threads.h"
+#include "threads_common.h"
 #include "threads_dsthandler.h"
 
 static void _handle_dst_link_updates(knet_handle_t knet_h)

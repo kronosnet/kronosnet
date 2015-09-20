@@ -30,7 +30,7 @@
 #include "logging.h"
 #include "listener.h"
 #include "link.h"
-#include "threads.h"
+#include "threads_common.h"
 #include "threads_heartbeat.h"
 
 #define KNET_PING_TIMERES 200000

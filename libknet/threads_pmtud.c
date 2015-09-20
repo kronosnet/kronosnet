@@ -30,7 +30,7 @@
 #include "logging.h"
 #include "listener.h"
 #include "link.h"
-#include "threads.h"
+#include "threads_common.h"
 #include "threads_pmtud.h"
 
 static void _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)

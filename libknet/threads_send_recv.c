@@ -30,7 +30,8 @@
 #include "logging.h"
 #include "listener.h"
 #include "link.h"
-#include "threads.h"
+#include "threads_common.h"
+#include "threads_send_recv.h"
 
 static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, unsigned char *outbuf, ssize_t outlen)
 {

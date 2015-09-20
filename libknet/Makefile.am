@@ -24,10 +24,10 @@ sources			= \
 			  link.c \
 			  logging.c \
 			  nsscrypto.c \
-			  threads.c \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \
-			  threads_pmtud.c
+			  threads_pmtud.c \
+			  threads_send_recv.c
 
 include_HEADERS		= libknet.h
 
@@ -45,10 +45,11 @@ noinst_HEADERS		= \
 			  logging.h \
 			  nsscrypto.h \
 			  onwire.h \
-			  threads.h \
+			  threads_common.h \
 			  threads_dsthandler.h \
 			  threads_heartbeat.h \
-			  threads_pmtud.h
+			  threads_pmtud.h \
+			  threads_send_recv.h
 
 lib_LTLIBRARIES		= libknet.la
 
