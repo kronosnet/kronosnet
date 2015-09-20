@@ -17,7 +17,7 @@
 #include "libknet.h"
 #include "onwire.h"
 
-#define KNET_DATABUFSIZE (KNET_MAX_PACKET_SIZE * 2) + KNET_HEADER_DATA_SIZE
+#define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_HEADER_ALL_SIZE
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE * 2
 
 struct knet_listener {
