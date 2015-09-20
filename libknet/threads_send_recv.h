@@ -7,19 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __THREADS_H__
-#define __THREADS_H__
-
-#define timespec_diff(start, end, diff) \
-do { \
-	if (end.tv_sec > start.tv_sec) \
-		*(diff) = ((end.tv_sec - start.tv_sec) * 1000000000llu) \
-					+ end.tv_nsec - start.tv_nsec; \
-	else \
-		*(diff) = end.tv_nsec - start.tv_nsec; \
-} while (0);
-
-#define KNET_EPOLL_MAX_EVENTS 8
+#ifndef __THREADS_SEND_RECV_H__
+#define __THREADS_SEND_RECV_H__
 
 void *_handle_send_to_links_thread(void *data);
 void *_handle_recv_from_links_thread(void *data);
