@@ -22,6 +22,7 @@
 #include "common.h"
 #include "threads.h"
 #include "threads_heartbeat.h"
+#include "threads_pmtud.h"
 #include "logging.h"
 #include "onwire.h"
 

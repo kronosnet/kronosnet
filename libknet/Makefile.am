@@ -25,7 +25,8 @@ sources			= \
 			  logging.c \
 			  nsscrypto.c \
 			  threads.c \
-			  threads_heartbeat.c
+			  threads_heartbeat.c \
+			  threads_pmtud.c
 
 include_HEADERS		= libknet.h
 
@@ -44,7 +45,8 @@ noinst_HEADERS		= \
 			  nsscrypto.h \
 			  onwire.h \
 			  threads.h \
-			  threads_heartbeat.h
+			  threads_heartbeat.h \
+			  threads_pmtud.h
 
 lib_LTLIBRARIES		= libknet.la
 
