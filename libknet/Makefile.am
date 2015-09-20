@@ -25,6 +25,7 @@ sources			= \
 			  logging.c \
 			  nsscrypto.c \
 			  threads.c \
+			  threads_dsthandler.c \
 			  threads_heartbeat.c \
 			  threads_pmtud.c
 
@@ -45,6 +46,7 @@ noinst_HEADERS		= \
 			  nsscrypto.h \
 			  onwire.h \
 			  threads.h \
+			  threads_dsthandler.h \
 			  threads_heartbeat.h \
 			  threads_pmtud.h
 

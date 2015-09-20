@@ -23,6 +23,7 @@
 #include "threads.h"
 #include "threads_heartbeat.h"
 #include "threads_pmtud.h"
+#include "threads_dsthandler.h"
 #include "logging.h"
 #include "onwire.h"
 

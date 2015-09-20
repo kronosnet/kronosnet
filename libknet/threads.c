@@ -32,8 +32,6 @@
 #include "link.h"
 #include "threads.h"
 
-#define KNET_PING_TIMERES 200000
-
 static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, unsigned char *outbuf, ssize_t outlen)
 {
 	int link_idx;
@@ -572,35 +570,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
-static void _handle_dst_link_updates(knet_handle_t knet_h)
-{
-	uint16_t host_id;
-	struct knet_host *host;
-
-	if (read(knet_h->dstpipefd[0], &host_id, sizeof(host_id)) != sizeof(host_id)) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
-		return;
-	}
-
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to get read lock");
-		return;
-	}
-
-	host = knet_h->host_index[host_id];
-	if (!host) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %u", host_id);
-		goto out_unlock;
-	}
-
-	_host_dstcache_update_sync(knet_h, host);
-
-out_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	return;
-}
-
 void *_handle_send_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
@@ -640,19 +609,6 @@ void *_handle_recv_from_links_thread(void *data)
 		for (i = 0; i < nev; i++) {
 			_handle_recv_from_links(knet_h, events[i].data.fd);
 		}
-	}
-
-	return NULL;
-}
-
-void *_handle_dst_link_handler_thread(void *data)
-{
-	knet_handle_t knet_h = (knet_handle_t) data;
-	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
-
-	while (!knet_h->fini_in_progress) {
-		if (epoll_wait(knet_h->dst_link_handler_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1) >= 1)
-			_handle_dst_link_updates(knet_h);
 	}
 
 	return NULL;
