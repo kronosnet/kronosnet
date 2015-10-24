@@ -214,12 +214,9 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 
 			if (frag_len > temp_data_mtu) {
 				frag_len = frag_len - temp_data_mtu;
-				/*
-				 * we can't verify this memmove till reassembly code is implemented
-				 */
 				memmove(knet_h->send_to_links_buf->khp_data_userdata,
 					knet_h->send_to_links_buf->khp_data_userdata + temp_data_mtu,
-					temp_data_mtu);
+					frag_len);
 			}
 		}
 	} else {
@@ -253,12 +250,9 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 
 			if (frag_len > temp_data_mtu) {
 				frag_len = frag_len - temp_data_mtu;
-				/*
-				 * we can't verify this memmove till reassembly code is implemented
-				 */
 				memmove(knet_h->send_to_links_buf->khp_data_userdata,
 					knet_h->send_to_links_buf->khp_data_userdata + temp_data_mtu,
-					temp_data_mtu);
+					frag_len);
 			}
 		}
 	}
@@ -273,6 +267,103 @@ host_unlock:
 		pthread_cond_signal(&knet_h->host_cond);
 		pthread_mutex_unlock(&knet_h->host_mutex);
 	}
+}
+
+static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
+{
+	struct knet_host_defrag_buf *defrag_buf;
+
+	/*
+	 * this will need to be dynamic and we will need an all buffer full reclaim mechanism
+	 * add here checks that we are handling a pckt from the same seq num
+	 */
+
+	defrag_buf = &knet_h->host_index[knet_h->recv_from_links_buf->kh_node]->defrag_buf[0];
+
+	/*
+	 * if the buf is not is use, then make sure it's clean
+	 */
+	if (!defrag_buf->in_use) {
+		memset(defrag_buf, 0, sizeof(struct knet_host_defrag_buf));
+		defrag_buf->in_use = 1;
+		defrag_buf->pckt_seq = knet_h->recv_from_links_buf->khp_data_seq_num;
+	}
+
+	/*
+	 * check if we already received this fragment
+	 */
+	if (defrag_buf->frag_map[knet_h->recv_from_links_buf->khp_data_frag_seq]) {
+		/*
+		 * if we have received this fragment and we didn't clear the buffer
+		 * it means that we don't have all fragments yet
+		 */
+		return 1;
+	}
+
+	/*
+	 *  we need to handle the last packet with gloves due to its different size
+	 */
+
+	if (knet_h->recv_from_links_buf->khp_data_frag_seq == knet_h->recv_from_links_buf->khp_data_frag_num) {
+		defrag_buf->last_frag_size = *len;
+
+		/*
+		 * in the event when the last packet arrives first,
+		 * we still don't know the offset vs the other fragments (based on MTU),
+		 * so we store the fragment at the end of the buffer where it's safe
+		 * and take a copy of the len so that we can restore its offset later.
+		 * remember we can't use the local MTU for this calculation because pMTU
+		 * can be asymettric between the same hosts.
+		 */
+		if (!defrag_buf->frag_size) {
+			defrag_buf->last_first = 1;
+			memcpy(defrag_buf->buf + (KNET_MAX_PACKET_SIZE - *len),
+			       knet_h->recv_from_links_buf->khp_data_userdata,
+			       *len);
+		}
+	} else {
+		defrag_buf->frag_size = *len;
+	}
+
+	memcpy(defrag_buf->buf + ((knet_h->recv_from_links_buf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
+	       knet_h->recv_from_links_buf->khp_data_userdata, *len);
+
+	defrag_buf->frag_recv++;
+	defrag_buf->frag_map[knet_h->recv_from_links_buf->khp_data_frag_seq] = 1;
+
+	/*
+	 * check if we received all the fragments
+	 */
+	if (defrag_buf->frag_recv == knet_h->recv_from_links_buf->khp_data_frag_num) {
+		/*
+		 * special case the last pckt
+		 */
+
+		if (defrag_buf->last_first) {
+			memmove(defrag_buf->buf + ((knet_h->recv_from_links_buf->khp_data_frag_num - 1) * defrag_buf->frag_size),
+			        defrag_buf->buf + (KNET_MAX_PACKET_SIZE - defrag_buf->last_frag_size),
+				defrag_buf->last_frag_size);
+		}
+
+		/*
+		 * recalculate packet lenght
+		 */
+
+		*len = ((knet_h->recv_from_links_buf->khp_data_frag_num - 1) * defrag_buf->frag_size) + defrag_buf->last_frag_size;
+
+		/*
+		 * copy the pckt back in the user data
+		 */
+		memcpy(knet_h->recv_from_links_buf->khp_data_userdata, defrag_buf->buf, *len);
+
+		/*
+		 * free this buffer
+		 */
+		defrag_buf->in_use = 0;
+		return 0;
+	}
+
+	return 1;
 }
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
@@ -319,22 +410,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		goto exit_unlock;
 	}
 
-	/*
-	 * skip fragmented pckt for now
-	 */
-
-	if (knet_h->recv_from_links_buf->kh_type == KNET_HEADER_TYPE_DATA) {
-		if (knet_h->recv_from_links_buf->khp_data_frag_num > 1) {
-			if (knet_h->recv_from_links_buf->khp_data_frag_seq == 1) {
-				log_warn(knet_h, KNET_SUB_LINK_T, "pckt reassembly code not implemented! seq: %u frag: %u size: %zu",
-					 ntohs(knet_h->recv_from_links_buf->khp_data_seq_num),
-					 knet_h->recv_from_links_buf->khp_data_frag_seq,
-					 len - KNET_HEADER_SIZE);
-			}
-			goto exit_unlock;
-		}
-	}
-
 	knet_h->recv_from_links_buf->kh_node = ntohs(knet_h->recv_from_links_buf->kh_node);
 	src_host = knet_h->host_index[knet_h->recv_from_links_buf->kh_node];
 	if (src_host == NULL) {  /* host not found */
@@ -371,6 +446,20 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			break;
 
 		knet_h->recv_from_links_buf->khp_data_seq_num = ntohs(knet_h->recv_from_links_buf->khp_data_seq_num);
+
+		if (knet_h->recv_from_links_buf->khp_data_frag_num > 1) {
+			/*
+			 * len as received from the socket also includes extra stuff
+			 * that the defrag code doesn't care about. So strip it
+			 * here and readd only for repadding once we are done
+			 * defragging
+			 */
+			len = len - KNET_HEADER_DATA_SIZE;
+			if (pckt_defrag(knet_h, &len)) {
+				goto exit_unlock;
+			}
+			len = len + KNET_HEADER_DATA_SIZE;
+		}
 
 		if (knet_h->dst_host_filter_fn) {
 			int host_idx;
@@ -507,6 +596,16 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
 	case KNET_HEADER_TYPE_HOST_INFO:
+		/*
+		 * TODO: check if we need to fix padding as we do for data packets.
+		 *       we currently don't have any HOST_INFO big enough to frag data
+		 */
+		if (knet_h->recv_from_links_buf->khp_data_frag_num > 1) {
+			if (pckt_defrag(knet_h, &len)) {
+				goto exit_unlock;
+			}
+		}
+
 		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf->khp_data_userdata;
 		if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 			knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);

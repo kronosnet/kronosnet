@@ -58,6 +58,17 @@ struct knet_link {
 
 #define KNET_CBUFFER_SIZE 4096
 
+struct knet_host_defrag_buf {
+	char buf[KNET_MAX_PACKET_SIZE];
+	uint8_t in_use;			/* 0 buffer is free, 1 is in use */
+	seq_num_t pckt_seq;		/* identify the pckt we are receiving */
+	uint8_t frag_recv;		/* how many frags did we receive */
+	uint8_t frag_map[UINT8_MAX];	/* bitmap of what we received? */
+	uint8_t	last_first;		/* special case if we receive the last fragment first */
+	uint16_t frag_size;		/* normal frag size (not the last one) */
+	uint16_t last_frag_size;	/* the last fragment might not be aligned with MTU size */
+};
+
 struct knet_host {
 	/* required */
 	uint16_t host_id;
@@ -70,6 +81,9 @@ struct knet_host {
 	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
 	seq_num_t ucast_seq_num_tx;
 	seq_num_t ucast_seq_num_rx;
+	/* defrag/(reassembly buffers */
+	struct knet_host_defrag_buf defrag_buf[KNET_MAX_LINK];
+	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
 	pthread_mutex_t active_links_mutex;
 	uint8_t active_link_entries;
