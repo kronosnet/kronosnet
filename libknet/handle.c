@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/uio.h>
+#include <math.h>
 
 #include "internals.h"
 #include "crypto.h"
@@ -269,15 +270,20 @@ static void _close_pipes(knet_handle_t knet_h)
 static int _init_buffers(knet_handle_t knet_h)
 {
 	int savederrno = 0;
+	int i;
+	size_t bufsize;
 
-	knet_h->send_to_links_buf = malloc(KNET_DATABUFSIZE);
-	if (!knet_h->send_to_links_buf) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory datafd to link buffer: %s",
-			strerror(savederrno));
-		goto exit_fail;
+	for (i = 0; i < UINT8_MAX; i++) {
+		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE;
+		knet_h->send_to_links_buf[i] = malloc(bufsize);
+		if (!knet_h->send_to_links_buf[i]) {
+			savederrno = errno;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory datafd to link buffer: %s",
+				strerror(savederrno));
+			goto exit_fail;
+		}
+		memset(knet_h->send_to_links_buf[i], 0, bufsize);
 	}
-	memset(knet_h->send_to_links_buf, 0, KNET_DATABUFSIZE);
 
 	knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE);
 	if (!knet_h->recv_from_links_buf) {
@@ -306,14 +312,17 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pmtudbuf, 0, KNET_PMTUD_SIZE_V6);
 
-	knet_h->send_to_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
-	if (!knet_h->send_to_links_buf_crypt) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for crypto datafd to link buffer: %s",
-			strerror(savederrno));
-		goto exit_fail;
+	for (i = 0; i < UINT8_MAX; i++) {
+		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE + KNET_DATABUFSIZE_CRYPT_PAD;
+		knet_h->send_to_links_buf_crypt[i] = malloc(bufsize);
+		if (!knet_h->send_to_links_buf_crypt) {
+			savederrno = errno;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for crypto datafd to link buffer: %s",
+				strerror(savederrno));
+			goto exit_fail;
+		}
+		memset(knet_h->send_to_links_buf_crypt[i], 0, bufsize);
 	}
-	memset(knet_h->send_to_links_buf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
 
 	knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
 	if (!knet_h->recv_from_links_buf_crypt) {
@@ -351,8 +360,13 @@ exit_fail:
 
 static void _destroy_buffers(knet_handle_t knet_h)
 {
-	free(knet_h->send_to_links_buf);
-	free(knet_h->send_to_links_buf_crypt);
+	int i;
+
+	for (i = 0; i < UINT8_MAX; i++) {
+		free(knet_h->send_to_links_buf[i]);
+		free(knet_h->send_to_links_buf_crypt[i]);
+	}
+
 	free(knet_h->recv_from_links_buf);
 	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);

@@ -18,7 +18,9 @@
 #include "onwire.h"
 
 #define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_HEADER_ALL_SIZE
-#define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE + 1024
+#define KNET_DATABUFSIZE_CRYPT_PAD 1024
+#define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE + KNET_DATABUFSIZE_CRYPT_PAD
+
 
 struct knet_listener {
 	int sock;
@@ -114,7 +116,7 @@ struct knet_handle {
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
-	struct knet_header *send_to_links_buf;
+	struct knet_header *send_to_links_buf[UINT8_MAX];
 	struct knet_header *recv_from_links_buf;
 	struct knet_header *pingbuf;
 	struct knet_header *pmtudbuf;
@@ -138,7 +140,7 @@ struct knet_handle {
 	uint16_t sec_block_size;
 	uint16_t sec_hash_size;
 	uint16_t sec_salt_size;
-	unsigned char *send_to_links_buf_crypt;
+	unsigned char *send_to_links_buf_crypt[UINT8_MAX];
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;

@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <math.h>
 #include <sys/epoll.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 
@@ -26,20 +27,36 @@
 #include "threads_common.h"
 #include "threads_send_recv.h"
 
-static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, unsigned char *outbuf, ssize_t outlen)
+static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
 {
-	int link_idx;
+	int link_idx, msg_idx;
+	struct mmsghdr msg[UINT8_MAX];
 
 	if (pthread_mutex_lock(&dst_host->active_links_mutex) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get active links mutex");
 		return;
 	}
 
+	memset(&msg, 0, sizeof(struct mmsghdr));
+
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-		if (sendto(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
-			   outbuf, outlen, MSG_DONTWAIT,
-			   (struct sockaddr *) &dst_host->link[dst_host->active_links[link_idx]].dst_addr,
-			   sizeof(struct sockaddr_storage)) < 0) {
+
+		msg_idx = 0;
+
+		/*
+		 * TODO: interleave link_idx with msg_name for RR ??
+		 */
+
+		while (msg_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+			msg[msg_idx].msg_hdr.msg_name = &dst_host->link[dst_host->active_links[link_idx]].dst_addr;
+			msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+			msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx];
+			msg[msg_idx].msg_hdr.msg_iovlen = 1;
+			msg_idx++;
+		}
+
+		if (sendmmsg(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
+			     msg, msg_idx, MSG_NOSIGNAL) < 0) {	
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
 				  dst_host->name, dst_host->host_id,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
@@ -66,14 +83,15 @@ static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host,
 
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 {
-	ssize_t inlen = 0, len, outlen, frag_len;
+	ssize_t inlen = 0, outlen, frag_len;
 	struct knet_host *dst_host;
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
-	unsigned char *outbuf = (unsigned char *)knet_h->send_to_links_buf;
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_in;
+	struct iovec iov_out[UINT8_MAX];
+	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
@@ -82,7 +100,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	memset(&iov_in, 0, sizeof(iov_in));
-	iov_in.iov_base = (void *)knet_h->send_to_links_buf->khp_data_userdata;
+	iov_in.iov_base = (void *)knet_h->send_to_links_buf[0]->khp_data_userdata;
 	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
 
 	inlen = readv(sockfd, &iov_in, 1);
@@ -99,7 +117,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	if ((knet_h->enabled != 1) &&
-	    (knet_h->send_to_links_buf->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
+	    (knet_h->send_to_links_buf[0]->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
 		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
 		goto out_unlock;
 	}
@@ -108,13 +126,13 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	 * move this into a separate function to expand on
 	 * extra switching rules
 	 */
-	switch(knet_h->send_to_links_buf->kh_type) {
+	switch(knet_h->send_to_links_buf[0]->kh_type) {
 		case KNET_HEADER_TYPE_DATA:
 			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
-						(const unsigned char *)knet_h->send_to_links_buf->khp_data_userdata,
+						(const unsigned char *)knet_h->send_to_links_buf[0]->khp_data_userdata,
 						inlen,
-						knet_h->send_to_links_buf->kh_node,
+						knet_h->send_to_links_buf[0]->kh_node,
 						dst_host_ids,
 						&dst_host_ids_entries);
 				if (bcast < 0) {
@@ -129,7 +147,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 			}
 			break;
 		case KNET_HEADER_TYPE_HOST_INFO:
-			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf->khp_data_userdata;
+			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf[0]->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
 				dst_host_ids[0] = ntohs(knet_hostinfo->khi_dst_node_id);
@@ -161,107 +179,125 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	frag_len = inlen;
+	frag_idx = 0;
 
-	knet_h->send_to_links_buf->khp_data_frag_seq = 0;
-	knet_h->send_to_links_buf->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
+	knet_h->send_to_links_buf[0]->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
 
-	if (knet_h->send_to_links_buf->khp_data_frag_num > 1) {
-		log_debug(knet_h, KNET_SUB_SEND_T, "Current inlen: %zu data mtu: %u frags: %d",
-			  inlen, temp_data_mtu, knet_h->send_to_links_buf->khp_data_frag_num);
+	log_debug(knet_h, KNET_SUB_SEND_T, "Current inlen: %zu data mtu: %u frags: %d",
+		  inlen, temp_data_mtu, knet_h->send_to_links_buf[0]->khp_data_frag_num);
+
+	/*
+	 * prepare the buffers
+	 */
+	while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+		/*
+		 * set the iov_base
+		 */
+		iov_out[frag_idx].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
+
+		/*
+		 * set the len
+		 */
+		if (frag_len > temp_data_mtu) {
+			iov_out[frag_idx].iov_len = temp_data_mtu + KNET_HEADER_DATA_SIZE;
+		} else {
+			iov_out[frag_idx].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
+		}
+
+		/*
+		 * copy the frag info on all buffers
+		 */
+		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = knet_h->send_to_links_buf[0]->khp_data_frag_num;
+		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_seq = frag_idx + 1;
+
+		frag_len = frag_len - temp_data_mtu;
+		if (frag_idx > 0) {
+			memmove(knet_h->send_to_links_buf[frag_idx]->khp_data_userdata,
+				knet_h->send_to_links_buf[0]->khp_data_userdata + (temp_data_mtu * frag_idx),
+				iov_out[frag_idx].iov_len - KNET_HEADER_DATA_SIZE);
+		}
+
+		frag_idx++;
 	}
 
 	if (!bcast) {
 		int host_idx;
 
-		while (knet_h->send_to_links_buf->khp_data_frag_seq < knet_h->send_to_links_buf->khp_data_frag_num) {
+		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 
-			knet_h->send_to_links_buf->khp_data_frag_seq++;
-
-			if (frag_len > temp_data_mtu) {
-				outlen = len = temp_data_mtu + KNET_HEADER_DATA_SIZE;
-			} else {
-				outlen = len = frag_len + KNET_HEADER_DATA_SIZE;
+			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
+			if (!dst_host) {
+				log_debug(knet_h, KNET_SUB_SEND_T, "unicast packet, host not found");
+				continue;
 			}
 
-			for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
-				dst_host = knet_h->host_index[dst_host_ids[host_idx]];
-				if (!dst_host) {
-					log_debug(knet_h, KNET_SUB_SEND_T, "unicast packet, host not found");
-					continue;
-				}
+			knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
-				if (knet_h->send_to_links_buf->khp_data_frag_seq == 1) {
-					knet_h->send_to_links_buf->khp_data_seq_num = htons(++dst_host->ucast_seq_num_tx);
-				} else {
-					knet_h->send_to_links_buf->khp_data_seq_num = htons(dst_host->ucast_seq_num_tx);
-				}
+			frag_idx = 0;
+
+			while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+
+				knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = knet_h->send_to_links_buf[0]->khp_data_seq_num;
 
 				if (knet_h->crypto_instance) {
-					if (crypto_encrypt_and_sign(knet_h,
-							    (const unsigned char *)knet_h->send_to_links_buf,
-							    len,
-							    knet_h->send_to_links_buf_crypt,
-							    &outlen) < 0) {
+					if (crypto_encrypt_and_sign(
+							knet_h,
+							(const unsigned char *)knet_h->send_to_links_buf[frag_idx],
+							iov_out[frag_idx].iov_len,
+							knet_h->send_to_links_buf_crypt[frag_idx],
+							&outlen) < 0) {
 						log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
 						goto out_unlock;
 					}
-					outbuf = knet_h->send_to_links_buf_crypt;
+					iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
+					iov_out[frag_idx].iov_len = outlen;
 				}
 
-				_dispatch_to_links(knet_h, dst_host, outbuf, outlen);
-
+				frag_idx++;
 			}
 
-			if (frag_len > temp_data_mtu) {
-				frag_len = frag_len - temp_data_mtu;
-				memmove(knet_h->send_to_links_buf->khp_data_userdata,
-					knet_h->send_to_links_buf->khp_data_userdata + temp_data_mtu,
-					frag_len);
-			}
+			_dispatch_to_links(knet_h, dst_host, iov_out);
+
 		}
+
 	} else {
-		knet_h->send_to_links_buf->khp_data_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
-		while (knet_h->send_to_links_buf->khp_data_frag_seq < knet_h->send_to_links_buf->khp_data_frag_num) {
+		knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(++knet_h->bcast_seq_num_tx);
 
-			knet_h->send_to_links_buf->khp_data_frag_seq++;
+		frag_idx = 0;
 
-			if (frag_len > temp_data_mtu) {
-				outlen = len = temp_data_mtu + KNET_HEADER_DATA_SIZE;
-			} else {
-				outlen = len = frag_len + KNET_HEADER_DATA_SIZE;
-			}
+		while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+
+			knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = knet_h->send_to_links_buf[0]->khp_data_seq_num;
 
 			if (knet_h->crypto_instance) {
-				if (crypto_encrypt_and_sign(knet_h,
-						    (const unsigned char *)knet_h->send_to_links_buf,
-						    len,
-						    knet_h->send_to_links_buf_crypt,
-						    &outlen) < 0) {
-					log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt mcast/bcast packet");
+				if (crypto_encrypt_and_sign(
+						knet_h,
+						(const unsigned char *)knet_h->send_to_links_buf[frag_idx],
+						iov_out[frag_idx].iov_len,
+						knet_h->send_to_links_buf_crypt[frag_idx],
+						&outlen) < 0) {
+					log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
 					goto out_unlock;
 				}
-				outbuf = knet_h->send_to_links_buf_crypt;
+				iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
+				iov_out[frag_idx].iov_len = outlen;
 			}
 
-			for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-				_dispatch_to_links(knet_h, dst_host, outbuf, outlen);
-			}
-
-			if (frag_len > temp_data_mtu) {
-				frag_len = frag_len - temp_data_mtu;
-				memmove(knet_h->send_to_links_buf->khp_data_userdata,
-					knet_h->send_to_links_buf->khp_data_userdata + temp_data_mtu,
-					frag_len);
-			}
+			frag_idx++;
 		}
+
+		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+			_dispatch_to_links(knet_h, dst_host, iov_out);
+		}
+
 	}
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 
 host_unlock:
-	if ((inlen > 0) && (knet_h->send_to_links_buf->kh_type == KNET_HEADER_TYPE_HOST_INFO)) {
+	if ((inlen > 0) && (knet_h->send_to_links_buf[0]->kh_type == KNET_HEADER_TYPE_HOST_INFO)) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);
@@ -670,17 +706,20 @@ void *_handle_send_to_links_thread(void *data)
 	int i, nev;
 
 	/* preparing data buffer */
-	knet_h->send_to_links_buf->kh_version = KNET_HEADER_VERSION;
-	knet_h->send_to_links_buf->kh_node = htons(knet_h->host_id);
+	for (i = 0; i < UINT8_MAX; i++) {
+		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
+		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
+		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
+	}
 
 	while (!knet_h->fini_in_progress) {
 		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->sockfd) {
-				knet_h->send_to_links_buf->kh_type = KNET_HEADER_TYPE_DATA;
+				knet_h->send_to_links_buf[0]->kh_type = KNET_HEADER_TYPE_DATA;
 			} else {
-				knet_h->send_to_links_buf->kh_type = KNET_HEADER_TYPE_HOST_INFO;
+				knet_h->send_to_links_buf[0]->kh_type = KNET_HEADER_TYPE_HOST_INFO;
 			}
 			_handle_send_to_links(knet_h, events[i].data.fd);
 		}
