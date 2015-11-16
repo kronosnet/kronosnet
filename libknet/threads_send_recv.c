@@ -208,7 +208,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		 * copy the frag info on all buffers
 		 */
 		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = knet_h->send_to_links_buf[0]->khp_data_frag_num;
-		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_seq = frag_idx + 1;
+		knet_h->send_to_links_buf[frag_idx]->kh_type = knet_h->send_to_links_buf[0]->kh_type;
 
 		frag_len = frag_len - temp_data_mtu;
 		if (frag_idx > 0) {
