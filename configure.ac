@@ -44,6 +44,8 @@ if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
 	AC_MSG_ERROR(["you don't seem to have GNU make; it is required"])
 fi
 
+AC_PROG_AWK
+AC_PROG_CPP
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_LN_S
@@ -104,6 +106,7 @@ fi
 AC_CHECK_HEADERS([fcntl.h])
 AC_CHECK_HEADERS([stdlib.h])
 AC_CHECK_HEADERS([string.h])
+AC_CHECK_HEADERS([strings.h])
 AC_CHECK_HEADERS([sys/ioctl.h])
 AC_CHECK_HEADERS([syslog.h])
 AC_CHECK_HEADERS([unistd.h])
@@ -112,8 +115,10 @@ AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([arpa/inet.h])
 AC_CHECK_HEADERS([netdb.h])
 AC_CHECK_HEADERS([limits.h])
+AC_CHECK_HEADERS([stdint.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_TYPE_PID_T
 AC_TYPE_SSIZE_T
