@@ -3,7 +3,7 @@ Upstream-Name: kronosnetd
 Source: https://github.com/fabbione/kronosnet
 
 Files: *
-Copyright: 2010-2012 Red Hat, Inc.  All rights reserved.
+Copyright: 2010-2015 Red Hat, Inc.  All rights reserved.
 License: GPL-2.0+, LGPL-2.0+
 
 License: GPL-2.0+, LGPL-2.0+

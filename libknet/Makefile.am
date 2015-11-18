@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2012 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2015 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
