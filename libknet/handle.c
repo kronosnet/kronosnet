@@ -273,7 +273,7 @@ static int _init_buffers(knet_handle_t knet_h)
 	int i;
 	size_t bufsize;
 
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE;
 		knet_h->send_to_links_buf[i] = malloc(bufsize);
 		if (!knet_h->send_to_links_buf[i]) {
@@ -312,7 +312,7 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pmtudbuf, 0, KNET_PMTUD_SIZE_V6);
 
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE + KNET_DATABUFSIZE_CRYPT_PAD;
 		knet_h->send_to_links_buf_crypt[i] = malloc(bufsize);
 		if (!knet_h->send_to_links_buf_crypt) {
@@ -362,7 +362,7 @@ static void _destroy_buffers(knet_handle_t knet_h)
 {
 	int i;
 
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		free(knet_h->send_to_links_buf[i]);
 		free(knet_h->send_to_links_buf_crypt[i]);
 		free(knet_h->recv_from_links_buf[i]);

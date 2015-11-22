@@ -30,7 +30,7 @@
 static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
 {
 	int link_idx, msg_idx;
-	struct mmsghdr msg[UINT8_MAX];
+	struct mmsghdr msg[PCKT_FRAG_MAX];
 
 	if (pthread_mutex_lock(&dst_host->active_links_mutex) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get active links mutex");
@@ -90,7 +90,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	int bcast = 1;
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_in;
-	struct iovec iov_out[UINT8_MAX];
+	struct iovec iov_out[PCKT_FRAG_MAX];
 	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
 
@@ -689,9 +689,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct msghdr *msg_hdr,
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 {
-	struct sockaddr_storage address[UINT8_MAX];
-	struct mmsghdr msg[UINT8_MAX];
-	struct iovec iov_in[UINT8_MAX];
+	struct sockaddr_storage address[PCKT_FRAG_MAX];
+	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct iovec iov_in[PCKT_FRAG_MAX];
 	int i, msg_recv;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
@@ -701,7 +701,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 	memset(&msg, 0, sizeof(struct mmsghdr));
 
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];
 		iov_in[i].iov_len = KNET_DATABUFSIZE;
 
@@ -711,7 +711,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		msg[i].msg_hdr.msg_iovlen = 1;
 	}
 
-	msg_recv = recvmmsg(sockfd, msg, UINT8_MAX, MSG_DONTWAIT, NULL);
+	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT, NULL);
 	if (msg_recv < 0) {
 		log_err(knet_h, KNET_SUB_LINK_T, "No message received from recvmmsg: %s", strerror(errno));
 		goto exit_unlock;
@@ -736,7 +736,7 @@ void *_handle_send_to_links_thread(void *data)
 	int i, nev;
 
 	/* preparing data buffer */
-	for (i = 0; i < UINT8_MAX; i++) {
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
 		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
 		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;

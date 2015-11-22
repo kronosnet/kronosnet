@@ -21,6 +21,8 @@
 #define KNET_DATABUFSIZE_CRYPT_PAD 1024
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE + KNET_DATABUFSIZE_CRYPT_PAD
 
+#define PCKT_FRAG_MAX UINT8_MAX
+
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
@@ -64,7 +66,7 @@ struct knet_host_defrag_buf {
 	uint8_t in_use;			/* 0 buffer is free, 1 is in use */
 	seq_num_t pckt_seq;		/* identify the pckt we are receiving */
 	uint8_t frag_recv;		/* how many frags did we receive */
-	uint8_t frag_map[UINT8_MAX];	/* bitmap of what we received? */
+	uint8_t frag_map[PCKT_FRAG_MAX];/* bitmap of what we received? */
 	uint8_t	last_first;		/* special case if we receive the last fragment first */
 	uint16_t frag_size;		/* normal frag size (not the last one) */
 	uint16_t last_frag_size;	/* the last fragment might not be aligned with MTU size */
@@ -115,8 +117,8 @@ struct knet_handle {
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
-	struct knet_header *send_to_links_buf[UINT8_MAX];
-	struct knet_header *recv_from_links_buf[UINT8_MAX];
+	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
+	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *pingbuf;
 	struct knet_header *pmtudbuf;
 	pthread_t send_to_links_thread;
@@ -139,7 +141,7 @@ struct knet_handle {
 	uint16_t sec_block_size;
 	uint16_t sec_hash_size;
 	uint16_t sec_salt_size;
-	unsigned char *send_to_links_buf_crypt[UINT8_MAX];
+	unsigned char *send_to_links_buf_crypt[PCKT_FRAG_MAX];
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;
