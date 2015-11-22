@@ -713,7 +713,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 
 	msg_recv = recvmmsg(sockfd, msg, UINT8_MAX, MSG_DONTWAIT, NULL);
 	if (msg_recv < 0) {
-		log_err(knet_h, KNET_SUB_LINK_T, "CRISTO DIO NO RECVMMSG: %s", strerror(errno));
+		log_err(knet_h, KNET_SUB_LINK_T, "No message received from recvmmsg: %s", strerror(errno));
 		goto exit_unlock;
 	}
 
