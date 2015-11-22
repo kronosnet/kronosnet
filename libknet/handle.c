@@ -283,16 +283,16 @@ static int _init_buffers(knet_handle_t knet_h)
 			goto exit_fail;
 		}
 		memset(knet_h->send_to_links_buf[i], 0, bufsize);
-	}
 
-	knet_h->recv_from_links_buf = malloc(KNET_DATABUFSIZE);
-	if (!knet_h->recv_from_links_buf) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for link to datafd buffer: %s",
-			strerror(savederrno));
-		goto exit_fail;
+		knet_h->recv_from_links_buf[i] = malloc(KNET_DATABUFSIZE);
+		if (!knet_h->recv_from_links_buf[i]) {
+			savederrno = errno;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for link to datafd buffer: %s",
+				strerror(savederrno));
+			goto exit_fail;
+		}
+		memset(knet_h->recv_from_links_buf[i], 0, KNET_DATABUFSIZE);
 	}
-	memset(knet_h->recv_from_links_buf, 0, KNET_DATABUFSIZE);
 
 	knet_h->pingbuf = malloc(KNET_HEADER_PING_SIZE);
 	if (!knet_h->pingbuf) {
@@ -365,9 +365,8 @@ static void _destroy_buffers(knet_handle_t knet_h)
 	for (i = 0; i < UINT8_MAX; i++) {
 		free(knet_h->send_to_links_buf[i]);
 		free(knet_h->send_to_links_buf_crypt[i]);
+		free(knet_h->recv_from_links_buf[i]);
 	}
-
-	free(knet_h->recv_from_links_buf);
 	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);
 	free(knet_h->pingbuf_crypt);

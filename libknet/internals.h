@@ -21,7 +21,6 @@
 #define KNET_DATABUFSIZE_CRYPT_PAD 1024
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE + KNET_DATABUFSIZE_CRYPT_PAD
 
-
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
@@ -117,7 +116,7 @@ struct knet_handle {
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
 	struct knet_header *send_to_links_buf[UINT8_MAX];
-	struct knet_header *recv_from_links_buf;
+	struct knet_header *recv_from_links_buf[UINT8_MAX];
 	struct knet_header *pingbuf;
 	struct knet_header *pmtudbuf;
 	pthread_t send_to_links_thread;

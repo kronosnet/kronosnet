@@ -305,7 +305,7 @@ host_unlock:
 	}
 }
 
-static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
+static int pckt_defrag(knet_handle_t knet_h, int index, ssize_t *len)
 {
 	struct knet_host_defrag_buf *defrag_buf;
 
@@ -314,7 +314,7 @@ static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
 	 * add here checks that we are handling a pckt from the same seq num
 	 */
 
-	defrag_buf = &knet_h->host_index[knet_h->recv_from_links_buf->kh_node]->defrag_buf[0];
+	defrag_buf = &knet_h->host_index[knet_h->recv_from_links_buf[index]->kh_node]->defrag_buf[0];
 
 	/*
 	 * if the buf is not is use, then make sure it's clean
@@ -322,13 +322,13 @@ static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
 	if (!defrag_buf->in_use) {
 		memset(defrag_buf, 0, sizeof(struct knet_host_defrag_buf));
 		defrag_buf->in_use = 1;
-		defrag_buf->pckt_seq = knet_h->recv_from_links_buf->khp_data_seq_num;
+		defrag_buf->pckt_seq = knet_h->recv_from_links_buf[index]->khp_data_seq_num;
 	}
 
 	/*
 	 * check if we already received this fragment
 	 */
-	if (defrag_buf->frag_map[knet_h->recv_from_links_buf->khp_data_frag_seq]) {
+	if (defrag_buf->frag_map[knet_h->recv_from_links_buf[index]->khp_data_frag_seq]) {
 		/*
 		 * if we have received this fragment and we didn't clear the buffer
 		 * it means that we don't have all fragments yet
@@ -340,7 +340,7 @@ static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
 	 *  we need to handle the last packet with gloves due to its different size
 	 */
 
-	if (knet_h->recv_from_links_buf->khp_data_frag_seq == knet_h->recv_from_links_buf->khp_data_frag_num) {
+	if (knet_h->recv_from_links_buf[index]->khp_data_frag_seq == knet_h->recv_from_links_buf[index]->khp_data_frag_num) {
 		defrag_buf->last_frag_size = *len;
 
 		/*
@@ -354,29 +354,29 @@ static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
 		if (!defrag_buf->frag_size) {
 			defrag_buf->last_first = 1;
 			memcpy(defrag_buf->buf + (KNET_MAX_PACKET_SIZE - *len),
-			       knet_h->recv_from_links_buf->khp_data_userdata,
+			       knet_h->recv_from_links_buf[index]->khp_data_userdata,
 			       *len);
 		}
 	} else {
 		defrag_buf->frag_size = *len;
 	}
 
-	memcpy(defrag_buf->buf + ((knet_h->recv_from_links_buf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
-	       knet_h->recv_from_links_buf->khp_data_userdata, *len);
+	memcpy(defrag_buf->buf + ((knet_h->recv_from_links_buf[index]->khp_data_frag_seq - 1) * defrag_buf->frag_size),
+	       knet_h->recv_from_links_buf[index]->khp_data_userdata, *len);
 
 	defrag_buf->frag_recv++;
-	defrag_buf->frag_map[knet_h->recv_from_links_buf->khp_data_frag_seq] = 1;
+	defrag_buf->frag_map[knet_h->recv_from_links_buf[index]->khp_data_frag_seq] = 1;
 
 	/*
 	 * check if we received all the fragments
 	 */
-	if (defrag_buf->frag_recv == knet_h->recv_from_links_buf->khp_data_frag_num) {
+	if (defrag_buf->frag_recv == knet_h->recv_from_links_buf[index]->khp_data_frag_num) {
 		/*
 		 * special case the last pckt
 		 */
 
 		if (defrag_buf->last_first) {
-			memmove(defrag_buf->buf + ((knet_h->recv_from_links_buf->khp_data_frag_num - 1) * defrag_buf->frag_size),
+			memmove(defrag_buf->buf + ((knet_h->recv_from_links_buf[index]->khp_data_frag_num - 1) * defrag_buf->frag_size),
 			        defrag_buf->buf + (KNET_MAX_PACKET_SIZE - defrag_buf->last_frag_size),
 				defrag_buf->last_frag_size);
 		}
@@ -385,12 +385,12 @@ static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
 		 * recalculate packet lenght
 		 */
 
-		*len = ((knet_h->recv_from_links_buf->khp_data_frag_num - 1) * defrag_buf->frag_size) + defrag_buf->last_frag_size;
+		*len = ((knet_h->recv_from_links_buf[index]->khp_data_frag_num - 1) * defrag_buf->frag_size) + defrag_buf->last_frag_size;
 
 		/*
 		 * copy the pckt back in the user data
 		 */
-		memcpy(knet_h->recv_from_links_buf->khp_data_userdata, defrag_buf->buf, *len);
+		memcpy(knet_h->recv_from_links_buf[index]->khp_data_userdata, defrag_buf->buf, *len);
 
 		/*
 		 * free this buffer
@@ -402,11 +402,11 @@ static int pckt_defrag(knet_handle_t knet_h, ssize_t *len)
 	return 1;
 }
 
-static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
+static void _parse_recv_from_links(knet_handle_t knet_h, struct msghdr *msg_hdr, int index)
 {
-	ssize_t len, outlen;
-	struct sockaddr_storage address;
-	socklen_t addrlen;
+	struct iovec *iov_in = msg_hdr->msg_iov;
+	ssize_t outlen, len = iov_in->iov_len;
+	struct sockaddr_storage *address = msg_hdr->msg_name;
 	struct knet_host *src_host;
 	struct knet_link *src_link;
 	unsigned long long latency_last;
@@ -414,55 +414,46 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	struct timespec recvtime;
-	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf;
+	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf[index];
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[1];
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
-		return;
-	}
-
-	addrlen = sizeof(struct sockaddr_storage);
-	len = recvfrom(sockfd, knet_h->recv_from_links_buf, KNET_DATABUFSIZE,
-		MSG_DONTWAIT, (struct sockaddr *) &address, &addrlen);
-
 	if (knet_h->crypto_instance) {
 		if (crypto_authenticate_and_decrypt(knet_h,
-						    (unsigned char *)knet_h->recv_from_links_buf,
+						    (unsigned char *)knet_h->recv_from_links_buf[index],
 						    &len) < 0) {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to decrypt/auth packet");
-			goto exit_unlock;
+			return;
 		}
 	}
 
 	if (len < (KNET_HEADER_SIZE + 1)) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Packet is too short");
-		goto exit_unlock;
+		return;
 	}
 
-	if (knet_h->recv_from_links_buf->kh_version != KNET_HEADER_VERSION) {
+	if (knet_h->recv_from_links_buf[index]->kh_version != KNET_HEADER_VERSION) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Packet version does not match");
-		goto exit_unlock;
+		return;
 	}
 
-	knet_h->recv_from_links_buf->kh_node = ntohs(knet_h->recv_from_links_buf->kh_node);
-	src_host = knet_h->host_index[knet_h->recv_from_links_buf->kh_node];
+	knet_h->recv_from_links_buf[index]->kh_node = ntohs(knet_h->recv_from_links_buf[index]->kh_node);
+	src_host = knet_h->host_index[knet_h->recv_from_links_buf[index]->kh_node];
 	if (src_host == NULL) {  /* host not found */
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to find source host for this packet");
-		goto exit_unlock;
+		return;
 	}
 
 	src_link = NULL;
 
-	if ((knet_h->recv_from_links_buf->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
+	if ((knet_h->recv_from_links_buf[index]->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
 		src_link = src_host->link +
-				(knet_h->recv_from_links_buf->khp_ping_link % KNET_MAX_LINK);
+				(knet_h->recv_from_links_buf[index]->khp_ping_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
-			if (memcmp(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage)) != 0) {
+			if (memcmp(&src_link->dst_addr, address, sizeof(struct sockaddr_storage)) != 0) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
-				memcpy(&src_link->dst_addr, &address, sizeof(struct sockaddr_storage));
+				memcpy(&src_link->dst_addr, address, sizeof(struct sockaddr_storage));
 				if (getnameinfo((const struct sockaddr *)&src_link->dst_addr, sizeof(struct sockaddr_storage),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 						src_link->status.dst_port, KNET_MAX_PORT_LEN,
@@ -476,14 +467,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 	}
 
-	switch (knet_h->recv_from_links_buf->kh_type) {
+	switch (knet_h->recv_from_links_buf[index]->kh_type) {
 	case KNET_HEADER_TYPE_DATA:
 		if (knet_h->enabled != 1) /* data forward is disabled */
 			break;
 
-		knet_h->recv_from_links_buf->khp_data_seq_num = ntohs(knet_h->recv_from_links_buf->khp_data_seq_num);
+		knet_h->recv_from_links_buf[index]->khp_data_seq_num = ntohs(knet_h->recv_from_links_buf[index]->khp_data_seq_num);
 
-		if (knet_h->recv_from_links_buf->khp_data_frag_num > 1) {
+		if (knet_h->recv_from_links_buf[index]->khp_data_frag_num > 1) {
 			/*
 			 * len as received from the socket also includes extra stuff
 			 * that the defrag code doesn't care about. So strip it
@@ -491,8 +482,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			 * defragging
 			 */
 			len = len - KNET_HEADER_DATA_SIZE;
-			if (pckt_defrag(knet_h, &len)) {
-				goto exit_unlock;
+			if (pckt_defrag(knet_h, index, &len)) {
+				return;
 			}
 			len = len + KNET_HEADER_DATA_SIZE;
 		}
@@ -502,19 +493,19 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			int found = 0;
 
 			bcast = knet_h->dst_host_filter_fn(
-					(const unsigned char *)knet_h->recv_from_links_buf->khp_data_userdata,
+					(const unsigned char *)knet_h->recv_from_links_buf[index]->khp_data_userdata,
 					len,
-					knet_h->recv_from_links_buf->kh_node,
+					knet_h->recv_from_links_buf[index]->kh_node,
 					dst_host_ids,
 					&dst_host_ids_entries);
 			if (bcast < 0) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "Error from dst_host_filter_fn: %d", bcast);
-				goto exit_unlock;
+				return;
 			}
 
 			if ((!bcast) && (!dst_host_ids_entries)) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "Message is unicast but no dst_host_ids_entries");
-				goto exit_unlock;
+				return;
 			}
 
 			/* check if we are dst for this packet */
@@ -527,24 +518,24 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 				}
 				if (!found) {
 					log_debug(knet_h, KNET_SUB_LINK_T, "Packet is not for us");
-					goto exit_unlock;
+					return;
 				}
 			}
 		}
 
-		if (!_should_deliver(src_host, bcast, knet_h->recv_from_links_buf->khp_data_seq_num)) {
+		if (!_should_deliver(src_host, bcast, knet_h->recv_from_links_buf[index]->khp_data_seq_num)) {
 			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
 			}
-			goto exit_unlock;
+			return;
 		}
 
 		memset(iov_out, 0, sizeof(iov_out));
-		iov_out[0].iov_base = (void *) knet_h->recv_from_links_buf->khp_data_userdata;
+		iov_out[0].iov_base = (void *) knet_h->recv_from_links_buf[index]->khp_data_userdata;
 		iov_out[0].iov_len = len - KNET_HEADER_DATA_SIZE;
 
 		if (writev(knet_h->sockfd, iov_out, 1) == iov_out[0].iov_len) {
-			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf->khp_data_seq_num);
+			_has_been_delivered(src_host, bcast, knet_h->recv_from_links_buf[index]->khp_data_seq_num);
 		} else {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
 		}
@@ -552,12 +543,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_HEADER_TYPE_PING:
 		outlen = KNET_HEADER_PING_SIZE;
-		knet_h->recv_from_links_buf->kh_type = KNET_HEADER_TYPE_PONG;
-		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
+		knet_h->recv_from_links_buf[index]->kh_type = KNET_HEADER_TYPE_PONG;
+		knet_h->recv_from_links_buf[index]->kh_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
-						    (const unsigned char *)knet_h->recv_from_links_buf,
+						    (const unsigned char *)knet_h->recv_from_links_buf[index],
 						    len,
 						    knet_h->recv_from_links_buf_crypt,
 						    &outlen) < 0) {
@@ -575,7 +566,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	case KNET_HEADER_TYPE_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
-		memcpy(&recvtime, &knet_h->recv_from_links_buf->khp_ping_time[0], sizeof(struct timespec));
+		memcpy(&recvtime, &knet_h->recv_from_links_buf[index]->khp_ping_time[0], sizeof(struct timespec));
 		timespec_diff(recvtime,
 				src_link->status.pong_last, &latency_last);
 
@@ -602,12 +593,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		break;
 	case KNET_HEADER_TYPE_PMTUD:
 		outlen = KNET_HEADER_PMTUD_SIZE;
-		knet_h->recv_from_links_buf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
-		knet_h->recv_from_links_buf->kh_node = htons(knet_h->host_id);
+		knet_h->recv_from_links_buf[index]->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
+		knet_h->recv_from_links_buf[index]->kh_node = htons(knet_h->host_id);
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
-						    (const unsigned char *)knet_h->recv_from_links_buf,
+						    (const unsigned char *)knet_h->recv_from_links_buf[index],
 						    len,
 						    knet_h->recv_from_links_buf_crypt,
 						    &outlen) < 0) {
@@ -627,7 +618,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get mutex lock");
 			break;
 		}
-		src_link->last_recv_mtu = knet_h->recv_from_links_buf->khp_pmtud_size;
+		src_link->last_recv_mtu = knet_h->recv_from_links_buf[index]->khp_pmtud_size;
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		break;
@@ -636,13 +627,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		 * TODO: check if we need to fix padding as we do for data packets.
 		 *       we currently don't have any HOST_INFO big enough to frag data
 		 */
-		if (knet_h->recv_from_links_buf->khp_data_frag_num > 1) {
-			if (pckt_defrag(knet_h, &len)) {
-				goto exit_unlock;
+		if (knet_h->recv_from_links_buf[index]->khp_data_frag_num > 1) {
+			if (pckt_defrag(knet_h, index, &len)) {
+				return;
 			}
 		}
 
-		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf->khp_data_userdata;
+		knet_hostinfo = (struct knet_hostinfo *)knet_h->recv_from_links_buf[index]->khp_data_userdata;
 		if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 			knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 		}
@@ -692,10 +683,49 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 		}
 		break;
 	default:
+		return;
+	}
+}
+
+static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
+{
+	struct sockaddr_storage address[UINT8_MAX];
+	struct mmsghdr msg[UINT8_MAX];
+	struct iovec iov_in[UINT8_MAX];
+	int i, msg_recv;
+
+	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
+		return;
+	}
+
+	memset(&msg, 0, sizeof(struct mmsghdr));
+
+	for (i = 0; i < UINT8_MAX; i++) {
+		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];
+		iov_in[i].iov_len = KNET_DATABUFSIZE;
+
+		msg[i].msg_hdr.msg_name = &address[i];
+		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[i].msg_hdr.msg_iov = &iov_in[i];
+		msg[i].msg_hdr.msg_iovlen = 1;
+	}
+
+	msg_recv = recvmmsg(sockfd, msg, UINT8_MAX, MSG_DONTWAIT, NULL);
+	if (msg_recv < 0) {
+		log_err(knet_h, KNET_SUB_LINK_T, "CRISTO DIO NO RECVMMSG: %s", strerror(errno));
 		goto exit_unlock;
 	}
 
- exit_unlock:
+	for (i = 0; i < msg_recv; i++) {
+		/*
+		 * temporary hack while we define a proper API for this call
+		 */
+		iov_in[i].iov_len = msg[i].msg_len;
+		_parse_recv_from_links(knet_h, &msg[i].msg_hdr, i);
+	}
+
+exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 }
 
@@ -726,7 +756,6 @@ void *_handle_send_to_links_thread(void *data)
 	}
 
 	return NULL;
-
 }
 
 void *_handle_recv_from_links_thread(void *data)
