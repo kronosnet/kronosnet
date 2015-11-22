@@ -66,8 +66,6 @@ libtap:
            data here to trigger IPv6 auto-readd
 
 kronostnetd:
- - (issue) potential annoying race between knetd setting up the tap
-           device with default MTU and getting back the PMTUd value
  - (issue) beside the code that is as bad as it can possibly be and
            will make you wish to have a tea spoon handy to carve your
            eyeballs out, the vty needs a good clean/rewrite
