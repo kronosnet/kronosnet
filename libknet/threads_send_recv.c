@@ -402,11 +402,9 @@ static int pckt_defrag(knet_handle_t knet_h, int index, ssize_t *len)
 	return 1;
 }
 
-static void _parse_recv_from_links(knet_handle_t knet_h, struct msghdr *msg_hdr, int index)
+static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage *address, int index, ssize_t len)
 {
-	struct iovec *iov_in = msg_hdr->msg_iov;
-	ssize_t outlen, len = iov_in->iov_len;
-	struct sockaddr_storage *address = msg_hdr->msg_name;
+	ssize_t outlen;
 	struct knet_host *src_host;
 	struct knet_link *src_link;
 	unsigned long long latency_last;
@@ -687,28 +685,13 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct msghdr *msg_hdr,
 	}
 }
 
-static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
+static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg)
 {
-	struct sockaddr_storage address[PCKT_FRAG_MAX];
-	struct mmsghdr msg[PCKT_FRAG_MAX];
-	struct iovec iov_in[PCKT_FRAG_MAX];
 	int i, msg_recv;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
 		return;
-	}
-
-	memset(&msg, 0, sizeof(struct mmsghdr));
-
-	for (i = 0; i < PCKT_FRAG_MAX; i++) {
-		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];
-		iov_in[i].iov_len = KNET_DATABUFSIZE;
-
-		msg[i].msg_hdr.msg_name = &address[i];
-		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-		msg[i].msg_hdr.msg_iov = &iov_in[i];
-		msg[i].msg_hdr.msg_iovlen = 1;
 	}
 
 	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT, NULL);
@@ -718,11 +701,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	for (i = 0; i < msg_recv; i++) {
-		/*
-		 * temporary hack while we define a proper API for this call
-		 */
-		iov_in[i].iov_len = msg[i].msg_len;
-		_parse_recv_from_links(knet_h, &msg[i].msg_hdr, i);
+		_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
 	}
 
 exit_unlock:
@@ -763,12 +742,27 @@ void *_handle_recv_from_links_thread(void *data)
 	int i, nev;
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
+	struct sockaddr_storage address[PCKT_FRAG_MAX];
+	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct iovec iov_in[PCKT_FRAG_MAX];
+
+	memset(&msg, 0, sizeof(struct mmsghdr));
+
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];
+		iov_in[i].iov_len = KNET_DATABUFSIZE;
+
+		msg[i].msg_hdr.msg_name = &address[i];
+		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[i].msg_hdr.msg_iov = &iov_in[i];
+		msg[i].msg_hdr.msg_iovlen = 1;
+	}
 
 	while (!knet_h->fini_in_progress) {
 		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {
-			_handle_recv_from_links(knet_h, events[i].data.fd);
+			_handle_recv_from_links(knet_h, events[i].data.fd, msg);
 		}
 	}
 
