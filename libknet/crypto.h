@@ -27,14 +27,18 @@ typedef struct {
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
 	int (*decrypt)	(knet_handle_t knet_h,
-			 unsigned char *buf,
-			 ssize_t *buf_len);
+			 const unsigned char *buf_in,
+			 const ssize_t buf_in_len,
+			 unsigned char *buf_out,
+			 ssize_t *buf_out_len);
 } crypto_model_t;
 
 int crypto_authenticate_and_decrypt (
 	knet_handle_t knet_h,
-	unsigned char *buf,
-	ssize_t *buf_len);
+	const unsigned char *buf_in,
+	const ssize_t buf_in_len,
+	unsigned char *buf_out,
+	ssize_t *buf_out_len);
 
 int crypto_encrypt_and_sign (
 	knet_handle_t knet_h,

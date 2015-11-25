@@ -265,19 +265,19 @@ out:
 
 static int decrypt_nss (
 	knet_handle_t knet_h,
-	unsigned char *buf,
-	ssize_t *buf_len)
+	const unsigned char *buf_in,
+	const ssize_t buf_in_len,
+	unsigned char *buf_out,
+	ssize_t *buf_out_len)
 {
 	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 	PK11Context*	decrypt_context = NULL;
 	SECItem		decrypt_param;
 	int		tmp1_outlen = 0;
 	unsigned int	tmp2_outlen = 0;
-	unsigned char	*salt = buf;
+	unsigned char	*salt = (unsigned char *)buf_in;
 	unsigned char	*data = salt + SALT_SIZE;
-	int		datalen = *buf_len - SALT_SIZE;
-	unsigned char	outbuf[KNET_DATABUFSIZE_CRYPT];
-	int		outbuf_len;
+	int		datalen = buf_in_len - SALT_SIZE;
 	int		err = -1;
 
 	/* Create cipher context for decryption */
@@ -294,26 +294,21 @@ static int decrypt_nss (
 		goto out;
 	}
 
-	if (PK11_CipherOp(decrypt_context, outbuf, &tmp1_outlen,
-			  sizeof(outbuf), data, datalen) != SECSuccess) {
+	if (PK11_CipherOp(decrypt_context, buf_out, &tmp1_outlen,
+			  KNET_DATABUFSIZE_CRYPT, data, datalen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d)",
 			   PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestFinal(decrypt_context, outbuf + tmp1_outlen, &tmp2_outlen,
-			     sizeof(outbuf) - tmp1_outlen) != SECSuccess) {
+	if (PK11_DigestFinal(decrypt_context, buf_out + tmp1_outlen, &tmp2_outlen,
+			     KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d)",
 			   PR_GetError()); 
 		goto out;
 	}
 
-	outbuf_len = tmp1_outlen + tmp2_outlen;
-
-	memset(buf, 0, *buf_len);
-	memcpy(buf, outbuf, outbuf_len);
-
-	*buf_len = outbuf_len;
+	*buf_out_len = tmp1_outlen + tmp2_outlen;
 
 	err = 0;
 
@@ -525,30 +520,37 @@ int nsscrypto_encrypt_and_sign (
 
 int nsscrypto_authenticate_and_decrypt (
 	knet_handle_t knet_h,
-	unsigned char *buf,
-	ssize_t *buf_len)
+	const unsigned char *buf_in,
+	const ssize_t buf_in_len,
+	unsigned char *buf_out,
+	ssize_t *buf_out_len)
 {
 	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	ssize_t temp_len = buf_in_len;
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
-		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
+		unsigned char tmp_hash[hash_len[instance->crypto_hash_type]];
 
-		if (calculate_nss_hash(knet_h, buf, *buf_len - hash_len[instance->crypto_hash_type], tmp_hash) < 0) {
+		if (calculate_nss_hash(knet_h, buf_in, buf_in_len - hash_len[instance->crypto_hash_type], tmp_hash) < 0) {
 			return -1;
 		}
 
-		if (memcmp(tmp_hash, buf + (*buf_len - hash_len[instance->crypto_hash_type]), hash_len[instance->crypto_hash_type]) != 0) {
+		if (memcmp(tmp_hash, buf_in + (buf_in_len - hash_len[instance->crypto_hash_type]), hash_len[instance->crypto_hash_type]) != 0) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
 			return -1;
 		}
 
-		*buf_len = *buf_len - hash_len[instance->crypto_hash_type];
+		temp_len = temp_len - hash_len[instance->crypto_hash_type];
+		*buf_out_len = temp_len;
 	}
 
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (decrypt_nss(knet_h, buf, buf_len) < 0) {
+		if (decrypt_nss(knet_h, buf_in, temp_len, buf_out, buf_out_len) < 0) {
 			return -1;
 		}
+	} else {
+		memmove(buf_out, buf_in, temp_len);
+		*buf_out_len = temp_len;
 	}
 
 	return 0;

@@ -324,6 +324,15 @@ static int _init_buffers(knet_handle_t knet_h)
 		memset(knet_h->send_to_links_buf_crypt[i], 0, bufsize);
 	}
 
+	knet_h->recv_from_links_buf_decrypt = malloc(KNET_DATABUFSIZE_CRYPT);
+	if (!knet_h->recv_from_links_buf_decrypt) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto link to datafd buffer: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+	memset(knet_h->recv_from_links_buf_decrypt, 0, KNET_DATABUFSIZE_CRYPT);
+
 	knet_h->recv_from_links_buf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
 	if (!knet_h->recv_from_links_buf_crypt) {
 		savederrno = errno;
@@ -367,6 +376,7 @@ static void _destroy_buffers(knet_handle_t knet_h)
 		free(knet_h->send_to_links_buf_crypt[i]);
 		free(knet_h->recv_from_links_buf[i]);
 	}
+	free(knet_h->recv_from_links_buf_decrypt);
 	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);
 	free(knet_h->pingbuf_crypt);

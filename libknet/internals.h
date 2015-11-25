@@ -143,6 +143,7 @@ struct knet_handle {
 	uint16_t sec_salt_size;
 	unsigned char *send_to_links_buf_crypt[PCKT_FRAG_MAX];
 	unsigned char *recv_from_links_buf_crypt;
+	unsigned char *recv_from_links_buf_decrypt;
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;
 	seq_num_t bcast_seq_num_tx;

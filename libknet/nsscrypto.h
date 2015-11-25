@@ -15,8 +15,10 @@ struct nsscrypto_instance;
 
 int nsscrypto_authenticate_and_decrypt (
 	knet_handle_t knet_h,
-	unsigned char *buf,
-	ssize_t *buf_len);
+	const unsigned char *buf_in,
+	const ssize_t buf_in_len,
+	unsigned char *buf_out,
+	ssize_t *buf_out_len);
 
 int nsscrypto_encrypt_and_sign (
 	knet_handle_t knet_h,

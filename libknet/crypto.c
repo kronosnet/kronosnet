@@ -53,10 +53,12 @@ int crypto_encrypt_and_sign (
 
 int crypto_authenticate_and_decrypt (
 	knet_handle_t knet_h,
-	unsigned char *buf,
-	ssize_t *buf_len)
+	const unsigned char *buf_in,
+	const ssize_t buf_in_len,
+	unsigned char *buf_out,
+	ssize_t *buf_out_len)
 {
-	return modules_cmds[knet_h->crypto_instance->model].decrypt(knet_h, buf, buf_len);
+	return modules_cmds[knet_h->crypto_instance->model].decrypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
 int crypto_init(
