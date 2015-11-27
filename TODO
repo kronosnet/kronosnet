@@ -62,10 +62,6 @@ libtap:
  - (issue) add .3 man pages
  - (issue) improve tests to cover thread safety and better error codes
            specially from the up/down handling.
- - (issue) if mtu on tap is < 1280, the kernel will remove permanently
-           any IPv6 address from the interface and they won't come
-           back even if MTU raises again > 1280. Need a check/store/restore
-           data here to trigger IPv6 auto-readd
 
 kronostnetd:
  - (issue) beside the code that is as bad as it can possibly be and

@@ -38,6 +38,7 @@
 struct _ip {
 	char ip_addr[MAX_IP_CHAR];
 	char prefix[MAX_PREFIX_CHAR];
+	int  domain;
 	struct _ip *next;
 };
 
@@ -47,6 +48,7 @@ struct _iface {
 	char tapname[IFNAMSIZ];
 	char default_mac[MAX_MAC_CHAR];
 	int default_mtu;
+	int current_mtu;
 	char updownpath[PATH_MAX];
 	int hasupdown;
 	int up;
@@ -515,6 +517,8 @@ out_clean:
 
 int tap_set_mtu(tap_t tap, const int mtu)
 {
+	struct _ip *tmp_ip;
+	char *error_string = NULL;
 	int err;
 
 	pthread_mutex_lock(&lib_mutex);
@@ -525,16 +529,27 @@ int tap_set_mtu(tap_t tap, const int mtu)
 		goto out_clean;
 	}
 
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
-
-	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &tap->ifr);
-	if (err)
+	err = tap->current_mtu = _get_mtu(tap);
+	if (err < 0)
 		goto out_clean;
 
 	tap->ifr.ifr_mtu = mtu;
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &tap->ifr);
+
+	if ((!err) && (tap->current_mtu < 1280) && (mtu >= 1280)) {
+		tmp_ip = tap->ip;
+		while(tmp_ip) {
+			if (tmp_ip->domain == AF_INET6) {
+				err = _set_ip(tap, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string);
+				if (error_string) {
+					free(error_string);
+					error_string = NULL;
+				}
+			}
+			tmp_ip = tmp_ip->next;
+		}
+	}
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -808,8 +823,21 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 	memset(ip, 0, sizeof(struct _ip));
 	strncpy(ip->ip_addr, ip_addr, MAX_IP_CHAR);
 	strncpy(ip->prefix, prefix, MAX_PREFIX_CHAR);
+	if (!strchr(ip->ip_addr, ':')) {
+		ip->domain = AF_INET;
+	} else {
+		ip->domain = AF_INET6;
+	}
 
-	err = _set_ip(tap, "add", ip_addr, prefix, error_string);
+	/*
+	 * if user asks for an IPv6 address, but MTU < 1280
+	 * store the IP and bring it up later if and when MTU > 1280
+	 */
+	if ((ip->domain == AF_INET6) && (_get_mtu(tap) < 1280)) {
+		err = 0;
+	} else {
+		err = _set_ip(tap, "add", ip_addr, prefix, error_string);
+	}
 
 	if (err) {
 		free(ip);
@@ -1222,6 +1250,131 @@ static int check_knet_mtu(void)
 	if (tap_set_mtu(NULL, 1500) == 0) {
 		printf("Something is wrong in tap_set_mtu sanity checks\n"); 
 		err = -1;
+		goto out_clean;
+	}
+
+out_clean:
+	tap_close(tap);
+
+	return err;
+}
+
+static int check_knet_mtu_ipv6(void)
+{
+	char device_name[IFNAMSIZ];
+	size_t size = IFNAMSIZ;
+	int err=0;
+	tap_t tap;
+	char *error_string = NULL;
+
+	printf("Testing get/set MTU with IPv6 address\n");
+
+	memset(device_name, 0, size);
+	strncpy(device_name, "kronostest", size);
+	tap = tap_open(device_name, size, NULL);
+	if (!tap) {
+		printf("Unable to init %s\n", device_name);
+		return -1;
+	}
+
+	printf("Adding ip: 3ffe::1/64\n");
+
+	err = tap_add_ip(tap, "3ffe::1", "64", &error_string);
+	if (error_string) {
+		printf("add ipv6 output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
+		printf("Unable to assign IP address\n");
+		err=-1;
+		goto out_clean;
+	}
+
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	if (error_string) {
+		printf("Error string: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err) {
+		printf("Unable to verify IP address\n");
+		err=-1;
+		goto out_clean;
+	}
+
+	printf("Setting MTU to 1200\n");
+	if (tap_set_mtu(tap, 1200) < 0) {
+		printf("Unable to set MTU to 1200\n");
+		err = -1;
+		goto out_clean;
+	}
+
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	if (error_string) {
+		printf("Error string: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
+		printf("Unable to verify IP address\n");
+		err=-1;
+		goto out_clean;
+	}
+
+	printf("Adding ip: 3ffe::2/64\n");
+	err = tap_add_ip(tap, "3ffe::2", "64", &error_string);
+	if (error_string) {
+		printf("add ipv6 output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err < 0) {
+		printf("Unable to assign IP address\n");
+		err=-1;
+		goto out_clean;
+	}
+
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::2/64", &error_string);
+	if (error_string) {
+		printf("Error string: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (!err) {
+		printf("Unable to verify IP address\n");
+		err=-1;
+		goto out_clean;
+	}
+
+	printf("Restoring MTU to default\n");
+	if (tap_reset_mtu(tap) < 0) {
+		printf("Unable to reset mtu\n");
+		err = -1;
+		goto out_clean;
+	}
+
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	if (error_string) {
+		printf("Error string: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err) {
+		printf("Unable to verify IP address\n");
+		err=-1;
+		goto out_clean;
+	}
+
+	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::2/64", &error_string);
+	if (error_string) {
+		printf("Error string: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
+	}
+	if (err) {
+		printf("Unable to verify IP address\n");
+		err=-1;
 		goto out_clean;
 	}
 
@@ -1942,6 +2095,9 @@ int main(void)
 		return -1;
 
 	if (check_knet_mtu() < 0)
+		return -1;
+
+	if (check_knet_mtu_ipv6() < 0)
 		return -1;
 
 	if (check_knet_mac() < 0)
