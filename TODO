@@ -49,6 +49,7 @@ link/host level:
  - (rfe)   reswitching of packets
  - (rfe)   look into UDP+ECN bit set to avoid overloading sockets?
  - (rfe)   add openssl support?
+ - (rfe)   consider adding threadpools to process data packets in parallel
 
 libknet:
  - (issue) review logging policy/levels in public api call
