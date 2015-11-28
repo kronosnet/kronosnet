@@ -38,6 +38,7 @@ static void _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host
 
 	mutex_retry_limit = 0;
 	failsafe = 0;
+	pad_len = 0;
 
 	dst_link->last_bad_mtu = 0;
 
@@ -87,22 +88,25 @@ restart:
 
 	if (knet_h->crypto_instance) {
 
-		pad_len = knet_h->sec_block_size - (data_len % knet_h->sec_block_size);
-		if (pad_len == knet_h->sec_block_size) {
-			pad_len = 0;
+		if (knet_h->sec_block_size) {
+			pad_len = knet_h->sec_block_size - (data_len % knet_h->sec_block_size);
+			if (pad_len == knet_h->sec_block_size) {
+				pad_len = 0;
+			}
+			data_len = data_len + pad_len;
 		}
-
-		data_len = data_len + pad_len;
 
 		data_len = data_len + (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size);
 
-		while (data_len + overhead_len >= max_mtu_len) {
-			data_len = data_len - knet_h->sec_block_size;
+		if (knet_h->sec_block_size) {
+			while (data_len + overhead_len >= max_mtu_len) {
+				data_len = data_len - knet_h->sec_block_size;
+			}
 		}
 
 		if (dst_link->last_bad_mtu) {
 			while (data_len + overhead_len >= dst_link->last_bad_mtu) {
-				data_len = data_len - knet_h->sec_block_size;
+				data_len = data_len - (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size);
 			}
 		}
 
@@ -192,7 +196,7 @@ restart:
 		} else {
 			int found_mtu = 0;
 
-			if (knet_h->crypto_instance) {
+			if (knet_h->sec_block_size) {
 				if ((onwire_len + knet_h->sec_block_size >= max_mtu_len) ||
 				   ((dst_link->last_bad_mtu) && (dst_link->last_bad_mtu <= (onwire_len + knet_h->sec_block_size)))) {
 					found_mtu = 1;
@@ -233,6 +237,8 @@ void *_handle_pmtud_link_thread(void *data)
 	struct timespec ts;
 	int ret, have_timer;
 	unsigned int old_interval;
+
+	knet_h->link_mtu = KNET_PMTUD_MIN_MTU_V4;
 
 	/* preparing pmtu buffer */
 	knet_h->pmtudbuf->kh_version = KNET_HEADER_VERSION;
@@ -281,7 +287,7 @@ timer_restart:
 			sleep(knet_h->pmtud_interval);
 		}
 
-		min_mtu = KNET_PMTUD_SIZE_V6;
+		min_mtu = KNET_PMTUD_SIZE_V4;
 		have_mtu = 0;
 
 		if (knet_h->pmtud_fini_requested)
@@ -308,10 +314,10 @@ timer_restart:
 				log_debug(knet_h, KNET_SUB_PMTUD_T, "Starting PMTUD for host: %u link: %u", dst_host->host_id, link_idx);
 				_handle_check_pmtud(knet_h, dst_host, dst_link);
 				if ((saved_pmtud) && (saved_pmtud != dst_link->status.mtu)) {
-					log_info(knet_h, KNET_SUB_PMTUD_T, "PMTUD change for host: %u link: %u from %u to %u",
+					log_info(knet_h, KNET_SUB_PMTUD_T, "PMTUD link change for host: %u link: %u from %u to %u",
 						 dst_host->host_id, link_idx, saved_pmtud, dst_link->status.mtu);
 				}
-				log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current mtu: %u",
+				log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current link mtu: %u",
 					  dst_host->host_id, link_idx, dst_link->status.mtu);
 				if (dst_link->status.mtu < min_mtu) {
 					min_mtu = dst_link->status.mtu;
@@ -322,9 +328,10 @@ timer_restart:
 
 		if (have_mtu) {
 			if (knet_h->link_mtu != min_mtu) {
-				log_info(knet_h, KNET_SUB_PMTUD_T, "Global MTU changed from: %u to %u", knet_h->link_mtu, min_mtu);
+				log_info(knet_h, KNET_SUB_PMTUD_T, "Global link MTU changed from: %u to %u", knet_h->link_mtu, min_mtu);
 				knet_h->link_mtu = min_mtu;
 				knet_h->data_mtu = min_mtu - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+				log_info(knet_h, KNET_SUB_PMTUD_T, "Global data MTU changed to: %u", knet_h->data_mtu);
 
 				if (knet_h->pmtud_notify_fn) {
 					knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,

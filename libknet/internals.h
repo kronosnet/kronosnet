@@ -53,10 +53,10 @@ struct knet_link {
 	uint8_t received_pong;
 	struct timespec ping_last;
 	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
-	uint16_t last_good_mtu;
-	uint16_t last_bad_mtu;
-	uint16_t last_sent_mtu;
-	uint16_t last_recv_mtu;
+	uint32_t last_good_mtu;
+	uint32_t last_bad_mtu;
+	uint32_t last_sent_mtu;
+	uint32_t last_recv_mtu;
 };
 
 #define KNET_CBUFFER_SIZE 4096
