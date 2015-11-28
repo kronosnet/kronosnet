@@ -42,7 +42,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
-		memcpy(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
+		memmove(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
 		knet_h->pingbuf->khp_ping_link = dst_link->link_id;
 
 		if (knet_h->crypto_instance) {

@@ -92,7 +92,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	memcpy(&link->src_addr, src_addr, sizeof(struct sockaddr_storage));
+	memmove(&link->src_addr, src_addr, sizeof(struct sockaddr_storage));
 
 	err = getnameinfo((const struct sockaddr *)src_addr, sizeof(struct sockaddr_storage),
 			  link->status.src_ipaddr, KNET_MAX_HOST_LEN,
@@ -122,7 +122,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	link->dynamic = KNET_LINK_STATIC;
 
-	memcpy(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+	memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
 	err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
 			  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 			  link->status.dst_port, KNET_MAX_PORT_LEN,
@@ -207,14 +207,14 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	memcpy(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
+	memmove(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
 
 	if (link->dynamic == KNET_LINK_DYNIP) {
 		err = 1;
 		goto exit_unlock;
 	}
 
-	memcpy(dst_addr, &link->dst_addr, sizeof(struct sockaddr_storage));
+	memmove(dst_addr, &link->dst_addr, sizeof(struct sockaddr_storage));
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
@@ -892,7 +892,7 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	memcpy(status, &link->status, sizeof(struct knet_link_status));
+	memmove(status, &link->status, sizeof(struct knet_link_status));
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);

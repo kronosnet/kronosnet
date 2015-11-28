@@ -353,7 +353,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		 */
 		if (!defrag_buf->frag_size) {
 			defrag_buf->last_first = 1;
-			memcpy(defrag_buf->buf + (KNET_MAX_PACKET_SIZE - *len),
+			memmove(defrag_buf->buf + (KNET_MAX_PACKET_SIZE - *len),
 			       inbuf->khp_data_userdata,
 			       *len);
 		}
@@ -361,7 +361,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		defrag_buf->frag_size = *len;
 	}
 
-	memcpy(defrag_buf->buf + ((inbuf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
+	memmove(defrag_buf->buf + ((inbuf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
 	       inbuf->khp_data_userdata, *len);
 
 	defrag_buf->frag_recv++;
@@ -390,7 +390,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		/*
 		 * copy the pckt back in the user data
 		 */
-		memcpy(inbuf->khp_data_userdata, defrag_buf->buf, *len);
+		memmove(inbuf->khp_data_userdata, defrag_buf->buf, *len);
 
 		/*
 		 * free this buffer
@@ -456,7 +456,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			if (memcmp(&src_link->dst_addr, address, sizeof(struct sockaddr_storage)) != 0) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
-				memcpy(&src_link->dst_addr, address, sizeof(struct sockaddr_storage));
+				memmove(&src_link->dst_addr, address, sizeof(struct sockaddr_storage));
 				if (getnameinfo((const struct sockaddr *)&src_link->dst_addr, sizeof(struct sockaddr_storage),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 						src_link->status.dst_port, KNET_MAX_PORT_LEN,
@@ -569,7 +569,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	case KNET_HEADER_TYPE_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
-		memcpy(&recvtime, &inbuf->khp_ping_time[0], sizeof(struct timespec));
+		memmove(&recvtime, &inbuf->khp_ping_time[0], sizeof(struct timespec));
 		timespec_diff(recvtime,
 				src_link->status.pong_last, &latency_last);
 

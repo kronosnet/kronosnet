@@ -166,7 +166,7 @@ static int param_to_int(const char *param, int paramlen)
 	char buf[KNET_VTY_MAX_LINE];
 
 	memset(buf, 0, sizeof(buf));
-	memcpy(buf, param, paramlen);
+	memmove(buf, param, paramlen);
 	return atoi(buf);
 }
 
@@ -176,7 +176,7 @@ static int param_to_str(char *buf, int bufsize, const char *param, int paramlen)
 		return -1;
 
 	memset(buf, 0, bufsize);
-	memcpy(buf, param, paramlen);
+	memmove(buf, param, paramlen);
 	return paramlen;
 }
 
@@ -582,7 +582,7 @@ static int match_command(struct knet_vty *vty, const vty_node_cmds_t *cmds,
 
 				cmdreallen = strlen(cmds[matches[0]].cmd);
 				memset(vty->line + cmdoffset, 0, cmdlen);
-				memcpy(vty->line + cmdoffset, cmds[matches[0]].cmd, cmdreallen);
+				memmove(vty->line + cmdoffset, cmds[matches[0]].cmd, cmdreallen);
 				vty->line[cmdreallen + cmdoffset] = ' ';
 				vty->line_idx = cmdreallen + cmdoffset + 1;
 				vty->cursor_pos = cmdreallen + cmdoffset + 1;
@@ -1448,7 +1448,7 @@ no_key:
 				 &knet_handle_crypto_cfg_new);
 
 	if (!err) {
-		memcpy(&knet_iface->knet_handle_crypto_cfg, &knet_handle_crypto_cfg_new, sizeof(struct knet_handle_crypto_cfg));
+		memmove(&knet_iface->knet_handle_crypto_cfg, &knet_handle_crypto_cfg_new, sizeof(struct knet_handle_crypto_cfg));
 	} else {
 		knet_vty_write(vty, "Error: Unable to initialize crypto module%s", telnet_newline);
 	}

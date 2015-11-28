@@ -78,7 +78,7 @@ static void *_handle_logging_thread(void *data)
 	fd_set rfds;
 	struct timeval tv;
 
-	memcpy(&logfd, data, sizeof(int));
+	memmove(&logfd, data, sizeof(int));
 
 	while (se_result >= 0 && !daemon_quit){
 		FD_ZERO (&rfds);
@@ -453,7 +453,7 @@ int knet_vty_main_loop(int debug)
 
 		knet_vtys[conn_index].vty_sock = vty_accept_fd;
 		knet_vtys[conn_index].conn_num = conn_index;
-		memcpy(&knet_vtys[conn_index].src_sa, &incoming_sa, salen);
+		memmove(&knet_vtys[conn_index].src_sa, &incoming_sa, salen);
 		knet_vtys[conn_index].src_sa_len = salen;
 		knet_vtys[conn_index].active = 1;
 		knet_vtys[conn_index].logfd = logfd[1];

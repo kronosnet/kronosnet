@@ -436,7 +436,7 @@ static int calculate_nss_hash(
 		goto out;
 	}
 
-	memcpy(hash, hash_block, hash_len[instance->crypto_hash_type]);
+	memmove(hash, hash_block, hash_len[instance->crypto_hash_type]);
 	err = 0;
 
 out:
@@ -504,7 +504,7 @@ int nsscrypto_encrypt_and_sign (
 			return -1;
 		}
 	} else {
-		memcpy(buf_out, buf_in, buf_in_len);
+		memmove(buf_out, buf_in, buf_in_len);
 		*buf_out_len = buf_in_len;
 	}
 

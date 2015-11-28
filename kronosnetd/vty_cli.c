@@ -248,7 +248,7 @@ static void knet_vty_history_print(struct knet_vty *vty)
 	knet_vty_kill_line_from_beginning(vty);
 
 	len = strlen(vty->history[vty->history_pos]);
-	memcpy(vty->line, vty->history[vty->history_pos], len);
+	memmove(vty->line, vty->history[vty->history_pos], len);
 	vty->cursor_pos = vty->line_idx = len;
 
 	knet_vty_write(vty, "%s", vty->line);

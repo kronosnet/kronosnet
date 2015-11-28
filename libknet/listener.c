@@ -62,7 +62,7 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		}
 
 		memset(listener, 0, sizeof(struct knet_listener));
-		memcpy(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
+		memmove(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
 
 		listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
 		if (listener->sock < 0) {

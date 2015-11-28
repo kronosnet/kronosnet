@@ -51,7 +51,7 @@ int ether_host_filter_fn (const unsigned char *outdata,
 		return 1;
 	}
 
-	memcpy(&dst_host_id, &dst_mac[4], 2);
+	memmove(&dst_host_id, &dst_mac[4], 2);
 
 	dst_host_ids[0] = ntohs(dst_host_id);
 	*dst_host_ids_entries = 1;

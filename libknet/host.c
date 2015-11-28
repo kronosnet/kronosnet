@@ -341,7 +341,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 		goto exit_unlock;
 	}
 
-	memcpy(host_ids, knet_h->host_ids, sizeof(knet_h->host_ids));
+	memmove(host_ids, knet_h->host_ids, sizeof(knet_h->host_ids));
 	*host_ids_entries = knet_h->host_ids_entries;
 
 exit_unlock:
