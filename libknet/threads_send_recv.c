@@ -471,10 +471,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	}
 
 	switch (inbuf->kh_type) {
+	case KNET_HEADER_TYPE_HOST_INFO:
 	case KNET_HEADER_TYPE_DATA:
-		if (knet_h->enabled != 1) /* data forward is disabled */
-			break;
-
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 
 		if (inbuf->khp_data_frag_num > 1) {
@@ -491,37 +489,42 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			len = len + KNET_HEADER_DATA_SIZE;
 		}
 
-		if (knet_h->dst_host_filter_fn) {
-			int host_idx;
-			int found = 0;
+		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
+			if (knet_h->enabled != 1) /* data forward is disabled */
+				break;
 
-			bcast = knet_h->dst_host_filter_fn(
-					(const unsigned char *)inbuf->khp_data_userdata,
-					len,
-					inbuf->kh_node,
-					dst_host_ids,
-					&dst_host_ids_entries);
-			if (bcast < 0) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Error from dst_host_filter_fn: %d", bcast);
-				return;
-			}
+			if (knet_h->dst_host_filter_fn) {
+				int host_idx;
+				int found = 0;
 
-			if ((!bcast) && (!dst_host_ids_entries)) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Message is unicast but no dst_host_ids_entries");
-				return;
-			}
-
-			/* check if we are dst for this packet */
-			if (!bcast) {
-				for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
-					if (dst_host_ids[host_idx] == knet_h->host_id) {
-						found = 1;
-						break;
-					}
-				}
-				if (!found) {
-					log_debug(knet_h, KNET_SUB_LINK_T, "Packet is not for us");
+				bcast = knet_h->dst_host_filter_fn(
+						(const unsigned char *)inbuf->khp_data_userdata,
+						len,
+						inbuf->kh_node,
+						dst_host_ids,
+						&dst_host_ids_entries);
+				if (bcast < 0) {
+					log_debug(knet_h, KNET_SUB_LINK_T, "Error from dst_host_filter_fn: %d", bcast);
 					return;
+				}
+
+				if ((!bcast) && (!dst_host_ids_entries)) {
+					log_debug(knet_h, KNET_SUB_LINK_T, "Message is unicast but no dst_host_ids_entries");
+					return;
+				}
+
+				/* check if we are dst for this packet */
+				if (!bcast) {
+					for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+						if (dst_host_ids[host_idx] == knet_h->host_id) {
+							found = 1;
+							break;
+						}
+					}
+					if (!found) {
+						log_debug(knet_h, KNET_SUB_LINK_T, "Packet is not for us");
+						return;
+					}
 				}
 			}
 		}
@@ -533,16 +536,67 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			return;
 		}
 
-		memset(iov_out, 0, sizeof(iov_out));
-		iov_out[0].iov_base = (void *) inbuf->khp_data_userdata;
-		iov_out[0].iov_len = len - KNET_HEADER_DATA_SIZE;
+		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
+			memset(iov_out, 0, sizeof(iov_out));
+			iov_out[0].iov_base = (void *) inbuf->khp_data_userdata;
+			iov_out[0].iov_len = len - KNET_HEADER_DATA_SIZE;
 
-		if (writev(knet_h->sockfd, iov_out, 1) == iov_out[0].iov_len) {
+			if (writev(knet_h->sockfd, iov_out, 1) == iov_out[0].iov_len) {
+				_has_been_delivered(src_host, bcast, inbuf->khp_data_seq_num);
+			} else {
+				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
+			}
+		} else { /* HOSTINFO */
 			_has_been_delivered(src_host, bcast, inbuf->khp_data_seq_num);
-		} else {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
+			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
+			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
+				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
+			}
+			switch(knet_hostinfo->khi_type) {
+				case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
+					src_link = src_host->link +
+						(knet_hostinfo->khip_link_status_link_id % KNET_MAX_LINK);
+					/*
+					 * basically if the node is coming back to life from a crash
+					 * we should receive a host info where local previous status == remote current status
+					 * and so we can detect that node is showing up again
+					 * we need to clear cbuffers and notify the node of our status by resending our host info
+					 */
+					if ((src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) &&
+					    (src_link->remoteconnected == knet_hostinfo->khip_link_status_status)) {
+						src_link->host_info_up_sent = 0;
+					}
+					src_link->remoteconnected = knet_hostinfo->khip_link_status_status;
+					if (src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_DOWN) {
+						/*
+						 * if a host is disconnecting clean, we note that in donnotremoteupdate
+						 * so that we don't send host info back immediately but we wait
+						 * for the node to send an update when it's alive again
+						 */
+						src_link->host_info_up_sent = 0;
+						src_link->donnotremoteupdate = 1;
+					} else {
+						src_link->donnotremoteupdate = 0;
+					}
+					log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %u link: %u remote connected: %u",
+						  src_host->host_id,
+						  src_link->link_id,
+						  src_link->remoteconnected);
+					if (_host_dstcache_update_async(knet_h, src_host)) {
+						log_debug(knet_h, KNET_SUB_LINK,
+							  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
+							  src_host->host_id,
+							  src_link->link_id,
+							  src_link->remoteconnected);
+					}
+					break;
+				case KNET_HOSTINFO_TYPE_LINK_TABLE:
+					break;
+				default:
+					log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %u", src_host->host_id);
+					break;
+			}
 		}
-
 		break;
 	case KNET_HEADER_TYPE_PING:
 		outlen = KNET_HEADER_PING_SIZE;
@@ -624,66 +678,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		src_link->last_recv_mtu = inbuf->khp_pmtud_size;
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
-		break;
-	case KNET_HEADER_TYPE_HOST_INFO:
-		/*
-		 * TODO: check if we need to fix padding as we do for data packets.
-		 *       we currently don't have any HOST_INFO big enough to frag data
-		 */
-		if (inbuf->khp_data_frag_num > 1) {
-			if (pckt_defrag(knet_h, inbuf, &len)) {
-				return;
-			}
-		}
-
-		knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
-		if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
-			knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
-		}
-		switch(knet_hostinfo->khi_type) {
-			case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
-				src_link = src_host->link +
-					(knet_hostinfo->khip_link_status_link_id % KNET_MAX_LINK);
-				/*
-				 * basically if the node is coming back to life from a crash
-				 * we should receive a host info where local previous status == remote current status
-				 * and so we can detect that node is showing up again
-				 * we need to clear cbuffers and notify the node of our status by resending our host info
-				 */
-				if ((src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) &&
-				    (src_link->remoteconnected == knet_hostinfo->khip_link_status_status)) {
-					src_link->host_info_up_sent = 0;
-				}
-				src_link->remoteconnected = knet_hostinfo->khip_link_status_status;
-				if (src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_DOWN) {
-					/*
-					 * if a host is disconnecting clean, we note that in donnotremoteupdate
-					 * so that we don't send host info back immediately but we wait
-					 * for the node to send an update when it's alive again
-					 */
-					src_link->host_info_up_sent = 0;
-					src_link->donnotremoteupdate = 1;
-				} else {
-					src_link->donnotremoteupdate = 0;
-				}
-				log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %u link: %u remote connected: %u",
-					  src_host->host_id,
-					  src_link->link_id,
-					  src_link->remoteconnected);
-				if (_host_dstcache_update_async(knet_h, src_host)) {
-					log_debug(knet_h, KNET_SUB_LINK,
-						  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
-						  src_host->host_id,
-						  src_link->link_id,
-						  src_link->remoteconnected);
-				}
-				break;
-			case KNET_HOSTINFO_TYPE_LINK_TABLE:
-				break;
-			default:
-				log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %u", src_host->host_id);
-				break;
-		}
 		break;
 	default:
 		return;
