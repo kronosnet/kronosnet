@@ -122,6 +122,8 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		goto out_unlock;
 	}
 
+	knet_h->send_to_links_buf[0]->kh_node = knet_h->host_id;
+
 	/*
 	 * move this into a separate function to expand on
 	 * extra switching rules
@@ -181,6 +183,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	frag_len = inlen;
 	frag_idx = 0;
 
+	knet_h->send_to_links_buf[0]->kh_node = htons(knet_h->host_id);
 	knet_h->send_to_links_buf[0]->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
 
 	log_debug(knet_h, KNET_SUB_SEND_T, "Current inlen: %zu data mtu: %u frags: %d",
@@ -209,6 +212,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		 */
 		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = knet_h->send_to_links_buf[0]->khp_data_frag_num;
 		knet_h->send_to_links_buf[frag_idx]->kh_type = knet_h->send_to_links_buf[0]->kh_type;
+		knet_h->send_to_links_buf[frag_idx]->kh_node = knet_h->send_to_links_buf[0]->kh_node;
 
 		frag_len = frag_len - temp_data_mtu;
 		if (frag_idx > 0) {
@@ -716,7 +720,6 @@ void *_handle_send_to_links_thread(void *data)
 	/* preparing data buffer */
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
-		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
 		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
 	}
 
