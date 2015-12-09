@@ -164,6 +164,9 @@ ssize_t knet_send(knet_handle_t knet_h,
  *            const unsigned char *outdata - is a pointer to the
  *                                           current packet
  *            ssize_t outdata_len          - lenght of the above data
+ *            uint8_t tx_rx                - filter is called on tx or rx
+ *                                           (see defines below)
+ *            uint16_t this_host_id        - host_id processing the packet
  *            uint16_t src_host_id         - host_id that generated the
  *                                           packet
  *            uint16_t *dst_host_ids       - array of KNET_MAX_HOST uint16_t
@@ -185,10 +188,15 @@ ssize_t knet_send(knet_handle_t knet_h,
  * -1 on error and errno is set.
  */
 
+#define KNET_DST_HOST_FILTER_TX 0
+#define KNET_DST_HOST_FILTER_RX 1
+
 int knet_handle_enable_filter(knet_handle_t knet_h,
 			      int (*dst_host_filter_fn) (
 					const unsigned char *outdata,
 					ssize_t outdata_len,
+					uint8_t tx_rx,
+					uint16_t this_host_id,
 					uint16_t src_host_id,
 					uint16_t *dst_host_ids,
 					size_t *dst_host_ids_entries));
