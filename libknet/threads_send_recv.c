@@ -147,6 +147,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 					goto out_unlock;
 				}
 			}
+			knet_h->send_to_links_buf[0]->khp_data_bcast = bcast;
 			break;
 		case KNET_HEADER_TYPE_HOST_INFO:
 			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf[0]->khp_data_userdata;
@@ -213,6 +214,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = knet_h->send_to_links_buf[0]->khp_data_frag_num;
 		knet_h->send_to_links_buf[frag_idx]->kh_type = knet_h->send_to_links_buf[0]->kh_type;
 		knet_h->send_to_links_buf[frag_idx]->kh_node = knet_h->send_to_links_buf[0]->kh_node;
+		knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = knet_h->send_to_links_buf[0]->khp_data_bcast;
 
 		frag_len = frag_len - temp_data_mtu;
 		if (frag_idx > 0) {
@@ -309,16 +311,111 @@ host_unlock:
 	}
 }
 
+/*
+ *  return 1 if a > b
+ *  return -1 if b > a
+ *  return 0 if they are equal
+ */
+static inline int timecmp(struct timespec a, struct timespec b)
+{
+	if (a.tv_sec != b.tv_sec) {
+		if (a.tv_sec > b.tv_sec) {
+			return 1;
+		} else {
+			return -1;
+		}
+	} else {
+		if (a.tv_nsec > b.tv_nsec) {
+			return 1;
+		} else if (a.tv_nsec < b.tv_nsec) {
+			return -1;
+		} else {
+			return 0;
+		}
+	}
+}
+
+/*
+ * this functions needs to return an index (0 to 7)
+ * to a knet_host_defrag_buf. (-1 on errors)
+ */
+
+static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
+{
+	struct knet_host *src_host = knet_h->host_index[inbuf->kh_node];
+	int i, oldest;
+
+	/*
+	 * check if there is a buffer already in use handling the same seq_num
+	 */
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		if (src_host->defrag_buf[i].in_use) {
+			if (src_host->defrag_buf[i].pckt_seq == inbuf->khp_data_seq_num) {
+				return i;
+			}
+		}
+	}
+
+	/*
+	 * If there is no buffer that's handling the current seq_num
+	 * either it's new or it's been reclaimed already.
+	 * check if it's been reclaimed/seen before using the defrag circular
+	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
+	 * and there is no point to try to defrag it again.
+	 */
+	if (!_should_deliver(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 1)) {
+		errno = ETIME;
+		return -1;
+	}
+
+	/*
+	 * register the pckt as seen
+	 */
+	_has_been_seen(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num);
+
+	/*
+	 * see if there is a free buffer
+	 */
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		if (!src_host->defrag_buf[i].in_use) {
+			return i;
+		}
+	}
+
+	/*
+	 * at this point, there are no free buffers, the pckt is new
+	 * and we need to reclaim a buffer, and we will take the one
+	 * with the oldest timestamp. It's as good as any.
+	 */
+
+	oldest = 0;
+
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		if (timecmp(src_host->defrag_buf[i].last_update, src_host->defrag_buf[oldest].last_update) < 0) {
+			oldest = i;
+		}
+	}
+	src_host->defrag_buf[oldest].in_use = 0;
+	return oldest;
+}
+
 static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t *len)
 {
 	struct knet_host_defrag_buf *defrag_buf;
+	int defrag_buf_idx;
 
-	/*
-	 * this will need to be dynamic and we will need an all buffer full reclaim mechanism
-	 * add here checks that we are handling a pckt from the same seq num
-	 */
+	defrag_buf_idx = find_pckt_defrag_buf(knet_h, inbuf);
+	if (defrag_buf_idx < 0) {
+		if (errno == EEXIST) {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
+		}
+		if (errno == ETIME) {
+			log_debug(knet_h, KNET_SUB_LINK_T, "Defrag buffer expired");
+		}
+		return 1;
+	}
 
-	defrag_buf = &knet_h->host_index[inbuf->kh_node]->defrag_buf[0];
+	defrag_buf = &knet_h->host_index[inbuf->kh_node]->defrag_buf[defrag_buf_idx];
 
 	/*
 	 * if the buf is not is use, then make sure it's clean
@@ -328,6 +425,11 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		defrag_buf->in_use = 1;
 		defrag_buf->pckt_seq = inbuf->khp_data_seq_num;
 	}
+
+	/*
+	 * update timestamp on the buffer
+	 */
+	clock_gettime(CLOCK_MONOTONIC, &defrag_buf->last_update);
 
 	/*
 	 * check if we already received this fragment
@@ -479,6 +581,13 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	case KNET_HEADER_TYPE_DATA:
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 
+		if (!_should_deliver(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 0)) {
+			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
+				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
+			}
+			return;
+		}
+
 		if (inbuf->khp_data_frag_num > 1) {
 			/*
 			 * len as received from the socket also includes extra stuff
@@ -531,13 +640,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 					}
 				}
 			}
-		}
-
-		if (!_should_deliver(src_host, bcast, inbuf->khp_data_seq_num)) {
-			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
-			}
-			return;
 		}
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {

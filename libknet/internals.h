@@ -70,6 +70,7 @@ struct knet_host_defrag_buf {
 	uint8_t	last_first;		/* special case if we receive the last fragment first */
 	uint16_t frag_size;		/* normal frag size (not the last one) */
 	uint16_t last_frag_size;	/* the last fragment might not be aligned with MTU size */
+	struct timespec last_update;	/* keep time of the last pckt */
 };
 
 struct knet_host {
@@ -86,6 +87,8 @@ struct knet_host {
 	seq_num_t ucast_seq_num_rx;
 	/* defrag/(reassembly buffers */
 	struct knet_host_defrag_buf defrag_buf[KNET_MAX_LINK];
+	char bcast_circular_buffer_defrag[KNET_CBUFFER_SIZE];
+	char ucast_circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
 	pthread_mutex_t active_links_mutex;

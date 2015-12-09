@@ -98,6 +98,7 @@ typedef uint16_t seq_num_t;
 
 struct knet_header_payload_data {
 	seq_num_t	khp_data_seq_num;	/* pckt seq number used to deduplicate pkcts */
+	uint8_t		khp_data_bcast;		/* data destination bcast/ucast */
 	uint8_t		khp_data_frag_num;	/* number of fragments of this pckt. 1 is not fragmented */
 	uint8_t		khp_data_frag_seq;	/* as above, indicates the frag sequence number */
 	uint8_t		khp_data_userdata[0];	/* pointer to the real user data */
@@ -163,6 +164,7 @@ struct knet_header {
 #define khp_data_frag_num kh_payload.khp_data.khp_data_frag_num
 #define khp_data_frag_seq kh_payload.khp_data.khp_data_frag_seq
 #define khp_data_userdata kh_payload.khp_data.khp_data_userdata
+#define khp_data_bcast    kh_payload.khp_data.khp_data_bcast
 
 #define khp_ping_link     kh_payload.khp_ping.khp_ping_link
 #define khp_ping_time     kh_payload.khp_ping.khp_ping_time

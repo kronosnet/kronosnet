@@ -4,10 +4,8 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) cleanup circular buffer code and functions names
  - (rfe)   link/host status callback notification (membership?)
- - (issue) implement packet fragmentation?, is the only
-           solution to avoid conflicts with tun/tap mtu setting and various
-           others buffer sizes.
  - (issue) review usage of bcast variable now that's in the pckt itself
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
  - (rfe)   compress: should only compress user data, we will add a bit in the data

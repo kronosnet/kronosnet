@@ -468,32 +468,43 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 }
 
 /* bcast = 0 -> unicast packet | 1 -> broadcast|mcast */
+/* defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup */
 
-/* make this bcast/ucast aware */
-int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num)
+int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf)
 {
 	size_t i, j; /* circular buffer indexes */
 	seq_num_t seq_dist;
 	char *dst_cbuf = NULL;
+	char *dst_cbuf_defrag = NULL;
 	seq_num_t *dst_seq_num;
 
 	if (bcast) {
 		dst_cbuf = host->bcast_circular_buffer;
+		dst_cbuf_defrag = host->bcast_circular_buffer_defrag;
 		dst_seq_num = &host->bcast_seq_num_rx;
 	} else {
 		dst_cbuf = host->ucast_circular_buffer;
+		dst_cbuf_defrag = host->ucast_circular_buffer_defrag;
 		dst_seq_num = &host->ucast_seq_num_rx;
 	}
 
-	seq_dist = (seq_num < *dst_seq_num) ?
-		(SEQ_MAX - seq_num) + *dst_seq_num : *dst_seq_num - seq_num;
+	if (seq_num < *dst_seq_num) {
+		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
+	} else {
+		seq_dist = *dst_seq_num - seq_num;
+	}
 
 	j = seq_num % KNET_CBUFFER_SIZE;
 
 	if (seq_dist < KNET_CBUFFER_SIZE) { /* seq num is in ring buffer */
-		return (dst_cbuf[j] == 0) ? 1 : 0;
+		if (!defrag_buf) {
+			return (dst_cbuf[j] == 0) ? 1 : 0;
+		} else {
+			return (dst_cbuf_defrag[j] == 0) ? 1 : 0;
+		}
 	} else if (seq_dist <= SEQ_MAX - KNET_CBUFFER_SIZE) {
 		memset(dst_cbuf, 0, KNET_CBUFFER_SIZE);
+		memset(dst_cbuf_defrag, 0, KNET_CBUFFER_SIZE);
 		*dst_seq_num = seq_num;
 	}
 
@@ -503,8 +514,11 @@ int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num)
 	if (i > j) {
 		memset(dst_cbuf + i, 0, KNET_CBUFFER_SIZE - i);
 		memset(dst_cbuf, 0, j + 1);
+		memset(dst_cbuf_defrag + i, 0, KNET_CBUFFER_SIZE - i);
+		memset(dst_cbuf_defrag, 0, j + 1);
 	} else {
 		memset(dst_cbuf + i, 0, j - i + 1);
+		memset(dst_cbuf_defrag + i, 0, j - i + 1);
 	}
 
 	*dst_seq_num = seq_num;
@@ -519,6 +533,18 @@ void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num)
 		host->bcast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
 	} else {
 		host->ucast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
+	}
+
+	return;
+}
+
+void _has_been_seen(struct knet_host *host, int bcast, seq_num_t seq_num)
+{
+
+	if (bcast) {
+		host->bcast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
+	} else {
+		host->ucast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
 	}
 
 	return;
@@ -551,10 +577,19 @@ try_again:
 
 static void _clear_cbuffers(struct knet_host *host)
 {
+	int i;
+
 	memset(host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
 	memset(host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
 	host->bcast_seq_num_rx = 0;
 	host->ucast_seq_num_rx = 0;
+
+	memset(host->bcast_circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
+	memset(host->ucast_circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
+
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		memset(&host->defrag_buf[i], 0, sizeof(struct knet_host_defrag_buf));
+	}
 }
 
 int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)

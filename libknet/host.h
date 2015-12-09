@@ -12,8 +12,9 @@
 
 #include "internals.h"
 
-int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num);
+int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf);
 void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num);
+void _has_been_seen(struct knet_host *host, int bcast, seq_num_t seq_num);
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen);
 int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host);
 int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host);
