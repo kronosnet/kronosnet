@@ -760,7 +760,9 @@ exit_nolock:
 }
 
 int knet_handle_enable_filter(knet_handle_t knet_h,
+			      void *dst_host_filter_fn_private_data,
 			      int (*dst_host_filter_fn) (
+					void *private_data,
 					const unsigned char *outdata,
 					ssize_t outdata_len,
 					uint8_t tx_rx,
@@ -784,6 +786,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 		return -1;
 	}
 
+	knet_h->dst_host_filter_fn_private_data = dst_host_filter_fn_private_data;
 	knet_h->dst_host_filter_fn = dst_host_filter_fn;
 	if (knet_h->dst_host_filter_fn) {
 		log_debug(knet_h, KNET_SUB_HANDLE, "dst_host_filter_fn enabled");

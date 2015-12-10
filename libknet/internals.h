@@ -150,7 +150,9 @@ struct knet_handle {
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;
 	seq_num_t bcast_seq_num_tx;
+	void *dst_host_filter_fn_private_data;
 	int (*dst_host_filter_fn) (
+		void *private_data,
 		const unsigned char *outdata,
 		ssize_t outdata_len,
 		uint8_t tx_rx,

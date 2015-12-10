@@ -1621,7 +1621,7 @@ tap_found:
 		goto out_clean;
 	}
 
-	knet_handle_enable_filter(knet_iface->cfg_ring.knet_h, ether_host_filter_fn);
+	knet_handle_enable_filter(knet_iface->cfg_ring.knet_h, NULL, ether_host_filter_fn);
 
 	if (knet_handle_enable_pmtud_notify(knet_iface->cfg_ring.knet_h,
 					    knet_iface,

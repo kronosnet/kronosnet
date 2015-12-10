@@ -11,7 +11,8 @@
 
 #include <stdint.h>
 
-int ether_host_filter_fn (const unsigned char *outdata,
+int ether_host_filter_fn (void *private_data,
+			  const unsigned char *outdata,
 			  ssize_t outdata_len,
 			  uint8_t tx_rx,
 			  uint16_t this_host_id,

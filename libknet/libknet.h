@@ -155,6 +155,10 @@ ssize_t knet_send(knet_handle_t knet_h,
  * 
  * knet_h   - pointer to knet_handle_t
  *
+ * dst_host_filter_fn_private_data
+ *            void pointer to data that can be used to identify
+ *            the callback.
+ *
  * dst_host_filter_fn -
  *            is a callback function that is invoked every time
  *            a packet hits datafd (see knet_handle_new).
@@ -192,7 +196,9 @@ ssize_t knet_send(knet_handle_t knet_h,
 #define KNET_DST_HOST_FILTER_RX 1
 
 int knet_handle_enable_filter(knet_handle_t knet_h,
+			      void *dst_host_filter_fn_private_data,
 			      int (*dst_host_filter_fn) (
+					void *private_data,
 					const unsigned char *outdata,
 					ssize_t outdata_len,
 					uint8_t tx_rx,

@@ -132,6 +132,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		case KNET_HEADER_TYPE_DATA:
 			if (knet_h->dst_host_filter_fn) {
 				bcast = knet_h->dst_host_filter_fn(
+						knet_h->dst_host_filter_fn_private_data,
 						(const unsigned char *)knet_h->send_to_links_buf[0]->khp_data_userdata,
 						inlen,
 						KNET_DST_HOST_FILTER_TX,
@@ -613,6 +614,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				int found = 0;
 
 				bcast = knet_h->dst_host_filter_fn(
+						knet_h->dst_host_filter_fn_private_data,
 						(const unsigned char *)inbuf->khp_data_userdata,
 						len,
 						KNET_DST_HOST_FILTER_RX,
