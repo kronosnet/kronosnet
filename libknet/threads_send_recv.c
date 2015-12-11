@@ -616,7 +616,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				bcast = knet_h->dst_host_filter_fn(
 						knet_h->dst_host_filter_fn_private_data,
 						(const unsigned char *)inbuf->khp_data_userdata,
-						len,
+						len - KNET_HEADER_DATA_SIZE,
 						KNET_DST_HOST_FILTER_RX,
 						knet_h->host_id,
 						inbuf->kh_node,
