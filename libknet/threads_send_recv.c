@@ -444,9 +444,6 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 
 	defrag_buf_idx = find_pckt_defrag_buf(knet_h, inbuf);
 	if (defrag_buf_idx < 0) {
-		if (errno == EEXIST) {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
-		}
 		if (errno == ETIME) {
 			log_debug(knet_h, KNET_SUB_LINK_T, "Defrag buffer expired");
 		}
