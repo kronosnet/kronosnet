@@ -725,12 +725,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 					} else {
 						src_link->donnotremoteupdate = 0;
 					}
-					log_debug(knet_h, KNET_SUB_LINK, "host message up/down. from host: %u link: %u remote connected: %u",
+					log_debug(knet_h, KNET_SUB_LINK_T, "host message up/down. from host: %u link: %u remote connected: %u",
 						  src_host->host_id,
 						  src_link->link_id,
 						  src_link->remoteconnected);
 					if (_host_dstcache_update_async(knet_h, src_host)) {
-						log_debug(knet_h, KNET_SUB_LINK,
+						log_debug(knet_h, KNET_SUB_LINK_T,
 							  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
 							  src_host->host_id,
 							  src_link->link_id,
@@ -740,7 +740,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				case KNET_HOSTINFO_TYPE_LINK_TABLE:
 					break;
 				default:
-					log_warn(knet_h, KNET_SUB_LINK, "Receiving unknown host info message from host %u", src_host->host_id);
+					log_warn(knet_h, KNET_SUB_LINK_T, "Receiving unknown host info message from host %u", src_host->host_id);
 					break;
 			}
 		}
@@ -783,12 +783,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		if (src_link->status.latency < src_link->pong_timeout) {
 			if (!src_link->status.connected) {
 				if (src_link->received_pong >= src_link->pong_count) {
-					log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is up",
+					log_info(knet_h, KNET_SUB_LINK_T, "host: %u link: %u is up",
 						 src_host->host_id, src_link->link_id);
 					_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
 				} else {
 					src_link->received_pong++;
-					log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u received pong: %u",
+					log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u received pong: %u",
 						  src_host->host_id, src_link->link_id, src_link->received_pong);
 				}
 			}
