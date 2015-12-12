@@ -148,6 +148,8 @@ AC_CHECK_FUNCS([strrchr])
 AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([strcasecmp])
+AC_CHECK_FUNCS([sendmmsg], AC_MSG_RESULT([]), AC_MSG_ERROR([kernel 3.0+ and glibc 2.14+ are required]))
+AC_CHECK_FUNCS([recvmmsg], AC_MSG_RESULT([]), AC_MSG_ERROR([kernel 2.6.33 and glibc 2.12+ are required]))
 
 # PAM check
 AC_CHECK_HEADERS([security/pam_appl.h],
