@@ -4,7 +4,6 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
- - (issue) cleanup circular buffer code and functions names
  - (issue) review usage of bcast variable now that's in the pckt itself
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
  - (issue) need bind to interface for dynamic ip local interfaces vs src ip

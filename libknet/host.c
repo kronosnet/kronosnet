@@ -545,10 +545,13 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 	return 0;
 }
 
-/* bcast = 0 -> unicast packet | 1 -> broadcast|mcast */
-/* defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup */
+/*
+ * check if a given packet seq num is in the circular buffers
+ * bcast = 0 -> unicast packet | 1 -> broadcast|mcast
+ * defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup
+ */
 
-int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf)
+int _seq_num_lookup(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf)
 {
 	size_t i, j; /* circular buffer indexes */
 	seq_num_t seq_dist;
@@ -604,25 +607,20 @@ int _should_deliver(struct knet_host *host, int bcast, seq_num_t seq_num, int de
 	return 1;
 }
 
-void _has_been_delivered(struct knet_host *host, int bcast, seq_num_t seq_num)
+void _seq_num_set(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf)
 {
-
-	if (bcast) {
-		host->bcast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
+	if (!defrag_buf) { 
+		if (bcast) {
+			host->bcast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
+		} else {
+			host->ucast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
+		}
 	} else {
-		host->ucast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
-	}
-
-	return;
-}
-
-void _has_been_seen(struct knet_host *host, int bcast, seq_num_t seq_num)
-{
-
-	if (bcast) {
-		host->bcast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
-	} else {
-		host->ucast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
+		if (bcast) {
+			host->bcast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
+		} else {
+			host->ucast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
+		}
 	}
 
 	return;

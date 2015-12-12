@@ -401,7 +401,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
 	 * and there is no point to try to defrag it again.
 	 */
-	if (!_should_deliver(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 1)) {
+	if (!_seq_num_lookup(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 1)) {
 		errno = ETIME;
 		return -1;
 	}
@@ -409,7 +409,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	/*
 	 * register the pckt as seen
 	 */
-	_has_been_seen(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num);
+	_seq_num_set(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 1);
 
 	/*
 	 * see if there is a free buffer
@@ -619,7 +619,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	case KNET_HEADER_TYPE_DATA:
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 
-		if (!_should_deliver(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 0)) {
+		if (!_seq_num_lookup(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 0)) {
 			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
 			}
@@ -689,12 +689,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			iov_out[0].iov_len = len - KNET_HEADER_DATA_SIZE;
 
 			if (writev(knet_h->sockfd, iov_out, 1) == iov_out[0].iov_len) {
-				_has_been_delivered(src_host, bcast, inbuf->khp_data_seq_num);
+				_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
 			} else {
 				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
 			}
 		} else { /* HOSTINFO */
-			_has_been_delivered(src_host, bcast, inbuf->khp_data_seq_num);
+			_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
 			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
