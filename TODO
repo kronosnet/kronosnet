@@ -5,7 +5,7 @@ distro/packaging:
 
 link/host level:
  - (issue) cleanup circular buffer code and functions names
- - (rfe)   link/host status callback notification (membership?)
+ - (rfe)   link status callback notification
  - (issue) review usage of bcast variable now that's in the pckt itself
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
  - (rfe)   compress: should only compress user data, we will add a bit in the data

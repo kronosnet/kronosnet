@@ -559,6 +559,84 @@ int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
 			 int *policy);
 
 /*
+ * knet_host_enable_status_change_notify
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * host_status_change_notify_fn_private_data
+ *            void pointer to data that can be used to identify
+ *            the callback.
+ *
+ * host_status_change_notify_fn
+ *            is a callback function that is invoked every time
+ *            there is a change in the host status.
+ *            host status is identified by:
+ *            - reachable, this host can send/receive data to/from host_id
+ *            - remote, 0 if the host_id is connected locally or 1 if
+ *                      the there is one or more knet host(s) in between.
+ *                      NOTE: re-switching is NOT currently implemented,
+ *                            but this is ready for future and can avoid
+ *                            an API/ABI breakage later on.
+ *            - external, 0 if the host_id is configured locally or 1 if
+ *                        it has been added from remote nodes config.
+ *                        NOTE: dynamic topology is NOT currently implemented,
+ *                        but this is ready for future and can avoid
+ *                        an API/ABI breakage later on.
+ *            This function MUST NEVER block or add substantial delays.
+ *
+ * knet_host_status_change_notify returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_host_enable_status_change_notify(knet_handle_t knet_h,
+					  void *host_status_change_notify_fn_private_data,
+					  void (*host_status_change_notify_fn) (
+						void *private_data,
+						uint16_t host_id,
+						uint8_t reachable,
+						uint8_t remote,
+						uint8_t external));
+
+/*
+ * define host status structure for quick lookup
+ * struct is in flux as more stats will be added soon
+ *
+ * reachable             host_id can be seen either directly connected
+ *                       or via another host_id
+ *
+ * remote                0 = node is connected locally, 1 is visible via
+ *                       via another host_id
+ *
+ * external              0 = node is configured/known locally,
+ *                       1 host_id has been received via another host_id
+ */
+
+struct knet_host_status {
+	uint8_t reachable;
+	uint8_t remote;
+	uint8_t external;
+	/* add host statistics */
+};
+
+/*
+ * knet_host_status_get
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * status    - pointer to knet_host_status struct (see above)
+ *
+ * knet_handle_pmtud_get returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
+			 struct knet_host_status *status);
+
+/*
  * link structs/API calls
  *
  * every host allocated/managed by knet_host_* has
@@ -867,6 +945,7 @@ struct knet_link_status {
 	unsigned long long latency;	/* average latency computed by fix/exp */
 	struct timespec pong_last;
 	unsigned int mtu;		/* current detected MTU on this link */
+	/* add link statistics */
 };
 
 /*

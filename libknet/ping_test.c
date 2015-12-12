@@ -271,6 +271,24 @@ static void pmtud_notify(void *private_data, unsigned int link_mtu, unsigned int
 	return;
 }
 
+static void host_notify(void *private_data, uint16_t host_id, uint8_t reachable, uint8_t remote, uint8_t external)
+{
+	struct knet_host_status status;
+
+	printf("Received host_id (%u) status change notification. reachable: %u remote: %u external: %u\n",
+		host_id, reachable, remote, external);
+
+	if (knet_host_get_status(knet_h, host_id, &status)) {
+		printf("Unable to get host status\n");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Recorded host_id (%u) status change notification. reachable: %u remote: %u external: %u\n",
+		host_id, status.reachable, status.remote, status.external);
+
+	return;
+}
+
 int main(int argc, char *argv[])
 {
 	char out_big_buff[64000], out_big_frag[65536], hello_world[16];
@@ -326,6 +344,11 @@ int main(int argc, char *argv[])
 
 	if (knet_handle_enable_pmtud_notify(knet_h, NULL, pmtud_notify)) {
 		printf("Unable to install PMTUd notification callback\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (knet_host_enable_status_change_notify(knet_h, NULL, host_notify)) {
+		printf("Unable to install host status notification callback\n");
 		exit(EXIT_FAILURE);
 	}
 

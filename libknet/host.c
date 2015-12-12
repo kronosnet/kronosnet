@@ -428,6 +428,84 @@ exit_unlock:
 	return err;
 }
 
+int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
+			 struct knet_host_status *status)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!status) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	memmove(status, &host->status, sizeof(struct knet_host_status));
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_host_enable_status_change_notify(knet_handle_t knet_h,
+					  void *host_status_change_notify_fn_private_data,
+					  void (*host_status_change_notify_fn) (
+						void *private_data,
+						uint16_t host_id,
+						uint8_t reachable,
+						uint8_t remote,
+						uint8_t external))
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->host_status_change_notify_fn_private_data = host_status_change_notify_fn_private_data;
+	knet_h->host_status_change_notify_fn = host_status_change_notify_fn;
+	if (knet_h->host_status_change_notify_fn) {
+		log_debug(knet_h, KNET_SUB_HOST, "host_status_change_notify_fn enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HOST, "host_status_change_notify_fn disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return 0;
+}
+
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
 {
 	size_t byte_cnt = 0;
@@ -600,6 +678,7 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	uint8_t send_link_status[KNET_MAX_LINK];
 	int clear_cbuffer = 0;
 	int host_has_remote = 0;
+	int reachable = 0;
 
 	if (pthread_mutex_lock(&host->active_links_mutex) != 0) {
 		log_debug(knet_h, KNET_SUB_HOST, "Unable to get active links mutex!");
@@ -681,6 +760,22 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 			_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
 			host->link[send_link_status[i]].host_info_up_sent = 1;
 			host->link[send_link_status[i]].donnotremoteupdate = 0;
+		}
+	}
+
+	if (host->active_link_entries) {
+		reachable = 1;
+	}
+
+	if (host->status.reachable != reachable) {
+		host->status.reachable = reachable;
+		if (knet_h->host_status_change_notify_fn) {
+			knet_h->host_status_change_notify_fn(
+						     knet_h->host_status_change_notify_fn_private_data,
+						     host->host_id,
+						     host->status.reachable,
+						     host->status.remote,
+						     host->status.external);
 		}
 	}
 

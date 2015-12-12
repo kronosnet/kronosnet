@@ -79,6 +79,8 @@ struct knet_host {
 	/* configurable */
 	uint8_t link_handler_policy;
 	char name[KNET_MAX_HOST_LEN];
+	/* status */
+	struct knet_host_status status;
 	/* internals */
 	char bcast_circular_buffer[KNET_CBUFFER_SIZE];
 	seq_num_t bcast_seq_num_rx;
@@ -165,6 +167,13 @@ struct knet_handle {
 		void *private_data,
 		unsigned int link_mtu,
 		unsigned int data_mtu);
+	void *host_status_change_notify_fn_private_data;
+	void (*host_status_change_notify_fn) (
+		void *private_data,
+		uint16_t host_id,
+		uint8_t reachable,
+		uint8_t remote,
+		uint8_t external);
 	int fini_in_progress;
 };
 

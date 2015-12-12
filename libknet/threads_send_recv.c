@@ -85,6 +85,8 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 {
 	ssize_t inlen = 0, outlen, frag_len;
 	struct knet_host *dst_host;
+	uint16_t dst_host_ids_temp[KNET_MAX_HOST];
+	size_t dst_host_ids_entries_temp = 0;
 	uint16_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
@@ -93,6 +95,8 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	struct iovec iov_out[PCKT_FRAG_MAX];
 	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
+	int host_idx;
+	int send_mcast;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
@@ -138,14 +142,14 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 						KNET_DST_HOST_FILTER_TX,
 						knet_h->host_id,
 						knet_h->send_to_links_buf[0]->kh_node,
-						dst_host_ids,
-						&dst_host_ids_entries);
+						dst_host_ids_temp,
+						&dst_host_ids_entries_temp);
 				if (bcast < 0) {
 					log_debug(knet_h, KNET_SUB_SEND_T, "Error from dst_host_filter_fn: %d", bcast);
 					goto out_unlock;
 				}
 
-				if ((!bcast) && (!dst_host_ids_entries)) {
+				if ((!bcast) && (!dst_host_ids_entries_temp)) {
 					log_debug(knet_h, KNET_SUB_SEND_T, "Message is unicast but no dst_host_ids_entries");
 					goto out_unlock;
 				}
@@ -156,14 +160,50 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf[0]->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
-				dst_host_ids[0] = ntohs(knet_hostinfo->khi_dst_node_id);
-				dst_host_ids_entries = 1;
+				dst_host_ids_temp[0] = ntohs(knet_hostinfo->khi_dst_node_id);
+				dst_host_ids_entries_temp = 1;
 			}
 			break;
 		default:
 			log_warn(knet_h, KNET_SUB_SEND_T, "Receiving unknown messages from socket");
 			goto out_unlock;
 			break;
+	}
+
+	/*
+	 * check destinations hosts before spending time
+	 * in fragmenting/encrypting packets to save
+	 * time processing data for unrechable hosts.
+	 * for unicast, also remap the destination data
+	 * to skip unreachable hosts.
+	 */
+
+	if (!bcast) {
+		dst_host_ids_entries = 0;
+		for (host_idx = 0; host_idx < dst_host_ids_entries_temp; host_idx++) {
+			dst_host = knet_h->host_index[dst_host_ids_temp[host_idx]];
+			if (!dst_host) {
+				continue;
+			}
+			if (dst_host->status.reachable) {
+				dst_host_ids[dst_host_ids_entries] = dst_host_ids_temp[host_idx];
+				dst_host_ids_entries++;
+			}
+		}
+		if (!dst_host_ids_entries) {
+			goto out_unlock;
+		}
+	} else {
+		send_mcast = 0;
+		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+			if (dst_host->status.reachable) {
+				send_mcast = 1;
+				break;
+			}
+		}
+		if (!send_mcast) {
+			goto out_unlock;
+		}
 	}
 
 	if (!knet_h->data_mtu) {
@@ -230,15 +270,10 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	}
 
 	if (!bcast) {
-		int host_idx;
 
 		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 
 			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
-			if (!dst_host) {
-				log_debug(knet_h, KNET_SUB_SEND_T, "unicast packet, host not found");
-				continue;
-			}
 
 			knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(++dst_host->ucast_seq_num_tx);
 
