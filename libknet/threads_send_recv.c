@@ -27,6 +27,10 @@
 #include "threads_common.h"
 #include "threads_send_recv.h"
 
+/*
+ * SEND
+ */
+
 static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
 {
 	int link_idx, msg_idx;
@@ -349,6 +353,38 @@ host_unlock:
 		pthread_mutex_unlock(&knet_h->host_mutex);
 	}
 }
+
+void *_handle_send_to_links_thread(void *data)
+{
+	knet_handle_t knet_h = (knet_handle_t) data;
+	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
+	int i, nev;
+
+	/* preparing data buffer */
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
+		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
+	}
+
+	while (!knet_h->fini_in_progress) {
+		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
+
+		for (i = 0; i < nev; i++) {
+			if (events[i].data.fd == knet_h->sockfd) {
+				knet_h->send_to_links_buf[0]->kh_type = KNET_HEADER_TYPE_DATA;
+			} else {
+				knet_h->send_to_links_buf[0]->kh_type = KNET_HEADER_TYPE_HOST_INFO;
+			}
+			_handle_send_to_links(knet_h, events[i].data.fd);
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * RECV
+ */
 
 /*
  *  return 1 if a > b
@@ -850,34 +886,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-}
-
-void *_handle_send_to_links_thread(void *data)
-{
-	knet_handle_t knet_h = (knet_handle_t) data;
-	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
-	int i, nev;
-
-	/* preparing data buffer */
-	for (i = 0; i < PCKT_FRAG_MAX; i++) {
-		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
-		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
-	}
-
-	while (!knet_h->fini_in_progress) {
-		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
-
-		for (i = 0; i < nev; i++) {
-			if (events[i].data.fd == knet_h->sockfd) {
-				knet_h->send_to_links_buf[0]->kh_type = KNET_HEADER_TYPE_DATA;
-			} else {
-				knet_h->send_to_links_buf[0]->kh_type = KNET_HEADER_TYPE_HOST_INFO;
-			}
-			_handle_send_to_links(knet_h, events[i].data.fd);
-		}
-	}
-
-	return NULL;
 }
 
 void *_handle_recv_from_links_thread(void *data)
