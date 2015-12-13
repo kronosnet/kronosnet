@@ -11,6 +11,7 @@ link/host level:
            (listen to kernel netlink?)
  - (issue) must implement link auth via user/passwd. This is necessary
            in case key is leaked.
+ - (rfe)   add tcp transport layer?
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
