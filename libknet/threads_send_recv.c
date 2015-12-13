@@ -224,6 +224,10 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		temp_data_mtu = knet_h->data_mtu;
 	}
 
+	/*
+	 * prepare the outgoing buffers
+	 */
+
 	frag_len = inlen;
 	frag_idx = 0;
 
@@ -231,12 +235,6 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	knet_h->send_to_links_buf[0]->kh_node = htons(knet_h->host_id);
 	knet_h->send_to_links_buf[0]->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
 
-	log_debug(knet_h, KNET_SUB_SEND_T, "Current inlen: %zu data mtu: %u frags: %d",
-		  inlen, temp_data_mtu, knet_h->send_to_links_buf[0]->khp_data_frag_num);
-
-	/*
-	 * prepare the buffers
-	 */
 	while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
 		/*
 		 * set the iov_base
