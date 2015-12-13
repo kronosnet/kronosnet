@@ -154,14 +154,14 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 					goto out_unlock;
 				}
 			}
-			knet_h->send_to_links_buf[0]->khp_data_bcast = bcast;
 			break;
 		case KNET_HEADER_TYPE_HOST_INFO:
 			knet_hostinfo = (struct knet_hostinfo *)knet_h->send_to_links_buf[0]->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
-				dst_host_ids_temp[0] = ntohs(knet_hostinfo->khi_dst_node_id);
+				dst_host_ids_temp[0] = knet_hostinfo->khi_dst_node_id;
 				dst_host_ids_entries_temp = 1;
+				knet_hostinfo->khi_dst_node_id = htons(knet_hostinfo->khi_dst_node_id);
 			}
 			break;
 		default:
@@ -227,6 +227,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 	frag_len = inlen;
 	frag_idx = 0;
 
+	knet_h->send_to_links_buf[0]->khp_data_bcast = bcast;
 	knet_h->send_to_links_buf[0]->kh_node = htons(knet_h->host_id);
 	knet_h->send_to_links_buf[0]->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
 

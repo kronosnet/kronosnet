@@ -750,7 +750,7 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 
 		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
 		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
-		knet_hostinfo.khi_dst_node_id = htons(host->host_id);
+		knet_hostinfo.khi_dst_node_id = host->host_id;
 		knet_hostinfo.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_UP;
 
 		for (i=0; i < send_link_idx; i++) {
