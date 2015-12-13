@@ -328,7 +328,9 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd)
 		}
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-			_dispatch_to_links(knet_h, dst_host, iov_out);
+			if (dst_host->status.reachable) {
+				_dispatch_to_links(knet_h, dst_host, iov_out);
+			}
 		}
 
 	}
