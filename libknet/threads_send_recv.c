@@ -47,10 +47,6 @@ static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host,
 
 		msg_idx = 0;
 
-		/*
-		 * TODO: interleave link_idx with msg_name for RR ??
-		 */
-
 		while (msg_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
 			msg[msg_idx].msg_hdr.msg_name = &dst_host->link[dst_host->active_links[link_idx]].dst_addr;
 			msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
