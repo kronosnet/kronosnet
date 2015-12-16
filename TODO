@@ -14,8 +14,6 @@ link/host level:
  - (issue) standardize exit labels (ex out_unlock / exit_unlock) and variable/function
            names.
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
- - (rfe)   add recvmmsg to send_to_link? (doesn't work on tap, so it needs two
-           code paths)
  - (rfe)   add tcp transport layer?
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
