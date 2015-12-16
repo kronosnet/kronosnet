@@ -508,9 +508,6 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
 {
-	size_t byte_cnt = 0;
-	int len;
-
 	if (knet_h->fini_in_progress) {
 		return 0;
 	}
@@ -526,16 +523,11 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 		return -1;
 	}
 
-	while (byte_cnt < datalen) {
-		len = write(knet_h->hostpipefd[1], data, datalen - byte_cnt);
-		if (len <= 0) {
-			log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
-			pthread_mutex_unlock(&knet_h->host_mutex);
-			pthread_rwlock_unlock(&knet_h->host_rwlock);
-			return -1;
-		}
-
-		byte_cnt += len;
+	if (sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT, NULL, 0) != datalen) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
+		pthread_mutex_unlock(&knet_h->host_mutex);
+		pthread_rwlock_unlock(&knet_h->host_rwlock);
+		return -1;
 	}
 
 	pthread_cond_wait(&knet_h->host_cond, &knet_h->host_mutex);
@@ -628,24 +620,15 @@ void _seq_num_set(struct knet_host *host, int bcast, seq_num_t seq_num, int defr
 
 int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host)
 {
-	int write_retry = 0;
 	int savederrno = 0;
-	uint16_t host_id;
+	uint16_t host_id = host->host_id;
 
-	host_id = host->host_id;
-
-try_again:
-	if (write(knet_h->dstpipefd[1], &host_id, sizeof(host_id)) != sizeof(host_id)) {
-		if ((write_retry < 10) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
-			write_retry++;
-			goto try_again;
-		} else {
-			savederrno = errno;
-			log_debug(knet_h, KNET_SUB_HOST, "Unable to write to dstpipefd[1]: %s",
-				  strerror(savederrno));
-			errno = savederrno;
-			return -1;
-		}
+	if (sendto(knet_h->dstsockfd[1], &host_id, sizeof(host_id), MSG_DONTWAIT, NULL, 0) != sizeof(host_id)) {
+		savederrno = errno;
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to write to dstpipefd[1]: %s",
+			  strerror(savederrno));
+		errno = savederrno;
+		return -1;
 	}
 
 	return 0;

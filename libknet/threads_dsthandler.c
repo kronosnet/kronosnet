@@ -23,8 +23,8 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	uint16_t host_id;
 	struct knet_host *host;
 
-	if (read(knet_h->dstpipefd[0], &host_id, sizeof(host_id)) != sizeof(host_id)) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on pipe");
+	if (recv(knet_h->dstsockfd[0], &host_id, sizeof(host_id), MSG_DONTWAIT) != sizeof(host_id)) {
+		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on dstsockfd");
 		return;
 	}
 

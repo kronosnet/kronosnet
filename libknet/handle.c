@@ -30,64 +30,6 @@
 
 static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int _init_socketpair(knet_handle_t knet_h)
-{
-	int savederrno = 0;
-
-	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, knet_h->sockpair) != 0) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize socketpair: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->sockpair[0])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sockpair[0]: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_nonblock(knet_h->sockpair[0])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sockpair[0]: %s", 
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->sockpair[1])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sockpair[1]: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_nonblock(knet_h->sockpair[1])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sockpair[1]: %s", 
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	return 0;
-
-exit_fail:
-	errno = savederrno;
-	return -1;
-}
-
-static void _close_socketpair(knet_handle_t knet_h)
-{
-	if (knet_h->sockpair[0]) {
-		close(knet_h->sockpair[0]);
-		knet_h->sockpair[0] = 0;
-	}
-	if (knet_h->sockpair[1]) {
-		close(knet_h->sockpair[1]);
-		knet_h->sockpair[1] = 0;
-	}
-}
-
 static int _init_locks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -178,76 +120,41 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_cond_destroy(&knet_h->pmtud_timer_cond);
 }
 
-static int _init_pipes(knet_handle_t knet_h)
+static int _init_socketpair(knet_handle_t knet_h, int (*sock)[2])
 {
 	int savederrno = 0;
 
-	if (pipe(knet_h->dstpipefd)) {
+	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, *sock) != 0) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize dstpipefd: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize socketpair: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (pipe(knet_h->hostpipefd)) {
+	if (_fdset_cloexec(*sock[0])) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize hostpipefd: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sock[0]: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_cloexec(knet_h->dstpipefd[0])) {
+	if (_fdset_nonblock(*sock[0])) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on dstpipefd[0]: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock[0]: %s", 
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_nonblock(knet_h->dstpipefd[0])) {
+	if (_fdset_cloexec(*sock[1])) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on dstpipefd[0]: %s", 
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sock[1]: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_cloexec(knet_h->dstpipefd[1])) {
+	if (_fdset_nonblock(*sock[1])) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on dstpipefd[1]: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_nonblock(knet_h->dstpipefd[1])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on dstpipefd[1]: %s", 
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->hostpipefd[0])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on hostpipefd[0]: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_nonblock(knet_h->hostpipefd[0])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on hostpipefd[0]: %s", 
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->hostpipefd[1])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on hostpipefd[1]: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_nonblock(knet_h->hostpipefd[1])) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on hostpipefd[1]: %s", 
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock[1]: %s", 
 			strerror(savederrno));
 		goto exit_fail;
 	}
@@ -259,12 +166,68 @@ exit_fail:
 	return -1;
 }
 
-static void _close_pipes(knet_handle_t knet_h)
+static void _close_socketpair(knet_handle_t knet_h, int (*sock)[2])
 {
-	close(knet_h->dstpipefd[0]);
-	close(knet_h->dstpipefd[1]);
-	close(knet_h->hostpipefd[0]);
-	close(knet_h->hostpipefd[1]);
+	if (*sock[0]) {
+		close(*sock[0]);
+		*sock[0] = 0;
+	}
+	if (*sock[1]) {
+		close(*sock[1]);
+		*sock[1] = 0;
+	}
+}
+
+static int _init_socks(knet_handle_t knet_h, int *datafd)
+{
+	int savederrno = 0;
+
+	knet_h->is_socket = 1;
+	if (*datafd == 0) {
+		if (_init_socketpair(knet_h, &knet_h->sockpair)) {
+			savederrno = errno;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize data sockpair: %s",
+				strerror(savederrno));
+			goto exit_fail;
+		}
+		knet_h->sockfd = knet_h->sockpair[0];
+		*datafd = knet_h->sockpair[1];
+	} else {
+		int sockopt;
+		socklen_t sockoptlen = sizeof(sockopt);
+
+		knet_h->sockfd = *datafd;
+		if (getsockopt(knet_h->sockfd, SOL_SOCKET, SO_TYPE, &sockopt, &sockoptlen) < 0) {
+			knet_h->is_socket = 0;
+		}
+	}
+
+	if (_init_socketpair(knet_h, &knet_h->hostsockfd)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal hostsockpar: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	if (_init_socketpair(knet_h, &knet_h->dstsockfd)) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal dstsockpar: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	return 0;
+
+exit_fail:
+	errno = savederrno;
+	return -1;
+}
+
+static void _close_socks(knet_handle_t knet_h)
+{
+	_close_socketpair(knet_h, &knet_h->sockpair);
+	_close_socketpair(knet_h, &knet_h->dstsockfd);
+	_close_socketpair(knet_h, &knet_h->hostsockfd);
 }
 
 static int _init_buffers(knet_handle_t knet_h)
@@ -458,23 +421,23 @@ static int _init_epolls(knet_handle_t knet_h)
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->hostpipefd[0];
+	ev.data.fd = knet_h->hostsockfd[0];
 
 	if (epoll_ctl(knet_h->send_to_links_epollfd,
-		      EPOLL_CTL_ADD, knet_h->hostpipefd[0], &ev)) {
+		      EPOLL_CTL_ADD, knet_h->hostsockfd[0], &ev)) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add hostpipefd[0] to epoll pool: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add hostsockfd[0] to epoll pool: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->dstpipefd[0];
+	ev.data.fd = knet_h->dstsockfd[0];
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
-		      EPOLL_CTL_ADD, knet_h->dstpipefd[0], &ev)) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add dstpipefd[0] to epoll pool: %s",
+		      EPOLL_CTL_ADD, knet_h->dstsockfd[0], &ev)) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add dstsockfd[0] to epoll pool: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
@@ -491,8 +454,8 @@ static void _close_epolls(knet_handle_t knet_h)
 	struct epoll_event ev;
 
 	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd, &ev);
-	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostpipefd[0], &ev);
-	epoll_ctl(knet_h->dst_link_handler_epollfd, EPOLL_CTL_DEL, knet_h->dstpipefd[0], &ev);
+	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostsockfd[0], &ev);
+	epoll_ctl(knet_h->dst_link_handler_epollfd, EPOLL_CTL_DEL, knet_h->dstsockfd[0], &ev);
 	close(knet_h->send_to_links_epollfd);
 	close(knet_h->recv_from_links_epollfd);
 	close(knet_h->dst_link_handler_epollfd);
@@ -628,24 +591,6 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
 	}
 
-	knet_h->is_socket = 1;
-	if (*datafd == 0) {
-		if (_init_socketpair(knet_h)) {
-			savederrno = errno;
-			goto exit_fail;
-		}
-		knet_h->sockfd = knet_h->sockpair[0];
-		*datafd = knet_h->sockpair[1];
-	} else {
-		int sockopt;
-		socklen_t sockoptlen = sizeof(sockopt);
-
-		knet_h->sockfd = *datafd;
-		if (getsockopt(knet_h->sockfd, SOL_SOCKET, SO_TYPE, &sockopt, &sockoptlen) < 0) {
-			knet_h->is_socket = 0;
-		}
-	}
-
 	/*
 	 * set pmtud default timers
 	 */
@@ -661,10 +606,10 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	}
 
 	/*
-	 * init internal communication pipes
+	 * init sockets
 	 */
 
-	if (_init_pipes(knet_h)) {
+	if (_init_socks(knet_h, datafd)) {
 		savederrno = errno;
 		goto exit_fail;
 	}
@@ -763,11 +708,10 @@ int knet_handle_free(knet_handle_t knet_h)
 	_stop_threads(knet_h);
 	_close_epolls(knet_h);
 	_destroy_buffers(knet_h);
-	_close_pipes(knet_h);
+	_close_socks(knet_h);
 	crypto_fini(knet_h);
 
 	_destroy_locks(knet_h);
-	_close_socketpair(knet_h);
 
 exit_nolock:
 	free(knet_h);

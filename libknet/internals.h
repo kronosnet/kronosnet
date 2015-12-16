@@ -107,8 +107,8 @@ struct knet_handle {
 	int is_socket;
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
-	int hostpipefd[2];
-	int dstpipefd[2];
+	int hostsockfd[2];
+	int dstsockfd[2];
 	int send_to_links_epollfd;
 	int recv_from_links_epollfd;
 	int dst_link_handler_epollfd;

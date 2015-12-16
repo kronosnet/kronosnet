@@ -334,7 +334,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, struct mmsgh
 		return;
 	}
 
-	if ((!knet_h->is_socket) || (type == KNET_HEADER_TYPE_HOST_INFO)) {
+	if (!knet_h->is_socket) {
 		memset(&iov_in, 0, sizeof(iov_in));
 		iov_in.iov_base = (void *)knet_h->recv_from_sock_buf[0]->khp_data_userdata;
 		iov_in.iov_len = KNET_MAX_PACKET_SIZE;
