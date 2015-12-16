@@ -4,12 +4,17 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) add support for multiple local sockets
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
  - (issue) need bind to interface for dynamic ip local interfaces vs src ip
            address or find a way to autodetect the new ip on that interface
            (listen to kernel netlink?)
  - (issue) must implement link auth via user/passwd. This is necessary
            in case key is leaked.
+ - (issue) standardize exit labels (ex out_unlock / exit_unlock) and variable/function
+           names.
+ - (issue) change internal pipes to sockpair and make code easier/consistent
+ - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
  - (rfe)   add recvmmsg to send_to_link? (doesn't work on tap, so it needs two
            code paths)
  - (rfe)   add tcp transport layer?
