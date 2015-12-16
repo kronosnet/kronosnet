@@ -284,6 +284,15 @@ static int _init_buffers(knet_handle_t knet_h)
 		}
 		memset(knet_h->send_to_links_buf[i], 0, bufsize);
 
+		knet_h->recv_from_sock_buf[i] = malloc(KNET_DATABUFSIZE);
+		if (!knet_h->recv_from_sock_buf[i]) {
+			savederrno = errno;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for app to datafd buffer: %s",
+				strerror(savederrno));
+			goto exit_fail;
+		}
+		memset(knet_h->recv_from_sock_buf[i], 0, KNET_DATABUFSIZE);
+
 		knet_h->recv_from_links_buf[i] = malloc(KNET_DATABUFSIZE);
 		if (!knet_h->recv_from_links_buf[i]) {
 			savederrno = errno;
@@ -373,6 +382,7 @@ static void _destroy_buffers(knet_handle_t knet_h)
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		free(knet_h->send_to_links_buf[i]);
+		free(knet_h->recv_from_sock_buf[i]);
 		free(knet_h->send_to_links_buf_crypt[i]);
 		free(knet_h->recv_from_links_buf[i]);
 	}
@@ -618,6 +628,7 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		memset(&knet_h->log_levels, default_log_level, KNET_MAX_SUBSYSTEMS);
 	}
 
+	knet_h->is_socket = 1;
 	if (*datafd == 0) {
 		if (_init_socketpair(knet_h)) {
 			savederrno = errno;
@@ -626,7 +637,13 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		knet_h->sockfd = knet_h->sockpair[0];
 		*datafd = knet_h->sockpair[1];
 	} else {
+		int sockopt;
+		socklen_t sockoptlen = sizeof(sockopt);
+
 		knet_h->sockfd = *datafd;
+		if (getsockopt(knet_h->sockfd, SOL_SOCKET, SO_TYPE, &sockopt, &sockoptlen) < 0) {
+			knet_h->is_socket = 0;
+		}
 	}
 
 	/*

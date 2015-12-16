@@ -104,6 +104,7 @@ struct knet_handle {
 	unsigned int enabled:1;
 	int sockfd;
 	int sockpair[2];
+	int is_socket;
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int hostpipefd[2];
@@ -122,6 +123,7 @@ struct knet_handle {
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
+	struct knet_header *recv_from_sock_buf[PCKT_FRAG_MAX];
 	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *pingbuf;
