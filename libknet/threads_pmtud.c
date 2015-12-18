@@ -317,8 +317,11 @@ timer_restart:
 					log_info(knet_h, KNET_SUB_PMTUD_T, "PMTUD link change for host: %u link: %u from %u to %u",
 						 dst_host->host_id, link_idx, saved_pmtud, dst_link->status.mtu);
 				}
-				log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current link mtu: %u",
-					  dst_host->host_id, link_idx, dst_link->status.mtu);
+				log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current link mtu: %u iface mtu: %u",
+					  dst_host->host_id, link_idx, dst_link->status.mtu,
+					  (dst_link->dst_addr.ss_family == AF_INET) ?
+						dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 :
+						dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6);
 				if (dst_link->status.mtu < min_mtu) {
 					min_mtu = dst_link->status.mtu;
 				}
