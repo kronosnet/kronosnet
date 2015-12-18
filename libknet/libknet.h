@@ -59,26 +59,6 @@ typedef struct knet_handle *knet_handle_t;
  *            It is user responsibility to check that the value
  *            is unique, or bad might happen.
  *
- * datafd   - read/write file descriptor.
- *            knet will read data here to send to the other hosts
- *            and will write data received from the network.
- *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
- *            Applications using knet_send/knet_recv will receive
- *            proper error in case of packet size is not within boundaries.
- *            Applications using their own functions to write to the
- *            datafd should NOT write more than KNET_MAX_PACKET_SIZE
- *            or the packet will be fragmented by readv inside the
- *            delivery thread. Be aware that while you can write
- *            more than KNET_MAX_PACKET_SIZE, that can break any
- *            custom delivery filters (see below) due to data offset.
- *            Please refer to ping_test.c on how to setup socketpair.
- *            datafd can be 0, and knet_handle_new will create a properly
- *            populated socket pair the same way as ping_test, or a value
- *            higher than 0. Negative number will return error.
- *            knet_handle_new will take care to cleanup the socketpair
- *            only if it's been created by knet_handle_new, when calling
- *            knet_handle_free.
- *
  * log_fd   - write file descriptor. If set to a value > 0, it will be used
  *            to write log packets (see below) from libknet to the application.
  *            Set to 0 will disable logging from libknet.
@@ -97,7 +77,6 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      *datafd,
 			      int      log_fd,
 			      uint8_t  default_log_level);
 
@@ -117,6 +96,155 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 int knet_handle_free(knet_handle_t knet_h);
 
 /*
+ * knet_handle_add_datafd
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * *datafd  - read/write file descriptor.
+ *            knet will read data here to send to the other hosts
+ *            and will write data received from the network.
+ *            Each data packet can be of max size KNET_MAX_PACKET_SIZE!
+ *            Applications using knet_send/knet_recv will receive
+ *            proper error in case of packet size is not within boundaries.
+ *            Applications using their own functions to write to the
+ *            datafd should NOT write more than KNET_MAX_PACKET_SIZE.
+ *
+ *            Please refer to handle.c on how to setup socketpair.
+ *
+ *            datafd can be 0, and knet_handle_new will create a properly
+ *            populated socket pair the same way as ping_test, or a value
+ *            higher than 0. Negative number will return error.
+ *            on exit knet_handle_free will take care to cleanup the
+ *            socketpair only if they have been created by knet_handle_add_datafd.
+ *
+ *            It is possible to pass either sockets or normal fds.
+ *
+ * *channel - This value has the same effect of VLAN tagging.
+ *            A negative value will auto allocate a channel.
+ *            Setting a value between 0 and 31 will try to allocate that
+ *            specific channel (unless alredy in use).
+ *
+ *            It is possible to add up to 32 datafd but be aware that each
+ *            one of them must have a receiveing end on the other host.
+ *            Example:
+ *            hostA channel 0 will be delivered to datafd on hostB channel 0
+ *            hostA channel 1 to hostB channel 1.
+ *
+ *            Each channel must have a unique filedescriptor.
+ *
+ *            If your application could have 2 channels on one host and one
+ *            channel on another host, then you can use dst_host_filter
+ *            to manipulate channel values on TX and RX.
+ *
+ * knet_handle_add_datafd returns:
+ *
+ * 0 on success
+ *   *datafd  will be populated with a socket if the original value was 0
+ *            or if a specific fd was set, the value is untouched
+ *   *channel will be populated with a channel number if the original value
+ *            was negative or the value is untouched if a specific channel
+ *            was requested.
+ *
+ * -1 on error and errno is set.
+ *   *datafd and *channel are untouched or empty.
+ */
+
+#define KNET_DATAFD_MAX 32
+
+int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
+
+/*
+ * knet_handle_remove_datafd
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * datafd   - file descriptor to remove.
+ *            NOTE that if the socket/fd was crated by knet_handle_datafd,
+ *                 the socket will be closed by libknet.
+ *
+ * knet_handle_remove_datafd returns:
+ *
+ * 0 on success
+ *
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
+
+/*
+ * knet_handle_enable_sock_notify
+ * 
+ * knet_h   - pointer to knet_handle_t
+ *
+ * sock_notify_fn_private_data
+ *            void pointer to data that can be used to identify
+ *            the callback.
+ *
+ * sock_notify_fn
+ *            is a callback function that is invoked every time
+ *            a socket in the datafd pool will report an error (-1)
+ *            or an end of read (0) (see socket.7).
+ *            This function MUST NEVER block or add substantial delays.
+ *            The callback is invoked in an internal unlocked area
+ *            to allow calls to knet_handle_add_datafd/knet_handle_remove_datafd
+ *            to swap/replace the bad fd.
+ *
+ * knet_handle_enable_sock_notify returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_enable_sock_notify(knet_handle_t knet_h,
+				   void *sock_notify_fn_private_data,
+				   void (*sock_notify_fn) (
+						void *private_data,
+						int datafd,
+						int8_t channel,
+						int error,
+						int errorno)); /* sorry! can't call it errno ;) */
+
+/*
+ * knet_handle_get_channel
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * datafd   - file descriptor to search
+ *
+ * *channel - will contain the result
+ *
+ * knet_handle_get_channel returns:
+ *
+ * 0 on success
+ *   and *channel will contain the results
+ *
+ * -1 on error and errno is set.
+ *   and *channel content is meaningless
+ */
+
+int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *channel);
+
+/*
+ * knet_handle_get_datafd
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * channel  - get the datafd associated to this channel
+ *
+ * *datafd  - will contain the result
+ *
+ * knet_handle_get_datafd returns:
+ *
+ * 0 on success
+ *   and *datafd will contain the results
+ *
+ * -1 on error and errno is set.
+ *   and *datafd content is meaningless
+ */
+
+int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *datafd);
+
+/*
  * knet_recv
  *
  * knet_h   - pointer to knet_handle_t
@@ -131,7 +259,8 @@ int knet_handle_free(knet_handle_t knet_h);
 
 ssize_t knet_recv(knet_handle_t knet_h,
 		  char *buff,
-		  const size_t buff_len);
+		  const size_t buff_len,
+		  const int8_t channel);
 
 /*
  * knet_send
@@ -148,7 +277,8 @@ ssize_t knet_recv(knet_handle_t knet_h,
 
 ssize_t knet_send(knet_handle_t knet_h,
 		  const char *buff,
-		  const size_t buff_len);
+		  const size_t buff_len,
+		  const int8_t channel);
 
 /*
  * knet_handle_enable_filter
@@ -204,6 +334,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					uint8_t tx_rx,
 					uint16_t this_host_id,
 					uint16_t src_host_id,
+					int8_t *channel,
 					uint16_t *dst_host_ids,
 					size_t *dst_host_ids_entries));
 
@@ -280,7 +411,7 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
  *            and (if configured) crypto overhead,
  *            This function MUST NEVER block or add substantial delays.
  *
- * knet_handle_pmtud_notify returns:
+ * knet_handle_enable_pmtud_notify returns:
  *
  * 0 on success
  * -1 on error and errno is set.

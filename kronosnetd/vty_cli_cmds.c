@@ -1566,6 +1566,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	char device[IFNAMSIZ];
 	char mac[18];
 	struct knet_cfg *knet_iface = NULL;
+	int8_t channel = 0;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(device, IFNAMSIZ, param, paramlen);
@@ -1613,10 +1614,17 @@ tap_found:
 
 	tapfd = tap_get_fd(knet_iface->cfg_eth.tap);
 
-	knet_iface->cfg_ring.knet_h = knet_handle_new(requested_id, &tapfd, vty->logfd, vty->loglevel);
+	knet_iface->cfg_ring.knet_h = knet_handle_new(requested_id, vty->logfd, vty->loglevel);
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+
+	if (knet_handle_add_datafd(knet_iface->cfg_ring.knet_h, &tapfd, &channel) < 0) {
+		knet_vty_write(vty, "Error: Unable to add tapfd to knet_handle %s%s",
+				strerror(errno), telnet_newline);
 		err = -1;
 		goto out_clean;
 	}

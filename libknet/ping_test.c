@@ -23,7 +23,8 @@
 
 #define KNET_RING_DEFPORT 50000
 
-static int knet_sock = 0;
+static int knet_sock[4];
+static int8_t channel[4];
 static knet_handle_t knet_h;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 static uint8_t loglevel = KNET_LOG_INFO;
@@ -256,6 +257,13 @@ static void sigint_handler(int signum)
 				printf("Unable to remove host: %s\n",strerror(errno));
 		}
 
+		for (j = 0; j < 4; j++) {
+			if (knet_handle_remove_datafd(knet_h, knet_sock[j]) < 0) {
+				printf("Unable to delete datafd!!!: %s\n",strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		}
+
 		if (knet_handle_free(knet_h)) {
 			printf("Unable to cleanup before exit: %s\n",strerror(errno));
 			exit(EXIT_FAILURE);
@@ -289,10 +297,46 @@ static void host_notify(void *private_data, uint16_t host_id, uint8_t reachable,
 	return;
 }
 
+static void sock_notify(void *private_data, int datafd, int8_t chan, int error, int errorno)
+{
+	printf("Received sock notify, datafd: %d channel: %d error: %d errno: %d (%s)\n",
+	       datafd, chan, error, errorno, strerror(errorno));
+}
+
+static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
+{
+	char recvbuff[66000];
+	ssize_t rlen = 0;
+
+	rlen = knet_recv(knet_h, recvbuff, sizeof(recvbuff), inchannel);
+
+	if (!rlen) {
+		printf("EOF\n");
+		return;
+	}
+
+	if ((rlen < 0) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
+		printf("NO MORE DATA TO READ: %s\n", strerror(errno));
+		return;
+	}
+
+	printf("Received data (%zu bytes): '%s' on channel: %d\n", rlen, recvbuff, inchannel);
+
+	if (has_crypto) {
+#if 0
+		printf("changing crypto key\n");
+		memset(knet_handle_crypto_cfg.private_key, has_crypto, KNET_MAX_KEY_LEN);
+		if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
+			printf("Unable to change key on the fly\n");
+			has_crypto++;
+		}
+#endif
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	char out_big_buff[64000], out_big_frag[65536], hello_world[16];
-	char recvbuff[66000];
 	size_t len;
 	fd_set rfds;
 	struct timeval tv;
@@ -303,6 +347,8 @@ int main(int argc, char *argv[])
 	int logfd;
 	unsigned int link_mtu = 0, data_mtu = 0;
 	int big = 0;
+	int j;
+	int8_t chan;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -330,7 +376,7 @@ int main(int argc, char *argv[])
 
 	set_debug(argc, argv);
 
-	if ((knet_h = knet_handle_new(1, &knet_sock, logfd, loglevel)) == NULL) {
+	if ((knet_h = knet_handle_new(1, logfd, loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");
 		exit(EXIT_FAILURE);
 	}
@@ -352,6 +398,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (knet_handle_enable_sock_notify(knet_h, NULL, sock_notify)) {
+		printf("Unable to install sock notification callback\n");
+		exit(EXIT_FAILURE);
+	}
+
 	if (knet_handle_pmtud_setfreq(knet_h, 5)) {
 		printf("Unable to set PMTUd interval\n");
 		exit(EXIT_FAILURE);
@@ -370,12 +421,34 @@ int main(int argc, char *argv[])
 	}
 
 	argv_to_hosts(argc, argv);
-	knet_handle_setfwd(knet_h, 1);	
+	knet_handle_setfwd(knet_h, 1);
+
+	for (j = 0; j < 4; j++) {
+		knet_sock[j] = 0;
+		channel[j] = -1;
+		if (knet_handle_add_datafd(knet_h, &knet_sock[j], &channel[j]) < 0) {
+			printf("Unable to add datafd!!!\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (knet_handle_get_datafd(knet_h, 1, &j)) {
+		printf("Unable to get data fd from chan\n");
+		exit(EXIT_FAILURE);
+	}
+	printf("get datafd[%d] from chan[1]; %d\n", knet_sock[1], j);
+
+	if (knet_handle_get_channel(knet_h, knet_sock[1], &chan)) {
+		printf("Unable to get chan from data fd\n");
+		exit(EXIT_FAILURE);
+	}
+	printf("get chan[1] from sock[%d]: %d\n", knet_sock[1], chan);
 
 	while (1) {
 		ssize_t wlen;
 		size_t i, buff_len;
 		char *buff;
+		int outchan;
 
 		knet_host_get_host_list(knet_h, host_ids, &host_ids_entries);
 		for (i = 0; i < host_ids_entries; i++) {
@@ -395,16 +468,19 @@ int main(int argc, char *argv[])
 				buff = hello_world;
 				buff_len = 13;
 				big = 1;
+				outchan = channel[0];
 				break;
 			case 1: /* big but does not require frag */
 				buff = out_big_buff;
 				buff_len = sizeof(out_big_buff);
 				big = 2;
+				outchan = channel[1];
 				break;
 			case 2: /* big and requires frag */
 				buff = out_big_frag;
 				buff_len = sizeof(out_big_frag);
 				big = 0;
+				outchan = channel[2];
 				break;
 			default:
 				printf("unknown packet size?\n");
@@ -412,7 +488,8 @@ int main(int argc, char *argv[])
 				break;
 		}
 
-		wlen = knet_send(knet_h, buff, buff_len);
+		printf("Sending '%zu' bytes on channel: %d\n", buff_len, outchan);
+		wlen = knet_send(knet_h, buff, buff_len, outchan);
 		if (wlen != buff_len) {
 			printf("Unable to send messages to socket\n");
 			exit(1);
@@ -423,7 +500,9 @@ int main(int argc, char *argv[])
 
  select_loop:
 		FD_ZERO(&rfds);
-		FD_SET(knet_sock, &rfds);
+		for (j = 0; j < 4; j++) {
+			FD_SET(knet_sock[j], &rfds);
+		}
 		FD_SET(logpipefd[0], &rfds);
 
 		len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
@@ -434,34 +513,14 @@ int main(int argc, char *argv[])
 		if (len < 0) {
 			printf("Unable select over knet_handle_t\n");
 			exit(EXIT_FAILURE);
-		} else if (FD_ISSET(knet_sock, &rfds)) {
-			ssize_t rlen = 0;
-
-			rlen = knet_recv(knet_h, recvbuff, sizeof(recvbuff));
-
-			if (!rlen) {
-				printf("EOF\n");
-				break;
-			}
-
-			if ((rlen < 0) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
-				printf("NO MORE DATA TO READ: %s\n", strerror(errno));
-				break;
-			}
-
-			printf("Received data (%zu bytes): '%s'\n", rlen, recvbuff);
-
-			if (has_crypto) {
-#if 0
-				printf("changing crypto key\n");
-				memset(knet_handle_crypto_cfg.private_key, has_crypto, KNET_MAX_KEY_LEN);
-				if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-					printf("Unable to change key on the fly\n");
-					has_crypto++;
-				}
-#endif
-			}
-
+		} else if (FD_ISSET(knet_sock[0], &rfds)) {
+			recv_data(knet_h, channel[0], has_crypto);
+		} else if (FD_ISSET(knet_sock[1], &rfds)) {
+			recv_data(knet_h, channel[1], has_crypto);
+		} else if (FD_ISSET(knet_sock[2], &rfds)) {
+			recv_data(knet_h, channel[2], has_crypto);
+		} else if (FD_ISSET(knet_sock[3], &rfds)) {
+			recv_data(knet_h, channel[3], has_crypto);
 		} else if (FD_ISSET(logpipefd[0], &rfds)) {
 			struct knet_log_msg msg;
 			size_t bytes_read = 0;

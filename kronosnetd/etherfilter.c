@@ -39,6 +39,7 @@ int ether_host_filter_fn (void *private_data,
 			  uint8_t tx_rx,
 			  uint16_t this_host_id,
 			  uint16_t src_host_id,
+			  int8_t *channel,
 			  uint16_t *dst_host_ids,
 			  size_t *dst_host_ids_entries)
 {

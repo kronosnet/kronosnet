@@ -23,6 +23,8 @@
 
 #define PCKT_FRAG_MAX UINT8_MAX
 
+#define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX
+
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
@@ -99,12 +101,18 @@ struct knet_host {
 	struct knet_host *next;
 };
 
+struct knet_sock {
+	int sockfd[2];   /* sockfd[0] will always be application facing
+			  * and sockfd[1] internal if sockpair has been created by knet */
+	int is_socket;   /* check if it's a socket for recvmmsg usage */
+	int is_created;  /* knet created this socket and has to clean up on exit/del */
+	int in_use;      /* set to 1 if it's use, 0 if free */
+};
+
 struct knet_handle {
 	uint16_t host_id;
 	unsigned int enabled:1;
-	int sockfd;
-	int sockpair[2];
-	int is_socket;
+	struct knet_sock sockfd[KNET_DATAFD_MAX];
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int hostsockfd[2];
@@ -162,6 +170,7 @@ struct knet_handle {
 		uint8_t tx_rx,
 		uint16_t this_host_id,
 		uint16_t src_node_id,
+		int8_t *channel,
 		uint16_t *dst_host_ids,
 		size_t *dst_host_ids_entries);
 	void *pmtud_notify_fn_private_data;
@@ -176,6 +185,13 @@ struct knet_handle {
 		uint8_t reachable,
 		uint8_t remote,
 		uint8_t external);
+	void *sock_notify_fn_private_data;
+	void (*sock_notify_fn) (
+		void *private_data,
+		int datafd,
+		int8_t channel,
+		int error,
+		int errorno);
 	int fini_in_progress;
 };
 

@@ -178,29 +178,9 @@ static void _close_socketpair(knet_handle_t knet_h, int (*sock)[2])
 	}
 }
 
-static int _init_socks(knet_handle_t knet_h, int *datafd)
+static int _init_socks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
-
-	knet_h->is_socket = 1;
-	if (*datafd == 0) {
-		if (_init_socketpair(knet_h, &knet_h->sockpair)) {
-			savederrno = errno;
-			log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize data sockpair: %s",
-				strerror(savederrno));
-			goto exit_fail;
-		}
-		knet_h->sockfd = knet_h->sockpair[0];
-		*datafd = knet_h->sockpair[1];
-	} else {
-		int sockopt;
-		socklen_t sockoptlen = sizeof(sockopt);
-
-		knet_h->sockfd = *datafd;
-		if (getsockopt(knet_h->sockfd, SOL_SOCKET, SO_TYPE, &sockopt, &sockoptlen) < 0) {
-			knet_h->is_socket = 0;
-		}
-	}
 
 	if (_init_socketpair(knet_h, &knet_h->hostsockfd)) {
 		savederrno = errno;
@@ -225,7 +205,6 @@ exit_fail:
 
 static void _close_socks(knet_handle_t knet_h)
 {
-	_close_socketpair(knet_h, &knet_h->sockpair);
 	_close_socketpair(knet_h, &knet_h->dstsockfd);
 	_close_socketpair(knet_h, &knet_h->hostsockfd);
 }
@@ -362,7 +341,11 @@ static int _init_epolls(knet_handle_t knet_h)
 	struct epoll_event ev;
 	int savederrno = 0;
 
-	knet_h->send_to_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
+	/*
+	 * even if the kernel does dynamic allocation with epoll_ctl
+	 * we need to reserve one extra for host to host communication
+	 */
+	knet_h->send_to_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
 	if (knet_h->send_to_links_epollfd < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to create epoll datafd to link fd: %s",
@@ -399,23 +382,11 @@ static int _init_epolls(knet_handle_t knet_h)
 			strerror(savederrno)); 
 		goto exit_fail;
 	}
-		
+
 	if (_fdset_cloexec(knet_h->dst_link_handler_epollfd)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on dst cache epoll fd: %s",
 			strerror(savederrno)); 
-		goto exit_fail;
-	}
-
-	memset(&ev, 0, sizeof(struct epoll_event));
-	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->sockfd;
-
-	if (epoll_ctl(knet_h->send_to_links_epollfd,
-		      EPOLL_CTL_ADD, knet_h->sockfd, &ev)) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add datafd to link fd to epoll pool: %s",
-			strerror(savederrno));
 		goto exit_fail;
 	}
 
@@ -452,8 +423,19 @@ exit_fail:
 static void _close_epolls(knet_handle_t knet_h)
 {
 	struct epoll_event ev;
+	int i;
 
-	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd, &ev);
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	for (i = 0; i < KNET_DATAFD_MAX; i++) {
+		if (knet_h->sockfd[i].in_use) {
+			epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd[i].sockfd[knet_h->sockfd[i].is_created], &ev);
+			if  (knet_h->sockfd[i].sockfd[knet_h->sockfd[i].is_created]) {
+				 _close_socketpair(knet_h, &knet_h->sockfd[i].sockfd);
+			}
+		}
+	}
+
 	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostsockfd[0], &ev);
 	epoll_ctl(knet_h->dst_link_handler_epollfd, EPOLL_CTL_DEL, knet_h->dstsockfd[0], &ev);
 	close(knet_h->send_to_links_epollfd);
@@ -544,7 +526,6 @@ static void _stop_threads(knet_handle_t knet_h)
 }
 
 knet_handle_t knet_handle_new(uint16_t host_id,
-			      int      *datafd,
 			      int      log_fd,
 			      uint8_t  default_log_level)
 {
@@ -554,16 +535,6 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	/*
 	 * validate incoming request
 	 */
-
-	if (datafd == NULL) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	if (*datafd < 0) {
-		errno = EINVAL;
-		return NULL;
-	}
 
 	if ((log_fd > 0) && (default_log_level > KNET_LOG_DEBUG)) {
 		errno = EINVAL;
@@ -609,7 +580,7 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	 * init sockets
 	 */
 
-	if (_init_socks(knet_h, datafd)) {
+	if (_init_socks(knet_h)) {
 		savederrno = errno;
 		goto exit_fail;
 	}
@@ -720,6 +691,313 @@ exit_nolock:
 	return 0;
 }
 
+int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
+{
+	int err = 0, savederrno = 0;
+	int i;
+	struct epoll_event ev;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (datafd == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (*channel >= KNET_DATAFD_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (*datafd > 0) {
+		for (i = 0; i < KNET_DATAFD_MAX; i++) {
+			if  ((knet_h->sockfd[i].in_use) && (knet_h->sockfd[i].sockfd[0] == *datafd)) {
+				log_err(knet_h, KNET_SUB_HANDLE, "requested datafd: %d already exist in index: %d", *datafd, i);
+				savederrno = EEXIST;
+				err = -1;
+				goto out_unlock;
+			}
+		}
+	}
+
+	/*
+	 * auto allocate a channel
+	 */
+	if (*channel < 0) {
+		for (i = 0; i < KNET_DATAFD_MAX; i++) {
+			if (!knet_h->sockfd[i].in_use) {
+				*channel = i;
+				break;
+			}
+		}
+		if (*channel < 0) {
+			savederrno = EBUSY;
+			err = -1;
+			goto out_unlock;
+		}
+	} else {
+		if (knet_h->sockfd[*channel].in_use) {
+			savederrno = EBUSY;
+			err = -1;
+			goto out_unlock;
+		}
+	}
+
+	knet_h->sockfd[*channel].is_created = 0;
+	knet_h->sockfd[*channel].is_socket = 0;
+
+	if (*datafd > 0) {
+		int sockopt;
+		socklen_t sockoptlen = sizeof(sockopt);
+
+		knet_h->sockfd[*channel].sockfd[0] = *datafd;
+		knet_h->sockfd[*channel].sockfd[1] = 0;
+
+		if (!getsockopt(knet_h->sockfd[*channel].sockfd[0], SOL_SOCKET, SO_TYPE, &sockopt, &sockoptlen)) {
+			knet_h->sockfd[*channel].is_socket = 1;
+		}
+	} else {
+		if (_init_socketpair(knet_h, &knet_h->sockfd[*channel].sockfd)) {
+			savederrno = errno;
+			err = -1;
+			goto out_unlock;
+		}
+
+		knet_h->sockfd[*channel].is_created = 1;
+		knet_h->sockfd[*channel].is_socket = 1;
+		*datafd = knet_h->sockfd[*channel].sockfd[0];
+	}
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+	ev.events = EPOLLIN;
+	ev.data.fd = knet_h->sockfd[*channel].sockfd[knet_h->sockfd[*channel].is_created];
+
+	if (epoll_ctl(knet_h->send_to_links_epollfd,
+		      EPOLL_CTL_ADD, knet_h->sockfd[*channel].sockfd[knet_h->sockfd[*channel].is_created], &ev)) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add datafd %d to linkfd epoll pool: %s",
+			knet_h->sockfd[*channel].sockfd[knet_h->sockfd[*channel].is_created], strerror(savederrno));
+		if (knet_h->sockfd[*channel].is_created) {
+			_close_socketpair(knet_h, &knet_h->sockfd[*channel].sockfd);
+		}
+		goto out_unlock;
+	}
+
+	knet_h->sockfd[*channel].in_use = 1;
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd)
+{
+	int err = 0, savederrno = 0;
+	int8_t channel = -1;
+	int i;
+	struct epoll_event ev;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (datafd <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	for (i = 0; i < KNET_DATAFD_MAX; i++) {
+		if  ((knet_h->sockfd[i].in_use) &&
+		     (knet_h->sockfd[i].sockfd[0] == datafd)) {
+			channel = i;
+			break;
+		}
+	}
+
+	if (channel < 0) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
+	}
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	if (epoll_ctl(knet_h->send_to_links_epollfd,
+		      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[i].is_created], &ev)) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to del datafd %d from linkfd epoll pool: %s",
+			knet_h->sockfd[channel].sockfd[knet_h->sockfd[i].is_created], strerror(savederrno));
+		goto out_unlock;
+	}
+
+	if (knet_h->sockfd[channel].is_created) {
+		_close_socketpair(knet_h, &knet_h->sockfd[channel].sockfd);
+	}
+
+	memset(&knet_h->sockfd[channel], 0, sizeof(struct knet_sock));
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_handle_enable_sock_notify(knet_handle_t knet_h,
+				   void *sock_notify_fn_private_data,
+				   void (*sock_notify_fn) (
+						void *private_data,
+						int datafd,
+						int8_t channel,
+						int error,
+						int errorno))
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->sock_notify_fn_private_data = sock_notify_fn_private_data;
+	knet_h->sock_notify_fn = sock_notify_fn;
+	if (knet_h->sock_notify_fn) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "sock_notify_fn enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "sock_notify_fn disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return 0;
+}
+
+int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *datafd)
+{
+	int err = 0, savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((channel < 0) || (channel >= KNET_DATAFD_MAX)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (datafd == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
+	}
+
+	*datafd = knet_h->sockfd[channel].sockfd[0];
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *channel)
+{
+	int err = 0, savederrno = 0;
+	int i;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (datafd <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*channel = -1;
+
+	for (i = 0; i < KNET_DATAFD_MAX; i++) {
+		if  ((knet_h->sockfd[i].in_use) &&
+		     (knet_h->sockfd[i].sockfd[0] == datafd)) {
+			*channel = i;
+			break;
+		}
+	}
+
+	if (*channel < 0) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
+	}
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
+}
+
 int knet_handle_enable_filter(knet_handle_t knet_h,
 			      void *dst_host_filter_fn_private_data,
 			      int (*dst_host_filter_fn) (
@@ -729,6 +1007,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					uint8_t tx_rx,
 					uint16_t this_host_id,
 					uint16_t src_node_id,
+					int8_t *channel,
 					uint16_t *dst_host_ids,
 					size_t *dst_host_ids_entries))
 {
@@ -953,10 +1232,9 @@ exit_unlock:
 	return err;
 }
 
-ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len)
+ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const int8_t channel)
 {
 	struct iovec iov_in;
-	int sock;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -968,30 +1246,40 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len)
 		return -1;
 	}
 
+	if (channel >= KNET_DATAFD_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (void *)buff;
 	iov_in.iov_len = buff_len;
 
-	/*
-	 * workaround magic of the socketpair
-	 */
-	if (knet_h->sockpair[1]) {
-		sock = knet_h->sockpair[1];
-	} else {
-		sock = knet_h->sockfd;
-	}
-
-	return readv(sock, &iov_in, 1);
+	return readv(knet_h->sockfd[channel].sockfd[0], &iov_in, 1);
 }
 
-ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len)
+ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
 {
 	struct iovec iov_out[1];
-	int sock;
 
 	if ((!knet_h) ||
 	    (buff == NULL) ||
 	    (buff_len == 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel >= KNET_DATAFD_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1001,11 +1289,5 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len)
 	iov_out[0].iov_base = (void *)buff;
 	iov_out[0].iov_len = buff_len;
 
-	if (knet_h->sockpair[1]) {
-		sock = knet_h->sockpair[1];
-	} else {
-		sock = knet_h->sockfd;
-	}
-
-	return writev(sock, iov_out, 1);
+	return writev(knet_h->sockfd[channel].sockfd[0], iov_out, 1);
 }

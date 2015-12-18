@@ -19,6 +19,4 @@ do { \
 		*(diff) = end.tv_nsec - start.tv_nsec; \
 } while (0);
 
-#define KNET_EPOLL_MAX_EVENTS 8
-
 #endif

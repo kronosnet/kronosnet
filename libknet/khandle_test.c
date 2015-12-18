@@ -19,10 +19,10 @@
 
 int main(int argc, char *argv[])
 {
-	int sock = 0, i;
+	int i;
 	knet_handle_t knet_h;
 
-	knet_h = knet_handle_new(1, &sock, 0, 0);
+	knet_h = knet_handle_new(1, 0, 0);
 
 	for (i = 0; i < KNET_MAX_HOST; i++) {
 		printf("add host: %d\n", i);
