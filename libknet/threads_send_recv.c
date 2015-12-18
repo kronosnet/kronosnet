@@ -373,7 +373,14 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 			goto out_unlock;
 		}
 		for (i = 0; i < msg_recv; i++) {
-			 knet_h->recv_from_sock_buf[i]->kh_type = type;
+			if (msg[i].msg_len == 0) {
+				err = 0;
+				savederrno = ENOTCONN;
+				docallback = 1;
+				log_err(knet_h, KNET_SUB_SEND_T, "Received 0 bytes message on from socket!");
+				goto out_unlock;
+			}
+			knet_h->recv_from_sock_buf[i]->kh_type = type;
 			_parse_recv_from_sock(knet_h, i, msg[i].msg_len, channel);
 		}
 	}
