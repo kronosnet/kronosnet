@@ -266,7 +266,7 @@ int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *data
 ssize_t knet_recv(knet_handle_t knet_h,
 		  char *buff,
 		  const size_t buff_len,
-They		  const int8_t channel);
+		  const int8_t channel);
 
 /*
  * knet_send
