@@ -188,6 +188,8 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
  *            The callback is invoked in an internal unlocked area
  *            to allow calls to knet_handle_add_datafd/knet_handle_remove_datafd
  *            to swap/replace the bad fd.
+ *            if both err and errno are 0, it means that the socket
+ *            has received a 0 byte packet (EOF?).
  *
  * knet_handle_enable_sock_notify returns:
  *

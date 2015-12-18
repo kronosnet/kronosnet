@@ -353,13 +353,17 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 			goto out_unlock;
 		}
 
+		/*
+		 * readv and later recvmmsg can receive 0 bytes packets.
+		 * Stop processing them and generate a callback.
+		 */
 		if (inlen == 0) {
-			err = inlen;
-			savederrno = errno;
+			err = 0;
+			savederrno = 0;
 			docallback = 1;
-			log_debug(knet_h, KNET_SUB_SEND_T, "Unrecoverable error! Got 0 bytes from socket!");
 			goto out_unlock;
 		}
+
 		msg_recv = 1;
 		knet_h->recv_from_sock_buf[0]->kh_type = type;
 		_parse_recv_from_sock(knet_h, 0, inlen, channel);
@@ -375,9 +379,8 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		for (i = 0; i < msg_recv; i++) {
 			if (msg[i].msg_len == 0) {
 				err = 0;
-				savederrno = ENOTCONN;
+				savederrno = 0;
 				docallback = 1;
-				log_err(knet_h, KNET_SUB_SEND_T, "Received 0 bytes message on from socket!");
 				goto out_unlock;
 			}
 			knet_h->recv_from_sock_buf[i]->kh_type = type;
