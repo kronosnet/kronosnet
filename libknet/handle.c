@@ -691,6 +691,45 @@ exit_nolock:
 	return 0;
 }
 
+int knet_handle_enable_sock_notify(knet_handle_t knet_h,
+				   void *sock_notify_fn_private_data,
+				   void (*sock_notify_fn) (
+						void *private_data,
+						int datafd,
+						int8_t channel,
+						uint8_t tx_rx,
+						int error,
+						int errorno))
+{
+	int savederrno = 0, err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!sock_notify_fn) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->sock_notify_fn_private_data = sock_notify_fn_private_data;
+	knet_h->sock_notify_fn = sock_notify_fn;
+	log_debug(knet_h, KNET_SUB_HANDLE, "sock_notify_fn enabled");
+
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	return err;
+}
+
 int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 {
 	int err = 0, savederrno = 0;
@@ -723,6 +762,13 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	}
+
+	if (!knet_h->sock_notify_fn) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Adding datafd requires sock notify callback enabled!");
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
 	}
 
 	if (*datafd > 0) {
@@ -761,6 +807,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 
 	knet_h->sockfd[*channel].is_created = 0;
 	knet_h->sockfd[*channel].is_socket = 0;
+	knet_h->sockfd[*channel].has_error = 0;
 
 	if (*datafd > 0) {
 		int sockopt;
@@ -847,15 +894,17 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd)
 		goto out_unlock;
 	}
 
-	memset(&ev, 0, sizeof(struct epoll_event));
+	if (!knet_h->sockfd[channel].has_error) {
+		memset(&ev, 0, sizeof(struct epoll_event));
 
-	if (epoll_ctl(knet_h->send_to_links_epollfd,
-		      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[i].is_created], &ev)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to del datafd %d from linkfd epoll pool: %s",
-			knet_h->sockfd[channel].sockfd[knet_h->sockfd[i].is_created], strerror(savederrno));
-		goto out_unlock;
+		if (epoll_ctl(knet_h->send_to_links_epollfd,
+			      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to del datafd %d from linkfd epoll pool: %s",
+				knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
+			goto out_unlock;
+		}
 	}
 
 	if (knet_h->sockfd[channel].is_created) {
@@ -868,43 +917,6 @@ out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
 	errno = savederrno;
 	return err;
-}
-
-int knet_handle_enable_sock_notify(knet_handle_t knet_h,
-				   void *sock_notify_fn_private_data,
-				   void (*sock_notify_fn) (
-						void *private_data,
-						int datafd,
-						int8_t channel,
-						int error,
-						int errorno))
-{
-	int savederrno = 0;
-
-	if (!knet_h) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
-		return -1;
-	}
-
-	knet_h->sock_notify_fn_private_data = sock_notify_fn_private_data;
-	knet_h->sock_notify_fn = sock_notify_fn;
-	if (knet_h->sock_notify_fn) {
-		log_debug(knet_h, KNET_SUB_HANDLE, "sock_notify_fn enabled");
-	} else {
-		log_debug(knet_h, KNET_SUB_HANDLE, "sock_notify_fn disabled");
-	}
-
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
-
-	return 0;
 }
 
 int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *datafd)
@@ -1241,7 +1253,7 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const
 		return -1;
 	}
 
-	if ((buff == NULL) || (buff_len == 0)) {
+	if ((buff == NULL) || (buff_len <= 0)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1269,7 +1281,7 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 
 	if ((!knet_h) ||
 	    (buff == NULL) ||
-	    (buff_len == 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
+	    (buff_len <= 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
 		errno = EINVAL;
 		return -1;
 	}

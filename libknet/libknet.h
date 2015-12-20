@@ -44,6 +44,13 @@
 #define KNET_MAX_HOST_LEN 64
 #define KNET_MAX_PORT_LEN 6
 
+/*
+ * Some notifications can be generated either on TX or RX
+ */
+
+#define KNET_NOTIFY_TX 0
+#define KNET_NOTIFY_RX 1
+
 typedef struct knet_handle *knet_handle_t;
 
 /*
@@ -96,7 +103,54 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 int knet_handle_free(knet_handle_t knet_h);
 
 /*
+ * knet_handle_enable_sock_notify
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * sock_notify_fn_private_data
+ *            void pointer to data that can be used to identify
+ *            the callback.
+ *
+ * sock_notify_fn
+ *            A callback function that is invoked every time
+ *            a socket in the datafd pool will report an error (-1)
+ *            or an end of read (0) (see socket.7).
+ *            This function MUST NEVER block or add substantial delays.
+ *            The callback is invoked in an internal unlocked area
+ *            to allow calls to knet_handle_add_datafd/knet_handle_remove_datafd
+ *            to swap/replace the bad fd.
+ *            if both err and errno are 0, it means that the socket
+ *            has received a 0 byte packet (EOF?).
+ *            The callback function must either remove the fd from knet
+ *            (by calling knet_handle_remove_fd()) or dup a new fd in its place.
+ *            Failure to do this can cause problems.
+ *
+ * knet_handle_enable_sock_notify returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_enable_sock_notify(knet_handle_t knet_h,
+				   void *sock_notify_fn_private_data,
+				   void (*sock_notify_fn) (
+						void *private_data,
+						int datafd,
+						int8_t channel,
+						uint8_t tx_rx,
+						int error,
+						int errorno)); /* sorry! can't call it errno ;) */
+
+/*
  * knet_handle_add_datafd
+ *
+ * IMPORTANT: In order to add datafd to knet, knet_handle_enable_sock_notify
+ *            _MUST_ be set and be able to handle both errors (-1) and
+ *            0 bytes read / write from the provided datafd.
+ *            On read error (< 0) from datafd, the socket is automatically
+ *            removed from polling to avoid spinning on dead sockets.
+ *            It is safe to call knet_handle_remove_datafd even on sockets
+ *            that have been removed.
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -201,33 +255,6 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
  * -1 on error and errno is set.
  */
 
-int knet_handle_enable_sock_notify(knet_handle_t knet_h,
-				   void *sock_notify_fn_private_data,
-				   void (*sock_notify_fn) (
-						void *private_data,
-						int datafd,
-						int8_t channel,
-						int error,
-						int errorno)); /* sorry! can't call it errno ;) */
-
-/*
- * knet_handle_get_channel
- *
- * knet_h   - pointer to knet_handle_t
- *
- * datafd   - file descriptor to search
- *
- * *channel - will contain the result
- *
- * knet_handle_get_channel returns:
- *
- * 0 on success
- *   and *channel will contain the results
- *
- * -1 on error and errno is set.
- *   and *channel content is meaningless
- */
-
 int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *channel);
 
 /*
@@ -327,9 +354,6 @@ ssize_t knet_send(knet_handle_t knet_h,
  * 0 on success
  * -1 on error and errno is set.
  */
-
-#define KNET_DST_HOST_FILTER_TX 0
-#define KNET_DST_HOST_FILTER_RX 1
 
 int knet_handle_enable_filter(knet_handle_t knet_h,
 			      void *dst_host_filter_fn_private_data,

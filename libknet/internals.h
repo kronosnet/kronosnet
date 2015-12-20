@@ -107,6 +107,8 @@ struct knet_sock {
 	int is_socket;   /* check if it's a socket for recvmmsg usage */
 	int is_created;  /* knet created this socket and has to clean up on exit/del */
 	int in_use;      /* set to 1 if it's use, 0 if free */
+	int has_error;   /* set to 1 if there were errors reading from the sock
+			  * and socket has been removed from epoll */
 };
 
 struct knet_handle {
@@ -190,6 +192,7 @@ struct knet_handle {
 		void *private_data,
 		int datafd,
 		int8_t channel,
+		uint8_t tx_rx,
 		int error,
 		int errorno);
 	int fini_in_progress;

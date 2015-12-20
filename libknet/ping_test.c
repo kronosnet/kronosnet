@@ -297,10 +297,13 @@ static void host_notify(void *private_data, uint16_t host_id, uint8_t reachable,
 	return;
 }
 
-static void sock_notify(void *private_data, int datafd, int8_t chan, int error, int errorno)
+static void sock_notify(void *private_data, int datafd, int8_t chan, uint8_t tx_rx, int error, int errorno)
 {
-	printf("Received sock notify, datafd: %d channel: %d error: %d errno: %d (%s)\n",
-	       datafd, chan, error, errorno, strerror(errorno));
+	printf("Received sock notify, datafd: %d channel: %d direction: %u error: %d errno: %d (%s)\n",
+	       datafd, chan, tx_rx, error, errorno, strerror(errorno));
+
+	printf("Something went wrong with our sockets!\n");
+	exit(EXIT_FAILURE);
 }
 
 static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)

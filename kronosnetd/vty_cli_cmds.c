@@ -1557,6 +1557,14 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	return err;
 }
 
+static void sock_notify_fn(void *private_data, int datafd, int8_t chan, uint8_t tx_rx, int error, int errorno)
+{
+	struct knet_vty *vty = (struct knet_vty *)private_data;
+
+	knet_vty_write(vty, "Error: received sock notify, datafd: %d channel: %d direction: %u error: %d errno: %d (%s)%s",
+			datafd, chan, tx_rx, error, errorno, strerror(errorno), telnet_newline);
+}
+
 static int knet_cmd_interface(struct knet_vty *vty)
 {
 	int err = 0, paramlen = 0, paramoffset = 0, found = 0, requested_id, tapfd;
@@ -1618,6 +1626,13 @@ tap_found:
 	if (!knet_iface->cfg_ring.knet_h) {
 		knet_vty_write(vty, "Error: Unable to create ring handle for device %s%s",
 				device, telnet_newline);
+		err = -1;
+		goto out_clean;
+	}
+
+	if (knet_handle_enable_sock_notify(knet_iface->cfg_ring.knet_h, &vty, sock_notify_fn)) {
+		knet_vty_write(vty, "Error: Unable to add sock notify callback to to knet_handle %s%s",
+				strerror(errno), telnet_newline);
 		err = -1;
 		goto out_clean;
 	}

@@ -117,7 +117,7 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 						knet_h->dst_host_filter_fn_private_data,
 						(const unsigned char *)inbuf->khp_data_userdata,
 						inlen,
-						KNET_DST_HOST_FILTER_TX,
+						KNET_NOTIFY_TX,
 						knet_h->host_id,
 						knet_h->host_id,
 						&channel,
@@ -331,7 +331,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	ssize_t inlen = 0;
 	struct iovec iov_in;
 	int msg_recv, i;
-	int savederrno, docallback = 0, err = 0;
+	int savederrno, docallback = 0;
 
 	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
@@ -345,21 +345,8 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 
 		inlen = readv(sockfd, &iov_in, 1);
 
-		if (inlen < 0) {
-			err = inlen;
+		if (inlen <= 0) {
 			savederrno = errno;
-			docallback = 1;
-			log_debug(knet_h, KNET_SUB_SEND_T, "Unrecoverable error: %s", strerror(errno));
-			goto out_unlock;
-		}
-
-		/*
-		 * readv and later recvmmsg can receive 0 bytes packets.
-		 * Stop processing them and generate a callback.
-		 */
-		if (inlen == 0) {
-			err = 0;
-			savederrno = 0;
 			docallback = 1;
 			goto out_unlock;
 		}
@@ -370,32 +357,56 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	} else {
 		msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT, NULL);
 		if (msg_recv < 0) {
-			err = msg_recv;
+			inlen = msg_recv;
 			savederrno = errno;
 			docallback = 1;
-			log_err(knet_h, KNET_SUB_SEND_T, "No message received from recvmmsg: %s", strerror(errno));
 			goto out_unlock;
 		}
 		for (i = 0; i < msg_recv; i++) {
-			if (msg[i].msg_len == 0) {
-				err = 0;
+			inlen = msg[i].msg_len;
+			if (inlen  == 0) {
 				savederrno = 0;
 				docallback = 1;
 				goto out_unlock;
+				break;
 			}
 			knet_h->recv_from_sock_buf[i]->kh_type = type;
-			_parse_recv_from_sock(knet_h, i, msg[i].msg_len, channel);
+			_parse_recv_from_sock(knet_h, i, inlen, channel);
 		}
 	}
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
-	if ((docallback) &&
-	    (knet_h->sock_notify_fn)) {
+
+	if (inlen < 0) {
+		struct epoll_event ev;
+
+		if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
+			goto callback;
+		}
+
+		memset(&ev, 0, sizeof(struct epoll_event));
+
+		if (epoll_ctl(knet_h->send_to_links_epollfd,
+			      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
+			log_err(knet_h, KNET_SUB_SEND_T, "Unable to del datafd %d from linkfd epoll pool: %s",
+				knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
+		} else {
+			knet_h->sockfd[channel].has_error = 1;
+		}
+
+		pthread_rwlock_unlock(&knet_h->list_rwlock);
+	}
+
+callback:
+
+	if (docallback) {
 		knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
 				       knet_h->sockfd[channel].sockfd[0],
 				       channel,
-				       err,
+				       KNET_NOTIFY_TX,
+				       inlen,
 				       savederrno);
 	}
 }
@@ -760,7 +771,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 						knet_h->dst_host_filter_fn_private_data,
 						(const unsigned char *)inbuf->khp_data_userdata,
 						len - KNET_HEADER_DATA_SIZE,
-						KNET_DST_HOST_FILTER_RX,
+						KNET_NOTIFY_RX,
 						knet_h->host_id,
 						inbuf->kh_node,
 						&channel,
@@ -795,7 +806,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
 			if (!knet_h->sockfd[channel].in_use) {
 				log_debug(knet_h, KNET_SUB_LINK_T,
-					  "recieved packet fo channel %d but there is no local sock connected",
+					  "received packet for channel %d but there is no local sock connected",
 					  channel);
 				return;
 			}
@@ -804,10 +815,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			iov_out[0].iov_base = (void *) inbuf->khp_data_userdata;
 			iov_out[0].iov_len = len - KNET_HEADER_DATA_SIZE;
 
-			if (writev(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, 1) == iov_out[0].iov_len) {
+			outlen = writev(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, 1);
+			if (outlen <= 0) {
+				knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
+						       knet_h->sockfd[channel].sockfd[0],
+						       channel,
+						       KNET_NOTIFY_RX,
+						       outlen,
+						       errno);
+				return;
+			}
+			if (outlen == iov_out[0].iov_len) {
 				_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
-			} else {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has not been delivered");
 			}
 		} else { /* HOSTINFO */
 			_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
