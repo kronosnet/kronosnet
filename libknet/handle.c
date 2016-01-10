@@ -813,6 +813,22 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 		int sockopt;
 		socklen_t sockoptlen = sizeof(sockopt);
 
+		if (_fdset_cloexec(*datafd)) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on datafd: %s",
+				strerror(savederrno));
+			goto out_unlock;
+		}
+
+		if (_fdset_nonblock(*datafd)) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on datafd: %s",
+				strerror(savederrno));
+			goto out_unlock;
+		}
+
 		knet_h->sockfd[*channel].sockfd[0] = *datafd;
 		knet_h->sockfd[*channel].sockfd[1] = 0;
 

@@ -141,7 +141,7 @@ restart:
 	}
 
 	len = sendto(dst_link->listener_sock, outbuf, data_len,
-			MSG_DONTWAIT, (struct sockaddr *) &dst_link->dst_addr,
+			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;
 

@@ -172,6 +172,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
  *            socketpair only if they have been created by knet_handle_add_datafd.
  *
  *            It is possible to pass either sockets or normal fds.
+ *            User provided datafd will be marked as non-blocking and close-on-exit.
  *
  * *channel - This value has the same effect of VLAN tagging.
  *            A negative value will auto-allocate a channel.

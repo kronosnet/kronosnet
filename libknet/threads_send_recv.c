@@ -33,7 +33,7 @@
 
 static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
 {
-	int link_idx, msg_idx;
+	int link_idx, msg_idx, sent_msgs, msgs_to_send, prev_sent, progress;
 	struct mmsghdr msg[PCKT_FRAG_MAX];
 
 	if (pthread_mutex_lock(&dst_host->active_links_mutex) != 0) {
@@ -45,18 +45,45 @@ static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host,
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 
+		msgs_to_send = knet_h->send_to_links_buf[0]->khp_data_frag_num;
+		sent_msgs = 0;
+		prev_sent = 0;
+		progress = 1;
+
+retry:
 		msg_idx = 0;
 
-		while (msg_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+		while (msg_idx < msgs_to_send) {
 			msg[msg_idx].msg_hdr.msg_name = &dst_host->link[dst_host->active_links[link_idx]].dst_addr;
 			msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-			msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx];
+			msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx + prev_sent];
 			msg[msg_idx].msg_hdr.msg_iovlen = 1;
 			msg_idx++;
 		}
 
-		if (sendmmsg(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
-			     msg, msg_idx, MSG_NOSIGNAL) < 0) {	
+		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
+				     msg, msg_idx, MSG_DONTWAIT | MSG_NOSIGNAL);
+
+		if ((sent_msgs >= 0) && (sent_msgs < msg_idx)) {
+			if ((sent_msgs) || (progress)) {
+				msgs_to_send = msg_idx - sent_msgs;
+				prev_sent = prev_sent + sent_msgs;
+				if (sent_msgs) {
+					progress = 1;
+				} else {
+					progress = 0;
+				}
+				log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send all (%d/%d) data packets to host %s (%u) link %s:%s (%u)",
+					  sent_msgs, msg_idx,
+					  dst_host->name, dst_host->host_id,
+					  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
+					  dst_host->link[dst_host->active_links[link_idx]].status.dst_port,
+					  dst_host->link[dst_host->active_links[link_idx]].link_id);
+				goto retry;
+			}
+		}
+
+		if (sent_msgs < 0) {
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
 				  dst_host->name, dst_host->host_id,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
@@ -355,7 +382,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		knet_h->recv_from_sock_buf[0]->kh_type = type;
 		_parse_recv_from_sock(knet_h, 0, inlen, channel);
 	} else {
-		msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT, NULL);
+		msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 		if (msg_recv < 0) {
 			inlen = msg_recv;
 			savederrno = errno;
@@ -897,9 +924,15 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT,
+		if (sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
-				sizeof(struct sockaddr_storage));
+				sizeof(struct sockaddr_storage)) != outlen) {
+			log_debug(knet_h, KNET_SUB_LINK_T,
+				  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+				  src_link->listener_sock, errno, strerror(errno),
+				  src_link->status.src_ipaddr, src_link->status.src_port,
+				  src_link->status.dst_ipaddr, src_link->status.dst_port);
+		}
 
 		break;
 	case KNET_HEADER_TYPE_PONG:
@@ -947,9 +980,15 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT,
+		if (sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
-				sizeof(struct sockaddr_storage));
+				sizeof(struct sockaddr_storage)) != outlen) {
+			log_debug(knet_h, KNET_SUB_LINK_T,
+				  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+				  src_link->listener_sock, errno, strerror(errno),
+				  src_link->status.src_ipaddr, src_link->status.src_port,
+				  src_link->status.dst_ipaddr, src_link->status.dst_port);
+		}
 
 		break;
 	case KNET_HEADER_TYPE_PMTUD_REPLY:
@@ -975,7 +1014,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 		return;
 	}
 
-	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT, NULL);
+	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 	if (msg_recv < 0) {
 		log_err(knet_h, KNET_SUB_LINK_T, "No message received from recvmmsg: %s", strerror(errno));
 		goto exit_unlock;

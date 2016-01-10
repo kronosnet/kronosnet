@@ -124,7 +124,15 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		if (_fdset_cloexec(listener->sock)) {
 			savederrno = errno;
 			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener socket opts: %s",
+			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener CLOEXEC socket opts: %s",
+				strerror(savederrno));
+			goto exit_unlock;
+		}
+
+		if (_fdset_nonblock(listener->sock)) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener NONBLOCK socket opts: %s",
 				strerror(savederrno));
 			goto exit_unlock;
 		}

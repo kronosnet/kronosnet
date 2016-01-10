@@ -59,14 +59,14 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 
 		len = sendto(dst_link->listener_sock, outbuf, outlen,
-			MSG_DONTWAIT, (struct sockaddr *) &dst_link->dst_addr,
+			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 
 		dst_link->ping_last = clock_now;
 
 		if (len != outlen) {
 			log_debug(knet_h, KNET_SUB_HB_T,
-				  "Unable to send ping (sock: %d) packet (sendto): %d %s\nrecorded src ip: %s src port: %s dst ip: %s dst port: %s",
+				  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 				  dst_link->listener_sock, errno, strerror(errno),
 				  dst_link->status.src_ipaddr, dst_link->status.src_port,
 				  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
