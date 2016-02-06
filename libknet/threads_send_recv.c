@@ -31,14 +31,18 @@
  * SEND
  */
 
-static void _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
+static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
 {
 	int link_idx, msg_idx, sent_msgs, msgs_to_send, prev_sent, progress;
 	struct mmsghdr msg[PCKT_FRAG_MAX];
+	int err = 0, savederrno = 0;
 
-	if (pthread_mutex_lock(&dst_host->active_links_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get active links mutex");
-		return;
+	savederrno = pthread_mutex_lock(&dst_host->active_links_mutex);
+	if (savederrno) {
+		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get active links mutex: %s",
+			  strerror(savederrno));
+		errno = savederrno;
+		return -1;
 	}
 
 	memset(&msg, 0, sizeof(struct mmsghdr));
@@ -63,6 +67,7 @@ retry:
 
 		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
 				     msg, msg_idx, MSG_DONTWAIT | MSG_NOSIGNAL);
+		savederrno = errno;
 
 		if ((sent_msgs >= 0) && (sent_msgs < msg_idx)) {
 			if ((sent_msgs) || (progress)) {
@@ -81,15 +86,22 @@ retry:
 					  dst_host->link[dst_host->active_links[link_idx]].link_id);
 				goto retry;
 			}
+			if (!progress) {
+				savederrno = EAGAIN;
+				err = -1;
+				goto out_unlock;
+			}
 		}
 
-		if (sent_msgs < 0) {
+		if ((sent_msgs < 0) || (err < 0)) {
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
 				  dst_host->name, dst_host->host_id,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_port,
 				  dst_host->link[dst_host->active_links[link_idx]].link_id,
-				  strerror(errno));
+				  strerror(savederrno));
+			err = -1;
+			goto out_unlock;
 		}
 
 		if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
@@ -103,12 +115,15 @@ retry:
 		}
 	}
 
+out_unlock:
+
 	pthread_mutex_unlock(&dst_host->active_links_mutex);
 
-	return;
+	errno = savederrno;
+	return err;
 }
 
-static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inlen, int8_t channel)
+static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inlen, int8_t channel, int sync)
 {
 	ssize_t outlen, frag_len;
 	struct knet_host *dst_host;
@@ -122,14 +137,18 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
 	int host_idx;
-	int send_mcast;
+	int send_mcast = 0;
 	struct knet_header *inbuf;
+	int savederrno = 0;
+	int err = 0;
 
 	inbuf = knet_h->recv_from_sock_buf[buf_idx];
 
 	if ((knet_h->enabled != 1) &&
 	    (inbuf->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
 		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
+		savederrno = ECANCELED;
+		err = -1;
 		goto out_unlock;
 	}
 
@@ -152,11 +171,15 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 						&dst_host_ids_entries_temp);
 				if (bcast < 0) {
 					log_debug(knet_h, KNET_SUB_SEND_T, "Error from dst_host_filter_fn: %d", bcast);
+					savederrno = EFAULT;
+					err = -1;
 					goto out_unlock;
 				}
 
 				if ((!bcast) && (!dst_host_ids_entries_temp)) {
 					log_debug(knet_h, KNET_SUB_SEND_T, "Message is unicast but no dst_host_ids_entries");
+					savederrno = EINVAL;
+					err = -1;
 					goto out_unlock;
 				}
 			}
@@ -172,6 +195,8 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 			break;
 		default:
 			log_warn(knet_h, KNET_SUB_SEND_T, "Receiving unknown messages from socket");
+			savederrno = ENOMSG;
+			err = -1;
 			goto out_unlock;
 			break;
 	}
@@ -197,6 +222,8 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 			}
 		}
 		if (!dst_host_ids_entries) {
+			savederrno = EHOSTDOWN;
+			err = -1;
 			goto out_unlock;
 		}
 	} else {
@@ -208,6 +235,18 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 			}
 		}
 		if (!send_mcast) {
+			savederrno = EHOSTDOWN;
+			err = -1;
+			goto out_unlock;
+		}
+	}
+
+	if (sync) {
+		if ((send_mcast) ||
+		    ((!bcast) && (dst_host_ids_entries > 1))) {
+			log_debug(knet_h, KNET_SUB_SEND_T, "knet_send_sync is only supported with unicast packets for one destination");
+			savederrno = E2BIG;
+			err = -1;
 			goto out_unlock;
 		}
 	}
@@ -296,6 +335,8 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 							knet_h->send_to_links_buf_crypt[frag_idx],
 							&outlen) < 0) {
 						log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
+						savederrno = ECHILD;
+						err = -1;
 						goto out_unlock;
 					}
 					iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
@@ -305,7 +346,11 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 				frag_idx++;
 			}
 
-			_dispatch_to_links(knet_h, dst_host, iov_out);
+			err = _dispatch_to_links(knet_h, dst_host, iov_out);
+			savederrno = errno;
+			if (err) {
+				goto out_unlock;
+			}
 
 		}
 
@@ -327,6 +372,8 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 						knet_h->send_to_links_buf_crypt[frag_idx],
 						&outlen) < 0) {
 					log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
+					savederrno = ECHILD;
+					err = -1;
 					goto out_unlock;
 				}
 				iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
@@ -338,7 +385,11 @@ static void _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inl
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			if (dst_host->status.reachable) {
-				_dispatch_to_links(knet_h, dst_host, iov_out);
+				err = _dispatch_to_links(knet_h, dst_host, iov_out);
+				savederrno = errno;
+				if (err) {
+					goto out_unlock;
+				}
 			}
 		}
 
@@ -351,6 +402,69 @@ out_unlock:
 		pthread_cond_signal(&knet_h->host_cond);
 		pthread_mutex_unlock(&knet_h->host_mutex);
 	}
+
+	errno = savederrno;
+	return err;
+}
+
+int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
+{
+	int savederrno = 0, err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((buff_len <= 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel >= KNET_DATAFD_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_SEND_T, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out;
+	}
+
+	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_SEND_T, "Unable to get TX mutex lock: %s",
+			strerror(savederrno));
+		err = -1;
+		goto out;
+	}
+
+	knet_h->recv_from_sock_buf[0]->kh_type = KNET_HEADER_TYPE_DATA;
+	memmove(knet_h->recv_from_sock_buf[0]->khp_data_userdata, buff, buff_len);
+	err = _parse_recv_from_sock(knet_h, 0, buff_len, channel, 1);
+	savederrno = errno;
+
+	pthread_mutex_unlock(&knet_h->tx_mutex);
+
+out:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+
+	errno = savederrno;
+	return err;
 }
 
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct mmsghdr *msg, int type)
@@ -380,7 +494,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 
 		msg_recv = 1;
 		knet_h->recv_from_sock_buf[0]->kh_type = type;
-		_parse_recv_from_sock(knet_h, 0, inlen, channel);
+		_parse_recv_from_sock(knet_h, 0, inlen, channel, 0);
 	} else {
 		msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 		if (msg_recv < 0) {
@@ -398,7 +512,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 				break;
 			}
 			knet_h->recv_from_sock_buf[i]->kh_type = type;
-			_parse_recv_from_sock(knet_h, i, inlen, channel);
+			_parse_recv_from_sock(knet_h, i, inlen, channel, 0);
 		}
 	}
 
@@ -485,7 +599,12 @@ void *_handle_send_to_links_thread(void *data)
 					}
 				}
 			}
+			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
+				log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
+				continue;
+			}
 			_handle_send_to_links(knet_h, events[i].data.fd, channel, msg, type);
+			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
 	}
 

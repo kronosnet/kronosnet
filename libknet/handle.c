@@ -99,6 +99,13 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->tx_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize tx_thread  mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	return 0;
 
 exit_fail:
@@ -118,6 +125,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_cond_destroy(&knet_h->pmtud_cond);
 	pthread_mutex_destroy(&knet_h->pmtud_timer_mutex);
 	pthread_cond_destroy(&knet_h->pmtud_timer_cond);
+	pthread_mutex_destroy(&knet_h->tx_mutex);
 }
 
 static int _init_socketpair(knet_handle_t knet_h, int (*sock)[2])
@@ -1262,6 +1270,8 @@ exit_unlock:
 
 ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const int8_t channel)
 {
+	int savederrno = 0;
+	ssize_t err = 0;
 	struct iovec iov_in;
 
 	if (!knet_h) {
@@ -1279,25 +1289,50 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const
 		return -1;
 	}
 
-	if (!knet_h->sockfd[channel].in_use) {
-		errno = EINVAL;
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
 		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
 	}
 
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (void *)buff;
 	iov_in.iov_len = buff_len;
 
-	return readv(knet_h->sockfd[channel].sockfd[0], &iov_in, 1);
+	err = readv(knet_h->sockfd[channel].sockfd[0], &iov_in, 1);
+	savederrno = errno;
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
 }
 
 ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
 {
+	int savederrno = 0;
+	ssize_t err = 0;
 	struct iovec iov_out[1];
 
-	if ((!knet_h) ||
-	    (buff == NULL) ||
-	    (buff_len <= 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((buff_len <= 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1307,9 +1342,18 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 		return -1;
 	}
 
-	if (!knet_h->sockfd[channel].in_use) {
-		errno = EINVAL;
+	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
 		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
 	}
 
 	memset(iov_out, 0, sizeof(iov_out));
@@ -1317,5 +1361,11 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 	iov_out[0].iov_base = (void *)buff;
 	iov_out[0].iov_len = buff_len;
 
-	return writev(knet_h->sockfd[channel].sockfd[0], iov_out, 1);
+	err = writev(knet_h->sockfd[channel].sockfd[0], iov_out, 1);
+	savederrno = errno;
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	errno = savederrno;
+	return err;
 }

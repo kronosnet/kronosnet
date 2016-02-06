@@ -153,6 +153,7 @@ struct knet_handle {
 	pthread_cond_t pmtud_cond;
 	pthread_mutex_t pmtud_timer_mutex;
 	pthread_cond_t pmtud_timer_cond;
+	pthread_mutex_t tx_mutex;
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
 	uint16_t sec_block_size;

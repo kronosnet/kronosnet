@@ -31,6 +31,8 @@ static uint8_t loglevel = KNET_LOG_INFO;
 static uint8_t use_stdout = 0;
 static char *src_host = NULL;
 static char *src_port = NULL;
+static int can_use_sync = 0;
+static int max_nodeid = 0;
 
 static in_port_t tok_inport(char *str)
 {
@@ -163,6 +165,8 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		node_id = i - 1;
 
+		max_nodeid = node_id;
+
 		if (knet_host_add(knet_h, node_id) != 0) {
 			printf("Unable to add new knet_host\n");
 			exit(EXIT_FAILURE);
@@ -185,7 +189,7 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		knet_link_set_config(knet_h, node_id, 0, &src_addr, &dst_addr);
 		knet_link_set_timeout(knet_h, node_id, 0, 1000, 5000, 2048);
-		//knet_link_set_pong_count(knet_h, node_id, 0, 10);
+		knet_link_set_pong_count(knet_h, node_id, 0, 3);
 		knet_link_set_enable(knet_h, node_id, 0, 1);
 	}
 }
@@ -286,6 +290,12 @@ static void host_notify(void *private_data, uint16_t host_id, uint8_t reachable,
 	printf("Received host_id (%u) status change notification. reachable: %u remote: %u external: %u\n",
 		host_id, reachable, remote, external);
 
+	if (reachable) {
+		can_use_sync = 1;
+	} else {
+		can_use_sync = 0;
+	}
+
 	if (knet_host_get_status(knet_h, host_id, &status)) {
 		printf("Unable to get host status\n");
 		exit(EXIT_FAILURE);
@@ -310,6 +320,7 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 {
 	char recvbuff[66000];
 	ssize_t rlen = 0;
+	uint16_t nodeid;
 
 	rlen = knet_recv(knet_h, recvbuff, sizeof(recvbuff), inchannel);
 
@@ -323,7 +334,9 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 		return;
 	}
 
-	printf("Received data (%zu bytes): '%s' on channel: %d\n", rlen, recvbuff, inchannel);
+	memmove(&nodeid, recvbuff, 2);
+
+	printf("Received data (%zu bytes): '%s' on channel: %d for nodeid %u\n", rlen, recvbuff+2, inchannel, nodeid);
 
 	if (has_crypto) {
 #if 0
@@ -335,6 +348,25 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 		}
 #endif
 	}
+}
+
+static int ping_dst_host_filter(void *private_data,
+				const unsigned char *outdata,
+				ssize_t outdata_len,
+				uint8_t tx_rx,
+				uint16_t this_host_id,
+				uint16_t src_host_id,
+				int8_t *dst_channel,
+				uint16_t *dst_host_ids,
+				size_t *dst_host_ids_entries)
+{
+	if (tx_rx == KNET_NOTIFY_TX) {
+		memmove(&dst_host_ids[0], outdata, 2);
+	} else {
+		dst_host_ids[0] = this_host_id;
+	}
+	*dst_host_ids_entries = 1;
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -352,6 +384,8 @@ int main(int argc, char *argv[])
 	int big = 0;
 	int j;
 	int8_t chan;
+	int use_sync = 0;
+	uint16_t dst_nodeid;
 
 	if (argc < 3) {
 		print_usage(argv[0]);
@@ -411,6 +445,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (knet_handle_enable_filter(knet_h, NULL, ping_dst_host_filter)) {
+		printf("Unable to enable filter\n");
+		exit(EXIT_FAILURE);
+	}
+
 	if (set_crypto(argc, argv)) {
 		memset(knet_handle_crypto_cfg.private_key, 0, KNET_MAX_KEY_LEN);
 		knet_handle_crypto_cfg.private_key_len = KNET_MAX_KEY_LEN;	
@@ -462,9 +501,9 @@ int main(int argc, char *argv[])
 		memset(&out_big_buff, 0, sizeof(out_big_buff));
 		memset(&hello_world, 0, sizeof(hello_world));
 
-		snprintf(hello_world, sizeof(hello_world), "Hello world!");
-		snprintf(out_big_buff, sizeof(out_big_buff), "%zu", sizeof(out_big_buff));
-		snprintf(out_big_frag, sizeof(out_big_frag), "%zu", sizeof(out_big_frag));
+		snprintf(hello_world+2, sizeof(hello_world), "Hello world!");
+		snprintf(out_big_buff+2, sizeof(out_big_buff), "%zu", sizeof(out_big_buff));
+		snprintf(out_big_frag+2, sizeof(out_big_frag), "%zu", sizeof(out_big_frag));
 
 		switch(big) {
 			case 0: /* hello world */
@@ -478,12 +517,14 @@ int main(int argc, char *argv[])
 				buff_len = sizeof(out_big_buff);
 				big = 2;
 				outchan = channel[1];
+				use_sync = 0;
 				break;
 			case 2: /* big and requires frag */
 				buff = out_big_frag;
 				buff_len = sizeof(out_big_frag);
 				big = 0;
 				outchan = channel[2];
+				use_sync = 1;
 				break;
 			default:
 				printf("unknown packet size?\n");
@@ -492,16 +533,32 @@ int main(int argc, char *argv[])
 		}
 
 		printf("Sending '%zu' bytes on channel: %d\n", buff_len, outchan);
-		wlen = knet_send(knet_h, buff, buff_len, outchan);
-		if (wlen != buff_len) {
-			printf("Unable to send messages to socket\n");
-			exit(1);
+		if ((can_use_sync) && (use_sync)) {
+			for (j = 1; j <= max_nodeid; j++) {
+				dst_nodeid = j;
+				memmove(buff, &dst_nodeid, 2);
+				printf("Using sync send\n");
+				wlen = knet_send_sync(knet_h, buff, buff_len, outchan);
+				if (wlen < 0) {
+					printf("Unable to send messages to socket: %s\n", strerror(errno));
+					exit(1);
+				}
+			}
+		} else {
+			/* clear node id */
+			memset(buff, 0, 2);
+			printf("Using async send\n");
+			wlen = knet_send(knet_h, buff, buff_len, outchan);
+			if (wlen != buff_len) {
+				printf("Unable to send messages to socket: %s\n", strerror(errno));
+				exit(1);
+			}
 		}
 
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
- select_loop:
+select_loop:
 		FD_ZERO(&rfds);
 		for (j = 0; j < 4; j++) {
 			FD_SET(knet_sock[j], &rfds);

@@ -315,6 +315,51 @@ ssize_t knet_send(knet_handle_t knet_h,
 		  const int8_t channel);
 
 /*
+ * knet_send_sync
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * buff     - pointer to the buffer of data to send
+ *
+ * buff_len - length of data to send
+ *
+ * channel  - data channel to use (see knet_handle_add_datafd)
+ *
+ * All knet RX/TX operations are async for performance reasons.
+ * There are applications that might need a sync version of data
+ * transmission and receive errors in case of failure to deliver
+ * to another host.
+ * knet_send_sync bypasses the whole TX async layer and delivers
+ * data directly to the link layer, and returns errors accordingly.
+ * knet_send_sync allows to send only one packet to one host at
+ * a time. It does NOT support multiple destinations or multicast
+ * packets. Decision is still based on dst_host_filter_fn.
+ *
+ * knet_send_sync returns 0 on success and -1 on error.
+ *
+ * In addition to normal sendmmsg errors, knet_send_sync can fail
+ * due to:
+ *
+ * ECANCELED - data forward is disabled
+ * EFAULT    - dst_host_filter fatal error
+ * EINVAL    - dst_host_filter did not provide
+ *             dst_host_ids_entries on unicast pckts
+ * E2BIG     - dst_host_filter did return more than one
+ *             dst_host_ids_entries on unicast pckts
+ * ENOMSG    - received unknown message type
+ * EHOSTDOWN - unicast pckt cannot be delivered because
+ *             dest host is not connected yet
+ * ECHILD    - crypto failed
+ * EAGAIN    - sendmmsg was unable to send all messages and
+ *             there was no progress during retry
+ */
+
+int knet_send_sync(knet_handle_t knet_h,
+		   const char *buff,
+		   const size_t buff_len,
+		   const int8_t channel);
+
+/*
  * knet_handle_enable_filter
  *
  * knet_h   - pointer to knet_handle_t
