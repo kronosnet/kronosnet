@@ -13,8 +13,18 @@ link/host level:
  - (issue) standardize exit labels (ex out_unlock / exit_unlock) and variable/function
            names.
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
- - (issue) check PMTUd calculation boundaries (saw some odd race conditions
-           when stopping nodes during PMTUd and getting out-of-your-mind values)
+ - (issue) check PMTUd calculation boundaries:
+           - saw some odd race conditions when stopping nodes during PMTUd and
+             getting out-of-your-mind values
+             (hard to reproduce, suspect a -1 is leaking in status.mtu, probably
+              easier to sanitize the value after the fact since the MTU loop is racy
+              in so many different ways, link down, mtu change, other host dies, network pckt loss,
+              etc. and we can potentially pick up a good value in the next round.)
+           - what do if PMTUd finds an MTU < MIN_IP_V ? disable the link?
+             (test with iptables -A INPUT -j DROP -d 192.168.9.0/24 -m length --length 128:65535)
+           - investigate max ping size (crypto) vs min data packet size.
+             what is acceptable? if mtu < ping size, link goes disconnected, so that's covered
+             but what about ping_size <-> MIN_IP_V gap? Anything above MIN and below MAX is good.
  - (rfe)   add tcp transport layer?
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
