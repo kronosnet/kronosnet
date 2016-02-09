@@ -1329,7 +1329,7 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 		knet_iface->cfg_eth.auto_mtu = 1;
 		knet_vty_write(vty, "Error: Unable to set requested mtu %d on device %s%s",
 				expected_mtu, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
-				return -1;
+		return -1;
 	}
 
 	return 0;
@@ -1600,7 +1600,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	if (!knet_iface->cfg_eth.tap)
 		knet_iface->cfg_eth.tap = tap_open(device, IFNAMSIZ, DEFAULT_CONFIG_DIR);
 
-	if ((!knet_iface->cfg_eth.tap) && (errno = EBUSY)) {
+	if ((!knet_iface->cfg_eth.tap) && (errno == EBUSY)) {
 		knet_vty_write(vty, "Error: interface %s seems to exist in the system%s",
 				device, telnet_newline);
 		err = -1;
