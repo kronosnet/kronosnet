@@ -329,7 +329,7 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 		return;
 	}
 
-	if ((rlen < 0) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
+	if ((rlen < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
 		printf("NO MORE DATA TO READ: %s\n", strerror(errno));
 		return;
 	}
@@ -372,7 +372,7 @@ static int ping_dst_host_filter(void *private_data,
 int main(int argc, char *argv[])
 {
 	char out_big_buff[64000], out_big_frag[65536], hello_world[16];
-	size_t len;
+	ssize_t len;
 	fd_set rfds;
 	struct timeval tv;
 	int logpipefd[2];

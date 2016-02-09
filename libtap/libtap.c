@@ -396,8 +396,8 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 	if (!lib_init) {
 		lib_cfg.head = NULL;
 		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
-			if (lib_cfg.sockfd < 0)
-				goto out_error;
+		if (lib_cfg.sockfd < 0)
+			goto out_error;
 		lib_init = 1;
 	}
 
