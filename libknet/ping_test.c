@@ -329,7 +329,7 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 		return;
 	}
 
-	if ((rlen < 0) && ((errno = EAGAIN) || (errno = EWOULDBLOCK))) {
+	if ((rlen < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
 		printf("NO MORE DATA TO READ: %s\n", strerror(errno));
 		return;
 	}
