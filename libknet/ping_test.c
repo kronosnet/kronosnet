@@ -501,9 +501,9 @@ int main(int argc, char *argv[])
 		memset(&out_big_buff, 0, sizeof(out_big_buff));
 		memset(&hello_world, 0, sizeof(hello_world));
 
-		snprintf(hello_world+2, sizeof(hello_world), "Hello world!");
-		snprintf(out_big_buff+2, sizeof(out_big_buff), "%zu", sizeof(out_big_buff));
-		snprintf(out_big_frag+2, sizeof(out_big_frag), "%zu", sizeof(out_big_frag));
+		snprintf(hello_world+2, sizeof(hello_world)-2, "Hello world!");
+		snprintf(out_big_buff+2, sizeof(out_big_buff)-2, "%zu", sizeof(out_big_buff));
+		snprintf(out_big_frag+2, sizeof(out_big_frag)-2, "%zu", sizeof(out_big_frag));
 
 		switch(big) {
 			case 0: /* hello world */
