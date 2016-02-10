@@ -530,12 +530,18 @@ int nsscrypto_authenticate_and_decrypt (
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
 		unsigned char tmp_hash[hash_len[instance->crypto_hash_type]];
+		ssize_t temp_buf_len = buf_in_len - hash_len[instance->crypto_hash_type];
 
-		if (calculate_nss_hash(knet_h, buf_in, buf_in_len - hash_len[instance->crypto_hash_type], tmp_hash) < 0) {
+		if ((temp_buf_len < 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Incorrect packet size.");
 			return -1;
 		}
 
-		if (memcmp(tmp_hash, buf_in + (buf_in_len - hash_len[instance->crypto_hash_type]), hash_len[instance->crypto_hash_type]) != 0) {
+		if (calculate_nss_hash(knet_h, buf_in, temp_buf_len, tmp_hash) < 0) {
+			return -1;
+		}
+
+		if (memcmp(tmp_hash, buf_in + temp_buf_len, hash_len[instance->crypto_hash_type]) != 0) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
 			return -1;
 		}

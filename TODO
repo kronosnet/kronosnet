@@ -4,9 +4,6 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
- - (issue) fix core dump on crypto vs non crypto:
-           [root@kronosnet-node2-br0 build]# make all && ./libknet/ping_test 192.168.9.2:50000 192.168.9.1:50000 debug
-           [root@kronosnet-node1-br0 build]# make all && ./libknet/ping_test 192.168.9.1:50000 192.168.9.2:50000  crypto:nss,aes256,sha512 debug -> Segmentation fault (core dumped)
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
  - (issue) need bind to interface for dynamic ip local interfaces vs src ip
            address or find a way to autodetect the new ip on that interface
