@@ -98,6 +98,8 @@ typedef uint16_t seq_num_t;
 
 struct knet_header_payload_data {
 	seq_num_t	khp_data_seq_num;	/* pckt seq number used to deduplicate pkcts */
+	uint8_t		khp_data_pad1;		/* make sure to have space in the header to grow features */
+	uint8_t		khp_data_pad2;
 	uint8_t		khp_data_bcast;		/* data destination bcast/ucast */
 	uint8_t		khp_data_frag_num;	/* number of fragments of this pckt. 1 is not fragmented */
 	uint8_t		khp_data_frag_seq;	/* as above, indicates the frag sequence number */
@@ -153,6 +155,8 @@ struct knet_header {
 	uint8_t				kh_version; /* pckt format/version */
 	uint8_t				kh_type;    /* from above defines. Tells what kind of pckt it is */
 	uint16_t			kh_node;    /* host id of the source host for this pckt */
+	uint8_t				kh_pad1;    /* make sure to have space in the header to grow features */
+	uint8_t				kh_pad2;
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 
