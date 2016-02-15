@@ -36,21 +36,21 @@ struct knet_link {
 	struct sockaddr_storage src_addr;
 	struct sockaddr_storage dst_addr;
 	/* configurable */
-	unsigned int dynamic; /* see KNET_LINK_DYN_ define above */
-	uint8_t  priority; /* higher priority == preferred for A/P */
-	unsigned long long ping_interval; /* interval */
-	unsigned long long pong_timeout; /* timeout */
-	unsigned int latency_fix; /* precision */
-	uint8_t pong_count; /* how many ping/pong to send/receive before link is up */
+	unsigned int dynamic;			/* see KNET_LINK_DYN_ define above */
+	uint8_t  priority;			/* higher priority == preferred for A/P */
+	unsigned long long ping_interval;	/* interval */
+	unsigned long long pong_timeout;	/* timeout */
+	unsigned int latency_fix;		/* precision */
+	uint8_t pong_count;			/* how many ping/pong to send/receive before link is up */
 	/* status */
 	struct knet_link_status status;
 	/* internals */
 	uint8_t link_id;
 	int listener_sock;
-	unsigned int configured:1; /* set to 1 if src/dst have been configured */
-	unsigned int remoteconnected:1; /* link is enabled for data (peer view) */
-	unsigned int donnotremoteupdate:1;    /* define source of the update */
-	unsigned int host_info_up_sent:1; /* 0 if we need to notify remote that link is up */
+	unsigned int configured:1;		/* set to 1 if src/dst have been configured */
+	unsigned int remoteconnected:1;		/* link is enabled for data (peer view) */
+	unsigned int donnotremoteupdate:1;	/* define source of the update */
+	unsigned int host_info_up_sent:1;	/* 0 if we need to notify remote that link is up */
 	unsigned int latency_exp;
 	uint8_t received_pong;
 	struct timespec ping_last;
@@ -95,7 +95,7 @@ struct knet_host {
 	char ucast_circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
-	pthread_mutex_t active_links_mutex;
+	pthread_mutex_t active_links_mutex;	/* mutex to update active links for a given host */
 	uint8_t active_link_entries;
 	uint8_t active_links[KNET_MAX_LINK];
 	struct knet_host *next;
@@ -144,15 +144,15 @@ struct knet_handle {
 	pthread_t dst_link_handler_thread;
 	pthread_t pmtud_link_handler_thread;
 	int lock_init_done;
-	pthread_rwlock_t list_rwlock;
-	pthread_rwlock_t listener_rwlock;
-	pthread_rwlock_t host_rwlock;
-	pthread_mutex_t host_mutex;
-	pthread_cond_t host_cond;
-	pthread_mutex_t pmtud_mutex;
-	pthread_cond_t pmtud_cond;
-	pthread_mutex_t pmtud_timer_mutex;
-	pthread_cond_t pmtud_timer_cond;
+	pthread_rwlock_t list_rwlock;		/* global config lock */
+	pthread_rwlock_t listener_rwlock;	/* listener add/rm lock, can switch to mutex? */
+	pthread_rwlock_t host_rwlock;		/* send_host_info lock, can switch to mutex? */
+	pthread_mutex_t host_mutex;		/* host mutex for cond wait on pckt send, switch to mutex/sync_send ? */
+	pthread_cond_t host_cond;		/* conditional for above */
+	pthread_mutex_t pmtud_mutex;		/* pmtud mutex to handle conditional send/recv + timeout */
+	pthread_cond_t pmtud_cond;		/* conditional for above */
+	pthread_mutex_t pmtud_timer_mutex;	/* pmtud interval mutex to detect changes in pmtud discovery timer */
+	pthread_cond_t pmtud_timer_cond;	/* conditional for above */
 	pthread_mutex_t tx_mutex;
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
