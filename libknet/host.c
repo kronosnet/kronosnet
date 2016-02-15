@@ -34,7 +34,7 @@ static void _host_list_update(knet_handle_t knet_h)
 int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 {
 	int savederrno = 0, err = 0;
-	struct knet_host *host;
+	struct knet_host *host = NULL;
 	uint8_t link_idx;
 
 	if (!knet_h) {
@@ -94,6 +94,7 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to initialize active links mutex: %s",
 			strerror(savederrno));
+		err = -1;
 		goto exit_unlock;
 	}
 
@@ -117,6 +118,9 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	if (err < 0) {
+		free(host);
+	}
 	errno = savederrno;
 	return err;
 }
@@ -140,7 +144,9 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 		return -1;
 	}
 
-	if (!knet_h->host_index[host_id]) {
+	host = knet_h->host_index[host_id];
+
+	if (!host) {
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_HOST, "Unable to remove host %u: %s",
@@ -153,7 +159,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 	 */
 	
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-		if (knet_h->host_index[host_id]->link[link_idx].status.enabled) {
+		if (host->link[link_idx].status.enabled) {
 			err = -1;
 			savederrno = EBUSY;
 			log_err(knet_h, KNET_SUB_HOST, "Unable to remove host %u, links are still configured: %s",
@@ -162,7 +168,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 		}
 	}
 
-	pthread_mutex_destroy(&((struct knet_host *)knet_h->host_index[host_id])->active_links_mutex);
+	pthread_mutex_destroy(&host->active_links_mutex);
 
 	removed = NULL;
 
