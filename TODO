@@ -21,6 +21,8 @@ link/host level:
               easier to sanitize the value after the fact since the MTU loop is racy
               in so many different ways, link down, mtu change, other host dies, network pckt loss,
               etc. and we can potentially pick up a good value in the next round.)
+             reproducer with ping_test between two nodes by stopping one node right after
+             status change notifications
            2 what do if PMTUd finds an MTU < MIN_IP_V ? disable the link?
              (test with iptables -A INPUT -j DROP -d 192.168.9.0/24 -m length --length 128:65535)
              # we should respect RFE and only allow IPV* MIN MTU.
