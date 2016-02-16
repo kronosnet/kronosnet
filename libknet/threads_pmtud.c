@@ -293,7 +293,7 @@ timer_restart:
 		if (knet_h->pmtud_fini_requested)
 			continue;
 
-		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get read lock");
 			continue;
 		}
@@ -346,7 +346,7 @@ timer_restart:
 		}
 
 interrupt:
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
+		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 
 	return NULL;

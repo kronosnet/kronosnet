@@ -28,7 +28,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 		return;
 	}
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to get read lock");
 		return;
 	}
@@ -42,7 +42,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	_host_dstcache_update_sync(knet_h, host);
 
 out_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
 	return;
 }

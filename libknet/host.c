@@ -42,7 +42,7 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -117,7 +117,7 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 	_host_list_update(knet_h);
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	if (err < 0) {
 		free(host);
 	}
@@ -136,7 +136,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -194,7 +194,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 	_host_list_update(knet_h);
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -208,7 +208,7 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -227,7 +227,7 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 	snprintf(knet_h->host_index[host_id]->name, KNET_MAX_HOST_LEN - 1, "%s", name);
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -242,7 +242,7 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -267,7 +267,7 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
 	err = 1;
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -283,7 +283,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -316,7 +316,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 	}
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -331,7 +331,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -351,7 +351,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 	*host_ids_entries = knet_h->host_ids_entries;
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -367,7 +367,7 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -395,7 +395,7 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
 	}
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -410,7 +410,7 @@ int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -429,7 +429,7 @@ int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
 	*policy = knet_h->host_index[host_id]->link_handler_policy;
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -450,7 +450,7 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -470,7 +470,7 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
 	memmove(status, &host->status, sizeof(struct knet_host_status));
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
 }
@@ -491,7 +491,7 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -507,7 +507,7 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 		log_debug(knet_h, KNET_SUB_HOST, "host_status_change_notify_fn disabled");
 	}
 
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
 	return 0;
 }

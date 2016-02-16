@@ -100,7 +100,7 @@ void *_handle_heartbt_thread(void *data)
 	while (!knet_h->fini_in_progress) {
 		usleep(KNET_PING_TIMERES);
 
-		if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_HB_T, "Unable to get read lock");
 			continue;
 		}
@@ -115,7 +115,7 @@ void *_handle_heartbt_thread(void *data)
 			}
 		}
 
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
+		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 
 	return NULL;

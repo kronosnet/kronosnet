@@ -431,7 +431,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->list_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_SEND_T, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -461,7 +461,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 	pthread_mutex_unlock(&knet_h->tx_mutex);
 
 out:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
 	errno = savederrno;
 	return err;
@@ -474,7 +474,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	int msg_recv, i;
 	int savederrno, docallback = 0;
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
 		return;
 	}
@@ -517,12 +517,12 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	}
 
 out_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
 	if (inlen < 0) {
 		struct epoll_event ev;
 
-		if (pthread_rwlock_wrlock(&knet_h->list_rwlock) != 0) {
+		if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
 			goto callback;
 		}
@@ -537,7 +537,7 @@ out_unlock:
 			knet_h->sockfd[channel].has_error = 1;
 		}
 
-		pthread_rwlock_unlock(&knet_h->list_rwlock);
+		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 
 callback:
@@ -1128,7 +1128,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 {
 	int i, msg_recv;
 
-	if (pthread_rwlock_rdlock(&knet_h->list_rwlock) != 0) {
+	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
 		return;
 	}
@@ -1144,7 +1144,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	}
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->list_rwlock);
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 }
 
 void *_handle_recv_from_links_thread(void *data)

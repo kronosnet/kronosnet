@@ -144,7 +144,7 @@ struct knet_handle {
 	pthread_t dst_link_handler_thread;
 	pthread_t pmtud_link_handler_thread;
 	int lock_init_done;
-	pthread_rwlock_t list_rwlock;		/* global config lock */
+	pthread_rwlock_t global_rwlock;		/* global config lock */
 	pthread_rwlock_t listener_rwlock;	/* listener add/rm lock, can switch to mutex? */
 	pthread_rwlock_t host_rwlock;		/* send_host_info lock, can switch to mutex? */
 	pthread_mutex_t host_mutex;		/* host mutex for cond wait on pckt send, switch to mutex/sync_send ? */
