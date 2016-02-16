@@ -975,6 +975,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
 			}
 		} else { /* HOSTINFO */
+			if (!_seq_num_lookup(src_host, bcast, inbuf->khp_data_seq_num, 0)) {
+				return;
+			}
 			_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
 			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
