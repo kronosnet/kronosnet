@@ -70,6 +70,8 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 				  dst_link->listener_sock, errno, strerror(errno),
 				  dst_link->status.src_ipaddr, dst_link->status.src_port,
 				  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
+		} else {
+			dst_link->last_ping_size = outlen;
 		}
 	}
 

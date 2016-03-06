@@ -681,6 +681,8 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 			host_has_remote = 1;
 		if (host->link[link_idx].status.connected != 1) /* link is not enabled */
 			continue;
+		if (host->link[link_idx].has_valid_mtu != 1) /* link does not have valid MTU */
+			continue;
 
 		if ((!host->link[link_idx].host_info_up_sent) &&
 		    (!host->link[link_idx].donnotremoteupdate)) {

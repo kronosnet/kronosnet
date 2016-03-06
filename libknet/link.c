@@ -33,6 +33,13 @@ int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 	link->status.enabled = enabled;
 	link->status.connected = connected;
 
+	if (link->status.connected) {
+		if (!pthread_mutex_lock(&knet_h->pmtud_timer_mutex)) {
+			pthread_cond_signal(&knet_h->pmtud_timer_cond);
+			pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
+		}
+	}
+
 	_host_dstcache_update_sync(knet_h, knet_h->host_index[host_id]);
 
 	if ((link->status.dynconnected) &&
@@ -146,6 +153,7 @@ exit_unlock:
 	if (!err) {
 		link->configured = 1;
 		link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
+		link->has_valid_mtu = 0;
 	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
