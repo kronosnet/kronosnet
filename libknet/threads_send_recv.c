@@ -472,7 +472,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	ssize_t inlen = 0;
 	struct iovec iov_in;
 	int msg_recv, i;
-	int savederrno, docallback = 0;
+	int savederrno = 0, docallback = 0;
 
 	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
