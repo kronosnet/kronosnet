@@ -26,7 +26,8 @@ depcomp
 install-sh
 libtoolize
 ltmain.sh
-m4
+m4/lt*
+m4/libtool.m4
 missing
 libtool
 autoscan.log

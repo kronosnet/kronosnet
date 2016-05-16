@@ -56,20 +56,6 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
-## local helper functions
-# this function checks if CC support options passed as
-# args. Global CFLAGS are ignored during this test.
-cc_supports_flag() {
-	saveCPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="$@"
-	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
-			  [RC=0; AC_MSG_RESULT([yes])],
-			  [RC=1; AC_MSG_RESULT([no])])
-	CPPFLAGS="$saveCPPFLAGS"
-	return $RC
-}
-
 # helper macro to check libs without adding them to LIBS
 check_lib_no_libs() {
 	lib_no_libs_arg1=$1
@@ -287,9 +273,6 @@ WARNLIST="
 	cast-align
 	bad-function-cast
 	missing-format-attribute
-	format=2
-	format-security
-	format-nonliteral
 	no-long-long
 	unsigned-char
 	gnu89-inline
@@ -309,10 +292,24 @@ WARNLIST="
 	unused-variable
 	"
 
+# These need a -Wformat=2 prepended or the check will fail with gcc
+FORMAT_WARNLIST="
+        format-security
+        format-nonliteral
+	"
+
 for j in $WARNLIST; do
-	if cc_supports_flag -W$j; then
-		EXTRA_WARNINGS="$EXTRA_WARNINGS -W$j";
-	fi
+	AX_CHECK_COMPILE_FLAG("-W$j",
+			      [RC=0; EXTRA_WARNINGS="$EXTRA_WARNINGS -W$j"],
+			      [RC=1],
+			      [-Werror])
+done
+
+for j in $FORMAT_WARNLIST; do
+	AX_CHECK_COMPILE_FLAG(-W$j,
+			      [RC=0; EXTRA_WARNINGS="$EXTRA_WARNINGS -Wformat=2 -W$j"],
+			      [RC=1],
+			      [-Wformat=2 -Werror])
 done
 
 CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
