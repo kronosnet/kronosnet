@@ -274,7 +274,7 @@ static int _init_buffers(knet_handle_t knet_h)
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE + KNET_DATABUFSIZE_CRYPT_PAD;
 		knet_h->send_to_links_buf_crypt[i] = malloc(bufsize);
-		if (!knet_h->send_to_links_buf_crypt) {
+		if (!knet_h->send_to_links_buf_crypt[i]) {
 			savederrno = errno;
 			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for crypto datafd to link buffer: %s",
 				strerror(savederrno));
