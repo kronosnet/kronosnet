@@ -14,7 +14,8 @@ link/host level:
  - (issue) standardize exit labels (ex out_unlock / exit_unlock) and variable/function
            names.
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
- - (rfe)   add tcp transport layer?
+ - (issue) make generic socket common code
+ - (rfe)   add sctp transport layer?
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
