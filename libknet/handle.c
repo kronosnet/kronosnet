@@ -131,6 +131,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 static int _init_socketpair(knet_handle_t knet_h, int (*sock)[2])
 {
 	int savederrno = 0;
+	int value;
 
 	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, *sock) != 0) {
 		savederrno = errno;
@@ -163,6 +164,14 @@ static int _init_socketpair(knet_handle_t knet_h, int (*sock)[2])
 	if (_fdset_nonblock(*sock[1])) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock[1]: %s", 
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	value = KNET_RING_RCVBUFF;
+	if (setsockopt(*sock[0], SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set receive buffer on sock[0]: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}

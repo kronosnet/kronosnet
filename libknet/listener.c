@@ -21,8 +21,6 @@
 #include "logging.h"
 #include "listener.h"
 
-#define KNET_RING_RCVBUFF 8388608
-
 int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 {
 	int value, count = 0;
