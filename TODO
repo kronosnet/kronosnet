@@ -15,7 +15,7 @@ link/host level:
            names.
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
  - (issue) make generic socket common code
- - (rfe)   add sctp transport layer?
+ - (rfe)   add sctp transport layer? needs proper plugable network transport first
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
