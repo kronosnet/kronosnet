@@ -180,10 +180,18 @@ restart:
 		}
 
 		/*
-		 * PTMUd discovery timeout is almost an arbitrary 8x current detected
-		 * link latency
+		 * Set an artibrary 2 seconds timeout to receive a PMTUd reply
+		 * perhaps this should be configurable but:
+		 * 1) too short timeout can cause instability since MTU value
+		 *    influeces link status
+		 * 2) too high timeout slows down the MTU detection process for
+		 *    small MTU
+		 *
+		 * Another option is to make the PMTUd process less influent
+		 * in link status detection but that could cause data packet loss
+		 * without link up/down changes
 		 */ 
-		ts.tv_nsec += dst_link->status.latency * 8 * 1000;
+		ts.tv_sec += 2;
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
 		if (knet_h->fini_in_progress) {
