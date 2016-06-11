@@ -277,9 +277,9 @@ static void sigint_handler(int signum)
 	exit(EXIT_SUCCESS);
 }
 
-static void pmtud_notify(void *private_data, unsigned int link_mtu, unsigned int data_mtu)
+static void pmtud_notify(void *private_data, unsigned int data_mtu)
 {
-	printf("New mtu change notification: data: %p link %u data %u\n", private_data, link_mtu, data_mtu);
+	printf("New mtu change notification: private_data: %p PMTUd data %u\n", private_data, data_mtu);
 	return;
 }
 
@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 	size_t host_ids_entries = 0;
 	int has_crypto = 0;
 	int logfd;
-	unsigned int link_mtu = 0, data_mtu = 0;
+	unsigned int data_mtu = 0;
 	int big = 0;
 	int j;
 	int8_t chan;
@@ -418,11 +418,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (knet_handle_pmtud_get(knet_h, &link_mtu, &data_mtu)) {
+	if (knet_handle_pmtud_get(knet_h, &data_mtu)) {
 		printf("Unable to get PMTUd current values\n");
 		exit(EXIT_FAILURE);
 	} else {
-		printf("Current PMTUd: link %u data %u\n", link_mtu, data_mtu);
+		printf("Current data PMTUd %u\n", data_mtu);
 	}
 
 	if (knet_handle_enable_pmtud_notify(knet_h, NULL, pmtud_notify)) {

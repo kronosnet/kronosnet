@@ -129,8 +129,8 @@ struct knet_handle {
 	int pmtud_in_progress;
 	int pmtud_fini_requested;
 	unsigned int pmtud_interval;
-	unsigned int link_mtu;
-	unsigned int data_mtu;
+	unsigned int data_mtu;	/* contains the max data size that we can send onwire
+				 * without frags */
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
@@ -183,7 +183,6 @@ struct knet_handle {
 	void *pmtud_notify_fn_private_data;
 	void (*pmtud_notify_fn) (
 		void *private_data,
-		unsigned int link_mtu,
 		unsigned int data_mtu);
 	void *host_status_change_notify_fn_private_data;
 	void (*host_status_change_notify_fn) (

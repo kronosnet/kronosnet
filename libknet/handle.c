@@ -1180,7 +1180,6 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 				    void *pmtud_notify_fn_private_data,
 				    void (*pmtud_notify_fn) (
 						void *private_data,
-						unsigned int link_mtu,
 						unsigned int data_mtu))
 {
 	int savederrno = 0;
@@ -1212,7 +1211,6 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 }
 
 int knet_handle_pmtud_get(knet_handle_t knet_h,
-			  unsigned int *link_mtu,
 			  unsigned int *data_mtu)
 {
 	int savederrno = 0;
@@ -1230,7 +1228,6 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 		return -1;
 	}
 
-	*link_mtu = knet_h->link_mtu;
 	*data_mtu = knet_h->data_mtu;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

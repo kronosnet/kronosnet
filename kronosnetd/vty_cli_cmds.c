@@ -1216,7 +1216,7 @@ static int knet_cmd_ip(struct knet_vty *vty)
 }
 
 static void knet_cmd_auto_mtu_notify(void *private_data,
-				     unsigned int link_mtu, unsigned int data_mtu)
+				     unsigned int data_mtu)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)private_data;
 

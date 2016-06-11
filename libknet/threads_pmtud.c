@@ -229,9 +229,9 @@ restart:
 
 			if (found_mtu) {
 				/*
-				 * account for IP overhead in PMTU calculation
+				 * account for IP overhead, knet headers and crypto in PMTU calculation
 				 */
-				dst_link->status.mtu = onwire_len - overhead_len;
+				dst_link->status.mtu = onwire_len - overhead_len - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 				pthread_mutex_unlock(&knet_h->pmtud_mutex);
 				return 0;
 			}
@@ -258,7 +258,7 @@ void *_handle_pmtud_link_thread(void *data)
 	int ret, have_timer;
 	unsigned int old_interval;
 
-	knet_h->link_mtu = KNET_PMTUD_MIN_MTU_V4;
+	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 
 	/* preparing pmtu buffer */
 	knet_h->pmtudbuf->kh_version = KNET_HEADER_VERSION;
@@ -307,7 +307,7 @@ timer_restart:
 			sleep(knet_h->pmtud_interval);
 		}
 
-		min_mtu = KNET_PMTUD_SIZE_V4;
+		min_mtu = KNET_PMTUD_SIZE_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 		have_mtu = 0;
 
 		if (knet_h->pmtud_fini_requested)
@@ -340,20 +340,20 @@ timer_restart:
 					dst_link->has_valid_mtu = 1;
 					switch (dst_link->dst_addr.ss_family) {
 						case AF_INET6:
-							if (((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6) < KNET_PMTUD_MIN_MTU_V6) ||
-							    ((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6) > KNET_PMTUD_SIZE_V6)) {
+							if (((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) < KNET_PMTUD_MIN_MTU_V6) ||
+							    ((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) > KNET_PMTUD_SIZE_V6)) {
 								log_debug(knet_h, KNET_SUB_PMTUD_T,
-									  "PMTUD detected an IPv6 MTU out of bound value (%u) for host: %u link: %u.",
-									  dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6, dst_host->host_id, link_idx);
+									  "PMTUD detected an IPv6 MTU out of bound value (%lu) for host: %u link: %u.",
+									  dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size, dst_host->host_id, link_idx);
 								dst_link->has_valid_mtu = 0;
 							}
 							break;
 						case AF_INET:
-							if (((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4) < KNET_PMTUD_MIN_MTU_V4) ||
-							    ((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4) > KNET_PMTUD_SIZE_V4)) {
+							if (((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) < KNET_PMTUD_MIN_MTU_V4) ||
+							    ((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) > KNET_PMTUD_SIZE_V4)) {
 								log_debug(knet_h, KNET_SUB_PMTUD_T,
-									  "PMTUD detected an IPv4 MTU out of bound value (%u) for host: %u link: %u.",
-									  dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4, dst_host->host_id, link_idx);
+									  "PMTUD detected an IPv4 MTU out of bound value (%lu) for host: %u link: %u.",
+									  dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size, dst_host->host_id, link_idx);
 								dst_link->has_valid_mtu = 0;
 							}
 							break;
@@ -363,11 +363,8 @@ timer_restart:
 							log_info(knet_h, KNET_SUB_PMTUD_T, "PMTUD link change for host: %u link: %u from %u to %u",
 								 dst_host->host_id, link_idx, saved_pmtud, dst_link->status.mtu);
 						}
-						log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current link mtu: %u iface mtu: %u",
-							  dst_host->host_id, link_idx, dst_link->status.mtu,
-							  (dst_link->dst_addr.ss_family == AF_INET) ?
-								dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 :
-								dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6);
+						log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current link mtu: %u",
+							  dst_host->host_id, link_idx, dst_link->status.mtu);
 						if (dst_link->status.mtu < min_mtu) {
 							min_mtu = dst_link->status.mtu;
 						}
@@ -381,15 +378,13 @@ timer_restart:
 		}
 
 		if (have_mtu) {
-			if (knet_h->link_mtu != min_mtu) {
-				log_info(knet_h, KNET_SUB_PMTUD_T, "Global link MTU changed from: %u to %u", knet_h->link_mtu, min_mtu);
-				knet_h->link_mtu = min_mtu;
-				knet_h->data_mtu = min_mtu - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+			if (knet_h->data_mtu != min_mtu) {
+				knet_h->data_mtu = min_mtu;
 				log_info(knet_h, KNET_SUB_PMTUD_T, "Global data MTU changed to: %u", knet_h->data_mtu);
 
 				if (knet_h->pmtud_notify_fn) {
 					knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,
-								knet_h->link_mtu, knet_h->data_mtu);
+								knet_h->data_mtu);
 				}
 			}
 		} else {

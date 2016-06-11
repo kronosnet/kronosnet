@@ -481,11 +481,11 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
  *            is a callback function that is invoked every time
  *            a path MTU size change is detected.
  *            The function allows libknet to notify the user
- *            of both link MTU (for debugging purposes) and data MTU
- *            (that's the max value that can be send onwire without
- *            fragmentation). The data MTU will always be lower than
- *            link MTU because it accounts for knet packet header
- *            and (if configured) crypto overhead,
+ *            of data MTU, that's the max value that can be send
+ *            onwire without fragmentation. The data MTU will always
+ *            be lower than real link MTU because it accounts for
+ *            protocol overhead, knet packet header and (if configured)
+ *            crypto overhead,
  *            This function MUST NEVER block or add substantial delays.
  *
  * knet_handle_enable_pmtud_notify returns:
@@ -498,7 +498,6 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 			      void *pmtud_notify_fn_private_data,
 			      void (*pmtud_notify_fn) (
 					void *private_data,
-					unsigned int link_mtu,
 					unsigned int data_mtu));
 
 /*
@@ -506,7 +505,6 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
  *
  * knet_h   - pointer to knet_handle_t
  *
- * link_mtu - pointer where to store link_mtu
  * data_mtu - pointer where to store data_mtu (see above)
  *
  * knet_handle_pmtud_get returns:
@@ -516,7 +514,6 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
  */
 
 int knet_handle_pmtud_get(knet_handle_t knet_h,
-				unsigned int *link_mtu,
 				unsigned int *data_mtu);
 
 /*
