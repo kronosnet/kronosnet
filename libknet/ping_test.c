@@ -217,9 +217,10 @@ static int print_link(knet_handle_t khandle, uint16_t host_id)
 
 		if (status.enabled != 1) continue;
 
-		printf("host %u, link %u latency is %llu us, status: %s\n",
+		printf("host %u, link %u latency is %llu us, status: %s mtu: %u overhead: %u\n",
 			host_id, i, status.latency,
-			(status.connected == 0) ? "disconnected" : "connected");
+			(status.connected == 0) ? "disconnected" : "connected",
+			status.mtu, status.proto_overhead);
 	}
 
 	return 0;

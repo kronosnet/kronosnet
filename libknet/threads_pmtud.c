@@ -231,7 +231,7 @@ restart:
 				/*
 				 * account for IP overhead, knet headers and crypto in PMTU calculation
 				 */
-				dst_link->status.mtu = onwire_len - overhead_len - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+				dst_link->status.mtu = onwire_len - dst_link->status.proto_overhead;
 				pthread_mutex_unlock(&knet_h->pmtud_mutex);
 				return 0;
 			}
@@ -321,6 +321,16 @@ timer_restart:
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				dst_link = &dst_host->link[link_idx];
+
+				switch (dst_link->dst_addr.ss_family) {
+					case AF_INET6:
+						dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
+						break;
+					case AF_INET:
+						dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
+						break;
+				}
+
 				if ((dst_link->status.enabled != 1) ||
 				    (dst_link->status.connected != 1) ||
 				    (!dst_link->last_ping_size) ||
@@ -340,20 +350,20 @@ timer_restart:
 					dst_link->has_valid_mtu = 1;
 					switch (dst_link->dst_addr.ss_family) {
 						case AF_INET6:
-							if (((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) < KNET_PMTUD_MIN_MTU_V6) ||
-							    ((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) > KNET_PMTUD_SIZE_V6)) {
+							if (((dst_link->status.mtu + dst_link->status.proto_overhead) < KNET_PMTUD_MIN_MTU_V6) ||
+							    ((dst_link->status.mtu + dst_link->status.proto_overhead) > KNET_PMTUD_SIZE_V6)) {
 								log_debug(knet_h, KNET_SUB_PMTUD_T,
-									  "PMTUD detected an IPv6 MTU out of bound value (%lu) for host: %u link: %u.",
-									  dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size, dst_host->host_id, link_idx);
+									  "PMTUD detected an IPv6 MTU out of bound value (%u) for host: %u link: %u.",
+									  dst_link->status.mtu + dst_link->status.proto_overhead, dst_host->host_id, link_idx);
 								dst_link->has_valid_mtu = 0;
 							}
 							break;
 						case AF_INET:
-							if (((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) < KNET_PMTUD_MIN_MTU_V4) ||
-							    ((dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size) > KNET_PMTUD_SIZE_V4)) {
+							if (((dst_link->status.mtu + dst_link->status.proto_overhead) < KNET_PMTUD_MIN_MTU_V4) ||
+							    ((dst_link->status.mtu + dst_link->status.proto_overhead) > KNET_PMTUD_SIZE_V4)) {
 								log_debug(knet_h, KNET_SUB_PMTUD_T,
-									  "PMTUD detected an IPv4 MTU out of bound value (%lu) for host: %u link: %u.",
-									  dst_link->status.mtu + KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size, dst_host->host_id, link_idx);
+									  "PMTUD detected an IPv4 MTU out of bound value (%u) for host: %u link: %u.",
+									  dst_link->status.mtu + dst_link->status.proto_overhead, dst_host->host_id, link_idx);
 								dst_link->has_valid_mtu = 0;
 							}
 							break;

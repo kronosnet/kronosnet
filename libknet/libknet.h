@@ -1150,6 +1150,14 @@ struct knet_link_status {
 	unsigned long long latency;	/* average latency computed by fix/exp */
 	struct timespec pong_last;
 	unsigned int mtu;		/* current detected MTU on this link */
+	unsigned int proto_overhead;    /* contains the size of the IP protocol, knet headers and
+					 * crypto headers (if configured). This value is filled in
+					 * ONLY after the first PMTUd run on that given link,
+					 * and can change if link configuration or crypto configuration
+					 * changes at runtime.
+					 * WARNING: in general mtu + proto_overhead might or might
+					 * not match the output of ifconfig mtu due to crypto
+					 * requirements to pad packets to some specific boundaries. */
 	/* add link statistics */
 };
 
