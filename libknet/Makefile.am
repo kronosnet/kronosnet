@@ -11,7 +11,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-LIBS			= -lpthread -lm
+SUBDIRS			= . tests
 
 libversion		= 0:0:0
 
@@ -57,25 +57,4 @@ libknet_la_SOURCES	= $(sources)
 
 libknet_la_LIBS		= -version-info $(libversion)
 libknet_la_CFLAGS	= $(nss_CFLAGS)
-libknet_la_LIBADD	= $(nss_LIBS) -lrt
-
-check_PROGRAMS		= timediff_test
-
-noinst_PROGRAMS		= \
-			  pckt_test \
-			  ping_test \
-			  khandle_test \
-			  $(check_PROGRAMS)
-
-TESTS			= $(check_PROGRAMS)
-
-ping_test_SOURCES	= ping_test.c
-ping_test_LDADD		= libknet.la
-
-khandle_test_SOURCES	= khandle_test.c
-khandle_test_LDADD	= libknet.la
-
-pckt_test_SOURCES	= pckt_test.c
-pckt_test_LDADD		= libknet.la
-
-timediff_test_SOURCES	= timediff_test.c
+libknet_la_LIBADD	= $(nss_LIBS) -lrt -lpthread -lm
