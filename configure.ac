@@ -329,7 +329,7 @@ AC_CONFIG_FILES([
 		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
 		libknet/libknet.pc
-		libknet/tests/Makefile
+		tests/Makefile
 		docs/Makefile
 		])
 

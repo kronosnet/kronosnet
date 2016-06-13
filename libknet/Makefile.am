@@ -11,8 +11,6 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-SUBDIRS			= . tests
-
 libversion		= 0:0:0
 
 sources			= \
