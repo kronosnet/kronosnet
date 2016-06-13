@@ -518,17 +518,25 @@ static void _stop_threads(knet_handle_t knet_h)
 	pthread_cond_signal(&knet_h->host_cond);
 	pthread_mutex_unlock(&knet_h->host_mutex);
 
-	pthread_cancel(knet_h->heartbt_thread);
-	pthread_join(knet_h->heartbt_thread, &retval);
+	if (knet_h->heartbt_thread) {
+		pthread_cancel(knet_h->heartbt_thread);
+		pthread_join(knet_h->heartbt_thread, &retval);
+	}
 
-	pthread_cancel(knet_h->send_to_links_thread);
-	pthread_join(knet_h->send_to_links_thread, &retval);
+	if (knet_h->send_to_links_thread) {
+		pthread_cancel(knet_h->send_to_links_thread);
+		pthread_join(knet_h->send_to_links_thread, &retval);
+	}
 
-	pthread_cancel(knet_h->recv_from_links_thread);
-	pthread_join(knet_h->recv_from_links_thread, &retval);
+	if (knet_h->recv_from_links_thread) {
+		pthread_cancel(knet_h->recv_from_links_thread);
+		pthread_join(knet_h->recv_from_links_thread, &retval);
+	}
 
-	pthread_cancel(knet_h->dst_link_handler_thread);
-	pthread_join(knet_h->dst_link_handler_thread, &retval);
+	if (knet_h->dst_link_handler_thread) {
+		pthread_cancel(knet_h->dst_link_handler_thread);
+		pthread_join(knet_h->dst_link_handler_thread, &retval);
+	}
 
 	pthread_mutex_lock(&knet_h->pmtud_mutex);
 	pthread_cond_signal(&knet_h->pmtud_cond);
@@ -538,8 +546,10 @@ static void _stop_threads(knet_handle_t knet_h)
 	pthread_cond_signal(&knet_h->pmtud_timer_cond);
 	pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
 
-	pthread_cancel(knet_h->pmtud_link_handler_thread);
-	pthread_join(knet_h->pmtud_link_handler_thread, &retval);
+	if (knet_h->pmtud_link_handler_thread) {
+		pthread_cancel(knet_h->pmtud_link_handler_thread);
+		pthread_join(knet_h->pmtud_link_handler_thread, &retval);
+	}
 }
 
 knet_handle_t knet_handle_new(uint16_t host_id,

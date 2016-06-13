@@ -9,6 +9,7 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,27 +18,39 @@
 
 #include "libknet.h"
 
+#include "test-common.h"
+
 int main(int argc, char *argv[])
 {
 	int i;
 	knet_handle_t knet_h;
 
 	knet_h = knet_handle_new(1, 0, 0);
-
-	for (i = 0; i < KNET_MAX_HOST; i++) {
-		printf("add host: %d\n", i);
-		knet_host_add(knet_h, i);
+	if (!knet_h) {
+		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
+		exit(FAIL);
 	}
 
-	for (i = 0; i < KNET_MAX_HOST; i++) {
+	for (i = 0; i < 1024; i++) {
+		printf("add host: %d\n", i);
+		if (knet_host_add(knet_h, i) < 0) {
+			printf("Unable to add hosts! err: %s\n", strerror(errno));
+			exit(FAIL);
+		}
+	}
+
+	for (i = 0; i < 1024; i++) {
 		printf("del host: %d\n", i);
-		knet_host_remove(knet_h, i);
+		if (knet_host_remove(knet_h, i) < 0) {
+			printf("Unable to del hosts! err: %s\n", strerror(errno));
+			exit(FAIL);
+		}
 	}
 
 	if (knet_handle_free(knet_h) != 0) {
 		printf("Unable to free knet_handle\n");
-		exit(EXIT_FAILURE);
+		exit(FAIL);
 	}
 
-	return 0;
+	return PASS;
 }
