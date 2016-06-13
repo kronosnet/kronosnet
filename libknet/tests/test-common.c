@@ -9,25 +9,12 @@
 #include "config.h"
 
 #include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <linux/if_tun.h>
-#include <net/ethernet.h>
-#include <netinet/ether.h>
-#include <arpa/inet.h>
-#include <pthread.h>
-#include <limits.h>
 #include <stdio.h>
-#include <net/if.h>
-#include <ifaddrs.h>
-#include <stdint.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "test-common.h"
 
@@ -141,4 +128,14 @@ out_clean0:
 	close(fd[0]);
 
 	return err;
+}
+
+int need_root(void)
+{
+	if (geteuid() != 0) {
+		printf("This test requires root privileges\n");
+		exit(SKIP);
+	}
+
+	return PASS;
 }

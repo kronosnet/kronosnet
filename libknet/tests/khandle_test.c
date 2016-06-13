@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
 	int i;
 	knet_handle_t knet_h;
 
+	need_root();
+
 	knet_h = knet_handle_new(1, 0, 0);
 	if (!knet_h) {
 		printf("Unable to init knet_handle! err: %s\n", strerror(errno));

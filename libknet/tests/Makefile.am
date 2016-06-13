@@ -15,21 +15,20 @@ LDADD			= $(top_builddir)/libknet/libknet.la
 noinst_HEADERS		= \
 			  test-common.h
 
-EXTRA_DIST		= test-common.c
-
-check_PROGRAMS		= timediff_test
+check_PROGRAMS		= timediff_test \
+			  khandle_test
 
 noinst_PROGRAMS		= \
 			  pckt_test \
 			  ping_test \
-			  khandle_test \
 			  $(check_PROGRAMS)
 
 TESTS			= $(check_PROGRAMS)
 
 ping_test_SOURCES	= ping_test.c
 
-khandle_test_SOURCES	= khandle_test.c
+khandle_test_SOURCES	= khandle_test.c \
+			  test-common.c
 
 pckt_test_SOURCES	= pckt_test.c
 

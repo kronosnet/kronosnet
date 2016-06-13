@@ -24,4 +24,6 @@
 
 int execute_shell(const char *command, char **error_string);
 
+int need_root(void);
+
 #endif
