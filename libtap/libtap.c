@@ -2088,6 +2088,11 @@ out_clean:
 
 int main(void)
 {
+	if (geteuid() != 0) {
+		printf("This test requires root privileges\n");
+		exit(77);
+	}
+
 	if (check_tap_open_close() < 0)
 		return -1;
 
