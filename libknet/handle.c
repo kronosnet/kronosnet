@@ -128,48 +128,52 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->tx_mutex);
 }
 
-static int _init_socketpair(knet_handle_t knet_h, int (*sock)[2])
+static int _init_socketpair(knet_handle_t knet_h, int *sock0, int *sock1)
 {
 	int savederrno = 0;
 	int value;
+	int sv[2];
 
-	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, *sock) != 0) {
+	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sv) != 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize socketpair: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_cloexec(*sock[0])) {
+	*sock0 = sv[0];
+	*sock1 = sv[1];
+
+	if (_fdset_cloexec(*sock0)) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sock[0]: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sock0: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_nonblock(*sock[0])) {
+	if (_fdset_nonblock(*sock0)) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock[0]: %s", 
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock0: %s", 
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_cloexec(*sock[1])) {
+	if (_fdset_cloexec(*sock1)) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sock[1]: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on sock1: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_fdset_nonblock(*sock[1])) {
+	if (_fdset_nonblock(*sock1)) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock[1]: %s", 
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on sock1: %s", 
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
 	value = KNET_RING_RCVBUFF;
-	if (setsockopt(*sock[0], SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
+	if (setsockopt(*sock0, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set receive buffer on sock[0]: %s",
 			strerror(savederrno));
@@ -183,15 +187,15 @@ exit_fail:
 	return -1;
 }
 
-static void _close_socketpair(knet_handle_t knet_h, int (*sock)[2])
+static void _close_socketpair(knet_handle_t knet_h, int *sock0, int *sock1)
 {
-	if (*sock[0]) {
-		close(*sock[0]);
-		*sock[0] = 0;
+	if (*sock0) {
+		close(*sock0);
+		*sock0 = 0;
 	}
-	if (*sock[1]) {
-		close(*sock[1]);
-		*sock[1] = 0;
+	if (*sock1) {
+		close(*sock1);
+		*sock1 = 0;
 	}
 }
 
@@ -199,16 +203,16 @@ static int _init_socks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	if (_init_socketpair(knet_h, &knet_h->hostsockfd)) {
+	if (_init_socketpair(knet_h, &knet_h->hostsockfd[0], &knet_h->hostsockfd[1])) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal hostsockpar: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal hostsockpair: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
 
-	if (_init_socketpair(knet_h, &knet_h->dstsockfd)) {
+	if (_init_socketpair(knet_h, &knet_h->dstsockfd[0], &knet_h->dstsockfd[1])) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal dstsockpar: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal dstsockpair: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
@@ -222,8 +226,8 @@ exit_fail:
 
 static void _close_socks(knet_handle_t knet_h)
 {
-	_close_socketpair(knet_h, &knet_h->dstsockfd);
-	_close_socketpair(knet_h, &knet_h->hostsockfd);
+	_close_socketpair(knet_h, &knet_h->dstsockfd[0], &knet_h->dstsockfd[1]);
+	_close_socketpair(knet_h, &knet_h->hostsockfd[0], &knet_h->hostsockfd[1]);
 }
 
 static int _init_buffers(knet_handle_t knet_h)
@@ -448,7 +452,7 @@ static void _close_epolls(knet_handle_t knet_h)
 		if (knet_h->sockfd[i].in_use) {
 			epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->sockfd[i].sockfd[knet_h->sockfd[i].is_created], &ev);
 			if  (knet_h->sockfd[i].sockfd[knet_h->sockfd[i].is_created]) {
-				 _close_socketpair(knet_h, &knet_h->sockfd[i].sockfd);
+				 _close_socketpair(knet_h, &knet_h->sockfd[i].sockfd[0], &knet_h->sockfd[i].sockfd[1]);
 			}
 		}
 	}
@@ -863,7 +867,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 			knet_h->sockfd[*channel].is_socket = 1;
 		}
 	} else {
-		if (_init_socketpair(knet_h, &knet_h->sockfd[*channel].sockfd)) {
+		if (_init_socketpair(knet_h, &knet_h->sockfd[*channel].sockfd[0], &knet_h->sockfd[*channel].sockfd[1])) {
 			savederrno = errno;
 			err = -1;
 			goto out_unlock;
@@ -885,7 +889,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add datafd %d to linkfd epoll pool: %s",
 			knet_h->sockfd[*channel].sockfd[knet_h->sockfd[*channel].is_created], strerror(savederrno));
 		if (knet_h->sockfd[*channel].is_created) {
-			_close_socketpair(knet_h, &knet_h->sockfd[*channel].sockfd);
+			_close_socketpair(knet_h, &knet_h->sockfd[*channel].sockfd[0], &knet_h->sockfd[*channel].sockfd[1]);
 		}
 		goto out_unlock;
 	}
@@ -951,7 +955,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd)
 	}
 
 	if (knet_h->sockfd[channel].is_created) {
-		_close_socketpair(knet_h, &knet_h->sockfd[channel].sockfd);
+		_close_socketpair(knet_h, &knet_h->sockfd[channel].sockfd[0], &knet_h->sockfd[channel].sockfd[1]);
 	}
 
 	memset(&knet_h->sockfd[channel], 0, sizeof(struct knet_sock));
