@@ -15,6 +15,8 @@
 
 #include "threads_common.h"
 
+#include "test-common.h"
+
 #define timespec_set(x, sec, nsec) \
 do { \
 	x.tv_sec = sec; \
@@ -35,7 +37,7 @@ static void check_timespec_diff(void)
 
 	if (diff != 10000) {
 		printf("Failure!\n");
-		exit(EXIT_FAILURE);
+		exit(FAIL);
 	}
 
 	timespec_set(end, start.tv_sec + 5, start.tv_nsec - 5000);
@@ -45,7 +47,7 @@ static void check_timespec_diff(void)
 
 	if (diff != 4999995000llu) {
 		printf("Failure!\n");
-		exit(EXIT_FAILURE);
+		exit(FAIL);
 	}
 }
 
@@ -53,5 +55,5 @@ int main(int argc, char *argv[])
 {
 	check_timespec_diff();
 
-	return 0;
+	return PASS;
 }

@@ -12,6 +12,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet
 LDADD			= $(top_builddir)/libknet/libknet.la
 
+noinst_HEADERS		= \
+			  test-common.h
+
 check_PROGRAMS		= timediff_test
 
 noinst_PROGRAMS		= \
