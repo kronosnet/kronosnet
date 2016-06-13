@@ -1090,8 +1090,8 @@ static int check_tap_open_close(void)
 		return -1;
 	}
 
+	memset(fakepath, 0, PATH_MAX);
 	memset(fakepath, '/', PATH_MAX - 2);
-	fakepath[PATH_MAX-1] = 0;
 
 	printf("Testing updown path > PATH_MAX\n");
 	errno=0;
