@@ -180,6 +180,30 @@ static int _init_socketpair(knet_handle_t knet_h, int *sock0, int *sock1)
 		goto exit_fail;
 	}
 
+	value = KNET_RING_RCVBUFF;
+	if (setsockopt(*sock0, SOL_SOCKET, SO_SNDBUFFORCE, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set send buffer on sock[0]: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	value = KNET_RING_RCVBUFF;
+	if (setsockopt(*sock1, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set receive buffer on sock[1]: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	value = KNET_RING_RCVBUFF;
+	if (setsockopt(*sock1, SOL_SOCKET, SO_SNDBUFFORCE, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set send buffer on sock[1]: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	return 0;
 
 exit_fail:
