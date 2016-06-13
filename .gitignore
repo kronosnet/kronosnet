@@ -41,3 +41,6 @@ kronosnet.spec
 *_test
 *_bench
 test-driver
+*.trs
+*.log
+
