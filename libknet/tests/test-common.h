@@ -18,4 +18,10 @@
 #define ERROR	99
 #define FAIL	-1
 
+/*
+ * common facilities
+ */
+
+int execute_shell(const char *command, char **error_string);
+
 #endif

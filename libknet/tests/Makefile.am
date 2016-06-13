@@ -15,6 +15,8 @@ LDADD			= $(top_builddir)/libknet/libknet.la
 noinst_HEADERS		= \
 			  test-common.h
 
+EXTRA_DIST		= test-common.c
+
 check_PROGRAMS		= timediff_test
 
 noinst_PROGRAMS		= \
