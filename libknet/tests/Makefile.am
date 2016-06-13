@@ -9,6 +9,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+include $(top_srcdir)/build-aux/check.mk
+
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet
 LDADD			= $(top_builddir)/libknet/libknet.la
 
