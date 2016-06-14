@@ -583,7 +583,7 @@ void *_handle_send_to_links_thread(void *data)
 		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
 	}
 
-	while (!knet_h->fini_in_progress) {
+	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, -1);
 
 		for (i = 0; i < nev; i++) {
@@ -1171,7 +1171,7 @@ void *_handle_recv_from_links_thread(void *data)
 		msg[i].msg_hdr.msg_iovlen = 1;
 	}
 
-	while (!knet_h->fini_in_progress) {
+	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
 
 		for (i = 0; i < nev; i++) {

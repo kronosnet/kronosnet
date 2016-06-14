@@ -194,6 +194,9 @@ restart:
 		ts.tv_sec += 2;
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
+		/*
+		 * access protected by calling function
+		 */
 		if (knet_h->fini_in_progress) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD aborted. shutdown in progress");
@@ -265,7 +268,7 @@ void *_handle_pmtud_link_thread(void *data)
 	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
 	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 
-	while (!knet_h->fini_in_progress) {
+	while (!shutdown_in_progress(knet_h)) {
 		/*
 		 * make this also triggered by link status changes
 		 */

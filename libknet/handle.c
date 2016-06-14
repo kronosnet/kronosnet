@@ -607,6 +607,14 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
+	savederrno = pthread_mutex_lock(&handle_config_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		goto exit_fail;
+	}
+
 	/*
 	 * copy config in place
 	 */
@@ -667,9 +675,11 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		goto exit_fail;
 	}
 
+	pthread_mutex_unlock(&handle_config_mutex);
 	return knet_h;
 
 exit_fail:
+	pthread_mutex_unlock(&handle_config_mutex);
 	knet_handle_free(knet_h);
 	errno = savederrno;
 	return NULL;
@@ -693,26 +703,21 @@ int knet_handle_free(knet_handle_t knet_h)
 		return -1;
 	}
 
-	if (knet_h->fini_in_progress) {
+	if (!knet_h->lock_init_done) {
+		goto exit_nolock;
+	}
+
+	if (shutdown_in_progress(knet_h)) {
 		pthread_mutex_unlock(&handle_config_mutex);
 		errno = EBUSY;
 		return -1;
-	}
-
-	/*
-	 * we take a chance here to read a value that should be 0
-	 * only if we could not init properly. Nothing else
-	 * is started if lock_init_done is 0.
-	 */
-
-	if (!knet_h->lock_init_done) {
-		goto exit_nolock;
 	}
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
+		pthread_mutex_unlock(&handle_config_mutex);
 		errno = savederrno;
 		return -1;
 	}
@@ -723,6 +728,7 @@ int knet_handle_free(knet_handle_t knet_h)
 			"Unable to free handle: host(s) or listener(s) are still active: %s",
 			strerror(savederrno));
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
+		pthread_mutex_unlock(&handle_config_mutex);
 		errno = savederrno;
 		return -1;
 	}

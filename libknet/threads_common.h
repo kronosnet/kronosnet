@@ -10,6 +10,8 @@
 #ifndef __THREADS_COMMON_H__
 #define __THREADS_COMMON_H__
 
+#include "internals.h"
+
 #define timespec_diff(start, end, diff) \
 do { \
 	if (end.tv_sec > start.tv_sec) \
@@ -18,5 +20,7 @@ do { \
 	else \
 		*(diff) = end.tv_nsec - start.tv_nsec; \
 } while (0);
+
+int shutdown_in_progress(knet_handle_t knet_h);
 
 #endif

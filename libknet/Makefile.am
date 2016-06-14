@@ -22,6 +22,7 @@ sources			= \
 			  link.c \
 			  logging.c \
 			  nsscrypto.c \
+			  threads_common.c \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \
 			  threads_pmtud.c \

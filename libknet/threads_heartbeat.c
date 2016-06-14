@@ -99,7 +99,7 @@ void *_handle_heartbt_thread(void *data)
 	knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
 	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
-	while (!knet_h->fini_in_progress) {
+	while (!shutdown_in_progress(knet_h)) {
 		usleep(KNET_PING_TIMERES);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {

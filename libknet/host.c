@@ -514,6 +514,9 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
 {
+	/*
+	 * access here is protected by calling functions
+	 */
 	if (knet_h->fini_in_progress) {
 		return 0;
 	}
