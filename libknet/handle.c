@@ -17,6 +17,8 @@
 #include <sys/epoll.h>
 #include <sys/uio.h>
 #include <math.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include "internals.h"
 #include "crypto.h"
@@ -586,12 +588,22 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 {
 	knet_handle_t knet_h;
 	int savederrno = 0;
+	struct rlimit cur;
+
+	if (prlimit(0, RLIMIT_NOFILE, NULL, &cur) < 0) {
+		return NULL;
+	}
+
+	if ((log_fd < 0) || (log_fd >= cur.rlim_max)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	/*
 	 * validate incoming request
 	 */
 
-	if ((log_fd > 0) && (default_log_level > KNET_LOG_DEBUG)) {
+	if ((log_fd) && (default_log_level > KNET_LOG_DEBUG)) {
 		errno = EINVAL;
 		return NULL;
 	}
