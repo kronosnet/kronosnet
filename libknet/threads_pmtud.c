@@ -313,9 +313,6 @@ timer_restart:
 		min_mtu = KNET_PMTUD_SIZE_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 		have_mtu = 0;
 
-		if (knet_h->pmtud_fini_requested)
-			continue;
-
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get read lock");
 			continue;
@@ -324,6 +321,9 @@ timer_restart:
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				dst_link = &dst_host->link[link_idx];
+
+				if (knet_h->pmtud_fini_requested)
+					goto interrupt;
 
 				switch (dst_link->dst_addr.ss_family) {
 					case AF_INET6:
@@ -340,9 +340,6 @@ timer_restart:
 				    ((dst_link->dynamic == KNET_LINK_DYNIP) &&
 				     (dst_link->status.dynconnected != 1)))
 					continue;
-
-				if (knet_h->pmtud_fini_requested)
-					goto interrupt;
 
 				saved_pmtud = dst_link->status.mtu;
 				saved_valid_pmtud = dst_link->has_valid_mtu;

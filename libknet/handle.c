@@ -547,6 +547,8 @@ static void _stop_threads(knet_handle_t knet_h)
 	pthread_cond_signal(&knet_h->pmtud_timer_cond);
 	pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
 
+	sleep(1);
+
 	if (knet_h->pmtud_link_handler_thread) {
 		pthread_cancel(knet_h->pmtud_link_handler_thread);
 		pthread_join(knet_h->pmtud_link_handler_thread, &retval);
