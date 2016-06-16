@@ -692,12 +692,6 @@ int knet_handle_free(knet_handle_t knet_h)
 		goto exit_nolock;
 	}
 
-	if (shutdown_in_progress(knet_h)) {
-		pthread_mutex_unlock(&handle_config_mutex);
-		errno = EBUSY;
-		return -1;
-	}
-
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
