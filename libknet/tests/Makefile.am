@@ -1,8 +1,7 @@
 #
-# Copyright (C) 2010-2015 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2016 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
-#          Federico Simoncelli <fsimon@kronosnet.org>
 #
 # This software licensed under GPL-2.0+, LGPL-2.0+
 #
@@ -17,7 +16,9 @@ LDADD			= $(top_builddir)/libknet/libknet.la
 noinst_HEADERS		= \
 			  test-common.h
 
-check_PROGRAMS		= timediff_test \
+check_PROGRAMS		= \
+			  api_knet_handle_new \
+			  timediff_test \
 			  khandle_test
 
 noinst_PROGRAMS		= \
@@ -26,6 +27,9 @@ noinst_PROGRAMS		= \
 			  $(check_PROGRAMS)
 
 TESTS			= $(check_PROGRAMS)
+
+api_knet_handle_new_SOURCES = api_knet_handle_new.c \
+			      test-common.c
 
 ping_test_SOURCES	= ping_test.c
 

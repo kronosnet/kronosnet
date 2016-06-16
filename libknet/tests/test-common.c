@@ -15,7 +15,9 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
+#include "libknet.h"
 #include "test-common.h"
 
 static int _read_pipe(int fd, char **file, size_t *length)
@@ -138,4 +140,51 @@ int need_root(void)
 	}
 
 	return PASS;
+}
+
+int setup_logpipes(int *logfds)
+{
+	if (pipe2(logfds, O_CLOEXEC | O_NONBLOCK) < 0) {
+		printf("Unable to setup logging pipe\n");
+		exit(FAIL);
+	}
+
+	return PASS;
+}
+
+void close_logpipes(int *logfds)
+{
+	close(logfds[0]);
+	logfds[0] = 0;
+	close(logfds[1]);
+	logfds[1] = 0;
+}
+
+void flush_logs(int logfd, struct _IO_FILE *std)
+{
+	struct knet_log_msg msg;
+	size_t bytes_read;
+	int len;
+
+next:
+	len = 0;
+	bytes_read = 0;
+	memset(&msg, 0, sizeof(struct knet_log_msg));
+
+	while (bytes_read < sizeof(struct knet_log_msg)) {
+		len = read(logfd, &msg + bytes_read,
+			   sizeof(struct knet_log_msg) - bytes_read);
+		if (len <= 0) {
+			return;
+		}
+		bytes_read += len;
+	}
+
+	if (len > 0) {
+		fprintf(std, "[%s] %s: %s\n",
+			knet_log_get_loglevel_name(msg.msglevel),
+			knet_log_get_subsystem_name(msg.subsystem),
+			msg.msg);
+		goto next;
+	}
 }

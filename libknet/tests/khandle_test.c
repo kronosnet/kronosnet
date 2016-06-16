@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 		exit(FAIL);
 	}
 
-	for (i = 0; i < 1024; i++) {
+	for (i = 0; i < 24; i++) {
 		printf("add host: %d\n", i);
 		if (knet_host_add(knet_h, i) < 0) {
 			printf("Unable to add hosts! err: %s\n", strerror(errno));
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	for (i = 0; i < 1024; i++) {
+	for (i = 0; i < 24; i++) {
 		printf("del host: %d\n", i);
 		if (knet_host_remove(knet_h, i) < 0) {
 			printf("Unable to del hosts! err: %s\n", strerror(errno));

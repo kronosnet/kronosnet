@@ -26,4 +26,9 @@ int execute_shell(const char *command, char **error_string);
 
 int need_root(void);
 
+int setup_logpipes(int *logfds);
+void close_logpipes(int *logfds);
+
+void flush_logs(int logfd, struct _IO_FILE *std);
+
 #endif
