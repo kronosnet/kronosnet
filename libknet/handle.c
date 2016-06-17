@@ -701,7 +701,7 @@ int knet_handle_free(knet_handle_t knet_h)
 		return -1;
 	}
 
-	if ((knet_h->host_head != NULL) || (knet_h->listener_head != NULL)) {
+	if (knet_h->host_head != NULL) {
 		savederrno = EBUSY;
 		log_err(knet_h, KNET_SUB_HANDLE,
 			"Unable to free handle: host(s) or listener(s) are still active: %s",
