@@ -157,7 +157,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 	/*
 	 * if links are configured we cannot release the host
 	 */
-	
+
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (host->link[link_idx].status.enabled) {
 			err = -1;
@@ -331,20 +331,17 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 		return -1;
 	}
 
+	if ((!host_ids) || (!host_ids_entries)) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
-	}
-
-	if ((!host_ids) || (!host_ids_entries)) {
-		err = -1;
-		savederrno = EINVAL;
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get host list: %s",
-			strerror(savederrno));
-		goto exit_unlock;
 	}
 
 	memmove(host_ids, knet_h->host_ids, sizeof(knet_h->host_ids));
