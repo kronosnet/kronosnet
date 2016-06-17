@@ -347,7 +347,6 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 	memmove(host_ids, knet_h->host_ids, sizeof(knet_h->host_ids));
 	*host_ids_entries = knet_h->host_ids_entries;
 
-exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
