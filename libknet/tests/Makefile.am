@@ -18,6 +18,7 @@ noinst_HEADERS		= \
 
 check_PROGRAMS		= \
 			  api_knet_handle_new \
+			  api_knet_handle_free \
 			  timediff_test \
 			  khandle_test
 
@@ -30,6 +31,9 @@ TESTS			= $(check_PROGRAMS)
 
 api_knet_handle_new_SOURCES = api_knet_handle_new.c \
 			      test-common.c
+
+api_knet_handle_free_SOURCES = api_knet_handle_free.c \
+			       test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
