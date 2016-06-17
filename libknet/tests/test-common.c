@@ -181,7 +181,7 @@ next:
 	}
 
 	if (len > 0) {
-		fprintf(std, "[%s] %s: %s\n",
+		fprintf(std, "knet logs: [%s] %s: %s\n",
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
 			msg.msg);
