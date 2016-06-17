@@ -116,12 +116,16 @@ static void test_logging(void)
 
 	if ((!knet_h) && (errno != EINVAL)) {
 		printf("knet_handle_new returned incorrect errno on incorrect log level: %s\n", strerror(errno));
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
 	if (knet_h) {
 		printf("knet_handle_new accepted an incorrect log level\n");
 		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -131,16 +135,14 @@ static void test_logging(void)
 
 	if (!knet_h) {
 		printf("knet_handle_new failed: %s\n", strerror(errno));
+		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
-	flush_logs(logfds[0], stdout);
-
 	knet_handle_free(knet_h);
-
+	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
-
 }
 
 int main(int argc, char *argv[])
