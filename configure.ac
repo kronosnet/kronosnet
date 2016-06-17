@@ -16,7 +16,7 @@ AC_INIT([kronosnet],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
 	[devel@lists.kronosnet.org])
 AC_USE_SYSTEM_EXTENSIONS
-AM_INIT_AUTOMAKE([1.11.1 dist-bzip2 dist-xz color-tests -Wno-portability])
+AM_INIT_AUTOMAKE([1.11.1 dist-bzip2 dist-xz color-tests -Wno-portability subdir-objects])
 LT_PREREQ([2.2.6])
 LT_INIT
 
@@ -322,6 +322,7 @@ LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic -Wl,--as-needed"
 
 AC_CONFIG_FILES([
 		Makefile
+		common/Makefile
 		init/Makefile
 		libtap/Makefile
 		libtap/libtap.pc

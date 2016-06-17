@@ -10,13 +10,10 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 EXTRA_DIST		= kronosnetd.logrotate.in
 
-include $(top_srcdir)/build-aux/check.mk
-
 noinst_HEADERS		= \
 			  cfg.h \
 			  etherfilter.h \
 			  logging.h \
-			  netutils.h \
 			  vty.h \
 			  vty_auth.h \
 			  vty_cli.h \
@@ -26,18 +23,12 @@ noinst_HEADERS		= \
 sbin_PROGRAMS		= kronosnetd \
 			  knet-keygen
 
-check_PROGRAMS		= netutils_test
-
-noinst_PROGRAMS		= $(check_PROGRAMS)
-
-TESTS			= $(check_PROGRAMS)
-
 kronosnetd_SOURCES	= \
 			  cfg.c \
 			  etherfilter.c \
 			  main.c \
 			  logging.c \
-			  netutils.c \
+			  ../common/netutils.c \
 			  vty.c \
 			  vty_auth.c \
 			  vty_cli.c \
@@ -46,7 +37,8 @@ kronosnetd_SOURCES	= \
 
 kronosnetd_CPPFLAGS	= \
 			  -I$(top_srcdir)/libtap \
-			  -I$(top_srcdir)/libknet
+			  -I$(top_srcdir)/libknet \
+			  -I$(top_srcdir)/common
 
 kronosnetd_CFLAGS	= $(libqb_CFLAGS)
 
@@ -60,9 +52,6 @@ knet_keygen_SOURCES	= keygen.c
 knet_keygen_CPPFLAGS	= -I$(top_srcdir)/libknet
 
 dist_man_MANS		= kronosnetd.8 knet-keygen.8
-
-netutils_test_SOURCES	= netutils_test.c \
-			  netutils.c
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)
