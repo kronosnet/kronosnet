@@ -10,7 +10,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-AM_CPPFLAGS		= -I$(top_srcdir)/libknet
+AM_CPPFLAGS		= -I$(top_srcdir)/libknet \
+			  -I$(top_srcdir)/common
+
 LDADD			= $(top_builddir)/libknet/libknet.la
 
 noinst_HEADERS		= \
@@ -20,8 +22,8 @@ check_PROGRAMS		= \
 			  api_knet_handle_new \
 			  api_knet_handle_free \
 			  api_knet_host_add \
-			  timediff_test \
-			  khandle_test
+			  api_knet_host_remove \
+			  timediff_test
 
 noinst_PROGRAMS		= \
 			  pckt_test \
@@ -39,10 +41,11 @@ api_knet_handle_free_SOURCES = api_knet_handle_free.c \
 api_knet_host_add_SOURCES = api_knet_host_add.c \
 			    test-common.c
 
-ping_test_SOURCES	= ping_test.c
+api_knet_host_remove_SOURCES = api_knet_host_remove.c \
+			       ../../common/netutils.c \
+			       test-common.c
 
-khandle_test_SOURCES	= khandle_test.c \
-			  test-common.c
+ping_test_SOURCES	= ping_test.c
 
 pckt_test_SOURCES	= pckt_test.c
 
