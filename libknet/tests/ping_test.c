@@ -174,11 +174,15 @@ static void argv_to_hosts(int argc, char *argv[])
 
 		knet_host_set_name(knet_h, node_id, argv[i]);
 
+		memset(&src_addr, 0, sizeof(struct sockaddr_storage));
+
 		err = tok_inaddrport(argv[1], (struct sockaddr_in *) &src_addr);
 		if (err < 0) {
 			printf("Unable to convert ip address: %s", argv[i]);
 			exit(EXIT_FAILURE);
 		}
+
+		memset(&dst_addr, 0, sizeof(struct sockaddr_storage));
 
 		err = tok_inaddrport(argv[i],
 				(struct sockaddr_in *) &dst_addr);
@@ -322,6 +326,8 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 	char recvbuff[66000];
 	ssize_t rlen = 0;
 	uint16_t nodeid;
+
+	memset(&recvbuff, 0, sizeof(recvbuff));
 
 	rlen = knet_recv(knet_h, recvbuff, sizeof(recvbuff), inchannel);
 
