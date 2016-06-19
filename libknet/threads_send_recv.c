@@ -58,6 +58,7 @@ retry:
 		msg_idx = 0;
 
 		while (msg_idx < msgs_to_send) {
+			memset(&msg[msg_idx].msg_hdr, 0, sizeof(struct msghdr));
 			msg[msg_idx].msg_hdr.msg_name = &dst_host->link[dst_host->active_links[link_idx]].dst_addr;
 			msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 			msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx + prev_sent];
@@ -569,7 +570,9 @@ void *_handle_send_to_links_thread(void *data)
 	/* preparing data buffer */
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		iov_in[i].iov_base = (void *)knet_h->recv_from_sock_buf[i]->khp_data_userdata;
-		iov_in[i].iov_len = KNET_DATABUFSIZE;
+		iov_in[i].iov_len = KNET_MAX_PACKET_SIZE;
+
+		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
 
 		msg[i].msg_hdr.msg_name = &address[i];
 		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
@@ -1166,6 +1169,8 @@ void *_handle_recv_from_links_thread(void *data)
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];
 		iov_in[i].iov_len = KNET_DATABUFSIZE;
+
+		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
 
 		msg[i].msg_hdr.msg_name = &address[i];
 		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
