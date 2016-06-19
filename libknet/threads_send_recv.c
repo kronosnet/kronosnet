@@ -479,7 +479,9 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		return;
 	}
 
-	if ((channel < KNET_DATAFD_MAX) && (!knet_h->sockfd[channel].is_socket)) {
+	if ((channel >= 0) &&
+	    (channel < KNET_DATAFD_MAX) &&
+	    (!knet_h->sockfd[channel].is_socket)) {
 		memset(&iov_in, 0, sizeof(iov_in));
 		iov_in.iov_base = (void *)knet_h->recv_from_sock_buf[0]->khp_data_userdata;
 		iov_in.iov_len = KNET_MAX_PACKET_SIZE;
