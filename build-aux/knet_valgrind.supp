@@ -1,0 +1,16 @@
+{
+   link enable/disable known race (safe to ignore)
+   Helgrind:Race
+   fun:_link_updown
+   fun:knet_link_set_enable
+   fun:test
+   fun:main
+}
+{
+   link enable/disable known race (safe to ignore)
+   Helgrind:Race
+   fun:_handle_heartbt_thread
+   obj:/usr/lib64/valgrind/vgpreload_helgrind-amd64-linux.so
+   fun:start_thread
+   fun:clone
+}

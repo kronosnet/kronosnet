@@ -1,4 +1,4 @@
-VALGRIND = valgrind -q --error-exitcode=127
+VALGRIND = valgrind -q --error-exitcode=127 --suppressions=$(top_srcdir)/build-aux/knet_valgrind.supp
 
 MEMCHECK = $(VALGRIND) --track-fds=yes --leak-check=full
 HELGRIND = $(VALGRIND) --tool=helgrind
