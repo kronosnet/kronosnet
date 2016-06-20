@@ -23,6 +23,7 @@ check_PROGRAMS		= \
 			  api_knet_handle_free \
 			  api_knet_host_add \
 			  api_knet_host_remove \
+			  api_knet_host_set_name \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -44,6 +45,9 @@ api_knet_host_add_SOURCES = api_knet_host_add.c \
 api_knet_host_remove_SOURCES = api_knet_host_remove.c \
 			       ../../common/netutils.c \
 			       test-common.c
+
+api_knet_host_set_name_SOURCES = api_knet_host_set_name.c \
+				 test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
