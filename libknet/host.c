@@ -202,6 +202,7 @@ exit_unlock:
 int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 {
 	int savederrno = 0, err = 0;
+	struct knet_host *host;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -219,9 +220,27 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 	if (!knet_h->host_index[host_id]) {
 		err = -1;
 		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to find host %u to set name: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	if (!name) {
+		err = -1;
+		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_HOST, "Unable to set name for host %u: %s",
 			host_id, strerror(savederrno));
 		goto exit_unlock;
+	}
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		if (!strncmp(host->name, name, KNET_MAX_HOST_LEN - 1)) {
+			err = -1;
+			savederrno = EEXIST;
+			log_err(knet_h, KNET_SUB_HOST, "Duplicated name found on host_id %u",
+				host->host_id);
+			goto exit_unlock;
+		}
 	}
 
 	snprintf(knet_h->host_index[host_id]->name, KNET_MAX_HOST_LEN - 1, "%s", name);
