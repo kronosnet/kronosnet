@@ -634,7 +634,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id);
  *
  * name     - this name will be used for pretty logging and eventually
  *            search for hosts (see also get_name and get_id below).
- *            Only up to KNET_MAX_HOST_LEN - 1 bytes will be copied.
+ *            Only up to KNET_MAX_HOST_LEN - 1 bytes will be accepted and
  *            name has to be unique for each host.
  *
  * knet_host_set_name returns:

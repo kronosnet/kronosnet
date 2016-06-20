@@ -151,18 +151,8 @@ static void test(void)
 	memset(longhostname, 'a', sizeof(longhostname));
 	longhostname[KNET_MAX_HOST_LEN] = '\0';
 
-	if (knet_host_set_name(knet_h, 1, longhostname) < 0) {
-		printf("knet_host_set_name failed: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if ((strlen(knet_h->host_index[1]->name) >= KNET_MAX_HOST_LEN - 1) ||
-	    (!strcmp(knet_h->host_index[1]->name, longhostname))) {
-		printf("knet_host_set_name accepted too long name\n");
+	if ((!knet_host_set_name(knet_h, 1, longhostname)) || (errno != EINVAL)) {
+		printf("knet_host_set_name accepted invalid (too long) name or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

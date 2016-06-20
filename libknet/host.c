@@ -233,6 +233,14 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 		goto exit_unlock;
 	}
 
+	if (strlen(name) >= KNET_MAX_HOST_LEN) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HOST, "Requested name for host %u is too long: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		if (!strncmp(host->name, name, KNET_MAX_HOST_LEN - 1)) {
 			err = -1;
