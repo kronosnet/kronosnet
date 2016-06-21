@@ -10,6 +10,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+EXTRA_DIST		= api-test-coverage
+
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet \
 			  -I$(top_srcdir)/common
 
@@ -31,7 +33,16 @@ noinst_PROGRAMS		= \
 			  ping_test \
 			  $(check_PROGRAMS)
 
+noinst_SCRIPTS		= \
+			  api-test-coverage
+
 TESTS			= $(check_PROGRAMS)
+
+check-local: check-api-test-coverage
+
+check-api-test-coverage:
+	chmod u+x $(top_srcdir)/libknet/tests/api-test-coverage
+	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir)
 
 api_knet_handle_new_SOURCES = api_knet_handle_new.c \
 			      test-common.c

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+srcdir="$1"/libknet/tests
+
+apicalls="$( grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+
+numapicalls=0
+found=0
+missing=0
+
+for i in $apicalls; do
+	numapicalls=$((numapicalls + 1))
+	if [ -f $srcdir/api_${i}.c ]; then
+		found=$((found + 1))
+		echo "Found: $i"
+	else
+		missing=$((missing + 1))
+		echo "MISSING: $i"
+	fi
+done
+
+echo "Summary"
+echo "-------"
+echo "Found   : $found"
+echo "Missing : $missing"
+echo "Total   : $numapicalls"
+coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
+echo "Coverage: $coverage%"
