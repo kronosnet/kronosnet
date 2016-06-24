@@ -269,6 +269,11 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
+	if (!name) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get read lock: %s",
@@ -277,21 +282,14 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
-	if (!name) {
-		err = -1;
-		savederrno = EINVAL;
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get name for host %u: %s",
-			host_id, strerror(savederrno));
-		goto exit_unlock;
-	}
-
 	if (!knet_h->host_index[host_id]) {
+		savederrno = EINVAL;
+		err = -1;
 		log_debug(knet_h, KNET_SUB_HOST, "Host %u not found", host_id);
 		goto exit_unlock;
 	}
 
 	snprintf(name, KNET_MAX_HOST_LEN - 1, "%s", knet_h->host_index[host_id]->name);
-	err = 1;
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

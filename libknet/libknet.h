@@ -659,9 +659,8 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id,
  *
  * knet_host_get_name_by_host_id returns:
  *
- * 1 if host is found and name is valid
- * 0 if host is not found. name is left untouched.
- * -1 on error and errno is set.
+ * 0 on success
+ * -1 on error and errno is set (name is left untouched)
  */
 
 int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
