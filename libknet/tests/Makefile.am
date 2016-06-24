@@ -28,6 +28,7 @@ check_PROGRAMS		= \
 			  api_knet_host_set_name \
 			  api_knet_host_get_name_by_host_id \
 			  api_knet_host_get_id_by_host_name \
+			  api_knet_host_get_host_list \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -67,6 +68,9 @@ api_knet_host_get_name_by_host_id_SOURCES = api_knet_host_get_name_by_host_id.c 
 
 api_knet_host_get_id_by_host_name_SOURCES = api_knet_host_get_id_by_host_name.c \
 					    test-common.c
+
+api_knet_host_get_host_list_SOURCES = api_knet_host_get_host_list.c \
+				      test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
