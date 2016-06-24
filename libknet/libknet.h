@@ -741,7 +741,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
  */
 
 int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
-			 int policy);
+			 uint8_t policy);
 
 /*
  * knet_host_get_policy
