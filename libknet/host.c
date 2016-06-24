@@ -425,11 +425,16 @@ exit_unlock:
 }
 
 int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
-			 int *policy)
+			 uint8_t *policy)
 {
 	int savederrno = 0, err = 0;
 
 	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!policy) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -442,7 +447,7 @@ int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
 		return -1;
 	}
 
-	if ((!knet_h->host_index[host_id]) || (!policy)) {
+	if (!knet_h->host_index[host_id]) {
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get name for host %u: %s",

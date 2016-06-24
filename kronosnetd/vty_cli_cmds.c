@@ -1719,7 +1719,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 	uint16_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
-	int policy;
+	uint8_t policy;
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
@@ -1800,7 +1800,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	char nodename[KNET_MAX_HOST_LEN];
-	int policy;
+	uint8_t policy;
 	unsigned int pmtudfreq = 0;
 
 	if (vty->filemode)
