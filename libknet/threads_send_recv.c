@@ -37,14 +37,6 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 	struct mmsghdr msg[PCKT_FRAG_MAX];
 	int err = 0, savederrno = 0;
 
-	savederrno = pthread_mutex_lock(&dst_host->active_links_mutex);
-	if (savederrno) {
-		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get active links mutex: %s",
-			  strerror(savederrno));
-		errno = savederrno;
-		return -1;
-	}
-
 	memset(&msg, 0, sizeof(struct mmsghdr));
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
@@ -117,8 +109,6 @@ retry:
 	}
 
 out_unlock:
-
-	pthread_mutex_unlock(&dst_host->active_links_mutex);
 
 	errno = savederrno;
 	return err;

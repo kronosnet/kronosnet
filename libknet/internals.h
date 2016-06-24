@@ -99,7 +99,6 @@ struct knet_host {
 	char ucast_circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
-	pthread_mutex_t active_links_mutex;	/* mutex to update active links for a given host */
 	uint8_t active_link_entries;
 	uint8_t active_links[KNET_MAX_LINK];
 	struct knet_host *next;

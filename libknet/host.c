@@ -87,18 +87,6 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 	}
 
 	/*
-	 * Use this mutex to protect active_links updates without
-	 * using a global rw lock
-	 */
-	savederrno = pthread_mutex_init(&host->active_links_mutex, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HOST, "Unable to initialize active links mutex: %s",
-			strerror(savederrno));
-		err = -1;
-		goto exit_unlock;
-	}
-
-	/*
 	 * add new host to the index
 	 */
 	knet_h->host_index[host_id] = host;
@@ -167,8 +155,6 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 			goto exit_unlock;
 		}
 	}
-
-	pthread_mutex_destroy(&host->active_links_mutex);
 
 	removed = NULL;
 
@@ -699,11 +685,6 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	int host_has_remote = 0;
 	int reachable = 0;
 
-	if (pthread_mutex_lock(&host->active_links_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "Unable to get active links mutex!");
-		return -1;
-	}
-
 	host->active_link_entries = 0;
 
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
@@ -764,8 +745,6 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 		}
 		_clear_cbuffers(host);
 	}
-
-	pthread_mutex_unlock(&host->active_links_mutex);
 
 	if (send_link_idx) {
 		int i;
