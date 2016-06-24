@@ -300,10 +300,20 @@ exit_unlock:
 int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 				  uint16_t *host_id)
 {
-	int savederrno = 0, err = 0;
+	int savederrno = 0, err = 0, found = 0;
 	struct knet_host *host;
 
 	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!name) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!host_id) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -316,31 +326,19 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 		return -1;
 	}
 
-	if (!name) {
-		err = -1;
-		savederrno = EINVAL;
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get id for unknown host: %s",
-			strerror(savederrno));
-		goto exit_unlock;
-	}
-
-	if (!host_id) {
-		err = -1;
-		savederrno = EINVAL;
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get id for host %s: %s",
-			name, strerror(savederrno));
-		goto exit_unlock;
-	}
-
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
-		if (!strcmp(name, host->name)) {
+		if (!strncmp(name, host->name, KNET_MAX_HOST_LEN)) {
+			found = 1;
 			*host_id = host->host_id;
-			err = 1;
 			break;
 		}
 	}
 
-exit_unlock:
+	if (!found) {
+		savederrno = ENOENT;
+		err = -1;
+	}
+
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
