@@ -1243,7 +1243,7 @@ uint8_t knet_log_get_subsystem_id(const char *name);
 /*
  * knet_log_get_loglevel_name
  *
- * return internal name of the log level or "unknown"
+ * return internal name of the log level or "ERROR" for unknown values
  */
 
 const char *knet_log_get_loglevel_name(uint8_t level);

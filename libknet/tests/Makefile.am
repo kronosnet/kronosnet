@@ -33,6 +33,7 @@ check_PROGRAMS		= \
 			  api_knet_host_get_policy \
 			  api_knet_log_get_subsystem_name \
 			  api_knet_log_get_subsystem_id \
+			  api_knet_log_get_loglevel_name \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -87,6 +88,9 @@ api_knet_log_get_subsystem_name_SOURCES = api_knet_log_get_subsystem_name.c \
 
 api_knet_log_get_subsystem_id_SOURCES = api_knet_log_get_subsystem_id.c \
 					test-common.c
+
+api_knet_log_get_loglevel_name_SOURCES = api_knet_log_get_loglevel_name.c \
+					 test-common.c
 
 ping_test_SOURCES	= ping_test.c
 

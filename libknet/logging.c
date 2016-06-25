@@ -78,12 +78,12 @@ const char *knet_log_get_loglevel_name(uint8_t level)
 {
 	unsigned int i;
 
-	for (i = 0; loglevel_names[i].val <= KNET_LOG_DEBUG; i++) {
+	for (i = 0; i <= KNET_LOG_DEBUG; i++) {
 		if (loglevel_names[i].val == level) {
 			return loglevel_names[i].name;
 		}
 	}
-	return "unknown";
+	return "ERROR";
 }
 
 uint8_t knet_log_get_loglevel_id(const char *name)
