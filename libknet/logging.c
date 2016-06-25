@@ -46,12 +46,12 @@ const char *knet_log_get_subsystem_name(uint8_t subsystem)
 {
 	unsigned int i;
 
-	for (i = 0; subsystem_names[i].val <= KNET_MAX_SUBSYSTEMS; i++) {
+	for (i = 0; i < KNET_MAX_SUBSYSTEMS; i++) {
 		if (subsystem_names[i].val == subsystem) {
 			return subsystem_names[i].name;
 		}
 	}
-	return "unknown";
+	return "common";
 }
 
 uint8_t knet_log_get_subsystem_id(const char *name)

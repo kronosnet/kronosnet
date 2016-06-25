@@ -31,6 +31,7 @@ check_PROGRAMS		= \
 			  api_knet_host_get_host_list \
 			  api_knet_host_set_policy \
 			  api_knet_host_get_policy \
+			  api_knet_log_get_subsystem_name \
 			  api_knet_log_get_subsystem_id \
 			  timediff_test
 
@@ -80,6 +81,9 @@ api_knet_host_set_policy_SOURCES = api_knet_host_set_policy.c \
 
 api_knet_host_get_policy_SOURCES = api_knet_host_get_policy.c \
 				   test-common.c
+
+api_knet_log_get_subsystem_name_SOURCES = api_knet_log_get_subsystem_name.c \
+					  test-common.c
 
 api_knet_log_get_subsystem_id_SOURCES = api_knet_log_get_subsystem_id.c \
 					test-common.c

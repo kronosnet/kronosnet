@@ -1214,7 +1214,7 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 /*
  * knet_log_get_subsystem_name
  *
- * return internal name of the subsystem or "unknown"
+ * return internal name of the subsystem or "common"
  */
 
 const char *knet_log_get_subsystem_name(uint8_t subsystem);
