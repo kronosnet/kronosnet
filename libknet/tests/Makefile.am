@@ -20,6 +20,10 @@ LDADD			= $(top_builddir)/libknet/libknet.la
 noinst_HEADERS		= \
 			  test-common.h
 
+# the order of those tests is NOT random.
+# some functions can only be tested properly after some dependents
+# API have been validated upfront.
+
 check_PROGRAMS		= \
 			  api_knet_handle_new \
 			  api_knet_handle_free \
