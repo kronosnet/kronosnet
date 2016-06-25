@@ -90,7 +90,7 @@ uint8_t knet_log_get_loglevel_id(const char *name)
 {
 	unsigned int i;
 
-	for (i = 0; loglevel_names[i].val <= (KNET_LOG_DEBUG + 1); i++) {
+	for (i = 0; i <= KNET_LOG_DEBUG; i++) {
 		if (strcasecmp(name, loglevel_names[i].name) == 0) {
 			return loglevel_names[i].val;
 		}

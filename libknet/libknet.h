@@ -1251,7 +1251,7 @@ const char *knet_log_get_loglevel_name(uint8_t level);
 /*
  * knet_log_get_loglevel_id
  *
- * return internal ID of the subsystem or KNET_SUB_COMMON
+ * return internal log level ID or KNET_LOG_ERR for invalid names
  */
 
 uint8_t knet_log_get_loglevel_id(const char *name);
