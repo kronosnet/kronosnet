@@ -9,6 +9,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+EXTRA_DIST		= libknet.versions
+
 SUBDIRS			= . tests
 
 libversion		= 0:0:0
@@ -54,6 +56,10 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-libknet_la_LIBS		= -version-info $(libversion)
 libknet_la_CFLAGS	= $(nss_CFLAGS)
+
+EXTRA_libknet_la_DEPENDENCIES	= libknet.versions
+
+libknet_la_LIBS		= -version-info $(libversion)
+libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/libknet.versions
 libknet_la_LIBADD	= $(nss_LIBS) -lrt -lpthread -lm
