@@ -40,6 +40,7 @@ check_PROGRAMS		= \
 			  api_knet_log_get_loglevel_name \
 			  api_knet_log_get_loglevel_id \
 			  api_knet_log_set_loglevel \
+			  api_knet_log_get_loglevel \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -102,6 +103,9 @@ api_knet_log_get_loglevel_id_SOURCES = api_knet_log_get_loglevel_id.c \
 				       test-common.c
 
 api_knet_log_set_loglevel_SOURCES = api_knet_log_set_loglevel.c \
+				    test-common.c
+
+api_knet_log_get_loglevel_SOURCES = api_knet_log_get_loglevel.c \
 				    test-common.c
 
 ping_test_SOURCES	= ping_test.c
