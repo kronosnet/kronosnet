@@ -45,6 +45,8 @@ if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
 fi
 
 AC_PROG_AWK
+AC_PROG_GREP
+AC_PROG_SED
 AC_PROG_CPP
 AC_PROG_CC
 AM_PROG_CC_C_O

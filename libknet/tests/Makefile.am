@@ -57,7 +57,7 @@ check-local: check-api-test-coverage
 
 check-api-test-coverage:
 	chmod u+x $(top_srcdir)/libknet/tests/api-test-coverage
-	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir)
+	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir) $(top_builddir)
 
 api_knet_handle_new_SOURCES = api_knet_handle_new.c \
 			      test-common.c

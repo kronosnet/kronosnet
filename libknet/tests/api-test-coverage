@@ -1,14 +1,49 @@
 #!/bin/bash
 
 srcdir="$1"/libknet/tests
+builddir="$2"/libknet/tests
 
-apicalls="$( grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+headerapicalls="$(grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}' | sort -u)"
+
+exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' T ' | awk '{print $3}' | sort -u)"
+
+echo "Checking for exported symbols NOT available in header file"
+
+for i in $exportedapicalls; do
+	found=0
+	for x in $headerapicalls; do
+		if [ "$x" = "$i" ]; then
+			found=1
+			break;
+		fi
+	done
+	if [ "$found" = 0 ]; then
+		echo "Symbol $i not found in header file"
+		exit 1
+	fi
+done
+
+echo "Checking for symbols in header file NOT exported by binary lib"
+
+for i in $headerapicalls; do
+	found=0
+	for x in $exportedapicalls; do
+		if [ "$x" = "$i" ]; then
+			found=1
+			break;
+		fi
+	done
+	if [ "$found" = 0 ]; then
+		echo "Symbol $i not found in binary lib"
+		exit 1
+	fi
+done
 
 numapicalls=0
 found=0
 missing=0
 
-for i in $apicalls; do
+for i in $exportedapicalls; do
 	numapicalls=$((numapicalls + 1))
 	if [ -f $srcdir/api_${i}.c ]; then
 		found=$((found + 1))
@@ -24,5 +59,8 @@ echo "-------"
 echo "Found   : $found"
 echo "Missing : $missing"
 echo "Total   : $numapicalls"
-coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
-echo "Coverage: $coverage%"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
+exit 0
