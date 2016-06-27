@@ -3,9 +3,9 @@
 srcdir="$1"/libknet/tests
 builddir="$2"/libknet/tests
 
-headerapicalls="$(grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}' | sort -u)"
+headerapicalls="$(grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
 
-exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' T ' | awk '{print $3}' | sort -u)"
+exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' T ' | awk '{print $3}')"
 
 echo "Checking for exported symbols NOT available in header file"
 
@@ -43,7 +43,7 @@ numapicalls=0
 found=0
 missing=0
 
-for i in $exportedapicalls; do
+for i in $headerapicalls; do
 	numapicalls=$((numapicalls + 1))
 	if [ -f $srcdir/api_${i}.c ]; then
 		found=$((found + 1))
