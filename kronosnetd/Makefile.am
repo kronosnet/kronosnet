@@ -8,6 +8,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
+include $(top_srcdir)/build-aux/check.mk
+
 EXTRA_DIST		= kronosnetd.logrotate.in
 
 noinst_HEADERS		= \

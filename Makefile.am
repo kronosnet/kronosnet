@@ -11,6 +11,8 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  ltmain.sh compile config.h.in config.h.in~ \
 			  autoscan.log configure.scan test-driver
 
+include $(top_srcdir)/build-aux/check.mk
+
 AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4

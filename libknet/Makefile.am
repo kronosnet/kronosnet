@@ -9,6 +9,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+include $(top_srcdir)/build-aux/check.mk
+
 EXTRA_DIST		= libknet.versions
 
 SUBDIRS			= . tests

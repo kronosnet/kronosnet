@@ -8,9 +8,9 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= libtap_exported_sym tap_updown_bad tap_updown_good
-
 include $(top_srcdir)/build-aux/check.mk
+
+EXTRA_DIST		= libtap_exported_sym tap_updown_bad tap_updown_good
 
 sources			= libtap.c
 

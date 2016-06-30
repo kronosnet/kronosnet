@@ -8,6 +8,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+include $(top_srcdir)/build-aux/check.mk
+
 EXTRA_DIST		= kronosnetd.in kronosnetd.service.in \
 			  kronosnetd.default
 
