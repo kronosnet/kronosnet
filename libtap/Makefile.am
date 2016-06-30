@@ -10,7 +10,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-EXTRA_DIST		= libtap_exported_sym tap_updown_bad tap_updown_good
+SYMFILE			= libtap_exported_syms
+
+EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good
 
 sources			= libtap.c
 
@@ -29,7 +31,9 @@ lib_LTLIBRARIES		= libtap.la
 
 libtap_la_SOURCES	= $(sources)
 
-libtap_la_LDFLAGS	= -Wl,-version-script,$(srcdir)/libtap_exported_sym \
+EXTRA_libtap_la_DEPENDENCIES	= $(SYMFILE)
+
+libtap_la_LDFLAGS	= -Wl,-version-script,$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
