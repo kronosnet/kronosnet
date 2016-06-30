@@ -1,21 +1,6 @@
 Base {
 	global:
-		tap_open;
-		tap_close;
-		tap_find;
-		tap_get_fd;
-		tap_get_name;
-		tap_get_mtu;
-		tap_set_mtu;
-		tap_reset_mtu;
-		tap_get_mac;
-		tap_set_mac;
-		tap_reset_mac;
-		tap_set_up;
-		tap_set_down;
-		tap_add_ip;
-		tap_del_ip;
-		tap_get_ips;
+		tap_*;
 	local:
 		*;
 };

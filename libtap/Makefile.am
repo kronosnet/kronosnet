@@ -12,7 +12,7 @@ include $(top_srcdir)/build-aux/check.mk
 
 SYMFILE			= libtap_exported_syms
 
-EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good
+EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good api-test-coverage
 
 sources			= libtap.c
 
@@ -42,6 +42,12 @@ TESTS			= $(check_PROGRAMS)
 noinst_PROGRAMS		= $(check_PROGRAMS)
 
 check_PROGRAMS		= tap_test
+
+check-local: check-api-test-coverage
+
+check-api-test-coverage:
+	chmod u+x $(top_srcdir)/libtap/api-test-coverage
+	$(top_srcdir)/libtap/api-test-coverage $(top_srcdir) $(top_builddir)
 
 tap_test_SOURCES	= $(sources)
 
