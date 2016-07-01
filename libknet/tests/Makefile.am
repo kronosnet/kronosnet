@@ -43,6 +43,7 @@ check_PROGRAMS		= \
 			  api_knet_log_get_loglevel \
 			  api_knet_link_set_config \
 			  api_knet_link_get_config \
+			  api_knet_link_set_pong_count \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -117,6 +118,10 @@ api_knet_link_set_config_SOURCES = api_knet_link_set_config.c \
 api_knet_link_get_config_SOURCES = api_knet_link_get_config.c \
 				   ../../common/netutils.c \
 				   test-common.c
+
+api_knet_link_set_pong_count_SOURCES = api_knet_link_set_pong_count.c \
+				       ../../common/netutils.c \
+				       test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
