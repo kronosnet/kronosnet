@@ -1750,12 +1750,11 @@ static int knet_cmd_status(struct knet_vty *vty)
 
 			knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
 			for (i = 0; i < link_ids_entries; i++) {
-				int dynamic;
+				uint8_t dynamic;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
-				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &src_addr, &dst_addr);
-				if (dynamic >= 0) {
+				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &src_addr, &dst_addr, &dynamic)) {
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
 						if (dynamic) {
@@ -1863,12 +1862,11 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 			knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
 			for (i = 0; i < link_ids_entries; i++) {
-				int dynamic;
+				uint8_t dynamic;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
-				dynamic = knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &src_addr, &dst_addr);
-				if (dynamic >= 0) {
+				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &src_addr, &dst_addr, &dynamic)) {
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
 						uint8_t priority, pong_count;

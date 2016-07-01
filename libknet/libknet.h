@@ -903,18 +903,21 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
  * dst_addr  - sockaddr_storage that can be either IPv4 or IPv6
- *             this can be null if the link has dynamic incoming connection
+ *
+ * dynamic   - 0 if dst_addr is static or 1 if dst_addr is dynamic.
+ *             In case of 1, dst_addr can be NULL and it will be left
+ *             untouched.
  *
  * knet_link_set_config returns:
  *
- * 1 on success and the link is dynamic, dst_addr is unknown/unconfigured
- * 0 on success and both src and dst have been configured by set_config
+ * 0 on success.
  * -1 on error and errno is set.
  */
 
 int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			 struct sockaddr_storage *src_addr,
-			 struct sockaddr_storage *dst_addr);
+			 struct sockaddr_storage *dst_addr,
+			 uint8_t *dynamic);
 
 /*
  * knet_link_set_enable

@@ -42,6 +42,7 @@ check_PROGRAMS		= \
 			  api_knet_log_set_loglevel \
 			  api_knet_log_get_loglevel \
 			  api_knet_link_set_config \
+			  api_knet_link_get_config \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -110,6 +111,10 @@ api_knet_log_get_loglevel_SOURCES = api_knet_log_get_loglevel.c \
 				    test-common.c
 
 api_knet_link_set_config_SOURCES = api_knet_link_set_config.c \
+				   ../../common/netutils.c \
+				   test-common.c
+
+api_knet_link_get_config_SOURCES = api_knet_link_get_config.c \
 				   ../../common/netutils.c \
 				   test-common.c
 
