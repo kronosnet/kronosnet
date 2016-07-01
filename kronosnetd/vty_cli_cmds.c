@@ -1880,7 +1880,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 						}
 						knet_link_get_pong_count(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &pong_count);
 						knet_vty_write(vty, "    pong_count %u%s", pong_count, nl);
-						knet_link_get_timeout(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &interval, &timeout, &precision);
+						knet_link_get_ping_timers(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &interval, &timeout, &precision);
 						knet_vty_write(vty, "    timers %llu %llu%s", (unsigned long long)interval, (unsigned long long)timeout, nl);
 						knet_link_get_priority(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &priority);
 						knet_vty_write(vty, "    priority %u%s", priority, nl);

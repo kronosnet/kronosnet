@@ -154,6 +154,11 @@ exit_unlock:
 		link->configured = 1;
 		link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
 		link->has_valid_mtu = 0;
+		link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */
+		link->pong_timeout = KNET_LINK_DEFAULT_PING_TIMEOUT * 1000; /* microseconds */
+		link->latency_fix = KNET_LINK_DEFAULT_PING_PRECISION;
+		link->latency_exp = KNET_LINK_DEFAULT_PING_PRECISION - \
+				    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);
 	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
@@ -602,8 +607,8 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			  time_t *interval, time_t *timeout, unsigned int *precision)
+int knet_link_get_ping_timers(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			      time_t *interval, time_t *timeout, unsigned int *precision)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
