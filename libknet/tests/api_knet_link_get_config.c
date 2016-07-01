@@ -26,7 +26,6 @@ static void test(void)
 	knet_handle_t knet_h;
 	int logfds[2];
 	struct sockaddr_storage src, dst, get_src, get_dst;
-	//struct knet_link_status link_status;
 	uint8_t dynamic = 0;
 
 	memset(&src, 0, sizeof(struct sockaddr_storage));
