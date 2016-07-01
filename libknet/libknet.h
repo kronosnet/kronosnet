@@ -960,6 +960,32 @@ int knet_link_get_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			 unsigned int *enabled);
 
 /*
+ * knet_link_set_ping_timers
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * host_id   - see above
+ *
+ * link_id   - see above
+ *
+ * interval  - specify the ping interval
+ *
+ * timeout   - if no pong is received within this time,
+ *             the link is declared dead
+ *
+ * precision - how many values of latency are used to calculate
+ *             the average link latency (see also get_status below)
+ *
+ * knet_link_set_ping_timers returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_link_set_ping_timers(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			      time_t interval, time_t timeout, unsigned int precision);
+
+/*
  * knet_link_set_pong_count
  *
  * knet_h     - pointer to knet_handle_t
@@ -999,32 +1025,6 @@ int knet_link_set_pong_count(knet_handle_t knet_h, uint16_t host_id, uint8_t lin
 
 int knet_link_get_pong_count(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			     uint8_t *pong_count);
-
-/*
- * knet_link_set_timeout
- *
- * knet_h    - pointer to knet_handle_t
- *
- * host_id   - see above
- *
- * link_id   - see above
- *
- * interval  - specify the ping interval
- *
- * timeout   - if no pong is received within this time,
- *             the link is declared dead
- *
- * precision - how many values of latency are used to calculate
- *             the average link latency (see also get_status below)
- *
- * knet_link_set_timeout returns:
- *
- * 0 on success
- * -1 on error and errno is set.
- */
-
-int knet_link_set_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			  time_t interval, time_t timeout, unsigned int precision);
 
 /*
  * knet_link_get_timeout

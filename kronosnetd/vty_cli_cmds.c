@@ -912,7 +912,7 @@ static int knet_cmd_link_timer(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	holdtime = param_to_int(param, paramlen);
 
-	knet_link_set_timeout(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, keepalive, holdtime, 2048);
+	knet_link_set_ping_timers(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, keepalive, holdtime, 2048);
 
 	return 0;
 }
@@ -1004,7 +1004,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 		knet_link_set_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &src_addr, dst);
 
-		knet_link_set_timeout(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 1000, 5000, 2048);
+		knet_link_set_ping_timers(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 1000, 5000, 2048);
 
 		knet_link_set_enable(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 1);
 	}

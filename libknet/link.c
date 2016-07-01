@@ -527,8 +527,8 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_set_timeout(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
-			  time_t interval, time_t timeout, unsigned int precision)
+int knet_link_set_ping_timers(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			      time_t interval, time_t timeout, unsigned int precision)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
