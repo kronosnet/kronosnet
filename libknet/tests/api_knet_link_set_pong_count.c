@@ -94,7 +94,7 @@ static void test(void)
 
 	printf("Test knet_link_set_pong_count with incorrect pong count\n");
 
-	if ((!knet_link_set_pong_count(knet_h, 1, KNET_MAX_LINK, 0)) || (errno != EINVAL)) {
+	if ((!knet_link_set_pong_count(knet_h, 1, 0, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_pong_count accepted invalid pong count or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
