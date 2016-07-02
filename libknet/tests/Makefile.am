@@ -25,28 +25,28 @@ noinst_HEADERS		= \
 # API have been validated upfront.
 
 check_PROGRAMS		= \
-			  api_knet_handle_new \
-			  api_knet_handle_free \
-			  api_knet_host_add \
-			  api_knet_host_remove \
-			  api_knet_host_set_name \
-			  api_knet_host_get_name_by_host_id \
-			  api_knet_host_get_id_by_host_name \
-			  api_knet_host_get_host_list \
-			  api_knet_host_set_policy \
-			  api_knet_host_get_policy \
-			  api_knet_log_get_subsystem_name \
-			  api_knet_log_get_subsystem_id \
-			  api_knet_log_get_loglevel_name \
-			  api_knet_log_get_loglevel_id \
-			  api_knet_log_set_loglevel \
-			  api_knet_log_get_loglevel \
-			  api_knet_link_set_config \
-			  api_knet_link_get_config \
-			  api_knet_link_set_ping_timers \
-			  api_knet_link_get_ping_timers \
-			  api_knet_link_set_pong_count \
-			  api_knet_link_get_pong_count \
+			  api_knet_handle_new_test \
+			  api_knet_handle_free_test \
+			  api_knet_host_add_test \
+			  api_knet_host_remove_test \
+			  api_knet_host_set_name_test \
+			  api_knet_host_get_name_by_host_id_test \
+			  api_knet_host_get_id_by_host_name_test \
+			  api_knet_host_get_host_list_test \
+			  api_knet_host_set_policy_test \
+			  api_knet_host_get_policy_test \
+			  api_knet_log_get_subsystem_name_test \
+			  api_knet_log_get_subsystem_id_test \
+			  api_knet_log_get_loglevel_name_test \
+			  api_knet_log_get_loglevel_id_test \
+			  api_knet_log_set_loglevel_test \
+			  api_knet_log_get_loglevel_test \
+			  api_knet_link_set_config_test \
+			  api_knet_link_get_config_test \
+			  api_knet_link_set_ping_timers_test \
+			  api_knet_link_get_ping_timers_test \
+			  api_knet_link_set_pong_count_test \
+			  api_knet_link_get_pong_count_test \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -65,78 +65,78 @@ check-api-test-coverage:
 	chmod u+x $(top_srcdir)/libknet/tests/api-test-coverage
 	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir) $(top_builddir)
 
-api_knet_handle_new_SOURCES = api_knet_handle_new.c \
-			      test-common.c
+api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
+				   test-common.c
 
-api_knet_handle_free_SOURCES = api_knet_handle_free.c \
-			       test-common.c
+api_knet_handle_free_test_SOURCES = api_knet_handle_free.c \
+				    test-common.c
 
-api_knet_host_add_SOURCES = api_knet_host_add.c \
-			    test-common.c
-
-api_knet_host_remove_SOURCES = api_knet_host_remove.c \
-			       ../../common/netutils.c \
-			       test-common.c
-
-api_knet_host_set_name_SOURCES = api_knet_host_set_name.c \
+api_knet_host_add_test_SOURCES = api_knet_host_add.c \
 				 test-common.c
 
-api_knet_host_get_name_by_host_id_SOURCES = api_knet_host_get_name_by_host_id.c \
-					    test-common.c
+api_knet_host_remove_test_SOURCES = api_knet_host_remove.c \
+				    ../../common/netutils.c \
+				    test-common.c
 
-api_knet_host_get_id_by_host_name_SOURCES = api_knet_host_get_id_by_host_name.c \
-					    test-common.c
-
-api_knet_host_get_host_list_SOURCES = api_knet_host_get_host_list.c \
+api_knet_host_set_name_test_SOURCES = api_knet_host_set_name.c \
 				      test-common.c
 
-api_knet_host_set_policy_SOURCES = api_knet_host_set_policy.c \
-				   test-common.c
+api_knet_host_get_name_by_host_id_test_SOURCES = api_knet_host_get_name_by_host_id.c \
+						 test-common.c
 
-api_knet_host_get_policy_SOURCES = api_knet_host_get_policy.c \
-				   test-common.c
+api_knet_host_get_id_by_host_name_test_SOURCES = api_knet_host_get_id_by_host_name.c \
+						 test-common.c
 
-api_knet_log_get_subsystem_name_SOURCES = api_knet_log_get_subsystem_name.c \
-					  test-common.c
+api_knet_host_get_host_list_test_SOURCES = api_knet_host_get_host_list.c \
+					   test-common.c
 
-api_knet_log_get_subsystem_id_SOURCES = api_knet_log_get_subsystem_id.c \
+api_knet_host_set_policy_test_SOURCES = api_knet_host_set_policy.c \
 					test-common.c
 
-api_knet_log_get_loglevel_name_SOURCES = api_knet_log_get_loglevel_name.c \
+api_knet_host_get_policy_test_SOURCES = api_knet_host_get_policy.c \
+					test-common.c
+
+api_knet_log_get_subsystem_name_test_SOURCES = api_knet_log_get_subsystem_name.c \
+					       test-common.c
+
+api_knet_log_get_subsystem_id_test_SOURCES = api_knet_log_get_subsystem_id.c \
+					     test-common.c
+
+api_knet_log_get_loglevel_name_test_SOURCES = api_knet_log_get_loglevel_name.c \
+					      test-common.c
+
+api_knet_log_get_loglevel_id_test_SOURCES = api_knet_log_get_loglevel_id.c \
+					    test-common.c
+
+api_knet_log_set_loglevel_test_SOURCES = api_knet_log_set_loglevel.c \
 					 test-common.c
 
-api_knet_log_get_loglevel_id_SOURCES = api_knet_log_get_loglevel_id.c \
-				       test-common.c
+api_knet_log_get_loglevel_test_SOURCES = api_knet_log_get_loglevel.c \
+					 test-common.c
 
-api_knet_log_set_loglevel_SOURCES = api_knet_log_set_loglevel.c \
-				    test-common.c
+api_knet_link_set_config_test_SOURCES = api_knet_link_set_config.c \
+					../../common/netutils.c \
+					test-common.c
 
-api_knet_log_get_loglevel_SOURCES = api_knet_log_get_loglevel.c \
-				    test-common.c
+api_knet_link_get_config_test_SOURCES = api_knet_link_get_config.c \
+					../../common/netutils.c \
+					test-common.c
 
-api_knet_link_set_config_SOURCES = api_knet_link_set_config.c \
-				   ../../common/netutils.c \
-				   test-common.c
+api_knet_link_set_ping_timers_test_SOURCES = api_knet_link_set_ping_timers.c \
+					     ../../common/netutils.c \
+					     test-common.c
 
-api_knet_link_get_config_SOURCES = api_knet_link_get_config.c \
-				   ../../common/netutils.c \
-				   test-common.c
+api_knet_link_get_ping_timers_test_SOURCES = api_knet_link_get_ping_timers.c \
+					     ../../common/netutils.c \
+					     test-common.c
 
-api_knet_link_set_ping_timers_SOURCES = api_knet_link_set_ping_timers.c \
-				        ../../common/netutils.c \
-				        test-common.c
+api_knet_link_set_pong_count_test_SOURCES = api_knet_link_set_pong_count.c \
+					    ../../common/netutils.c \
+					    test-common.c
 
-api_knet_link_get_ping_timers_SOURCES = api_knet_link_get_ping_timers.c \
-				        ../../common/netutils.c \
-				        test-common.c
-
-api_knet_link_set_pong_count_SOURCES = api_knet_link_set_pong_count.c \
-				       ../../common/netutils.c \
-				       test-common.c
-
-api_knet_link_get_pong_count_SOURCES = api_knet_link_get_pong_count.c \
-				       ../../common/netutils.c \
-				       test-common.c
+api_knet_link_get_pong_count_test_SOURCES = api_knet_link_get_pong_count.c \
+					    ../../common/netutils.c \
+					    test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
