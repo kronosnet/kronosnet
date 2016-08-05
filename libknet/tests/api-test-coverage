@@ -39,6 +39,8 @@ for i in $headerapicalls; do
 	fi
 done
 
+echo "Checking for api test coverage"
+
 numapicalls=0
 found=0
 missing=0
