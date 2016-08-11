@@ -259,6 +259,11 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
+	if (enabled > 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	/*
 	 * this read lock might appear as an API violation, but be
 	 * very careful because we cannot use a write lock (yet).

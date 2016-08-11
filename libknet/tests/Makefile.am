@@ -49,6 +49,7 @@ check_PROGRAMS		= \
 			  api_knet_link_get_pong_count_test \
 			  api_knet_link_set_priority_test \
 			  api_knet_link_get_priority_test \
+			  api_knet_link_set_enable_test \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -147,6 +148,10 @@ api_knet_link_set_priority_test_SOURCES = api_knet_link_set_priority.c \
 api_knet_link_get_priority_test_SOURCES = api_knet_link_get_priority.c \
 					  ../../common/netutils.c \
 					  test-common.c
+
+api_knet_link_set_enable_test_SOURCES = api_knet_link_set_enable.c \
+					../../common/netutils.c \
+					test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
