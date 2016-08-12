@@ -67,6 +67,9 @@ AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 cc_supports_flag() {
 	saveCPPFLAGS="$CPPFLAGS"
 	CPPFLAGS="$@"
+	if echo $CC | grep -q clang; then
+		CPPFLAGS="-Werror $CPPFLAGS"
+	fi
 	AC_MSG_CHECKING([whether $CC supports "$@"])
 	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
