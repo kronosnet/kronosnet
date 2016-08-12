@@ -109,11 +109,11 @@ int addrtostr(const struct sockaddr *sa, socklen_t salen, char *buf[2])
 				NI_NUMERICHOST | NI_NUMERICSERV);
 
 	if (ret != 0) {
-		buf[0] = '\0';
-		buf[1] = '\0';
+		buf[0] = 0;
+		buf[1] = 0;
 	} else {
-		buf[0][ADDRTOSTR_HOST_LEN - 1] = '\0';
-		buf[1][ADDRTOSTR_PORT_LEN - 1] = '\0';
+		buf[0][ADDRTOSTR_HOST_LEN - 1] = 0;
+		buf[1][ADDRTOSTR_PORT_LEN - 1] = 0;
 	}
 
 	return ret;
