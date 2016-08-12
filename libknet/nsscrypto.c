@@ -583,19 +583,9 @@ int nsscrypto_init(
 
 	memset(nsscrypto_instance, 0, sizeof(struct nsscrypto_instance));
 
-	if (!knet_handle_crypto_cfg->crypto_cipher_type) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "no crypto cipher type specified");
-		goto out_err;
-	}
-
 	nsscrypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (nsscrypto_instance->crypto_cipher_type < 0) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto cipher type requested");
-		goto out_err;
-	}
-
-	if (!knet_handle_crypto_cfg->crypto_hash_type) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "no crypto hash type specified");
 		goto out_err;
 	}
 
