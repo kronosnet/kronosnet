@@ -77,7 +77,7 @@ static int get_command(struct knet_vty *vty, char **cmd, int *cmdlen, int *cmdof
 		*no = 1;
 		idx = idx + 3;
 
-		for (idx = idx; idx < vty->line_idx; idx++) {
+		for (; idx < vty->line_idx; idx++) {
 			if (vty->line[idx] != ' ')
 				break;
 		}
