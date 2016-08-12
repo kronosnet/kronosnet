@@ -384,6 +384,11 @@ int knet_link_get_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
+	if (!enabled) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
