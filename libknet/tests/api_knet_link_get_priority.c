@@ -106,6 +106,19 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	printf("Test knet_link_get_priority with incorrect priority\n");
+
+	if ((!knet_link_get_priority(knet_h, 1, 0, NULL)) || (errno != EINVAL)) {
+		printf("knet_link_get_priority accepted incorrect priority or returned incorrect error: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
 	printf("Test knet_link_get_priority with correct values\n");
 
 	if (knet_link_set_config(knet_h, 1, 0, &src, &dst) < 0) {
