@@ -127,7 +127,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_link_set_enable with correct values\n");
+	printf("Test knet_link_set_enable with correct values (1)\n");
 
 	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
 		printf("knet_link_set_enable failed: %s\n", strerror(errno));
@@ -140,6 +140,7 @@ static void test(void)
 
 	if (knet_h->host_index[1]->link[0].status.enabled != 1) {
 		printf("knet_link_set_enable failed to set correct values\n");
+		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -147,6 +148,28 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	printf("Test knet_link_set_enable with correct values (0)\n");
+
+	if (knet_link_set_enable(knet_h, 1, 0, 0) < 0) {
+		printf("knet_link_set_enable failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_h->host_index[1]->link[0].status.enabled != 0) {
+		printf("knet_link_set_enable failed to set correct values\n");
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	knet_link_set_enable(knet_h, 1, 0, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
