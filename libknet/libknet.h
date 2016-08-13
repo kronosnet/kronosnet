@@ -571,8 +571,8 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
  * knet_handle_crypto returns:
  *
  * 0 on success
- * -1 on locking error and errno is set.
- * -2 on crypto initialization error. No errno is provided at the moment.
+ * -1 on error and errno is set.
+ * -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
  */
 
 #define KNET_MIN_KEY_LEN 1024

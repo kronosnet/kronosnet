@@ -1261,9 +1261,14 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
 	int savederrno = 0;
-	int err;
+	int err = 0;
 
-	if ((!knet_h) || (!knet_handle_crypto_cfg)) {
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_handle_crypto_cfg) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1286,6 +1291,22 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		goto exit_unlock;
 	}
 
+	if (knet_handle_crypto_cfg->private_key_len < KNET_MIN_KEY_LEN) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too short (min %u): %u",
+			  KNET_MIN_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
+		savederrno = EINVAL;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	if (knet_handle_crypto_cfg->private_key_len > KNET_MAX_KEY_LEN) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too long (max %u): %u",
+			  KNET_MAX_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
+		savederrno = EINVAL;
+		err = -1;
+		goto exit_unlock;
+	}
+
 	err = crypto_init(knet_h, knet_handle_crypto_cfg);
 
 	if (err) {
@@ -1294,6 +1315,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
 	return err;
 }
 
