@@ -52,6 +52,7 @@ check_PROGRAMS		= \
 			  api_knet_link_set_enable_test \
 			  api_knet_link_get_enable_test \
 			  api_knet_link_get_link_list_test \
+			  api_knet_handle_crypto_test \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -162,6 +163,9 @@ api_knet_link_get_enable_test_SOURCES = api_knet_link_get_enable.c \
 api_knet_link_get_link_list_test_SOURCES = api_knet_link_get_link_list.c \
 					   ../../common/netutils.c \
 					   test-common.c
+
+api_knet_handle_crypto_test_SOURCES = api_knet_handle_crypto.c \
+				      test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
