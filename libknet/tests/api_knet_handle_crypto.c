@@ -177,6 +177,24 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	printf("Shutdown crypto\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg) < 0) {
+		printf("Unable to shutdown crypto: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);

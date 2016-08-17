@@ -9,15 +9,21 @@
 #include "config.h"
 
 #include <nss.h>
+#include <nspr.h>
 #include <pk11pub.h>
 #include <pkcs11.h>
 #include <prerror.h>
 #include <blapit.h>
 #include <hasht.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 #include "crypto.h"
 #include "nsscrypto.h"
 #include "logging.h"
+
+static pthread_mutex_t nssdbinit_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int nssdbinit_done = 0;
 
 /*
  * crypto definitions and conversion tables
@@ -451,22 +457,54 @@ out:
  * global/glue nss functions
  */
 
+static void nss_atexit_handler(void)
+{
+	NSS_Shutdown();
+	PL_ArenaFinish();
+	PR_Cleanup();
+}
+
 static int init_nss_db(knet_handle_t knet_h)
 {
 	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	int err = 0;
 
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
 	    (!hash_to_nss[instance->crypto_hash_type])) {
 		return 0;
 	}
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d)",
-			   PR_GetError());
+	err = pthread_mutex_lock(&nssdbinit_mutex);
+	if (err) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB unable to get mutex lock (%d)", err);
 		return -1;
 	}
 
-	return 0;
+	if (nssdbinit_done) {
+		err = 0;
+		goto out_unlock;
+	}
+
+	PR_Init(PR_USER_THREAD, PR_PRIORITY_URGENT, 0);
+
+	if (NSS_NoDB_Init(".") != SECSuccess) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d)",
+			   PR_GetError());
+		err = -1;
+		goto out_unlock;
+	}
+
+	if (atexit(&nss_atexit_handler) != 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB unable to register atexit handler");
+		err = -1;
+		goto out_unlock;
+	}
+
+	nssdbinit_done = 1;
+
+out_unlock:
+	pthread_mutex_unlock(&nssdbinit_mutex);
+	return err;
 }
 
 static int init_nss(knet_handle_t knet_h)
