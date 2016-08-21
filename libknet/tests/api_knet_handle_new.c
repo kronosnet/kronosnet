@@ -21,9 +21,11 @@
 
 #include "test-common.h"
 
-static void test_nologging(void)
+static void test(void)
 {
 	knet_handle_t knet_h;
+	struct rlimit cur;
+	int logfds[2];
 
 	printf("Test knet_handle_new hostid 1, no logging\n");
 
@@ -52,6 +54,7 @@ static void test_nologging(void)
 
 	if (knet_h->host_id != 65535) {
 		printf("host_id size might have changed!\n");
+		knet_handle_free(knet_h);
 		exit(FAIL);
 	}
 
@@ -59,13 +62,6 @@ static void test_nologging(void)
 		printf("Unable to free knet_handle\n");
 		exit(FAIL);
 	}
-}
-
-static void test_logging(void)
-{
-	knet_handle_t knet_h;
-	struct rlimit cur;
-	int logfds[2];
 
 	if (prlimit(0, RLIMIT_NOFILE, NULL, &cur) < 0) {
 		printf("Unable to get current fd limit: %s\n", strerror(errno));
@@ -97,13 +93,8 @@ static void test_logging(void)
 
 	knet_h = knet_handle_new(1, (int) cur.rlim_max, 0);
 
-	if ((!knet_h) && (errno != EINVAL)) {
-		printf("knet_handle_new returned incorrect errno on incorrect log_fd: %s\n", strerror(errno));
-		exit(FAIL);
-	}
-
-	if (knet_h) {
-		printf("knet_handle_new accepted an incorrect (max_fd + 1) log_fd\n");
+	if ((knet_h) || (errno != EINVAL)) {
+		printf("knet_handle_new accepted an incorrect (max_fd + 1) log_fd or returned incorrect errno on incorrect log_fd: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		exit(FAIL);
 	}
@@ -114,15 +105,8 @@ static void test_logging(void)
 
 	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG + 1);
 
-	if ((!knet_h) && (errno != EINVAL)) {
-		printf("knet_handle_new returned incorrect errno on incorrect log level: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h) {
-		printf("knet_handle_new accepted an incorrect log level\n");
+	if ((knet_h) || (errno != EINVAL)) {
+		printf("knet_handle_new accepted an incorrect log level or returned incorrect errno on incorrect log level: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
@@ -149,9 +133,7 @@ int main(int argc, char *argv[])
 {
 	need_root();
 
-	test_nologging();
-
-	test_logging();
+	test();
 
 	return PASS;
 }

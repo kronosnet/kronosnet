@@ -19,22 +19,19 @@
 
 #include "test-common.h"
 
-static void test_noparam(void)
+static void test(void)
 {
+	knet_handle_t knet_h;
+	int logfds[2];
+
+	setup_logpipes(logfds);
+
 	printf("Test knet_handle_free with invalid knet_h\n");
 
 	if ((!knet_handle_free(NULL)) || (errno != EINVAL)) {
 		printf("knet_handle_free failed to detect invalid parameter\n");
 		exit(FAIL);
 	}
-}
-
-static void test_param(void)
-{
-	knet_handle_t knet_h;
-	int logfds[2];
-
-	setup_logpipes(logfds);
 
 	printf("Test knet_handle_free with one host configured\n");
 
@@ -80,7 +77,6 @@ static void test_param(void)
 	}
 
 	flush_logs(logfds[0], stdout);
-
 	close_logpipes(logfds);
 }
 
@@ -88,9 +84,7 @@ int main(int argc, char *argv[])
 {
 	need_root();
 
-	test_noparam();
-
-	test_param();
+	test();
 
 	return PASS;
 }
