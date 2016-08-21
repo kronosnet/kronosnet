@@ -1116,6 +1116,11 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		return -1;
 	}
 
+	if ((enabled < 0) || (enabled > 1)) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
@@ -1124,11 +1129,11 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		return -1;
 	}
 
+	knet_h->enabled = enabled;
+
 	if (enabled) {
-		knet_h->enabled = 1;
 		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is enabled");
 	} else {
-		knet_h->enabled = 0;
 		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is disabled");
 	}
 
