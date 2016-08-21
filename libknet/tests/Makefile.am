@@ -27,6 +27,8 @@ noinst_HEADERS		= \
 check_PROGRAMS		= \
 			  api_knet_handle_new_test \
 			  api_knet_handle_free_test \
+			  api_knet_handle_crypto_test \
+			  api_knet_handle_setfwd_test \
 			  api_knet_host_add_test \
 			  api_knet_host_remove_test \
 			  api_knet_host_set_name_test \
@@ -52,8 +54,6 @@ check_PROGRAMS		= \
 			  api_knet_link_set_enable_test \
 			  api_knet_link_get_enable_test \
 			  api_knet_link_get_link_list_test \
-			  api_knet_handle_crypto_test \
-			  api_knet_handle_setfwd_test \
 			  timediff_test
 
 noinst_PROGRAMS		= \
@@ -77,6 +77,12 @@ api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 
 api_knet_handle_free_test_SOURCES = api_knet_handle_free.c \
 				    test-common.c
+
+api_knet_handle_crypto_test_SOURCES = api_knet_handle_crypto.c \
+				      test-common.c
+
+api_knet_handle_setfwd_test_SOURCES = api_knet_handle_setfwd.c \
+				      test-common.c
 
 api_knet_host_add_test_SOURCES = api_knet_host_add.c \
 				 test-common.c
@@ -164,12 +170,6 @@ api_knet_link_get_enable_test_SOURCES = api_knet_link_get_enable.c \
 api_knet_link_get_link_list_test_SOURCES = api_knet_link_get_link_list.c \
 					   ../../common/netutils.c \
 					   test-common.c
-
-api_knet_handle_crypto_test_SOURCES = api_knet_handle_crypto.c \
-				      test-common.c
-
-api_knet_handle_setfwd_test_SOURCES = api_knet_handle_setfwd.c \
-				      test-common.c
 
 ping_test_SOURCES	= ping_test.c
 
