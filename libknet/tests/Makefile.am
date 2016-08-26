@@ -38,6 +38,7 @@ check_PROGRAMS		= \
 			  api_knet_host_set_policy_test \
 			  api_knet_host_get_policy_test \
 			  api_knet_host_get_status_test \
+			  api_knet_host_enable_status_change_notify_test \
 			  api_knet_log_get_subsystem_name_test \
 			  api_knet_log_get_subsystem_id_test \
 			  api_knet_log_get_loglevel_name_test \
@@ -113,6 +114,9 @@ api_knet_host_get_policy_test_SOURCES = api_knet_host_get_policy.c \
 
 api_knet_host_get_status_test_SOURCES = api_knet_host_get_status.c \
 					test-common.c
+
+api_knet_host_enable_status_change_notify_test_SOURCES = api_knet_host_enable_status_change_notify.c \
+							 test-common.c
 
 api_knet_log_get_subsystem_name_test_SOURCES = api_knet_log_get_subsystem_name.c \
 					       test-common.c
