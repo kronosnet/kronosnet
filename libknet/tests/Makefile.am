@@ -30,6 +30,7 @@ check_PROGRAMS		= \
 			  api_knet_handle_crypto_test \
 			  api_knet_handle_setfwd_test \
 			  api_knet_handle_enable_filter_test \
+			  api_knet_handle_enable_sock_notify_test \
 			  api_knet_host_add_test \
 			  api_knet_host_remove_test \
 			  api_knet_host_set_name_test \
@@ -90,6 +91,9 @@ api_knet_handle_setfwd_test_SOURCES = api_knet_handle_setfwd.c \
 
 api_knet_handle_enable_filter_test_SOURCES = api_knet_handle_enable_filter.c \
 					     test-common.c
+
+api_knet_handle_enable_sock_notify_test_SOURCES = api_knet_handle_enable_sock_notify.c \
+						  test-common.c
 
 api_knet_host_add_test_SOURCES = api_knet_host_add.c \
 				 test-common.c
