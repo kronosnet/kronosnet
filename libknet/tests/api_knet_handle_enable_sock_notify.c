@@ -129,8 +129,6 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-
-	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
