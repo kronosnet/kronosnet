@@ -33,6 +33,7 @@ check_PROGRAMS		= \
 			  api_knet_handle_enable_sock_notify_test \
 			  api_knet_handle_add_datafd_test \
 			  api_knet_handle_remove_datafd_test \
+			  api_knet_handle_get_channel_test \
 			  api_knet_host_add_test \
 			  api_knet_host_remove_test \
 			  api_knet_host_set_name_test \
@@ -102,6 +103,9 @@ api_knet_handle_add_datafd_test_SOURCES = api_knet_handle_add_datafd.c \
 
 api_knet_handle_remove_datafd_test_SOURCES = api_knet_handle_remove_datafd.c \
 					     test-common.c
+
+api_knet_handle_get_channel_test_SOURCES = api_knet_handle_get_channel.c \
+					   test-common.c
 
 api_knet_host_add_test_SOURCES = api_knet_host_add.c \
 				 test-common.c
