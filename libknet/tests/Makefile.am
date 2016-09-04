@@ -36,6 +36,7 @@ check_PROGRAMS		= \
 			  api_knet_handle_get_channel_test \
 			  api_knet_handle_get_datafd_test \
 			  api_knet_recv_test \
+			  api_knet_send_test \
 			  api_knet_host_add_test \
 			  api_knet_host_remove_test \
 			  api_knet_host_set_name_test \
@@ -113,6 +114,9 @@ api_knet_handle_get_datafd_test_SOURCES = api_knet_handle_get_datafd.c \
 					  test-common.c
 
 api_knet_recv_test_SOURCES = api_knet_recv.c \
+			     test-common.c
+
+api_knet_send_test_SOURCES = api_knet_send.c \
 			     test-common.c
 
 api_knet_host_add_test_SOURCES = api_knet_host_add.c \
