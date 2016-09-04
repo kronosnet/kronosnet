@@ -159,6 +159,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	memset(recv_buff, 0, KNET_MAX_PACKET_SIZE);
 	memset(send_buff, 1, sizeof(send_buff));
 
 	iov_out[0].iov_base = (void *)send_buff;
@@ -182,7 +183,15 @@ static void test(void)
 	}
 
 	if (recv_len != sizeof(send_buff)) {
-		printf("knet_recv recevied only %zu bytes: %s\n", recv_len, strerror(errno));
+		printf("knet_recv received only %zu bytes: %s\n", recv_len, strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
+		printf("knet_recv received bad data\n");
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
