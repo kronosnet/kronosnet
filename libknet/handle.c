@@ -1403,7 +1403,17 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 		return -1;
 	}
 
-	if ((buff_len <= 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
+	if (buff_len <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff_len > KNET_MAX_PACKET_SIZE) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel < 0) {
 		errno = EINVAL;
 		return -1;
 	}
