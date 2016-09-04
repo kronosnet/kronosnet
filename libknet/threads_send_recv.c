@@ -465,11 +465,6 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	int msg_recv, i;
 	int savederrno = 0, docallback = 0;
 
-	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
-		return;
-	}
-
 	if ((channel >= 0) &&
 	    (channel < KNET_DATAFD_MAX) &&
 	    (!knet_h->sockfd[channel].is_socket)) {
@@ -482,7 +477,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		if (inlen <= 0) {
 			savederrno = errno;
 			docallback = 1;
-			goto out_unlock;
+			goto out;
 		}
 
 		msg_recv = 1;
@@ -494,14 +489,14 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 			inlen = msg_recv;
 			savederrno = errno;
 			docallback = 1;
-			goto out_unlock;
+			goto out;
 		}
 		for (i = 0; i < msg_recv; i++) {
 			inlen = msg[i].msg_len;
 			if (inlen  == 0) {
 				savederrno = 0;
 				docallback = 1;
-				goto out_unlock;
+				goto out;
 				break;
 			}
 			knet_h->recv_from_sock_buf[i]->kh_type = type;
@@ -509,16 +504,10 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		}
 	}
 
-out_unlock:
-	pthread_rwlock_unlock(&knet_h->global_rwlock);
+out:
 
 	if (inlen < 0) {
 		struct epoll_event ev;
-
-		if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
-			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
-			goto callback;
-		}
 
 		memset(&ev, 0, sizeof(struct epoll_event));
 
@@ -530,10 +519,7 @@ out_unlock:
 			knet_h->sockfd[channel].has_error = 1;
 		}
 
-		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
-
-callback:
 
 	if (docallback) {
 		knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
@@ -581,6 +567,11 @@ void *_handle_send_to_links_thread(void *data)
 	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, -1);
 
+		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
+			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
+			continue;
+		}
+
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->hostsockfd[0]) {
 				type = KNET_HEADER_TYPE_HOST_INFO;
@@ -596,11 +587,13 @@ void *_handle_send_to_links_thread(void *data)
 			}
 			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
 				log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
+				pthread_rwlock_unlock(&knet_h->listener_rwlock);
 				continue;
 			}
 			_handle_send_to_links(knet_h, events[i].data.fd, channel, msg, type);
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
+		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 
 	return NULL;
