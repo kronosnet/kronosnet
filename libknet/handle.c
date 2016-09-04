@@ -515,6 +515,15 @@ static void _stop_threads(knet_handle_t knet_h)
 {
 	void *retval;
 
+	/*
+	 * allow threads to catch on shutdown request
+	 * and release locks before we stop them.
+	 * this isn't the most efficent way to handle it
+	 * but it works good enough for now
+	 */
+
+	sleep(1);
+
 	pthread_mutex_lock(&knet_h->host_mutex);
 	pthread_cond_signal(&knet_h->host_cond);
 	pthread_mutex_unlock(&knet_h->host_mutex);
