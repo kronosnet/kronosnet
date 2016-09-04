@@ -329,11 +329,16 @@ static void recv_data(knet_handle_t khandle, int inchannel, int has_crypto)
 
 	memset(&recvbuff, 0, sizeof(recvbuff));
 
-	rlen = knet_recv(knet_h, recvbuff, sizeof(recvbuff), inchannel);
+	rlen = knet_recv(knet_h, recvbuff, KNET_MAX_PACKET_SIZE, inchannel);
 
 	if (!rlen) {
 		printf("EOF\n");
 		return;
+	}
+
+	if ((rlen < 0) && (errno == EINVAL)) {
+		printf("Something went wrong with knet_recv. Aborting\n");
+		exit(1);
 	}
 
 	if ((rlen < 0) && ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
