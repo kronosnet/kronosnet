@@ -81,7 +81,6 @@ static void test(void)
 
 	printf("Test knet_host_get_status with correct values\n");
 
-
 	if (knet_host_get_status(knet_h, 1, &status) < 0) {
 		printf("knet_host_get_status failed: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
