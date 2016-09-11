@@ -23,3 +23,13 @@
    fun:start_thread
    fun:clone
 }
+{
+   helgrind glitch in parsing the recv from links code
+   Helgrind:Race
+   fun:_parse_recv_from_links
+   fun:_handle_recv_from_links
+   fun:_handle_recv_from_links_thread
+   obj:/usr/lib64/valgrind/vgpreload_helgrind-amd64-linux.so
+   fun:start_thread
+   fun:clone
+}
