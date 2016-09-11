@@ -118,6 +118,7 @@ api_knet_recv_test_SOURCES = api_knet_recv.c \
 			     test-common.c
 
 api_knet_send_test_SOURCES = api_knet_send.c \
+			     ../../common/netutils.c \
 			     test-common.c
 
 api_knet_send_sync_test_SOURCES = api_knet_send_sync.c \

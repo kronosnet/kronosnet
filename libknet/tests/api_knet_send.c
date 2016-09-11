@@ -17,6 +17,7 @@
 #include "libknet.h"
 
 #include "internals.h"
+#include "netutils.h"
 #include "test-common.h"
 
 static int private_data;
@@ -38,7 +39,16 @@ static void test(void)
 	int datafd = 0;
 	int8_t channel = 0;
 	char send_buff[KNET_MAX_PACKET_SIZE];
-	ssize_t send_len = 0;
+	char recv_buff[KNET_MAX_PACKET_SIZE];
+	ssize_t send_len = 0, recv_len = 0;
+	struct sockaddr_storage lo;
+
+	memset(&lo, 0, sizeof(struct sockaddr_storage));
+
+	if (strtoaddr("127.0.0.1", "50000", (struct sockaddr *)&lo, sizeof(struct sockaddr_storage)) < 0) {
+		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
+		exit(FAIL);
+	}
 
 	memset(send_buff, 0, sizeof(send_buff));
 
@@ -159,9 +169,58 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	if (is_helgrind()) {
+		goto dont_wait_helgrind;
+	}
+
+	if (knet_host_add(knet_h, 1) < 0) {
+		printf("knet_host_add failed: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 0, &lo, &lo) < 0) {
+		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
+		printf("knet_link_set_enable failed: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_handle_setfwd(knet_h, 1) < 0) {
+		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	while(knet_h->host_index[1]->status.reachable != 1) {
+		printf("waiting host to be reachable\n");
+		sleep(1);
+	}
+
+dont_wait_helgrind:
+
 	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		printf("knet_send failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
@@ -170,19 +229,49 @@ static void test(void)
 
 	if (send_len != sizeof(send_buff)) {
 		printf("knet_send sent only %zu bytes: %s\n", send_len, strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
-	/*
-	 * cannot verify packet integrity here, this needs to be done
-	 * in functional testing since it requires a receiver to be configured
-	 */
+	flush_logs(logfds[0], stdout);
+
+	if (is_helgrind()) {
+		goto no_helgrind;
+	}
+
+	sleep(1);
+
+	recv_len = knet_recv(knet_h, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	if (recv_len != send_len) {
+		printf("knet_recv received only %zu bytes: %s\n", recv_len, strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
+		printf("recv and send buffers are different!\n");
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	flush_logs(logfds[0], stdout);
 
+no_helgrind:
+
+	knet_link_set_enable(knet_h, 1, 0, 0);
+	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
