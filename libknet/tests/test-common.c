@@ -132,6 +132,36 @@ out_clean0:
 	return err;
 }
 
+int is_memcheck(void)
+{
+	char *val;
+
+	val = getenv("KNETMEMCHECK");
+
+	if (val) {
+		if (!strncmp(val, "yes", 3)) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int is_helgrind(void)
+{
+	char *val;
+
+	val = getenv("KNETHELGRIND");
+
+	if (val) {
+		if (!strncmp(val, "yes", 3)) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 int need_root(void)
 {
 	if (geteuid() != 0) {

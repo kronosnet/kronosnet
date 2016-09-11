@@ -24,6 +24,9 @@
 
 int execute_shell(const char *command, char **error_string);
 
+int is_memcheck(void);
+int is_helgrind(void);
+
 int need_root(void);
 
 int setup_logpipes(int *logfds);

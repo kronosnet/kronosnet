@@ -4,7 +4,9 @@ MEMCHECK = $(VALGRIND) --track-fds=yes --leak-check=full --suppressions=$(abs_to
 HELGRIND = $(VALGRIND) --tool=helgrind --suppressions=$(abs_top_srcdir)/build-aux/knet_valgrind_helgrind.supp
 
 check-memcheck: $(check_PROGRAMS)
-	$(MAKE) check LOG_COMPILE="libtool --mode=execute $(MEMCHECK)"
+	export KNETMEMCHECK=yes && \
+		$(MAKE) check LOG_COMPILE="libtool --mode=execute $(MEMCHECK)"
 
 check-helgrind: $(check_PROGRAMS)
-	$(MAKE) check LOG_COMPILE="libtool --mode=execute $(HELGRIND)"
+	export KNETHELGRIND=yes && \
+		$(MAKE) check LOG_COMPILE="libtool --mode=execute $(HELGRIND)"
