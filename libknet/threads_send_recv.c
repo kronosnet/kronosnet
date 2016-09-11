@@ -192,6 +192,16 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			break;
 	}
 
+	if (sync) {
+		if ((bcast) ||
+		    ((!bcast) && (dst_host_ids_entries_temp > 1))) {
+			log_debug(knet_h, KNET_SUB_SEND_T, "knet_send_sync is only supported with unicast packets for one destination");
+			savederrno = E2BIG;
+			err = -1;
+			goto out_unlock;
+		}
+	}
+
 	/*
 	 * check destinations hosts before spending time
 	 * in fragmenting/encrypting packets to save
@@ -227,16 +237,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		}
 		if (!send_mcast) {
 			savederrno = EHOSTDOWN;
-			err = -1;
-			goto out_unlock;
-		}
-	}
-
-	if (sync) {
-		if ((send_mcast) ||
-		    ((!bcast) && (dst_host_ids_entries > 1))) {
-			log_debug(knet_h, KNET_SUB_SEND_T, "knet_send_sync is only supported with unicast packets for one destination");
-			savederrno = E2BIG;
 			err = -1;
 			goto out_unlock;
 		}
@@ -412,7 +412,17 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		return -1;
 	}
 
-	if ((buff_len <= 0) || (buff_len > KNET_MAX_PACKET_SIZE)) {
+	if (buff_len <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff_len > KNET_MAX_PACKET_SIZE) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel < 0) {
 		errno = EINVAL;
 		return -1;
 	}
