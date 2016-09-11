@@ -39,6 +39,18 @@ for i in $headerapicalls; do
 	fi
 done
 
+echo "Checking for tests with memcheck exceptions"
+
+for i in $(grep -l is_memcheck "$srcdir"/*.c | grep -v test-common); do
+	echo "WARNING: $(basename $i) - has memcheck exception enabled"
+done
+
+echo "Checking for tests with helgrind exceptions"
+
+for i in $(grep -l is_helgrind "$srcdir"/*.c | grep -v test-common); do
+	echo "WARNING: $(basename $i) has helgrind exception enabled"
+done
+
 echo "Checking for api test coverage"
 
 numapicalls=0
