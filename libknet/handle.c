@@ -1160,6 +1160,11 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 		return -1;
 	}
 
+	if (!interval) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
