@@ -79,7 +79,7 @@ noinst_SCRIPTS		= \
 
 TESTS			= $(check_PROGRAMS)
 
-check-local: check-memcheck check-helgrind check-api-test-coverage
+check-local: check-api-test-coverage
 
 check-api-test-coverage:
 	chmod u+x $(top_srcdir)/libknet/tests/api-test-coverage
