@@ -61,7 +61,6 @@ for i in $headerapicalls; do
 	numapicalls=$((numapicalls + 1))
 	if [ -f $srcdir/api_${i}.c ]; then
 		found=$((found + 1))
-		echo "Found: $i"
 	else
 		missing=$((missing + 1))
 		echo "MISSING: $i"
