@@ -1262,6 +1262,11 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 		return -1;
 	}
 
+	if (!data_mtu) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
