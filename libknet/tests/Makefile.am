@@ -39,6 +39,7 @@ check_PROGRAMS		= \
 			  api_knet_send_test \
 			  api_knet_send_sync_test \
 			  api_knet_handle_pmtud_setfreq_test \
+			  api_knet_handle_pmtud_getfreq_test \
 			  api_knet_host_add_test \
 			  api_knet_host_remove_test \
 			  api_knet_host_set_name_test \
@@ -127,6 +128,9 @@ api_knet_send_sync_test_SOURCES = api_knet_send_sync.c \
 				  test-common.c
 
 api_knet_handle_pmtud_setfreq_test_SOURCES = api_knet_handle_pmtud_setfreq.c \
+					     test-common.c
+
+api_knet_handle_pmtud_getfreq_test_SOURCES = api_knet_handle_pmtud_getfreq.c \
 					     test-common.c
 
 api_knet_host_add_test_SOURCES = api_knet_host_add.c \
