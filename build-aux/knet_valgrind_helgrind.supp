@@ -33,3 +33,11 @@
    fun:start_thread
    fun:clone
 }
+{
+   helgrind glitch in parsing the PMTUd code
+   Helgrind:Race
+   fun:_handle_pmtud_link_thread
+   obj:/usr/lib64/valgrind/vgpreload_helgrind-amd64-linux.so
+   fun:start_thread
+   fun:clone
+}

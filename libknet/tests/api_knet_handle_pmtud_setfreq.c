@@ -90,10 +90,6 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	if (is_helgrind()) {
-		return SKIP;
-	}
-
 	need_root();
 
 	test();
