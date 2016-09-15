@@ -21,8 +21,6 @@
 #include "threads_common.h"
 #include "threads_heartbeat.h"
 
-#define KNET_PING_TIMERES 200000
-
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int len;
@@ -100,7 +98,7 @@ void *_handle_heartbt_thread(void *data)
 	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
 	while (!shutdown_in_progress(knet_h)) {
-		usleep(KNET_PING_TIMERES);
+		usleep(KNET_THREADS_TIMERES);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_HB_T, "Unable to get read lock");

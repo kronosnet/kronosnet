@@ -12,6 +12,8 @@
 
 #include "internals.h"
 
+#define KNET_THREADS_TIMERES 200000
+
 #define timespec_diff(start, end, diff) \
 do { \
 	if (end.tv_sec > start.tv_sec) \
