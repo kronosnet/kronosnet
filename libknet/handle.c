@@ -87,20 +87,6 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	savederrno = pthread_mutex_init(&knet_h->pmtud_timer_mutex, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud timer mutex: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	savederrno = pthread_cond_init(&knet_h->pmtud_timer_cond, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud timer conditional mutex: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
 	savederrno = pthread_mutex_init(&knet_h->tx_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize tx_thread  mutex: %s",
@@ -125,8 +111,6 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_cond_destroy(&knet_h->host_cond);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
 	pthread_cond_destroy(&knet_h->pmtud_cond);
-	pthread_mutex_destroy(&knet_h->pmtud_timer_mutex);
-	pthread_cond_destroy(&knet_h->pmtud_timer_cond);
 	pthread_mutex_destroy(&knet_h->tx_mutex);
 }
 
@@ -551,10 +535,6 @@ static void _stop_threads(knet_handle_t knet_h)
 	pthread_mutex_lock(&knet_h->pmtud_mutex);
 	pthread_cond_signal(&knet_h->pmtud_cond);
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
-
-	pthread_mutex_lock(&knet_h->pmtud_timer_mutex);
-	pthread_cond_signal(&knet_h->pmtud_timer_cond);
-	pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
 
 	sleep(1);
 
@@ -1204,14 +1184,6 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 
 	knet_h->pmtud_interval = interval;
 	log_debug(knet_h, KNET_SUB_HANDLE, "PMTUd interval set to: %u seconds", interval);
-
-	/*
-	 * errors here are not fatal and the value will be picked up in the next run
-	 */
-	if (!pthread_mutex_lock(&knet_h->pmtud_timer_mutex)) {
-		pthread_cond_signal(&knet_h->pmtud_timer_cond);
-		pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
-	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 

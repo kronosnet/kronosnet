@@ -33,13 +33,6 @@ int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 	link->status.enabled = enabled;
 	link->status.connected = connected;
 
-	if (link->status.connected) {
-		if (!pthread_mutex_lock(&knet_h->pmtud_timer_mutex)) {
-			pthread_cond_signal(&knet_h->pmtud_timer_cond);
-			pthread_mutex_unlock(&knet_h->pmtud_timer_mutex);
-		}
-	}
-
 	_host_dstcache_update_sync(knet_h, knet_h->host_index[host_id]);
 
 	if ((link->status.dynconnected) &&

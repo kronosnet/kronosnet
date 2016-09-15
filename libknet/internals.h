@@ -57,6 +57,7 @@ struct knet_link {
 	uint8_t received_pong;
 	struct timespec ping_last;
 	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
+	struct timespec pmtud_last;
 	uint32_t last_ping_size;
 	uint32_t last_good_mtu;
 	uint32_t last_bad_mtu;
@@ -125,8 +126,6 @@ struct knet_handle {
 	int send_to_links_epollfd;
 	int recv_from_links_epollfd;
 	int dst_link_handler_epollfd;
-	int pmtud_in_progress;
-	int pmtud_fini_requested;
 	unsigned int pmtud_interval;
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
@@ -154,8 +153,6 @@ struct knet_handle {
 	pthread_cond_t host_cond;		/* conditional for above */
 	pthread_mutex_t pmtud_mutex;		/* pmtud mutex to handle conditional send/recv + timeout */
 	pthread_cond_t pmtud_cond;		/* conditional for above */
-	pthread_mutex_t pmtud_timer_mutex;	/* pmtud interval mutex to detect changes in pmtud discovery timer */
-	pthread_cond_t pmtud_timer_cond;	/* conditional for above */
 	pthread_mutex_t tx_mutex;
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
