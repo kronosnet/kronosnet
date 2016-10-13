@@ -63,7 +63,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (prlimit(0, RLIMIT_NOFILE, NULL, &cur) < 0) {
+	if (getrlimit(RLIMIT_NOFILE, &cur) < 0) {
 		printf("Unable to get current fd limit: %s\n", strerror(errno));
 		exit(SKIP);
 	}
