@@ -552,7 +552,7 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	int savederrno = 0;
 	struct rlimit cur;
 
-	if (prlimit(0, RLIMIT_NOFILE, NULL, &cur) < 0) {
+	if (getrlimit(RLIMIT_NOFILE, &cur) < 0) {
 		return NULL;
 	}
 

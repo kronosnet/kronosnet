@@ -21,6 +21,7 @@ libversion		= 0:0:0
 
 sources			= \
 			  common.c \
+			  compat.c \
 			  crypto.c \
 			  handle.c \
 			  host.c \
@@ -42,6 +43,7 @@ pkgconfig_DATA		= libknet.pc
 
 noinst_HEADERS		= \
 			  common.h \
+			  compat.h \
 			  crypto.h \
 			  host.h \
 			  internals.h \

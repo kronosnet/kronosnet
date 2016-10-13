@@ -20,6 +20,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include "compat.h"
 #include "crypto.h"
 #include "host.h"
 #include "link.h"
@@ -114,7 +115,7 @@ out_unlock:
 	return err;
 }
 
-static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inlen, int8_t channel, int sync)
+static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inlen, int8_t channel, int is_sync)
 {
 	ssize_t outlen, frag_len;
 	struct knet_host *dst_host;
@@ -192,7 +193,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			break;
 	}
 
-	if (sync) {
+	if (is_sync) {
 		if ((bcast) ||
 		    ((!bcast) && (dst_host_ids_entries_temp > 1))) {
 			log_debug(knet_h, KNET_SUB_SEND_T, "knet_send_sync is only supported with unicast packets for one destination");
@@ -807,7 +808,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
-static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage *address, int index, ssize_t len)
+static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage *address, int ind, ssize_t len)
 {
 	ssize_t outlen;
 	struct knet_host *src_host;
@@ -817,8 +818,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	struct timespec recvtime;
-	struct knet_header *inbuf = knet_h->recv_from_links_buf[index];
-	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf[index];
+	struct knet_header *inbuf = knet_h->recv_from_links_buf[ind];
+	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf[ind];
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[1];
 	int8_t channel;
