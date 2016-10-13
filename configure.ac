@@ -163,8 +163,13 @@ AC_CHECK_FUNCS([strrchr])
 AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([strcasecmp])
-AC_CHECK_FUNCS([sendmmsg], AC_MSG_RESULT([]), AC_MSG_ERROR([kernel 3.0+ and glibc 2.14+ are required]))
-AC_CHECK_FUNCS([recvmmsg], AC_MSG_RESULT([]), AC_MSG_ERROR([kernel 2.6.33 and glibc 2.12+ are required]))
+AC_CHECK_FUNCS([sendmmsg])
+AC_CHECK_FUNCS([recvmmsg])
+
+# Check entries in specific structs
+AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],
+                [AC_DEFINE_UNQUOTED([HAVE_MMSGHDR], [1], [struct mmsghdr exists])],
+                [], [[#include <sys/socket.h>]])
 
 # PAM check
 AC_CHECK_HEADERS([security/pam_appl.h],
