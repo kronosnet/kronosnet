@@ -40,6 +40,13 @@ if test "$prefix" = "NONE"; then
 	if test "$sysconfdir" = "\${prefix}/etc"; then
 		sysconfdir="/etc"
 	fi
+	if test "$libdir" = "\${exec_prefix}/lib"; then
+		if test -e /usr/lib64; then
+			libdir="/usr/lib64"
+		else
+			libdir="/usr/lib"
+		fi
+	fi
 fi
 
 # Checks for programs.
