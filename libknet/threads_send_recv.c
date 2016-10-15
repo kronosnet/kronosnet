@@ -86,7 +86,7 @@ retry:
 			}
 		}
 
-		if ((sent_msgs < 0) || (err < 0)) {
+		if (sent_msgs < 0) {
 			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
 				  dst_host->name, dst_host->host_id,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
