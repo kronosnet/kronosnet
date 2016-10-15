@@ -80,6 +80,15 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 			goto exit_unlock;
 		}
 
+		value = KNET_RING_RCVBUFF;
+		if (setsockopt(listener->sock, SOL_SOCKET, SO_SNDBUFFORCE, &value, sizeof(value)) < 0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener send buffer: %s",
+				strerror(savederrno));
+			goto exit_unlock;
+		}
+
 		value = 1;
 		if (setsockopt(listener->sock, SOL_IP, IP_FREEBIND, &value, sizeof(value)) <0) {
 			savederrno = errno;
