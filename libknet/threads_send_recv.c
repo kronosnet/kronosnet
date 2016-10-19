@@ -21,6 +21,7 @@
 #include <netdb.h>
 
 #include "crypto.h"
+#include "compat.h"
 #include "host.h"
 #include "link.h"
 #include "logging.h"
