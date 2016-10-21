@@ -98,7 +98,7 @@ static void test(void)
 
 	printf("Test knet_handle_enable_sock_notify with no sock_notify fn\n");
 
-	if ((!knet_handle_enable_sock_notify(knet_h, NULL, NULL) < 0) || (errno != EINVAL)) {
+	if ((!knet_handle_enable_sock_notify(knet_h, NULL, NULL)) || (errno != EINVAL)) {
 		printf("knet_handle_enable_sock_notify accepted invalid sock_notify or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
