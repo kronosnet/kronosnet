@@ -68,6 +68,16 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
+AC_ARG_ENABLE([kronosnetd],
+        [  --enable-kronosnetd               : Kronosnetd support ],,
+        [ enable_kronosnetd="no" ])
+AM_CONDITIONAL([BUILD_KRONOSNETD], test x$enable_kronosnetd = xyes)
+
+AC_ARG_ENABLE([libtap],
+        [  --enable-libtap                   : libtap support ],,
+        [ enable_libtap="no" ])
+AM_CONDITIONAL([BUILD_LIBTAP], test x$enable_libtap = xyes)
+
 ## local helper functions
 # this function checks if CC support options passed as
 # args. Global CFLAGS are ignored during this test.
@@ -171,14 +181,18 @@ AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],
                 [AC_DEFINE_UNQUOTED([HAVE_MMSGHDR], [1], [struct mmsghdr exists])],
                 [], [[#include <sys/socket.h>]])
 
-# PAM check
+# PAM check (for kronosnetd)
+if test "x$enable_kronosnetd" = xyes; then
 AC_CHECK_HEADERS([security/pam_appl.h],
 		 [AC_CHECK_LIB([pam], [pam_start])],
 		 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
 
+
 AC_CHECK_HEADERS([security/pam_misc.h],
-		 [AC_CHECK_LIB([pam_misc], [misc_conv])],
-		 [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+	        [AC_CHECK_LIB([pam_misc], [misc_conv])],
+                [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+
+fi
 
 # local options
 AC_ARG_ENABLE([debug],
