@@ -32,6 +32,8 @@ AC_PROG_LIBTOOL
 
 AC_LANG([C])
 
+systemddir=${prefix}/lib/systemd/system
+
 if test "$prefix" = "NONE"; then
 	prefix="/usr"
 	if test "$localstatedir" = "\${prefix}/var"; then
@@ -39,6 +41,9 @@ if test "$prefix" = "NONE"; then
 	fi
 	if test "$sysconfdir" = "\${prefix}/etc"; then
 		sysconfdir="/etc"
+	fi
+	if test "$systemddir" = "NONE/lib/systemd/system"; then
+		systemddir=/lib/systemd/system
 	fi
 	if test "$libdir" = "\${exec_prefix}/lib"; then
 		if test -e /usr/lib64; then
@@ -220,7 +225,7 @@ AC_ARG_WITH([initddir],
 AC_ARG_WITH([systemddir],
 	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
 	[ SYSTEMDDIR="$withval" ],
-	[ SYSTEMDDIR="/lib/systemd/system" ])
+	[ SYSTEMDDIR="$systemddir" ])
 
 AC_ARG_WITH([syslogfacility],
 	[  --with-syslogfacility=FACILITY

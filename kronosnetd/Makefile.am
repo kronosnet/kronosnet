@@ -10,7 +10,7 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 include $(top_srcdir)/build-aux/check.mk
 
-EXTRA_DIST		= kronosnetd.logrotate.in
+EXTRA_DIST		= kronosnetd.logrotate.in kronosnetd.8 knet-keygen.8
 
 noinst_HEADERS		= \
 			  cfg.h \
