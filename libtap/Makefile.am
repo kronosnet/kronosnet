@@ -10,9 +10,12 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+
 SYMFILE			= libtap_exported_syms
 
 EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good api-test-coverage
+
+if BUILD_LIBTAP
 
 sources			= libtap.c
 
@@ -53,3 +56,5 @@ tap_test_SOURCES	= $(sources)
 
 tap_test_CPPFLAGS	= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"
+
+endif

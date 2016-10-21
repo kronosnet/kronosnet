@@ -10,6 +10,8 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 include $(top_srcdir)/build-aux/check.mk
 
+if BUILD_KRONOSNETD
+
 EXTRA_DIST		= kronosnetd.logrotate.in
 
 noinst_HEADERS		= \
@@ -86,3 +88,5 @@ uninstall-local:
 	rmdir $(DESTDIR)/$(sysconfdir)/logrotate.d || :;
 	rm -f $(DESTDIR)/$(sysconfdir)/pam.d/kronosnetd || :;
 	rmdir $(DESTDIR)/$(sysconfdir)/pam.d || :;
+
+endif
