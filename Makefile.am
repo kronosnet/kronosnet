@@ -46,6 +46,7 @@ all-local: $(SPEC) $(DEBCHANGELOG) $(DEBPOSTINST)
 
 clean-local:
 	rm -f $(SPEC)
+	rm -f $(DEBPOSTINST)
 
 distclean-local:
 	rm -f $(PACKAGE_NAME)-*.tar.*

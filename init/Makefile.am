@@ -13,6 +13,8 @@ include $(top_srcdir)/build-aux/check.mk
 EXTRA_DIST		= kronosnetd.in kronosnetd.service.in \
 			  kronosnetd.default
 
+if BUILD_KRONOSNETD
+
 systemdconfdir		= $(SYSTEMDDIR)
 systemdconf_DATA	= kronosnetd.service
 
@@ -41,3 +43,5 @@ all-local: $(initscript_SCRIPTS) $(systemdconf_DATA)
 
 clean-local:
 	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA)
+
+endif

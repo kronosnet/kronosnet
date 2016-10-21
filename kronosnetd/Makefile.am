@@ -10,8 +10,6 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 include $(top_srcdir)/build-aux/check.mk
 
-if BUILD_KRONOSNETD
-
 EXTRA_DIST		= kronosnetd.logrotate.in
 
 noinst_HEADERS		= \
@@ -23,9 +21,6 @@ noinst_HEADERS		= \
 			  vty_cli.h \
 			  vty_cli_cmds.h \
 			  vty_utils.h 
-
-sbin_PROGRAMS		= kronosnetd \
-			  knet-keygen
 
 kronosnetd_SOURCES	= \
 			  cfg.c \
@@ -54,6 +49,11 @@ kronosnetd_LDADD	= \
 knet_keygen_SOURCES	= keygen.c
 
 knet_keygen_CPPFLAGS	= -I$(top_srcdir)/libknet
+
+if BUILD_KRONOSNETD
+
+sbin_PROGRAMS		= kronosnetd \
+			  knet-keygen
 
 dist_man_MANS		= kronosnetd.8 knet-keygen.8
 
