@@ -76,6 +76,10 @@ AM_CONDITIONAL([BUILD_KRONOSNETD], test x$enable_kronosnetd = xyes)
 AC_ARG_ENABLE([libtap],
         [  --enable-libtap                   : libtap support ],,
         [ enable_libtap="no" ])
+
+if test "x$enable_kronosnetd" = xyes; then
+   enable_libtap=yes
+fi
 AM_CONDITIONAL([BUILD_LIBTAP], test x$enable_libtap = xyes)
 
 ## local helper functions
