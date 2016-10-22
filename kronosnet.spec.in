@@ -14,6 +14,8 @@
 %global alphatag @alphatag@
 %global numcomm @numcomm@
 %global dirty @dirty@
+%global buildkronosnetd @kronosnetd@
+%global buildlibtap @libtap@
 
 # main (empty) package
 # http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html
@@ -32,13 +34,22 @@ Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}%{?numc
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
-BuildRequires: libqb-devel nss-devel pam-devel
+BuildRequires: nss-devel
+%if %{defined buildkronosnetd}
+BuildRequires: libqb-devel pam-devel
+%endif
 
 %prep
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
 %{configure} \
+%if %{defined buildkronosnetd}
+	--enable-kronosnetd \
+%endif
+%if %{defined buildlibtap}
+	--enable-libtap \
+%endif
 	--with-initdefaultdir=%{_sysconfdir}/sysconfig/ \
 %if %{defined _unitdir}
 	--with-systemddir=%{_unitdir}
@@ -77,6 +88,7 @@ rm -rf %{buildroot}
 %description
 kronosnet source
 
+%if %{defined buildkronosnetd}
 ## Runtime and subpackages section
 %package -n kronosnetd
 Group: System Environment/Base
@@ -149,7 +161,9 @@ fi
 %endif
 %{_sbindir}/*
 %{_mandir}/man8/*
+%endif
 
+%if %{defined buildlibtap}
 %package -n libtap0
 Group: System Environment/Libraries
 Summary: Simple userland wrapper around kernel tap devices
@@ -185,6 +199,7 @@ Requires: pkgconfig
 %{_libdir}/libtap.so
 %{_includedir}/libtap.h
 %{_libdir}/pkgconfig/libtap.pc
+%endif
 
 %package -n libknet0
 Group: System Environment/Libraries

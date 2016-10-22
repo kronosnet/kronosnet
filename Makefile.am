@@ -59,7 +59,7 @@ maintainer-clean-local:
 
 ## make rpm/srpm section.
 
-$(SPEC): $(SPEC).in .version
+$(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
 	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
 	if [ -f .tarball-version ]; then \
@@ -96,6 +96,16 @@ $(SPEC): $(SPEC).in .version
 		$< > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
+if BUILD_KRONOSNETD
+	sed -i -e "s#@kronosnetd@#1#g" $@-t
+else
+	sed -i -e "s#.*@kronosnetd@.*##g" $@-t
+endif
+if BUILD_LIBTAP
+	sed -i -e "s#@libtap@#1#g" $@-t
+else
+	sed -i -e "s#.*@libtap@.*##g" $@-t
+endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
 	mv $@-t $@
