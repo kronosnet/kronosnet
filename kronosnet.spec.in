@@ -14,8 +14,18 @@
 %global alphatag @alphatag@
 %global numcomm @numcomm@
 %global dirty @dirty@
-%global buildkronosnetd @kronosnetd@
-%global buildlibtap @libtap@
+
+# set defaults from ./configure invokation
+%@kronosnetd@ kronosnetd
+%@libtap@ libtap
+
+%if %{with libtap}
+%global buildlibtap 1
+%endif
+%if %{with kronosnetd}
+%global buildlibtap 1
+%global buildkronosnetd 1
+%endif
 
 # main (empty) package
 # http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html

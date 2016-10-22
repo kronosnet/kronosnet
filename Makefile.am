@@ -97,14 +97,14 @@ $(SPEC): $(SPEC).in .version config.status
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
 if BUILD_KRONOSNETD
-	sed -i -e "s#@kronosnetd@#1#g" $@-t
+	sed -i -e "s#@kronosnetd@#bcond_without#g" $@-t
 else
-	sed -i -e "s#.*@kronosnetd@.*##g" $@-t
+	sed -i -e "s#@kronosnetd@#bcond_with#g" $@-t
 endif
 if BUILD_LIBTAP
-	sed -i -e "s#@libtap@#1#g" $@-t
+	sed -i -e "s#@libtap@#bcond_without#g" $@-t
 else
-	sed -i -e "s#.*@libtap@.*##g" $@-t
+	sed -i -e "s#@libtap@#bcond_with#g" $@-t
 endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
