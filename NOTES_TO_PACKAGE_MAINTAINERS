@@ -1,0 +1,27 @@
+To: distribution package maintainers
+
+Those are a few things about this project that you should know.
+
+Both spec file and debian/ are up for adoption. The spec file
+is most often up to date to handle current HEAD of the tree.
+The debian/ directory is probably obsoleted vs current
+Debian packaging guidelines.
+
+I surely welcome patches to support both in a better way.
+
+DO NOT ship kronosnetd. It's an experimental piece of super
+crappy code. IF you decide to ship it anyway, you get to
+be also the upstream maintainer :-) you have been warned.
+
+libtap is a simple commodity library used only by kronosnetd.
+I don't mind to support it, but don't ship just for the fun of it.
+It has no users, that I know of, outside of kronosnetd.
+
+libknet is still under heavy development. There might be more
+onwire network changes that could make current version
+incompatible with newer versions. Make sure to warn your users
+about it. Plan is to release a stable version (1.0) when
+we are confident that the current implementation is stable enough.
+
+Thanks
+Your upstream maintainers
