@@ -82,7 +82,7 @@ static int read_range(char *buf, struct sockaddr_storage *addr1, struct sockaddr
 }
 
 
-static int load_file()
+static int load_file(void)
 {
 	FILE *filterfile;
 	char filebuf[BUFLEN];

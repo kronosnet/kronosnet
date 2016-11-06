@@ -1,4 +1,10 @@
 
-test_ipcheck: test_ipcheck.c ipcheck.c
-	$(CC) -Wall -O0 -g ipcheck.c  test_ipcheck.c -o test_ipcheck
+MAINTAINERCLEANFILES	= Makefile.in
 
+EXTRA_DIST		= test_ipcheck.txt
+
+noinst_PROGRAMS		= test_ipcheck
+
+noinst_HEADERS		= ipcheck.h
+
+test_ipcheck_SOURCES	= ipcheck.c test_ipcheck.c
