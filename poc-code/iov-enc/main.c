@@ -164,12 +164,10 @@ int main(int argc, char **argv)
 
 
   rv1 = PK11_CipherOp(EncContext, buf1, &tmp1_outlen, sizeof(buf1),
-                      (unsigned char *)data, 6);
+                      (unsigned char *)data, 8);
 
-  fprintf(stderr, "tmp1_outlen: %d\n", tmp1_outlen);
-
-  if (PK11_CipherOp(EncContext, buf1 + tmp1_outlen, &tmp1_outlen2, sizeof(buf1) - tmp1_outlen,
-			(unsigned char *)data + 6, 6) != SECSuccess) {
+  if (PK11_CipherOp(EncContext, buf1+tmp1_outlen, &tmp1_outlen2, sizeof(buf1) - tmp1_outlen,
+			(unsigned char *)data + 8, 4) != SECSuccess) {
 		goto out;
 	}
 
@@ -179,10 +177,10 @@ int main(int argc, char **argv)
 
   fprintf(stderr, "tmp1_outlen2: %d\n", tmp1_outlen2);
 
-  rv2 = PK11_DigestFinal(EncContext, buf1+tmp1_outlen2, &tmp2_outlen,
-                         sizeof(buf1)-tmp1_outlen2);
+  rv2 = PK11_DigestFinal(EncContext, buf1+tmp1_outlen+tmp1_outlen2, &tmp2_outlen,
+                         sizeof(buf1)-tmp1_outlen-tmp1_outlen2);
   PK11_DestroyContext(EncContext, PR_TRUE);
-  result_len = tmp1_outlen2 + tmp2_outlen;
+  result_len = tmp1_outlen + tmp1_outlen2 + tmp2_outlen;
   if (rv1 != SECSuccess || rv2 != SECSuccess)
     goto out;
 
