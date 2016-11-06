@@ -218,4 +218,6 @@ out:
   if (SecParam)
     SECITEM_FreeItem(SecParam, PR_TRUE);
 
+ return 0;
+
 }
