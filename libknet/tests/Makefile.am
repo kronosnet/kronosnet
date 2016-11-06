@@ -33,7 +33,8 @@ check_PROGRAMS		= \
 			  $(fun_checks)
 
 int_checks		= \
-			  int_timediff_test
+			  int_timediff_test \
+			  int_crypto_test
 
 fun_checks		=
 
@@ -58,3 +59,13 @@ ping_test_SOURCES	= ping_test.c
 pckt_test_SOURCES	= pckt_test.c
 
 int_timediff_test_SOURCES = int_timediff.c
+
+int_crypto_test_SOURCES = int_crypto.c \
+			  ../crypto.c \
+			  ../nsscrypto.c \
+			  ../logging.c \
+			  test-common.c
+
+int_crypto_test_CFLAGS	= $(nss_CFLAGS)
+
+int_crypto_test_LDFLAGS = $(nss_LIBS)
