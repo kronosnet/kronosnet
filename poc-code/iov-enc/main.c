@@ -166,7 +166,9 @@ int main(int argc, char **argv)
   rv1 = PK11_CipherOp(EncContext, buf1, &tmp1_outlen, sizeof(buf1),
                       (unsigned char *)data, 8);
 
-  if (PK11_CipherOp(EncContext, buf1+tmp1_outlen, &tmp1_outlen2, sizeof(buf1) - tmp1_outlen,
+  fprintf(stderr, "tmp1_outlen1: %d\n", tmp1_outlen);
+
+  if (PK11_CipherOp(EncContext, buf1, &tmp1_outlen2, sizeof(buf1),
 			(unsigned char *)data + 8, 4) != SECSuccess) {
 		goto out;
 	}
