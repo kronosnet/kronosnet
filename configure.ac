@@ -375,6 +375,7 @@ AC_CONFIG_FILES([
 		libknet/libknet.pc
 		libknet/tests/Makefile
 		docs/Makefile
+		poc-code/Makefile
 		poc-code/iov-enc/Makefile
 		poc-code/access-list/Makefile
 		])
