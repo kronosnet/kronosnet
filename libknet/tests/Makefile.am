@@ -36,7 +36,8 @@ int_checks		= \
 			  int_timediff_test \
 			  int_crypto_test
 
-fun_checks		=
+fun_checks		= \
+			  fun_crypto_benchmark_test
 
 noinst_PROGRAMS		= \
 			  pckt_test \
@@ -69,3 +70,13 @@ int_crypto_test_SOURCES = int_crypto.c \
 int_crypto_test_CFLAGS	= $(nss_CFLAGS)
 
 int_crypto_test_LDFLAGS = $(nss_LIBS)
+
+fun_crypto_benchmark_test_SOURCES = fun_crypto_benchmark.c \
+				    ../crypto.c \
+				    ../nsscrypto.c \
+				    ../logging.c \
+				    test-common.c
+
+fun_crypto_benchmark_test_CFLAGS  = $(nss_CFLAGS)
+
+fun_crypto_benchmark_test_LDFLAGS = $(nss_LIBS)
