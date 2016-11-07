@@ -33,6 +33,8 @@ static void test(void)
 	int loops;
 	struct timespec clock_start, clock_end;
 	unsigned long long time_diff;
+	struct iovec iov_in;
+	struct iovec iov_multi[4];
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 
@@ -122,7 +124,131 @@ static void test(void)
 
 	timespec_diff(clock_start, clock_end, &time_diff);
 
-	printf("Execution of 1000000 loops: %llu/ns\n", time_diff);
+	printf("Execution of 1000000 loops (buf_in api): %llu/ns\n", time_diff);
+
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
+		printf("Unable to get start time!\n");
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	memset(buf1, 0, sizeof(buf1));
+	strcpy(buf1, "Encrypt me!");
+
+	for (loops=0; loops<1000000; loops++) {
+		memset(buf2, 0, sizeof(buf2));
+		memset(buf3, 0, sizeof(buf3));
+		memset(&iov_in, 0, sizeof(iov_in));
+
+		iov_in.iov_base = (unsigned char *)buf1;
+		iov_in.iov_len = strlen(buf1)+1;
+
+		if (crypto_encrypt_and_signv(knet_h, &iov_in, 1, (unsigned char *)buf2, &outbuf_len) < 0) {
+			printf("Unable to crypt and sign!\n");
+			knet_handle_free(knet_h);
+			flush_logs(logfds[0], stdout);
+			close_logpipes(logfds);
+			exit(FAIL);
+		}
+
+		if (crypto_authenticate_and_decrypt(knet_h, (unsigned char *)buf2, outbuf_len, (unsigned char *)buf3, &outbuf_len) < 0) {
+			printf("Unable to auth and decrypt!\n");
+			knet_handle_free(knet_h);
+			flush_logs(logfds[0], stdout);
+			close_logpipes(logfds);
+			exit(FAIL);
+		}
+
+
+		if (memcmp(buf1, buf3, outbuf_len)) {
+			printf("Crypt / Descrypt produced two different data set!\n");
+			knet_handle_free(knet_h);
+			flush_logs(logfds[0], stdout);
+			close_logpipes(logfds);
+			exit(FAIL);
+		}
+	}
+
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
+		printf("Unable to get end time!\n");
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	timespec_diff(clock_start, clock_end, &time_diff);
+
+	printf("Execution of 1000000 loops (iov_in api): %llu/ns\n", time_diff);
+
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
+		printf("Unable to get start time!\n");
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	memset(buf1, 0, sizeof(buf1));
+	strcpy(buf1, "Encrypt me!");
+
+	for (loops=0; loops<1000000; loops++) {
+		memset(buf2, 0, sizeof(buf2));
+		memset(buf3, 0, sizeof(buf3));
+		memset(&iov_multi, 0, sizeof(iov_multi));
+
+		/*
+		 * "Encrypt me!\n" = 12 bytes
+		 */
+
+		iov_multi[0].iov_base = (unsigned char *)buf1;
+		iov_multi[0].iov_len = 3;
+		iov_multi[1].iov_base = (unsigned char *)buf1 + 3;
+		iov_multi[1].iov_len = 3;
+		iov_multi[2].iov_base = (unsigned char *)buf1 + 6;
+		iov_multi[2].iov_len = 3;
+		iov_multi[3].iov_base = (unsigned char *)buf1 + 9;
+		iov_multi[3].iov_len = 3;
+
+		if (crypto_encrypt_and_signv(knet_h, iov_multi, 4, (unsigned char *)buf2, &outbuf_len) < 0) {
+			printf("Unable to crypt and sign!\n");
+			knet_handle_free(knet_h);
+			flush_logs(logfds[0], stdout);
+			close_logpipes(logfds);
+			exit(FAIL);
+		}
+
+		if (crypto_authenticate_and_decrypt(knet_h, (unsigned char *)buf2, outbuf_len, (unsigned char *)buf3, &outbuf_len) < 0) {
+			printf("Unable to auth and decrypt!\n");
+			knet_handle_free(knet_h);
+			flush_logs(logfds[0], stdout);
+			close_logpipes(logfds);
+			exit(FAIL);
+		}
+
+
+		if (memcmp(buf1, buf3, outbuf_len)) {
+			printf("Crypt / Descrypt produced two different data set!\n");
+			knet_handle_free(knet_h);
+			flush_logs(logfds[0], stdout);
+			close_logpipes(logfds);
+			exit(FAIL);
+		}
+	}
+
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
+		printf("Unable to get end time!\n");
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	timespec_diff(clock_start, clock_end, &time_diff);
+
+	printf("Execution of 1000000 loops (iov_in multi api): %llu/ns\n", time_diff);
 
 	printf("Shutdown crypto\n");
 

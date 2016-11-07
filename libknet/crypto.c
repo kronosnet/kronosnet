@@ -21,8 +21,8 @@
  */
 
 crypto_model_t modules_cmds[] = {
-	{ "nss", nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_authenticate_and_decrypt },
-	{ NULL, NULL, NULL, NULL, NULL },
+	{ "nss", nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
+	{ NULL, NULL, NULL, NULL, NULL, NULL },
 };
 
 static int get_model(const char *model)
@@ -49,6 +49,16 @@ int crypto_encrypt_and_sign (
 	ssize_t *buf_out_len)
 {
 	return modules_cmds[knet_h->crypto_instance->model].crypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+}
+
+int crypto_encrypt_and_signv (
+	knet_handle_t knet_h,
+	const struct iovec *iov,
+	int iovcnt,
+	unsigned char *buf_out,
+	ssize_t *buf_out_len)
+{
+	return modules_cmds[knet_h->crypto_instance->model].cryptv(knet_h, iov, iovcnt, buf_out, buf_out_len);
 }
 
 int crypto_authenticate_and_decrypt (

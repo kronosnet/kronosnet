@@ -26,6 +26,11 @@ typedef struct {
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
+	int (*cryptv)	(knet_handle_t knet_h,
+			 const struct iovec *iov,
+			 int iovcnt,
+			 unsigned char *buf_out,
+			 ssize_t *buf_out_len);
 	int (*decrypt)	(knet_handle_t knet_h,
 			 const unsigned char *buf_in,
 			 const ssize_t buf_in_len,
@@ -44,7 +49,14 @@ int crypto_encrypt_and_sign (
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
-	unsigned char *buf_out, 
+	unsigned char *buf_out,
+	ssize_t *buf_out_len);
+
+int crypto_encrypt_and_signv (
+	knet_handle_t knet_h,
+	const struct iovec *iov,
+	int iovcnt,
+	unsigned char *buf_out,
 	ssize_t *buf_out_len);
 
 int crypto_init(
