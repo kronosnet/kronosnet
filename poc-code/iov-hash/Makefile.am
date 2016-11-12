@@ -10,4 +10,10 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-SUBDIRS			= access-list iov-enc iov-hash
+noinst_PROGRAMS		= nss_hash
+
+nss_hash_SOURCES	= main.c
+
+nss_hash_CFLAGS		= $(nss_CFLAGS)
+
+nss_hash_LDFLAGS	= $(nss_LIBS)
