@@ -109,15 +109,6 @@ size_t hash_len[] = {
 	SHA512_LENGTH			/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
-size_t hash_block_len[] = {
-	 0,				/* CRYPTO_HASH_TYPE_NONE */
-	MD5_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_MD5 */
-	SHA1_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA1 */
-	SHA256_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA256 */
-	SHA384_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA384 */
-	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
-};
-
 struct nsscrypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
@@ -400,7 +391,6 @@ static int calculate_nss_hash(
 	PK11Context*	hash_context = NULL;
 	SECItem		hash_param;
 	unsigned int	hash_tmp_outlen = 0;
-	unsigned char	hash_block[hash_block_len[instance->crypto_hash_type]];
 	int		err = -1;
 
 	/* Now do the digest */
@@ -437,16 +427,15 @@ static int calculate_nss_hash(
 	}
 
 	if (PK11_DigestFinal(hash_context,
-			     hash_block,
+			     hash,
 			     &hash_tmp_outlen,
-			     hash_block_len[instance->crypto_hash_type]) != SECSuccess) {
+			     hash_len[instance->crypto_hash_type]) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d)",
 			   (int)hash_to_nss[instance->crypto_hash_type],
 			   PR_GetError());
 		goto out;
 	}
 
-	memmove(hash, hash_block, hash_len[instance->crypto_hash_type]);
 	err = 0;
 
 out:
