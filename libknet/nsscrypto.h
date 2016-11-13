@@ -29,8 +29,8 @@ int nsscrypto_encrypt_and_sign (
 
 int nsscrypto_encrypt_and_signv (
 	knet_handle_t knet_h,
-	const struct iovec *iov,
-	int iovcnt,
+	const struct iovec *iov_in,
+	int iovcnt_in,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len);
 

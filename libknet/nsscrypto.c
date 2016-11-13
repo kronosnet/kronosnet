@@ -539,36 +539,19 @@ int nsscrypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 	struct iovec iov_in;
 
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (unsigned char *)buf_in;
 	iov_in.iov_len = buf_in_len;
 
-	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (encrypt_nss(knet_h, &iov_in, 1, buf_out, buf_out_len) < 0) {
-			return -1;
-		}
-	} else {
-		memmove(buf_out, buf_in, buf_in_len);
-		*buf_out_len = buf_in_len;
-	}
-
-	if (hash_to_nss[instance->crypto_hash_type]) {
-		if (calculate_nss_hash(knet_h, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
-			return -1;
-		}
-		*buf_out_len = *buf_out_len + hash_len[instance->crypto_hash_type];
-	}
-
-	return 0;
+	return nsscrypto_encrypt_and_signv(knet_h, &iov_in, 1, buf_out, buf_out_len);
 }
 
 int nsscrypto_encrypt_and_signv (
 	knet_handle_t knet_h,
-	const struct iovec *iov,
-	int iovcnt,
+	const struct iovec *iov_in,
+	int iovcnt_in,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
@@ -576,14 +559,14 @@ int nsscrypto_encrypt_and_signv (
 	int i;
 
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (encrypt_nss(knet_h, iov, iovcnt, buf_out, buf_out_len) < 0) {
+		if (encrypt_nss(knet_h, iov_in, iovcnt_in, buf_out, buf_out_len) < 0) {
 			return -1;
 		}
 	} else {
 		*buf_out_len = 0;
-		for (i=0; i<iovcnt; i++) {
-			memmove(buf_out + *buf_out_len, iov[i].iov_base, iov[i].iov_len);
-			*buf_out_len = *buf_out_len + iov[i].iov_len;
+		for (i=0; i<iovcnt_in; i++) {
+			memmove(buf_out + *buf_out_len, iov_in[i].iov_base, iov_in[i].iov_len);
+			*buf_out_len = *buf_out_len + iov_in[i].iov_len;
 		}
 	}
 
