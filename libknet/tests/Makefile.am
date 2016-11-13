@@ -36,12 +36,12 @@ int_checks		= \
 			  int_timediff_test \
 			  int_crypto_test
 
-fun_checks		= \
-			  fun_crypto_benchmark_test
+fun_checks		=
 
 noinst_PROGRAMS		= \
 			  pckt_test \
 			  ping_test \
+			  fun_crypto_benchmark_test \
 			  $(check_PROGRAMS)
 
 noinst_SCRIPTS		= \
