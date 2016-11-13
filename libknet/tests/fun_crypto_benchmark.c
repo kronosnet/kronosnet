@@ -28,7 +28,9 @@ static void test(void)
 	knet_handle_t knet_h;
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
-	char buf1[1024], buf2[1024], buf3[1024];
+	char *buf1, *buf2, *buf3;
+	const char *input = "Encrypt me!\x0";
+	ssize_t input_len = strlen(input) + 1;
 	ssize_t outbuf_len;
 	int loops;
 	struct timespec clock_start, clock_end;
@@ -69,6 +71,14 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	buf1=malloc(input_len);
+	buf2=malloc(input_len + knet_h->sec_header_size);
+	buf3=malloc(input_len + knet_h->sec_header_size);
+
+	memset(buf1, 0, input_len);
+	memset(buf2, 0, input_len + knet_h->sec_header_size);
+	memset(buf3, 0, input_len + knet_h->sec_header_size);
+
 	/*
 	 * setup source buffer
 	 */
@@ -82,11 +92,11 @@ static void test(void)
 	}
 
 	for (loops=0; loops<1000000; loops++) {
-		memset(buf1, 0, sizeof(buf1));
-		memset(buf2, 0, sizeof(buf2));
-		memset(buf3, 0, sizeof(buf3));
+		memset(buf1, 0, input_len);
+		memset(buf2, 0, input_len + knet_h->sec_header_size);
+		memset(buf3, 0, input_len + knet_h->sec_header_size);
 
-		strcpy(buf1, "Encrypt me!");
+		strncpy(buf1, input, input_len);
 
 		if (crypto_encrypt_and_sign(knet_h, (unsigned char *)buf1, strlen(buf1)+1, (unsigned char *)buf2, &outbuf_len) < 0) {
 			printf("Unable to crypt and sign!\n");
@@ -134,12 +144,12 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	memset(buf1, 0, sizeof(buf1));
-	strcpy(buf1, "Encrypt me!");
+	memset(buf1, 0, input_len);
+	strncpy(buf1, input, input_len);
 
 	for (loops=0; loops<1000000; loops++) {
-		memset(buf2, 0, sizeof(buf2));
-		memset(buf3, 0, sizeof(buf3));
+		memset(buf2, 0, input_len + knet_h->sec_header_size);
+		memset(buf3, 0, input_len + knet_h->sec_header_size);
 		memset(&iov_in, 0, sizeof(iov_in));
 
 		iov_in.iov_base = (unsigned char *)buf1;
@@ -191,12 +201,12 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	memset(buf1, 0, sizeof(buf1));
-	strcpy(buf1, "Encrypt me!");
+	memset(buf1, 0, input_len);
+	strncpy(buf1, input, input_len);
 
 	for (loops=0; loops<1000000; loops++) {
-		memset(buf2, 0, sizeof(buf2));
-		memset(buf3, 0, sizeof(buf3));
+		memset(buf2, 0, input_len + knet_h->sec_header_size);
+		memset(buf3, 0, input_len + knet_h->sec_header_size);
 		memset(&iov_multi, 0, sizeof(iov_multi));
 
 		/*
@@ -271,6 +281,9 @@ static void test(void)
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
+	free(buf1);
+	free(buf2);
+	free(buf3);
 }
 
 int main(int argc, char *argv[])

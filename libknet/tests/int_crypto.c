@@ -26,8 +26,8 @@ static void test(void)
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	char *buf1, *buf2, *buf3;
-	const char *input = "Encrypt me!\n";
-	ssize_t input_len = strlen(input);
+	const char *input = "Encrypt me!\x0";
+	ssize_t input_len = strlen(input) + 1;
 	ssize_t outbuf_len;
 	int i;
 
@@ -76,7 +76,7 @@ static void test(void)
 	 * setup source buffer
 	 */
 
-	strcpy(buf1, "Encrypt me!");
+	strncpy(buf1, input, input_len);
 	printf("Source Data: %s\n", buf1);
 
 	if (crypto_encrypt_and_sign(knet_h, (unsigned char *)buf1, strlen(buf1)+1, (unsigned char *)buf2, &outbuf_len) < 0) {
