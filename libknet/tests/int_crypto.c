@@ -25,15 +25,13 @@ static void test(void)
 	knet_handle_t knet_h;
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
-	char buf1[1024], buf2[1024], buf3[1024];
+	char *buf1, *buf2, *buf3;
+	const char *input = "Encrypt me!\n";
+	ssize_t input_len = strlen(input);
 	ssize_t outbuf_len;
 	int i;
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-
-	memset(buf1, 0, sizeof(buf1));
-	memset(buf2, 0, sizeof(buf2));
-	memset(buf3, 0, sizeof(buf3));
 
 	setup_logpipes(logfds);
 
@@ -65,6 +63,14 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
+
+	buf1=malloc(input_len);
+	buf2=malloc(input_len + knet_h->sec_header_size);
+	buf3=malloc(input_len + knet_h->sec_header_size);
+
+	memset(buf1, 0, input_len);
+	memset(buf2, 0, input_len + knet_h->sec_header_size);
+	memset(buf3, 0, input_len + knet_h->sec_header_size);
 
 	/*
 	 * setup source buffer
@@ -126,6 +132,10 @@ static void test(void)
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
+
+	free(buf1);
+	free(buf2);
+	free(buf3);
 }
 
 int main(int argc, char *argv[])
