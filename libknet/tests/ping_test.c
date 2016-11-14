@@ -520,7 +520,7 @@ int main(int argc, char *argv[])
 		switch(big) {
 			case 0: /* hello world */
 				buff = hello_world;
-				buff_len = 13;
+				buff_len = sizeof(hello_world);
 				big = 1;
 				outchan = channel[0];
 				break;
