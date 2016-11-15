@@ -410,6 +410,7 @@ static int _init_epolls(knet_handle_t knet_h)
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
 		      EPOLL_CTL_ADD, knet_h->dstsockfd[0], &ev)) {
+		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add dstsockfd[0] to epoll pool: %s",
 			strerror(savederrno));
 		goto exit_fail;
