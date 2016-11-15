@@ -38,10 +38,13 @@ int_checks		= \
 
 fun_checks		=
 
+benchmarks		= \
+			  crypto_bench_test
+
 noinst_PROGRAMS		= \
 			  pckt_test \
 			  ping_test \
-			  fun_crypto_benchmark_test \
+			  $(benchmarks)
 			  $(check_PROGRAMS)
 
 noinst_SCRIPTS		= \
@@ -71,12 +74,12 @@ int_crypto_test_CFLAGS	= $(nss_CFLAGS)
 
 int_crypto_test_LDFLAGS = $(nss_LIBS)
 
-fun_crypto_benchmark_test_SOURCES = fun_crypto_benchmark.c \
-				    ../crypto.c \
-				    ../nsscrypto.c \
-				    ../logging.c \
-				    test-common.c
+crypto_bench_test_SOURCES = crypto_bench.c \
+			    ../crypto.c \
+			    ../nsscrypto.c \
+			    ../logging.c \
+			    test-common.c
 
-fun_crypto_benchmark_test_CFLAGS  = $(nss_CFLAGS)
+crypto_bench_test_CFLAGS  = $(nss_CFLAGS)
 
-fun_crypto_benchmark_test_LDFLAGS = $(nss_LIBS)
+crypto_bench_test_LDFLAGS = $(nss_LIBS)
