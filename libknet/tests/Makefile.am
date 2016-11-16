@@ -44,7 +44,7 @@ benchmarks		= \
 noinst_PROGRAMS		= \
 			  pckt_test \
 			  ping_test \
-			  $(benchmarks)
+			  $(benchmarks) \
 			  $(check_PROGRAMS)
 
 noinst_SCRIPTS		= \
