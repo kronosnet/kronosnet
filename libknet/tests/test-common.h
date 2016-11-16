@@ -35,6 +35,13 @@ int need_root(void);
  *
  * start_logging exit(FAIL) on error or fd to pass to knet_handle_new
  * and it will install an atexit handle to close logging properly
+ *
+ * WARNING: DO NOT use start_logging for api_ or int_ testing.
+ * while start_logging would work just fine, the output
+ * of the logs is more complex to read because of the way
+ * the thread would interleave the output of printf from api_/int_ testing
+ * with knet logs. Functionally speaking you get the exact same logs,
+ * but a lot harder to read due to the thread latency in printing logs.
  */
 int start_logging(struct _IO_FILE *std);
 
