@@ -249,7 +249,7 @@ select_loop:
 		return NULL;
 	}
 	if (!len) {
-		fprintf(data.std, "No logs in the last 5 seconds\n");
+		fprintf(data.std, "knet logs: No logs in the last 5 seconds\n");
 	}
 	if (FD_ISSET(data.logfd, &rfds)) {
 		flush_logs(data.logfd, data.std);
