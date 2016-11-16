@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <sched.h>
 
 #include "libknet.h"
 #include "test-common.h"
@@ -181,6 +182,25 @@ int need_root(void)
 	}
 
 	return PASS;
+}
+
+void set_scheduler(void)
+{
+	struct sched_param sched_param;
+	int err;
+
+	err = sched_get_priority_max(SCHED_RR);
+	if (err < 0) {
+		printf("Could not get maximum scheduler priority\n");
+		exit(FAIL);
+	}
+	sched_param.sched_priority = err;
+	err = sched_setscheduler(0, SCHED_RR, &sched_param);
+	if (err < 0) {
+		printf("Could not set SCHED_RR priority\n");
+		exit(FAIL);
+	}
+	return;
 }
 
 int setup_logpipes(int *logfds)

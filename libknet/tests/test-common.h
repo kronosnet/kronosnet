@@ -29,6 +29,8 @@ int is_helgrind(void);
 
 int need_root(void);
 
+void set_scheduler(void);
+
 /*
  * high level logging function.
  * automatically setup logpipes and start/stop logging thread.
