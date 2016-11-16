@@ -26,7 +26,7 @@
 static void test(void)
 {
 	knet_handle_t knet_h;
-	int logfds[2];
+	int logfd;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	char *buf1, *buf2, *buf3;
 	const char *input = "Encrypt me!\x0";
@@ -40,18 +40,14 @@ static void test(void)
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 
-	setup_logpipes(logfds);
+	logfd = start_logging(stdout);
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
+	knet_h = knet_handle_new(1, logfd, KNET_LOG_DEBUG);
 
 	if (!knet_h) {
 		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_crypto with nss/aes128/sha1 and normal key\n");
 
@@ -64,12 +60,8 @@ static void test(void)
 	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
 		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
 
 	buf1=malloc(input_len);
 	buf2=malloc(input_len + knet_h->sec_header_size);
@@ -86,8 +78,6 @@ static void test(void)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
 		printf("Unable to get start time!\n");
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -101,16 +91,12 @@ static void test(void)
 		if (crypto_encrypt_and_sign(knet_h, (unsigned char *)buf1, strlen(buf1)+1, (unsigned char *)buf2, &outbuf_len) < 0) {
 			printf("Unable to crypt and sign!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 
 		if (crypto_authenticate_and_decrypt(knet_h, (unsigned char *)buf2, outbuf_len, (unsigned char *)buf3, &outbuf_len) < 0) {
 			printf("Unable to auth and decrypt!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 
@@ -118,8 +104,6 @@ static void test(void)
 		if (memcmp(buf1, buf3, outbuf_len)) {
 			printf("Crypt / Descrypt produced two different data set!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 	}
@@ -127,8 +111,6 @@ static void test(void)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
 		printf("Unable to get end time!\n");
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -139,8 +121,6 @@ static void test(void)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
 		printf("Unable to get start time!\n");
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -158,16 +138,12 @@ static void test(void)
 		if (crypto_encrypt_and_signv(knet_h, &iov_in, 1, (unsigned char *)buf2, &outbuf_len) < 0) {
 			printf("Unable to crypt and sign!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 
 		if (crypto_authenticate_and_decrypt(knet_h, (unsigned char *)buf2, outbuf_len, (unsigned char *)buf3, &outbuf_len) < 0) {
 			printf("Unable to auth and decrypt!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 
@@ -175,8 +151,6 @@ static void test(void)
 		if (memcmp(buf1, buf3, outbuf_len)) {
 			printf("Crypt / Descrypt produced two different data set!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 	}
@@ -184,8 +158,6 @@ static void test(void)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
 		printf("Unable to get end time!\n");
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -196,8 +168,6 @@ static void test(void)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
 		printf("Unable to get start time!\n");
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -225,16 +195,12 @@ static void test(void)
 		if (crypto_encrypt_and_signv(knet_h, iov_multi, 4, (unsigned char *)buf2, &outbuf_len) < 0) {
 			printf("Unable to crypt and sign!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 
 		if (crypto_authenticate_and_decrypt(knet_h, (unsigned char *)buf2, outbuf_len, (unsigned char *)buf3, &outbuf_len) < 0) {
 			printf("Unable to auth and decrypt!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 
@@ -242,8 +208,6 @@ static void test(void)
 		if (memcmp(buf1, buf3, outbuf_len)) {
 			printf("Crypt / Descrypt produced two different data set!\n");
 			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 			exit(FAIL);
 		}
 	}
@@ -251,8 +215,6 @@ static void test(void)
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
 		printf("Unable to get end time!\n");
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
@@ -271,16 +233,10 @@ static void test(void)
 	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg) < 0) {
 		printf("Unable to shutdown crypto: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		exit(FAIL);
 	}
 
-	flush_logs(logfds[0], stdout);
-
 	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
 	free(buf1);
 	free(buf2);
 	free(buf3);
