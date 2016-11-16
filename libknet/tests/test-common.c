@@ -16,9 +16,20 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "libknet.h"
 #include "test-common.h"
+
+static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t log_thread;
+static int log_thread_init = 0;
+static int log_fds[2];
+struct log_thread_data {
+	int logfd;
+	struct _IO_FILE *std;
+};
+static struct log_thread_data data;
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -217,4 +228,105 @@ next:
 			msg.msg);
 		goto next;
 	}
+}
+
+static void *_logthread(void *args)
+{
+	fd_set rfds;
+	ssize_t len;
+	struct timeval tv;
+
+select_loop:
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+
+	FD_ZERO(&rfds);
+	FD_SET(data.logfd, &rfds);
+
+	len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+	if (len < 0) {
+		fprintf(data.std, "Unable select over logfd!\nHALTING LOGTHREAD!\n");
+		return NULL;
+	}
+	if (!len) {
+		fprintf(data.std, "No logs in the last 5 seconds\n");
+	}
+	if (FD_ISSET(data.logfd, &rfds)) {
+		flush_logs(data.logfd, data.std);
+	}
+	goto select_loop;
+
+	return NULL;
+}
+
+int start_logthread(int logfd, struct _IO_FILE *std)
+{
+	int savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&log_mutex);
+	if (savederrno) {
+		printf("Unable to get log_thread mutex lock\n");
+		return -1;
+	}
+
+	if (!log_thread_init) {
+		data.logfd = logfd;
+		data.std = std;
+
+		savederrno = pthread_create(&log_thread, 0, _logthread, NULL);
+		if (savederrno) {
+			printf("Unable to start logging thread: %s\n", strerror(savederrno));
+			pthread_mutex_unlock(&log_mutex);
+			return -1;
+		}
+		log_thread_init = 1;
+	}
+
+	pthread_mutex_unlock(&log_mutex);
+	return 0;
+}
+
+int stop_logthread(void)
+{
+	int savederrno = 0;
+	void *retval;
+
+	savederrno = pthread_mutex_lock(&log_mutex);
+	if (savederrno) {
+		printf("Unable to get log_thread mutex lock\n");
+		return -1;
+	}
+
+	if (log_thread_init) {
+		pthread_cancel(log_thread);
+		pthread_join(log_thread, &retval);
+		log_thread_init = 0;
+	}
+
+	pthread_mutex_unlock(&log_mutex);
+	return 0;
+}
+
+static void stop_logging(void)
+{
+	stop_logthread();
+	flush_logs(log_fds[0], stdout);
+	close_logpipes(log_fds);
+}
+
+int start_logging(struct _IO_FILE *std)
+{
+	setup_logpipes(log_fds);
+
+	if (atexit(&stop_logging) != 0) {
+		printf("Unable to register atexit handler to stop logging: %s\n",
+		       strerror(errno));
+		exit(FAIL);
+	}
+
+	if (start_logthread(log_fds[0], std) < 0) {
+		exit(FAIL);
+	}
+
+	return log_fds[1];
 }

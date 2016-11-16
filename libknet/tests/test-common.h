@@ -29,9 +29,19 @@ int is_helgrind(void);
 
 int need_root(void);
 
+/*
+ * high level logging function.
+ * automatically setup logpipes and start/stop logging thread.
+ *
+ * start_logging exit(FAIL) on error or fd to pass to knet_handle_new
+ * and it will install an atexit handle to close logging properly
+ */
+int start_logging(struct _IO_FILE *std);
+
 int setup_logpipes(int *logfds);
 void close_logpipes(int *logfds);
-
 void flush_logs(int logfd, struct _IO_FILE *std);
+int start_logthread(int logfd, struct _IO_FILE *std);
+int stop_logthread(void);
 
 #endif
