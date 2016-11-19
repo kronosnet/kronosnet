@@ -246,6 +246,8 @@ int main(int argc, char *argv[])
 {
 	need_root();
 
+	set_scheduler();
+
 	test();
 
 	return PASS;
