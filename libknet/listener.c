@@ -26,8 +26,10 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 	int value, count = 0;
 	struct epoll_event ev;
 	int savederrno = 0, err = 0;
+	int found = 0;
 	struct knet_link *lnk = &knet_h->host_index[host_id]->link[link_id];
 	struct knet_listener *listener = NULL;
+	struct qb_list_head *pos;
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->listener_rwlock);
 	if (savederrno) {
@@ -37,19 +39,18 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		return -1;
 	}
 
-	listener = knet_h->listener_head;
-
-	while (listener) {
+	qb_list_for_each(pos, &knet_h->listener_head) {
+		listener = qb_list_entry(pos, struct knet_listener, list);
 		count++;
 		log_debug(knet_h, KNET_SUB_LISTENER, "checking listener: %d", count);
 		if (!memcmp(&lnk->src_addr, &listener->address, sizeof(struct sockaddr_storage))) {
 			log_debug(knet_h, KNET_SUB_LISTENER, "found active listener");
+			found = 1;
 			break;
 		}
-		listener = listener->next;
 	}
 
-	if (!listener) {
+	if (!found) {
 		listener = malloc(sizeof(struct knet_listener));
 		if (!listener) {
 			savederrno = errno;
@@ -60,6 +61,7 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		}
 
 		memset(listener, 0, sizeof(struct knet_listener));
+		qb_list_init(&listener->list);
 		memmove(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
 
 		listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
@@ -166,8 +168,7 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		}
 
 		/* pushing new host to the front */
-		listener->next		= knet_h->listener_head;
-		knet_h->listener_head	= listener;
+		qb_list_add(&listener->list, &knet_h->listener_head);
 	}
 	lnk->listener_sock = listener->sock;
 
@@ -189,10 +190,11 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 {
 	int err = 0, savederrno = 0;
 	int link_idx;
+	int found = 0;
 	struct epoll_event ev; /* kernel < 2.6.9 bug (see epoll_ctl man) */
 	struct knet_host *host;
 	struct knet_link *lnk = &knet_h->host_index[host_id]->link[link_id];
-	struct knet_listener *tmp_listener;
+	struct qb_list_head *pos;
 	struct knet_listener *listener;
 	int listener_cnt = 0;
 
@@ -205,7 +207,8 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 	}
 
 	/* checking if listener is in use */
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
+	qb_list_for_each(pos, &knet_h->host_head) {
+		host = qb_list_entry(pos, struct knet_host, list);
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 			if (host->link[link_idx].status.enabled != 1)
 				continue;
@@ -224,28 +227,20 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		goto exit_unlock;
 	}
 
-	listener = knet_h->listener_head;
-	while (listener) {
-		if (listener->sock == lnk->listener_sock)
+	qb_list_for_each(pos, &knet_h->listener_head) {
+		listener = qb_list_entry(pos, struct knet_listener, list);
+		if (listener->sock == lnk->listener_sock) {
+			found = 1;
 			break;
-		listener = listener->next;
-	}
-
-	/* TODO: use a doubly-linked list? */
-	if (listener == knet_h->listener_head) {
-		knet_h->listener_head = knet_h->listener_head->next;
-	} else {
-		for (tmp_listener = knet_h->listener_head; tmp_listener != NULL; tmp_listener = tmp_listener->next) {
-			if (listener == tmp_listener->next) {
-				tmp_listener->next = tmp_listener->next->next;
-				break;
-			}
 		}
 	}
 
-	epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
-	close(listener->sock);
-	free(listener);
+	if (found) {
+		epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
+		close(listener->sock);
+		qb_list_del(&listener->list);
+		free(listener);
+	}
 
  exit_unlock:
 	pthread_rwlock_unlock(&knet_h->listener_rwlock);

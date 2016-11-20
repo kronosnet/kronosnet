@@ -90,6 +90,7 @@ void *_handle_heartbt_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct knet_host *dst_host;
+	struct qb_list_head *pos;
 	int link_idx;
 
 	/* preparing ping buffer */
@@ -105,7 +106,8 @@ void *_handle_heartbt_thread(void *data)
 			continue;
 		}
 
-		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+		qb_list_for_each(pos, &knet_h->host_head) {
+			dst_host = qb_list_entry(pos, struct knet_host, list);
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				if ((dst_host->link[link_idx].status.enabled != 1) ||
 				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&

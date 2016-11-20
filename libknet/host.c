@@ -23,9 +23,11 @@
 static void _host_list_update(knet_handle_t knet_h)
 {
 	struct knet_host *host;
+	struct qb_list_head *pos;
 	knet_h->host_ids_entries = 0;
 
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
+	qb_list_for_each(pos, &knet_h->host_head) {
+		host = qb_list_entry(pos, struct knet_host, list);
 		knet_h->host_ids[knet_h->host_ids_entries] = host->host_id;
 		knet_h->host_ids_entries++;
 	}
@@ -92,15 +94,14 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 	knet_h->host_index[host_id] = host;
 
 	/*
+	 * initialize links
+	 */
+	qb_list_init(&host->list);
+
+	/*
 	 * add new host to host list
 	 */
-	if (!knet_h->host_head) {
-		knet_h->host_head = host;
-		knet_h->host_tail = host;
-	} else {
-		knet_h->host_tail->next = host;
-		knet_h->host_tail = host;
-	}
+	qb_list_add_tail(&host->list, &knet_h->host_head);
 
 	_host_list_update(knet_h);
 
@@ -117,6 +118,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host, *removed;
+	struct qb_list_head *pos, *tmp;
 	uint8_t link_idx;
 
 	if (!knet_h) {
@@ -161,16 +163,12 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 	/*
 	 * removing host from list
 	 */
-	if (knet_h->host_head->host_id == host_id) {
-		removed = knet_h->host_head;
-		knet_h->host_head = removed->next;
-	} else {
-		for (host = knet_h->host_head; host->next != NULL; host = host->next) {
-			if (host->next->host_id == host_id) {
-				removed = host->next;
-				host->next = removed->next;
-				break;
-			}
+	qb_list_for_each_safe(pos, tmp, &knet_h->host_head) {
+		host = qb_list_entry(pos, struct knet_host, list);
+		if (host->host_id == host_id) {
+			qb_list_del(&host->list);
+			removed = host;
+			break;
 		}
 	}
 
@@ -189,6 +187,7 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
+	struct qb_list_head *pos;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -227,7 +226,8 @@ int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
 		goto exit_unlock;
 	}
 
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
+	qb_list_for_each(pos, &knet_h->host_head) {
+		host = qb_list_entry(pos, struct knet_host, list);
 		if (!strncmp(host->name, name, KNET_MAX_HOST_LEN - 1)) {
 			err = -1;
 			savederrno = EEXIST;
@@ -288,6 +288,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 {
 	int savederrno = 0, err = 0, found = 0;
 	struct knet_host *host;
+	struct qb_list_head *pos;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -312,7 +313,8 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 		return -1;
 	}
 
-	for (host = knet_h->host_head; host != NULL; host = host->next) {
+	qb_list_for_each(pos, &knet_h->host_head) {
+		host = qb_list_entry(pos, struct knet_host, list);
 		if (!strncmp(name, host->name, KNET_MAX_HOST_LEN)) {
 			found = 1;
 			*host_id = host->host_id;

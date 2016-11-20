@@ -581,6 +581,8 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 		return NULL;
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
+	qb_list_init(&knet_h->host_head);
+	qb_list_init(&knet_h->listener_head);
 
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
 	if (savederrno) {
@@ -691,7 +693,7 @@ int knet_handle_free(knet_handle_t knet_h)
 		return -1;
 	}
 
-	if (knet_h->host_head != NULL) {
+	if (qb_list_empty(&knet_h->host_head) == 0) {
 		savederrno = EBUSY;
 		log_err(knet_h, KNET_SUB_HANDLE,
 			"Unable to free handle: host(s) or listener(s) are still active: %s",
