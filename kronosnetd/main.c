@@ -297,6 +297,7 @@ int main(int argc, char **argv)
 	int err;
 
 	memset(&knet_cfg_head, 0, sizeof(struct knet_cfg_top));
+	qb_list_init(&knet_cfg_head.cfg_head);
 
 	if (read_arguments(argc, argv) < 0) {
 		fprintf(stderr, "Unable to parse options\n");

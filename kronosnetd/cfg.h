@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <net/if.h>
 
+#include "qb/qblist.h"
 #include "libtap.h"
 #include "libknet.h"
 
@@ -35,7 +36,7 @@ struct knet_cfg {
 	struct knet_cfg_ring cfg_ring;
 	int active;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
-	struct knet_cfg *next;
+	struct qb_list_head list;
 };
 
 struct knet_cfg_top {
@@ -44,7 +45,7 @@ struct knet_cfg_top {
 	char *vty_ipv4;
 	char *vty_ipv6;
 	char *vty_port;
-	struct knet_cfg *knet_cfg;
+	struct qb_list_head cfg_head;
 };
 
 struct knet_cfg *knet_get_iface(const char *name, const int create);
