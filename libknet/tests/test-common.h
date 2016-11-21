@@ -9,6 +9,7 @@
 #ifndef __TEST_COMMON_H__
 #define __TEST_COMMON_H__
 
+#include "internals.h"
 #include <sched.h>
 
 /*
@@ -32,6 +33,11 @@ int is_helgrind(void);
 int need_root(void);
 
 void set_scheduler(int policy);
+
+/*
+ * consider moving this one as official API
+ */
+int knet_handle_stop(knet_handle_t knet_h);
 
 /*
  * high level logging function.

@@ -365,3 +365,52 @@ int start_logging(struct _IO_FILE *std)
 
 	return log_fds[1];
 }
+
+int knet_handle_stop(knet_handle_t knet_h)
+{
+	int i, j;
+	uint16_t host_ids[KNET_MAX_HOST];
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t host_ids_entries = 0, link_ids_entries = 0;
+	struct knet_link_status status;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (knet_host_get_host_list(knet_h, host_ids, &host_ids_entries) < 0) {
+		printf("knet_host_get_host_list failed: %s\n", strerror(errno));
+		return -1;
+	}
+
+	for (i = 0; i < host_ids_entries; i++) {
+		if (knet_link_get_link_list(knet_h, host_ids[i], link_ids, &link_ids_entries)) {
+			printf("knet_link_get_link_list failed: %s\n", strerror(errno));
+			return -1;
+		}
+		for (j = 0; j < link_ids_entries; j++) {
+			if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status)) {
+				printf("knet_link_get_status failed: %s\n", strerror(errno));
+				return -1;
+			}
+			if (status.enabled != 1) {
+				continue;
+			}
+			if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
+				printf("knet_link_set_enable failed: %s\n", strerror(errno));
+				return -1;
+			}
+		}
+		if (knet_host_remove(knet_h, host_ids[i]) < 0) {
+			printf("knet_host_remove failed: %s\n", strerror(errno));
+			return -1;
+		}
+	}
+
+	if (knet_handle_free(knet_h)) {
+		printf("knet_handle_free failed: %s\n", strerror(errno));
+		return -1;
+	}
+	return 0;
+}
