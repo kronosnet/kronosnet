@@ -17,12 +17,13 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <sched.h>
 
 #include "libknet.h"
 #include "test-common.h"
 
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int log_init = 0;
+static pthread_mutex_t log_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t log_thread;
 static int log_thread_init = 0;
 static int log_fds[2];
@@ -184,20 +185,20 @@ int need_root(void)
 	return PASS;
 }
 
-void set_scheduler(void)
+void set_scheduler(int policy)
 {
 	struct sched_param sched_param;
 	int err;
 
-	err = sched_get_priority_max(SCHED_RR);
+	err = sched_get_priority_max(policy);
 	if (err < 0) {
 		printf("Could not get maximum scheduler priority\n");
 		exit(FAIL);
 	}
 	sched_param.sched_priority = err;
-	err = sched_setscheduler(0, SCHED_RR, &sched_param);
+	err = sched_setscheduler(0, policy, &sched_param);
 	if (err < 0) {
-		printf("Could not set SCHED_RR priority\n");
+		printf("Could not set priority\n");
 		exit(FAIL);
 	}
 	return;
@@ -283,7 +284,7 @@ int start_logthread(int logfd, struct _IO_FILE *std)
 {
 	int savederrno = 0;
 
-	savederrno = pthread_mutex_lock(&log_mutex);
+	savederrno = pthread_mutex_lock(&log_thread_mutex);
 	if (savederrno) {
 		printf("Unable to get log_thread mutex lock\n");
 		return -1;
@@ -296,13 +297,13 @@ int start_logthread(int logfd, struct _IO_FILE *std)
 		savederrno = pthread_create(&log_thread, 0, _logthread, NULL);
 		if (savederrno) {
 			printf("Unable to start logging thread: %s\n", strerror(savederrno));
-			pthread_mutex_unlock(&log_mutex);
+			pthread_mutex_unlock(&log_thread_mutex);
 			return -1;
 		}
 		log_thread_init = 1;
 	}
 
-	pthread_mutex_unlock(&log_mutex);
+	pthread_mutex_unlock(&log_thread_mutex);
 	return 0;
 }
 
@@ -311,7 +312,7 @@ int stop_logthread(void)
 	int savederrno = 0;
 	void *retval;
 
-	savederrno = pthread_mutex_lock(&log_mutex);
+	savederrno = pthread_mutex_lock(&log_thread_mutex);
 	if (savederrno) {
 		printf("Unable to get log_thread mutex lock\n");
 		return -1;
@@ -323,7 +324,7 @@ int stop_logthread(void)
 		log_thread_init = 0;
 	}
 
-	pthread_mutex_unlock(&log_mutex);
+	pthread_mutex_unlock(&log_thread_mutex);
 	return 0;
 }
 
@@ -336,17 +337,31 @@ static void stop_logging(void)
 
 int start_logging(struct _IO_FILE *std)
 {
-	setup_logpipes(log_fds);
+	int savederrno = 0;
 
-	if (atexit(&stop_logging) != 0) {
-		printf("Unable to register atexit handler to stop logging: %s\n",
-		       strerror(errno));
-		exit(FAIL);
+	savederrno = pthread_mutex_lock(&log_mutex);
+	if (savederrno) {
+		printf("Unable to get log_mutex lock\n");
+		return -1;
 	}
 
-	if (start_logthread(log_fds[0], std) < 0) {
-		exit(FAIL);
+	if (!log_init) {
+		setup_logpipes(log_fds);
+
+		if (atexit(&stop_logging) != 0) {
+			printf("Unable to register atexit handler to stop logging: %s\n",
+			       strerror(errno));
+			exit(FAIL);
+		}
+
+		if (start_logthread(log_fds[0], std) < 0) {
+			exit(FAIL);
+		}
+
+		log_init = 1;
 	}
+
+	pthread_mutex_unlock(&log_mutex);
 
 	return log_fds[1];
 }

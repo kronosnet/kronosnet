@@ -9,6 +9,8 @@
 #ifndef __TEST_COMMON_H__
 #define __TEST_COMMON_H__
 
+#include <sched.h>
+
 /*
  * error codes from automake test-driver
  */
@@ -29,7 +31,7 @@ int is_helgrind(void);
 
 int need_root(void);
 
-void set_scheduler(void);
+void set_scheduler(int policy);
 
 /*
  * high level logging function.

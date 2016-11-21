@@ -246,7 +246,21 @@ int main(int argc, char *argv[])
 {
 	need_root();
 
-	set_scheduler();
+	printf("Testing with default scheduler\n");
+
+	set_scheduler(SCHED_OTHER);
+
+	test();
+
+	printf("Testing with SCHED_RR scheduler\n");
+
+	set_scheduler(SCHED_RR);
+
+	test();
+
+	printf("Testing with SCHED_FIFO scheduler\n");
+
+	set_scheduler(SCHED_FIFO);
 
 	test();
 
