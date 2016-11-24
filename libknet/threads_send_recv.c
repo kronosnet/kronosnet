@@ -133,6 +133,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	struct knet_header *inbuf;
 	int savederrno = 0;
 	int err = 0;
+	struct qb_list_head *pos;
 
 	inbuf = knet_h->recv_from_sock_buf[buf_idx];
 
@@ -230,7 +231,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		}
 	} else {
 		send_mcast = 0;
-		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+		qb_list_for_each(pos, &knet_h->host_head) {
+			dst_host = qb_list_entry(pos, struct knet_host, list);
 			if (dst_host->status.reachable) {
 				send_mcast = 1;
 				break;
@@ -375,7 +377,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			frag_idx++;
 		}
 
-		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+		qb_list_for_each(pos, &knet_h->host_head) {
+			dst_host = qb_list_entry(pos, struct knet_host, list);
 			if (dst_host->status.reachable) {
 				err = _dispatch_to_links(knet_h, dst_host, iov_out);
 				savederrno = errno;

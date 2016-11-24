@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <malloc.h>
+#include "qb/qblist.h"
 #include "ipcheck.h"
 
 struct ip_match_entry {
@@ -10,13 +11,13 @@ struct ip_match_entry {
 	ipcheck_acceptreject_t acceptreject;
 	struct sockaddr_storage addr1; /* Actual IP address, mask top or low IP */
 	struct sockaddr_storage addr2; /* high IP address or address bitmask */
-	struct ip_match_entry *next;
+	struct qb_list_head list;
 };
 
 
 /* Lists of things to match against. These are dummy structs to provide a quick list head */
-static struct ip_match_entry match_entry_head_v4;
-static struct ip_match_entry match_entry_head_v6;
+static QB_LIST_DECLARE(match_entry_head_v4);
+static QB_LIST_DECLARE(match_entry_head_v6);
 
 /*
  * IPv4 See if the address we have matches the current match entry
@@ -127,23 +128,24 @@ static int ip_matches_v6(struct sockaddr_storage *checkip, struct ip_match_entry
 int ipcheck_validate(struct sockaddr_storage *checkip)
 {
 	struct ip_match_entry *match_entry;
+	struct qb_list_head *head, *pos;
 	int (*match_fn)(struct sockaddr_storage *checkip, struct ip_match_entry *match_entry);
 
 	if (checkip->ss_family == AF_INET){
-		match_entry = match_entry_head_v4.next;
+		head = &match_entry_head_v4;
 		match_fn = ip_matches_v4;
 	} else {
-		match_entry = match_entry_head_v6.next;
+		head = &match_entry_head_v6;
 		match_fn = ip_matches_v6;
 	}
-	while (match_entry) {
+	qb_list_for_each(pos, head) {
+		match_entry = qb_list_entry(pos, struct ip_match_entry, list);
 		if (match_fn(checkip, match_entry)) {
 			if (match_entry->acceptreject == IPCHECK_ACCEPT)
 				return 1;
 			else
 				return 0;
 		}
-		match_entry = match_entry->next;
 	}
 	return 0; /* Default reject */
 }
@@ -155,27 +157,25 @@ int ipcheck_validate(struct sockaddr_storage *checkip)
 void ipcheck_clear(void)
 {
 	struct ip_match_entry *match_entry;
-	struct ip_match_entry *next_match_entry;
+	struct qb_list_head *pos, *tmp;
 
-	match_entry = match_entry_head_v4.next;
-	while (match_entry) {
-		next_match_entry = match_entry->next;
+	qb_list_for_each_safe(pos, tmp, &match_entry_head_v4) {
+		match_entry = qb_list_entry(pos, struct ip_match_entry, list);
+		qb_list_del(&match_entry->list);
 		free(match_entry);
-		match_entry = next_match_entry;
 	}
 
-	match_entry = match_entry_head_v6.next;
-	while (match_entry) {
-		next_match_entry = match_entry->next;
+	qb_list_for_each_safe(pos, tmp, &match_entry_head_v6) {
+		match_entry = qb_list_entry(pos, struct ip_match_entry, list);
+		qb_list_del(&match_entry->list);
 		free(match_entry);
-		match_entry = next_match_entry;
 	}
 }
 
 int ipcheck_addip(struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 		  ipcheck_type_t type, ipcheck_acceptreject_t acceptreject)
 {
-	struct ip_match_entry *match_entry;
+	struct qb_list_head *head;
 	struct ip_match_entry *new_match_entry;
 
 	if (type == IPCHECK_TYPE_RANGE &&
@@ -183,9 +183,9 @@ int ipcheck_addip(struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 		return -1;
 
 	if (ip1->ss_family == AF_INET){
-		match_entry = &match_entry_head_v4;
+		head = &match_entry_head_v4;
 	} else {
-		match_entry = &match_entry_head_v6;
+		head = &match_entry_head_v6;
 	}
 
 
@@ -197,14 +197,9 @@ int ipcheck_addip(struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 	memcpy(&new_match_entry->addr2, ip2, sizeof(struct sockaddr_storage));
 	new_match_entry->type = type;
 	new_match_entry->acceptreject = acceptreject;
-	new_match_entry->next = NULL;
+	qb_list_init(&new_match_entry->list);
 
-	/* Find the end of the list */
-	/* is this OK, or should we use a doubly-linked list or bulk-load API call? */
-	while (match_entry->next) {
-		match_entry = match_entry->next;
-	}
-	match_entry->next = new_match_entry;
+	qb_list_add_tail(&new_match_entry->list, head);
 
 	return 0;
 }

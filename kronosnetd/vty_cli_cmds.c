@@ -1711,8 +1711,9 @@ static int knet_cmd_exit_node(struct knet_vty *vty)
 static int knet_cmd_status(struct knet_vty *vty)
 {
 	int i, j;
-	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+	struct knet_cfg *knet_iface;
 	struct knet_link_status status;
+	struct qb_list_head *pos;
 	const char *nl = telnet_newline;
 	struct timespec now;
 	char nodename[KNET_MAX_HOST_LEN];
@@ -1726,7 +1727,8 @@ static int knet_cmd_status(struct knet_vty *vty)
 	knet_vty_write(vty, "Current knet status%s", nl);
 	knet_vty_write(vty, "-------------------%s", nl);
 
-	while (knet_iface != NULL) {
+	qb_list_for_each(pos, &knet_cfg_head.cfg_head) {
+		knet_iface = qb_list_entry(pos, struct knet_cfg, list);
 		knet_vty_write(vty, "interface %s (active: %d)%s", tap_get_name(knet_iface->cfg_eth.tap), knet_iface->active, nl);
 
 		knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
@@ -1780,8 +1782,6 @@ static int knet_cmd_status(struct knet_vty *vty)
 				}
 			}
 		}
-
-		knet_iface = knet_iface->next;
 	}
 
 	return 0;
@@ -1790,8 +1790,9 @@ static int knet_cmd_status(struct knet_vty *vty)
 static int knet_cmd_print_conf(struct knet_vty *vty)
 {
 	int i, j;
-	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+	struct knet_cfg *knet_iface;
 	struct knet_link_status status;
+	struct qb_list_head *pos;
 	const char *nl = telnet_newline;
 	char *ip_list = NULL;
 	int ip_list_entries = 0;
@@ -1811,7 +1812,8 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "  timeout %d%s", vty->idle_timeout, nl);
 	knet_vty_write(vty, "  exit%s", nl);
 
-	while (knet_iface != NULL) {
+	qb_list_for_each(pos, &knet_cfg_head.cfg_head) {
+		knet_iface = qb_list_entry(pos, struct knet_cfg, list);
 		knet_vty_write(vty, " interface %s %u %u%s", tap_get_name(knet_iface->cfg_eth.tap),
 							     knet_iface->cfg_eth.node_id,
 							     knet_iface->cfg_ring.base_port, nl);
@@ -1896,7 +1898,6 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			knet_vty_write(vty, "  start%s", nl);
 
 		knet_vty_write(vty, "  exit%s", nl);
-		knet_iface = knet_iface->next;
 	}
 
 	knet_vty_write(vty, " exit%sexit%s", nl, nl);
@@ -2036,6 +2037,8 @@ int knet_vty_execute_cmd(struct knet_vty *vty)
 void knet_close_down(void)
 {
 	struct knet_vty *vty = &knet_vtys[0];
+	struct knet_cfg *knet_iface;
+	struct qb_list_head *pos;
 	int err, loop = 0;
 
 	vty->node = NODE_CONFIG;
@@ -2044,9 +2047,13 @@ void knet_close_down(void)
 	vty->filemode = 1;
 	vty->got_epipe = 0;
 
-	while ((knet_cfg_head.knet_cfg) && (loop < 10)) {
+	qb_list_for_each(pos, &knet_cfg_head.cfg_head) {
+		if (loop >= 10)
+			break;
+
+		knet_iface = qb_list_entry(pos, struct knet_cfg, list);
 		memset(vty->line, 0, sizeof(vty->line));
-		snprintf(vty->line, sizeof(vty->line) - 1, "no interface %s", tap_get_name(knet_cfg_head.knet_cfg->cfg_eth.tap));
+		snprintf(vty->line, sizeof(vty->line) - 1, "no interface %s", tap_get_name(knet_iface->cfg_eth.tap));
 		vty->line_idx = strlen(vty->line);
 		err = knet_vty_execute_cmd(vty);
 		if (err != 0)  {

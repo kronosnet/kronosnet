@@ -16,6 +16,7 @@
 
 #include "libknet.h"
 #include "onwire.h"
+#include "qb/qblist.h"
 
 #define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_HEADER_ALL_SIZE
 #define KNET_DATABUFSIZE_CRYPT_PAD 1024
@@ -30,7 +31,7 @@
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
-	struct knet_listener *next;
+	struct qb_list_head list;
 };
 
 struct knet_link {
@@ -102,7 +103,7 @@ struct knet_host {
 	struct knet_link link[KNET_MAX_LINK];
 	uint8_t active_link_entries;
 	uint8_t active_links[KNET_MAX_LINK];
-	struct knet_host *next;
+	struct qb_list_head list;
 };
 
 struct knet_sock {
@@ -129,12 +130,11 @@ struct knet_handle {
 	unsigned int pmtud_interval;
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
-	struct knet_host *host_head;
-	struct knet_host *host_tail;
+	struct qb_list_head host_head;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
-	struct knet_listener *listener_head;
+	struct qb_list_head listener_head;
 	struct knet_header *recv_from_sock_buf[PCKT_FRAG_MAX];
 	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];

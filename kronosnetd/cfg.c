@@ -18,15 +18,16 @@
 
 struct knet_cfg *knet_get_iface(const char *name, int create)
 {
-	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
+	struct knet_cfg *knet_iface = NULL;
+	struct qb_list_head *pos;
 	int found = 0;
 
-	while (knet_iface != NULL) {
+	qb_list_for_each(pos, &knet_cfg_head.cfg_head) {
+		knet_iface = qb_list_entry(pos, struct knet_cfg, list);
 		if (!strcmp(tap_get_name(knet_iface->cfg_eth.tap), name)) {
 			found = 1;
 			break;
 		}
-		knet_iface = knet_iface->next;
 	}
 
 	if ((!found) && (create)) {
@@ -35,6 +36,8 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 			goto out_clean;
 
 		memset(knet_iface, 0, sizeof(struct knet_cfg));
+
+		qb_list_init(&knet_iface->list);
 
 		knet_iface->cfg_ring.base_port = KNET_RING_DEFPORT;
 
@@ -50,16 +53,7 @@ struct knet_cfg *knet_get_iface(const char *name, int create)
 			"none",
 			sizeof(knet_iface->knet_handle_crypto_cfg.crypto_hash_type) - 1);
 
-		if (knet_cfg_head.knet_cfg) {
-			struct knet_cfg *knet_iface_last = knet_cfg_head.knet_cfg;
-
-			while (knet_iface_last->next != NULL) {
-				knet_iface_last = knet_iface_last->next;
-			}
-			knet_iface_last->next = knet_iface;
-		} else {
-			knet_cfg_head.knet_cfg = knet_iface;
-		}
+		qb_list_add_tail(&knet_iface->list, &knet_cfg_head.cfg_head);
 	}
 
 out_clean:
@@ -69,20 +63,6 @@ out_clean:
 
 void knet_destroy_iface(struct knet_cfg *knet_iface)
 {
-	struct knet_cfg *knet_iface_tmp = knet_cfg_head.knet_cfg;
-	struct knet_cfg *knet_iface_prev = knet_cfg_head.knet_cfg;
-
-	while (knet_iface_tmp != knet_iface) {
-		knet_iface_prev = knet_iface_tmp;
-		knet_iface_tmp = knet_iface_tmp->next;
-	}
-
-	if (knet_iface_tmp == knet_iface) {
-		if (knet_iface_tmp == knet_iface_prev) {
-			knet_cfg_head.knet_cfg = knet_iface_tmp->next;
-		} else {
-			knet_iface_prev->next = knet_iface_tmp->next;
-		}
-		free(knet_iface);
-	}
+	qb_list_del(&knet_iface->list);
+	free(knet_iface);
 }

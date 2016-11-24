@@ -29,6 +29,7 @@
 #include <ifaddrs.h>
 #include <stdint.h>
 
+#include "qb/qblist.h"
 #include "libtap.h"
 
 #define MAX_IP_CHAR	128
@@ -39,7 +40,7 @@ struct _ip {
 	char ip_addr[MAX_IP_CHAR];
 	char prefix[MAX_PREFIX_CHAR];
 	int  domain;
-	struct _ip *next;
+	struct qb_list_head list;
 };
 
 struct _iface {
@@ -52,13 +53,13 @@ struct _iface {
 	char updownpath[PATH_MAX];
 	int hasupdown;
 	int up;
-	struct _ip *ip;
-	struct _iface *next;
+	struct qb_list_head ip_head;
+	struct qb_list_head list;
 };
 #define ifname ifr.ifr_name
 
 struct _config {
-	struct _iface *head;
+	struct qb_list_head iface_head;
 	int sockfd;
 };
 
@@ -82,7 +83,7 @@ static int _set_ip(tap_t tap, const char *command,
 		      char **error_string);
 static int _find_ip(tap_t tap,
 			const char *ip_addr, const char *prefix,
-			struct _ip **ip, struct _ip **ip_prev);
+			struct _ip **ip);
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -224,17 +225,17 @@ static int _exec_updown(const tap_t tap, const char *action, char **error_string
 
 static int _check(const tap_t tap)
 {
-	tap_t temp = lib_cfg.head;
+	tap_t temp;
+	struct qb_list_head *pos;
 
 	if (!tap) {
 		return 0;
 	}
 
-	while (temp != NULL) {
+	qb_list_for_each(pos, &lib_cfg.iface_head) {
+		temp = qb_list_entry(pos, struct _iface, list);
 		if (tap == temp)
 			return 1;
-
-		temp = temp->next;
 	}
 
 	return 0;
@@ -255,7 +256,7 @@ static void _close(tap_t tap)
 
 static void _close_cfg(void)
 {
-	if (lib_cfg.head == NULL) {
+	if (qb_list_empty(&lib_cfg.iface_head)) {
 		close(lib_cfg.sockfd);
 		lib_init = 0;
 	}
@@ -303,7 +304,8 @@ out_clean:
 
 tap_t tap_find(char *dev, size_t dev_size)
 {
-	tap_t tap;
+	tap_t tap, temp;
+	struct qb_list_head *pos;
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -322,11 +324,14 @@ tap_t tap_find(char *dev, size_t dev_size)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	tap = lib_cfg.head;
-	while (tap != NULL) {
-		if (!strcmp(dev, tap->tapname))
+	tap = NULL;
+
+	qb_list_for_each(pos, &lib_cfg.iface_head) {
+		temp = qb_list_entry(pos, struct _iface, list);
+		if (!strcmp(dev, temp->tapname)) {
+			tap = temp;
 			break;
-		tap = tap->next;
+		}
 	}
 
 	pthread_mutex_unlock(&lib_mutex);
@@ -373,6 +378,8 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		return NULL;
 
 	memset(tap, 0, sizeof(struct _iface));
+	qb_list_init(&tap->ip_head);
+	qb_list_init(&tap->list);
 
 	if ((tap->fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
@@ -394,7 +401,7 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 	strcpy(tap->tapname, tap->ifname);
 
 	if (!lib_init) {
-		lib_cfg.head = NULL;
+		qb_list_init(&lib_cfg.iface_head);
 		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
 		if (lib_cfg.sockfd < 0)
 			goto out_error;
@@ -426,8 +433,7 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		tap->hasupdown = 1;
 	}
 
-	tap->next = lib_cfg.head;
-	lib_cfg.head = tap;
+	qb_list_add(&tap->list, &lib_cfg.iface_head);
 
 	pthread_mutex_unlock(&lib_mutex);
 	return tap;
@@ -443,9 +449,8 @@ out_error:
 int tap_close(tap_t tap)
 {
 	int err = 0;
-	tap_t temp = lib_cfg.head;
-	tap_t prev = lib_cfg.head;
-	struct _ip *ip, *ip_next;
+	struct _ip *ip;
+	struct qb_list_head *pos, *tmp;
 	char *error_string = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
 
@@ -457,16 +462,7 @@ int tap_close(tap_t tap)
 		goto out_clean;
 	}
 
-	while ((temp) && (temp != tap)) {
-		prev = temp;
-		temp = temp->next;
-	}
-
-	if (tap == prev) {
-		lib_cfg.head = tap->next;
-	} else {
-		prev->next = tap->next;
-	}
+	qb_list_del(&tap->list);
 
 	_set_down(tap, &error_down, &error_postdown);
 	if (error_down)
@@ -474,16 +470,14 @@ int tap_close(tap_t tap)
 	if (error_postdown)
 		free(error_postdown);
 
-	ip = tap->ip;
-	while (ip) {
-		ip_next = ip->next;
+	qb_list_for_each_safe(pos, tmp, &tap->ip_head) {
+		ip = qb_list_entry(pos, struct _ip, list);
 		_set_ip(tap, "del", ip->ip_addr, ip->prefix, &error_string);
 		if (error_string) {
 			free(error_string);
 			error_string = NULL;
 		}
 		free(ip);
-		ip = ip_next;
 	}
 
 	_close(tap);
@@ -518,6 +512,7 @@ out_clean:
 int tap_set_mtu(tap_t tap, const int mtu)
 {
 	struct _ip *tmp_ip;
+	struct qb_list_head *pos;
 	char *error_string = NULL;
 	int err;
 
@@ -538,8 +533,8 @@ int tap_set_mtu(tap_t tap, const int mtu)
 	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &tap->ifr);
 
 	if ((!err) && (tap->current_mtu < 1280) && (mtu >= 1280)) {
-		tmp_ip = tap->ip;
-		while(tmp_ip) {
+		qb_list_for_each(pos, &tap->ip_head) {
+			tmp_ip = qb_list_entry(pos, struct _ip, list);
 			if (tmp_ip->domain == AF_INET6) {
 				err = _set_ip(tap, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string);
 				if (error_string) {
@@ -547,7 +542,6 @@ int tap_set_mtu(tap_t tap, const int mtu)
 					error_string = NULL;
 				}
 			}
-			tmp_ip = tmp_ip->next;
 		}
 	}
 
@@ -774,26 +768,22 @@ static int _set_ip(tap_t tap, const char *command,
 
 static int _find_ip(tap_t tap,
 			const char *ip_addr, const char *prefix,
-			struct _ip **ip, struct _ip **ip_prev)
+			struct _ip **ip)
 {
-	struct _ip *local_ip, *local_ip_prev;
+	struct _ip *local_ip;
+	struct qb_list_head *pos;
 	int found = 0;
 
-	local_ip = local_ip_prev = tap->ip;
-
-	while(local_ip) {
+	qb_list_for_each(pos, &tap->ip_head) {
+		local_ip = qb_list_entry(pos, struct _ip, list);
 		if ((!strcmp(local_ip->ip_addr, ip_addr)) && (!strcmp(local_ip->prefix, prefix))) {
 			found = 1;
 			break;
 		}
-		local_ip_prev = local_ip;
-		local_ip = local_ip->next;
 	}
 
-	if (found) {
+	if (found)
 		*ip = local_ip;
-		*ip_prev = local_ip_prev;
-	}
 
 	return found;
 }
@@ -801,7 +791,7 @@ static int _find_ip(tap_t tap,
 int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
-	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
+	struct _ip *ip = NULL;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -811,7 +801,7 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 		goto out_clean;
 	}
 
-	found = _find_ip(tap, ip_addr, prefix, &ip, &ip_prev);
+	found = _find_ip(tap, ip_addr, prefix, &ip);
 	if (found)
 		goto out_clean;
 
@@ -821,6 +811,8 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 		goto out_clean;
 	}
 	memset(ip, 0, sizeof(struct _ip));
+	qb_list_init(&ip->list);
+	qb_list_init(&ip->list);
 	strncpy(ip->ip_addr, ip_addr, MAX_IP_CHAR);
 	strncpy(ip->prefix, prefix, MAX_PREFIX_CHAR);
 	if (!strchr(ip->ip_addr, ':')) {
@@ -844,15 +836,7 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 		goto out_clean;
 	}
 
-	if (tap->ip) {
-		ip_last = tap->ip;
-		while (ip_last->next != NULL) {
-			ip_last = ip_last->next;
-		}
-		ip_last->next = ip;
-	} else {
-		tap->ip = ip;
-	}
+	qb_list_add_tail(&ip->list, &tap->ip_head);
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -863,7 +847,7 @@ out_clean:
 int tap_del_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
-	struct _ip *ip = NULL, *ip_prev = NULL;
+	struct _ip *ip = NULL;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -873,18 +857,14 @@ int tap_del_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 		goto out_clean;
 	}
 
-	found = _find_ip(tap, ip_addr, prefix, &ip, &ip_prev);
+	found = _find_ip(tap, ip_addr, prefix, &ip);
 	if (!found)
 		goto out_clean;
 
 	err = _set_ip(tap, "del", ip_addr, prefix, error_string);
 
 	if (!err) {
-		if (ip == ip_prev) {
-			tap->ip = ip->next;
-		} else {
-			ip_prev->next = ip->next;
-		}
+		qb_list_del(&ip->list);
 		free(ip);
 	}
 
@@ -939,14 +919,12 @@ int tap_get_ips(const tap_t tap, char **ip_addr_list, int *entries)
 	int found = 0;
 	char *ip_list = NULL;
 	int size = 0, offset = 0, len;
-	struct _ip *ip = tap->ip;
+	struct _ip *ip;
+	struct qb_list_head *pos;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	while (ip) {
-		found++;
-		ip = ip->next;
-	}
+	found = qb_list_length(&tap->ip_head);
 
 	size = found * (MAX_IP_CHAR + MAX_PREFIX_CHAR + 2);
 	ip_list = malloc(size);
@@ -957,16 +935,14 @@ int tap_get_ips(const tap_t tap, char **ip_addr_list, int *entries)
 
 	memset(ip_list, 0, size);
 
-	ip = tap->ip;
-
-	while (ip) {
+	qb_list_for_each(pos, &tap->ip_head) {
+		ip = qb_list_entry(pos, struct _ip, list);
 		len = strlen(ip->ip_addr);
 		memcpy(ip_list + offset, ip->ip_addr, len);
 		offset = offset + len + 1;
 		len = strlen(ip->prefix);
 		memcpy(ip_list + offset, ip->prefix, len);
 		offset = offset + len + 1;
-		ip = ip->next;
 	}
 
 	*ip_addr_list = ip_list;
