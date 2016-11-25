@@ -39,7 +39,8 @@ int_checks		= \
 fun_checks		=
 
 benchmarks		= \
-			  crypto_bench_test
+			  crypto_bench_test \
+			  knet_bench_test
 
 noinst_PROGRAMS		= \
 			  pckt_test \
@@ -83,3 +84,7 @@ crypto_bench_test_SOURCES = crypto_bench.c \
 crypto_bench_test_CFLAGS  = $(nss_CFLAGS)
 
 crypto_bench_test_LDFLAGS = $(nss_LIBS)
+
+knet_bench_test_SOURCES	= knet_bench.c \
+			  ../../common/netutils.c \
+			  test-common.c
