@@ -974,14 +974,15 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
 			}
 		} else { /* HOSTINFO */
+			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
+			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
+				bcast = 0;
+				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
+			}
 			if (!_seq_num_lookup(src_host, bcast, inbuf->khp_data_seq_num, 0)) {
 				return;
 			}
 			_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
-			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
-			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
-				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
-			}
 			switch(knet_hostinfo->khi_type) {
 				case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
 					src_link = src_host->link +
