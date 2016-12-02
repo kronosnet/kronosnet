@@ -474,6 +474,7 @@ out:
 static void _close_socket(knet_handle_t knet_h, int sockfd)
 {
 	struct epoll_event ev;
+	int i;
 
 	log_err(knet_h, KNET_SUB_LINK_T, "EOF received on socket fd %d", sockfd);
 
@@ -487,7 +488,11 @@ static void _close_socket(knet_handle_t knet_h, int sockfd)
 	}
 
 	/* Tell transport that the FD has been closed */
-	knet_h->transport_ops->handle_fd_eof(knet_h, sockfd);
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if (knet_h->transports[i] &&
+		    !knet_h->transport_ops[i]->handle_fd_eof(knet_h, sockfd))
+			break;
+	}
 }
 
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct mmsghdr *msg, int type)

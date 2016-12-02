@@ -134,7 +134,7 @@ static void test(void)
 
 	printf("Test knet_link_get_link_list with 1 link\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, &src, &dst) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

@@ -500,10 +500,19 @@ exit_fail:
 
 static void _stop_transports(knet_handle_t knet_h)
 {
+	int i;
 	knet_transport_ops_t *ops = NULL;
 
-	ops = get_udp_transport();
-	ops->handle_free(knet_h, knet_h->transport);
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		switch (i) {
+		case KNET_TRANSPORT_UDP:
+			ops = get_udp_transport();
+			break;
+		}
+		if (ops) {
+			ops->handle_free(knet_h, knet_h->transports[i]);
+		}
+	}
 }
 
 static void _stop_threads(knet_handle_t knet_h)

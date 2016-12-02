@@ -53,6 +53,7 @@ struct knet_link {
 	struct knet_link_status status;
 	/* internals */
 	uint8_t link_id;
+	uint8_t transport_type;                 /* #defined constant from API */
 	knet_transport_link_t transport;
 	int outsock;
 	int listener_sock;
@@ -139,8 +140,8 @@ struct knet_handle {
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
-	knet_transport_t transport;
-	struct knet_transport_ops *transport_ops;
+	knet_transport_t transports[KNET_MAX_TRANSPORTS];
+	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS];
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;

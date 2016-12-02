@@ -1,5 +1,4 @@
 #include <netinet/in.h>
-#include <netinet/sctp.h>
 
 knet_transport_ops_t *get_udp_transport(void);
 

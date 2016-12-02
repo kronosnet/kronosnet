@@ -44,6 +44,7 @@ int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 }
 
 int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr)
 {
@@ -62,6 +63,11 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	if (!src_addr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (transport != KNET_TRANSPORT_UDP) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -121,6 +127,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
+	link->transport_type = transport;
 	link->dynamic = KNET_LINK_STATIC;
 
 	memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
@@ -144,16 +151,24 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 
-	knet_h->transport_ops = get_udp_transport();
+	switch (transport) {
+	        case KNET_TRANSPORT_UDP:
+			knet_h->transport_ops[link->transport_type] = get_udp_transport();
+			break;
+	        default:
+			errno = EINVAL;
+			err = -1;
+			goto exit_unlock;
+	}
 
 	/* First time we've used this transport for this handle */
-	if (!knet_h->transport) {
-		knet_h->transport_ops->handle_allocate(knet_h, &knet_h->transport);
+	if (!knet_h->transports[transport]) {
+		knet_h->transport_ops[link->transport_type]->handle_allocate(knet_h, &knet_h->transports[transport]);
 	}
-	if (!knet_h->transport) {
+	if (!knet_h->transports[transport]) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_LISTENER, "Failed to allocate transport handle for %s: %s",
-			knet_h->transport_ops->transport_name,
+			knet_h->transport_ops[link->transport_type]->transport_name,
 			strerror(savederrno));
 		err = -1;
 		goto exit_unlock;
@@ -177,6 +192,7 @@ exit_unlock:
 }
 
 int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
 			 uint8_t *dynamic)
@@ -239,6 +255,10 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	memmove(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
+
+	if (transport) {
+		*transport = link->transport_type;
+	}
 
 	if (link->dynamic == KNET_LINK_STATIC) {
 		*dynamic = 0;
@@ -316,8 +336,8 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	if (enabled) {
-		if (knet_h->transport_ops->link_allocate(
-			    knet_h, knet_h->transport,
+		if (knet_h->transport_ops[link->transport_type]->link_allocate(
+			    knet_h, knet_h->transports[link->transport_type],
 			    link,
 			    &link->transport, link_id,
 			    &link->src_addr, &link->dst_addr,

@@ -864,6 +864,9 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  * -
  */
 
+#define KNET_TRANSPORT_UDP   0
+#define KNET_MAX_TRANSPORTS  1
+
 /*
  * knet_link_set_config
  *
@@ -872,6 +875,8 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  * host_id   - see above
  *
  * link_id   - see above
+ *
+ * transport - one of the above KNET_TRANSPORT_xxx constants
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -888,6 +893,7 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  */
 
 int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr);
 
@@ -899,6 +905,8 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  * host_id   - see above
  *
  * link_id   - see above
+ *
+ * transport - see above
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -915,6 +923,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  */
 
 int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
 			 uint8_t *dynamic);

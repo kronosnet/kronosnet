@@ -61,8 +61,8 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 
 		memset(listener, 0, sizeof(struct knet_listener));
 		memmove(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
-		knet_h->transport_ops->link_listener_start(knet_h, lnk->transport, link_id,
-							   &lnk->src_addr, &lnk->dst_addr);
+		knet_h->transport_ops[lnk->transport_type]->link_listener_start(knet_h, lnk->transport, link_id,
+									       &lnk->src_addr, &lnk->dst_addr);
 
 		/* pushing new host to the front */
 		listener->next		= knet_h->listener_head;
@@ -142,7 +142,7 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 		}
 	}
 
-	knet_h->transport_ops->link_free(lnk->transport);
+	knet_h->transport_ops[lnk->transport_type]->link_free(lnk->transport);
 	lnk->transport = NULL;
 
 	epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
