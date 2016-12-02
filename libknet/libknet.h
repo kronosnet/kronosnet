@@ -865,7 +865,8 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  */
 
 #define KNET_TRANSPORT_UDP   0
-#define KNET_MAX_TRANSPORTS  1
+#define KNET_TRANSPORT_SCTP  1
+#define KNET_MAX_TRANSPORTS  2
 
 /*
  * knet_link_set_config
@@ -1221,6 +1222,7 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_PMTUD_T     10 /* Path MTU Discovery thread */
 #define KNET_SUB_TRANSPORT_T 11 /* Transport common */
 #define KNET_SUB_UDP_LINK_T  12 /* UDP Transport */
+#define KNET_SUB_SCTP_LINK_T 14 /* SCTP Transport */
 #define KNET_SUB_FILTER      15 /* (ether)filter errors */
 #define KNET_SUB_CRYPTO      16 /* crypto.c generic layer */
 #define KNET_SUB_NSSCRYPTO   17 /* nsscrypto.c */

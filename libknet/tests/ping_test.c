@@ -113,6 +113,10 @@ static void set_transport(int argc, char *argv[])
 			use_transport = KNET_TRANSPORT_UDP;
 			break;
 		}
+		if (!strncmp(argv[i], "sctp", 4)) {
+			use_transport = KNET_TRANSPORT_SCTP;
+			break;
+		}
 	}
 }
 
@@ -176,6 +180,8 @@ static void argv_to_hosts(int argc, char *argv[])
 		if (!strncmp(argv[i], "stdout", 6))
 			continue;
 		if (!strncmp(argv[i], "udp", 3))
+			continue;
+		if (!strncmp(argv[i], "sctp", 4))
 			continue;
 
 		node_id = i - 1;

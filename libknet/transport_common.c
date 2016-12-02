@@ -22,7 +22,7 @@
 
 #ifdef DEBUG
 /*
- * Keeping this light (and there fornot thread-safe) as it's
+ * Keeping this light (and therefore not thread-safe) as it's
  * for debugging only
  */
 const char *_transport_print_ip(const struct sockaddr_storage *ss)

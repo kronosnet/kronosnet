@@ -67,7 +67,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
-	if (transport != KNET_TRANSPORT_UDP) {
+	if (transport != KNET_TRANSPORT_UDP && transport != KNET_TRANSPORT_SCTP) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -154,6 +154,9 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	switch (transport) {
 	        case KNET_TRANSPORT_UDP:
 			knet_h->transport_ops[link->transport_type] = get_udp_transport();
+			break;
+	        case KNET_TRANSPORT_SCTP:
+			knet_h->transport_ops[link->transport_type] = get_sctp_transport();
 			break;
 	        default:
 			errno = EINVAL;

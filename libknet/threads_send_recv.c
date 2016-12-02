@@ -495,6 +495,18 @@ static void _close_socket(knet_handle_t knet_h, int sockfd)
 	}
 }
 
+static void _handle_socket_notification(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen)
+{
+	int i;
+
+	/* Find the transport and post the message */
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if (knet_h->transports[i] && knet_h->transport_ops[i]->handle_fd_notification &&
+		    knet_h->transport_ops[i]->handle_fd_notification(knet_h, sockfd, iov, iovlen))
+			break;
+	}
+}
+
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct mmsghdr *msg, int type)
 {
 	ssize_t inlen = 0;
@@ -1173,6 +1185,9 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	}
 
 	for (i = 0; i < msg_recv; i++) {
+		if (msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION) {
+			_handle_socket_notification(knet_h, sockfd, msg[i].msg_hdr.msg_iov, msg[i].msg_hdr.msg_iovlen);
+		}
 		if (msg[i].msg_len == 0) {
 			_close_socket(knet_h, sockfd);
 			goto exit_unlock;
