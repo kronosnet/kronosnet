@@ -109,6 +109,10 @@ static void set_transport(int argc, char *argv[])
 	int i;
 
 	for (i = 0; i < argc; i++) {
+		if (!strncmp(argv[i], "tcp", 3)) {
+			use_transport = KNET_TRANSPORT_TCP;
+			break;
+		}
 		if (!strncmp(argv[i], "udp", 3)) {
 			use_transport = KNET_TRANSPORT_UDP;
 			break;
@@ -178,6 +182,8 @@ static void argv_to_hosts(int argc, char *argv[])
 		if (!strncmp(argv[i], "debug", 5))
 			continue;
 		if (!strncmp(argv[i], "stdout", 6))
+			continue;
+		if (!strncmp(argv[i], "tcp", 3))
 			continue;
 		if (!strncmp(argv[i], "udp", 3))
 			continue;

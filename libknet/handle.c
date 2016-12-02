@@ -508,6 +508,9 @@ static void _stop_transports(knet_handle_t knet_h)
 		case KNET_TRANSPORT_UDP:
 			ops = get_udp_transport();
 			break;
+		case KNET_TRANSPORT_TCP:
+			ops = get_tcp_transport();
+			break;
 		case KNET_TRANSPORT_SCTP:
 			ops = get_sctp_transport();
 			break;
