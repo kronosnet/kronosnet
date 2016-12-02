@@ -27,6 +27,11 @@
 
 #define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX
 
+typedef void *knet_transport_link_t; /* per link transport handle */
+typedef void *knet_transport_t;      /* per knet_h transport handle */
+struct  knet_transport_ops;          /* Forward because of circular dependancy */
+
+
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
@@ -48,6 +53,8 @@ struct knet_link {
 	struct knet_link_status status;
 	/* internals */
 	uint8_t link_id;
+	knet_transport_link_t transport;
+	int outsock;
 	int listener_sock;
 	unsigned int configured:1;		/* set to 1 if src/dst have been configured */
 	unsigned int remoteconnected:1;		/* link is enabled for data (peer view) */
@@ -132,6 +139,8 @@ struct knet_handle {
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
+	knet_transport_t transport;
+	struct knet_transport_ops *transport_ops;
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
@@ -197,5 +206,29 @@ struct knet_handle {
 		int errorno);
 	int fini_in_progress;
 };
+
+typedef void *knet_transport_link_t; /* per link transport handle */
+typedef void *knet_transport_t;      /* per knet_h transport handle */
+
+typedef struct knet_transport_ops {
+
+	int (*handle_allocate)(knet_handle_t knet_h, knet_transport_t *transport);
+	int (*handle_free)(knet_handle_t knet_h, knet_transport_t transport);
+	int (*handle_fd_eof)(knet_handle_t knet_h, int sockfd);
+	int (*handle_fd_notification)(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen);
+
+	int (*link_allocate)(knet_handle_t knet_h, knet_transport_t transport,
+			     struct knet_link *link,
+			     knet_transport_link_t *transport_link,
+			     uint8_t link_id, struct sockaddr_storage *src_address,
+			     struct sockaddr_storage *dst_address, int *listen_sock);
+	int (*link_listener_start)(knet_handle_t knet_h, knet_transport_link_t transport_link,
+				   uint8_t link_id,
+				   struct sockaddr_storage *address, struct sockaddr_storage *dst_address);
+	int (*link_free)(knet_transport_link_t transport_link);
+	int (*link_get_mtu_overhead)(knet_transport_link_t transport_link);
+
+	const char *transport_name;
+} knet_transport_ops_t;
 
 #endif

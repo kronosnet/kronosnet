@@ -56,7 +56,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			outbuf = knet_h->pingbuf_crypt;
 		}
 
-		len = sendto(dst_link->listener_sock, outbuf, outlen,
+		len = sendto(dst_link->outsock, outbuf, outlen,
 			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 
@@ -65,7 +65,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		if (len != outlen) {
 			log_debug(knet_h, KNET_SUB_HB_T,
 				  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-				  dst_link->listener_sock, errno, strerror(errno),
+				  dst_link->outsock, errno, strerror(errno),
 				  dst_link->status.src_ipaddr, dst_link->status.src_port,
 				  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
 		} else {

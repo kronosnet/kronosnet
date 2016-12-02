@@ -33,7 +33,9 @@ sources			= \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \
 			  threads_pmtud.c \
-			  threads_send_recv.c
+			  threads_send_recv.c \
+			  transport_udp.c \
+			  transport_common.c 
 
 include_HEADERS		= libknet.h
 
@@ -56,7 +58,8 @@ noinst_HEADERS		= \
 			  threads_dsthandler.h \
 			  threads_heartbeat.h \
 			  threads_pmtud.h \
-			  threads_send_recv.h
+			  threads_send_recv.h \
+			  transports.h
 
 lib_LTLIBRARIES		= libknet.la
 

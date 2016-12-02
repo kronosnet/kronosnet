@@ -19,6 +19,7 @@
 #include "logging.h"
 #include "link.h"
 #include "listener.h"
+#include "transports.h"
 #include "host.h"
 
 int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
@@ -141,6 +142,23 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		}
 		err = -1;
 	}
+
+
+	knet_h->transport_ops = get_udp_transport();
+
+	/* First time we've used this transport for this handle */
+	if (!knet_h->transport) {
+		knet_h->transport_ops->handle_allocate(knet_h, &knet_h->transport);
+	}
+	if (!knet_h->transport) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_LISTENER, "Failed to allocate transport handle for %s: %s",
+			knet_h->transport_ops->transport_name,
+			strerror(savederrno));
+		err = -1;
+		goto exit_unlock;
+	}
+
 
 exit_unlock:
 	if (!err) {
@@ -298,6 +316,16 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	}
 
 	if (enabled) {
+		if (knet_h->transport_ops->link_allocate(
+			    knet_h, knet_h->transport,
+			    link,
+			    &link->transport, link_id,
+			    &link->src_addr, &link->dst_addr,
+			    &link->outsock) < 0) {
+			err = -1;
+			goto exit_unlock;
+		}
+
 		if (_listener_add(knet_h, host_id, link_id) < 0) {
 			savederrno = errno;
 			err = -1;

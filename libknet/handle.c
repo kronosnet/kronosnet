@@ -28,6 +28,7 @@
 #include "threads_pmtud.h"
 #include "threads_dsthandler.h"
 #include "threads_send_recv.h"
+#include "transports.h"
 #include "logging.h"
 
 static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -496,6 +497,15 @@ exit_fail:
 	return -1;
 }
 
+
+static void _stop_transports(knet_handle_t knet_h)
+{
+	knet_transport_ops_t *ops = NULL;
+
+	ops = get_udp_transport();
+	ops->handle_free(knet_h, knet_h->transport);
+}
+
 static void _stop_threads(knet_handle_t knet_h)
 {
 	void *retval;
@@ -706,6 +716,7 @@ int knet_handle_free(knet_handle_t knet_h)
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	_stop_transports(knet_h);
 	_stop_threads(knet_h);
 	_close_epolls(knet_h);
 	_destroy_buffers(knet_h);

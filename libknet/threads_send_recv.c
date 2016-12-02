@@ -25,6 +25,7 @@
 #include "host.h"
 #include "link.h"
 #include "logging.h"
+#include "transports.h"
 #include "threads_common.h"
 #include "threads_send_recv.h"
 
@@ -59,7 +60,7 @@ retry:
 			msg_idx++;
 		}
 
-		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].listener_sock,
+		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
 				     msg, msg_idx, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
@@ -469,6 +470,26 @@ out:
 	return err;
 }
 
+
+static void _close_socket(knet_handle_t knet_h, int sockfd)
+{
+	struct epoll_event ev;
+
+	log_err(knet_h, KNET_SUB_LINK_T, "EOF received on socket fd %d", sockfd);
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	ev.events = EPOLLIN;
+	ev.data.fd = sockfd;
+	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, sockfd, &ev)) {
+		log_err(knet_h, KNET_SUB_LISTENER, "Unable to remove EOFed socket from epoll pool: %s",
+			strerror(errno));
+	}
+
+	/* Tell transport that the FD has been closed */
+	knet_h->transport_ops->handle_fd_eof(knet_h, sockfd);
+}
+
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct mmsghdr *msg, int type)
 {
 	ssize_t inlen = 0;
@@ -838,7 +859,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	}
 
 	if (len < (KNET_HEADER_SIZE + 1)) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Packet is too short");
+		log_debug(knet_h, KNET_SUB_LINK_T, "Packet is too short: %ld", len);
 		return;
 	}
 
@@ -1046,12 +1067,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		if (sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+		if (sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage)) != outlen) {
 			log_debug(knet_h, KNET_SUB_LINK_T,
 				  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-				  src_link->listener_sock, errno, strerror(errno),
+				  src_link->outsock, errno, strerror(errno),
 				  src_link->status.src_ipaddr, src_link->status.src_port,
 				  src_link->status.dst_ipaddr, src_link->status.dst_port);
 		}
@@ -1102,12 +1123,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		if (sendto(src_link->listener_sock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+		if (sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage)) != outlen) {
 			log_debug(knet_h, KNET_SUB_LINK_T,
 				  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-				  src_link->listener_sock, errno, strerror(errno),
+				  src_link->outsock, errno, strerror(errno),
 				  src_link->status.src_ipaddr, src_link->status.src_port,
 				  src_link->status.dst_ipaddr, src_link->status.dst_port);
 		}
@@ -1142,8 +1163,18 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 		goto exit_unlock;
 	}
 
+	if (msg_recv == 0) {
+		_close_socket(knet_h, sockfd);
+	}
+
 	for (i = 0; i < msg_recv; i++) {
-		_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
+		if (msg[i].msg_len == 0) {
+			_close_socket(knet_h, sockfd);
+			goto exit_unlock;
+		}
+		else {
+			_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
+		}
 	}
 
 exit_unlock:

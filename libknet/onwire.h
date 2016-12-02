@@ -115,8 +115,11 @@ struct knet_header_payload_ping {
 /* taken from tracepath6 */
 #define KNET_PMTUD_SIZE_V4 65535
 #define KNET_PMTUD_SIZE_V6 KNET_PMTUD_SIZE_V4
-#define KNET_PMTUD_OVERHEAD_V4 28
-#define KNET_PMTUD_OVERHEAD_V6 48
+
+/* These two get the protocol-specific overheads added to them */
+#define KNET_PMTUD_OVERHEAD_V4 20
+#define KNET_PMTUD_OVERHEAD_V6 40
+
 #define KNET_PMTUD_MIN_MTU_V4 576
 #define KNET_PMTUD_MIN_MTU_V6 1280
 
