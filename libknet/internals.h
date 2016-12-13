@@ -247,7 +247,7 @@ struct knet_list_head {
 #define KNET_LIST_DECLARE(name) \
     struct knet_list_head name = { &(name), &(name) }
 
-#define QB_INIT_LIST_HEAD(ptr) do { \
+#define KNET_INIT_LIST_HEAD(ptr) do { \
 	(ptr)->next = (ptr); (ptr)->prev = (ptr); \
 } while (0)
 
