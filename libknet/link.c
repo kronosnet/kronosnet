@@ -67,8 +67,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
-	if (transport != KNET_TRANSPORT_UDP && transport != KNET_TRANSPORT_SCTP &&
-	    transport != KNET_TRANSPORT_TCP) {
+	if (transport >= KNET_MAX_TRANSPORTS) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -159,9 +158,6 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	        case KNET_TRANSPORT_SCTP:
 			knet_h->transport_ops[link->transport_type] = get_sctp_transport();
 			break;
-	        case KNET_TRANSPORT_TCP:
-			knet_h->transport_ops[link->transport_type] = get_tcp_transport();
-			break;
 	        default:
 			errno = EINVAL;
 			err = -1;
@@ -228,6 +224,11 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
+	if (!transport) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
@@ -263,9 +264,7 @@ int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	memmove(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
 
-	if (transport) {
-		*transport = link->transport_type;
-	}
+	*transport = link->transport_type;
 
 	if (link->dynamic == KNET_LINK_STATIC) {
 		*dynamic = 0;
@@ -349,6 +348,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			    &link->transport, link_id,
 			    &link->src_addr, &link->dst_addr,
 			    &link->outsock) < 0) {
+			savederrno = errno;
 			err = -1;
 			goto exit_unlock;
 		}

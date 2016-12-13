@@ -470,43 +470,6 @@ out:
 	return err;
 }
 
-
-static void _close_socket(knet_handle_t knet_h, int sockfd)
-{
-	struct epoll_event ev;
-	int i;
-
-	log_err(knet_h, KNET_SUB_LINK_T, "EOF received on socket fd %d", sockfd);
-
-	memset(&ev, 0, sizeof(struct epoll_event));
-
-	ev.events = EPOLLIN;
-	ev.data.fd = sockfd;
-	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, sockfd, &ev)) {
-		log_err(knet_h, KNET_SUB_LISTENER, "Unable to remove EOFed socket from epoll pool: %s",
-			strerror(errno));
-	}
-
-	/* Tell transport that the FD has been closed */
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if (knet_h->transports[i] &&
-		    !knet_h->transport_ops[i]->handle_fd_eof(knet_h, sockfd))
-			break;
-	}
-}
-
-static void _handle_socket_notification(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen)
-{
-	int i;
-
-	/* Find the transport and post the message */
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if (knet_h->transports[i] && knet_h->transport_ops[i]->handle_fd_notification &&
-		    knet_h->transport_ops[i]->handle_fd_notification(knet_h, sockfd, iov, iovlen))
-			break;
-	}
-}
-
 static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct mmsghdr *msg, int type)
 {
 	ssize_t inlen = 0;
@@ -1191,8 +1154,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 		if (msg[i].msg_len == 0) {
 			_close_socket(knet_h, sockfd);
 			goto exit_unlock;
-		}
-		else {
+		} else {
 			_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
 		}
 	}

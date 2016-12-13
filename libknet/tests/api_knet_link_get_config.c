@@ -198,6 +198,15 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	if (transport != KNET_TRANSPORT_UDP) {
+		printf("knet_link_get_config returned incorrect transport: %d\n", transport);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if ((dynamic) ||
 	    (memcmp(&src, &get_src, sizeof(struct sockaddr_storage))) ||
 	    (memcmp(&dst, &get_dst, sizeof(struct sockaddr_storage)))) {
@@ -241,6 +250,13 @@ static void test(void)
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	printf("Test knet_link_get_config NULL transport ptr\n");
+
+	if ((!knet_link_get_config(knet_h, 1, 0, NULL, &get_src, &get_dst, &dynamic)) || (errno != EINVAL)) {
+		printf("knet_link_get_config accepted NULL &transport or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 

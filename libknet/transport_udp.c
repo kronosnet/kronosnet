@@ -11,7 +11,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <malloc.h>
-#include <qb/qblist.h>
 
 #include "libknet.h"
 #include "host.h"
@@ -24,7 +23,7 @@
 
 typedef struct udp_handle_info {
 	knet_handle_t knet_h;
-	struct qb_list_head links_list;
+	struct knet_list_head links_list;
 } udp_handle_info_t;
 
 typedef struct udp_link_info {
@@ -32,7 +31,7 @@ typedef struct udp_link_info {
 	knet_handle_t knet_handle;
 	int socket_fd;
 	udp_handle_info_t *handle_info;
-	struct qb_list_head list;
+	struct knet_list_head list;
 	struct sockaddr_storage local_address;
 } udp_link_info_t;
 
@@ -45,7 +44,7 @@ static int udp_handle_allocate(knet_handle_t knet_h, knet_transport_t *transport
 		return -1;
 	}
 	handle_info->knet_h = knet_h;
-	qb_list_init(&handle_info->links_list);
+	knet_list_init(&handle_info->links_list);
 
 	*transport = handle_info;
 	return 0;
@@ -80,7 +79,7 @@ static int udp_link_allocate(knet_handle_t knet_h, knet_transport_t transport,
 	udp_handle_info_t *handle_info = transport;
 
 	/* Only allocate a new link if the local address is different */
-	qb_list_for_each_entry(info, &handle_info->links_list, list) {
+	knet_list_for_each_entry(info, &handle_info->links_list, list) {
 		if (memcmp(&info->local_address, address, sizeof(struct sockaddr_storage)) == 0) {
 
 			log_debug(knet_h, KNET_SUB_UDP_LINK_T, "Re-using existing UDP socket for new link");
@@ -132,7 +131,7 @@ static int udp_link_allocate(knet_handle_t knet_h, knet_transport_t transport,
 	}
 
 	memcpy(&info->local_address, address, sizeof(struct sockaddr_storage));
-	qb_list_add(&info->list, &handle_info->links_list);
+	knet_list_add(&info->list, &handle_info->links_list);
 	info->socket_fd = sock;
 	*transport_link = &info->transport;
 	*send_sock = sock;
@@ -147,9 +146,9 @@ static int udp_link_free(knet_transport_link_t transport)
 	udp_link_info_t *info = transport;
 	udp_handle_info_t *handle_info = info->handle_info;
 
-	qb_list_del(&info->list);
+	knet_list_del(&info->list);
 
-	if (qb_list_empty(&handle_info->links_list)) {
+	if (knet_list_empty(&handle_info->links_list)) {
 		free(transport);
 	}
 	return 0;

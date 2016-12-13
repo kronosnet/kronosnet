@@ -35,7 +35,6 @@ sources			= \
 			  threads_pmtud.c \
 			  threads_send_recv.c \
 			  transport_udp.c \
-			  transport_tcp.c \
 			  transport_common.c \
 			  transport_sctp.c
 

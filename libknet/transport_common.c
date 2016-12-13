@@ -19,31 +19,8 @@
 #include "logging.h"
 #include "common.h"
 #include "transports.h"
+#include "../common/netutils.h"
 
-#ifdef DEBUG
-/*
- * Keeping this light (and therefore not thread-safe) as it's
- * for debugging only
- */
-const char *_transport_print_ip(const struct sockaddr_storage *ss)
-{
-	static char printbuf[INET6_ADDRSTRLEN];
-
-	if (ss->ss_family == AF_INET) {
-		struct sockaddr_in *in4 = (struct sockaddr_in *)ss;
-		return inet_ntop(AF_INET, &in4->sin_addr, printbuf, sizeof(printbuf));
-	}
-	else {
-		struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)ss;
-		return inet_ntop(AF_INET6, &in6->sin6_addr, printbuf, sizeof(printbuf));
-	}
-}
-#else
-const char *_transport_print_ip(const struct sockaddr_storage *ss)
-{
-	return "node";
-}
-#endif
 
 int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
 {
@@ -137,4 +114,63 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 
 exit_error:
 	return err;
+}
+
+void _close_socket(knet_handle_t knet_h, int sockfd)
+{
+	struct epoll_event ev;
+	int i;
+
+	log_err(knet_h, KNET_SUB_LINK_T, "EOF received on socket fd %d", sockfd);
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+
+	ev.events = EPOLLIN;
+	ev.data.fd = sockfd;
+	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, sockfd, &ev)) {
+		log_err(knet_h, KNET_SUB_LISTENER, "Unable to remove EOFed socket from epoll pool: %s",
+			strerror(errno));
+	}
+
+	/* Tell transport that the FD has been closed */
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if (knet_h->transports[i] &&
+		    !knet_h->transport_ops[i]->handle_fd_eof(knet_h, sockfd))
+			break;
+	}
+}
+
+void _handle_socket_notification(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen)
+{
+	int i;
+
+	/* Find the transport and post the message */
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if (knet_h->transports[i] && knet_h->transport_ops[i]->handle_fd_notification &&
+		    knet_h->transport_ops[i]->handle_fd_notification(knet_h, sockfd, iov, iovlen))
+			break;
+	}
+}
+
+/*
+ * Wrappers for addrtostr() & addrtostr_free() for use when we only need the IP address
+ * printing in DEBUG mode - it's to heavy for within normal use
+ */
+int _transport_addrtostr(const struct sockaddr *sa, socklen_t salen, char *str[2])
+{
+#ifdef DEBUG
+	return addrtostr(sa, salen, str);
+#else
+	str[0] = (char*)"node";
+	str[1] = (char*)"";
+	return 0;
+#endif
+}
+
+void _transport_addrtostr_free(char *str[2])
+{
+#ifdef DEBUG
+	addrtostr_free(str);
+#else
+#endif
 }

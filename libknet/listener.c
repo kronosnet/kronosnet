@@ -61,8 +61,14 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 
 		memset(listener, 0, sizeof(struct knet_listener));
 		memmove(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
-		knet_h->transport_ops[lnk->transport_type]->link_listener_start(knet_h, lnk->transport, link_id,
-									       &lnk->src_addr, &lnk->dst_addr);
+		if (knet_h->transport_ops[lnk->transport_type]->link_listener_start(knet_h, lnk->transport, link_id,
+										    &lnk->src_addr, &lnk->dst_addr) < 0) {
+			savederrno = errno;
+			err = -1;
+			free(listener);
+			log_err(knet_h, KNET_SUB_LISTENER, "Unable to start listener for this link");
+			goto exit_unlock;
+		}
 
 		/* pushing new host to the front */
 		listener->next		= knet_h->listener_head;

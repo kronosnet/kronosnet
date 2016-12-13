@@ -11,7 +11,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <malloc.h>
-#include <qb/qblist.h>
 #include <netinet/sctp.h>
 #include <arpa/inet.h>
 
@@ -40,7 +39,7 @@ typedef struct sctp_handle_info {
 	pthread_t connect_thread;
 	pthread_t listen_thread;
 	pthread_rwlock_t links_list_lock;
-	struct qb_list_head links_list;
+	struct knet_list_head links_list;
 } sctp_handle_info_t;
 
 typedef struct sctp_link_info {
@@ -51,7 +50,7 @@ typedef struct sctp_link_info {
 	int listen_sock;
 	int accepted_socks[MAX_ACCEPTED_SOCKS];
 	struct sockaddr_storage dst_address;
-	struct qb_list_head list;
+	struct knet_list_head list;
 	int on_epoll;
 } sctp_link_info_t;
 
@@ -139,7 +138,11 @@ static void _handle_incoming_sctp(sctp_handle_info_t *handle_info, sctp_link_inf
 		close(new_fd);
 	}
 	else {
-		log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler ACCEPTED new fd %d for %s (listen fd: %d). index: %d", new_fd, _transport_print_ip(&ss), info->listen_sock, i);
+		char *print_str[2];
+
+		_transport_addrtostr((struct sockaddr *)&ss, sizeof(ss), print_str);
+		log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler ACCEPTED new fd %d for %s (listen fd: %d). index: %d", new_fd, print_str[0], info->listen_sock, i);
+		_transport_addrtostr_free(print_str);
 	}
 }
 
@@ -149,6 +152,7 @@ static int _create_connect_socket(knet_handle_t knet_h, sctp_handle_info_t *hand
 	int sendrecv_sock;
 	int savederrno = EINVAL;
 	struct epoll_event ev;
+	char *print_str[2];
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 	if (do_close || info->sendrecv_sock != -1) {
@@ -157,7 +161,7 @@ static int _create_connect_socket(knet_handle_t knet_h, sctp_handle_info_t *hand
 			ev.events = EPOLLOUT;
 			ev.data.ptr = info;
 			if (epoll_ctl(handle_info->connect_epollfd, EPOLL_CTL_DEL, info->sendrecv_sock, &ev)) {
-				log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to remove connected socket from epoll pool: %s",
+				log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to remove connected socket from the epoll pool: %s",
 					strerror(errno));
 			}
 		}
@@ -204,9 +208,11 @@ static int _create_connect_socket(knet_handle_t knet_h, sctp_handle_info_t *hand
 		goto exit_error;
 	}
 
-	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "New connect attempt to %s on fd %d", _transport_print_ip(&info->dst_address), sendrecv_sock);
+	_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
+	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "New connect attempt to %s on fd %d", print_str[0], sendrecv_sock);
+	_transport_addrtostr_free(print_str);
 
-	info->sendrecv_sock = sendrecv_sock;
+
 exit_error:
 	return sendrecv_sock;
 }
@@ -217,6 +223,7 @@ static void _handle_connected_sctp(sctp_handle_info_t *handle_info, sctp_link_in
 	knet_handle_t knet_h = handle_info->knet_handle;
 	struct epoll_event ev;
 	int err;
+	char *print_str[2];
 	unsigned int status, len = sizeof(status);
 	int fd = info->sendrecv_sock;
 
@@ -228,9 +235,11 @@ static void _handle_connected_sctp(sctp_handle_info_t *handle_info, sctp_link_in
 				fd, strerror(errno));
 		}
 		else {
+			_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
 			log_info(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP connect on %d to %s failed: %s",
-				 fd, _transport_print_ip(&info->dst_address),
+				 fd, print_str[0],
 				 strerror(status));
+			_transport_addrtostr_free(print_str);
 
 			/* Retry connect */
 			usleep(KNET_SCTP_SLEEP_TIME);
@@ -247,8 +256,8 @@ static void _handle_connected_sctp(sctp_handle_info_t *handle_info, sctp_link_in
 	ev.events = EPOLLOUT;
 	ev.data.ptr = info;
 	if (epoll_ctl(handle_info->connect_epollfd, EPOLL_CTL_DEL, fd, &ev)) {
-		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to remove connected socket from epoll pool: %s",
-			strerror(errno));
+		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to remove connected socket %d from epoll pool: %s",
+			fd, strerror(errno));
 	}
 
 	/* Add this FD to the main read epoll */
@@ -263,8 +272,10 @@ static void _handle_connected_sctp(sctp_handle_info_t *handle_info, sctp_link_in
 			info->on_epoll = 1;
 		}
 	}
-	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler fd %d now connected to %s", fd,
-		  _transport_print_ip(&info->dst_address));
+
+	_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
+	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler fd %d now connected to %s", fd, print_str[0]);
+	_transport_addrtostr_free(print_str);
 }
 
 static void *_sctp_listen_thread(void *data)
@@ -340,7 +351,7 @@ static int sctp_handle_fd_eof(knet_handle_t knet_h, int sock_fd)
 	}
 
 	pthread_rwlock_rdlock(&handle_info->links_list_lock);
-	qb_list_for_each_entry(info, &handle_info->links_list, list) {
+	knet_list_for_each_entry(info, &handle_info->links_list, list) {
 		if (sock_fd == info->sendrecv_sock) {
 
 			pthread_rwlock_unlock(&handle_info->links_list_lock);
@@ -383,7 +394,7 @@ static int sctp_handle_allocate(knet_handle_t knet_h, knet_transport_t *transpor
 		return -1;
 	}
 	handle_info->knet_handle = knet_h;
-	qb_list_init(&handle_info->links_list);
+	knet_list_init(&handle_info->links_list);
 	pthread_rwlock_init(&handle_info->links_list_lock, NULL);
 
 	handle_info->listen_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
@@ -464,6 +475,7 @@ static int sctp_link_listener_start(knet_handle_t knet_h, knet_transport_link_t 
 	int err;
 	sctp_link_info_t *info;
 	sctp_handle_info_t *handle_info;
+	char *print_str[2];
 
 	info = (sctp_link_info_t *)transport_link;
 	handle_info = info->transport;
@@ -509,7 +521,11 @@ static int sctp_link_listener_start(knet_handle_t knet_h, knet_transport_link_t 
 		goto exit_error;
 	}
 	info->listen_sock = listen_sock;
-	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "Listening on fd %d for %s", listen_sock, _transport_print_ip(address));
+
+	_transport_addrtostr((struct sockaddr *)address, sizeof(struct sockaddr_storage), print_str);
+	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "Listening on fd %d for %s", listen_sock, print_str[0]);
+	_transport_addrtostr_free(print_str);
+
 	return 0;
 
 exit_error:
@@ -555,7 +571,7 @@ static int sctp_link_allocate(knet_handle_t knet_h, knet_transport_t transport,
 
 	info->transport = transport;
 	pthread_rwlock_wrlock(&handle_info->links_list_lock);
-	qb_list_add(&info->list, &handle_info->links_list);
+	knet_list_add(&info->list, &handle_info->links_list);
 	pthread_rwlock_unlock(&handle_info->links_list_lock);
 
 	*transport_link = (knet_transport_link_t *)info;
@@ -583,7 +599,7 @@ static int sctp_link_free(knet_transport_link_t transport)
 	}
 
 	pthread_rwlock_wrlock(&handle_info->links_list_lock);
-	qb_list_del(&info->list);
+	knet_list_del(&info->list);
 	pthread_rwlock_unlock(&handle_info->links_list_lock);
 
 	/* Remove from epoll */
@@ -598,11 +614,12 @@ static int sctp_handle_fd_notification(knet_handle_t knet_h, int sockfd, struct 
 	union sctp_notification  *snp;
 	sctp_link_info_t *info;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
+	char *print_str[2];
 	int i;
 
 	/* Find the link associated with this fd */
 	pthread_rwlock_rdlock(&handle_info->links_list_lock);
-	qb_list_for_each_entry(info, &handle_info->links_list, list) {
+	knet_list_for_each_entry(info, &handle_info->links_list, list) {
 		if (sockfd == info->sendrecv_sock) {
 			for (i=0; i< iovlen; i++) {
 				snp = iov[i].iov_base;
@@ -611,7 +628,10 @@ static int sctp_handle_fd_notification(knet_handle_t knet_h, int sockfd, struct 
 				case SCTP_ASSOC_CHANGE:
 					sac = &snp->sn_assoc_change;
 					if (sac->sac_state == SCTP_COMM_LOST) {
-						log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP assoc lost, reconnecting sock %d to %s", sockfd, _transport_print_ip(&info->dst_address));
+						_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
+						log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP shutdown, reconnecting sock %d to %s", sockfd, print_str[0]);
+						_transport_addrtostr_free(print_str);
+
 						_create_connect_socket(knet_h, handle_info, info, 1);
 					}
 					break;
@@ -622,19 +642,20 @@ static int sctp_handle_fd_notification(knet_handle_t knet_h, int sockfd, struct 
 				case SCTP_REMOTE_ERROR:
 					break;
 				case SCTP_SHUTDOWN_EVENT:
-					log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP shutdown, reconnecting sock %d to %s", sockfd, _transport_print_ip(&info->dst_address));
+					_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
+					log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP shutdown, reconnecting sock %d to %s", sockfd, print_str[0]);
+					_transport_addrtostr_free(print_str);
+
 					_create_connect_socket(knet_h, handle_info, info, 1);
 					break;
 				default:
 					log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "unknown SCTP event type: %hu\n", snp->sn_header.sn_type);
 					break;
 				}
-				pthread_rwlock_unlock(&handle_info->links_list_lock);
 				return 0;
 			}
 		}
 	}
-	pthread_rwlock_unlock(&handle_info->links_list_lock);
 	return -1;
 }
 
