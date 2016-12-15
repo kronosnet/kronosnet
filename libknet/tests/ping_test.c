@@ -29,6 +29,7 @@ static knet_handle_t knet_h;
 static struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 static uint8_t loglevel = KNET_LOG_INFO;
 static uint8_t use_stdout = 0;
+static uint8_t use_transport = KNET_TRANSPORT_UDP;
 static char *src_host = NULL;
 static char *src_port = NULL;
 static int can_use_sync = 0;
@@ -103,6 +104,22 @@ static void set_log(int argc, char *argv[])
 	}
 }
 
+static void set_transport(int argc, char *argv[])
+{
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		if (!strncmp(argv[i], "udp", 3)) {
+			use_transport = KNET_TRANSPORT_UDP;
+			break;
+		}
+		if (!strncmp(argv[i], "sctp", 4)) {
+			use_transport = KNET_TRANSPORT_SCTP;
+			break;
+		}
+	}
+}
+
 static void set_debug(int argc, char *argv[])
 {
 	int i;
@@ -162,6 +179,10 @@ static void argv_to_hosts(int argc, char *argv[])
 			continue;
 		if (!strncmp(argv[i], "stdout", 6))
 			continue;
+		if (!strncmp(argv[i], "udp", 3))
+			continue;
+		if (!strncmp(argv[i], "sctp", 4))
+			continue;
 
 		node_id = i - 1;
 
@@ -191,7 +212,7 @@ static void argv_to_hosts(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		knet_link_set_config(knet_h, node_id, 0, &src_addr, &dst_addr);
+		knet_link_set_config(knet_h, node_id, 0, use_transport, &src_addr, &dst_addr);
 		knet_link_set_ping_timers(knet_h, node_id, 0, 1000, 5000, 2048);
 		knet_link_set_pong_count(knet_h, node_id, 0, 3);
 		knet_link_set_enable(knet_h, node_id, 0, 1);
@@ -424,6 +445,7 @@ int main(int argc, char *argv[])
 	}
 
 	set_debug(argc, argv);
+	set_transport(argc, argv);
 
 	if ((knet_h = knet_handle_new(1, logfd, loglevel)) == NULL) {
 		printf("Unable to create new knet_handle_t\n");

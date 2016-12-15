@@ -56,6 +56,7 @@ static void print_help(void)
 	printf(" -c [implementation]:[crypto]:[hashing]    crypto configuration. (default disabled)\n");
 	printf("                                           Example: -c nss:aes128:sha1\n");
 	printf(" -p [active|passive|rr]                    (default: passive)\n");
+	printf(" -P [udp|sctp]                             (default: udp) protocol (transport) to use\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
 	printf(" -n [nodeid],[link1_ip_addr],[link2_..]    Other nodes information (at least one required)\n");
 	printf("                                           Example: -t 1,192.168.8.1,3ffe::8:1,..\n");
@@ -142,7 +143,7 @@ static void setup_knet(int argc, char *argv[])
 {
 	int logfd;
 	int rv;
-	char *cryptocfg = NULL, *policystr = NULL;
+	char *cryptocfg = NULL, *policystr = NULL, *protostr = NULL;
 	char *othernodeinfo[MAX_NODES];
 	struct node nodes[MAX_NODES];
 	int thisnodeid = -1;
@@ -157,6 +158,7 @@ static void setup_knet(int argc, char *argv[])
 	struct sockaddr_storage *src;
 	int i, link_idx, allnodesup = 0;
 	int policy = KNET_LINK_POLICY_PASSIVE, policyfound = 0;
+	int protocol = KNET_TRANSPORT_UDP, protofound = 0;
 	int wait = 1;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	char *cryptomodel = NULL, *cryptotype = NULL, *cryptohash = NULL;
@@ -164,7 +166,7 @@ static void setup_knet(int argc, char *argv[])
 	memset(nodes, 0, sizeof(nodes));
 
 	optind = 0;
-	while ((rv = getopt(argc, argv, "CT:s:ldowb:t:n:c:p:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "CT:s:ldowb:t:n:c:p:P:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -200,6 +202,25 @@ static void setup_knet(int argc, char *argv[])
 				}
 				if (!policyfound) {
 					printf("Error: invalid policy %s specified. -p accepts active|passive|rr\n", policystr);
+					exit(FAIL);
+				}
+				break;
+		        case 'P':
+				if (protostr) {
+					printf("Error: -P can only be specified once\n");
+					exit(FAIL);
+				}
+				protostr = optarg;
+				if (!strcmp(protostr, "udp")) {
+					protocol = KNET_TRANSPORT_UDP;
+					protofound = 1;
+				}
+				if (!strcmp(protostr, "sctp")) {
+					protocol = KNET_TRANSPORT_SCTP;
+					protofound = 1;
+				}
+				if (!protofound) {
+					printf("Error: invalid protocol %s specified. -P accepts udp|sctp\n", policystr);
 					exit(FAIL);
 				}
 				break;
@@ -400,7 +421,7 @@ static void setup_knet(int argc, char *argv[])
 				}
 			}
 			if (knet_link_set_config(knet_h, nodes[i].nodeid, link_idx,
-						 src,
+						 protocol, src,
 						 &nodes[i].address[link_idx]) < 0) {
 				printf("Unable to configure link: %s\n", strerror(errno));
 				exit(FAIL);

@@ -20,11 +20,11 @@
 #include "common.h"
 #include "logging.h"
 #include "listener.h"
+#include "transports.h"
 
 int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 {
-	int value, count = 0;
-	struct epoll_event ev;
+	int count = 0;
 	int savederrno = 0, err = 0;
 	struct knet_link *lnk = &knet_h->host_index[host_id]->link[link_id];
 	struct knet_listener *listener = NULL;
@@ -61,107 +61,12 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 
 		memset(listener, 0, sizeof(struct knet_listener));
 		memmove(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
-
-		listener->sock = socket(listener->address.ss_family, SOCK_DGRAM, 0);
-		if (listener->sock < 0) {
+		if (knet_h->transport_ops[lnk->transport_type]->link_listener_start(knet_h, lnk->transport, link_id,
+										    &lnk->src_addr, &lnk->dst_addr) < 0) {
 			savederrno = errno;
 			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to create listener socket: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		value = KNET_RING_RCVBUFF;
-		if (setsockopt(listener->sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener receive buffer: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		value = KNET_RING_RCVBUFF;
-		if (setsockopt(listener->sock, SOL_SOCKET, SO_SNDBUFFORCE, &value, sizeof(value)) < 0) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener send buffer: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		value = 1;
-		if (setsockopt(listener->sock, SOL_IP, IP_FREEBIND, &value, sizeof(value)) <0) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set FREEBIND on listener socket: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		if (listener->address.ss_family == AF_INET6) {
-			value = 1;
-			if (setsockopt(listener->sock, IPPROTO_IPV6, IPV6_V6ONLY,
-				       &value, sizeof(value)) < 0) {
-				savederrno = errno;
-				err = -1;
-				log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener IPv6 only: %s",
-					strerror(savederrno));
-				goto exit_unlock;
-
-			}
-			value = IPV6_PMTUDISC_PROBE;
-			if (setsockopt(listener->sock, SOL_IPV6, IPV6_MTU_DISCOVER, &value, sizeof(value)) <0) {
-				savederrno = errno;
-				err = -1;
-				log_err(knet_h, KNET_SUB_LISTENER, "Unable to set PMTUDISC on listener socket: %s",
-					strerror(savederrno));
-				goto exit_unlock;
-			}
-		} else {
-			value = IP_PMTUDISC_PROBE;
-			if (setsockopt(listener->sock, SOL_IP, IP_MTU_DISCOVER, &value, sizeof(value)) <0) {
-				savederrno = errno;
-				err = -1;
-				log_err(knet_h, KNET_SUB_LISTENER, "Unable to set PMTUDISC on listener socket: %s",
-					strerror(savederrno));
-				goto exit_unlock;
-			}
-		}
-
-		if (_fdset_cloexec(listener->sock)) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener CLOEXEC socket opts: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		if (_fdset_nonblock(listener->sock)) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to set listener NONBLOCK socket opts: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		if (bind(listener->sock, (struct sockaddr *)&listener->address, sizeof(struct sockaddr_storage)) < 0) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to bind listener socket: %s",
-				strerror(savederrno));
-			goto exit_unlock;
-		}
-
-		memset(&ev, 0, sizeof(struct epoll_event));
-
-		ev.events = EPOLLIN;
-		ev.data.fd = listener->sock;
-
-		if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, listener->sock, &ev)) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LISTENER, "Unable to add listener to epoll pool: %s",
-				strerror(savederrno));
+			free(listener);
+			log_err(knet_h, KNET_SUB_LISTENER, "Unable to start listener for this link");
 			goto exit_unlock;
 		}
 
@@ -242,6 +147,9 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 			}
 		}
 	}
+
+	knet_h->transport_ops[lnk->transport_type]->link_free(lnk->transport);
+	lnk->transport = NULL;
 
 	epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, listener->sock, &ev);
 	close(listener->sock);

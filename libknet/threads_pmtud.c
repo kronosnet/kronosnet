@@ -41,7 +41,7 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	failsafe = 0;
 	pad_len = 0;
 
-	dst_link->last_bad_mtu = 0;
+	dst_link->last_bad_mtu = knet_h->transport_ops[dst_link->transport_type]->link_get_mtu_overhead(dst_link->transport);
 
 	knet_h->pmtudbuf->khp_pmtud_link = dst_link->link_id;
 
@@ -149,7 +149,7 @@ restart:
 		return -1;
 	}
 
-	len = sendto(dst_link->listener_sock, outbuf, data_len,
+	len = sendto(dst_link->outsock, outbuf, data_len,
 			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;

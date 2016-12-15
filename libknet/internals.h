@@ -27,6 +27,11 @@
 
 #define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX
 
+typedef void *knet_transport_link_t; /* per link transport handle */
+typedef void *knet_transport_t;      /* per knet_h transport handle */
+struct  knet_transport_ops;          /* Forward because of circular dependancy */
+
+
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
@@ -48,6 +53,9 @@ struct knet_link {
 	struct knet_link_status status;
 	/* internals */
 	uint8_t link_id;
+	uint8_t transport_type;                 /* #defined constant from API */
+	knet_transport_link_t transport;
+	int outsock;
 	int listener_sock;
 	unsigned int configured:1;		/* set to 1 if src/dst have been configured */
 	unsigned int remoteconnected:1;		/* link is enabled for data (peer view) */
@@ -132,6 +140,8 @@ struct knet_handle {
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
+	knet_transport_t transports[KNET_MAX_TRANSPORTS];
+	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS];
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
 	struct knet_listener *listener_head;
@@ -197,5 +207,195 @@ struct knet_handle {
 		int errorno);
 	int fini_in_progress;
 };
+
+typedef struct knet_transport_ops {
+
+	int (*handle_allocate)(knet_handle_t knet_h, knet_transport_t *transport);
+	int (*handle_free)(knet_handle_t knet_h, knet_transport_t transport);
+	int (*handle_fd_eof)(knet_handle_t knet_h, int sockfd);
+	int (*handle_fd_notification)(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen);
+
+	int (*link_allocate)(knet_handle_t knet_h, knet_transport_t transport,
+			     struct knet_link *link,
+			     knet_transport_link_t *transport_link,
+			     uint8_t link_id, struct sockaddr_storage *src_address,
+			     struct sockaddr_storage *dst_address, int *listen_sock);
+	int (*link_listener_start)(knet_handle_t knet_h, knet_transport_link_t transport_link,
+				   uint8_t link_id,
+				   struct sockaddr_storage *address, struct sockaddr_storage *dst_address);
+	int (*link_free)(knet_transport_link_t transport_link);
+	int (*link_get_mtu_overhead)(knet_transport_link_t transport_link);
+
+	const char *transport_name;
+} knet_transport_ops_t;
+
+/**
+ * This is a kernel style list implementation.
+ *
+ * @author Steven Dake <sdake@redhat.com>
+ */
+
+struct knet_list_head {
+	struct knet_list_head *next;
+	struct knet_list_head *prev;
+};
+
+/**
+ * @def KNET_LIST_DECLARE()
+ * Declare and initialize a list head.
+ */
+#define KNET_LIST_DECLARE(name) \
+    struct knet_list_head name = { &(name), &(name) }
+
+#define KNET_INIT_LIST_HEAD(ptr) do { \
+	(ptr)->next = (ptr); (ptr)->prev = (ptr); \
+} while (0)
+
+/**
+ * Initialize the list entry.
+ *
+ * Points next and prev pointers to head.
+ * @param head pointer to the list head
+ */
+static inline void knet_list_init(struct knet_list_head *head)
+{
+	head->next = head;
+	head->prev = head;
+}
+
+/**
+ * Add this element to the list.
+ *
+ * @param element the new element to insert.
+ * @param head pointer to the list head
+ */
+static inline void knet_list_add(struct knet_list_head *element,
+			       struct knet_list_head *head)
+{
+	head->next->prev = element;
+	element->next = head->next;
+	element->prev = head;
+	head->next = element;
+}
+
+/**
+ * Add to the list (but at the end of the list).
+ *
+ * @param element pointer to the element to add
+ * @param head pointer to the list head
+ * @see knet_list_add()
+ */
+static inline void knet_list_add_tail(struct knet_list_head *element,
+				    struct knet_list_head *head)
+{
+	head->prev->next = element;
+	element->next = head;
+	element->prev = head->prev;
+	head->prev = element;
+}
+
+/**
+ * Delete an entry from the list.
+ *
+ * @param _remove the list item to remove
+ */
+static inline void knet_list_del(struct knet_list_head *_remove)
+{
+	_remove->next->prev = _remove->prev;
+	_remove->prev->next = _remove->next;
+}
+
+/**
+ * Replace old entry by new one
+ * @param old: the element to be replaced
+ * @param new: the new element to insert
+ */
+static inline void knet_list_replace(struct knet_list_head *old,
+		struct knet_list_head *new)
+{
+	new->next = old->next;
+	new->next->prev = new;
+	new->prev = old->prev;
+	new->prev->next = new;
+}
+
+/**
+ * Tests whether list is the last entry in list head
+ * @param list: the entry to test
+ * @param head: the head of the list
+ * @return boolean true/false
+ */
+static inline int knet_list_is_last(const struct knet_list_head *list,
+		const struct knet_list_head *head)
+{
+	return list->next == head;
+}
+
+/**
+ * A quick test to see if the list is empty (pointing to it's self).
+ * @param head pointer to the list head
+ * @return boolean true/false
+ */
+static inline int32_t knet_list_empty(const struct knet_list_head *head)
+{
+	return head->next == head;
+}
+
+
+/**
+ * Get the struct for this entry
+ * @param ptr:	the &struct list_head pointer.
+ * @param type:	the type of the struct this is embedded in.
+ * @param member:	the name of the list_struct within the struct.
+ */
+#define knet_list_entry(ptr,type,member)\
+	((type *)((char *)(ptr)-(char*)(&((type *)0)->member)))
+
+/**
+ * Get the first element from a list
+ * @param ptr:	the &struct list_head pointer.
+ * @param type:	the type of the struct this is embedded in.
+ * @param member:	the name of the list_struct within the struct.
+ */
+#define knet_list_first_entry(ptr, type, member) \
+	knet_list_entry((ptr)->next, type, member)
+
+/**
+ * Iterate over a list
+ * @param pos:	the &struct list_head to use as a loop counter.
+ * @param head:	the head for your list.
+ */
+#define knet_list_for_each(pos, head) \
+	for (pos = (head)->next; pos != (head); pos = pos->next)
+
+/**
+ * Iterate over a list backwards
+ * @param pos:	the &struct list_head to use as a loop counter.
+ * @param head:	the head for your list.
+ */
+#define knet_list_for_each_reverse(pos, head) \
+	for (pos = (head)->prev; pos != (head); pos = pos->prev)
+
+/**
+ * Iterate over a list safe against removal of list entry
+ * @param pos:	the &struct list_head to use as a loop counter.
+ * @param n:		another &struct list_head to use as temporary storage
+ * @param head:	the head for your list.
+ */
+#define knet_list_for_each_safe(pos, n, head) \
+	for (pos = (head)->next, n = pos->next; pos != (head); \
+		pos = n, n = pos->next)
+
+/**
+ * Iterate over list of given type
+ * @param pos:	the type * to use as a loop counter.
+ * @param head:	the head for your list.
+ * @param member:	the name of the list_struct within the struct.
+ */
+#define knet_list_for_each_entry(pos, head, member)			\
+	for (pos = knet_list_entry((head)->next, typeof(*pos), member);	\
+	     &pos->member != (head);					\
+	     pos = knet_list_entry(pos->member.next, typeof(*pos), member))
+
 
 #endif

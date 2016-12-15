@@ -864,6 +864,10 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  * -
  */
 
+#define KNET_TRANSPORT_UDP   0
+#define KNET_TRANSPORT_SCTP  1
+#define KNET_MAX_TRANSPORTS  2
+
 /*
  * knet_link_set_config
  *
@@ -872,6 +876,8 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  * host_id   - see above
  *
  * link_id   - see above
+ *
+ * transport - one of the above KNET_TRANSPORT_xxx constants
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -888,6 +894,7 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  */
 
 int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr);
 
@@ -899,6 +906,8 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  * host_id   - see above
  *
  * link_id   - see above
+ *
+ * transport - see above
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -915,6 +924,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  */
 
 int knet_link_get_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
+			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
 			 uint8_t *dynamic);
@@ -1199,22 +1209,25 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  * places, each subsystem has its own ID.
  */
 
-#define KNET_SUB_COMMON      0 /* common.c */
-#define KNET_SUB_HANDLE      1 /* handle.c alloc/dealloc config changes */
-#define KNET_SUB_HOST        2 /* host add/del/modify */
-#define KNET_SUB_LISTENER    3 /* listeners add/del/modify... */
-#define KNET_SUB_LINK        4 /* link add/del/modify */
-#define KNET_SUB_PMTUD       5 /* Path MTU Discovery */
-#define KNET_SUB_SEND_T      6 /* send to link thread */
-#define KNET_SUB_LINK_T      7 /* recv from link thread */
-#define KNET_SUB_SWITCH_T    8 /* switching thread */
-#define KNET_SUB_HB_T        9 /* heartbeat thread */
-#define KNET_SUB_PMTUD_T    10 /* Path MTU Discovery thread */
-#define KNET_SUB_FILTER     11 /* (ether)filter errors */
-#define KNET_SUB_CRYPTO     12 /* crypto.c generic layer */
-#define KNET_SUB_NSSCRYPTO  13 /* nsscrypto.c */
-#define KNET_SUB_LAST       KNET_SUB_NSSCRYPTO
-#define KNET_MAX_SUBSYSTEMS KNET_SUB_LAST + 1
+#define KNET_SUB_COMMON       0 /* common.c */
+#define KNET_SUB_HANDLE       1 /* handle.c alloc/dealloc config changes */
+#define KNET_SUB_HOST         2 /* host add/del/modify */
+#define KNET_SUB_LISTENER     3 /* listeners add/del/modify... */
+#define KNET_SUB_LINK         4 /* link add/del/modify */
+#define KNET_SUB_PMTUD        5 /* Path MTU Discovery */
+#define KNET_SUB_SEND_T       6 /* send to link thread */
+#define KNET_SUB_LINK_T       7 /* recv from link thread */
+#define KNET_SUB_SWITCH_T     8 /* switching thread */
+#define KNET_SUB_HB_T         9 /* heartbeat thread */
+#define KNET_SUB_PMTUD_T     10 /* Path MTU Discovery thread */
+#define KNET_SUB_TRANSPORT_T 11 /* Transport common */
+#define KNET_SUB_UDP_LINK_T  12 /* UDP Transport */
+#define KNET_SUB_SCTP_LINK_T 14 /* SCTP Transport */
+#define KNET_SUB_FILTER      15 /* (ether)filter errors */
+#define KNET_SUB_CRYPTO      16 /* crypto.c generic layer */
+#define KNET_SUB_NSSCRYPTO   17 /* nsscrypto.c */
+#define KNET_SUB_LAST        KNET_SUB_NSSCRYPTO
+#define KNET_MAX_SUBSYSTEMS  KNET_SUB_LAST + 1
 
 /*
  * Convert between subsystem IDs and names
