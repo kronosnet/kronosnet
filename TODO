@@ -4,6 +4,10 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) check configure.ac and Makefile.am after merging SCTP
+ - (issue) renumber the KNET_SUB_* facilities to allow space to grow without
+           changing ABI every time.
+ - (issue) change knet_bench to allow protocol specification per link
  - (issue) review memory locking across
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
  - (issue) need bind to interface for dynamic ip local interfaces vs src ip
@@ -16,7 +20,6 @@ link/host level:
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
  - (issue) make generic socket common code
  - (rfe)   rewrite ping_test to use test_common.c and netutils.c
- - (rfe)   add sctp transport layer? needs proper plugable network transport first
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
