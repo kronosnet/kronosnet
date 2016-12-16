@@ -128,10 +128,15 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 			knet_h->transport_ops[link->transport_type] = get_udp_transport();
 			break;
 	        case KNET_TRANSPORT_SCTP:
+#ifdef HAVE_NETINET_SCTP_H
 			knet_h->transport_ops[link->transport_type] = get_sctp_transport();
 			break;
+#else
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "SCTP protocol not supported in this build");
+#endif
 	        default:
-			errno = EINVAL;
+			savederrno = EINVAL;
 			err = -1;
 			goto exit_unlock;
 	}

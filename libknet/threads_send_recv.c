@@ -19,6 +19,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#ifdef HAVE_NETINET_SCTP_H
+#include <netinet/sctp.h>
+#endif
 
 #include "crypto.h"
 #include "compat.h"
@@ -1148,9 +1151,11 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	}
 
 	for (i = 0; i < msg_recv; i++) {
+#ifdef HAVE_NETINET_SCTP_H
 		if (msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION) {
 			_handle_socket_notification(knet_h, sockfd, msg[i].msg_hdr.msg_iov, msg[i].msg_hdr.msg_iovlen);
 		}
+#endif
 		if (msg[i].msg_len == 0) {
 			_close_socket(knet_h, sockfd);
 			goto exit_unlock;

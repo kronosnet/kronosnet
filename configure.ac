@@ -87,6 +87,11 @@ if test "x$enable_kronosnetd" = xyes; then
 fi
 AM_CONDITIONAL([BUILD_LIBTAP], test x$enable_libtap = xyes)
 
+AC_ARG_ENABLE([libknet-sctp],
+        [  --enable-libknet-sctp             : libknet SCTP support ],,
+        [ enable_libknet_sctp="yes" ])
+AM_CONDITIONAL([BUILD_LIBKNET_SCTP], test x$enable_libknet_sctp = xyes)
+
 ## local helper functions
 # this function checks if CC support options passed as
 # args. Global CFLAGS are ignored during this test.
@@ -141,7 +146,10 @@ AC_CHECK_HEADERS([arpa/inet.h])
 AC_CHECK_HEADERS([netdb.h])
 AC_CHECK_HEADERS([limits.h])
 AC_CHECK_HEADERS([stdint.h])
+
+if test "x$enable_libknet_sctp" = xyes; then
 AC_CHECK_HEADERS([netinet/sctp.h],, AC_MSG_ERROR(["missing required SCTP headers"]))
+fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

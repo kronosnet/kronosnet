@@ -508,9 +508,11 @@ static void _stop_transports(knet_handle_t knet_h)
 		case KNET_TRANSPORT_UDP:
 			ops = get_udp_transport();
 			break;
+#ifdef HAVE_NETINET_SCTP_H
 		case KNET_TRANSPORT_SCTP:
 			ops = get_sctp_transport();
 			break;
+#endif
 		}
 		if (ops) {
 			ops->handle_free(knet_h, knet_h->transports[i]);
