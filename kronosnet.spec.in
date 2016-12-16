@@ -44,7 +44,7 @@ Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}%{?numc
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
-BuildRequires: nss-devel
+BuildRequires: nss-devel lksctp-tools-devel
 %if %{defined buildkronosnetd}
 BuildRequires: libqb-devel pam-devel
 %endif
