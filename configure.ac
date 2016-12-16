@@ -126,15 +126,6 @@ AC_CHECK_LIB([m], [ceil])
 AC_CHECK_LIB([rt], [clock_gettime])
 
 PKG_CHECK_MODULES([nss],[nss])
-PKG_CHECK_MODULES([libqb], [libqb])
-
-AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
-	     [have_qb_log_thread_priority_set="yes"],
-             [have_qb_log_thread_priority_set="no"])
-
-if test "x${have_qb_log_thread_priority_set}" = xyes; then
-	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
-fi
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
@@ -150,6 +141,7 @@ AC_CHECK_HEADERS([arpa/inet.h])
 AC_CHECK_HEADERS([netdb.h])
 AC_CHECK_HEADERS([limits.h])
 AC_CHECK_HEADERS([stdint.h])
+AC_CHECK_HEADERS([netinet/sctp.h],, AC_MSG_ERROR(["missing required SCTP headers"]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -190,7 +182,7 @@ AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],
                 [AC_DEFINE_UNQUOTED([HAVE_MMSGHDR], [1], [struct mmsghdr exists])],
                 [], [[#include <sys/socket.h>]])
 
-# PAM check (for kronosnetd)
+# checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
 AC_CHECK_HEADERS([security/pam_appl.h],
 		 [AC_CHECK_LIB([pam], [pam_start])],
@@ -200,6 +192,16 @@ AC_CHECK_HEADERS([security/pam_appl.h],
 AC_CHECK_HEADERS([security/pam_misc.h],
 	        [AC_CHECK_LIB([pam_misc], [misc_conv])],
                 [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+
+PKG_CHECK_MODULES([libqb], [libqb])
+
+AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
+	     [have_qb_log_thread_priority_set="yes"],
+             [have_qb_log_thread_priority_set="no"])
+
+if test "x${have_qb_log_thread_priority_set}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
+fi
 
 fi
 
@@ -255,6 +257,7 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 ## do subst
 
 AM_CONDITIONAL([BUILD_DOCS], [test "x${enable_publicandocs}" = xyes])
+AM_CONDITIONAL([DEBUG], [test "x${enable_debug}" = xyes])
 
 AC_SUBST([DEFAULT_CONFIG_DIR])
 AC_SUBST([INITDEFAULTDIR])

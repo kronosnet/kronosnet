@@ -38,6 +38,10 @@ sources			= \
 			  transport_common.c \
 			  transport_sctp.c
 
+if DEBUG
+sources			+= ../common/netutils.c
+endif
+
 include_HEADERS		= libknet.h
 
 pkgconfigdir		= $(libdir)/pkgconfig
