@@ -121,35 +121,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	if (!dst_addr) {
-		link->dynamic = KNET_LINK_DYNIP;
-		err = 0;
-		goto exit_unlock;
-	}
-
 	link->transport_type = transport;
-	link->dynamic = KNET_LINK_STATIC;
-
-	memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
-	err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
-			  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
-			  link->status.dst_port, KNET_MAX_PORT_LEN,
-			  NI_NUMERICHOST | NI_NUMERICSERV);
-	if (err) {
-		if (err == EAI_SYSTEM) {
-			savederrno = errno;
-			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %u link: %u destination addr/port: %s",
-				 host_id, link_id, strerror(savederrno));
-		} else {
-			savederrno = EINVAL;
-			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %u link: %u destination addr/port: %s",
-				 host_id, link_id, gai_strerror(err));
-		}
-		err = -1;
-	}
-
 
 	switch (transport) {
 	        case KNET_TRANSPORT_UDP:
@@ -177,6 +149,33 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
+	if (!dst_addr) {
+		link->dynamic = KNET_LINK_DYNIP;
+		err = 0;
+		goto exit_unlock;
+	}
+
+	link->dynamic = KNET_LINK_STATIC;
+
+	memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+	err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
+			  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
+			  link->status.dst_port, KNET_MAX_PORT_LEN,
+			  NI_NUMERICHOST | NI_NUMERICSERV);
+	if (err) {
+		if (err == EAI_SYSTEM) {
+			savederrno = errno;
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "Unable to resolve host: %u link: %u destination addr/port: %s",
+				 host_id, link_id, strerror(savederrno));
+		} else {
+			savederrno = EINVAL;
+			log_warn(knet_h, KNET_SUB_LINK,
+				 "Unable to resolve host: %u link: %u destination addr/port: %s",
+				 host_id, link_id, gai_strerror(err));
+		}
+		err = -1;
+	}
 
 exit_unlock:
 	if (!err) {
