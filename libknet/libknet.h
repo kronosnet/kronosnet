@@ -917,7 +917,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
  *             In case of 1, dst_addr can be NULL and it will be left
  *             untouched.
  *
- * knet_link_set_config returns:
+ * knet_link_get_config returns:
  *
  * 0 on success.
  * -1 on error and errno is set.
