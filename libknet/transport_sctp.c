@@ -207,6 +207,7 @@ static int _create_connect_socket(knet_handle_t knet_h, sctp_handle_info_t *hand
 			strerror(savederrno));
 		goto exit_error;
 	}
+	info->on_epoll = 1;
 
 	_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
 	log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "New connect attempt to %s on fd %d", print_str[0], sendrecv_sock);
@@ -259,18 +260,13 @@ static void _handle_connected_sctp(sctp_handle_info_t *handle_info, sctp_link_in
 		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to remove connected socket %d from epoll pool: %s",
 			fd, strerror(errno));
 	}
+	info->on_epoll = 0;
 
-	/* Add this FD to the main read epoll */
-	if (!info->on_epoll) {
-		ev.events = EPOLLIN;
-		ev.data.fd = fd;
-		if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, fd, &ev)) {
-			log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to add connected socket to epoll pool: %s",
-				strerror(errno));
-		}
-		else {
-			info->on_epoll = 1;
-		}
+	ev.events = EPOLLIN;
+	ev.data.fd = fd;
+	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, fd, &ev)) {
+		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to add connected socket to epoll pool: %s",
+			strerror(errno));
 	}
 
 	_transport_addrtostr((struct sockaddr *)&info->dst_address, sizeof(struct sockaddr_storage), print_str);
@@ -589,6 +585,23 @@ static int sctp_link_free(knet_transport_link_t transport)
 	sctp_link_info_t *info = (sctp_link_info_t *)transport;
 	sctp_handle_info_t *handle_info = info->transport;
 	int i;
+	struct epoll_event ev;
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+	if (info->on_epoll) {
+		ev.events = EPOLLOUT;
+		ev.data.ptr = info;
+		if (epoll_ctl(handle_info->connect_epollfd, EPOLL_CTL_DEL, info->sendrecv_sock, &ev)) {
+			log_err(handle_info->knet_handle, KNET_SUB_SCTP_LINK_T, "Unable to remove connected socket from the epoll pool: %s",
+				strerror(errno));
+		}
+	}
+	ev.events = EPOLLIN;
+	ev.data.ptr = info;
+	if (epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, info->listen_sock, &ev)) {
+		log_err(handle_info->knet_handle, KNET_SUB_SCTP_LINK_T, "Unable to add listener to epoll pool: %s",
+			strerror(errno));
+	}
 
 	close(info->sendrecv_sock);
 	close(info->listen_sock);
@@ -652,10 +665,12 @@ static int sctp_handle_fd_notification(knet_handle_t knet_h, int sockfd, struct 
 					log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "unknown SCTP event type: %hu\n", snp->sn_header.sn_type);
 					break;
 				}
+				pthread_rwlock_unlock(&handle_info->links_list_lock);
 				return 0;
 			}
 		}
 	}
+	pthread_rwlock_unlock(&handle_info->links_list_lock);
 	return -1;
 }
 

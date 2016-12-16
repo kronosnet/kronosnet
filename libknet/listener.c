@@ -66,6 +66,7 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 			savederrno = errno;
 			err = -1;
 			free(listener);
+			listener = NULL;
 			log_err(knet_h, KNET_SUB_LISTENER, "Unable to start listener for this link");
 			goto exit_unlock;
 		}
