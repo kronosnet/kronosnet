@@ -4,7 +4,6 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
- - (issue) check configure.ac and Makefile.am after merging SCTP
  - (issue) renumber the KNET_SUB_* facilities to allow space to grow without
            changing ABI every time.
  - (issue) change knet_bench to allow protocol specification per link
