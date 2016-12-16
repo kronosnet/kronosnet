@@ -10,6 +10,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+# override global LIBS that pulls in lots of craft we don't need here
+LIBS			=
+
 noinst_HEADERS		= netutils.h
 
 check_PROGRAMS		= netutils_test

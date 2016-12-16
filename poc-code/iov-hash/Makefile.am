@@ -10,6 +10,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+# override global LIBS that pulls in lots of craft we don't need here
+LIBS			=
+
 noinst_PROGRAMS		= nss_hash
 
 nss_hash_SOURCES	= main.c

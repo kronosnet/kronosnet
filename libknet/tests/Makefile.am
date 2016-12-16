@@ -18,6 +18,9 @@ EXTRA_DIST		= \
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet \
 			  -I$(top_srcdir)/common
 
+# override global LIBS that pulls in lots of craft we don't need here
+LIBS			=
+
 LDADD			= $(top_builddir)/libknet/libknet.la
 
 noinst_HEADERS		= \

@@ -10,6 +10,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+# override global LIBS that pulls in lots of craft we don't need here
+LIBS			=
+
 EXTRA_DIST		= test_ipcheck.txt
 
 noinst_PROGRAMS		= test_ipcheck

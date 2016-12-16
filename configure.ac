@@ -184,10 +184,10 @@ AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],
 
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
+
 AC_CHECK_HEADERS([security/pam_appl.h],
 		 [AC_CHECK_LIB([pam], [pam_start])],
 		 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
-
 
 AC_CHECK_HEADERS([security/pam_misc.h],
 	        [AC_CHECK_LIB([pam_misc], [misc_conv])],
