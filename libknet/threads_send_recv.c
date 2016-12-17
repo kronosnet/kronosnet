@@ -1154,6 +1154,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 #ifdef HAVE_NETINET_SCTP_H
 		if (msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION) {
 			_handle_socket_notification(knet_h, sockfd, msg[i].msg_hdr.msg_iov, msg[i].msg_hdr.msg_iovlen);
+			continue;
 		}
 #endif
 		if (msg[i].msg_len == 0) {
