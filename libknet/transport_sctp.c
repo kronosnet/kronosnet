@@ -103,7 +103,6 @@ static void _handle_incoming_sctp(sctp_handle_info_t *handle_info, sctp_link_inf
 {
 	knet_handle_t knet_h = handle_info->knet_handle;
 	int new_fd;
-	int err;
 	int i;
 	struct epoll_event ev;
 	struct sockaddr_storage ss;
@@ -111,13 +110,12 @@ static void _handle_incoming_sctp(sctp_handle_info_t *handle_info, sctp_link_inf
 
 	new_fd = accept(info->listen_sock, (struct sockaddr *)&ss, &sock_len);
 	if (new_fd < 0) {
-		log_warn(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler ACCEPT ERROR: %s", strerror(errno));
+		log_warn(knet_h, KNET_SUB_SCTP_LINK_T, "Incoming: accept error: %s", strerror(errno));
 		return;
 	}
 
-	err = _fdset_cloexec(new_fd);
-	if (err) {
-		log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler thread INCOMING unable to set socket opts: %s", strerror(errno));
+	if (_fdset_cloexec(new_fd)) {
+		log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "Incoming: unable to set cloexec opts: %s", strerror(errno));
 		return;
 	}
 
@@ -129,19 +127,25 @@ static void _handle_incoming_sctp(sctp_handle_info_t *handle_info, sctp_link_inf
 		}
 	}
 
+	if (i == MAX_ACCEPTED_SOCKS) {
+		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Incoming: too many connections!");
+		close(new_fd);
+		return;
+	}
+
 	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN;
 	ev.data.fd = new_fd;
 	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, new_fd, &ev)) {
-		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Unable to add accepted socket %d to epoll pool: %s",
+		log_err(knet_h, KNET_SUB_SCTP_LINK_T, "Incoming: unable to add accepted socket %d to epoll pool: %s",
 			new_fd, strerror(errno));
+		info->accepted_socks[i] = -1;
 		close(new_fd);
-	}
-	else {
+	} else {
 		char *print_str[2];
 
 		_transport_addrtostr((struct sockaddr *)&ss, sizeof(ss), print_str);
-		log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "SCTP handler ACCEPTED new fd %d for %s (listen fd: %d). index: %d", new_fd, print_str[0], info->listen_sock, i);
+		log_debug(knet_h, KNET_SUB_SCTP_LINK_T, "Incoming: accepted new fd %d for %s (listen fd: %d). index: %d", new_fd, print_str[0], info->listen_sock, i);
 		_transport_addrtostr_free(print_str);
 	}
 }
