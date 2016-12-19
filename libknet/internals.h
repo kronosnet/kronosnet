@@ -31,7 +31,6 @@ typedef void *knet_transport_link_t; /* per link transport handle */
 typedef void *knet_transport_t;      /* per knet_h transport handle */
 struct  knet_transport_ops;          /* Forward because of circular dependancy */
 
-
 struct knet_listener {
 	int sock;
 	struct sockaddr_storage address;
@@ -65,6 +64,7 @@ struct knet_link {
 	uint8_t received_pong;
 	struct timespec ping_last;
 	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
+	uint32_t proto_overhead;
 	struct timespec pmtud_last;
 	uint32_t last_ping_size;
 	uint32_t last_good_mtu;

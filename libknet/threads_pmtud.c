@@ -41,28 +41,20 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	failsafe = 0;
 	pad_len = 0;
 
-	/*
-	 * FIXME: proto overhead should be included in overhead_len
-	 */
-	if ((knet_h->transport_ops[dst_link->transport_type]) &&
-	    (knet_h->transport_ops[dst_link->transport_type]->link_get_mtu_overhead)) {
-		dst_link->last_bad_mtu = knet_h->transport_ops[dst_link->transport_type]->link_get_mtu_overhead(dst_link->transport);
-	} else {
-		dst_link->last_bad_mtu = 0;
-	}
+	dst_link->last_bad_mtu = 0;
 
 	knet_h->pmtudbuf->khp_pmtud_link = dst_link->link_id;
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
 			max_mtu_len = KNET_PMTUD_SIZE_V6;
-			overhead_len = KNET_PMTUD_OVERHEAD_V6;
-			dst_link->last_good_mtu = dst_link->last_ping_size + KNET_PMTUD_OVERHEAD_V6;
+			overhead_len = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead;
+			dst_link->last_good_mtu = dst_link->last_ping_size + overhead_len;
 			break;
 		case AF_INET:
 			max_mtu_len = KNET_PMTUD_SIZE_V4;
-			overhead_len = KNET_PMTUD_OVERHEAD_V4;
-			dst_link->last_good_mtu = dst_link->last_ping_size + KNET_PMTUD_OVERHEAD_V6;
+			overhead_len = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead;
+			dst_link->last_good_mtu = dst_link->last_ping_size + overhead_len;
 			break;
 		default:
 			log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD aborted, unknown protocol");
@@ -277,10 +269,10 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
-			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V6 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
+			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
 			break;
 		case AF_INET:
-			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V4 + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
+			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
 			break;
 	}
 

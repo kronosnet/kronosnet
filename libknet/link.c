@@ -157,6 +157,10 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 exit_unlock:
 	if (!err) {
 		link->transport_type = transport;
+		if ((knet_h->transport_ops[link->transport_type]) &&
+		    (knet_h->transport_ops[link->transport_type]->link_get_mtu_overhead)) {
+			link->proto_overhead = knet_h->transport_ops[link->transport_type]->link_get_mtu_overhead(link->transport);
+		}
 		link->configured = 1;
 		link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
 		link->has_valid_mtu = 0;
