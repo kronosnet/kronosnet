@@ -21,7 +21,6 @@
 #include "transports.h"
 #include "../common/netutils.h"
 
-
 int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
 {
 	int err = 0;
@@ -134,8 +133,9 @@ void _close_socket(knet_handle_t knet_h, int sockfd)
 
 	/* Tell transport that the FD has been closed */
 	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if (knet_h->transports[i] &&
-		    !knet_h->transport_ops[i]->handle_fd_eof(knet_h, sockfd))
+		if ((knet_h->transport_ops[i]) &&
+		    (knet_h->transport_ops[i]->handle_fd_eof) &&
+		    (!knet_h->transport_ops[i]->handle_fd_eof(knet_h, sockfd)))
 			break;
 	}
 }
@@ -146,8 +146,9 @@ void _handle_socket_notification(knet_handle_t knet_h, int sockfd, struct iovec 
 
 	/* Find the transport and post the message */
 	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if (knet_h->transports[i] && knet_h->transport_ops[i]->handle_fd_notification &&
-		    knet_h->transport_ops[i]->handle_fd_notification(knet_h, sockfd, iov, iovlen))
+		if ((knet_h->transport_ops[i]) &&
+		    (knet_h->transport_ops[i]->handle_fd_notification) &&
+		    (knet_h->transport_ops[i]->handle_fd_notification(knet_h, sockfd, iov, iovlen)))
 			break;
 	}
 }

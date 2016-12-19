@@ -72,6 +72,11 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
+	if (!knet_h->transport_ops[transport]) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
@@ -121,39 +126,6 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	link->transport_type = transport;
-
-	switch (transport) {
-	        case KNET_TRANSPORT_UDP:
-			knet_h->transport_ops[link->transport_type] = get_udp_transport();
-			break;
-	        case KNET_TRANSPORT_SCTP:
-#ifdef HAVE_NETINET_SCTP_H
-			knet_h->transport_ops[link->transport_type] = get_sctp_transport();
-			break;
-#else
-			log_warn(knet_h, KNET_SUB_LINK,
-				 "SCTP protocol not supported in this build");
-#endif
-	        default:
-			savederrno = EINVAL;
-			err = -1;
-			goto exit_unlock;
-	}
-
-	/* First time we've used this transport for this handle */
-	if (!knet_h->transports[transport]) {
-		knet_h->transport_ops[link->transport_type]->handle_allocate(knet_h, &knet_h->transports[transport]);
-	}
-	if (!knet_h->transports[transport]) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_LISTENER, "Failed to allocate transport handle for %s: %s",
-			knet_h->transport_ops[link->transport_type]->transport_name,
-			strerror(savederrno));
-		err = -1;
-		goto exit_unlock;
-	}
-
 	if (!dst_addr) {
 		link->dynamic = KNET_LINK_DYNIP;
 		err = 0;
@@ -184,6 +156,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 exit_unlock:
 	if (!err) {
+		link->transport_type = transport;
 		link->configured = 1;
 		link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
 		link->has_valid_mtu = 0;

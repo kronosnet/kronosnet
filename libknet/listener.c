@@ -61,8 +61,10 @@ int _listener_add(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 
 		memset(listener, 0, sizeof(struct knet_listener));
 		memmove(&listener->address, &lnk->src_addr, sizeof(struct sockaddr_storage));
-		if (knet_h->transport_ops[lnk->transport_type]->link_listener_start(knet_h, lnk->transport, link_id,
-										    &lnk->src_addr, &lnk->dst_addr) < 0) {
+		if ((knet_h->transport_ops[lnk->transport_type]) &&
+		    (knet_h->transport_ops[lnk->transport_type]->link_listener_start) &&
+		    (knet_h->transport_ops[lnk->transport_type]->link_listener_start(knet_h, lnk->transport, link_id,
+										    &lnk->src_addr, &lnk->dst_addr) < 0)) {
 			savederrno = errno;
 			err = -1;
 			free(listener);

@@ -447,6 +447,52 @@ static void _close_epolls(knet_handle_t knet_h)
 	close(knet_h->dst_link_handler_epollfd);
 }
 
+static int _start_transports(knet_handle_t knet_h)
+{
+	int i, savederrno = 0, err = 0;
+
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		switch (i) {
+			case KNET_TRANSPORT_UDP:
+				knet_h->transport_ops[i] = get_udp_transport();
+				break;
+#ifdef HAVE_NETINET_SCTP_H
+			case KNET_TRANSPORT_SCTP:
+				knet_h->transport_ops[i] = get_sctp_transport();
+				break;
+#endif
+		}
+		if ((knet_h->transport_ops[i]) &&
+		    (knet_h->transport_ops[i]->handle_allocate)) {
+			knet_h->transport_ops[i]->handle_allocate(knet_h, &knet_h->transports[i]);
+			if (!knet_h->transports[i]) {
+				savederrno = errno;
+				log_err(knet_h, KNET_SUB_HANDLE, "Failed to allocate transport handle for %s: %s",
+					knet_h->transport_ops[i]->transport_name,
+					strerror(savederrno));
+				err = -1;
+				goto out;
+			}
+		}
+	}
+
+out:
+	errno = savederrno;
+	return err;
+}
+
+static void _stop_transports(knet_handle_t knet_h)
+{
+	int i;
+
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if ((knet_h->transport_ops[i]) &&
+		    (knet_h->transport_ops[i]->handle_free)) {
+			knet_h->transport_ops[i]->handle_free(knet_h, knet_h->transports[i]);
+		}
+	}
+}
+
 static int _start_threads(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -495,29 +541,6 @@ static int _start_threads(knet_handle_t knet_h)
 exit_fail:
 	errno = savederrno;
 	return -1;
-}
-
-
-static void _stop_transports(knet_handle_t knet_h)
-{
-	int i;
-	knet_transport_ops_t *ops = NULL;
-
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		switch (i) {
-		case KNET_TRANSPORT_UDP:
-			ops = get_udp_transport();
-			break;
-#ifdef HAVE_NETINET_SCTP_H
-		case KNET_TRANSPORT_SCTP:
-			ops = get_sctp_transport();
-			break;
-#endif
-		}
-		if (ops) {
-			ops->handle_free(knet_h, knet_h->transports[i]);
-		}
-	}
 }
 
 static void _stop_threads(knet_handle_t knet_h)
@@ -661,6 +684,15 @@ knet_handle_t knet_handle_new(uint16_t host_id,
 	 */
 
 	if (_init_epolls(knet_h)) {
+		savederrno = errno;
+		goto exit_fail;
+	}
+
+	/*
+	 * start transports
+	 */
+
+	if (_start_transports(knet_h)) {
 		savederrno = errno;
 		goto exit_fail;
 	}
