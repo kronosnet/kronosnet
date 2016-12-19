@@ -10,10 +10,7 @@
 #define __TRANSPORTS_H__
 
 knet_transport_ops_t *get_udp_transport(void);
-
-#ifdef HAVE_NETINET_SCTP_H
 knet_transport_ops_t *get_sctp_transport(void);
-#endif
 
 int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type);
 void _close_socket(knet_handle_t knet_h, int sockfd);

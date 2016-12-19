@@ -456,11 +456,9 @@ static int _start_transports(knet_handle_t knet_h)
 			case KNET_TRANSPORT_UDP:
 				knet_h->transport_ops[i] = get_udp_transport();
 				break;
-#ifdef HAVE_NETINET_SCTP_H
 			case KNET_TRANSPORT_SCTP:
 				knet_h->transport_ops[i] = get_sctp_transport();
 				break;
-#endif
 		}
 		if ((knet_h->transport_ops[i]) &&
 		    (knet_h->transport_ops[i]->handle_allocate)) {

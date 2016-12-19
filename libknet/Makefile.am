@@ -38,11 +38,8 @@ sources			= \
 			  threads_pmtud.c \
 			  threads_send_recv.c \
 			  transport_udp.c \
+			  transport_sctp.c \
 			  transport_common.c
-
-if BUILD_LIBKNET_SCTP
-sources			+= transport_sctp.c
-endif
 
 if DEBUG
 sources			+= ../common/netutils.c

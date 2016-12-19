@@ -1,25 +1,22 @@
 #include "config.h"
 
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
-#include <math.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
 #include <malloc.h>
-#include <netinet/sctp.h>
-#include <arpa/inet.h>
 
-#include "libknet.h"
 #include "host.h"
 #include "link.h"
 #include "logging.h"
 #include "common.h"
 #include "transports.h"
+
+#ifdef HAVE_NETINET_SCTP_H
+#include <netinet/sctp.h>
 
 /*
  * https://en.wikipedia.org/wiki/SCTP_packet_structure
@@ -53,7 +50,6 @@ typedef struct sctp_link_info {
 	struct knet_list_head list;
 	int on_epoll;
 } sctp_link_info_t;
-
 
 static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
 {
@@ -697,8 +693,14 @@ static knet_transport_ops_t sctp_transport_ops = {
 	.transport_name = "SCTP",
 };
 
-
 knet_transport_ops_t *get_sctp_transport()
 {
+
 	return &sctp_transport_ops;
 }
+#else // HAVE_NETINET_SCTP_H
+knet_transport_ops_t *get_sctp_transport()
+{
+	return NULL;
+}
+#endif

@@ -90,7 +90,6 @@ AM_CONDITIONAL([BUILD_LIBTAP], test x$enable_libtap = xyes)
 AC_ARG_ENABLE([libknet-sctp],
         [  --enable-libknet-sctp             : libknet SCTP support ],,
         [ enable_libknet_sctp="yes" ])
-AM_CONDITIONAL([BUILD_LIBKNET_SCTP], test x$enable_libknet_sctp = xyes)
 
 ## local helper functions
 # this function checks if CC support options passed as
