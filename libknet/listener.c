@@ -162,31 +162,3 @@ int _listener_remove(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
 	errno = savederrno;
 	return err;
 }
-
-#if 0
-void socket_debug(knet_handle_t knet_h, int sockfd)
-{
-	struct sockaddr_storage sock;
-	char host[KNET_MAX_HOST_LEN];
-	char port[KNET_MAX_PORT_LEN];
-	socklen_t socklen = sizeof(struct sockaddr_storage);
-	int err;
-
-	memset(&host, 0, KNET_MAX_HOST_LEN);
-	memset(&port, 0, KNET_MAX_PORT_LEN);
-
-	if (getsockname(sockfd, (struct sockaddr *)&sock, &socklen) < 0) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to getsockname: %s", strerror(errno));
-	} else {
-		err = getnameinfo((const struct sockaddr *)&sock, sizeof(struct sockaddr_storage),
-				(char *)&host, KNET_MAX_HOST_LEN, (char *)&port, KNET_MAX_PORT_LEN, NI_NUMERICHOST | NI_NUMERICSERV);
-		if (err) {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to getnameinfo: %d", err);
-		} else {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Sock host: %s port: %s", host, port);
-		}
-	}
-
-	return;
-}
-#endif
