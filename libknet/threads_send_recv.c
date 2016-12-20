@@ -76,7 +76,7 @@ retry:
 				} else {
 					progress = 0;
 				}
-				log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send all (%d/%d) data packets to host %s (%u) link %s:%s (%u)",
+				log_debug(knet_h, KNET_SUB_TX, "Unable to send all (%d/%d) data packets to host %s (%u) link %s:%s (%u)",
 					  sent_msgs, msg_idx,
 					  dst_host->name, dst_host->host_id,
 					  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
@@ -92,7 +92,7 @@ retry:
 		}
 
 		if (sent_msgs < 0) {
-			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
+			log_debug(knet_h, KNET_SUB_TX, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
 				  dst_host->name, dst_host->host_id,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
 				  dst_host->link[dst_host->active_links[link_idx]].status.dst_port,
@@ -142,7 +142,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 
 	if ((knet_h->enabled != 1) &&
 	    (inbuf->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
-		log_debug(knet_h, KNET_SUB_SEND_T, "Received data packet but forwarding is disabled");
+		log_debug(knet_h, KNET_SUB_TX, "Received data packet but forwarding is disabled");
 		savederrno = ECANCELED;
 		err = -1;
 		goto out_unlock;
@@ -166,14 +166,14 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 						dst_host_ids_temp,
 						&dst_host_ids_entries_temp);
 				if (bcast < 0) {
-					log_debug(knet_h, KNET_SUB_SEND_T, "Error from dst_host_filter_fn: %d", bcast);
+					log_debug(knet_h, KNET_SUB_TX, "Error from dst_host_filter_fn: %d", bcast);
 					savederrno = EFAULT;
 					err = -1;
 					goto out_unlock;
 				}
 
 				if ((!bcast) && (!dst_host_ids_entries_temp)) {
-					log_debug(knet_h, KNET_SUB_SEND_T, "Message is unicast but no dst_host_ids_entries");
+					log_debug(knet_h, KNET_SUB_TX, "Message is unicast but no dst_host_ids_entries");
 					savederrno = EINVAL;
 					err = -1;
 					goto out_unlock;
@@ -190,7 +190,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			}
 			break;
 		default:
-			log_warn(knet_h, KNET_SUB_SEND_T, "Receiving unknown messages from socket");
+			log_warn(knet_h, KNET_SUB_TX, "Receiving unknown messages from socket");
 			savederrno = ENOMSG;
 			err = -1;
 			goto out_unlock;
@@ -200,7 +200,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	if (is_sync) {
 		if ((bcast) ||
 		    ((!bcast) && (dst_host_ids_entries_temp > 1))) {
-			log_debug(knet_h, KNET_SUB_SEND_T, "knet_send_sync is only supported with unicast packets for one destination");
+			log_debug(knet_h, KNET_SUB_TX, "knet_send_sync is only supported with unicast packets for one destination");
 			savederrno = E2BIG;
 			err = -1;
 			goto out_unlock;
@@ -251,7 +251,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		/*
 		 * using MIN_MTU_V4 for data mtu is not completely accurate but safe enough
 		 */
-		log_debug(knet_h, KNET_SUB_SEND_T,
+		log_debug(knet_h, KNET_SUB_TX,
 			  "Received data packet but data MTU is still unknown."
 			  " Packet might not be delivered."
 			  " Assuming mininum IPv4 mtu (%d)",
@@ -330,7 +330,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 							iov_out[frag_idx].iov_len,
 							knet_h->send_to_links_buf_crypt[frag_idx],
 							&outlen) < 0) {
-						log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
+						log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt unicast packet");
 						savederrno = ECHILD;
 						err = -1;
 						goto out_unlock;
@@ -367,7 +367,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 						iov_out[frag_idx].iov_len,
 						knet_h->send_to_links_buf_crypt[frag_idx],
 						&outlen) < 0) {
-					log_debug(knet_h, KNET_SUB_SEND_T, "Unable to encrypt unicast packet");
+					log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt unicast packet");
 					savederrno = ECHILD;
 					err = -1;
 					goto out_unlock;
@@ -394,7 +394,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 out_unlock:
 	if ((inlen > 0) && (inbuf->kh_type == KNET_HEADER_TYPE_HOST_INFO)) {
 		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
-			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
+			log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
 		pthread_cond_signal(&knet_h->host_cond);
 		pthread_mutex_unlock(&knet_h->host_mutex);
 	}
@@ -439,7 +439,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_SEND_T, "Unable to get read lock: %s",
+		log_err(knet_h, KNET_SUB_TX, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -453,7 +453,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 
 	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_SEND_T, "Unable to get TX mutex lock: %s",
+		log_err(knet_h, KNET_SUB_TX, "Unable to get TX mutex lock: %s",
 			strerror(savederrno));
 		err = -1;
 		goto out;
@@ -528,7 +528,7 @@ out:
 
 		if (epoll_ctl(knet_h->send_to_links_epollfd,
 			      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
-			log_err(knet_h, KNET_SUB_SEND_T, "Unable to del datafd %d from linkfd epoll pool: %s",
+			log_err(knet_h, KNET_SUB_TX, "Unable to del datafd %d from linkfd epoll pool: %s",
 				knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
 		} else {
 			knet_h->sockfd[channel].has_error = 1;
@@ -583,7 +583,7 @@ void *_handle_send_to_links_thread(void *data)
 		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, -1);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-			log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get read lock");
+			log_debug(knet_h, KNET_SUB_TX, "Unable to get read lock");
 			continue;
 		}
 
@@ -601,7 +601,7 @@ void *_handle_send_to_links_thread(void *data)
 				}
 			}
 			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
-				log_debug(knet_h, KNET_SUB_SEND_T, "Unable to get mutex lock");
+				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
 				pthread_rwlock_unlock(&knet_h->listener_rwlock);
 				continue;
 			}

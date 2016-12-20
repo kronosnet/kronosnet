@@ -37,7 +37,7 @@ static struct pretty_names subsystem_names[] =
 	{ "dstcache", KNET_SUB_DSTCACHE },
 	{ "heartbeat", KNET_SUB_HEARTBEAT },
 	{ "pmtud", KNET_SUB_PMTUD },
-	{ "send_t", KNET_SUB_SEND_T },
+	{ "tx", KNET_SUB_TX },
 	{ "link_t", KNET_SUB_LINK_T },
 	{ "udp_t", KNET_SUB_UDP_LINK_T },
 	{ "sctp_t", KNET_SUB_SCTP_LINK_T },

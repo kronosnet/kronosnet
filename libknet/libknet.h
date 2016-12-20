@@ -1226,8 +1226,8 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 #define KNET_SUB_DSTCACHE    20 /* switching thread (destination cache handling) */
 #define KNET_SUB_HEARTBEAT   21 /* heartbeat thread */
-#define KNET_SUB_PMTUD     22 /* Path MTU Discovery thread */
-#define KNET_SUB_SEND_T      23 /* send to link thread */
+#define KNET_SUB_PMTUD       22 /* Path MTU Discovery thread */
+#define KNET_SUB_TX          23 /* send to link thread */
 #define KNET_SUB_LINK_T      24 /* recv from link thread */
 
 #define KNET_SUB_UDP_LINK_T  40 /* UDP Transport */
