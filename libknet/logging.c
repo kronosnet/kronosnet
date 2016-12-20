@@ -38,7 +38,7 @@ static struct pretty_names subsystem_names[] =
 	{ "heartbeat", KNET_SUB_HEARTBEAT },
 	{ "pmtud", KNET_SUB_PMTUD },
 	{ "tx", KNET_SUB_TX },
-	{ "link_t", KNET_SUB_LINK_T },
+	{ "rx", KNET_SUB_RX },
 	{ "udp_t", KNET_SUB_UDP_LINK_T },
 	{ "sctp_t", KNET_SUB_SCTP_LINK_T },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO },

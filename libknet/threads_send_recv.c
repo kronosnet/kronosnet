@@ -714,7 +714,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	defrag_buf_idx = find_pckt_defrag_buf(knet_h, inbuf);
 	if (defrag_buf_idx < 0) {
 		if (errno == ETIME) {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Defrag buffer expired");
+			log_debug(knet_h, KNET_SUB_RX, "Defrag buffer expired");
 		}
 		return 1;
 	}
@@ -834,7 +834,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 						    len,
 						    knet_h->recv_from_links_buf_decrypt,
 						    &outlen) < 0) {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to decrypt/auth packet");
+			log_debug(knet_h, KNET_SUB_RX, "Unable to decrypt/auth packet");
 			return;
 		}
 		len = outlen;
@@ -842,19 +842,19 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	}
 
 	if (len < (KNET_HEADER_SIZE + 1)) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Packet is too short: %ld", len);
+		log_debug(knet_h, KNET_SUB_RX, "Packet is too short: %ld", len);
 		return;
 	}
 
 	if (inbuf->kh_version != KNET_HEADER_VERSION) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Packet version does not match");
+		log_debug(knet_h, KNET_SUB_RX, "Packet version does not match");
 		return;
 	}
 
 	inbuf->kh_node = ntohs(inbuf->kh_node);
 	src_host = knet_h->host_index[inbuf->kh_node];
 	if (src_host == NULL) {  /* host not found */
-		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to find source host for this packet");
+		log_debug(knet_h, KNET_SUB_RX, "Unable to find source host for this packet");
 		return;
 	}
 
@@ -865,14 +865,14 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				(inbuf->khp_ping_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (memcmp(&src_link->dst_addr, address, sizeof(struct sockaddr_storage)) != 0) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u appears to have changed ip address",
+				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
 				memmove(&src_link->dst_addr, address, sizeof(struct sockaddr_storage));
 				if (getnameinfo((const struct sockaddr *)&src_link->dst_addr, sizeof(struct sockaddr_storage),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 						src_link->status.dst_port, KNET_MAX_PORT_LEN,
 						NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
-					log_debug(knet_h, KNET_SUB_LINK_T, "Unable to resolve ???");
+					log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
 					snprintf(src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
 					snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
 				}
@@ -889,7 +889,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 
 		if (!_seq_num_lookup(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 0)) {
 			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Packet has already been delivered");
+				log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
 			}
 			return;
 		}
@@ -927,12 +927,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 						dst_host_ids,
 						&dst_host_ids_entries);
 				if (bcast < 0) {
-					log_debug(knet_h, KNET_SUB_LINK_T, "Error from dst_host_filter_fn: %d", bcast);
+					log_debug(knet_h, KNET_SUB_RX, "Error from dst_host_filter_fn: %d", bcast);
 					return;
 				}
 
 				if ((!bcast) && (!dst_host_ids_entries)) {
-					log_debug(knet_h, KNET_SUB_LINK_T, "Message is unicast but no dst_host_ids_entries");
+					log_debug(knet_h, KNET_SUB_RX, "Message is unicast but no dst_host_ids_entries");
 					return;
 				}
 
@@ -945,7 +945,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 						}
 					}
 					if (!found) {
-						log_debug(knet_h, KNET_SUB_LINK_T, "Packet is not for us");
+						log_debug(knet_h, KNET_SUB_RX, "Packet is not for us");
 						return;
 					}
 				}
@@ -954,7 +954,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
 			if (!knet_h->sockfd[channel].in_use) {
-				log_debug(knet_h, KNET_SUB_LINK_T,
+				log_debug(knet_h, KNET_SUB_RX,
 					  "received packet for channel %d but there is no local sock connected",
 					  channel);
 				return;
@@ -1013,12 +1013,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 					} else {
 						src_link->donnotremoteupdate = 0;
 					}
-					log_debug(knet_h, KNET_SUB_LINK_T, "host message up/down. from host: %u link: %u remote connected: %u",
+					log_debug(knet_h, KNET_SUB_RX, "host message up/down. from host: %u link: %u remote connected: %u",
 						  src_host->host_id,
 						  src_link->link_id,
 						  src_link->remoteconnected);
 					if (_host_dstcache_update_async(knet_h, src_host)) {
-						log_debug(knet_h, KNET_SUB_LINK_T,
+						log_debug(knet_h, KNET_SUB_RX,
 							  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
 							  src_host->host_id,
 							  src_link->link_id,
@@ -1028,7 +1028,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				case KNET_HOSTINFO_TYPE_LINK_TABLE:
 					break;
 				default:
-					log_warn(knet_h, KNET_SUB_LINK_T, "Receiving unknown host info message from host %u", src_host->host_id);
+					log_warn(knet_h, KNET_SUB_RX, "Receiving unknown host info message from host %u", src_host->host_id);
 					break;
 			}
 		}
@@ -1044,7 +1044,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 						    len,
 						    knet_h->recv_from_links_buf_crypt,
 						    &outlen) < 0) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Unable to encrypt pong packet");
+				log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt pong packet");
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
@@ -1053,7 +1053,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		if (sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage)) != outlen) {
-			log_debug(knet_h, KNET_SUB_LINK_T,
+			log_debug(knet_h, KNET_SUB_RX,
 				  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 				  src_link->outsock, errno, strerror(errno),
 				  src_link->status.src_ipaddr, src_link->status.src_port,
@@ -1077,12 +1077,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		if (src_link->status.latency < src_link->pong_timeout) {
 			if (!src_link->status.connected) {
 				if (src_link->received_pong >= src_link->pong_count) {
-					log_info(knet_h, KNET_SUB_LINK_T, "host: %u link: %u is up",
+					log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
 						 src_host->host_id, src_link->link_id);
 					_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
 				} else {
 					src_link->received_pong++;
-					log_debug(knet_h, KNET_SUB_LINK_T, "host: %u link: %u received pong: %u",
+					log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received pong: %u",
 						  src_host->host_id, src_link->link_id, src_link->received_pong);
 				}
 			}
@@ -1100,7 +1100,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 						    len,
 						    knet_h->recv_from_links_buf_crypt,
 						    &outlen) < 0) {
-				log_debug(knet_h, KNET_SUB_LINK_T, "Unable to encrypt PMTUd reply packet");
+				log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt PMTUd reply packet");
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
@@ -1109,7 +1109,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		if (sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage)) != outlen) {
-			log_debug(knet_h, KNET_SUB_LINK_T,
+			log_debug(knet_h, KNET_SUB_RX,
 				  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 				  src_link->outsock, errno, strerror(errno),
 				  src_link->status.src_ipaddr, src_link->status.src_port,
@@ -1119,7 +1119,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 		break;
 	case KNET_HEADER_TYPE_PMTUD_REPLY:
 		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
-			log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get mutex lock");
+			log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
 			break;
 		}
 		src_link->last_recv_mtu = inbuf->khp_pmtud_size;
@@ -1136,13 +1136,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	int i, msg_recv;
 
 	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_LINK_T, "Unable to get read lock");
+		log_debug(knet_h, KNET_SUB_RX, "Unable to get read lock");
 		return;
 	}
 
 	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 	if (msg_recv < 0) {
-		log_err(knet_h, KNET_SUB_LINK_T, "No message received from recvmmsg: %s", strerror(errno));
+		log_err(knet_h, KNET_SUB_RX, "No message received from recvmmsg: %s", strerror(errno));
 		goto exit_unlock;
 	}
 

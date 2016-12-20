@@ -120,7 +120,7 @@ void _close_socket(knet_handle_t knet_h, int sockfd)
 	struct epoll_event ev;
 	int i;
 
-	log_err(knet_h, KNET_SUB_LINK_T, "EOF received on socket fd %d", sockfd);
+	log_err(knet_h, KNET_SUB_RX, "EOF received on socket fd %d", sockfd);
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 
