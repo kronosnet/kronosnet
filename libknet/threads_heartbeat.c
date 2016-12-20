@@ -33,7 +33,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	pong_last = dst_link->status.pong_last;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
-		log_debug(knet_h, KNET_SUB_HB_T, "Unable to get monotonic clock");
+		log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get monotonic clock");
 		return;
 	}
 
@@ -49,7 +49,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 						    outlen,
 						    knet_h->pingbuf_crypt,
 						    &outlen) < 0) {
-				log_debug(knet_h, KNET_SUB_HB_T, "Unable to crypto ping packet");
+				log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to crypto ping packet");
 				return;
 			}
 
@@ -63,7 +63,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		dst_link->ping_last = clock_now;
 
 		if (len != outlen) {
-			log_debug(knet_h, KNET_SUB_HB_T,
+			log_debug(knet_h, KNET_SUB_HEARTBEAT,
 				  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 				  dst_link->outsock, errno, strerror(errno),
 				  dst_link->status.src_ipaddr, dst_link->status.src_port,
@@ -101,7 +101,7 @@ void *_handle_heartbt_thread(void *data)
 		usleep(KNET_THREADS_TIMERES);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-			log_debug(knet_h, KNET_SUB_HB_T, "Unable to get read lock");
+			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get read lock");
 			continue;
 		}
 
