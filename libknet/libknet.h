@@ -1230,7 +1230,7 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_TX          23 /* send to link thread */
 #define KNET_SUB_RX          24 /* recv from link thread */
 
-#define KNET_SUB_UDP_LINK_T  40 /* UDP Transport */
+#define KNET_SUB_TRANSP_UDP  40 /* UDP Transport */
 #define KNET_SUB_SCTP_LINK_T 41 /* SCTP Transport */
 
 #define KNET_SUB_NSSCRYPTO   60 /* nsscrypto.c */

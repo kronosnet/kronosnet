@@ -39,7 +39,7 @@ static struct pretty_names subsystem_names[] =
 	{ "pmtud", KNET_SUB_PMTUD },
 	{ "tx", KNET_SUB_TX },
 	{ "rx", KNET_SUB_RX },
-	{ "udp_t", KNET_SUB_UDP_LINK_T },
+	{ "udp", KNET_SUB_TRANSP_UDP },
 	{ "sctp_t", KNET_SUB_SCTP_LINK_T },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO },
 	{ "unknown", KNET_SUB_UNKNOWN }		/* unknown MUST always be last in this array */

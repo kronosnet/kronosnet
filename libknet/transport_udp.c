@@ -82,7 +82,7 @@ static int udp_link_allocate(knet_handle_t knet_h, knet_transport_t transport,
 	knet_list_for_each_entry(info, &handle_info->links_list, list) {
 		if (memcmp(&info->local_address, address, sizeof(struct sockaddr_storage)) == 0) {
 
-			log_debug(knet_h, KNET_SUB_UDP_LINK_T, "Re-using existing UDP socket for new link");
+			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Re-using existing UDP socket for new link");
 			*send_sock = info->socket_fd;
 			*transport_link = info;
 			return 0;
@@ -113,7 +113,7 @@ static int udp_link_allocate(knet_handle_t knet_h, knet_transport_t transport,
 	if (bind(sock, (struct sockaddr *)address, sizeof(struct sockaddr_storage)) < 0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_UDP_LINK_T, "Unable to bind listener socket: %s",
+		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to bind listener socket: %s",
 			strerror(savederrno));
 		goto exit_error;
 	}
@@ -125,7 +125,7 @@ static int udp_link_allocate(knet_handle_t knet_h, knet_transport_t transport,
 	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_ADD, sock, &ev)) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_UDP_LINK_T, "Unable to add listener to epoll pool: %s",
+		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to add listener to epoll pool: %s",
 			strerror(savederrno));
 		goto exit_error;
 	}
