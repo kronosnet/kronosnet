@@ -24,18 +24,18 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 	struct knet_host *host;
 
 	if (recv(knet_h->dstsockfd[0], &host_id, sizeof(host_id), MSG_DONTWAIT) != sizeof(host_id)) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Short read on dstsockfd");
+		log_debug(knet_h, KNET_SUB_DSTCACHE, "Short read on dstsockfd");
 		return;
 	}
 
 	if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to get read lock");
+		log_debug(knet_h, KNET_SUB_DSTCACHE, "Unable to get read lock");
 		return;
 	}
 
 	host = knet_h->host_index[host_id];
 	if (!host) {
-		log_debug(knet_h, KNET_SUB_SWITCH_T, "Unable to find host: %u", host_id);
+		log_debug(knet_h, KNET_SUB_DSTCACHE, "Unable to find host: %u", host_id);
 		goto out_unlock;
 	}
 

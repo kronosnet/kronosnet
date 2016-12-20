@@ -34,7 +34,7 @@ static struct pretty_names subsystem_names[] =
 	{ "transport", KNET_SUB_TRANSPORT_T },
 	{ "crypto", KNET_SUB_CRYPTO },
 	{ "filter", KNET_SUB_FILTER },
-	{ "switch_t", KNET_SUB_SWITCH_T },
+	{ "dstcache", KNET_SUB_DSTCACHE },
 	{ "hb_t", KNET_SUB_HB_T },
 	{ "pmtud_t", KNET_SUB_PMTUD_T },
 	{ "send_t", KNET_SUB_SEND_T },
