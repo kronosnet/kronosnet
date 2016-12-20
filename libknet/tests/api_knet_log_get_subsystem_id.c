@@ -32,9 +32,9 @@ static void test(void)
 
 	printf("Testing knet_log_get_subsystem_id bad lookup\n");
 	res = knet_log_get_subsystem_id("whatever");
-	if (res != KNET_SUB_COMMON) {
+	if (res != KNET_SUB_UNKNOWN) {
 		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %u\n",
-		       res, KNET_SUB_COMMON);
+		       res, KNET_SUB_UNKNOWN);
 		exit(FAIL);
 	}
 }

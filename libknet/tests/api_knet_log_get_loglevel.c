@@ -29,7 +29,7 @@ static void test(void)
 
 	printf("Test knet_log_get_loglevel incorrect knet_h\n");
 
-	if ((!knet_log_get_loglevel(NULL, KNET_SUB_LAST, &level)) || (errno != EINVAL)) {
+	if ((!knet_log_get_loglevel(NULL, KNET_SUB_UNKNOWN, &level)) || (errno != EINVAL)) {
 		printf("knet_log_get_loglevel accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -47,7 +47,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if ((!knet_log_get_loglevel(knet_h, KNET_SUB_LAST + 1, &level)) || (errno != EINVAL)) {
+	if ((!knet_log_get_loglevel(knet_h, KNET_SUB_UNKNOWN - 1, &level)) || (errno != EINVAL)) {
 		printf("knet_log_get_loglevel accepted invalid subsystem or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -59,7 +59,7 @@ static void test(void)
 
 	printf("Test knet_log_get_loglevel incorrect log level\n");
 
-	if ((!knet_log_get_loglevel(knet_h, KNET_SUB_LAST, NULL)) || (errno != EINVAL)) {
+	if ((!knet_log_get_loglevel(knet_h, KNET_SUB_UNKNOWN, NULL)) || (errno != EINVAL)) {
 		printf("knet_log_get_loglevel accepted invalid log level or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -71,7 +71,7 @@ static void test(void)
 
 	printf("Test knet_log_get_loglevel with valid parameters\n");
 
-	if (knet_log_get_loglevel(knet_h, KNET_SUB_LAST, &level ) < 0) {
+	if (knet_log_get_loglevel(knet_h, KNET_SUB_UNKNOWN, &level ) < 0) {
 		printf("knet_log_get_loglevel failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -79,7 +79,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_h->log_levels[KNET_SUB_LAST] != level) {
+	if (knet_h->log_levels[KNET_SUB_UNKNOWN] != level) {
 		printf("knet_log_get_loglevel failed to get the right value\n");
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

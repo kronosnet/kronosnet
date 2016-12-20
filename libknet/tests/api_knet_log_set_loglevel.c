@@ -28,7 +28,7 @@ static void test(void)
 
 	printf("Test knet_log_set_loglevel incorrect knet_h\n");
 
-	if ((!knet_log_set_loglevel(NULL, KNET_SUB_LAST, KNET_LOG_DEBUG)) || (errno != EINVAL)) {
+	if ((!knet_log_set_loglevel(NULL, KNET_SUB_COMMON, KNET_LOG_DEBUG)) || (errno != EINVAL)) {
 		printf("knet_log_set_loglevel accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -46,7 +46,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if ((!knet_log_set_loglevel(knet_h, KNET_SUB_LAST + 1, KNET_LOG_DEBUG)) || (errno != EINVAL)) {
+	if ((!knet_log_set_loglevel(knet_h, KNET_SUB_UNKNOWN - 1, KNET_LOG_DEBUG)) || (errno != EINVAL)) {
 		printf("knet_log_set_loglevel accepted invalid subsystem or returned incorrect error: %s\n", strerror(errno));
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
@@ -58,7 +58,7 @@ static void test(void)
 
 	printf("Test knet_log_set_loglevel incorrect log level\n");
 
-	if ((!knet_log_set_loglevel(knet_h, KNET_SUB_LAST, KNET_LOG_DEBUG + 1)) || (errno != EINVAL)) {
+	if ((!knet_log_set_loglevel(knet_h, KNET_SUB_UNKNOWN, KNET_LOG_DEBUG + 1)) || (errno != EINVAL)) {
 		printf("knet_log_set_loglevel accepted invalid log level or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -70,7 +70,7 @@ static void test(void)
 
 	printf("Test knet_log_set_loglevel with valid parameters\n");
 
-	if (knet_h->log_levels[KNET_SUB_LAST] != KNET_LOG_INFO) {
+	if (knet_h->log_levels[KNET_SUB_UNKNOWN] != KNET_LOG_INFO) {
 		printf("knet_handle_new did not init log_levels correctly?\n");
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -78,7 +78,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_log_set_loglevel(knet_h, KNET_SUB_LAST, KNET_LOG_DEBUG) < 0) {
+	if (knet_log_set_loglevel(knet_h, KNET_SUB_UNKNOWN, KNET_LOG_DEBUG) < 0) {
 		printf("knet_log_set_loglevel failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -86,7 +86,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_h->log_levels[KNET_SUB_LAST] != KNET_LOG_DEBUG) {
+	if (knet_h->log_levels[KNET_SUB_UNKNOWN] != KNET_LOG_DEBUG) {
 		printf("knet_log_set_loglevel did not set log level correctly\n");
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

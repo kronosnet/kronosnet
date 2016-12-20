@@ -31,17 +31,18 @@ static struct pretty_names subsystem_names[] =
 	{ "host", KNET_SUB_HOST },
 	{ "listener", KNET_SUB_LISTENER },
 	{ "link", KNET_SUB_LINK },
-	{ "pmtud", KNET_SUB_PMTUD },
+	{ "transport", KNET_SUB_TRANSPORT_T },
+	{ "crypto", KNET_SUB_CRYPTO },
+	{ "filter", KNET_SUB_FILTER },
+	{ "switch_t", KNET_SUB_SWITCH_T },
+	{ "hb_t", KNET_SUB_HB_T },
+	{ "pmtud_t", KNET_SUB_PMTUD_T },
 	{ "send_t", KNET_SUB_SEND_T },
 	{ "link_t", KNET_SUB_LINK_T },
-	{ "hb_t", KNET_SUB_HB_T },
-	{ "switch_t", KNET_SUB_SWITCH_T },
-	{ "pmtud_t", KNET_SUB_PMTUD_T },
 	{ "udp_t", KNET_SUB_UDP_LINK_T },
 	{ "sctp_t", KNET_SUB_SCTP_LINK_T },
-	{ "filter", KNET_SUB_FILTER },
-	{ "crypto", KNET_SUB_CRYPTO },
-	{ "nsscrypto", KNET_SUB_NSSCRYPTO }
+	{ "nsscrypto", KNET_SUB_NSSCRYPTO },
+	{ "unknown", KNET_SUB_UNKNOWN }		/* unknown MUST always be last in this array */
 };
 
 const char *knet_log_get_subsystem_name(uint8_t subsystem)
@@ -49,11 +50,14 @@ const char *knet_log_get_subsystem_name(uint8_t subsystem)
 	unsigned int i;
 
 	for (i = 0; i < KNET_MAX_SUBSYSTEMS; i++) {
+		if (subsystem_names[i].val == KNET_SUB_UNKNOWN) {
+			break;
+		}
 		if (subsystem_names[i].val == subsystem) {
 			return subsystem_names[i].name;
 		}
 	}
-	return "common";
+	return "unknown";
 }
 
 uint8_t knet_log_get_subsystem_id(const char *name)
@@ -61,11 +65,30 @@ uint8_t knet_log_get_subsystem_id(const char *name)
 	unsigned int i;
 
 	for (i = 0; i < KNET_MAX_SUBSYSTEMS; i++) {
+		if (subsystem_names[i].val == KNET_SUB_UNKNOWN) {
+			break;
+		}
 		if (strcasecmp(name, subsystem_names[i].name) == 0) {
 			return subsystem_names[i].val;
 		}
 	}
-	return KNET_SUB_COMMON;
+	return KNET_SUB_UNKNOWN;
+}
+
+static int is_valid_subsystem(uint8_t subsystem)
+{
+	unsigned int i;
+
+	for (i = 0; i < KNET_MAX_SUBSYSTEMS; i++) {
+		if ((subsystem != KNET_SUB_UNKNOWN) &&
+		    (subsystem_names[i].val == KNET_SUB_UNKNOWN)) {
+			break;
+		}
+		if (subsystem_names[i].val == subsystem) {
+			return 0;
+		}
+	}
+	return -1;
 }
 
 static struct pretty_names loglevel_names[] =
@@ -110,7 +133,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 		return -1;
 	}
 
-	if (subsystem > KNET_SUB_LAST) {
+	if (is_valid_subsystem(subsystem) < 0) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -144,7 +167,7 @@ int knet_log_get_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 		return -1;
 	}
 
-	if (subsystem > KNET_SUB_LAST) {
+	if (is_valid_subsystem(subsystem) < 0) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -177,7 +200,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	int len, err;
 
 	if ((!knet_h) ||
-	    (subsystem > KNET_SUB_LAST) ||
+	    (subsystem == KNET_MAX_SUBSYSTEMS) ||
 	    (msglevel > knet_h->log_levels[subsystem]))
 			return;
 

@@ -30,9 +30,17 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	printf("Testing knet_log_get_subsystem_name bad lookup\n");
-	res = knet_log_get_subsystem_name(KNET_MAX_SUBSYSTEMS+2);
-	if (strcmp(res, "common")) {
+	printf("Testing knet_log_get_subsystem_name bad lookup (within boundaries)\n");
+	res = knet_log_get_subsystem_name(KNET_SUB_UNKNOWN - 1);
+	if (strcmp(res, "unknown")) {
+		printf("knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common\n",
+		       res);
+		exit(FAIL);
+	}
+
+	printf("Testing knet_log_get_subsystem_name bad lookup (outside boundaries)\n");
+	res = knet_log_get_subsystem_name(KNET_MAX_SUBSYSTEMS);
+	if (strcmp(res, "unknown")) {
 		printf("knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common\n",
 		       res);
 		exit(FAIL);
