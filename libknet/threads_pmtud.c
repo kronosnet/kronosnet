@@ -57,7 +57,7 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 			dst_link->last_good_mtu = dst_link->last_ping_size + overhead_len;
 			break;
 		default:
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD aborted, unknown protocol");
+			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unknown protocol");
 			return -1;
 			break;
 	}
@@ -80,7 +80,7 @@ restart:
 	 */
 
 	if (failsafe == 30) {
-		log_err(knet_h, KNET_SUB_PMTUD_T,
+		log_err(knet_h, KNET_SUB_PMTUD,
 			"Aborting PMTUD process: Too many attempts. MTU might have changed during discovery.");
 		return -1;
 	} else {
@@ -114,7 +114,7 @@ restart:
 		}
 
 		if (data_len < (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size) + 1) {
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "Aborting PMTUD process: link mtu smaller than crypto header detected (link might have been disconnected)");
+			log_debug(knet_h, KNET_SUB_PMTUD, "Aborting PMTUD process: link mtu smaller than crypto header detected (link might have been disconnected)");
 			return -1;
 		}
 
@@ -126,7 +126,7 @@ restart:
 					    data_len - (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size),
 					    knet_h->pmtudbuf_crypt,
 					    &data_len) < 0) {
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to crypto pmtud packet");
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to crypto pmtud packet");
 			return -1;
 		}
 
@@ -140,12 +140,12 @@ restart:
 
 	/* link has gone down, aborting pmtud */
 	if (dst_link->status.connected != 1) {
-		log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD detected host (%u) link (%u) has been disconnected", dst_host->host_id, dst_link->link_id);
+		log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD detected host (%u) link (%u) has been disconnected", dst_host->host_id, dst_link->link_id);
 		return -1;
 	}
 
 	if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get mutex lock");
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
 		return -1;
 	}
 
@@ -155,7 +155,7 @@ restart:
 	savederrno = errno;
 
 	if ((len < 0) && (savederrno != EMSGSIZE)) {
-		log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		return -1;
 	}
@@ -167,14 +167,14 @@ restart:
 		if (savederrno == EMSGSIZE) {
 			dst_link->last_bad_mtu = onwire_len;
 		} else {
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
 		}
 	} else {
 		dst_link->last_sent_mtu = onwire_len;
 		dst_link->last_recv_mtu = 0;
 
 		if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get current time: %s", strerror(errno));
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			return -1;
 		}
@@ -196,14 +196,14 @@ restart:
 
 		if (shutdown_in_progress(knet_h)) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD aborted. shutdown in progress");
+			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted. shutdown in progress");
 			return -1;
 		}
 
 		if ((ret != 0) && (ret != ETIMEDOUT)) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			if (mutex_retry_limit == 3) {
-				log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD aborted, unable to get mutex lock");
+				log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unable to get mutex lock");
 				return -1;
 			}
 			mutex_retry_limit++;
@@ -256,7 +256,7 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
 
 	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
-		log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get monotonic clock");
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
 		return 0;
 	}
 
@@ -279,7 +279,7 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	saved_pmtud = dst_link->status.mtu;
 	saved_valid_pmtud = dst_link->has_valid_mtu;
 
-	log_debug(knet_h, KNET_SUB_PMTUD_T, "Starting PMTUD for host: %u link: %u", dst_host->host_id, dst_link->link_id);
+	log_debug(knet_h, KNET_SUB_PMTUD, "Starting PMTUD for host: %u link: %u", dst_host->host_id, dst_link->link_id);
 
 	if (_handle_check_link_pmtud(knet_h, dst_host, dst_link) < 0) {
 		dst_link->has_valid_mtu = 0;
@@ -289,7 +289,7 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 			case AF_INET6:
 				if (((dst_link->status.mtu + dst_link->status.proto_overhead) < KNET_PMTUD_MIN_MTU_V6) ||
 				    ((dst_link->status.mtu + dst_link->status.proto_overhead) > KNET_PMTUD_SIZE_V6)) {
-					log_debug(knet_h, KNET_SUB_PMTUD_T,
+					log_debug(knet_h, KNET_SUB_PMTUD,
 						  "PMTUD detected an IPv6 MTU out of bound value (%u) for host: %u link: %u.",
 						  dst_link->status.mtu + dst_link->status.proto_overhead, dst_host->host_id, dst_link->link_id);
 					dst_link->has_valid_mtu = 0;
@@ -298,7 +298,7 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 			case AF_INET:
 				if (((dst_link->status.mtu + dst_link->status.proto_overhead) < KNET_PMTUD_MIN_MTU_V4) ||
 				    ((dst_link->status.mtu + dst_link->status.proto_overhead) > KNET_PMTUD_SIZE_V4)) {
-					log_debug(knet_h, KNET_SUB_PMTUD_T,
+					log_debug(knet_h, KNET_SUB_PMTUD,
 						  "PMTUD detected an IPv4 MTU out of bound value (%u) for host: %u link: %u.",
 						  dst_link->status.mtu + dst_link->status.proto_overhead, dst_host->host_id, dst_link->link_id);
 					dst_link->has_valid_mtu = 0;
@@ -307,10 +307,10 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 		if (dst_link->has_valid_mtu) {
 			if ((saved_pmtud) && (saved_pmtud != dst_link->status.mtu)) {
-				log_info(knet_h, KNET_SUB_PMTUD_T, "PMTUD link change for host: %u link: %u from %u to %u",
+				log_info(knet_h, KNET_SUB_PMTUD, "PMTUD link change for host: %u link: %u from %u to %u",
 					 dst_host->host_id, dst_link->link_id, saved_pmtud, dst_link->status.mtu);
 			}
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "PMTUD completed for host: %u link: %u current link mtu: %u",
+			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD completed for host: %u link: %u current link mtu: %u",
 				  dst_host->host_id, dst_link->link_id, dst_link->status.mtu);
 			if (dst_link->status.mtu < *min_mtu) {
 				*min_mtu = dst_link->status.mtu;
@@ -345,7 +345,7 @@ void *_handle_pmtud_link_thread(void *data)
 		usleep(KNET_THREADS_TIMERES);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-			log_debug(knet_h, KNET_SUB_PMTUD_T, "Unable to get read lock");
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get read lock");
 			continue;
 		}
 
@@ -372,7 +372,7 @@ void *_handle_pmtud_link_thread(void *data)
 		if (have_mtu) {
 			if (knet_h->data_mtu != min_mtu) {
 				knet_h->data_mtu = min_mtu;
-				log_info(knet_h, KNET_SUB_PMTUD_T, "Global data MTU changed to: %u", knet_h->data_mtu);
+				log_info(knet_h, KNET_SUB_PMTUD, "Global data MTU changed to: %u", knet_h->data_mtu);
 
 				if (knet_h->pmtud_notify_fn) {
 					knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,
