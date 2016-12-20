@@ -67,7 +67,7 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 	if (setsockopt(sock, SOL_SCTP, SCTP_NODELAY, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set sctp nodelay: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set sctp nodelay: %s",
 			strerror(savederrno));
 		goto exit_error;
 	}

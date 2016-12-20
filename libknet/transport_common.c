@@ -31,7 +31,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set %s receive buffer: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s receive buffer: %s",
 			type, strerror(savederrno));
 		goto exit_error;
 	}
@@ -40,7 +40,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set %s send buffer: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s send buffer: %s",
 			type, strerror(savederrno));
 		goto exit_error;
 	}
@@ -49,7 +49,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 	if (setsockopt(sock, SOL_IP, IP_FREEBIND, &value, sizeof(value)) <0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set FREEBIND on %s socket: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set FREEBIND on %s socket: %s",
 			type, strerror(savederrno));
 		goto exit_error;
 	}
@@ -60,7 +60,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 			       &value, sizeof(value)) < 0) {
 			savederrno = errno;
 			err = -1;
-			log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set %s IPv6 only: %s",
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s IPv6 only: %s",
 				type, strerror(savederrno));
 			goto exit_error;
 
@@ -69,7 +69,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		if (setsockopt(sock, SOL_IPV6, IPV6_MTU_DISCOVER, &value, sizeof(value)) <0) {
 			savederrno = errno;
 			err = -1;
-			log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set PMTUDISC on %s socket: %s",
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set PMTUDISC on %s socket: %s",
 				type, strerror(savederrno));
 			goto exit_error;
 		}
@@ -78,7 +78,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		if (setsockopt(sock, SOL_IP, IP_MTU_DISCOVER, &value, sizeof(value)) <0) {
 			savederrno = errno;
 			err = -1;
-			log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set PMTUDISC on %s socket: %s",
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set PMTUDISC on %s socket: %s",
 				type, strerror(savederrno));
 			goto exit_error;
 		}
@@ -88,7 +88,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set %s reuseaddr: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s reuseaddr: %s",
 			type, strerror(savederrno));
 		goto exit_error;
 	}
@@ -96,7 +96,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 	if (_fdset_cloexec(sock)) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set %s CLOEXEC socket opts: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s CLOEXEC socket opts: %s",
 			type, strerror(savederrno));
 		goto exit_error;
 	}
@@ -104,7 +104,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 	if (_fdset_nonblock(sock)) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT_T, "Unable to set %s NONBLOCK socket opts: %s",
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s NONBLOCK socket opts: %s",
 			type, strerror(savederrno));
 		goto exit_error;
 	}

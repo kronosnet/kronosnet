@@ -1219,7 +1219,7 @@ int knet_link_get_status(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 #define KNET_SUB_HOST         2 /* host add/del/modify */
 #define KNET_SUB_LISTENER     3 /* listeners add/del/modify... */
 #define KNET_SUB_LINK         4 /* link add/del/modify */
-#define KNET_SUB_TRANSPORT_T  5 /* Transport common */
+#define KNET_SUB_TRANSPORT    5 /* Transport common */
 #define KNET_SUB_CRYPTO       6 /* crypto.c config generic layer */
 
 #define KNET_SUB_FILTER      19 /* allocated for users to log from dst_filter */

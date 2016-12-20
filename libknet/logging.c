@@ -31,7 +31,7 @@ static struct pretty_names subsystem_names[] =
 	{ "host", KNET_SUB_HOST },
 	{ "listener", KNET_SUB_LISTENER },
 	{ "link", KNET_SUB_LINK },
-	{ "transport", KNET_SUB_TRANSPORT_T },
+	{ "transport", KNET_SUB_TRANSPORT },
 	{ "crypto", KNET_SUB_CRYPTO },
 	{ "filter", KNET_SUB_FILTER },
 	{ "dstcache", KNET_SUB_DSTCACHE },
