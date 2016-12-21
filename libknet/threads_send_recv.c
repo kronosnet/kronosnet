@@ -602,7 +602,6 @@ void *_handle_send_to_links_thread(void *data)
 			}
 			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
-				pthread_rwlock_unlock(&knet_h->listener_rwlock);
 				continue;
 			}
 			_handle_send_to_links(knet_h, events[i].data.fd, channel, msg, type);
