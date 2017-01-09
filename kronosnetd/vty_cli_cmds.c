@@ -952,6 +952,7 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 			knet_vty_write(vty, "Error: unable to update switching cache%s", telnet_newline);
 			return -1;
 		}
+		knet_link_clear_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id);
 	}
 
 	return 0;
@@ -1045,6 +1046,11 @@ static int knet_cmd_switch_policy(struct knet_vty *vty)
 	return err;
 }
 
+/*
+ * -1 on internal error
+ *  0 host does not exist
+ *  1 host exists
+ */
 static int knet_find_host(struct knet_vty *vty,	const char *nodename, const uint16_t requested_node_id)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
@@ -1056,6 +1062,13 @@ static int knet_find_host(struct knet_vty *vty,	const char *nodename, const uint
 	have_name = knet_host_get_name_by_host_id(knet_iface->cfg_ring.knet_h, requested_node_id, name);
 
 	/*
+	 * host does not exist without a name
+	 */
+	if (have_name < 0) {
+		return 0;
+	}
+
+	/*
 	 * internal error.. get out
 	 */
 	if ((have_nodeid < 0) || (have_name < 0)) {
@@ -1063,13 +1076,7 @@ static int knet_find_host(struct knet_vty *vty,	const char *nodename, const uint
 		return -1;
 	}
 
-	/*
-	 * node does not exists in knet
-	 */
-	if ((!have_nodeid) && (!have_name))
-		return 0;
-
-	if ((have_name) && (have_nodeid)) {
+	if ((!have_name) && (!have_nodeid)) {
 		if (!strcmp(name, nodename) && (node_id == requested_node_id))
 			return 1;
 	}
@@ -1101,7 +1108,7 @@ static int knet_cmd_no_peer(struct knet_vty *vty)
 	if (err < 0)
 		goto out_clean;
 
-	if (err == 0) {
+	if (err != 1) {
 		knet_vty_write(vty, "Error: peer not found in list%s", telnet_newline);
 		goto out_clean;
 	}
@@ -1538,7 +1545,9 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
 		for (i = 0; i < link_ids_entries; i++) {
 			knet_link_set_enable(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], 0);
+			knet_link_clear_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i]);
 		}
+		knet_host_remove(knet_iface->cfg_ring.knet_h, host_ids[j]);
 	}
 
 	knet_cmd_stop(vty);

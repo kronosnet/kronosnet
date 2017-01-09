@@ -166,6 +166,7 @@ static void test(void)
 
 	if ((!knet_link_get_config(knet_h, 1, 0, &transport, &get_src, NULL, &dynamic)) || (errno != EINVAL)) {
 		printf("knet_link_get_config accepted invalid dst_addr or returned incorrect error: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -175,6 +176,7 @@ static void test(void)
 
 	if (dynamic) {
 		printf("knet_link_get_config returned invalid dynamic status\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -191,6 +193,7 @@ static void test(void)
 
 	if (knet_link_get_config(knet_h, 1, 0, &transport, &get_src, &get_dst, &dynamic) < 0) {
 		printf("knet_link_get_config failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -200,6 +203,7 @@ static void test(void)
 
 	if (transport != KNET_TRANSPORT_UDP) {
 		printf("knet_link_get_config returned incorrect transport: %d\n", transport);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -211,6 +215,7 @@ static void test(void)
 	    (memcmp(&src, &get_src, sizeof(struct sockaddr_storage))) ||
 	    (memcmp(&dst, &get_dst, sizeof(struct sockaddr_storage)))) {
 		printf("knet_link_get_config returned invalid data\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -222,8 +227,18 @@ static void test(void)
 
 	printf("Test knet_link_get_config with correct parameters for dynamic link\n");
 
+	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
+		printf("Unable to deconfigure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -236,6 +251,7 @@ static void test(void)
 
 	if (knet_link_get_config(knet_h, 1, 0, &transport, &get_src, &get_dst, &dynamic) < 0) {
 		printf("knet_link_get_config failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -246,6 +262,7 @@ static void test(void)
 	if ((!dynamic) ||
 	    (memcmp(&src, &get_src, sizeof(struct sockaddr_storage)))) {
 		printf("knet_link_get_config returned invalid data\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -262,6 +279,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

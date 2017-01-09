@@ -31,12 +31,6 @@ typedef void *knet_transport_link_t; /* per link transport handle */
 typedef void *knet_transport_t;      /* per knet_h transport handle */
 struct  knet_transport_ops;          /* Forward because of circular dependancy */
 
-struct knet_listener {
-	int sock;
-	struct sockaddr_storage address;
-	struct knet_listener *next;
-};
-
 struct knet_link {
 	/* required */
 	struct sockaddr_storage src_addr;
@@ -53,10 +47,10 @@ struct knet_link {
 	/* internals */
 	uint8_t link_id;
 	uint8_t transport_type;                 /* #defined constant from API */
-	knet_transport_link_t transport;
+	knet_transport_link_t transport_link;   /* link_info_t from transport */
 	int outsock;
-	int listener_sock;
-	unsigned int configured:1;		/* set to 1 if src/dst have been configured */
+	unsigned int configured:1;		/* set to 1 if src/dst have been configured transport initialized on this link*/
+	unsigned int transport_connected:1;	/* set to 1 if lower level transport is connected */
 	unsigned int remoteconnected:1;		/* link is enabled for data (peer view) */
 	unsigned int donnotremoteupdate:1;	/* define source of the update */
 	unsigned int host_info_up_sent:1;	/* 0 if we need to notify remote that link is up */
@@ -123,6 +117,15 @@ struct knet_sock {
 			  * and socket has been removed from epoll */
 };
 
+struct knet_fd_trackers {
+	uint8_t transport; /* transport type (UDP/SCTP...) */
+	uint8_t data_type; /* internal use for transport to define what data are associated
+			    * to this fd */
+	void *data;	   /* pointer to the data */
+};
+
+#define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
+
 struct knet_handle {
 	uint16_t host_id;
 	unsigned int enabled:1;
@@ -140,11 +143,11 @@ struct knet_handle {
 	struct knet_host *host_head;
 	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
-	knet_transport_t transports[KNET_MAX_TRANSPORTS];
-	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS];
+	knet_transport_t transports[KNET_MAX_TRANSPORTS+1];
+	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS+1];
+	struct knet_fd_trackers knet_transport_fd_tracker[KNET_MAX_FDS]; /* track status for each fd handled by transports */
 	uint16_t host_ids[KNET_MAX_HOST];
 	size_t   host_ids_entries;
-	struct knet_listener *listener_head;
 	struct knet_header *recv_from_sock_buf[PCKT_FRAG_MAX];
 	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];
@@ -157,7 +160,7 @@ struct knet_handle {
 	pthread_t pmtud_link_handler_thread;
 	int lock_init_done;
 	pthread_rwlock_t global_rwlock;		/* global config lock */
-	pthread_rwlock_t listener_rwlock;	/* listener add/rm lock, can switch to mutex? */
+	pthread_rwlock_t fd_tracker_rwlock;	/* transport add/rm lock */
 	pthread_rwlock_t host_rwlock;		/* send_host_info lock, can switch to mutex? */
 	pthread_mutex_t host_mutex;		/* host mutex for cond wait on pckt send, switch to mutex/sync_send ? */
 	pthread_cond_t host_cond;		/* conditional for above */
@@ -208,25 +211,69 @@ struct knet_handle {
 	int fini_in_progress;
 };
 
+/*
+ * NOTE: every single operation must be implementend
+ *       for every protocol.
+ */
+
 typedef struct knet_transport_ops {
-
-	int (*handle_allocate)(knet_handle_t knet_h, knet_transport_t *transport);
-	int (*handle_free)(knet_handle_t knet_h, knet_transport_t transport);
-	int (*handle_fd_eof)(knet_handle_t knet_h, int sockfd);
-	int (*handle_fd_notification)(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen);
-
-	int (*link_allocate)(knet_handle_t knet_h, knet_transport_t transport,
-			     struct knet_link *link,
-			     knet_transport_link_t *transport_link,
-			     uint8_t link_id, struct sockaddr_storage *src_address,
-			     struct sockaddr_storage *dst_address, int *listen_sock);
-	int (*link_listener_start)(knet_handle_t knet_h, knet_transport_link_t transport_link,
-				   uint8_t link_id,
-				   struct sockaddr_storage *address, struct sockaddr_storage *dst_address);
-	int (*link_free)(knet_transport_link_t transport_link);
-	int (*link_get_mtu_overhead)(knet_transport_link_t transport_link);
-
+/*
+ * transport generic information
+ */
 	const char *transport_name;
+	uint32_t transport_mtu_overhead;
+/*
+ * transport init must allocate the new transport
+ * and perform all internal initializations
+ * (threads, lists, etc).
+ */
+	int (*transport_init)(knet_handle_t knet_h);
+/*
+ * transport free must releases _all_ resources
+ * allocated by tranport_init
+ */
+	int (*transport_free)(knet_handle_t knet_h);
+
+/*
+ * link operations should take care of all the
+ * sockets and epoll management for a given link/transport set
+ * transport_link_disable should return err = -1 and errno = EBUSY
+ * if listener is still in use, and any other errno in case
+ * the link cannot be disabled.
+ *
+ * set_config/clear_config are invoked in global write lock context
+ */
+	int (*transport_link_set_config)(knet_handle_t knet_h, struct knet_link *link);
+	int (*transport_link_clear_config)(knet_handle_t knet_h, struct knet_link *link);
+
+/*
+ * per transport error handling of recvmmsg
+ * (see _handle_recv_from_links comments for details)
+ */
+
+/*
+ * transport_rx_sock_error is invoked when recvmmsg returns <= 0
+ *
+ * transport_rx_sock_error is invoked with both global_rwlock
+ * and fd_tracker read lock (from RX thread)
+ */
+
+	int (*transport_rx_sock_error)(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
+
+/*
+ * this function is called on _every_ received packet
+ * to verify if the packet is data or internal protocol error handling
+ *
+ * it should return:
+ * -1 on error
+ *  0 packet is not data and we should continue the packet process loop
+ *  1 packet is not data and we should STOP the packet process loop
+ *  2 packet is data and should be parsed as such
+ *
+ * transport_rx_is_data is invoked with both global_rwlock
+ * and fd_tracker read lock (from RX thread)
+ */
+	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct mmsghdr msg);
 } knet_transport_ops_t;
 
 /**

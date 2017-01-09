@@ -13,7 +13,6 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <stdio.h>
 
 #include "host.h"
@@ -147,7 +146,7 @@ int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
 	 */
 
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-		if (host->link[link_idx].status.enabled) {
+		if (host->link[link_idx].configured) {
 			err = -1;
 			savederrno = EBUSY;
 			log_err(knet_h, KNET_SUB_HOST, "Unable to remove host %u, links are still configured: %s",

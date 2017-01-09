@@ -26,7 +26,6 @@ static void test(void)
 	knet_handle_t knet_h;
 	int logfds[2];
 	struct sockaddr_storage src, dst;
-	struct knet_link_status status;
 
 	memset(&src, 0, sizeof(struct sockaddr_storage));
 
@@ -42,12 +41,10 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	printf("Test knet_link_get_status incorrect knet_h\n");
+	printf("Test knet_link_clear_config incorrect knet_h\n");
 
-	memset(&status, 0, sizeof(struct knet_link_status));
-
-	if ((!knet_link_get_status(NULL, 1, 0, &status)) || (errno != EINVAL)) {
-		printf("knet_link_get_status accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+	if ((!knet_link_clear_config(NULL, 1, 0)) || (errno != EINVAL)) {
+		printf("knet_link_clear_config accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
@@ -62,10 +59,10 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	printf("Test knet_link_get_status with unconfigured host_id\n");
+	printf("Test knet_link_clear_config with unconfigured host_id\n");
 
-	if ((!knet_link_get_status(knet_h, 1, 0, &status)) || (errno != EINVAL)) {
-		printf("knet_link_get_status accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
+	if ((!knet_link_clear_config(knet_h, 1, 0)) || (errno != EINVAL)) {
+		printf("knet_link_clear_config accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
@@ -74,7 +71,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_link_get_status with incorrect linkid\n");
+	printf("Test knet_link_clear_config with incorrect linkid\n");
 
 	if (knet_host_add(knet_h, 1) < 0) {
 		printf("Unable to add host_id 1: %s\n", strerror(errno));
@@ -84,8 +81,8 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if ((!knet_link_get_status(knet_h, 1, KNET_MAX_LINK, &status)) || (errno != EINVAL)) {
-		printf("knet_link_get_status accepted invalid linkid or returned incorrect error: %s\n", strerror(errno));
+	if ((!knet_link_clear_config(knet_h, 1, KNET_MAX_LINK)) || (errno != EINVAL)) {
+		printf("knet_link_clear_config accepted invalid linkid or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -95,10 +92,10 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_link_get_status with incorrect status\n");
+	printf("Test knet_link_clear_config with unconfigured linkid\n");
 
-	if ((!knet_link_get_status(knet_h, 1, 0, NULL)) || (errno != EINVAL)) {
-		printf("knet_link_get_status accepted invalid status or returned incorrect error: %s\n", strerror(errno));
+	if ((!knet_link_clear_config(knet_h, 1, 0)) || (errno != EINVAL)) {
+		printf("knet_link_clear_config accepted unconfigured linkid or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -108,20 +105,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_link_get_status with unconfigured link\n");
-
-	if ((!knet_link_get_status(knet_h, 1, 0, &status)) || (errno != EINVAL)) {
-		printf("knet_link_get_status accepted unconfigured link or returned incorrect error: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	printf("Test knet_link_get_status with correct values\n");
+	printf("Test knet_link_clear_config with enabled linkid\n");
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
@@ -132,8 +116,19 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_get_status(knet_h, 1, 0, &status) < 0) {
-		printf("knet_link_get_status failed: %s\n", strerror(errno));
+	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
+		printf("Unable to enable link: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if ((!knet_link_clear_config(knet_h, 1, 0) || (errno != EBUSY))) {
+		printf("knet_link_clear_config accepted invalid enabled link or returned incorrect error: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -143,6 +138,28 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
+
+	printf("Test knet_link_clear_config with correct data\n");
+
+	if (knet_link_set_enable(knet_h, 1, 0, 0) < 0) {
+		printf("Unable to disable link: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
+		printf("Unable to clear link config: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);

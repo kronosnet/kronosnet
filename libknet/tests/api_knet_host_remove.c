@@ -117,6 +117,15 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
+		printf("Unable to clear link config: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_host_remove with configured host_id (no links)\n");

@@ -19,9 +19,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#ifdef HAVE_NETINET_SCTP_H
-#include <netinet/sctp.h>
-#endif
 
 #include "crypto.h"
 #include "compat.h"
@@ -1132,39 +1129,90 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg)
 {
-	int i, msg_recv;
+	int err, savederrno;
+	int i, msg_recv, transport;
 
 	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_RX, "Unable to get read lock");
+		log_debug(knet_h, KNET_SUB_RX, "Unable to get global read lock");
 		return;
 	}
 
-	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
-	if (msg_recv < 0) {
-		log_err(knet_h, KNET_SUB_RX, "No message received from recvmmsg: %s", strerror(errno));
+	if (pthread_rwlock_rdlock(&knet_h->fd_tracker_rwlock) < 0) {
+		log_debug(knet_h, KNET_SUB_RX, "Unable to get fd_tracker read lock");
+		goto exit_unlock_global;
+	}
+
+	transport = knet_h->knet_transport_fd_tracker[sockfd].transport;
+	if (transport >= KNET_MAX_TRANSPORTS) {
+		/*
+		 * this is normal if a fd got an event and before we grab the read lock
+		 * and the link is removed by another thread
+		 */
 		goto exit_unlock;
 	}
 
-	if (msg_recv == 0) {
-		_close_socket(knet_h, sockfd);
+	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
+	savederrno = errno;
+
+	/*
+	 * WARNING: man page for recvmmsg is wrong. Kernel implementation here:
+	 * recvmmsg can return:
+	 * -1 on error
+	 *  0 if the previous run of recvmmsg recorded an error on the socket
+	 *  N number of messages (see exception below).
+	 *
+	 * If there is an error from recvmsg after receiving a frame or more, the recvmmsg
+	 * loop is interrupted, error recorded in the socket (getsockopt(SO_ERROR) and
+	 * it will be visibile in the next run.
+	 *
+	 * Need to be careful how we handle errors at this stage.
+	 *
+	 * error messages need to be handled on a per transport/protocol base
+	 * at this point we have different layers of error handling
+	 * - msg_recv < 0 -> error from this run
+	 *   msg_recv = 0 -> error from previous run and error on socket needs to be cleared
+	 * - per-transport message data
+	 *   example: msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION or msg_len for SCTP == EOF,
+	 *            but for UDP it is perfectly legal to receive a 0 bytes message.. go figure
+	 * - NOTE: on SCTP MSG_NOTIFICATION we get msg_recv == PCKT_FRAG_MAX messages and no
+	 *         errno set. That means the error api needs to be able to abort the loop below.
+	 */
+
+	if (msg_recv <= 0) {
+		log_err(knet_h, KNET_SUB_RX, "Error message received from recvmmsg on socket %d: %s", sockfd, strerror(errno));
+		knet_h->transport_ops[transport]->transport_rx_sock_error(knet_h, sockfd, msg_recv, savederrno);
+		goto exit_unlock;
 	}
 
 	for (i = 0; i < msg_recv; i++) {
-#ifdef HAVE_NETINET_SCTP_H
-		if (msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION) {
-			_handle_socket_notification(knet_h, sockfd, msg[i].msg_hdr.msg_iov, msg[i].msg_hdr.msg_iovlen);
-			continue;
-		}
-#endif
-		if (msg[i].msg_len == 0) {
-			_close_socket(knet_h, sockfd);
-			goto exit_unlock;
-		} else {
-			_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
+		err = knet_h->transport_ops[transport]->transport_rx_is_data(knet_h, sockfd, msg[i]);
+
+		/*
+		 * TODO: make this section silent once we are confident
+		 *       all protocols packet handlers are good
+		 */
+
+		switch(err) {
+			case -1: /* on error */
+				log_debug(knet_h, KNET_SUB_RX, "Transport reported error parsing packet");
+				goto exit_unlock;
+				break;
+			case 0: /* packet is not data and we should continue the packet process loop */
+				log_debug(knet_h, KNET_SUB_RX, "Transport reported no data, continue");
+				break;
+			case 1: /* packet is not data and we should STOP the packet process loop */
+				log_debug(knet_h, KNET_SUB_RX, "Transport reported no data, stop");
+				goto exit_unlock;
+				break;
+			case 2: /* packet is data and should be parsed as such */
+				_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
+				break;
 		}
 	}
 
 exit_unlock:
+	pthread_rwlock_unlock(&knet_h->fd_tracker_rwlock);
+exit_unlock_global:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 }
 

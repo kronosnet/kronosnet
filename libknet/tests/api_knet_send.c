@@ -40,7 +40,9 @@ static void test(void)
 	int8_t channel = 0;
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	char recv_buff[KNET_MAX_PACKET_SIZE];
-	ssize_t send_len = 0, recv_len = 0;
+	ssize_t send_len = 0;
+	int recv_len = 0;
+	int savederrno;
 	struct sockaddr_storage lo;
 
 	memset(&lo, 0, sizeof(struct sockaddr_storage));
@@ -169,10 +171,6 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (is_helgrind()) {
-		goto dont_wait_helgrind;
-	}
-
 	if (knet_host_add(knet_h, 1) < 0) {
 		printf("knet_host_add failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
@@ -192,6 +190,7 @@ static void test(void)
 
 	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
 		printf("knet_link_set_enable failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -202,6 +201,7 @@ static void test(void)
 	if (knet_handle_setfwd(knet_h, 1) < 0) {
 		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -214,12 +214,11 @@ static void test(void)
 		sleep(1);
 	}
 
-dont_wait_helgrind:
-
 	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		printf("knet_send failed: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -230,6 +229,7 @@ dont_wait_helgrind:
 	if (send_len != sizeof(send_buff)) {
 		printf("knet_send sent only %zu bytes: %s\n", send_len, strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -239,26 +239,29 @@ dont_wait_helgrind:
 
 	flush_logs(logfds[0], stdout);
 
-	if (is_helgrind()) {
-		goto no_helgrind;
-	}
-
 	sleep(1);
 
 	recv_len = knet_recv(knet_h, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	savederrno = errno;
 	if (recv_len != send_len) {
-		printf("knet_recv received only %zu bytes: %s\n", recv_len, strerror(errno));
+		printf("knet_recv received only %d bytes: %s (errno: %d)\n", recv_len, strerror(errno), errno);
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
+		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
+			printf("helgrind exception. this is normal due to possible timeouts\n");
+			exit(PASS);
+		}
 		exit(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		printf("recv and send buffers are different!\n");
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -268,9 +271,8 @@ dont_wait_helgrind:
 
 	flush_logs(logfds[0], stdout);
 
-no_helgrind:
-
 	knet_link_set_enable(knet_h, 1, 0, 0);
+	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

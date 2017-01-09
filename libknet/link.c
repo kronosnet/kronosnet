@@ -12,13 +12,11 @@
 #include <errno.h>
 #include <netdb.h>
 #include <string.h>
-#include <stdio.h>
 #include <pthread.h>
 
 #include "internals.h"
 #include "logging.h"
 #include "link.h"
-#include "listener.h"
 #include "transports.h"
 #include "host.h"
 
@@ -96,6 +94,14 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	link = &host->link[link_id];
 
+	if (link->configured != 0) {
+		err =-1;
+		savederrno = EBUSY;
+		log_err(knet_h, KNET_SUB_LINK, "Host %u link %u is currently configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
 	if (link->status.enabled != 0) {
 		err =-1;
 		savederrno = EBUSY;
@@ -128,48 +134,53 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	if (!dst_addr) {
 		link->dynamic = KNET_LINK_DYNIP;
-		err = 0;
+	} else {
+
+		link->dynamic = KNET_LINK_STATIC;
+
+		memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+		err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
+				  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
+				  link->status.dst_port, KNET_MAX_PORT_LEN,
+				  NI_NUMERICHOST | NI_NUMERICSERV);
+		if (err) {
+			if (err == EAI_SYSTEM) {
+				savederrno = errno;
+				log_warn(knet_h, KNET_SUB_LINK,
+					 "Unable to resolve host: %u link: %u destination addr/port: %s",
+					 host_id, link_id, strerror(savederrno));
+			} else {
+				savederrno = EINVAL;
+				log_warn(knet_h, KNET_SUB_LINK,
+					 "Unable to resolve host: %u link: %u destination addr/port: %s",
+					 host_id, link_id, gai_strerror(err));
+			}
+			err = -1;
+			goto exit_unlock;
+		}
+	}
+
+	link->transport_type = transport;
+	link->transport_connected = 0;
+	link->proto_overhead = knet_h->transport_ops[link->transport_type]->transport_mtu_overhead;
+	link->configured = 1;
+	link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
+	link->has_valid_mtu = 0;
+	link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */
+	link->pong_timeout = KNET_LINK_DEFAULT_PING_TIMEOUT * 1000; /* microseconds */
+	link->latency_fix = KNET_LINK_DEFAULT_PING_PRECISION;
+	link->latency_exp = KNET_LINK_DEFAULT_PING_PRECISION - \
+			    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);
+
+	if (knet_h->transport_ops[link->transport_type]->transport_link_set_config(knet_h, link) < 0) {
+		savederrno = errno;
+		err = -1;
 		goto exit_unlock;
 	}
-
-	link->dynamic = KNET_LINK_STATIC;
-
-	memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
-	err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
-			  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
-			  link->status.dst_port, KNET_MAX_PORT_LEN,
-			  NI_NUMERICHOST | NI_NUMERICSERV);
-	if (err) {
-		if (err == EAI_SYSTEM) {
-			savederrno = errno;
-			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %u link: %u destination addr/port: %s",
-				 host_id, link_id, strerror(savederrno));
-		} else {
-			savederrno = EINVAL;
-			log_warn(knet_h, KNET_SUB_LINK,
-				 "Unable to resolve host: %u link: %u destination addr/port: %s",
-				 host_id, link_id, gai_strerror(err));
-		}
-		err = -1;
-	}
+	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is configured",
+		  host_id, link_id);
 
 exit_unlock:
-	if (!err) {
-		link->transport_type = transport;
-		if ((knet_h->transport_ops[link->transport_type]) &&
-		    (knet_h->transport_ops[link->transport_type]->link_get_mtu_overhead)) {
-			link->proto_overhead = knet_h->transport_ops[link->transport_type]->link_get_mtu_overhead(link->transport);
-		}
-		link->configured = 1;
-		link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
-		link->has_valid_mtu = 0;
-		link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */
-		link->pong_timeout = KNET_LINK_DEFAULT_PING_TIMEOUT * 1000; /* microseconds */
-		link->latency_fix = KNET_LINK_DEFAULT_PING_PRECISION;
-		link->latency_exp = KNET_LINK_DEFAULT_PING_PRECISION - \
-				    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);
-	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;
@@ -260,6 +271,76 @@ exit_unlock:
 	return err;
 }
 
+int knet_link_clear_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id)
+{
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	struct knet_link *link;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (link_id >= KNET_MAX_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	host = knet_h->host_index[host_id];
+	if (!host) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	link = &host->link[link_id];
+
+	if (link->configured != 1) {
+		err = -1;
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_LINK, "Host %u link %u is not configured: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	if (link->status.enabled != 0) {
+		err = -1;
+		savederrno = EBUSY;
+		log_err(knet_h, KNET_SUB_LINK, "Host %u link %u is currently in use: %s",
+			host_id, link_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	if ((knet_h->transport_ops[link->transport_type]->transport_link_clear_config(knet_h, link) < 0) &&
+	    (errno != EBUSY)) {
+		savederrno = errno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	memset(link, 0, sizeof(struct knet_link));
+	link->link_id = link_id;
+
+	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u config has been wiped",
+		  host_id, link_id);
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
+}
+
 int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 			 unsigned int enabled)
 {
@@ -322,28 +403,6 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	if (enabled) {
-		if (knet_h->transport_ops[link->transport_type]->link_allocate(
-			    knet_h, knet_h->transports[link->transport_type],
-			    link,
-			    &link->transport, link_id,
-			    &link->src_addr, &link->dst_addr,
-			    &link->outsock) < 0) {
-			savederrno = errno;
-			err = -1;
-			goto exit_unlock;
-		}
-
-		if (_listener_add(knet_h, host_id, link_id) < 0) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_LINK, "Unable to setup listener for this link");
-			goto exit_unlock;
-		}
-		log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is enabled",
-			  host_id, link_id);
-	}
-
 	if (!enabled) {
 		struct knet_hostinfo knet_hostinfo;
 
@@ -358,32 +417,8 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected);
 	savederrno = errno;
 
-	if ((!err) && (enabled)) {
-		err = 0;
+	if (enabled) {
 		goto exit_unlock;
-	}
-
-	if (err) {
-		err = -1;
-		goto exit_unlock;
-	}
-
-	err = _listener_remove(knet_h, host_id, link_id);
-	savederrno = errno;
-
-	if ((err) && (savederrno != EBUSY)) {
-		log_err(knet_h, KNET_SUB_LINK, "Unable to remove listener for this link");
-		if (_link_updown(knet_h, host_id, link_id, 1, link->status.connected)) {
-			/* force link status the hard way */
-			link->status.enabled = 1;
-		}
-		log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is NOT disabled",
-			  host_id, link_id);
-		err = -1;
-		goto exit_unlock;
-	} else {
-		err = 0;
-		savederrno = 0;
 	}
 
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is disabled",

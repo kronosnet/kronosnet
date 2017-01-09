@@ -28,7 +28,6 @@ sources			= \
 			  crypto.c \
 			  handle.c \
 			  host.c \
-			  listener.c \
 			  link.c \
 			  logging.c \
 			  nsscrypto.c \
@@ -58,7 +57,6 @@ noinst_HEADERS		= \
 			  host.h \
 			  internals.h \
 			  link.h \
-			  listener.h \
 			  logging.h \
 			  nsscrypto.h \
 			  onwire.h \

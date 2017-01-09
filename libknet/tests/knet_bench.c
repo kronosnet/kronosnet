@@ -35,6 +35,8 @@ static struct sockaddr_storage allv6;
 static int broadcast_test = 1;
 static pthread_t rx_thread = NULL;
 static char *rx_buf[PCKT_FRAG_MAX];
+static int shutdown_in_progress = 0;
+static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define TEST_PING 0
 #define TEST_PING_AND_DATA 1
@@ -580,11 +582,11 @@ static void stop_rx_thread(void)
 
 	if (rx_thread) {
 		printf("Shutting down rx thread\n");
+		pthread_cancel(rx_thread);
+		pthread_join(rx_thread, &retval);
 		for (i = 0; i < PCKT_FRAG_MAX; i ++) {
 			free(rx_buf[i]);
 		}
-		pthread_cancel(rx_thread);
-		pthread_join(rx_thread, &retval);
 	}
 }
 
@@ -601,6 +603,19 @@ static void send_ping_data(void)
 
 static void cleanup_all(void)
 {
+	if (pthread_mutex_lock(&shutdown_mutex)) {
+		return;
+	}
+
+	if (shutdown_in_progress) {
+		pthread_mutex_unlock(&shutdown_mutex);
+		return;
+	}
+
+	shutdown_in_progress = 1;
+
+	pthread_mutex_unlock(&shutdown_mutex);
+
 	if (rx_thread) {
 		stop_rx_thread();
 	}
@@ -619,10 +634,6 @@ int main(int argc, char *argv[])
 	if (signal(SIGINT, sigint_handler) == SIG_ERR) {
 		printf("Unable to configure SIGINT handler\n");
 		exit(FAIL);
-	}
-
-	if (is_helgrind()) {
-		exit(SKIP);
 	}
 
 	need_root();

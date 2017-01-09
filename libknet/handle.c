@@ -46,9 +46,9 @@ static int _init_locks(knet_handle_t knet_h)
 
 	knet_h->lock_init_done = 1;
 
-	savederrno = pthread_rwlock_init(&knet_h->listener_rwlock, NULL);
+	savederrno = pthread_rwlock_init(&knet_h->fd_tracker_rwlock, NULL);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize listener rwlock: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize fd_tracker_rwlock rwlock: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
@@ -106,7 +106,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 {
 	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
-	pthread_rwlock_destroy(&knet_h->listener_rwlock);
+	pthread_rwlock_destroy(&knet_h->fd_tracker_rwlock);
 	pthread_rwlock_destroy(&knet_h->host_rwlock);
 	pthread_mutex_destroy(&knet_h->host_mutex);
 	pthread_cond_destroy(&knet_h->host_cond);
@@ -314,6 +314,8 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pmtudbuf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
 
+	memset(knet_h->knet_transport_fd_tracker, KNET_MAX_TRANSPORTS, sizeof(knet_h->knet_transport_fd_tracker));
+
 	return 0;
 
 exit_fail:
@@ -460,10 +462,9 @@ static int _start_transports(knet_handle_t knet_h)
 				knet_h->transport_ops[i] = get_sctp_transport();
 				break;
 		}
-		if ((knet_h->transport_ops[i]) &&
-		    (knet_h->transport_ops[i]->handle_allocate)) {
-			knet_h->transport_ops[i]->handle_allocate(knet_h, &knet_h->transports[i]);
-			if (!knet_h->transports[i]) {
+
+		if (knet_h->transport_ops[i]) {
+			if (knet_h->transport_ops[i]->transport_init(knet_h) < 0) {
 				savederrno = errno;
 				log_err(knet_h, KNET_SUB_HANDLE, "Failed to allocate transport handle for %s: %s",
 					knet_h->transport_ops[i]->transport_name,
@@ -484,9 +485,8 @@ static void _stop_transports(knet_handle_t knet_h)
 	int i;
 
 	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if ((knet_h->transport_ops[i]) &&
-		    (knet_h->transport_ops[i]->handle_free)) {
-			knet_h->transport_ops[i]->handle_free(knet_h, knet_h->transports[i]);
+		if (knet_h->transport_ops[i]) {
+			knet_h->transport_ops[i]->transport_free(knet_h);
 		}
 	}
 }

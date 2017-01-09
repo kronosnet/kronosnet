@@ -41,6 +41,7 @@ api_checks		= \
 			  api_knet_log_set_loglevel_test \
 			  api_knet_log_get_loglevel_test \
 			  api_knet_link_set_config_test \
+			  api_knet_link_clear_config_test \
 			  api_knet_link_get_config_test \
 			  api_knet_link_set_ping_timers_test \
 			  api_knet_link_get_ping_timers_test \
@@ -158,6 +159,10 @@ api_knet_log_get_loglevel_test_SOURCES = api_knet_log_get_loglevel.c \
 api_knet_link_set_config_test_SOURCES = api_knet_link_set_config.c \
 					../../common/netutils.c \
 					test-common.c
+
+api_knet_link_clear_config_test_SOURCES = api_knet_link_clear_config.c \
+					  ../../common/netutils.c \
+					  test-common.c
 
 api_knet_link_get_config_test_SOURCES = api_knet_link_get_config.c \
 					../../common/netutils.c \

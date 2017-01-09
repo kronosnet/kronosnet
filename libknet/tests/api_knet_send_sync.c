@@ -316,15 +316,12 @@ static void test(void)
 
 	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
 		printf("knet_link_set_enable failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
 		exit(FAIL);
-	}
-
-	if (is_helgrind()) {
-		goto no_helgrind;
 	}
 
 	while(knet_h->host_index[1]->status.reachable != 1) {
@@ -337,6 +334,7 @@ static void test(void)
 	if ((knet_send_sync(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != E2BIG)) {
 		printf("knet_send_sync didn't detect 2+ host_ids from dst_host_filter or returned incorrect error: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -353,6 +351,7 @@ static void test(void)
 	if ((knet_send_sync(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != E2BIG)) {
 		printf("knet_send_sync didn't detect mcast packet from dst_host_filter or returned incorrect error: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -369,6 +368,7 @@ static void test(void)
 	if (knet_send_sync(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel) < 0) {
 		printf("knet_send_sync failed: %d %s\n", errno, strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -378,9 +378,8 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-no_helgrind:
-
 	knet_link_set_enable(knet_h, 1, 0, 0);
+	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

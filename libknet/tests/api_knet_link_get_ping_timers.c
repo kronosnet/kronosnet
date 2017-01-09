@@ -159,6 +159,7 @@ static void test(void)
 
 	if (knet_link_get_ping_timers(knet_h, 1, 0, &interval, &timeout, &precision) < 0) {
 		printf("knet_link_get_ping_timers failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -172,6 +173,7 @@ static void test(void)
 	    (timeout != KNET_LINK_DEFAULT_PING_TIMEOUT) ||
 	    (precision != KNET_LINK_DEFAULT_PING_PRECISION)) {
 		printf("knet_link_get_ping_timers failed to set values\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -181,6 +183,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

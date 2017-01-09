@@ -132,6 +132,7 @@ static void test(void)
 
 	if (knet_link_set_pong_count(knet_h, 1, 0, 3) < 0) {
 		printf("knet_link_set_pong_count failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -141,6 +142,7 @@ static void test(void)
 
 	if (knet_link_get_pong_count(knet_h, 1, 0, &pong_count) < 0) {
 		printf("knet_link_get_pong_count failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -150,6 +152,7 @@ static void test(void)
 
 	if (pong_count != 3) {
 		printf("knet_link_get_pong_count failed to get correct values\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -157,6 +160,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

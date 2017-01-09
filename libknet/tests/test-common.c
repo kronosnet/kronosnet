@@ -32,6 +32,8 @@ struct log_thread_data {
 	struct _IO_FILE *std;
 };
 static struct log_thread_data data;
+static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int shutdown_in_progress = 0;
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -368,11 +370,27 @@ int start_logging(struct _IO_FILE *std)
 
 int knet_handle_stop(knet_handle_t knet_h)
 {
-	int i, j;
+	int i, j, savederrno;
 	uint16_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	struct knet_link_status status;
+
+	savederrno = pthread_mutex_lock(&shutdown_mutex);
+	if (savederrno) {
+		printf("Unable to get shutdown mutex lock\n");
+		return -1;
+	}
+
+	if (shutdown_in_progress) {
+		pthread_mutex_unlock(&shutdown_mutex);
+		errno = EINVAL;
+		return -1;
+	}
+
+	shutdown_in_progress = 1;
+
+	pthread_mutex_unlock(&shutdown_mutex);
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -394,13 +412,13 @@ int knet_handle_stop(knet_handle_t knet_h)
 				printf("knet_link_get_status failed: %s\n", strerror(errno));
 				return -1;
 			}
-			if (status.enabled != 1) {
-				continue;
+			if (status.enabled) {
+				if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
+					printf("knet_link_set_enable failed: %s\n", strerror(errno));
+					return -1;
+				}
 			}
-			if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
-				printf("knet_link_set_enable failed: %s\n", strerror(errno));
-				return -1;
-			}
+			knet_link_clear_config(knet_h, host_ids[i], j);
 		}
 		if (knet_host_remove(knet_h, host_ids[i]) < 0) {
 			printf("knet_host_remove failed: %s\n", strerror(errno));

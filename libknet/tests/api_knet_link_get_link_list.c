@@ -145,6 +145,7 @@ static void test(void)
 
 	if (knet_link_get_link_list(knet_h, 1, link_ids, &link_ids_entries) < 0) {
 		printf("knet_link_get_link_list failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -154,6 +155,7 @@ static void test(void)
 
 	if ((link_ids_entries != 1) || (link_ids[0] != 0)) {
 		printf("knet_link_get_link_list returned incorrect values");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -163,6 +165,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	knet_link_clear_config(knet_h, 1, 0);
 	knet_host_remove(knet_h, 1);
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

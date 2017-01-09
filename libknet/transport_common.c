@@ -1,17 +1,11 @@
 #include "config.h"
 
-#include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
-#include <math.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <malloc.h>
-#include <arpa/inet.h>
 
 #include "libknet.h"
 #include "host.h"
@@ -115,42 +109,44 @@ exit_error:
 	return err;
 }
 
-void _close_socket(knet_handle_t knet_h, int sockfd)
+/*
+ * TODO: keep around this unlock/locked version
+ *       remember to cleanup after SCTP
+ */
+
+int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data, int do_lock)
 {
-	struct epoll_event ev;
-	int i;
+	int savederrno;
 
-	log_err(knet_h, KNET_SUB_RX, "EOF received on socket fd %d", sockfd);
-
-	memset(&ev, 0, sizeof(struct epoll_event));
-
-	ev.events = EPOLLIN;
-	ev.data.fd = sockfd;
-	if (epoll_ctl(knet_h->recv_from_links_epollfd, EPOLL_CTL_DEL, sockfd, &ev)) {
-		log_err(knet_h, KNET_SUB_LISTENER, "Unable to remove EOFed socket from epoll pool: %s",
-			strerror(errno));
+	if (sockfd < 0) {
+		errno = EINVAL;
+		return -1;
 	}
 
-	/* Tell transport that the FD has been closed */
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if ((knet_h->transport_ops[i]) &&
-		    (knet_h->transport_ops[i]->handle_fd_eof) &&
-		    (!knet_h->transport_ops[i]->handle_fd_eof(knet_h, sockfd)))
-			break;
+	if (sockfd > KNET_MAX_FDS) {
+		errno = EINVAL;
+		return -1;
 	}
-}
 
-void _handle_socket_notification(knet_handle_t knet_h, int sockfd, struct iovec *iov, size_t iovlen)
-{
-	int i;
-
-	/* Find the transport and post the message */
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if ((knet_h->transport_ops[i]) &&
-		    (knet_h->transport_ops[i]->handle_fd_notification) &&
-		    (knet_h->transport_ops[i]->handle_fd_notification(knet_h, sockfd, iov, iovlen)))
-			break;
+	if (do_lock) {
+		savederrno = pthread_rwlock_wrlock(&knet_h->fd_tracker_rwlock);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to get write lock: %s",
+				strerror(savederrno));
+			errno = savederrno;
+			return -1;
+		}
 	}
+
+	knet_h->knet_transport_fd_tracker[sockfd].transport = transport;
+	knet_h->knet_transport_fd_tracker[sockfd].data_type = data_type;
+	knet_h->knet_transport_fd_tracker[sockfd].data = data;
+
+	if (do_lock) {
+		pthread_rwlock_unlock(&knet_h->fd_tracker_rwlock);
+	}
+
+	return 0;
 }
 
 /*
