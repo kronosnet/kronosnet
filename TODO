@@ -4,6 +4,15 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) make generic socket common code (almost completed)
+ - (issue) transports: plumb TX error handling on per-transport hooks
+ - (issue) transports: review usage of transport_connected
+ - (issue) transports: review all error handling code failures,
+           specially on clear_config, to not leak and better clean
+           in case of errors
+ - (issue) improve test suite to cover for all transports (needs transport list API)
+ - (issue) UDP/SCTP support for dynamic links (aka no dst_address)
+           this one needs plumbing inside RX thread
  - (issue) change knet_bench to allow protocol specification per link
  - (issue) review memory locking across
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code
@@ -15,8 +24,10 @@ link/host level:
  - (issue) standardize exit labels (ex out_unlock / exit_unlock) and variable/function
            names.
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
- - (issue) make generic socket common code
- - (rfe)   rewrite ping_test to use test_common.c and netutils.c
+ - (rfe)   add fd_tracker error exit check and perhaps use it for local sockets too
+           to make it easier to identify leaks and fd abuse
+ - (rfe)   drop ping_test completely
+ - (rfe)   add 2 new APIs: addr2str / str2addr and transport list query
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
