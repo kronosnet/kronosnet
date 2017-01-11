@@ -1179,7 +1179,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	 */
 
 	if (msg_recv <= 0) {
-		log_err(knet_h, KNET_SUB_RX, "Error message received from recvmmsg on socket %d: %s", sockfd, strerror(errno));
+		log_err(knet_h, KNET_SUB_RX, "Error message received from recvmmsg on socket %d: %s", sockfd, strerror(savederrno));
 		knet_h->transport_ops[transport]->transport_rx_sock_error(knet_h, sockfd, msg_recv, savederrno);
 		goto exit_unlock;
 	}
