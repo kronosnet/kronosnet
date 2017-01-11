@@ -108,7 +108,6 @@ void *_handle_heartbt_thread(void *data)
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				if ((dst_host->link[link_idx].status.enabled != 1) ||
-				    (dst_host->link[link_idx].transport_connected != 1) ||
 				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
 				     (dst_host->link[link_idx].status.dynconnected != 1)))
 					continue;
