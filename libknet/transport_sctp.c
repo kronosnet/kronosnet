@@ -15,6 +15,7 @@
 #include "common.h"
 #include "transports.h"
 
+#if 0
 #ifdef HAVE_NETINET_SCTP_H
 #include <netinet/sctp.h>
 
@@ -704,3 +705,8 @@ knet_transport_ops_t *get_sctp_transport()
 	return NULL;
 }
 #endif
+#endif
+knet_transport_ops_t *get_sctp_transport()
+{
+	return NULL;
+}
