@@ -1137,19 +1137,15 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 		return;
 	}
 
-	if (pthread_rwlock_rdlock(&knet_h->fd_tracker_rwlock) < 0) {
-		log_debug(knet_h, KNET_SUB_RX, "Unable to get fd_tracker read lock");
-		goto exit_unlock_global;
-	}
-
-	transport = knet_h->knet_transport_fd_tracker[sockfd].transport;
-	if (transport >= KNET_MAX_TRANSPORTS) {
+	if (_is_valid_fd(knet_h, sockfd) < 1) {
 		/*
 		 * this is normal if a fd got an event and before we grab the read lock
 		 * and the link is removed by another thread
 		 */
 		goto exit_unlock;
 	}
+
+	transport = knet_h->knet_transport_fd_tracker[sockfd].transport;
 
 	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 	savederrno = errno;
@@ -1211,8 +1207,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	}
 
 exit_unlock:
-	pthread_rwlock_unlock(&knet_h->fd_tracker_rwlock);
-exit_unlock_global:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 }
 

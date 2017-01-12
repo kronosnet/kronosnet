@@ -110,13 +110,15 @@ exit_error:
 }
 
 /*
- * TODO: keep around this unlock/locked version
- *       remember to cleanup after SCTP
+ * must be called with global read lock
+ *
+ * return -1 on error
+ * return 0 if fd is invalid
+ * return 1 if fd is valid
  */
-
-int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data, int do_lock)
+int _is_valid_fd(knet_handle_t knet_h, int sockfd)
 {
-	int savederrno;
+	int ret = 0;
 
 	if (sockfd < 0) {
 		errno = EINVAL;
@@ -128,23 +130,34 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 		return -1;
 	}
 
-	if (do_lock) {
-		savederrno = pthread_rwlock_wrlock(&knet_h->fd_tracker_rwlock);
-		if (savederrno) {
-			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to get write lock: %s",
-				strerror(savederrno));
-			errno = savederrno;
-			return -1;
-		}
+	if (knet_h->knet_transport_fd_tracker[sockfd].transport >= KNET_MAX_TRANSPORTS) {
+		ret = 0;
+	} else {
+		ret = 1;
+	}
+
+	return ret;
+}
+
+/*
+ * must be called with global write lock
+ */
+
+int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data)
+{
+	if (sockfd < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (sockfd > KNET_MAX_FDS) {
+		errno = EINVAL;
+		return -1;
 	}
 
 	knet_h->knet_transport_fd_tracker[sockfd].transport = transport;
 	knet_h->knet_transport_fd_tracker[sockfd].data_type = data_type;
 	knet_h->knet_transport_fd_tracker[sockfd].data = data;
-
-	if (do_lock) {
-		pthread_rwlock_unlock(&knet_h->fd_tracker_rwlock);
-	}
 
 	return 0;
 }

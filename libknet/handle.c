@@ -46,13 +46,6 @@ static int _init_locks(knet_handle_t knet_h)
 
 	knet_h->lock_init_done = 1;
 
-	savederrno = pthread_rwlock_init(&knet_h->fd_tracker_rwlock, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize fd_tracker_rwlock rwlock: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
 	savederrno = pthread_rwlock_init(&knet_h->host_rwlock, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host rwlock: %s",
@@ -106,7 +99,6 @@ static void _destroy_locks(knet_handle_t knet_h)
 {
 	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
-	pthread_rwlock_destroy(&knet_h->fd_tracker_rwlock);
 	pthread_rwlock_destroy(&knet_h->host_rwlock);
 	pthread_mutex_destroy(&knet_h->host_mutex);
 	pthread_cond_destroy(&knet_h->host_cond);

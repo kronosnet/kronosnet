@@ -92,7 +92,7 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 
 	info->on_epoll = 1;
 
-	if (_set_fd_tracker(knet_h, sock, KNET_TRANSPORT_UDP, 0, info, 1) < 0) {
+	if (_set_fd_tracker(knet_h, sock, KNET_TRANSPORT_UDP, 0, info) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set fd tracker: %s",
@@ -168,7 +168,7 @@ static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_lin
 		info->on_epoll = 0;
 	}
 
-	if (_set_fd_tracker(knet_h, info->socket_fd, KNET_MAX_TRANSPORTS, 0, NULL, 1) < 0) {
+	if (_set_fd_tracker(knet_h, info->socket_fd, KNET_MAX_TRANSPORTS, 0, NULL) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set fd tracker: %s",
