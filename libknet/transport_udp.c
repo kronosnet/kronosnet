@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <pthread.h>
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,8 +19,6 @@
 
 typedef struct udp_handle_info {
 	struct knet_list_head links_list;
-	pthread_rwlock_t links_list_lock; /* the lock is currently unnecessary but it
-					   * is good for templates/reuse */
 } udp_handle_info_t;
 
 typedef struct udp_link_info {
@@ -39,14 +36,6 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 	udp_link_info_t *info;
 	udp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_UDP];
 
-	savederrno = pthread_rwlock_wrlock(&handle_info->links_list_lock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to get write lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
-		return -1;
-	}
-
 	/*
 	 * Only allocate a new link if the local address is different
 	 */
@@ -56,7 +45,6 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 			link->outsock = info->socket_fd;
 			link->transport_link = info;
 			link->transport_connected = 1;
-			pthread_rwlock_unlock(&handle_info->links_list_lock);
 			return 0;
 		}
 	}
@@ -132,7 +120,6 @@ exit_error:
 			close(sock);
 		}
 	}
-	pthread_rwlock_unlock(&handle_info->links_list_lock);
 	errno = savederrno;
 	return err;
 }
@@ -144,16 +131,7 @@ static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_lin
 	struct knet_host *host;
 	int link_idx;
 	udp_link_info_t *info = link->transport_link;
-	udp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_UDP];
 	struct epoll_event ev;
-
-	savederrno = pthread_rwlock_wrlock(&handle_info->links_list_lock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to get write lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
-		return -1;
-	}
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
@@ -203,7 +181,6 @@ static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_lin
 	free(link->transport_link);
 
 exit_error:
-	pthread_rwlock_unlock(&handle_info->links_list_lock);
 	errno = savederrno;
 	return err;
 }
@@ -227,7 +204,6 @@ static int udp_transport_free(knet_handle_t knet_h)
 		return -1;
 	}
 
-	pthread_rwlock_destroy(&handle_info->links_list_lock);
 	free(handle_info);
 
 	knet_h->transports[KNET_TRANSPORT_UDP] = NULL;
@@ -237,7 +213,6 @@ static int udp_transport_free(knet_handle_t knet_h)
 
 static int udp_transport_init(knet_handle_t knet_h)
 {
-	int savederrno = 0;
 	udp_handle_info_t *handle_info;
 
 	if (knet_h->transports[KNET_TRANSPORT_UDP]) {
@@ -253,15 +228,6 @@ static int udp_transport_init(knet_handle_t knet_h)
 	knet_h->transports[KNET_TRANSPORT_UDP] = handle_info;
 
 	knet_list_init(&handle_info->links_list);
-
-	savederrno = pthread_rwlock_init(&handle_info->links_list_lock, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to initialize UDP rwlock: %s",
-			strerror(savederrno));
-		udp_transport_free(knet_h);
-		errno = savederrno;
-		return -1;
-	}
 
 	return 0;
 }
