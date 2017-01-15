@@ -546,7 +546,7 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 		return -1;
 	}
 
-	if (sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT, NULL, 0) != datalen) {
+	if (sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != datalen) {
 		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
 		pthread_mutex_unlock(&knet_h->host_mutex);
 		pthread_rwlock_unlock(&knet_h->host_rwlock);
@@ -646,7 +646,7 @@ int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host)
 	int savederrno = 0;
 	uint16_t host_id = host->host_id;
 
-	if (sendto(knet_h->dstsockfd[1], &host_id, sizeof(host_id), MSG_DONTWAIT, NULL, 0) != sizeof(host_id)) {
+	if (sendto(knet_h->dstsockfd[1], &host_id, sizeof(host_id), MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != sizeof(host_id)) {
 		savederrno = errno;
 		log_debug(knet_h, KNET_SUB_HOST, "Unable to write to dstpipefd[1]: %s",
 			  strerror(savederrno));
