@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
@@ -15,11 +16,26 @@
 #include "transports.h"
 #include "../common/netutils.h"
 
-int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
+int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 {
-	int err = 0;
+	int err = 0, savederrno = 0;
 	int value;
-	int savederrno;
+
+	if (_fdset_cloexec(sock)) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s CLOEXEC socket opts: %s",
+			type, strerror(savederrno));
+		goto exit_error;
+	}
+
+	if (_fdset_nonblock(sock)) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s NONBLOCK socket opts: %s",
+			type, strerror(savederrno));
+		goto exit_error;
+	}
 
 	value = KNET_RING_RCVBUFF;
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
@@ -36,6 +52,22 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s send buffer: %s",
 			type, strerror(savederrno));
+		goto exit_error;
+	}
+
+exit_error:
+	errno = savederrno;
+	return err;
+}
+
+int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
+{
+	int err = 0, savederrno = 0;
+	int value;
+
+	if (_configure_common_socket(knet_h, sock, type) < 0) {
+		savederrno = errno;
+		err = -1;
 		goto exit_error;
 	}
 
@@ -103,10 +135,47 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		goto exit_error;
 	}
 
-	err = 0;
-
 exit_error:
+	errno = savederrno;
 	return err;
+}
+
+int _init_socketpair(knet_handle_t knet_h, int *sock)
+{
+	int err = 0, savederrno = 0;
+	int i;
+
+	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sock) != 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize socketpair: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (_configure_common_socket(knet_h, sock[i], "local socketpair") < 0) {
+			savederrno = errno;
+			err = -1;
+			goto exit_fail;
+		}
+	}
+
+exit_fail:
+	errno = savederrno;
+	return err;
+}
+
+void _close_socketpair(knet_handle_t knet_h, int *sock)
+{
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		if (sock[i]) {
+			close(sock[i]);
+			sock[i] = 0;
+		}
+	}
 }
 
 /*
