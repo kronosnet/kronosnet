@@ -144,6 +144,11 @@ restart:
 		return -1;
 	}
 
+	if (dst_link->transport_connected != 1) {
+		log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD detected host (%u) link (%u) has been disconnected", dst_host->host_id, dst_link->link_id);
+		return -1;
+	}
+
 	if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
 		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
 		return -1;
