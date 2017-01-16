@@ -1308,7 +1308,7 @@ uint8_t knet_log_get_loglevel_id(const char *name);
  * every log message is composed by a text message (including a trailing \n)
  * and message level/subsystem IDs.
  * In order to make debugging easier it is possible to send those packets
- * straight to stdout/stderr (see ping_test.c stdout option).
+ * straight to stdout/stderr (see knet_bench.c stdout option).
  */
 
 #define KNET_MAX_LOG_MSG_SIZE    256
