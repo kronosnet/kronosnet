@@ -141,7 +141,6 @@ struct knet_handle {
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
 	struct knet_host *host_head;
-	struct knet_host *host_tail;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	knet_transport_t transports[KNET_MAX_TRANSPORTS+1];
 	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS+1];

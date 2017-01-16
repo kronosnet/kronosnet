@@ -93,13 +93,10 @@ int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
 	/*
 	 * add new host to host list
 	 */
-	if (!knet_h->host_head) {
-		knet_h->host_head = host;
-		knet_h->host_tail = host;
-	} else {
-		knet_h->host_tail->next = host;
-		knet_h->host_tail = host;
+	if (knet_h->host_head) {
+		host->next = knet_h->host_head;
 	}
+	knet_h->host_head = host;
 
 	_host_list_update(knet_h);
 
