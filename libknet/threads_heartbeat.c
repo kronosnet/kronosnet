@@ -23,6 +23,7 @@
 
 static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
+	memset(&dst_link->pmtud_last, 0, sizeof(struct timespec));
 	dst_link->received_pong = 0;
 	dst_link->status.pong_last.tv_nsec = 0;
 	if (dst_link->status.connected == 1) {
