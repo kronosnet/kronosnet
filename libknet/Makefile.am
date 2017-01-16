@@ -30,6 +30,7 @@ sources			= \
 			  host.c \
 			  link.c \
 			  logging.c \
+			  netutils.c \
 			  nsscrypto.c \
 			  threads_common.c \
 			  threads_dsthandler.c \
@@ -39,10 +40,6 @@ sources			= \
 			  transport_udp.c \
 			  transport_sctp.c \
 			  transport_common.c
-
-if DEBUG
-sources			+= ../common/netutils.c
-endif
 
 include_HEADERS		= libknet.h
 
@@ -58,6 +55,7 @@ noinst_HEADERS		= \
 			  internals.h \
 			  link.h \
 			  logging.h \
+			  netutils.h \
 			  nsscrypto.h \
 			  onwire.h \
 			  threads_common.h \

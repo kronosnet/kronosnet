@@ -41,7 +41,7 @@
  *  host is used to store both ip addresses and hostnames
  */
 
-#define KNET_MAX_HOST_LEN 64
+#define KNET_MAX_HOST_LEN 256
 #define KNET_MAX_PORT_LEN 6
 
 /*
@@ -863,6 +863,51 @@ int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
  *
  * -
  */
+
+/*
+ * commodity functions to convert strings to sockaddr and viceversa
+ */
+
+/*
+ * knet_strtoaddr
+ *
+ * host      - IPaddr/hostname to convert
+ *             be aware only the first IP address will be returned
+ *             in case a hostname resolves to multiple IP
+ *
+ * port      - port to connect to
+ *
+ * ss        - sockaddr_storage where to store the converted data
+ *
+ * sslen     - len of the sockaddr_storage
+ *
+ * knet_strtoaddr returns same error codes as getaddrinfo
+ *
+ */
+
+int knet_strtoaddr(const char *host, const char *port,
+		   struct sockaddr_storage *ss, socklen_t sslen);
+
+/*
+ * knet_addrtostr
+ *
+ * ss        - sockaddr_storage to convert
+ *
+ * sslen     - len of the sockaddr_storage
+ *
+ * host      - IPaddr/hostname where to store data
+ *             (recommended size: KNET_MAX_HOST_LEN)
+ *
+ * port      - port buffer where to store data
+ *             (recommended size: KNET_MAX_PORT_LEN)
+ *
+ * knet_strtoaddr returns same error codes as getnameinfo
+ *
+ */
+
+int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
+		   char *addr_buf, size_t addr_buf_size,
+		   char *port_buf, size_t port_buf_size);
 
 #define KNET_TRANSPORT_UDP   0
 #define KNET_TRANSPORT_SCTP  1

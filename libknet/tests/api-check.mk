@@ -40,6 +40,8 @@ api_checks		= \
 			  api_knet_log_get_loglevel_id_test \
 			  api_knet_log_set_loglevel_test \
 			  api_knet_log_get_loglevel_test \
+			  api_knet_strtoaddr_test \
+			  api_knet_addrtostr_test \
 			  api_knet_link_set_config_test \
 			  api_knet_link_clear_config_test \
 			  api_knet_link_get_config_test \
@@ -88,11 +90,9 @@ api_knet_recv_test_SOURCES = api_knet_recv.c \
 			     test-common.c
 
 api_knet_send_test_SOURCES = api_knet_send.c \
-			     ../../common/netutils.c \
 			     test-common.c
 
 api_knet_send_sync_test_SOURCES = api_knet_send_sync.c \
-				  ../../common/netutils.c \
 				  test-common.c
 
 api_knet_handle_pmtud_setfreq_test_SOURCES = api_knet_handle_pmtud_setfreq.c \
@@ -111,7 +111,6 @@ api_knet_host_add_test_SOURCES = api_knet_host_add.c \
 				 test-common.c
 
 api_knet_host_remove_test_SOURCES = api_knet_host_remove.c \
-				    ../../common/netutils.c \
 				    test-common.c
 
 api_knet_host_set_name_test_SOURCES = api_knet_host_set_name.c \
@@ -156,54 +155,45 @@ api_knet_log_set_loglevel_test_SOURCES = api_knet_log_set_loglevel.c \
 api_knet_log_get_loglevel_test_SOURCES = api_knet_log_get_loglevel.c \
 					 test-common.c
 
+api_knet_strtoaddr_test_SOURCES = api_knet_strtoaddr.c
+
+api_knet_addrtostr_test_SOURCES = api_knet_addrtostr.c
+
 api_knet_link_set_config_test_SOURCES = api_knet_link_set_config.c \
-					../../common/netutils.c \
 					test-common.c
 
 api_knet_link_clear_config_test_SOURCES = api_knet_link_clear_config.c \
-					  ../../common/netutils.c \
 					  test-common.c
 
 api_knet_link_get_config_test_SOURCES = api_knet_link_get_config.c \
-					../../common/netutils.c \
 					test-common.c
 
 api_knet_link_set_ping_timers_test_SOURCES = api_knet_link_set_ping_timers.c \
-					     ../../common/netutils.c \
 					     test-common.c
 
 api_knet_link_get_ping_timers_test_SOURCES = api_knet_link_get_ping_timers.c \
-					     ../../common/netutils.c \
 					     test-common.c
 
 api_knet_link_set_pong_count_test_SOURCES = api_knet_link_set_pong_count.c \
-					    ../../common/netutils.c \
 					    test-common.c
 
 api_knet_link_get_pong_count_test_SOURCES = api_knet_link_get_pong_count.c \
-					    ../../common/netutils.c \
 					    test-common.c
 
 api_knet_link_set_priority_test_SOURCES = api_knet_link_set_priority.c \
-					  ../../common/netutils.c \
 					  test-common.c
 
 api_knet_link_get_priority_test_SOURCES = api_knet_link_get_priority.c \
-					  ../../common/netutils.c \
 					  test-common.c
 
 api_knet_link_set_enable_test_SOURCES = api_knet_link_set_enable.c \
-					../../common/netutils.c \
 					test-common.c
 
 api_knet_link_get_enable_test_SOURCES = api_knet_link_get_enable.c \
-					../../common/netutils.c \
 					test-common.c
 
 api_knet_link_get_link_list_test_SOURCES = api_knet_link_get_link_list.c \
-					   ../../common/netutils.c \
 					   test-common.c
 
 api_knet_link_get_status_test_SOURCES = api_knet_link_get_status.c \
-					../../common/netutils.c \
 					test-common.c

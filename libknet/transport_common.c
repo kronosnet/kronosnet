@@ -14,7 +14,6 @@
 #include "logging.h"
 #include "common.h"
 #include "transports.h"
-#include "../common/netutils.h"
 
 int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 {
@@ -229,27 +228,4 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 	knet_h->knet_transport_fd_tracker[sockfd].data = data;
 
 	return 0;
-}
-
-/*
- * Wrappers for addrtostr() & addrtostr_free() for use when we only need the IP address
- * printing in DEBUG mode - it's to heavy for within normal use
- */
-int _transport_addrtostr(const struct sockaddr *sa, socklen_t salen, char *str[2])
-{
-#ifdef DEBUG
-	return addrtostr(sa, salen, str);
-#else
-	str[0] = (char*)"node";
-	str[1] = (char*)"";
-	return 0;
-#endif
-}
-
-void _transport_addrtostr_free(char *str[2])
-{
-#ifdef DEBUG
-	addrtostr_free(str);
-#else
-#endif
 }

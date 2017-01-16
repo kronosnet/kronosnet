@@ -986,7 +986,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status);
 	if (!status.enabled) {
-		if (strtoaddr(src_ipaddr, src_port, (struct sockaddr *)&src_addr, sizeof(struct sockaddr_storage)) != 0) {
+		if (knet_strtoaddr(src_ipaddr, src_port, &src_addr, sizeof(struct sockaddr_storage)) != 0) {
 			knet_vty_write(vty, "Error: unable to convert source ip addr to sockaddr!%s", telnet_newline);
 			err = -1;
 			goto out_clean;
@@ -995,7 +995,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 		if (!strncmp(dst_ipaddr, "dynamic", 7)) {
 			dst = NULL;
 		} else {
-			if (strtoaddr(dst_ipaddr, dst_port, (struct sockaddr *)&dst_addr, sizeof(struct sockaddr_storage)) != 0) {
+			if (knet_strtoaddr(dst_ipaddr, dst_port, &dst_addr, sizeof(struct sockaddr_storage)) != 0) {
 				knet_vty_write(vty, "Error: unable to convert destination ip addr to sockaddr!%s", telnet_newline);
 				err = -1;
 				goto out_clean;

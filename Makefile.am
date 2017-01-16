@@ -30,7 +30,7 @@ EXTRA_DIST		= build-aux autogen.sh .version \
 			  debian $(DEBCHANGELOG) $(DEBPOSTINST) \
 			  $(SPEC) $(SPEC).in
 
-SUBDIRS			= init libtap common libknet kronosnetd poc-code
+SUBDIRS			= init libtap libknet kronosnetd poc-code
 
 if BUILD_DOCS
 SUBDIRS			+= docs

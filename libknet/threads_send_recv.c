@@ -864,10 +864,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
 				memmove(&src_link->dst_addr, address, sizeof(struct sockaddr_storage));
-				if (getnameinfo((const struct sockaddr *)&src_link->dst_addr, sizeof(struct sockaddr_storage),
+				if (knet_addrtostr(&src_link->dst_addr, sizeof(struct sockaddr_storage),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
-						src_link->status.dst_port, KNET_MAX_PORT_LEN,
-						NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+						src_link->status.dst_port, KNET_MAX_PORT_LEN) != 0) {
 					log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
 					snprintf(src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
 					snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");

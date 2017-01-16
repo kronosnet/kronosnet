@@ -73,7 +73,7 @@ static void test(void)
 
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
-	if (strtoaddr("127.0.0.0", "50000", (struct sockaddr *)&ss, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("127.0.0.0", "50000", &ss, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert str to sockaddr: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

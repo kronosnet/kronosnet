@@ -142,7 +142,7 @@ static int knet_vty_init_listener(const char *ip_addr, const char *port)
 
 	memset(&ss, 0, sizeof(struct sockaddr_storage));
 
-	if (strtoaddr(ip_addr, port, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage)) != 0)
+	if (knet_strtoaddr(ip_addr, port, &ss, sizeof(struct sockaddr_storage)) != 0)
 		return -1;
 
 	pthread_mutex_lock(&knet_vty_mutex);
@@ -234,26 +234,23 @@ static void knet_vty_close(struct knet_vty *vty)
 static void *vty_accept_thread(void *arg)
 {
 	struct knet_vty *vty = (struct knet_vty *)&knet_vtys[*(int *)arg];
-	char *src_ip[2];
+	char addr_str[KNET_MAX_HOST_LEN];
+	char port_str[KNET_MAX_PORT_LEN];
 	int err;
 
 	knet_vty_print_banner(vty);
 	if (vty->got_epipe)
 		goto out_clean;
 
-	src_ip[0] = NULL;
-	err = addrtostr((struct sockaddr *)&vty->src_sa,
-			vty->src_sa_len,
-			src_ip);
+	err = knet_addrtostr(&vty->src_sa, vty->src_sa_len,
+			     addr_str, KNET_MAX_HOST_LEN,
+			     port_str, KNET_MAX_PORT_LEN);
 
 	if (!err) {
-		strncpy(vty->ip, src_ip[0], sizeof(vty->ip));
+		strncpy(vty->ip, addr_str, sizeof(vty->ip));
 	} else {
 		strcpy(vty->ip, "unknown");
 	}
-
-	if (src_ip[0])
-		addrtostr_free(src_ip);
 
 	if ((knet_vty_auth_user(vty, NULL) < 0) && (!vty->got_epipe)) {
 		log_info("User failed to authenticate (ip: %s)", vty->ip);

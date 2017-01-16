@@ -27,7 +27,6 @@ kronosnetd_SOURCES	= \
 			  etherfilter.c \
 			  main.c \
 			  logging.c \
-			  ../common/netutils.c \
 			  vty.c \
 			  vty_auth.c \
 			  vty_cli.c \

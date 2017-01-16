@@ -98,9 +98,9 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 				printf("Too many links configured. Max %d\n", KNET_MAX_LINK);
 				exit(FAIL);
 			}
-			if (strtoaddr(temp, port_str,
-				      (struct sockaddr *)&nodes[i].address[nodes[i].links],
-				      sizeof(struct sockaddr_storage)) < 0) {
+			if (knet_strtoaddr(temp, port_str,
+					   &nodes[i].address[nodes[i].links],
+					   sizeof(struct sockaddr_storage)) < 0) {
 				printf("Unable to convert %s to sockaddress\n", temp);
 				exit(FAIL);
 			}
@@ -108,12 +108,12 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 		}
 	}
 
-	if (strtoaddr("0.0.0.0", port_str, (struct sockaddr *)&allv4, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("0.0.0.0", port_str, &allv4, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert 0.0.0.0 to sockaddress\n");
 		exit(FAIL);
 	}
 
-	if (strtoaddr("::", port_str, (struct sockaddr *)&allv6, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("::", port_str, &allv6, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert :: to sockaddress\n");
 		exit(FAIL);
 	}

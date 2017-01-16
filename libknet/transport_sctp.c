@@ -617,7 +617,8 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	struct epoll_event ev;
 	struct sockaddr_storage ss;
 	socklen_t sock_len = sizeof(ss);
-	char *print_str[2];
+	char addr_str[KNET_MAX_HOST_LEN];
+	char port_str[KNET_MAX_PORT_LEN];
 
 	new_fd = accept(listen_sock, (struct sockaddr *)&ss, &sock_len);
 	if (new_fd < 0) {
@@ -627,7 +628,9 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 		goto exit_error;
 	}
 
-	if (_transport_addrtostr((struct sockaddr *)&ss, sizeof(ss), print_str) < 0) {
+	if (knet_addrtostr(&ss, sizeof(ss),
+			   addr_str, KNET_MAX_HOST_LEN,
+			   port_str, KNET_MAX_PORT_LEN) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: unable to gather socket info");
@@ -635,7 +638,7 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	}
 
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: received connection from: %s port: %s",
-						print_str[0], print_str[1]);
+						addr_str, port_str);
 
 	/*
 	 * Keep a track of all accepted FDs
@@ -686,10 +689,10 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	}
 	info->on_rx_epoll = 1;
 
-	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: accepted new fd %d for %s (listen fd: %d). index: %d", new_fd, print_str[0], info->listen_sock, i);
+	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: accepted new fd %d for %s/%s (listen fd: %d). index: %d",
+		  new_fd, addr_str, port_str, info->listen_sock, i);
 
 exit_error:
-	_transport_addrtostr_free(print_str);
 	if (err) {
 		if ((i >= 0) || (i < MAX_ACCEPTED_SOCKS)) {
 			info->accepted_socks[i] = -1;

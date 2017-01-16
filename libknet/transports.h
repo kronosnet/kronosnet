@@ -21,7 +21,4 @@ void _close_socketpair(knet_handle_t knet_h, int *sock);
 int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data);
 int _is_valid_fd(knet_handle_t knet_h, int sockfd);
 
-int _transport_addrtostr(const struct sockaddr *sa, socklen_t salen, char *str[2]);
-void _transport_addrtostr_free(char *str[2]);
-
 #endif

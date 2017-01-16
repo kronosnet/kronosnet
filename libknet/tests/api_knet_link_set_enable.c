@@ -29,14 +29,14 @@ static void test_udp(void)
 
 	memset(&src, 0, sizeof(struct sockaddr_storage));
 
-	if (strtoaddr("127.0.0.1", "50000", (struct sockaddr *)&src, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("127.0.0.1", "50000", &src, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
 	memset(&dst, 0, sizeof(struct sockaddr_storage));
 
-	if (strtoaddr("127.0.0.1", "50001", (struct sockaddr *)&dst, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("127.0.0.1", "50001", &dst, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -191,14 +191,14 @@ static void test_sctp(void)
 
 	memset(&src, 0, sizeof(struct sockaddr_storage));
 
-	if (strtoaddr("127.0.0.1", "50000", (struct sockaddr *)&src, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("127.0.0.1", "50000", &src, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
 	memset(&dst, 0, sizeof(struct sockaddr_storage));
 
-	if (strtoaddr("127.0.0.1", "50000", (struct sockaddr *)&dst, sizeof(struct sockaddr_storage)) < 0) {
+	if (knet_strtoaddr("127.0.0.1", "50000", &dst, sizeof(struct sockaddr_storage)) < 0) {
 		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}

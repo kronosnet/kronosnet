@@ -112,10 +112,9 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	memmove(&link->src_addr, src_addr, sizeof(struct sockaddr_storage));
 
-	err = getnameinfo((const struct sockaddr *)src_addr, sizeof(struct sockaddr_storage),
-			  link->status.src_ipaddr, KNET_MAX_HOST_LEN,
-			  link->status.src_port, KNET_MAX_PORT_LEN,
-			  NI_NUMERICHOST | NI_NUMERICSERV);
+	err = knet_addrtostr(src_addr, sizeof(struct sockaddr_storage),
+			     link->status.src_ipaddr, KNET_MAX_HOST_LEN,
+			     link->status.src_port, KNET_MAX_PORT_LEN);
 	if (err) {
 		if (err == EAI_SYSTEM) {
 			savederrno = errno;
@@ -139,10 +138,9 @@ int knet_link_set_config(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		link->dynamic = KNET_LINK_STATIC;
 
 		memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
-		err = getnameinfo((const struct sockaddr *)dst_addr, sizeof(struct sockaddr_storage),
-				  link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
-				  link->status.dst_port, KNET_MAX_PORT_LEN,
-				  NI_NUMERICHOST | NI_NUMERICSERV);
+		err = knet_addrtostr(dst_addr, sizeof(struct sockaddr_storage),
+				     link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
+				     link->status.dst_port, KNET_MAX_PORT_LEN);
 		if (err) {
 			if (err == EAI_SYSTEM) {
 				savederrno = errno;

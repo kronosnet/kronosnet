@@ -16,10 +16,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include "internals.h"
 #include "netutils.h"
-
-#define ADDRTOSTR_HOST_LEN 256
-#define ADDRTOSTR_PORT_LEN 24
 
 static int is_v4_mapped(struct sockaddr_storage *ss, socklen_t salen)
 {
@@ -58,19 +56,39 @@ int cmpaddr(struct sockaddr_storage *ss1, socklen_t sslen1,
 		if (is_v4_mapped(ss2, sslen2))
 			return 1;
 
-		addr2 = (char *)&ss2_addr6->sin6_addr;  
+		addr2 = (char *)&ss2_addr6->sin6_addr;
 		ss2_offset = 12;
 	} else
-		addr2 = (char *)&ss2_addr->sin_addr; 
+		addr2 = (char *)&ss2_addr->sin_addr;
 
 	return memcmp(addr1+ss1_offset, addr2+ss2_offset, 4);
 }
 
-int strtoaddr(const char *host, const char *port, struct sockaddr *sa, socklen_t salen)
+int knet_strtoaddr(const char *host, const char *port, struct sockaddr_storage *ss, socklen_t sslen)
 {
-	int ret;
+	int err;
 	struct addrinfo hints;
 	struct addrinfo *result = NULL;
+
+	if (!host) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!port) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!ss) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!sslen) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 
@@ -78,49 +96,43 @@ int strtoaddr(const char *host, const char *port, struct sockaddr *sa, socklen_t
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 
-	ret = getaddrinfo(host, port, &hints, &result);
+	err = getaddrinfo(host, port, &hints, &result);
 
-	if (ret != 0) {
+	if (!err) {
+		memmove(ss, result->ai_addr,
+			(sslen < result->ai_addrlen) ? sslen : result->ai_addrlen);
+
+		freeaddrinfo(result);
+	}
+
+	return err;
+}
+
+int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
+		   char *addr_buf, size_t addr_buf_size,
+		   char *port_buf, size_t port_buf_size)
+{
+	if (!ss) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	memmove(sa, result->ai_addr,
-		(salen < result->ai_addrlen) ? salen : result->ai_addrlen);
-
-	freeaddrinfo(result);
-
-	return ret;
-}
-
-int addrtostr(const struct sockaddr *sa, socklen_t salen, char *buf[2])
-{
-	int ret;
-
-	buf[0] = malloc(ADDRTOSTR_HOST_LEN + ADDRTOSTR_PORT_LEN);
-
-	if (buf[0] == NULL)
+	if (!sslen) {
+		errno = EINVAL;
 		return -1;
-
-	buf[1] = buf[0] + ADDRTOSTR_HOST_LEN;
-
-	ret = getnameinfo(sa, salen, buf[0], ADDRTOSTR_HOST_LEN,
-				buf[1], ADDRTOSTR_PORT_LEN,
-				NI_NUMERICHOST | NI_NUMERICSERV);
-
-	if (ret != 0) {
-		buf[0] = 0;
-		buf[1] = 0;
-	} else {
-		buf[0][ADDRTOSTR_HOST_LEN - 1] = 0;
-		buf[1][ADDRTOSTR_PORT_LEN - 1] = 0;
 	}
 
-	return ret;
-}
+	if (!addr_buf) {
+		errno = EINVAL;
+		return -1;
+	}
 
-void addrtostr_free(char *str[2])
-{
-	if (str[0] != NULL)
-		free(str[0]);
+	if (!port_buf) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	return getnameinfo((struct sockaddr *)ss, sslen, addr_buf, addr_buf_size,
+				port_buf, port_buf_size,
+				NI_NUMERICHOST | NI_NUMERICSERV);
 }
