@@ -21,6 +21,17 @@
 #include "threads_common.h"
 #include "threads_heartbeat.h"
 
+static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
+{
+	dst_link->received_pong = 0;
+	dst_link->status.pong_last.tv_nsec = 0;
+	if (dst_link->status.connected == 1) {
+		log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is down",
+			 dst_host->host_id, dst_link->link_id);
+		_link_updown(knet_h, dst_host->host_id, dst_link->link_id, dst_link->status.enabled, 0);
+	}
+}
+
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int len;
@@ -38,6 +49,11 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	}
 
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
+
+	if (dst_link->transport_connected == 0) {
+		_link_down(knet_h, dst_host, dst_link);
+		return;
+	}
 
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
 		memmove(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
@@ -76,13 +92,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	timespec_diff(pong_last, clock_now, &diff_ping);
 	if ((pong_last.tv_nsec) && 
 	    (diff_ping >= (dst_link->pong_timeout * 1000llu))) {
-		dst_link->received_pong = 0;
-		dst_link->status.pong_last.tv_nsec = 0;
-		if (dst_link->status.connected == 1) {
-			log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is down",
-				 dst_host->host_id, dst_link->link_id);
-			_link_updown(knet_h, dst_host->host_id, dst_link->link_id, dst_link->status.enabled, 0);
-		}
+		_link_down(knet_h, dst_host, dst_link);
 	}
 }
 
@@ -108,7 +118,6 @@ void *_handle_heartbt_thread(void *data)
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 				if ((dst_host->link[link_idx].status.enabled != 1) ||
-				    (dst_host->link[link_idx].transport_connected != 1) ||
 				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
 				     (dst_host->link[link_idx].status.dynconnected != 1)))
 					continue;
