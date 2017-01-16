@@ -24,7 +24,6 @@ link/host level:
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
  - (rfe)   add fd_tracker error exit check and perhaps use it for local sockets too
            to make it easier to identify leaks and fd abuse
- - (rfe)   drop ping_test completely
  - (rfe)   add 2 new APIs: addr2str / str2addr and transport list query
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data

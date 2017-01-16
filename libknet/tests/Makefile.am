@@ -47,7 +47,6 @@ benchmarks		= \
 
 noinst_PROGRAMS		= \
 			  pckt_test \
-			  ping_test \
 			  $(benchmarks) \
 			  $(check_PROGRAMS)
 
@@ -61,8 +60,6 @@ check-local: check-api-test-coverage
 check-api-test-coverage:
 	chmod u+x $(top_srcdir)/libknet/tests/api-test-coverage
 	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir) $(top_builddir)
-
-ping_test_SOURCES	= ping_test.c
 
 pckt_test_SOURCES	= pckt_test.c
 
