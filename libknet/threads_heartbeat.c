@@ -40,6 +40,11 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	unsigned long long diff_ping;
 	unsigned char *outbuf = (unsigned char *)knet_h->pingbuf;
 
+	if (dst_link->transport_connected == 0) {
+		_link_down(knet_h, dst_host, dst_link);
+		return;
+	}
+
 	/* caching last pong to avoid race conditions */
 	pong_last = dst_link->status.pong_last;
 
@@ -49,11 +54,6 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 	}
 
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
-
-	if (dst_link->transport_connected == 0) {
-		_link_down(knet_h, dst_host, dst_link);
-		return;
-	}
 
 	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
 		memmove(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
