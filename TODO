@@ -4,9 +4,7 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
- - (issue) make generic socket common code (almost completed)
  - (issue) transports: plumb TX error handling on per-transport hooks
- - (issue) transports: review usage of transport_connected
  - (issue) transports: review all error handling code failures,
            specially on clear_config, to not leak and better clean
            in case of errors
