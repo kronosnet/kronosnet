@@ -10,6 +10,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <time.h>
 
 #include "crypto.h"
 #include "nsscrypto.h"

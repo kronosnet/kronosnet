@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/uio.h>
 
 #include "crypto.h"
 #include "compat.h"
