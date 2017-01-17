@@ -142,6 +142,7 @@ AC_CHECK_HEADERS([arpa/inet.h])
 AC_CHECK_HEADERS([netdb.h])
 AC_CHECK_HEADERS([limits.h])
 AC_CHECK_HEADERS([stdint.h])
+AC_CHECK_HEADERS([sys/epoll.h])
 
 if test "x$enable_libknet_sctp" = xyes; then
 AC_CHECK_HEADERS([netinet/sctp.h],, AC_MSG_ERROR(["missing required SCTP headers"]))
@@ -180,9 +181,16 @@ AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([strcasecmp])
 AC_CHECK_FUNCS([sendmmsg])
 AC_CHECK_FUNCS([recvmmsg])
-AC_CHECK_FUNCS([epoll_wait])
 AC_CHECK_FUNCS([kevent])
-# if neither epoll_wait nor kevent are present, we should fail.
+# if neither sys/epoll.h nor kevent are present, we should fail.
+
+if test "x$ac_cv_header_sys_epoll_h" = xno && test "x$ac_cv_func_kevent" = xno; then
+	AC_MSG_ERROR([Both epoll and kevent unavailable on this OS])
+fi
+
+if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes; then
+	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
+fi
 
 # Check entries in specific structs
 AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],

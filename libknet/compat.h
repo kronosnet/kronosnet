@@ -38,8 +38,10 @@ extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
 #define ETIME ETIMEDOUT
 #endif
 
-#ifndef HAVE_EPOLL
-
+#ifdef HAVE_SYS_EPOLL_H
+#include <sys/epoll.h>
+#else
+#ifdef HAVE_KEVENT
 #include <poll.h>
 #define EPOLL_CTL_ADD 1
 #define EPOLL_CTL_MOD 2
@@ -64,6 +66,6 @@ int epoll_create(int size);
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout_ms);
 
-#endif
-
-#endif
+#endif /* HAVE_KEVENT */
+#endif /* HAVE_SYS_EPOLL_H */
+#endif /* __COMPAT_H__ */

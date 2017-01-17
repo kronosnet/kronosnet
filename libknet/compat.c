@@ -89,8 +89,7 @@ extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
 }
 #endif
 
-
-#ifndef HAVE_EPOLL
+#ifndef HAVE_SYS_EPOLL_H
 #ifdef HAVE_KEVENT
 
 /* for FreeBSD which has kevent instead of epoll */
@@ -122,7 +121,7 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
 	int ret = 0;
 	struct kevent ke;
 	short filters = _poll_to_filter_(event->events);
-	
+
 	switch (op) {
 		/* The kevent man page says that EV_ADD also does MOD */
 		case EPOLL_CTL_ADD:
@@ -157,7 +156,7 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout_
 	else {
 		timeout_ptr = NULL;
 	}
-	
+
 	event_count = kevent(epfd, NULL, 0, kevents, maxevents, timeout_ptr);
 	if (event_count == -1) {
 		return -1;
@@ -186,9 +185,5 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout_
 
 	return returned_events;
 }
-
-/* ifdef HAVE_KEVENT */
-#endif
-
-/* ifndef EPOLL */
-#endif
+#endif /* HAVE_KEVENT */
+#endif /* HAVE_SYS_EPOLL_H */

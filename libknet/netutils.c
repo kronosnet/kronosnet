@@ -64,6 +64,19 @@ int cmpaddr(struct sockaddr_storage *ss1, socklen_t sslen1,
 	return memcmp(addr1+ss1_offset, addr2+ss2_offset, 4);
 }
 
+socklen_t sockaddr_len(const struct sockaddr_storage *ss)
+{
+        if (ss->ss_family == AF_INET) {
+	        return sizeof(struct sockaddr_in);
+	} else {
+	        return sizeof(struct sockaddr_in6);
+	}
+}
+
+/*
+ * exported APIs
+ */
+
 int knet_strtoaddr(const char *host, const char *port, struct sockaddr_storage *ss, socklen_t sslen)
 {
 	int err;
@@ -106,16 +119,6 @@ int knet_strtoaddr(const char *host, const char *port, struct sockaddr_storage *
 	}
 
 	return err;
-}
-
-
-socklen_t sockaddr_len(const struct sockaddr_storage *ss)
-{
-        if (ss->ss_family == AF_INET) {
-	        return sizeof(struct sockaddr_in);
-	} else {
-	        return sizeof(struct sockaddr_in6);
-	}
 }
 
 int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
