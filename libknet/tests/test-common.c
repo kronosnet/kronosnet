@@ -29,7 +29,7 @@ static int log_thread_init = 0;
 static int log_fds[2];
 struct log_thread_data {
 	int logfd;
-	struct _IO_FILE *std;
+	FILE *std;
 };
 static struct log_thread_data data;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -224,7 +224,7 @@ void close_logpipes(int *logfds)
 	logfds[1] = 0;
 }
 
-void flush_logs(int logfd, struct _IO_FILE *std)
+void flush_logs(int logfd, FILE *std)
 {
 	struct knet_log_msg msg;
 	size_t bytes_read;
@@ -282,7 +282,7 @@ select_loop:
 	return NULL;
 }
 
-int start_logthread(int logfd, struct _IO_FILE *std)
+int start_logthread(int logfd, FILE *std)
 {
 	int savederrno = 0;
 
@@ -337,7 +337,7 @@ static void stop_logging(void)
 	close_logpipes(log_fds);
 }
 
-int start_logging(struct _IO_FILE *std)
+int start_logging(FILE *std)
 {
 	int savederrno = 0;
 

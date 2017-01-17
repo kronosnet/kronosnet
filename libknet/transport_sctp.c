@@ -4,11 +4,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <malloc.h>
+#include <stdlib.h>
 
+#include "compat.h"
 #include "host.h"
 #include "link.h"
 #include "logging.h"
@@ -155,6 +155,13 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 {
 	int err = 0, savederrno = 0;
 	int value;
+	int level;
+
+#ifdef SOL_SCTP
+	level = SOL_SCTP;
+#else
+	level = IPPROTO_SCTP;
+#endif
 
 	if (_configure_transport_socket(knet_h, sock, address, type) < 0) {
 		savederrno = errno;
@@ -163,7 +170,7 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 	}
 
 	value = 1;
-	if (setsockopt(sock, SOL_SCTP, SCTP_NODELAY, &value, sizeof(value)) < 0) {
+	if (setsockopt(sock, level, SCTP_NODELAY, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set sctp nodelay: %s",
@@ -172,7 +179,7 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 	}
 
 	value = 1;
-	if (setsockopt(sock, SOL_SCTP, SCTP_DISABLE_FRAGMENTS, &value, sizeof(value)) < 0) {
+	if (setsockopt(sock, level, SCTP_DISABLE_FRAGMENTS, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set sctp disable fragments: %s",
@@ -197,7 +204,7 @@ static int _reconnect_socket(knet_handle_t knet_h, struct knet_link *link)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event ev;
 
-	if (connect(info->connect_sock, (struct sockaddr *)&link->dst_addr, sizeof(struct sockaddr_storage)) < 0) {
+	if (connect(info->connect_sock, (struct sockaddr *)&link->dst_addr, sockaddr_len(&link->dst_addr)) < 0) {
 		if ((errno != EALREADY) && (errno != EINPROGRESS) && (errno != EISCONN)) {
 			savederrno = errno;
 			err = -1;
@@ -830,7 +837,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (bind(listen_sock, (struct sockaddr *)&link->src_addr, sizeof(struct sockaddr_storage)) < 0) {
+	if (bind(listen_sock, (struct sockaddr *)&link->src_addr, sockaddr_len(&link->src_addr)) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to bind listener socket: %s",

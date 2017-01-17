@@ -16,6 +16,7 @@
 
 #include "libknet.h"
 #include "onwire.h"
+#include "compat.h"
 
 #define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_HEADER_ALL_SIZE
 #define KNET_DATABUFSIZE_CRYPT_PAD 1024
@@ -273,6 +274,8 @@ typedef struct knet_transport_ops {
  */
 	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct mmsghdr msg);
 } knet_transport_ops_t;
+
+socklen_t sockaddr_len(const struct sockaddr_storage *ss);
 
 /**
  * This is a kernel style list implementation.

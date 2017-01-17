@@ -10,6 +10,10 @@
 #ifndef __LIBKNET_H__
 #define __LIBKNET_H__
 
+#include <time.h>
+#include <sys/uio.h>
+#include <pthread.h>
+
 #include <stdint.h>
 #include <netinet/in.h>
 

@@ -108,6 +108,16 @@ int knet_strtoaddr(const char *host, const char *port, struct sockaddr_storage *
 	return err;
 }
 
+
+socklen_t sockaddr_len(const struct sockaddr_storage *ss)
+{
+        if (ss->ss_family == AF_INET) {
+	        return sizeof(struct sockaddr_in);
+	} else {
+	        return sizeof(struct sockaddr_in6);
+	}
+}
+
 int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		   char *addr_buf, size_t addr_buf_size,
 		   char *port_buf, size_t port_buf_size)
@@ -132,7 +142,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		return -1;
 	}
 
-	return getnameinfo((struct sockaddr *)ss, sslen, addr_buf, addr_buf_size,
+	return getnameinfo((struct sockaddr *)ss, sockaddr_len(ss), addr_buf, addr_buf_size,
 				port_buf, port_buf_size,
 				NI_NUMERICHOST | NI_NUMERICSERV);
 }

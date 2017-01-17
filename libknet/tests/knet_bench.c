@@ -167,7 +167,6 @@ static void setup_knet(int argc, char *argv[])
 
 	memset(nodes, 0, sizeof(nodes));
 
-	optind = 0;
 	while ((rv = getopt(argc, argv, "CT:s:ldowb:t:n:c:p:P:h")) != EOF) {
 		switch(rv) {
 			case 'h':
@@ -547,7 +546,7 @@ select_loop:
 				printf("RXT: received 0 bytes message?\n");
 			}
 			if (test_type == TEST_PING_AND_DATA) {
-				printf("received %u bytes message: %s\n", msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
+				printf("received %lu bytes message: %s\n", (long)msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
 			}
 			/*
 			 * do stats here

@@ -14,7 +14,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/epoll.h>
 #include <sys/uio.h>
 #include <math.h>
 #include <sys/time.h>
@@ -22,6 +21,7 @@
 
 #include "internals.h"
 #include "crypto.h"
+#include "compat.h"
 #include "common.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"

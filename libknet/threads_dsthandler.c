@@ -11,9 +11,9 @@
 
 #include <unistd.h>
 #include <pthread.h>
-#include <sys/epoll.h>
 
 #include "host.h"
+#include "compat.h"
 #include "logging.h"
 #include "threads_common.h"
 #include "threads_dsthandler.h"

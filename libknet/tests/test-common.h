@@ -21,6 +21,14 @@
 #define ERROR	99
 #define FAIL	-1
 
+/* For *BSD compatibility */
+#ifndef s6_addr16
+#define s6_addr8  __u6_addr.__u6_addr8
+#define s6_addr16 __u6_addr.__u6_addr16
+#define s6_addr32 __u6_addr.__u6_addr32
+#endif
+
+
 /*
  * common facilities
  */
@@ -53,12 +61,12 @@ int knet_handle_stop(knet_handle_t knet_h);
  * with knet logs. Functionally speaking you get the exact same logs,
  * but a lot harder to read due to the thread latency in printing logs.
  */
-int start_logging(struct _IO_FILE *std);
+int start_logging(FILE *std);
 
 int setup_logpipes(int *logfds);
 void close_logpipes(int *logfds);
-void flush_logs(int logfd, struct _IO_FILE *std);
-int start_logthread(int logfd, struct _IO_FILE *std);
+void flush_logs(int logfd, FILE *std);
+int start_logthread(int logfd, FILE *std);
 int stop_logthread(void);
 
 #endif

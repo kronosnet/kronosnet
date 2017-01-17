@@ -4,11 +4,11 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
 #include "libknet.h"
+#include "compat.h"
 #include "host.h"
 #include "link.h"
 #include "logging.h"
@@ -36,6 +36,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 		goto exit_error;
 	}
 
+#ifdef SO_RCVBUFFORCE
 	value = KNET_RING_RCVBUFF;
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
 		savederrno = errno;
@@ -44,8 +45,19 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 			type, strerror(savederrno));
 		goto exit_error;
 	}
+#else
+	value = KNET_RING_RCVBUFF;
+	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s SO_RECVBUF: %s",
+			type, strerror(savederrno));
+		goto exit_error;
+	}
+#endif
 
 	value = KNET_RING_RCVBUFF;
+#ifdef SO_SNDBUFFORCE
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
@@ -53,6 +65,15 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 			type, strerror(savederrno));
 		goto exit_error;
 	}
+#else
+	if (setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s SO_SNDBUF: %s",
+			type, strerror(savederrno));
+		goto exit_error;
+	}
+#endif
 
 exit_error:
 	errno = savederrno;
@@ -70,6 +91,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		goto exit_error;
 	}
 
+#ifdef IP_FREEBIND
 	value = 1;
 	if (setsockopt(sock, SOL_IP, IP_FREEBIND, &value, sizeof(value)) <0) {
 		savederrno = errno;
@@ -78,6 +100,17 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 			type, strerror(savederrno));
 		goto exit_error;
 	}
+#endif
+#ifdef IP_BINDANY /* BSD */
+	value = 1;
+	if (setsockopt(sock, IPPROTO_IP, IP_BINDANY, &value, sizeof(value)) <0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set BINDANY on %s socket: %s",
+			type, strerror(savederrno));
+		goto exit_error;
+	}
+#endif
 
 	if (address->ss_family == AF_INET6) {
 		value = 1;
@@ -90,6 +123,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 			goto exit_error;
 
 		}
+#ifdef IPV6_MTU_DISCOVER
 		value = IPV6_PMTUDISC_PROBE;
 		if (setsockopt(sock, SOL_IPV6, IPV6_MTU_DISCOVER, &value, sizeof(value)) <0) {
 			savederrno = errno;
@@ -98,7 +132,18 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 				type, strerror(savederrno));
 			goto exit_error;
 		}
+#else
+		value = 1;
+		if (setsockopt(sock, IPPROTO_IPV6, IPV6_DONTFRAG, &value, sizeof(value)) <0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set DONTFRAG on %s socket: %s",
+				type, strerror(savederrno));
+			goto exit_error;
+		}
+#endif
 	} else {
+#ifdef IP_MTU_DISCOVER
 		value = IP_PMTUDISC_PROBE;
 		if (setsockopt(sock, SOL_IP, IP_MTU_DISCOVER, &value, sizeof(value)) <0) {
 			savederrno = errno;
@@ -107,6 +152,16 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 				type, strerror(savederrno));
 			goto exit_error;
 		}
+#else
+		value = 1;
+		if (setsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, sizeof(value)) <0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set DONTFRAG on %s socket: %s",
+				type, strerror(savederrno));
+			goto exit_error;
+		}
+#endif
 	}
 
 	value = 1;

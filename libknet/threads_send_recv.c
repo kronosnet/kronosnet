@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <pthread.h>
 #include <math.h>
-#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>

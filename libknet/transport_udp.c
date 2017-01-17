@@ -3,12 +3,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/epoll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "libknet.h"
+#include "compat.h"
 #include "host.h"
 #include "link.h"
 #include "logging.h"
@@ -70,7 +70,7 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		goto exit_error;
 	}
 
-	if (bind(sock, (struct sockaddr *)&link->src_addr, sizeof(struct sockaddr_storage)) < 0) {
+	if (bind(sock, (struct sockaddr *)&link->src_addr, sockaddr_len(&link->src_addr))) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to bind listener socket: %s",

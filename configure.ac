@@ -180,6 +180,9 @@ AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([strcasecmp])
 AC_CHECK_FUNCS([sendmmsg])
 AC_CHECK_FUNCS([recvmmsg])
+AC_CHECK_FUNCS([epoll_wait])
+AC_CHECK_FUNCS([kevent])
+# if neither epoll_wait nor kevent are present, we should fail.
 
 # Check entries in specific structs
 AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],
