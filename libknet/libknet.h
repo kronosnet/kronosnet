@@ -955,6 +955,21 @@ int knet_handle_get_transport_list(knet_handle_t knet_h,
 const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t transport);
 
 /*
+ * knet_handle_get_transport_id_by_name
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * name      - transport name (UDP/SCTP/etc)
+ *
+ * knet_handle_get_transport_name_by_id returns:
+ *
+ * KNET_MAX_TRANSPORTS on error and errno is set accordingly
+ * KNET_TRANSPORT_xxx on success.
+ */
+
+uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name);
+
+/*
  * knet_link_set_config
  *
  * knet_h    - pointer to knet_handle_t

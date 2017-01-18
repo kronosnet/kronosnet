@@ -376,3 +376,45 @@ const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t t
 	errno = savederrno;
 	return name;
 }
+
+uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name)
+{
+	int savederrno = 0;
+	uint8_t err = KNET_MAX_TRANSPORTS;
+	int i;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return err;
+	}
+
+	if (!name) {
+		errno = EINVAL;
+		return err;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return err;
+	}
+
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if (knet_h->transport_ops[i]) {
+			if (!strcmp(knet_h->transport_ops[i]->transport_name, name)) {
+				err = knet_h->transport_ops[i]->transport_id;
+				break;
+			}
+		}
+	}
+
+	if (err == KNET_MAX_TRANSPORTS) {
+		savederrno = EINVAL;
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
+}
