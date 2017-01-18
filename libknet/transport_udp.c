@@ -252,6 +252,7 @@ static int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mms
 
 static knet_transport_ops_t udp_transport_ops = {
 	.transport_name = "UDP",
+	.transport_id = KNET_TRANSPORT_UDP,
 	.transport_mtu_overhead = KNET_PMTUD_UDP_OVERHEAD,
 	.transport_init = udp_transport_init,
 	.transport_free = udp_transport_free,

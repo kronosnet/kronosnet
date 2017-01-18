@@ -1300,6 +1300,7 @@ exit_fail:
 
 static knet_transport_ops_t sctp_transport_ops = {
 	.transport_name = "SCTP",
+	.transport_id = KNET_TRANSPORT_SCTP,
 	.transport_mtu_overhead = KNET_PMTUD_SCTP_OVERHEAD,
 	.transport_init = sctp_transport_init,
 	.transport_free = sctp_transport_free,

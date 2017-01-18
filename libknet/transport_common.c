@@ -284,3 +284,61 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 
 	return 0;
 }
+
+/*
+ * public api
+ */
+
+int knet_handle_get_transport_list(knet_handle_t knet_h,
+				   struct transport_info *transport_list, size_t *transport_list_entries)
+{
+	int err = 0, savederrno = 0;
+	int i, count;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!transport_list) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!transport_list_entries) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	count = 0;
+
+	/*
+	 * we could potentially build this struct
+	 * at knet_handle_new init time, but
+	 * let's keep it dynamic in case at somepoint
+	 * we need to init transports dynamically
+	 * at runtime vs init time.
+	 */
+
+	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
+		if (knet_h->transport_ops[i]) {
+			transport_list[i].name = knet_h->transport_ops[i]->transport_name;
+			transport_list[i].id = knet_h->transport_ops[i]->transport_id;
+			count++;
+		}
+	}
+
+	*transport_list_entries = count;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	return err;
+}

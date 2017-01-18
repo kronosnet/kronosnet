@@ -909,9 +909,35 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		   char *addr_buf, size_t addr_buf_size,
 		   char *port_buf, size_t port_buf_size);
 
+/*
+ * knet_handle_get_transport_list
+ *
+ * knet_h                 - pointer to knet_handle_t
+ *
+ * transport_list         - an array of struct transport_info that must be
+ *                          at least of size struct transport_info * KNET_MAX_TRANSPORTS
+ *
+ * transport_list_entries - pointer to a size_t where to store how many transports
+ *                          are available in this build of libknet.
+ *
+ * knet_handle_get_transport_list returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
 #define KNET_TRANSPORT_UDP   0
 #define KNET_TRANSPORT_SCTP  1
 #define KNET_MAX_TRANSPORTS  2
+
+struct transport_info {
+	const char *name;   /* UDP/SCTP/etc... */
+	uint8_t id;         /* value that can be used for link_set_config */
+	uint8_t properties; /* currently unused */
+};
+
+int knet_handle_get_transport_list(knet_handle_t knet_h,
+				   struct transport_info *transport_list, size_t *transport_list_entries);
 
 /*
  * knet_link_set_config

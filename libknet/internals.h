@@ -220,6 +220,7 @@ typedef struct knet_transport_ops {
  * transport generic information
  */
 	const char *transport_name;
+	const uint8_t transport_id;
 	uint32_t transport_mtu_overhead;
 /*
  * transport init must allocate the new transport
