@@ -1129,7 +1129,7 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -1223,7 +1223,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
