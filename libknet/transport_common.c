@@ -330,8 +330,8 @@ int knet_handle_get_transport_list(knet_handle_t knet_h,
 
 	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
 		if (knet_h->transport_ops[i]) {
-			transport_list[i].name = knet_h->transport_ops[i]->transport_name;
-			transport_list[i].id = knet_h->transport_ops[i]->transport_id;
+			transport_list[count].name = knet_h->transport_ops[i]->transport_name;
+			transport_list[count].id = knet_h->transport_ops[i]->transport_id;
 			count++;
 		}
 	}
@@ -341,4 +341,38 @@ int knet_handle_get_transport_list(knet_handle_t knet_h,
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
 	return err;
+}
+
+const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t transport)
+{
+	int savederrno = 0;
+	const char *name = NULL;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return name;
+	}
+
+	if (transport >= KNET_MAX_TRANSPORTS) {
+		errno = EINVAL;
+		return name;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return name;
+	}
+
+	if (knet_h->transport_ops[transport]) {
+		name = knet_h->transport_ops[transport]->transport_name;
+	} else {
+		savederrno = ENOENT;
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return name;
 }

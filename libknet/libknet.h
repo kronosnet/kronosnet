@@ -940,6 +940,21 @@ int knet_handle_get_transport_list(knet_handle_t knet_h,
 				   struct transport_info *transport_list, size_t *transport_list_entries);
 
 /*
+ * knet_handle_get_transport_name_by_id
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * transport - one of the above KNET_TRANSPORT_xxx constants
+ *
+ * knet_handle_get_transport_name_by_id returns:
+ *
+ * pointer to the name on success or
+ * NULL on error and errno is set.
+ */
+
+const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t transport);
+
+/*
  * knet_link_set_config
  *
  * knet_h    - pointer to knet_handle_t
