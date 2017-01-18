@@ -28,7 +28,6 @@ link/host level:
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
  - (rfe)   add fd_tracker error exit check and perhaps use it for local sockets too
            to make it easier to identify leaks and fd abuse
- - (rfe)   add transport list query API
  - (rfe)   link status callback notification
  - (rfe)   compress: should only compress user data, we will add a bit in the data
                      header to indicate if the pckt is compressed or not (save time).
