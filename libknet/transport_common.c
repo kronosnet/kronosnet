@@ -173,22 +173,6 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		goto exit_error;
 	}
 
-	if (_fdset_cloexec(sock)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s CLOEXEC socket opts: %s",
-			type, strerror(savederrno));
-		goto exit_error;
-	}
-
-	if (_fdset_nonblock(sock)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s NONBLOCK socket opts: %s",
-			type, strerror(savederrno));
-		goto exit_error;
-	}
-
 exit_error:
 	errno = savederrno;
 	return err;
