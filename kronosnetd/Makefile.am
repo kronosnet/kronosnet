@@ -35,8 +35,7 @@ kronosnetd_SOURCES	= \
 
 kronosnetd_CPPFLAGS	= \
 			  -I$(top_srcdir)/libtap \
-			  -I$(top_srcdir)/libknet \
-			  -I$(top_srcdir)/common
+			  -I$(top_srcdir)/libknet
 
 kronosnetd_CFLAGS	= $(libqb_CFLAGS)
 

@@ -15,8 +15,7 @@ EXTRA_DIST		= \
 			  api-test-coverage \
 			  api-check.mk
 
-AM_CPPFLAGS		= -I$(top_srcdir)/libknet \
-			  -I$(top_srcdir)/common
+AM_CPPFLAGS		= -I$(top_srcdir)/libknet
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
