@@ -205,6 +205,8 @@ int setup_sctp_server_sock_opts(int sock, struct sockaddr_storage *ss)
 	return 0;
 }
 
+static int fragsize = 0;
+
 static void parse_incoming_data(struct mmsghdr msg)
 {
 	int i;
@@ -217,10 +219,25 @@ static void parse_incoming_data(struct mmsghdr msg)
 			fprintf(stderr, "Received 0bytes packet\n");
 			exit(-1);
 		}
-		/* check pckt len here */
-		if (msg.msg_len != 65536) {
-			fprintf(stderr, "KABOOM: %d\n", msg.msg_len);
-			exit(-1);
+		if (!(msg.msg_hdr.msg_flags & MSG_EOR)) {
+			fprintf(stderr, "got a fragment size: %d\n", msg.msg_len);
+			fragsize = fragsize + msg.msg_len;
+			return;
+		}
+		if (fragsize) {
+			fragsize = fragsize + msg.msg_len;
+			fprintf(stderr, "Received all packets from frags: %d\n", fragsize);
+			if (fragsize != 65536) {
+				fprintf(stderr, "KABOOM: %d\n", msg.msg_len);
+				exit(-1);
+			}
+			fragsize = 0;
+		} else {
+			/* check pckt len here */
+			if (msg.msg_len != 65536) {
+				fprintf(stderr, "KABOOM: %d\n", msg.msg_len);
+				exit(-1);
+			}
 		}
 		return;
 	}
@@ -277,7 +294,6 @@ void get_incoming_data(int sock, struct mmsghdr *msg)
 		parse_incoming_data(msg[i]);
 	}
 }
-
 
 int setup_rx_buffers(struct mmsghdr *msg)
 {
