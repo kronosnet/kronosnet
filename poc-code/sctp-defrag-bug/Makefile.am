@@ -13,7 +13,7 @@ include $(top_srcdir)/build-aux/check.mk
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet
 
 # override global LIBS that pulls in lots of craft we don't need here
-LIBS			=
+LIBS			= -lz
 
 noinst_PROGRAMS		= client server
 

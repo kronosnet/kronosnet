@@ -14,7 +14,7 @@ int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);
 int setup_sctp_common_sock_opts(int sock, struct sockaddr_storage *ss);
 int setup_sctp_server_sock_opts(int sock, struct sockaddr_storage *ss);
-void get_incoming_data(int sock, struct mmsghdr *msg);
+void get_incoming_data(int sock, struct mmsghdr *msg, int check_crc);
 int setup_rx_buffers(struct mmsghdr *msg);
 
 #endif

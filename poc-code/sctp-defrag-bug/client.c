@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <zlib.h>
 
 #ifdef HAVE_NETINET_SCTP_H
 #include <netinet/sctp.h>
@@ -19,6 +20,7 @@ int main(int argc, char **argv)
 {
 	int err = 0;
 	int rv;
+	int enable_crc = 0;
 	char defport[8] = "50000";
 	char *address = NULL, *port = NULL;
 
@@ -37,13 +39,16 @@ int main(int argc, char **argv)
 
 	int sent_msgs;
 
-	while ((rv = getopt(argc, argv, "a:p:")) != EOF) {
+	while ((rv = getopt(argc, argv, "a:p:c")) != EOF) {
 		switch(rv) {
 			case 'a':
 				address = optarg;
 				break;
 			case 'p':
 				port = optarg;
+				break;
+			case 'c':
+				enable_crc = 1;
 				break;
 			default:
 				fprintf(stderr, "Unknown option\n");
@@ -70,7 +75,19 @@ int main(int argc, char **argv)
 				errno, strerror(errno));
 			return -1;
 		}
-		memset(iov_out[i].iov_base, 0, 65536);
+		if (enable_crc) {
+			unsigned int *dataint = (unsigned int *)iov_out[i].iov_base;
+			unsigned int crc;
+			int j;
+
+			for (j=1; j<65536/sizeof(int); j++) {
+				dataint[j] = rand();
+			}
+			crc = crc32(0, NULL, 0);
+			dataint[0] = crc32(crc, (Bytef*)&dataint[1], 65536-sizeof(int));
+		} else {
+			memset(iov_out[i].iov_base, 0, 65536);
+		}
 		iov_out[i].iov_len = 65536;
 	}
 
@@ -150,7 +167,7 @@ int main(int argc, char **argv)
 		} else {
 			for (i = 0; i < nev; i++) {
 				if (events[i].data.fd == sock) {
-					get_incoming_data(events[i].data.fd, msg_in);
+					get_incoming_data(events[i].data.fd, msg_in, enable_crc);
 				}
 			}
 		}

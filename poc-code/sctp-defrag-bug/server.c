@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 {
 	int err = 0;
 	int rv;
+	int check_crc = 0;
 	char defaddr[8] = "0.0.0.0";
 	char defport[8] = "50000";
 	char *address = NULL, *port = NULL;
@@ -34,13 +35,16 @@ int main(int argc, char **argv)
 
 	struct mmsghdr msg[256];
 
-	while ((rv = getopt(argc, argv, "a:p:")) != EOF) {
+	while ((rv = getopt(argc, argv, "a:p:c")) != EOF) {
 		switch(rv) {
 			case 'a':
 				address = optarg;
 				break;
 			case 'p':
 				port = optarg;
+				break;
+			case 'c':
+				check_crc = 1;
 				break;
 			default:
 				fprintf(stderr, "Unknown option\n");
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
 				}
 				fprintf(stderr, "Accepted socket: %d\n", newsock);
 			} else {
-				get_incoming_data(events[i].data.fd, msg);
+				get_incoming_data(events[i].data.fd, msg, check_crc);
 			}
 		}
 	}

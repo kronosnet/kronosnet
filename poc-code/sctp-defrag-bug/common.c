@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <zlib.h>
 
 #ifdef HAVE_NETINET_SCTP_H
 #include <netinet/sctp.h>
@@ -207,11 +208,14 @@ int setup_sctp_server_sock_opts(int sock, struct sockaddr_storage *ss)
 
 static int fragsize = 0;
 
-static void parse_incoming_data(struct mmsghdr msg)
+static void parse_incoming_data(struct mmsghdr msg, int check_crc)
 {
 	int i;
 	struct iovec *iov = msg.msg_hdr.msg_iov;
 	size_t iovlen = msg.msg_hdr.msg_iovlen;
+	unsigned int crc;
+	unsigned int *data = msg.msg_hdr.msg_iov->iov_base;
+	size_t datalen = msg.msg_len;
 	union sctp_notification  *snp;
 
 	if (!(msg.msg_hdr.msg_flags & MSG_NOTIFICATION)) {
@@ -237,6 +241,14 @@ static void parse_incoming_data(struct mmsghdr msg)
 			if (msg.msg_len != 65536) {
 				fprintf(stderr, "KABOOM: %d\n", msg.msg_len);
 				exit(-1);
+			}
+			if (check_crc) {
+				crc = crc32(0, NULL, 0);
+				crc = crc32(crc, (Bytef *)&data[1], datalen - sizeof(unsigned int)) & 0xFFFFFFFF;
+				if (crc != data[0]) {
+					fprintf(stderr, "KABOOM - CRCs do not match\n");
+					exit(-1);
+				}
 			}
 		}
 		return;
@@ -276,7 +288,7 @@ static void parse_incoming_data(struct mmsghdr msg)
 	return;
 }
 
-void get_incoming_data(int sock, struct mmsghdr *msg)
+void get_incoming_data(int sock, struct mmsghdr *msg, int check_crc)
 {
 	int i, msg_recv;
 
@@ -291,7 +303,7 @@ void get_incoming_data(int sock, struct mmsghdr *msg)
 	fprintf(stderr, "Received: %d messages\n", msg_recv);
 
 	for (i = 0; i < msg_recv; i++) {
-		parse_incoming_data(msg[i]);
+		parse_incoming_data(msg[i], check_crc);
 	}
 }
 
