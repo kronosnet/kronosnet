@@ -273,7 +273,7 @@ typedef struct knet_transport_ops {
  * transport_rx_is_data is invoked with both global_rwlock
  * and fd_tracker read lock (from RX thread)
  */
-	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct mmsghdr msg);
+	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg);
 } knet_transport_ops_t;
 
 socklen_t sockaddr_len(const struct sockaddr_storage *ss);

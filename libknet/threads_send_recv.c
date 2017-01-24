@@ -1180,7 +1180,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	}
 
 	for (i = 0; i < msg_recv; i++) {
-		err = knet_h->transport_ops[transport]->transport_rx_is_data(knet_h, sockfd, msg[i]);
+		err = knet_h->transport_ops[transport]->transport_rx_is_data(knet_h, sockfd, &msg[i]);
 
 		/*
 		 * TODO: make this section silent once we are confident

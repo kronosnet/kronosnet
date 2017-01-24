@@ -50,9 +50,10 @@ typedef struct sctp_handle_info {
 /*
  * use by fd_tracker data type
  */
-#define SCTP_NO_LINK_INFO      0
-#define SCTP_LISTEN_LINK_INFO  1
-#define SCTP_CONNECT_LINK_INFO 2
+#define SCTP_NO_LINK_INFO       0
+#define SCTP_LISTENER_LINK_INFO 1
+#define SCTP_ACCEPTED_LINK_INFO 2
+#define SCTP_CONNECT_LINK_INFO  3
 
 /*
  * this value is per listener
@@ -67,6 +68,12 @@ typedef struct sctp_listen_link_info {
 	int on_listener_epoll;
 	int on_rx_epoll;
 } sctp_listen_link_info_t;
+
+typedef struct sctp_accepted_link_info {
+	char mread_buf[KNET_DATABUFSIZE];
+	ssize_t mread_len;
+	sctp_listen_link_info_t *link_info;
+} sctp_accepted_link_info_t ;
 
 typedef struct sctp_connect_link_info {
 	struct knet_list_head list;
@@ -174,15 +181,6 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set sctp nodelay: %s",
-			strerror(savederrno));
-		goto exit_error;
-	}
-
-	value = 1;
-	if (setsockopt(sock, level, SCTP_DISABLE_FRAGMENTS, &value, sizeof(value)) < 0) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set sctp disable fragments: %s",
 			strerror(savederrno));
 		goto exit_error;
 	}
@@ -311,7 +309,8 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
 {
 	struct epoll_event ev;
 	sctp_connect_link_info_t *connect_info = knet_h->knet_transport_fd_tracker[sockfd].data;
-	sctp_listen_link_info_t *listen_info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	sctp_accepted_link_info_t *accepted_info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	sctp_listen_link_info_t *listen_info;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 
 	switch (knet_h->knet_transport_fd_tracker[sockfd].data_type) {
@@ -343,7 +342,8 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
 				}
 			}
 			break;
-		case SCTP_LISTEN_LINK_INFO:
+		case SCTP_ACCEPTED_LINK_INFO:
+			listen_info = accepted_info->link_info;
 			if (listen_info->listen_sock != sockfd) {
 				if (recv_err != 1) {
 					if (listen_info->on_rx_epoll) {
@@ -381,16 +381,17 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
  *       delegate any FD error management to sctp_transport_rx_sock_error
  *       and keep this code to parsing incoming data only
  */
-static int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mmsghdr msg)
+static int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg)
 {
 	int i;
-	struct iovec *iov = msg.msg_hdr.msg_iov;
-	size_t iovlen = msg.msg_hdr.msg_iovlen;
+	struct iovec *iov = msg->msg_hdr.msg_iov;
+	size_t iovlen = msg->msg_hdr.msg_iovlen;
 	struct sctp_assoc_change *sac;
 	union sctp_notification  *snp;
+	sctp_accepted_link_info_t *info = knet_h->knet_transport_fd_tracker[sockfd].data;
 
-	if (!(msg.msg_hdr.msg_flags & MSG_NOTIFICATION)) {
-		if (msg.msg_len == 0) {
+	if (!(msg->msg_hdr.msg_flags & MSG_NOTIFICATION)) {
+		if (msg->msg_len == 0) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "received 0 bytes len packet: %d", sockfd);
 			/*
 			 * NOTE: with event notification enabled, we receive error twice:
@@ -406,10 +407,43 @@ static int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mm
 			sctp_transport_rx_sock_error(knet_h, sockfd, 1, 0);
 			return 1;
 		}
+		/*
+		 * missing MSG_EOR has to be treated as a short read
+		 * from the socket and we need to fill in the mread buf
+		 * while we wait for MSG_EOR
+		 */
+		if (!(msg->msg_hdr.msg_flags & MSG_EOR)) {
+			/*
+			 * copy the incoming data into mread_buf + mread_len (incremental)
+			 * and increase mread_len
+			 */
+			memmove(info->mread_buf + info->mread_len, iov->iov_base, msg->msg_len);
+			info->mread_len = info->mread_len + msg->msg_len;
+			return 0;
+		}
+		/*
+		 * got EOR.
+		 * if mread_len is > 0 we are completing a packet from short reads
+		 * complete reassembling the packet in mread_buf, copy it back in the iov
+		 * and set the iov/msg len numbers (size) correctly
+		 */
+		if (info->mread_len) {
+			/*
+			 * add last fragment to mread_buf
+			 */
+			memmove(info->mread_buf + info->mread_len, iov->iov_base, msg->msg_len);
+			info->mread_len = info->mread_len + msg->msg_len;
+			/*
+			 * move all back into the iovec
+			 */
+			memmove(iov->iov_base, info->mread_buf, info->mread_len);
+			msg->msg_len = info->mread_len;
+			info->mread_len = 0;
+		}
 		return 2;
 	}
 
-	if (!(msg.msg_hdr.msg_flags & MSG_EOR)) {
+	if (!(msg->msg_hdr.msg_flags & MSG_EOR)) {
 		return 1;
 	}
 
@@ -626,6 +660,7 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	socklen_t sock_len = sizeof(ss);
 	char addr_str[KNET_MAX_HOST_LEN];
 	char port_str[KNET_MAX_PORT_LEN];
+	sctp_accepted_link_info_t *accept_info = NULL;
 
 	new_fd = accept(listen_sock, (struct sockaddr *)&ss, &sock_len);
 	if (new_fd < 0) {
@@ -676,7 +711,17 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 		goto exit_error;
 	}
 
-	if (_set_fd_tracker(knet_h, new_fd, KNET_TRANSPORT_SCTP, SCTP_LISTEN_LINK_INFO, info) < 0) {
+	accept_info = malloc(sizeof(sctp_accepted_link_info_t));
+	if (!accept_info) {
+		savederrno = errno;
+		err = -1;
+		goto exit_error;
+	}
+	memset(accept_info, 0, sizeof(sctp_accepted_link_info_t));
+
+	accept_info->link_info = info;
+
+	if (_set_fd_tracker(knet_h, new_fd, KNET_TRANSPORT_SCTP, SCTP_ACCEPTED_LINK_INFO, accept_info) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -705,6 +750,7 @@ exit_error:
 			info->accepted_socks[i] = -1;
 		}
 		_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL);
+		free(accept_info);
 		close(new_fd);
 	}
 	errno = savederrno;
@@ -719,6 +765,7 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 {
 	int sockfd = -1;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
+	sctp_accepted_link_info_t *accept_info;
 	sctp_listen_link_info_t *info;
 	int i;
 
@@ -734,13 +781,15 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Processing listen error on socket: %d", sockfd);
 
-	info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	accept_info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	info = accept_info->link_info;
 
 	for (i=0; i<MAX_ACCEPTED_SOCKS; i++) {
 		if (sockfd == info->accepted_socks[i]) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Closing accepted socket %d", sockfd);
 			_set_fd_tracker(knet_h, sockfd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL);
 			info->accepted_socks[i] = -1;
+			free(accept_info);
 			close(sockfd);
 		}
 	}
@@ -853,7 +902,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (_set_fd_tracker(knet_h, listen_sock, KNET_TRANSPORT_SCTP, SCTP_LISTEN_LINK_INFO, info) < 0) {
+	if (_set_fd_tracker(knet_h, listen_sock, KNET_TRANSPORT_SCTP, SCTP_LISTENER_LINK_INFO, info) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -964,6 +1013,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *link)
 					strerror(errno));
 			}
 			info->on_rx_epoll = 0;
+			free(knet_h->knet_transport_fd_tracker[info->accepted_socks[i]].data);
 			close(info->accepted_socks[i]);
 			if (_set_fd_tracker(knet_h, info->accepted_socks[i], KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL) < 0) {
 				savederrno = errno;
@@ -1275,20 +1325,20 @@ static int sctp_transport_init(knet_handle_t knet_h)
 	 * Start connect & listener threads
 	 */
 	savederrno = pthread_create(&handle_info->listen_thread, 0, _sctp_listen_thread, (void *) knet_h);
-        if (savederrno) {
+	if (savederrno) {
 		err = -1;
-                log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to start sctp listen thread: %s",
-                        strerror(savederrno));
-                goto exit_fail;
-        }
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to start sctp listen thread: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
 
 	savederrno = pthread_create(&handle_info->connect_thread, 0, _sctp_connect_thread, (void *) knet_h);
-        if (savederrno) {
+	if (savederrno) {
 		err = -1;
-                log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to start sctp connect thread: %s",
-                        strerror(savederrno));
-                goto exit_fail;
-        }
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to start sctp connect thread: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
 
 exit_fail:
 	if (err < 0) {
