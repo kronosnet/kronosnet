@@ -28,7 +28,7 @@ typedef struct udp_link_info {
 	int on_epoll;
 } udp_link_info_t;
 
-static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *link)
+static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	int sock = -1;
@@ -40,11 +40,11 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 	 * Only allocate a new link if the local address is different
 	 */
 	knet_list_for_each_entry(info, &handle_info->links_list, list) {
-		if (memcmp(&info->local_address, &link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
+		if (memcmp(&info->local_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
 			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Re-using existing UDP socket for new link");
-			link->outsock = info->socket_fd;
-			link->transport_link = info;
-			link->transport_connected = 1;
+			kn_link->outsock = info->socket_fd;
+			kn_link->transport_link = info;
+			kn_link->transport_connected = 1;
 			return 0;
 		}
 	}
@@ -55,7 +55,7 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		goto exit_error;
 	}
 
-	sock = socket(link->src_addr.ss_family, SOCK_DGRAM, 0);
+	sock = socket(kn_link->src_addr.ss_family, SOCK_DGRAM, 0);
 	if (sock < 0) {
 		savederrno = errno;
 		err = -1;
@@ -64,13 +64,13 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		goto exit_error;
 	}
 
-	if (_configure_transport_socket(knet_h, sock, &link->src_addr, "UDP") < 0) {
+	if (_configure_transport_socket(knet_h, sock, &kn_link->src_addr, "UDP") < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
 	}
 
-	if (bind(sock, (struct sockaddr *)&link->src_addr, sockaddr_len(&link->src_addr))) {
+	if (bind(sock, (struct sockaddr *)&kn_link->src_addr, sockaddr_len(&kn_link->src_addr))) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to bind listener socket: %s",
@@ -100,13 +100,13 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		goto exit_error;
 	}
 
-	memcpy(&info->local_address, &link->src_addr, sizeof(struct sockaddr_storage));
+	memcpy(&info->local_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
 	info->socket_fd = sock;
 	knet_list_add(&info->list, &handle_info->links_list);
 
-	link->outsock = sock;
-	link->transport_link = info;
-	link->transport_connected = 1;
+	kn_link->outsock = sock;
+	kn_link->transport_link = info;
+	kn_link->transport_connected = 1;
 
 exit_error:
 	if (err) {
@@ -124,18 +124,18 @@ exit_error:
 	return err;
 }
 
-static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *link)
+static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	int found = 0;
 	struct knet_host *host;
 	int link_idx;
-	udp_link_info_t *info = link->transport_link;
+	udp_link_info_t *info = kn_link->transport_link;
 	struct epoll_event ev;
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-			if (&host->link[link_idx] == link)
+			if (&host->link[link_idx] == kn_link)
 				continue;
 
 			if ((host->link[link_idx].transport_link == info) &&
@@ -178,7 +178,7 @@ static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_lin
 
 	close(info->socket_fd);
 	knet_list_del(&info->list);
-	free(link->transport_link);
+	free(kn_link->transport_link);
 
 exit_error:
 	errno = savederrno;

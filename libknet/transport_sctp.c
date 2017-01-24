@@ -197,14 +197,14 @@ exit_error:
 	return err;
 }
 
-static int _reconnect_socket(knet_handle_t knet_h, struct knet_link *link)
+static int _reconnect_socket(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
-	sctp_connect_link_info_t *info = link->transport_link;
+	sctp_connect_link_info_t *info = kn_link->transport_link;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event ev;
 
-	if (connect(info->connect_sock, (struct sockaddr *)&link->dst_addr, sockaddr_len(&link->dst_addr)) < 0) {
+	if (connect(info->connect_sock, (struct sockaddr *)&kn_link->dst_addr, sockaddr_len(&kn_link->dst_addr)) < 0) {
 		if ((errno != EALREADY) && (errno != EINPROGRESS) && (errno != EISCONN)) {
 			savederrno = errno;
 			err = -1;
@@ -233,15 +233,15 @@ exit_error:
 	return err;
 }
 
-static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *link)
+static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
-	sctp_connect_link_info_t *info = link->transport_link;
+	sctp_connect_link_info_t *info = kn_link->transport_link;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event ev;
 	int connect_sock;
 
-	connect_sock = socket(link->dst_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
+	connect_sock = socket(kn_link->dst_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
 	if (connect_sock < 0) {
 		savederrno = errno;
 		err = -1;
@@ -250,7 +250,7 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *link)
 		goto exit_error;
 	}
 
-	if (_configure_sctp_socket(knet_h, connect_sock, &link->dst_addr, "SCTP connect") < 0) {
+	if (_configure_sctp_socket(knet_h, connect_sock, &kn_link->dst_addr, "SCTP connect") < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
@@ -266,7 +266,7 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *link)
 
 	info->connect_sock = connect_sock;
 	info->close_sock = 0;
-	if (_reconnect_socket(knet_h, link) < 0) {
+	if (_reconnect_socket(knet_h, kn_link) < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
@@ -461,7 +461,7 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 	unsigned int status, len = sizeof(status);
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	sctp_connect_link_info_t *info = knet_h->knet_transport_fd_tracker[connect_sock].data;
-	struct knet_link *link = info->link;
+	struct knet_link *kn_link = info->link;
 
 	err = getsockopt(connect_sock, SOL_SOCKET, SO_ERROR, &status, &len);
 	if (err) {
@@ -471,12 +471,12 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 	}
 
 	if (info->close_sock) {
-		if (_close_connect_socket(knet_h, link) < 0) {
+		if (_close_connect_socket(knet_h, kn_link) < 0) {
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to close sock %d from _handle_connected_sctp: %s", connect_sock, strerror(errno));
 			return;
 		}
 		info->close_sock = 0;
-		if (_create_connect_socket(knet_h, link) < 0) {
+		if (_create_connect_socket(knet_h, kn_link) < 0) {
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to recreate connecting sock! %s", strerror(errno));
 			return;
 		}
@@ -484,7 +484,7 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 
 	if (status) {
 		log_info(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP connect on %d to %s port %s failed: %s",
-			 connect_sock, link->status.dst_ipaddr, link->status.dst_port,
+			 connect_sock, kn_link->status.dst_ipaddr, kn_link->status.dst_port,
 			 strerror(status));
 
 		/*
@@ -507,8 +507,8 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 	}
 	info->on_connected_epoll = 0;
 
-	link->transport_connected = 1;
-	link->outsock = info->connect_sock;
+	kn_link->transport_connected = 1;
+	kn_link->outsock = info->connect_sock;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN;
@@ -521,7 +521,7 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP handler fd %d now connected to %s port %s",
 		  connect_sock,
-		  link->status.dst_ipaddr, link->status.dst_port);
+		  kn_link->status.dst_ipaddr, kn_link->status.dst_port);
 }
 
 static void _handle_connected_sctp_errors(knet_handle_t knet_h)

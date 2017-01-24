@@ -33,7 +33,7 @@ static int continous = 0;
 static struct sockaddr_storage allv4;
 static struct sockaddr_storage allv6;
 static int broadcast_test = 1;
-static pthread_t rx_thread = NULL;
+static pthread_t rx_thread = (pthread_t)NULL;
 static char *rx_buf[PCKT_FRAG_MAX];
 static int shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
