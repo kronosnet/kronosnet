@@ -5,9 +5,6 @@ distro/packaging:
 
 link/host level:
  - (issue) must add throttling on socket writing (in progress)
- - (issue) SCTP: in kernel fragmentation appears to be broken and needs
-           some investigation. workaround in place by disabling
-           in-kernel SCTP fragmentation
  - (issue) transports: plumb TX error handling on per-transport hooks
  - (issue) transports: review all error handling code failures,
            specially on clear_config, to not leak and better clean
