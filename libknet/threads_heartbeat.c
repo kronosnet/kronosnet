@@ -35,6 +35,7 @@ static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct 
 
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
+	int err = 0, savederrno = 0;
 	int len;
 	ssize_t outlen = KNET_HEADER_PING_SIZE;
 	struct timespec clock_now, pong_last;
@@ -73,6 +74,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			outbuf = knet_h->pingbuf_crypt;
 		}
 
+retry:
 		len = sendto(dst_link->outsock, outbuf, outlen,
 			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
@@ -80,11 +82,21 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		dst_link->ping_last = clock_now;
 
 		if (len != outlen) {
-			log_debug(knet_h, KNET_SUB_HEARTBEAT,
-				  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-				  dst_link->outsock, errno, strerror(errno),
-				  dst_link->status.src_ipaddr, dst_link->status.src_port,
-				  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
+			err = knet_h->transport_ops[dst_link->transport_type]->transport_tx_sock_error(knet_h, dst_link->outsock, len, savederrno);
+			switch(err) {
+				case -1: /* unrecoverable error */
+					log_debug(knet_h, KNET_SUB_HEARTBEAT,
+						  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+						  dst_link->outsock, errno, strerror(errno),
+						  dst_link->status.src_ipaddr, dst_link->status.src_port,
+						  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
+					break;
+				case 0:
+					break;
+				case 1:
+					goto retry;
+					break;
+			}
 		} else {
 			dst_link->last_ping_size = outlen;
 		}

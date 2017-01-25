@@ -283,6 +283,19 @@ exit_error:
 	return err;
 }
 
+static int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+{
+	if (recv_err < 0) {
+		if (recv_errno == EAGAIN) {
+			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
+			usleep(KNET_THREADS_TIMERES * 4);
+			return 1;
+		}
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * socket error management functions
  *
@@ -1357,6 +1370,7 @@ static knet_transport_ops_t sctp_transport_ops = {
 	.transport_link_set_config = sctp_transport_link_set_config,
 	.transport_link_clear_config = sctp_transport_link_clear_config,
 	.transport_rx_sock_error = sctp_transport_rx_sock_error,
+	.transport_tx_sock_error = sctp_transport_tx_sock_error,
 	.transport_rx_is_data = sctp_transport_rx_is_data,
 };
 

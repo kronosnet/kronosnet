@@ -254,11 +254,22 @@ typedef struct knet_transport_ops {
 /*
  * transport_rx_sock_error is invoked when recvmmsg returns <= 0
  *
- * transport_rx_sock_error is invoked with both global_rwlock
- * and fd_tracker read lock (from RX thread)
+ * transport_rx_sock_error is invoked with both global_rdlock
  */
 
 	int (*transport_rx_sock_error)(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
+
+/*
+ * transport_tx_sock_error is invoked with global_rwlock and
+ * it's invoked when sendto or sendmmsg returns =< 0
+ *
+ * it should return:
+ * -1 on internal error
+ *  0 ignore error and continue
+ *  1 retry
+ *    any sleep or wait action should happen inside the transport code
+ */
+	int (*transport_tx_sock_error)(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
 
 /*
  * this function is called on _every_ received packet

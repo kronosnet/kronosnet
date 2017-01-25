@@ -6,6 +6,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <netinet/ip_icmp.h>
+#if defined (IP_RECVERR) || defined (IPV6_RECVERR)
+#include <linux/errqueue.h>
+#endif
 
 #include "libknet.h"
 #include "compat.h"
@@ -14,6 +18,7 @@
 #include "logging.h"
 #include "common.h"
 #include "transports.h"
+#include "threads_common.h"
 
 #define KNET_PMTUD_UDP_OVERHEAD 8
 
@@ -35,6 +40,9 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 	struct epoll_event ev;
 	udp_link_info_t *info;
 	udp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_UDP];
+#if defined (IP_RECVERR) || defined (IPV6_RECVERR)
+	int value;
+#endif
 
 	/*
 	 * Only allocate a new link if the local address is different
@@ -69,6 +77,31 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		err = -1;
 		goto exit_error;
 	}
+
+#ifdef IP_RECVERR
+	if (kn_link->src_addr.ss_family == AF_INET) {
+		value = 1;
+		if (setsockopt(sock, SOL_IP, IP_RECVERR, &value, sizeof(value)) <0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set RECVERR on socket: %s",
+				strerror(savederrno));
+			goto exit_error;
+		}
+	}
+#endif
+#ifdef IPV6_RECVERR
+	if (kn_link->src_addr.ss_family == AF_INET6) {
+		value = 1;
+		if (setsockopt(sock, SOL_IPV6, IPV6_RECVERR, &value, sizeof(value)) <0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set RECVERR on socket: %s",
+				strerror(savederrno));
+			goto exit_error;
+		}
+	}
+#endif
 
 	if (bind(sock, (struct sockaddr *)&kn_link->src_addr, sockaddr_len(&kn_link->src_addr))) {
 		savederrno = errno;
@@ -232,13 +265,106 @@ static int udp_transport_init(knet_handle_t knet_h)
 	return 0;
 }
 
+#if defined (IP_RECVERR) || defined (IPV6_RECVERR)
+static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
+{
+	int err = 0, savederrno = 0;
+	int got_err = 0;
+	char buffer[1024];
+	struct iovec iov;
+	struct msghdr msg;
+	struct cmsghdr *cmsg;
+	struct sock_extended_err *sock_err;
+	struct icmphdr icmph;
+	struct sockaddr_storage remote;
+	struct sockaddr_storage *origin;
+	char addr_str[KNET_MAX_HOST_LEN];
+	char port_str[KNET_MAX_PORT_LEN];
+
+	iov.iov_base = &icmph;
+	iov.iov_len = sizeof(icmph);
+	msg.msg_name = (void*)&remote;
+	msg.msg_namelen = sizeof(remote);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_flags = 0;
+	msg.msg_control = buffer;
+	msg.msg_controllen = sizeof(buffer);
+
+	for (;;) {
+		err = recvmsg(sockfd, &msg, MSG_ERRQUEUE);
+		savederrno = errno;
+		if (err < 0) {
+			if (!got_err) {
+				errno = savederrno;
+				return -1;
+			} else {
+				return 0;
+			}
+		}
+		got_err = 1;
+		for (cmsg = CMSG_FIRSTHDR(&msg);cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+			if (((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == IP_RECVERR)) ||
+			    ((cmsg->cmsg_level == SOL_IPV6 && (cmsg->cmsg_type == IPV6_RECVERR)))) {
+				sock_err = (struct sock_extended_err*)CMSG_DATA(cmsg);
+				if (sock_err) {
+					switch (sock_err->ee_origin) {
+						case 0: /* no origin */
+						case 1: /* local source (EMSGSIZE) */
+							/*
+							 * those errors are way too noisy
+							 */
+							break;
+						case 2: /* ICMP */
+						case 3: /* ICMP6 */
+							origin = (struct sockaddr_storage *)SO_EE_OFFENDER(sock_err);
+							if (knet_addrtostr(origin, sizeof(origin),
+									   addr_str, KNET_MAX_HOST_LEN,
+									   port_str, KNET_MAX_PORT_LEN) < 0) {
+								log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from unknown source: %s", strerror(sock_err->ee_errno));
+
+							} else {
+								log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from %s: %s", addr_str, strerror(sock_err->ee_errno));
+							}
+							break;
+					}
+				} else {
+					log_debug(knet_h, KNET_SUB_TRANSP_UDP, "No data in MSG_ERRQUEUE");
+				}
+			}
+		}
+	}
+}
+#else
+static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
+{
+	return 0;
+}
+#endif
+
 static int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
-	/*
-	 * UDP can't do much here afaict, perhaps clear the SO_ERROR?
-	 */
-	log_err(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d received error: %d (%s)",
-		sockfd, recv_err, strerror(recv_errno));
+	if (recv_errno == EAGAIN) {
+		read_errs_from_sock(knet_h, sockfd);
+	}
+	return 0;
+}
+
+static int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+{
+	if (recv_err < 0) {
+		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
+			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
+			usleep(KNET_THREADS_TIMERES * 4);
+			return 1;
+		}
+		read_errs_from_sock(knet_h, sockfd);
+		if (recv_errno == EMSGSIZE) {
+			return 0;
+		}
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -259,6 +385,7 @@ static knet_transport_ops_t udp_transport_ops = {
 	.transport_link_set_config = udp_transport_link_set_config,
 	.transport_link_clear_config = udp_transport_link_clear_config,
 	.transport_rx_sock_error = udp_transport_rx_sock_error,
+	.transport_tx_sock_error = udp_transport_tx_sock_error,
 	.transport_rx_is_data = udp_transport_rx_is_data,
 };
 

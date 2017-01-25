@@ -23,7 +23,7 @@
 
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
-	int ret, savederrno, mutex_retry_limit, failsafe;
+	int err, ret, savederrno, mutex_retry_limit, failsafe;
 	ssize_t onwire_len;   /* current packet onwire size */
 	ssize_t overhead_len; /* onwire packet overhead (protocol based) */
 	ssize_t max_mtu_len;  /* max mtu for protocol */
@@ -154,26 +154,32 @@ restart:
 		return -1;
 	}
 
+retry:
 	len = sendto(dst_link->outsock, outbuf, data_len,
 			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;
 
-	if ((len < 0) && (savederrno != EMSGSIZE)) {
-		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
-		pthread_mutex_unlock(&knet_h->pmtud_mutex);
-		return -1;
+	err = knet_h->transport_ops[dst_link->transport_type]->transport_tx_sock_error(knet_h, dst_link->outsock, len, savederrno);
+	switch(err) {
+		case -1: /* unrecoverable error */
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
+			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+			return -1;
+		case 0: /* ignore error and continue */
+			break;
+		case 1: /* retry to send those same data */
+			goto retry;
+			break;
 	}
 
 	if (len != data_len) {
-		/*
-		 * this is coming from "localhost" already.
-		 */
 		if (savederrno == EMSGSIZE) {
 			dst_link->last_bad_mtu = onwire_len;
 		} else {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
 		}
+
 	} else {
 		dst_link->last_sent_mtu = onwire_len;
 		dst_link->last_recv_mtu = 0;

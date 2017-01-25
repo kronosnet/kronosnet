@@ -64,6 +64,18 @@ retry:
 				     msg, msg_idx, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
+		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
+		switch(err) {
+			case -1: /* unrecoverable error */
+				goto out_unlock;
+				break;
+			case 0: /* ignore error and continue */
+				break;
+			case 1: /* retry to send those same data */
+				goto retry;
+				break;
+		}
+
 		if ((sent_msgs >= 0) && (sent_msgs < msg_idx)) {
 			if ((sent_msgs) || (progress)) {
 				msgs_to_send = msg_idx - sent_msgs;
@@ -88,17 +100,6 @@ retry:
 			}
 		}
 
-		if (sent_msgs < 0) {
-			log_debug(knet_h, KNET_SUB_TX, "Unable to send data packet to host %s (%u) link %s:%s (%u): %s",
-				  dst_host->name, dst_host->host_id,
-				  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
-				  dst_host->link[dst_host->active_links[link_idx]].status.dst_port,
-				  dst_host->link[dst_host->active_links[link_idx]].link_id,
-				  strerror(savederrno));
-			err = -1;
-			goto out_unlock;
-		}
-
 		if ((dst_host->link_handler_policy == KNET_LINK_POLICY_RR) &&
 		    (dst_host->active_link_entries > 1)) {
 			uint8_t cur_link_id = dst_host->active_links[0];
@@ -111,7 +112,6 @@ retry:
 	}
 
 out_unlock:
-
 	errno = savederrno;
 	return err;
 }
@@ -810,6 +810,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 
 static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage *address, int ind, ssize_t len)
 {
+	int err = 0, savederrno = 0;
 	ssize_t outlen;
 	struct knet_host *src_host;
 	struct knet_link *src_link;
@@ -1045,16 +1046,28 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		if (sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+retry_pong:
+		len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
-				sizeof(struct sockaddr_storage)) != outlen) {
-			log_debug(knet_h, KNET_SUB_RX,
-				  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-				  src_link->outsock, errno, strerror(errno),
-				  src_link->status.src_ipaddr, src_link->status.src_port,
-				  src_link->status.dst_ipaddr, src_link->status.dst_port);
+				sizeof(struct sockaddr_storage));
+		savederrno = errno;
+		if (len != outlen) {
+			err = knet_h->transport_ops[src_link->transport_type]->transport_tx_sock_error(knet_h, src_link->outsock, len, savederrno);
+			switch(err) {
+				case -1: /* unrecoverable error */
+					log_debug(knet_h, KNET_SUB_RX,
+						  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+						  src_link->outsock, errno, strerror(errno),
+						  src_link->status.src_ipaddr, src_link->status.src_port,
+						  src_link->status.dst_ipaddr, src_link->status.dst_port);
+					break;
+				case 0: /* ignore error and continue */
+					break;
+				case 1: /* retry to send those same data */
+					goto retry_pong;
+					break;
+			}
 		}
-
 		break;
 	case KNET_HEADER_TYPE_PONG:
 		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
@@ -1101,14 +1114,26 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 			outbuf = knet_h->recv_from_links_buf_crypt;
 		}
 
-		if (sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+retry_pmtud:
+		len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
-				sizeof(struct sockaddr_storage)) != outlen) {
-			log_debug(knet_h, KNET_SUB_RX,
-				  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-				  src_link->outsock, errno, strerror(errno),
-				  src_link->status.src_ipaddr, src_link->status.src_port,
-				  src_link->status.dst_ipaddr, src_link->status.dst_port);
+				sizeof(struct sockaddr_storage));
+		if (len != outlen) {
+			err = knet_h->transport_ops[src_link->transport_type]->transport_tx_sock_error(knet_h, src_link->outsock, len, savederrno);
+			switch(err) {
+				case -1: /* unrecoverable error */
+					log_debug(knet_h, KNET_SUB_RX,
+						  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+						  src_link->outsock, errno, strerror(errno),
+						  src_link->status.src_ipaddr, src_link->status.src_port,
+						  src_link->status.dst_ipaddr, src_link->status.dst_port);
+					break;
+				case 0: /* ignore error and continue */
+					break;
+				case 1: /* retry to send those same data */
+					goto retry_pmtud;
+					break;
+			}
 		}
 
 		break;
@@ -1174,7 +1199,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 	 */
 
 	if (msg_recv <= 0) {
-		log_err(knet_h, KNET_SUB_RX, "Error message received from recvmmsg on socket %d: %s", sockfd, strerror(savederrno));
 		knet_h->transport_ops[transport]->transport_rx_sock_error(knet_h, sockfd, msg_recv, savederrno);
 		goto exit_unlock;
 	}
