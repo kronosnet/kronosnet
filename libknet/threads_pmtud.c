@@ -338,6 +338,7 @@ void *_handle_pmtud_link_thread(void *data)
 	struct knet_link *dst_link;
 	int link_idx;
 	unsigned int min_mtu, have_mtu;
+	unsigned int lower_mtu;
 
 	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 
@@ -354,6 +355,7 @@ void *_handle_pmtud_link_thread(void *data)
 			continue;
 		}
 
+		lower_mtu = KNET_PMTUD_SIZE_V4;
 		min_mtu = KNET_PMTUD_SIZE_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 		have_mtu = 0;
 
@@ -370,13 +372,16 @@ void *_handle_pmtud_link_thread(void *data)
 
 				if (_handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu)) {
 					have_mtu = 1;
+					if (min_mtu < lower_mtu) {
+						lower_mtu = min_mtu;
+					}
 				}
 			}
 		}
 
 		if (have_mtu) {
-			if (knet_h->data_mtu != min_mtu) {
-				knet_h->data_mtu = min_mtu;
+			if (knet_h->data_mtu != lower_mtu) {
+				knet_h->data_mtu = lower_mtu;
 				log_info(knet_h, KNET_SUB_PMTUD, "Global data MTU changed to: %u", knet_h->data_mtu);
 
 				if (knet_h->pmtud_notify_fn) {
