@@ -808,7 +808,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
-static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage *address, int ind, ssize_t len)
+static void _parse_recv_from_links(knet_handle_t knet_h, struct mmsghdr *msg)
 {
 	int err = 0, savederrno = 0;
 	ssize_t outlen;
@@ -819,8 +819,10 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct sockaddr_storage
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	struct timespec recvtime;
-	struct knet_header *inbuf = knet_h->recv_from_links_buf[ind];
-	unsigned char *outbuf = (unsigned char *)knet_h->recv_from_links_buf[ind];
+	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
+	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
+	ssize_t len = msg->msg_len;
+	struct sockaddr_storage *address = msg->msg_hdr.msg_name;
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[1];
 	int8_t channel;
@@ -1224,7 +1226,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 				goto exit_unlock;
 				break;
 			case 2: /* packet is data and should be parsed as such */
-				_parse_recv_from_links(knet_h, (struct sockaddr_storage *)&msg[i].msg_hdr.msg_name, i, msg[i].msg_len);
+				_parse_recv_from_links(knet_h, &msg[i]);
 				break;
 		}
 	}
