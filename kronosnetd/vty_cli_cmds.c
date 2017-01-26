@@ -53,6 +53,7 @@
 #define CMDS_PARAM_LINK_PONG    18
 #define CMDS_PARAM_VTY_TIMEOUT  19
 #define CMDS_PARAM_PMTU_FREQ    20
+#define CMDS_PARAM_LINK_TRANSP  21
 
 /*
  * CLI helper functions - menu/node stuff starts below
@@ -198,6 +199,7 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 	int err = 0;
 	char buf[KNET_VTY_MAX_LINE];
 	int tmp;
+	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -310,6 +312,13 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 				err = -1;
 			}
 			break;
+		case CMDS_PARAM_LINK_TRANSP:
+			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
+			if (knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, buf) == KNET_MAX_TRANSPORTS) {
+				knet_vty_write(vty, "link transport is invalid%s", telnet_newline);
+				err = -1;
+			}
+			break;
 		case CMDS_PARAM_LINK_PRI:
 			tmp = param_to_int(param, paramlen);
 			if ((tmp < 0) || (tmp > 255)) {
@@ -399,6 +408,9 @@ static void describe_param(struct knet_vty *vty, const int paramtype)
 			break;
 		case CMDS_PARAM_LINK_ID:
 			knet_vty_write(vty, "LINKID - specify the link identification number (0-7)%s", telnet_newline);
+			break;
+		case CMDS_PARAM_LINK_TRANSP:
+			knet_vty_write(vty, "TRANSPORT - specify the link transport protocol (UDP/SCTP/..)%s", telnet_newline);
 			break;
 		case CMDS_PARAM_LINK_PRI:
 			knet_vty_write(vty, "PRIORITY - specify the link priority for passive switching (0 to 255, default is 0). The higher value is preferred over lower value%s", telnet_newline);
@@ -768,6 +780,7 @@ vty_param_t link_params[] = {
 	{ CMDS_PARAM_LINK_ID },
 	{ CMDS_PARAM_IP },
 	{ CMDS_PARAM_IP },
+	{ CMDS_PARAM_LINK_TRANSP },
 	{ CMDS_PARAM_NOMORE },
 };
 
@@ -968,6 +981,8 @@ static int knet_cmd_link(struct knet_vty *vty)
 	struct sockaddr_storage src_addr;
 	struct sockaddr_storage dst_addr;
 	struct sockaddr_storage *dst = NULL;
+	char transport[10];
+	uint8_t transport_id;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	vty->link_id = param_to_int(param, paramlen);
@@ -983,6 +998,11 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 	memset(dst_port, 0, sizeof(dst_port));
 	snprintf(dst_port, KNET_MAX_PORT_LEN, "%d", knet_iface->cfg_ring.base_port + knet_iface->cfg_eth.node_id);
+
+	get_param(vty, 4, &param, &paramlen, &paramoffset);
+	param_to_str(transport, sizeof(transport), param, paramlen);
+
+	transport_id = knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, transport);
 
 	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status);
 	if (!status.enabled) {
@@ -1003,7 +1023,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 			dst = &dst_addr;
 		}
 
-		knet_link_set_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, KNET_TRANSPORT_UDP, &src_addr, dst);
+		knet_link_set_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, transport_id, &src_addr, dst);
 
 		knet_link_set_ping_timers(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 1000, 5000, 2048);
 
@@ -1760,16 +1780,18 @@ static int knet_cmd_status(struct knet_vty *vty)
 			knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
 			for (i = 0; i < link_ids_entries; i++) {
 				uint8_t dynamic, transport;
+				const char *transport_name;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic)) {
+					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
 						if (dynamic) {
-							knet_vty_write(vty, "    link %s dynamic (connected: %d)%s", status.src_ipaddr, status.connected, nl);
+							knet_vty_write(vty, "    link %s dynamic (%s/connected: %d)%s", status.src_ipaddr, transport_name, status.connected, nl);
 						} else {
-							knet_vty_write(vty, "    link %s %s (connected: %d)%s", status.src_ipaddr, status.dst_ipaddr, status.connected, nl);
+							knet_vty_write(vty, "    link %s %s (%s/connected: %d)%s", status.src_ipaddr, status.dst_ipaddr, transport_name, status.connected, nl);
 						}
 						if (status.connected) {
 							knet_vty_write(vty, "      average latency: %llu us%s", status.latency, nl);
@@ -1872,10 +1894,12 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 			knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
 			for (i = 0; i < link_ids_entries; i++) {
 				uint8_t dynamic, transport;
+				const char *transport_name;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic)) {
+					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
 						uint8_t priority, pong_count;
@@ -1883,9 +1907,9 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 						time_t interval, timeout;
 
 						if (dynamic) {
-							knet_vty_write(vty, "   link %d %s dynamic%s", link_ids[i], status.src_ipaddr, nl);
+							knet_vty_write(vty, "   link %d %s dynamic %s%s", link_ids[i], status.src_ipaddr, transport_name, nl);
 						} else {
-							knet_vty_write(vty, "   link %d %s %s%s", link_ids[i], status.src_ipaddr, status.dst_ipaddr, nl);
+							knet_vty_write(vty, "   link %d %s %s %s%s", link_ids[i], status.src_ipaddr, status.dst_ipaddr, transport_name, nl);
 						}
 						knet_link_get_pong_count(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &pong_count);
 						knet_vty_write(vty, "    pong_count %u%s", pong_count, nl);
