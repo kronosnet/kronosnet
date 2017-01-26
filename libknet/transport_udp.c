@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #if defined (IP_RECVERR) || defined (IPV6_RECVERR)
 #include <linux/errqueue.h>

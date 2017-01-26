@@ -22,17 +22,19 @@
 
 static void test(void)
 {
-	struct sockaddr_storage addr;
+	struct sockaddr_storage out_addr;
+	struct sockaddr_in *out_addrv4 = (struct sockaddr_in *)&out_addr;
+	struct sockaddr_in6 *out_addrv6 = (struct sockaddr_in6 *)&out_addr;
 	struct sockaddr_in addrv4;
 	struct sockaddr_in6 addrv6;
 
-	memset(&addr, 0, sizeof(struct sockaddr_storage));
+	memset(&out_addr, 0, sizeof(struct sockaddr_storage));
 	memset(&addrv4, 0, sizeof(struct sockaddr_in));
 	memset(&addrv6, 0, sizeof(struct sockaddr_in6));
 
 	printf("Checking knet_strtoaddr with invalid host\n");
 
-	if (!knet_strtoaddr(NULL, "50000", &addr, sizeof(struct sockaddr_storage)) &&
+	if (!knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)) &&
 	    (errno != EINVAL)) {
 		printf("knet_strtoaddr accepted invalid host\n");
 		exit(FAIL);
@@ -40,7 +42,7 @@ static void test(void)
 
 	printf("Checking knet_strtoaddr with invalid port\n");
 
-	if (!knet_strtoaddr("127.0.0.1", NULL, &addr, sizeof(struct sockaddr_storage)) &&
+	if (!knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)) &&
 	    (errno != EINVAL)) {
 		printf("knet_strtoaddr accepted invalid port\n");
 		exit(FAIL);
@@ -56,7 +58,7 @@ static void test(void)
 
 	printf("Checking knet_strtoaddr with invalid size\n");
 
-	if (!knet_strtoaddr("127.0.0.1", "50000", &addr, 0) &&
+	if (!knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0) &&
 	    (errno != EINVAL)) {
 		printf("knet_strtoaddr accepted invalid size\n");
 		exit(FAIL);
@@ -68,31 +70,36 @@ static void test(void)
 
 	printf("Checking knet_strtoaddr with valid data (192.168.0.1:50000)\n");
 
-	if (knet_strtoaddr("192.168.0.1", "50000", &addr, sizeof(struct sockaddr_storage))) {
+	if (knet_strtoaddr("192.168.0.1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {
 		printf("Unable to convert 192.168.0.1:50000\n");
 		exit(FAIL);
 	}
 
-	if (memcmp(&addr, &addrv4, sizeof(struct sockaddr_in)) != 0) {
+	if (out_addrv4->sin_family != addrv4.sin_family ||
+	    out_addrv4->sin_port != addrv4.sin_port ||
+	    out_addrv4->sin_addr.s_addr != addrv4.sin_addr.s_addr) {
 		printf("Check on 192.168.0.1:50000 failed\n");
 		exit(FAIL);
 	}
 
 	printf("Checking knet_strtoaddr with valid data ([fd00::1]:50000)\n");
 
-	memset(&addr, 0, sizeof(struct sockaddr_storage));
+	memset(&out_addr, 0, sizeof(struct sockaddr_storage));
 
 	addrv6.sin6_family = AF_INET6;
 	addrv6.sin6_addr.s6_addr16[0] = htons(0xfd00); /* fd00::1 */
 	addrv6.sin6_addr.s6_addr16[7] = htons(0x0001);
 	addrv6.sin6_port = htons(50000);
 
-	if (knet_strtoaddr("fd00::1", "50000", &addr, sizeof(struct sockaddr_storage))) {
+	if (knet_strtoaddr("fd00::1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {
 		printf("Unable to convert fd00::1:50000\n");
 		exit(FAIL);
 	}
 
-	if (memcmp(&addr, &addrv6, sizeof(struct sockaddr_in6)) != 0) {
+	if (out_addrv6->sin6_family != addrv6.sin6_family ||
+	    out_addrv6->sin6_port != addrv6.sin6_port ||
+	    memcmp(&out_addrv6->sin6_addr, &addrv6.sin6_addr, sizeof(struct in6_addr))) {
+
 		printf("Check on fd00::1:50000 failed\n");
 		exit(FAIL);
 	}

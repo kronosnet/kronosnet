@@ -13,6 +13,13 @@
 #include <sys/socket.h>
 #include <stdint.h>
 
+
+/* FreeBSD has recvmmsg but it's a buggy wrapper */
+#ifdef __FreeBSD__
+#define recvmmsg COMPAT_recvmmsg
+#define sendmmsg COMPAT_sendmmsg
+#endif
+
 #ifndef HAVE_MMSGHDR
 struct mmsghdr {
 	struct msghdr msg_hdr;  /* Message header */

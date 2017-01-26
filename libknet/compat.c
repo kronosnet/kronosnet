@@ -9,6 +9,7 @@
 #include "config.h"
 
 #include <unistd.h>
+#include <errno.h>
 #include <sys/syscall.h>
 
 #include "compat.h"
@@ -63,11 +64,11 @@ extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
 	unsigned int i;
 	ssize_t ret;
 
-	if (vlan == 0) {
+	if (vlen == 0) {
 		return (0);
 	}
 
-	if (timeout != NULL || (flags && MSG_WAITFORONE)) {
+	if ((timeout != NULL) || (flags & MSG_WAITFORONE)) {
 		/*
 		 * Not implemented
 		 */
@@ -80,11 +81,14 @@ extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
 		if (ret >= 0) {
 			msgvec[i].msg_len = ret;
 		} else {
+			if (ret == -1 && errno == EAGAIN) {
+				ret = 0;
+			}
 			break ;
 		}
 	}
 
-	return ((ret >= 0) ? vlen : ret);
+	return ((ret >= 0) ? i : ret);
 #endif
 }
 #endif
