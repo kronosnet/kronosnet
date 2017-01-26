@@ -780,6 +780,8 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	sctp_accepted_link_info_t *accept_info;
 	sctp_listen_link_info_t *info;
+	struct knet_host *host;
+	int link_idx;
 	int i;
 
 	if (recv(handle_info->listensockfd[0], &sockfd, sizeof(int), MSG_DONTWAIT | MSG_NOSIGNAL) != sizeof(int)) {
@@ -796,6 +798,25 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 
 	accept_info = knet_h->knet_transport_fd_tracker[sockfd].data;
 	info = accept_info->link_info;
+
+	/*
+	 * clear all links using this accepted socket as
+	 * outbound dynamically connected socket
+	 */
+
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+			if ((host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
+			    (host->link[link_idx].outsock == sockfd)) {
+				log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Found dynamic connection on host %d link %d (%d)",
+					  host->host_id, link_idx, sockfd);
+				host->link[link_idx].status.dynconnected = 0;
+				host->link[link_idx].transport_connected = 0;
+				host->link[link_idx].outsock = 0;
+				memset(&host->link[link_idx].dst_addr, 0, sizeof(struct sockaddr_storage));
+			}
+		}
+	}
 
 	for (i=0; i<MAX_ACCEPTED_SOCKS; i++) {
 		if (sockfd == info->accepted_socks[i]) {
@@ -1078,15 +1099,16 @@ static int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link
 		goto exit_error;
 	}
 
-	if (_create_connect_socket(knet_h, link) < 0) {
-		savederrno = errno;
-		err = -1;
-		goto exit_error;
+	if (link->dynamic == KNET_LINK_STATIC) {
+		if (_create_connect_socket(knet_h, link) < 0) {
+			savederrno = errno;
+			err = -1;
+			goto exit_error;
+		}
+		link->outsock = info->connect_sock;
 	}
 
 	knet_list_add(&info->list, &handle_info->connect_links_list);
-
-	link->outsock = info->connect_sock;
 
 exit_error:
 	if (err) {
@@ -1107,7 +1129,6 @@ exit_error:
 
 /*
  * called with global wrlock
- * FIX exit path error handling
  */
 static int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *link)
 {
@@ -1361,6 +1382,14 @@ exit_fail:
 	return err;
 }
 
+static int sctp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
+{
+	kn_link->outsock = sockfd;
+	kn_link->status.dynconnected = 1;
+	kn_link->transport_connected = 1;
+	return 0;
+}
+
 static knet_transport_ops_t sctp_transport_ops = {
 	.transport_name = "SCTP",
 	.transport_id = KNET_TRANSPORT_SCTP,
@@ -1369,6 +1398,7 @@ static knet_transport_ops_t sctp_transport_ops = {
 	.transport_free = sctp_transport_free,
 	.transport_link_set_config = sctp_transport_link_set_config,
 	.transport_link_clear_config = sctp_transport_link_clear_config,
+	.transport_link_dyn_connect = sctp_transport_link_dyn_connect,
 	.transport_rx_sock_error = sctp_transport_rx_sock_error,
 	.transport_tx_sock_error = sctp_transport_tx_sock_error,
 	.transport_rx_is_data = sctp_transport_rx_is_data,

@@ -8,8 +8,6 @@ link/host level:
            specially on clear_config, to not leak and better clean
            in case of errors
  - (issue) improve test suite to cover for all transports (needs transport list API)
- - (issue) SCTP support for dynamic links (aka no dst_address)
-           this one needs plumbing inside RX thread and transport.
  - (issue) change knet_bench to allow protocol specification per link
  - (issue) review memory locking across
  - (issue) simplify handling of DATA and HOSTINFO code paths in send/recv code

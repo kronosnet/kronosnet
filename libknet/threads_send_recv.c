@@ -28,6 +28,7 @@
 #include "transports.h"
 #include "threads_common.h"
 #include "threads_send_recv.h"
+#include "netutils.h"
 
 /*
  * SEND
@@ -808,7 +809,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
-static void _parse_recv_from_links(knet_handle_t knet_h, struct mmsghdr *msg)
+static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct mmsghdr *msg)
 {
 	int err = 0, savederrno = 0;
 	ssize_t outlen;
@@ -822,10 +823,10 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct mmsghdr *msg)
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
 	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
 	ssize_t len = msg->msg_len;
-	struct sockaddr_storage *address = msg->msg_hdr.msg_name;
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[1];
 	int8_t channel;
+	struct sockaddr_storage pckt_src;
 
 	if (knet_h->crypto_instance) {
 		if (crypto_authenticate_and_decrypt(knet_h,
@@ -863,19 +864,35 @@ static void _parse_recv_from_links(knet_handle_t knet_h, struct mmsghdr *msg)
 		src_link = src_host->link +
 				(inbuf->khp_ping_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
-			if (memcmp(&src_link->dst_addr, address, sizeof(struct sockaddr_storage)) != 0) {
+			/*
+			 * cpyaddrport will only copy address and port of the incoming
+			 * packet and strip extra bits such as flow and scopeid
+			 */
+			cpyaddrport(&pckt_src, msg->msg_hdr.msg_name);
+
+			if (cmpaddr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
+				    &pckt_src, sockaddr_len(&pckt_src)) != 0) {
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
-				memmove(&src_link->dst_addr, address, sizeof(struct sockaddr_storage));
-				if (knet_addrtostr(&src_link->dst_addr, sizeof(struct sockaddr_storage),
+				memmove(&src_link->dst_addr, &pckt_src, sizeof(struct sockaddr_storage));
+				if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(msg->msg_hdr.msg_name),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 						src_link->status.dst_port, KNET_MAX_PORT_LEN) != 0) {
 					log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
 					snprintf(src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
 					snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
+				} else {
+					log_info(knet_h, KNET_SUB_RX,
+						 "host: %u link: %u new connection established from: %s %s",
+						 src_host->host_id, src_link->link_id,
+						 src_link->status.dst_ipaddr, src_link->status.dst_port);
 				}
 			}
-			src_link->status.dynconnected = 1;
+			/*
+			 * transport has already accepted the connection here
+			 * otherwise we would not be receiving packets
+			 */
+			knet_h->transport_ops[src_link->transport_type]->transport_link_dyn_connect(knet_h, sockfd, src_link);
 		}
 	}
 
@@ -1173,6 +1190,15 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 
 	transport = knet_h->knet_transport_fd_tracker[sockfd].transport;
 
+	/*
+	 * reset msg_namelen to buffer size because after recvmmsg
+	 * each msg_namelen will contain sizeof sockaddr_in or sockaddr_in6
+	 */
+
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+	}
+
 	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 	savederrno = errno;
 
@@ -1226,7 +1252,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 				goto exit_unlock;
 				break;
 			case 2: /* packet is data and should be parsed as such */
-				_parse_recv_from_links(knet_h, &msg[i]);
+				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
 		}
 	}
@@ -1244,7 +1270,7 @@ void *_handle_recv_from_links_thread(void *data)
 	struct mmsghdr msg[PCKT_FRAG_MAX];
 	struct iovec iov_in[PCKT_FRAG_MAX];
 
-	memset(&msg, 0, sizeof(struct mmsghdr));
+	memset(&msg, 0, sizeof(msg));
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];

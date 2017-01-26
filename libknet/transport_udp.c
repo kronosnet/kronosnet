@@ -378,6 +378,12 @@ static int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mms
 	return 2;
 }
 
+static int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
+{
+	kn_link->status.dynconnected = 1;
+	return 0;
+}
+
 static knet_transport_ops_t udp_transport_ops = {
 	.transport_name = "UDP",
 	.transport_id = KNET_TRANSPORT_UDP,
@@ -386,6 +392,7 @@ static knet_transport_ops_t udp_transport_ops = {
 	.transport_free = udp_transport_free,
 	.transport_link_set_config = udp_transport_link_set_config,
 	.transport_link_clear_config = udp_transport_link_clear_config,
+	.transport_link_dyn_connect = udp_transport_link_dyn_connect,
 	.transport_rx_sock_error = udp_transport_rx_sock_error,
 	.transport_tx_sock_error = udp_transport_tx_sock_error,
 	.transport_rx_is_data = udp_transport_rx_is_data,

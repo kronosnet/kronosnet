@@ -247,6 +247,12 @@ typedef struct knet_transport_ops {
 	int (*transport_link_clear_config)(knet_handle_t knet_h, struct knet_link *link);
 
 /*
+ * transport callback for incoming dynamic connections
+ * this is called in global read lock context
+ */
+	int (*transport_link_dyn_connect)(knet_handle_t knet_h, int sockfd, struct knet_link *link);
+
+/*
  * per transport error handling of recvmmsg
  * (see _handle_recv_from_links comments for details)
  */
