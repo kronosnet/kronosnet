@@ -46,27 +46,6 @@ static int _init_locks(knet_handle_t knet_h)
 
 	knet_h->lock_init_done = 1;
 
-	savederrno = pthread_rwlock_init(&knet_h->host_rwlock, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host rwlock: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	savederrno = pthread_mutex_init(&knet_h->host_mutex, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host mutex: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	savederrno = pthread_cond_init(&knet_h->host_cond, NULL);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize host conditional mutex: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
 	savederrno = pthread_mutex_init(&knet_h->pmtud_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud mutex: %s",
@@ -99,9 +78,6 @@ static void _destroy_locks(knet_handle_t knet_h)
 {
 	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
-	pthread_rwlock_destroy(&knet_h->host_rwlock);
-	pthread_mutex_destroy(&knet_h->host_mutex);
-	pthread_cond_destroy(&knet_h->host_cond);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
 	pthread_cond_destroy(&knet_h->pmtud_cond);
 	pthread_mutex_destroy(&knet_h->tx_mutex);
@@ -479,10 +455,6 @@ static void _stop_threads(knet_handle_t knet_h)
 	 */
 
 	sleep(1);
-
-	pthread_mutex_lock(&knet_h->host_mutex);
-	pthread_cond_signal(&knet_h->host_cond);
-	pthread_mutex_unlock(&knet_h->host_mutex);
 
 	if (knet_h->heartbt_thread) {
 		pthread_cancel(knet_h->heartbt_thread);

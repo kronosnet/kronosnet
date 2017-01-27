@@ -390,13 +390,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	}
 
 out_unlock:
-	if ((inlen > 0) && (inbuf->kh_type == KNET_HEADER_TYPE_HOST_INFO)) {
-		if (pthread_mutex_lock(&knet_h->host_mutex) != 0)
-			log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
-		pthread_cond_signal(&knet_h->host_cond);
-		pthread_mutex_unlock(&knet_h->host_mutex);
-	}
-
 	errno = savederrno;
 	return err;
 }
@@ -477,7 +470,6 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	struct iovec iov_in;
 	int msg_recv, i;
 	int savederrno = 0, docallback = 0;
-	int unlock_host_thread = 1;
 
 	if ((channel >= 0) &&
 	    (channel < KNET_DATAFD_MAX) &&
@@ -497,7 +489,6 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		msg_recv = 1;
 		knet_h->recv_from_sock_buf[0]->kh_type = type;
 		_parse_recv_from_sock(knet_h, 0, inlen, channel, 0);
-		unlock_host_thread = 0;
 	} else {
 		msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 		if (msg_recv < 0) {
@@ -516,17 +507,10 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 			}
 			knet_h->recv_from_sock_buf[i]->kh_type = type;
 			_parse_recv_from_sock(knet_h, i, inlen, channel, 0);
-			unlock_host_thread = 0;
 		}
 	}
 
 out:
-	if ((type == KNET_HEADER_TYPE_HOST_INFO) && (unlock_host_thread)) {
-		pthread_mutex_lock(&knet_h->host_mutex);
-		pthread_cond_signal(&knet_h->host_cond);
-		pthread_mutex_unlock(&knet_h->host_mutex);
-	}
-
 	if (inlen < 0) {
 		struct epoll_event ev;
 
@@ -608,11 +592,6 @@ void *_handle_send_to_links_thread(void *data)
 			}
 			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
-				if (type == KNET_HEADER_TYPE_HOST_INFO) {
-					pthread_mutex_lock(&knet_h->host_mutex);
-					pthread_cond_signal(&knet_h->host_cond);
-					pthread_mutex_unlock(&knet_h->host_mutex);
-				}
 				continue;
 			}
 			_handle_send_to_links(knet_h, events[i].data.fd, channel, msg, type);

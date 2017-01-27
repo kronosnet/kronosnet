@@ -525,34 +525,14 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
 {
-	/*
-	 * access here is protected by calling functions
-	 */
 	if (knet_h->fini_in_progress) {
 		return 0;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->host_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "Unable to get write lock");
-		return -1;
-	}
-
-	if (pthread_mutex_lock(&knet_h->host_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_HOST, "Unable to get mutex lock");
-		pthread_rwlock_unlock(&knet_h->host_rwlock);
-		return -1;
-	}
-
 	if (sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != datalen) {
 		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
-		pthread_mutex_unlock(&knet_h->host_mutex);
-		pthread_rwlock_unlock(&knet_h->host_rwlock);
 		return -1;
 	}
-
-	pthread_cond_wait(&knet_h->host_cond, &knet_h->host_mutex);
-	pthread_mutex_unlock(&knet_h->host_mutex);
-	pthread_rwlock_unlock(&knet_h->host_rwlock);
 
 	return 0;
 }

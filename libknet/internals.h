@@ -160,9 +160,6 @@ struct knet_handle {
 	pthread_t pmtud_link_handler_thread;
 	int lock_init_done;
 	pthread_rwlock_t global_rwlock;		/* global config lock */
-	pthread_rwlock_t host_rwlock;		/* send_host_info lock, can switch to mutex? */
-	pthread_mutex_t host_mutex;		/* host mutex for cond wait on pckt send, switch to mutex/sync_send ? */
-	pthread_cond_t host_cond;		/* conditional for above */
 	pthread_mutex_t pmtud_mutex;		/* pmtud mutex to handle conditional send/recv + timeout */
 	pthread_cond_t pmtud_cond;		/* conditional for above */
 	pthread_mutex_t tx_mutex;
