@@ -4,6 +4,11 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) investigate sock_notify_fn in thread_send_recv.c data delivery to app
+           to better handle socket failures. In some cases we need/want to retry
+           delivering to the application (sock overload?) and others the app
+           need to close/remove the socket. I don't think we can automatically
+           do the right thing without asking the app (sock_notify return code).
  - (issue) transports: review all error handling code failures,
            specially on clear_config, to not leak and better clean
            in case of errors
