@@ -285,7 +285,26 @@ exit_error:
 
 static int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
+	sctp_connect_link_info_t *connect_info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	sctp_accepted_link_info_t *accepted_info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	sctp_listen_link_info_t *listen_info;
+
 	if (recv_err < 0) {
+		switch (knet_h->knet_transport_fd_tracker[sockfd].data_type) {
+			case SCTP_CONNECT_LINK_INFO:
+				if (connect_info->link->transport_connected == 0) {
+					return -1;
+				}
+				break;
+			case SCTP_ACCEPTED_LINK_INFO:
+				listen_info = accepted_info->link_info;
+				if (listen_info->listen_sock != sockfd) {
+					if (listen_info->on_rx_epoll == 0) {
+						return -1;
+					}
+				}
+				break;
+		}
 		if (recv_errno == EAGAIN) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 			usleep(KNET_THREADS_TIMERES * 4);
