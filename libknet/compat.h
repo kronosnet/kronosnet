@@ -18,6 +18,8 @@
 #ifdef __FreeBSD__
 #define recvmmsg COMPAT_recvmmsg
 #define sendmmsg COMPAT_sendmmsg
+#undef HAVE_RECVMMSG
+#undef HAVE_SENDMMSG
 #endif
 
 #ifndef HAVE_MMSGHDR
