@@ -70,6 +70,11 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
+AC_ARG_ENABLE([poc],
+        [  --enable-poc                      : build poc code ],,
+        [ enable_poc="yes" ])
+AM_CONDITIONAL([BUILD_POC], test x$enable_poc = xyes)
+
 AC_ARG_ENABLE([kronosnetd],
         [  --enable-kronosnetd               : Kronosnetd support ],,
         [ enable_kronosnetd="no" ])
