@@ -53,7 +53,7 @@ BuildRequires: libqb-devel pam-devel
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
-%{configure} \
+%{configure} --disable-poc \
 %if %{defined buildkronosnetd}
 	--enable-kronosnetd \
 %endif
