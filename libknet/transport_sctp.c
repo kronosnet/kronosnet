@@ -403,8 +403,13 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
 			}
 			break;
 		default:
+			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Received unknown notification? %d", sockfd);
 			break;
 	}
+	/*
+	 * Under RX pressure we need to give time to IPC to pick up the message
+	 */
+	usleep(KNET_THREADS_TIMERES / 2);
 	return 0;
 }
 
