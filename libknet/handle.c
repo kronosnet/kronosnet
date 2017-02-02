@@ -27,7 +27,8 @@
 #include "threads_heartbeat.h"
 #include "threads_pmtud.h"
 #include "threads_dsthandler.h"
-#include "threads_send_recv.h"
+#include "threads_rx.h"
+#include "threads_tx.h"
 #include "transports.h"
 #include "logging.h"
 
