@@ -4,6 +4,8 @@ distro/packaging:
            https://bugzilla.redhat.com/show_bug.cgi?id=893015
 
 link/host level:
+ - (issue) review RX thread error code related to guaranteed delivery
+           (for ex when using SCTP)
  - (issue) investigate sock_notify_fn in thread_send_recv.c data delivery to app
            to better handle socket failures. In some cases we need/want to retry
            delivering to the application (sock overload?) and others the app
@@ -24,6 +26,7 @@ link/host level:
  - (issue) standardize exit labels (ex out_unlock / exit_unlock) and variable/function
            names.
  - (issue) review how TX onwire pckt info are filled in between inbuf/socket/frags
+ - (rfe)   continue improving multinode TX code
  - (rfe)   add fd_tracker error exit check and perhaps use it for local sockets too
            to make it easier to identify leaks and fd abuse
  - (rfe)   link status callback notification

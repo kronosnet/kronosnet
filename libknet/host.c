@@ -400,6 +400,8 @@ int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
 			  host_id, strerror(savederrno));
 	}
 
+	log_debug(knet_h, KNET_SUB_HOST, "Host %u has new switching policy: %u", host_id, policy);
+
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
@@ -537,28 +539,35 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 	return 0;
 }
 
+static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
+{
+	int i;
+
+	memset(host->circular_buffer, 0, KNET_CBUFFER_SIZE);
+	host->rx_seq_num = rx_seq_num;
+
+	memset(host->circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
+
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		memset(&host->defrag_buf[i], 0, sizeof(struct knet_host_defrag_buf));
+	}
+}
+
 /*
  * check if a given packet seq num is in the circular buffers
- * bcast = 0 -> unicast packet | 1 -> broadcast|mcast
  * defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup
  */
 
-int _seq_num_lookup(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf)
+int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf)
 {
 	size_t i, j; /* circular buffer indexes */
 	seq_num_t seq_dist;
-	char *dst_cbuf = NULL;
-	char *dst_cbuf_defrag = NULL;
-	seq_num_t *dst_seq_num;
+	char *dst_cbuf = host->circular_buffer;
+	char *dst_cbuf_defrag = host->circular_buffer_defrag;
+	seq_num_t *dst_seq_num = &host->rx_seq_num;
 
-	if (bcast) {
-		dst_cbuf = host->bcast_circular_buffer;
-		dst_cbuf_defrag = host->bcast_circular_buffer_defrag;
-		dst_seq_num = &host->bcast_seq_num_rx;
-	} else {
-		dst_cbuf = host->ucast_circular_buffer;
-		dst_cbuf_defrag = host->ucast_circular_buffer_defrag;
-		dst_seq_num = &host->ucast_seq_num_rx;
+	if (clear_buf) {
+		_clear_cbuffers(host, seq_num);
 	}
 
 	if (seq_num < *dst_seq_num) {
@@ -599,20 +608,12 @@ int _seq_num_lookup(struct knet_host *host, int bcast, seq_num_t seq_num, int de
 	return 1;
 }
 
-void _seq_num_set(struct knet_host *host, int bcast, seq_num_t seq_num, int defrag_buf)
+void _seq_num_set(struct knet_host *host, seq_num_t seq_num, int defrag_buf)
 {
 	if (!defrag_buf) { 
-		if (bcast) {
-			host->bcast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
-		} else {
-			host->ucast_circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
-		}
+		host->circular_buffer[seq_num % KNET_CBUFFER_SIZE] = 1;
 	} else {
-		if (bcast) {
-			host->bcast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
-		} else {
-			host->ucast_circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
-		}
+		host->circular_buffer_defrag[seq_num % KNET_CBUFFER_SIZE] = 1;
 	}
 
 	return;
@@ -634,31 +635,10 @@ int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host)
 	return 0;
 }
 
-static void _clear_cbuffers(struct knet_host *host)
-{
-	int i;
-
-	memset(host->bcast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-	memset(host->ucast_circular_buffer, 0, KNET_CBUFFER_SIZE);
-	host->bcast_seq_num_rx = 0;
-	host->ucast_seq_num_rx = 0;
-
-	memset(host->bcast_circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
-	memset(host->ucast_circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
-
-	for (i = 0; i < KNET_MAX_LINK; i++) {
-		memset(&host->defrag_buf[i], 0, sizeof(struct knet_host_defrag_buf));
-	}
-}
-
 int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 {
 	int link_idx;
 	int best_priority = -1;
-	int send_link_idx = 0;
-	uint8_t send_link_status[KNET_MAX_LINK];
-	int clear_cbuffer = 0;
-	int host_has_remote = 0;
 	int reachable = 0;
 
 	host->active_link_entries = 0;
@@ -666,24 +646,10 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (host->link[link_idx].status.enabled != 1) /* link is not enabled */
 			continue;
-		if (host->link[link_idx].remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) /* track if remote is connected */
-			host_has_remote = 1;
 		if (host->link[link_idx].status.connected != 1) /* link is not enabled */
 			continue;
 		if (host->link[link_idx].has_valid_mtu != 1) /* link does not have valid MTU */
 			continue;
-
-		if ((!host->link[link_idx].host_info_up_sent) &&
-		    (!host->link[link_idx].donnotremoteupdate)) {
-			send_link_status[send_link_idx] = link_idx;
-			send_link_idx++;
-			/*
-			 * detect node coming back to life and reset the buffers
-			 */
-			if (host->link[link_idx].remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) {
-				clear_cbuffer = 1;
-			}
-		}
 
 		if (host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
 			/* for passive we look for the only active link with higher priority */
@@ -709,37 +675,10 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */
-	if ((!host->active_link_entries) || (clear_cbuffer) || (!host_has_remote)) {
-		if (!host_has_remote) {
-			log_debug(knet_h, KNET_SUB_HOST, "host: %u has no active remote links", host->host_id);
-		}
-		if (!host->active_link_entries) {
-			log_warn(knet_h, KNET_SUB_HOST, "host: %u has no active links", host->host_id);
-		}
-		if (clear_cbuffer) {
-			log_debug(knet_h, KNET_SUB_HOST, "host: %u is coming back to life", host->host_id);
-		}
-		_clear_cbuffers(host);
-	}
-
-	if (send_link_idx) {
-		int i;
-		struct knet_hostinfo knet_hostinfo;
-
-		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
-		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
-		knet_hostinfo.khi_dst_node_id = host->host_id;
-		knet_hostinfo.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_UP;
-
-		for (i=0; i < send_link_idx; i++) {
-			knet_hostinfo.khip_link_status_link_id = send_link_status[i];
-			_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
-			host->link[send_link_status[i]].host_info_up_sent = 1;
-			host->link[send_link_status[i]].donnotremoteupdate = 0;
-		}
-	}
-
-	if (host->active_link_entries) {
+	if (!host->active_link_entries) {
+		log_warn(knet_h, KNET_SUB_HOST, "host: %u has no active links", host->host_id);
+		_clear_cbuffers(host, 0);
+	} else {
 		reachable = 1;
 	}
 

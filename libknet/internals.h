@@ -52,9 +52,6 @@ struct knet_link {
 	int outsock;
 	unsigned int configured:1;		/* set to 1 if src/dst have been configured transport initialized on this link*/
 	unsigned int transport_connected:1;	/* set to 1 if lower level transport is connected */
-	unsigned int remoteconnected:1;		/* link is enabled for data (peer view) */
-	unsigned int donnotremoteupdate:1;	/* define source of the update */
-	unsigned int host_info_up_sent:1;	/* 0 if we need to notify remote that link is up */
 	unsigned int latency_exp;
 	uint8_t received_pong;
 	struct timespec ping_last;
@@ -72,7 +69,7 @@ struct knet_link {
 #define KNET_CBUFFER_SIZE 4096
 
 struct knet_host_defrag_buf {
-	char buf[KNET_MAX_PACKET_SIZE];
+	char buf[KNET_DATABUFSIZE];
 	uint8_t in_use;			/* 0 buffer is free, 1 is in use */
 	seq_num_t pckt_seq;		/* identify the pckt we are receiving */
 	uint8_t frag_recv;		/* how many frags did we receive */
@@ -92,15 +89,14 @@ struct knet_host {
 	/* status */
 	struct knet_host_status status;
 	/* internals */
-	char bcast_circular_buffer[KNET_CBUFFER_SIZE];
-	seq_num_t bcast_seq_num_rx;
-	char ucast_circular_buffer[KNET_CBUFFER_SIZE];
-	seq_num_t ucast_seq_num_tx;
-	seq_num_t ucast_seq_num_rx;
-	/* defrag/(reassembly buffers */
+	char circular_buffer[KNET_CBUFFER_SIZE];
+	seq_num_t rx_seq_num;
+	seq_num_t untimed_rx_seq_num;
+	seq_num_t timed_rx_seq_num;
+	uint8_t got_data;
+	/* defrag/reassembly buffers */
 	struct knet_host_defrag_buf defrag_buf[KNET_MAX_LINK];
-	char bcast_circular_buffer_defrag[KNET_CBUFFER_SIZE];
-	char ucast_circular_buffer_defrag[KNET_CBUFFER_SIZE];
+	char circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
 	uint8_t active_link_entries;
@@ -162,7 +158,8 @@ struct knet_handle {
 	pthread_rwlock_t global_rwlock;		/* global config lock */
 	pthread_mutex_t pmtud_mutex;		/* pmtud mutex to handle conditional send/recv + timeout */
 	pthread_cond_t pmtud_cond;		/* conditional for above */
-	pthread_mutex_t tx_mutex;
+	pthread_mutex_t tx_mutex;		/* used to protect knet_send_sync and TX thread */
+	pthread_mutex_t hb_mutex;		/* used to protect heartbeat thread and seq_num broadcasting */
 	struct crypto_instance *crypto_instance;
 	uint16_t sec_header_size;
 	uint16_t sec_block_size;
@@ -173,7 +170,8 @@ struct knet_handle {
 	unsigned char *recv_from_links_buf_decrypt;
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;
-	seq_num_t bcast_seq_num_tx;
+	seq_num_t tx_seq_num;
+	pthread_mutex_t tx_seq_num_mutex;
 	void *dst_host_filter_fn_private_data;
 	int (*dst_host_filter_fn) (
 		void *private_data,

@@ -33,7 +33,7 @@ static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct 
 	}
 }
 
-static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
+static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, int timed)
 {
 	int err = 0, savederrno = 0;
 	int len;
@@ -57,9 +57,16 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
-	if (diff_ping >= (dst_link->ping_interval * 1000llu)) {
+	if ((diff_ping >= (dst_link->ping_interval * 1000llu)) || (!timed)) {
 		memmove(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
 		knet_h->pingbuf->khp_ping_link = dst_link->link_id;
+		if (pthread_mutex_lock(&knet_h->tx_seq_num_mutex)) {
+			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get seq mutex lock");
+			return;
+		}
+		knet_h->pingbuf->khp_ping_seq_num = htons(knet_h->tx_seq_num);
+		pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
+		knet_h->pingbuf->khp_ping_timed = timed;
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -109,11 +116,33 @@ retry:
 	}
 }
 
+void _send_pings(knet_handle_t knet_h, int timed)
+{
+	struct knet_host *dst_host;
+	int link_idx;
+
+	if (pthread_mutex_lock(&knet_h->hb_mutex)) {
+		log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get hb mutex lock");
+		return;
+	}
+
+	for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+			if ((dst_host->link[link_idx].status.enabled != 1) ||
+			    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
+			     (dst_host->link[link_idx].status.dynconnected != 1)))
+				continue;
+
+			_handle_check_each(knet_h, dst_host, &dst_host->link[link_idx], timed);
+		}
+	}
+
+	pthread_mutex_unlock(&knet_h->hb_mutex);
+}
+
 void *_handle_heartbt_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
-	struct knet_host *dst_host;
-	int link_idx;
 
 	/* preparing ping buffer */
 	knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
@@ -128,15 +157,7 @@ void *_handle_heartbt_thread(void *data)
 			continue;
 		}
 
-		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-				if ((dst_host->link[link_idx].status.enabled != 1) ||
-				    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
-				     (dst_host->link[link_idx].status.dynconnected != 1)))
-					continue;
-				_handle_check_each(knet_h, dst_host, &dst_host->link[link_idx]);
-			}
-		}
+		_send_pings(knet_h, 1);
 
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}

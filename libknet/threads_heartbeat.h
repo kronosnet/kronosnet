@@ -10,6 +10,7 @@
 #ifndef __THREADS_HEARTBEAT_H__
 #define __THREADS_HEARTBEAT_H__
 
+void _send_pings(knet_handle_t knet_h, int timed);
 void *_handle_heartbt_thread(void *data);
 
 #endif

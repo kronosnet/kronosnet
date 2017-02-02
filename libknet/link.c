@@ -32,7 +32,7 @@ int _link_updown(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id,
 	link->status.enabled = enabled;
 	link->status.connected = connected;
 
-	_host_dstcache_update_sync(knet_h, knet_h->host_index[host_id]);
+	_host_dstcache_update_async(knet_h, knet_h->host_index[host_id]);
 
 	if ((link->status.dynconnected) &&
 	    (!link->status.connected))
@@ -361,15 +361,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		return -1;
 	}
 
-	/*
-	 * this read lock might appear as an API violation, but be
-	 * very careful because we cannot use a write lock (yet).
-	 * the _send_host_info requires threads to be operational.
-	 * a write lock here would deadlock.
-	 * a read lock is sufficient as all functions invoked by
-	 * this code are already thread safe.
-	 */
-	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -401,17 +393,6 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 		goto exit_unlock;
 	}
 
-	if (!enabled) {
-		struct knet_hostinfo knet_hostinfo;
-
-		knet_hostinfo.khi_type = KNET_HOSTINFO_TYPE_LINK_UP_DOWN;
-		knet_hostinfo.khi_bcast = KNET_HOSTINFO_UCAST;
-		knet_hostinfo.khi_dst_node_id = host_id;
-		knet_hostinfo.khip_link_status_link_id = link_id;
-		knet_hostinfo.khip_link_status_status = KNET_HOSTINFO_LINK_STATUS_DOWN;
-		_send_host_info(knet_h, &knet_hostinfo, KNET_HOSTINFO_LINK_STATUS_SIZE);
-	}
-
 	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected);
 	savederrno = errno;
 
@@ -421,7 +402,6 @@ int knet_link_set_enable(knet_handle_t knet_h, uint16_t host_id, uint8_t link_id
 
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is disabled",
 		  host_id, link_id);
-	link->host_info_up_sent = 0;
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
@@ -802,7 +782,7 @@ int knet_link_set_priority(knet_handle_t knet_h, uint16_t host_id, uint8_t link_
 
 	link->priority = priority;
 
-	if (_host_dstcache_update_async(knet_h, host)) {
+	if (_host_dstcache_update_sync(knet_h, host)) {
 		savederrno = errno;
 		log_debug(knet_h, KNET_SUB_LINK,
 			  "Unable to update link priority (host: %u link: %u priority: %u): %s",

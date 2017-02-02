@@ -69,7 +69,7 @@ union knet_hostinfo_payload {
  * host info exchange
  */
 
-#define KNET_HOSTINFO_TYPE_LINK_UP_DOWN 0
+#define KNET_HOSTINFO_TYPE_LINK_UP_DOWN 0 // UNUSED
 #define KNET_HOSTINFO_TYPE_LINK_TABLE   1 // NOT IMPLEMENTED
 
 #define KNET_HOSTINFO_UCAST 0	/* send info to a specific host */
@@ -110,6 +110,8 @@ struct knet_header_payload_data {
 struct knet_header_payload_ping {
 	uint8_t		khp_ping_link;		/* source link id */
 	uint32_t	khp_ping_time[4];	/* ping timestamp */
+	seq_num_t	khp_ping_seq_num;	/* transport host seq_num */
+	uint8_t		khp_ping_timed;		/* timed pinged (1) or forced by seq_num (0) */
 }  __attribute__((packed));
 
 /* taken from tracepath6 */
@@ -177,6 +179,8 @@ struct knet_header {
 
 #define khp_ping_link     kh_payload.khp_ping.khp_ping_link
 #define khp_ping_time     kh_payload.khp_ping.khp_ping_time
+#define khp_ping_seq_num  kh_payload.khp_ping.khp_ping_seq_num
+#define khp_ping_timed    kh_payload.khp_ping.khp_ping_timed
 
 #define khp_pmtud_link    kh_payload.khp_pmtud.khp_pmtud_link
 #define khp_pmtud_size    kh_payload.khp_pmtud.khp_pmtud_size

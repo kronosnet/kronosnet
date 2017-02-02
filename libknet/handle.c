@@ -60,9 +60,23 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->hb_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize hb_thread mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_mutex_init(&knet_h->tx_mutex, NULL);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize tx_thread  mutex: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize tx_thread mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	savederrno = pthread_mutex_init(&knet_h->tx_seq_num_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize tx_seq_num_mutex mutex: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
@@ -80,7 +94,9 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
 	pthread_cond_destroy(&knet_h->pmtud_cond);
+	pthread_mutex_destroy(&knet_h->hb_mutex);
 	pthread_mutex_destroy(&knet_h->tx_mutex);
+	pthread_mutex_destroy(&knet_h->tx_seq_num_mutex);
 }
 
 static int _init_socks(knet_handle_t knet_h)

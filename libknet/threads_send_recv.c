@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "transports.h"
 #include "threads_common.h"
+#include "threads_heartbeat.h"
 #include "threads_send_recv.h"
 #include "netutils.h"
 
@@ -135,6 +136,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	struct knet_header *inbuf;
 	int savederrno = 0;
 	int err = 0;
+	seq_num_t tx_seq_num;
 
 	inbuf = knet_h->recv_from_sock_buf[buf_idx];
 
@@ -274,6 +276,41 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	inbuf->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
 	inbuf->khp_data_channel = channel;
 
+	if (pthread_mutex_lock(&knet_h->tx_seq_num_mutex)) {
+		log_debug(knet_h, KNET_SUB_TX, "Unable to get seq mutex lock");
+		goto out_unlock;
+	}
+	knet_h->tx_seq_num++;
+	/*
+	 * force seq_num 0 to detect a node that has crashed and rejoining
+	 * the knet instance. seq_num 0 will clear the buffers in the RX
+	 * thread
+	 */
+	if (knet_h->tx_seq_num == 0) {
+		knet_h->tx_seq_num++;
+	}
+	/*
+	 * cache the value in locked context
+	 */
+	tx_seq_num = knet_h->tx_seq_num;
+	knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(knet_h->tx_seq_num);
+	pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
+
+	/*
+	 * forcefully broadcast a ping to all nodes every SEQ_MAX / 8
+	 * pckts.
+	 * this solves 2 problems:
+	 * 1) on TX socket overloads we generate extra pings to keep links alive
+	 * 2) in 3+ nodes setup, where all the traffic is flowing between node 1 and 2,
+	 *    node 3+ will be able to keep in sync on the TX seq_num even without
+	 *    receiving traffic or pings in betweens. This avoids issues with
+	 *    rollover of the circular buffer
+	 */
+
+	if (tx_seq_num % (SEQ_MAX / 8) == 0) {
+		_send_pings(knet_h, 0);
+	}
+
 	while (frag_idx < inbuf->khp_data_frag_num) {
 		/*
 		 * set the iov_base
@@ -294,6 +331,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		 */
 		knet_h->send_to_links_buf[frag_idx]->kh_type = inbuf->kh_type;
 
+		knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = knet_h->send_to_links_buf[0]->khp_data_seq_num;
 		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = inbuf->khp_data_frag_num;
 		knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = inbuf->khp_data_bcast;
 		knet_h->send_to_links_buf[frag_idx]->khp_data_channel = inbuf->khp_data_channel;
@@ -303,80 +341,40 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			iov_out[frag_idx].iov_len - KNET_HEADER_DATA_SIZE);
 
 		frag_len = frag_len - temp_data_mtu;
-
 		frag_idx++;
 	}
 
-	if (!bcast) {
-
-		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
-
-			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
-
-			knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(++dst_host->ucast_seq_num_tx);
-
-			frag_idx = 0;
-
-			while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
-
-				knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = knet_h->send_to_links_buf[0]->khp_data_seq_num;
-
-				if (knet_h->crypto_instance) {
-					if (crypto_encrypt_and_sign(
-							knet_h,
-							(const unsigned char *)knet_h->send_to_links_buf[frag_idx],
-							iov_out[frag_idx].iov_len,
-							knet_h->send_to_links_buf_crypt[frag_idx],
-							&outlen) < 0) {
-						log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt unicast packet");
-						savederrno = ECHILD;
-						err = -1;
-						goto out_unlock;
-					}
-					iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
-					iov_out[frag_idx].iov_len = outlen;
-				}
-
-				frag_idx++;
+	if (knet_h->crypto_instance) {
+		frag_idx = 0;
+		while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+			if (crypto_encrypt_and_sign(
+					knet_h,
+					(const unsigned char *)knet_h->send_to_links_buf[frag_idx],
+					iov_out[frag_idx].iov_len,
+					knet_h->send_to_links_buf_crypt[frag_idx],
+					&outlen) < 0) {
+				log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt unicast packet");
+				savederrno = ECHILD;
+				err = -1;
+				goto out_unlock;
 			}
+			iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
+			iov_out[frag_idx].iov_len = outlen;
+			frag_idx++;
+		}
+	}
+
+	if (!bcast) {
+		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
 
 			err = _dispatch_to_links(knet_h, dst_host, iov_out);
 			savederrno = errno;
 			if (err) {
 				goto out_unlock;
 			}
-
 		}
-
 	} else {
-
-		knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(++knet_h->bcast_seq_num_tx);
-
-		frag_idx = 0;
-
-		while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
-
-			knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = knet_h->send_to_links_buf[0]->khp_data_seq_num;
-
-			if (knet_h->crypto_instance) {
-				if (crypto_encrypt_and_sign(
-						knet_h,
-						(const unsigned char *)knet_h->send_to_links_buf[frag_idx],
-						iov_out[frag_idx].iov_len,
-						knet_h->send_to_links_buf_crypt[frag_idx],
-						&outlen) < 0) {
-					log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt unicast packet");
-					savederrno = ECHILD;
-					err = -1;
-					goto out_unlock;
-				}
-				iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
-				iov_out[frag_idx].iov_len = outlen;
-			}
-
-			frag_idx++;
-		}
-
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			if (dst_host->status.reachable) {
 				err = _dispatch_to_links(knet_h, dst_host, iov_out);
@@ -386,7 +384,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 				}
 			}
 		}
-
 	}
 
 out_unlock:
@@ -659,7 +656,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
 	 * and there is no point to try to defrag it again.
 	 */
-	if (!_seq_num_lookup(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 1)) {
+	if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 1, 0)) {
 		errno = ETIME;
 		return -1;
 	}
@@ -667,7 +664,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	/*
 	 * register the pckt as seen
 	 */
-	_seq_num_set(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 1);
+	_seq_num_set(src_host, inbuf->khp_data_seq_num, 1);
 
 	/*
 	 * see if there is a free buffer
@@ -819,6 +816,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	struct iovec iov_out[1];
 	int8_t channel;
 	struct sockaddr_storage pckt_src;
+	seq_num_t recv_seq_num;
+	int wipe_bufs = 0;
 
 	if (knet_h->crypto_instance) {
 		if (crypto_authenticate_and_decrypt(knet_h,
@@ -891,10 +890,20 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	switch (inbuf->kh_type) {
 	case KNET_HEADER_TYPE_HOST_INFO:
 	case KNET_HEADER_TYPE_DATA:
+		/*
+		 * TODO: should we accept data even if we can't reply to the other node?
+		 *       how would that work with SCTP and guaranteed delivery?
+		 */
+
+		if (!src_host->status.reachable) {
+			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet", src_host->host_id);
+			//return;
+		}
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 		channel = inbuf->khp_data_channel;
+		src_host->got_data = 1;
 
-		if (!_seq_num_lookup(src_host, inbuf->khp_data_bcast, inbuf->khp_data_seq_num, 0)) {
+		if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
 			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 				log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
 			}
@@ -982,7 +991,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				return;
 			}
 			if (outlen == iov_out[0].iov_len) {
-				_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
+				_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
 			}
 		} else { /* HOSTINFO */
 			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
@@ -990,47 +999,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				bcast = 0;
 				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 			}
-			if (!_seq_num_lookup(src_host, bcast, inbuf->khp_data_seq_num, 0)) {
+			if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
 				return;
 			}
-			_seq_num_set(src_host, bcast, inbuf->khp_data_seq_num, 0);
+			_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
 			switch(knet_hostinfo->khi_type) {
 				case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
-					src_link = src_host->link +
-						(knet_hostinfo->khip_link_status_link_id % KNET_MAX_LINK);
-					/*
-					 * basically if the node is coming back to life from a crash
-					 * we should receive a host info where local previous status == remote current status
-					 * and so we can detect that node is showing up again
-					 * we need to clear cbuffers and notify the node of our status by resending our host info
-					 */
-					if ((src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_UP) &&
-					    (src_link->remoteconnected == knet_hostinfo->khip_link_status_status)) {
-						src_link->host_info_up_sent = 0;
-					}
-					src_link->remoteconnected = knet_hostinfo->khip_link_status_status;
-					if (src_link->remoteconnected == KNET_HOSTINFO_LINK_STATUS_DOWN) {
-						/*
-						 * if a host is disconnecting clean, we note that in donnotremoteupdate
-						 * so that we don't send host info back immediately but we wait
-						 * for the node to send an update when it's alive again
-						 */
-						src_link->host_info_up_sent = 0;
-						src_link->donnotremoteupdate = 1;
-					} else {
-						src_link->donnotremoteupdate = 0;
-					}
-					log_debug(knet_h, KNET_SUB_RX, "host message up/down. from host: %u link: %u remote connected: %u",
-						  src_host->host_id,
-						  src_link->link_id,
-						  src_link->remoteconnected);
-					if (_host_dstcache_update_async(knet_h, src_host)) {
-						log_debug(knet_h, KNET_SUB_RX,
-							  "Unable to update switch cache for host: %u link: %u remote connected: %u)",
-							  src_host->host_id,
-							  src_link->link_id,
-							  src_link->remoteconnected);
-					}
 					break;
 				case KNET_HOSTINFO_TYPE_LINK_TABLE:
 					break;
@@ -1044,6 +1018,46 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		outlen = KNET_HEADER_PING_SIZE;
 		inbuf->kh_type = KNET_HEADER_TYPE_PONG;
 		inbuf->kh_node = htons(knet_h->host_id);
+		recv_seq_num = ntohs(inbuf->khp_ping_seq_num);
+
+		wipe_bufs = 0;
+
+		if (!inbuf->khp_ping_timed) {
+			/*
+			 * we might be receiving this message from all links, but we want
+			 * to process it only the first time
+			 */
+			if (recv_seq_num != src_host->untimed_rx_seq_num) {
+				/*
+				 * cache the untimed seq num
+				 */
+				src_host->untimed_rx_seq_num = recv_seq_num;
+				/*
+				 * if the host has received data in between
+				 * untimed ping, then we don't need to wipe the bufs
+				 */
+				if (src_host->got_data) {
+					src_host->got_data = 0;
+					wipe_bufs = 0;
+				} else {
+					wipe_bufs = 1;
+				}
+			}
+			_seq_num_lookup(src_host, recv_seq_num, 0, wipe_bufs);
+		} else {
+			/*
+			 * pings always arrives in bursts over all the link
+			 * catch the first of them to cache the seq num and
+			 * avoid duplicate processing
+			 */
+			if (recv_seq_num != src_host->timed_rx_seq_num) {
+				src_host->timed_rx_seq_num = recv_seq_num;
+
+				if (recv_seq_num == 0) {
+					_seq_num_lookup(src_host, recv_seq_num, 0, 1);
+				}
+			}
+		}
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
