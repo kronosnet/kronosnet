@@ -371,7 +371,7 @@ int start_logging(FILE *std)
 int knet_handle_stop(knet_handle_t knet_h)
 {
 	int i, j, savederrno;
-	uint16_t host_ids[KNET_MAX_HOST];
+	uint8_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	struct knet_link_status status;

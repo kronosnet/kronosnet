@@ -116,9 +116,9 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 {
 	ssize_t outlen, frag_len;
 	struct knet_host *dst_host;
-	uint16_t dst_host_ids_temp[KNET_MAX_HOST];
+	uint8_t dst_host_ids_temp[KNET_MAX_HOST];
 	size_t dst_host_ids_entries_temp = 0;
-	uint16_t dst_host_ids[KNET_MAX_HOST];
+	uint8_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	struct knet_hostinfo *knet_hostinfo;
@@ -180,7 +180,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 				bcast = 0;
 				dst_host_ids_temp[0] = knet_hostinfo->khi_dst_node_id;
 				dst_host_ids_entries_temp = 1;
-				knet_hostinfo->khi_dst_node_id = htons(knet_hostinfo->khi_dst_node_id);
 			}
 			break;
 		default:
@@ -553,11 +552,11 @@ void *_handle_send_to_links_thread(void *data)
 
 		knet_h->recv_from_sock_buf[i]->kh_version = KNET_HEADER_VERSION;
 		knet_h->recv_from_sock_buf[i]->khp_data_frag_seq = 0;
-		knet_h->recv_from_sock_buf[i]->kh_node = htons(knet_h->host_id);
+		knet_h->recv_from_sock_buf[i]->kh_node = knet_h->host_id;
 
 		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
 		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
-		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
+		knet_h->send_to_links_buf[i]->kh_node = knet_h->host_id;
 	}
 
 	while (!shutdown_in_progress(knet_h)) {

@@ -230,7 +230,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	struct knet_host *src_host;
 	struct knet_link *src_link;
 	unsigned long long latency_last;
-	uint16_t dst_host_ids[KNET_MAX_HOST];
+	uint8_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	struct timespec recvtime;
@@ -267,7 +267,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
-	inbuf->kh_node = ntohs(inbuf->kh_node);
 	src_host = knet_h->host_index[inbuf->kh_node];
 	if (src_host == NULL) {  /* host not found */
 		log_debug(knet_h, KNET_SUB_RX, "Unable to find source host for this packet");
@@ -422,7 +421,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
 				bcast = 0;
-				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 			}
 			if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
 				return;
@@ -442,7 +440,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	case KNET_HEADER_TYPE_PING:
 		outlen = KNET_HEADER_PING_SIZE;
 		inbuf->kh_type = KNET_HEADER_TYPE_PONG;
-		inbuf->kh_node = htons(knet_h->host_id);
+		inbuf->kh_node = knet_h->host_id;
 		recv_seq_num = ntohs(inbuf->khp_ping_seq_num);
 
 		wipe_bufs = 0;
@@ -550,7 +548,7 @@ retry_pong:
 	case KNET_HEADER_TYPE_PMTUD:
 		outlen = KNET_HEADER_PMTUD_SIZE;
 		inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
-		inbuf->kh_node = htons(knet_h->host_id);
+		inbuf->kh_node = knet_h->host_id;
 
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,

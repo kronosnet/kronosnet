@@ -23,7 +23,7 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	uint16_t host_ids[KNET_MAX_HOST];
+	uint8_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
 	struct sockaddr_storage ss;
 

@@ -476,10 +476,10 @@ static int ping_dst_host_filter(void *pvt_data,
 				const unsigned char *outdata,
 				ssize_t outdata_len,
 				uint8_t tx_rx,
-				uint16_t this_host_id,
-				uint16_t src_host_id,
+				uint8_t this_host_id,
+				uint8_t src_host_id,
 				int8_t *dst_channel,
-				uint16_t *dst_host_ids,
+				uint8_t *dst_host_ids,
 				size_t *dst_host_ids_entries)
 {
 	if (broadcast_test) {
@@ -487,7 +487,7 @@ static int ping_dst_host_filter(void *pvt_data,
 	}
 
 	if (tx_rx == KNET_NOTIFY_TX) {
-		memmove(&dst_host_ids[0], outdata, 2);
+		memmove(&dst_host_ids[0], outdata, 1);
 	} else {
 		dst_host_ids[0] = this_host_id;
 	}

@@ -49,10 +49,10 @@ static void test(void)
 	}
 
 	/*
-	 * -1 == uint16_t 65535
+	 * -1 == uint8_t 255
 	 */
 
-	if (knet_h->host_id != 65535) {
+	if (knet_h->host_id != 255) {
 		printf("host_id size might have changed!\n");
 		knet_handle_free(knet_h);
 		exit(FAIL);

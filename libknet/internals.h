@@ -82,7 +82,7 @@ struct knet_host_defrag_buf {
 
 struct knet_host {
 	/* required */
-	uint16_t host_id;
+	uint8_t host_id;
 	/* configurable */
 	uint8_t link_handler_policy;
 	char name[KNET_MAX_HOST_LEN];
@@ -124,7 +124,7 @@ struct knet_fd_trackers {
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
 
 struct knet_handle {
-	uint16_t host_id;
+	uint8_t host_id;
 	unsigned int enabled:1;
 	struct knet_sock sockfd[KNET_DATAFD_MAX];
 	int logfd;
@@ -142,8 +142,8 @@ struct knet_handle {
 	knet_transport_t transports[KNET_MAX_TRANSPORTS+1];
 	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS+1];
 	struct knet_fd_trackers knet_transport_fd_tracker[KNET_MAX_FDS]; /* track status for each fd handled by transports */
-	uint16_t host_ids[KNET_MAX_HOST];
-	size_t   host_ids_entries;
+	uint8_t host_ids[KNET_MAX_HOST];
+	size_t host_ids_entries;
 	struct knet_header *recv_from_sock_buf[PCKT_FRAG_MAX];
 	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];
@@ -178,10 +178,10 @@ struct knet_handle {
 		const unsigned char *outdata,
 		ssize_t outdata_len,
 		uint8_t tx_rx,
-		uint16_t this_host_id,
-		uint16_t src_node_id,
+		uint8_t this_host_id,
+		uint8_t src_node_id,
 		int8_t *channel,
-		uint16_t *dst_host_ids,
+		uint8_t *dst_host_ids,
 		size_t *dst_host_ids_entries);
 	void *pmtud_notify_fn_private_data;
 	void (*pmtud_notify_fn) (
@@ -190,7 +190,7 @@ struct knet_handle {
 	void *host_status_change_notify_fn_private_data;
 	void (*host_status_change_notify_fn) (
 		void *private_data,
-		uint16_t host_id,
+		uint8_t host_id,
 		uint8_t reachable,
 		uint8_t remote,
 		uint8_t external);

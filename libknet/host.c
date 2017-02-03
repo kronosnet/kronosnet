@@ -30,7 +30,7 @@ static void _host_list_update(knet_handle_t knet_h)
 	}
 }
 
-int knet_host_add(knet_handle_t knet_h, uint16_t host_id)
+int knet_host_add(knet_handle_t knet_h, uint8_t host_id)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host = NULL;
@@ -109,7 +109,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_remove(knet_handle_t knet_h, uint16_t host_id)
+int knet_host_remove(knet_handle_t knet_h, uint8_t host_id)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host, *removed;
@@ -181,7 +181,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_set_name(knet_handle_t knet_h, uint16_t host_id, const char *name)
+int knet_host_set_name(knet_handle_t knet_h, uint8_t host_id, const char *name)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
@@ -241,7 +241,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint16_t host_id,
+int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint8_t host_id,
 				  char *name)
 {
 	int savederrno = 0, err = 0;
@@ -280,7 +280,7 @@ exit_unlock:
 }
 
 int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
-				  uint16_t *host_id)
+				  uint8_t *host_id)
 {
 	int savederrno = 0, err = 0, found = 0;
 	struct knet_host *host;
@@ -327,7 +327,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 }
 
 int knet_host_get_host_list(knet_handle_t knet_h,
-			    uint16_t *host_ids, size_t *host_ids_entries)
+			    uint8_t *host_ids, size_t *host_ids_entries)
 {
 	int savederrno = 0, err = 0;
 
@@ -357,7 +357,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 	return err;
 }
 
-int knet_host_set_policy(knet_handle_t knet_h, uint16_t host_id,
+int knet_host_set_policy(knet_handle_t knet_h, uint8_t host_id,
 			 uint8_t policy)
 {
 	int savederrno = 0, err = 0;
@@ -408,7 +408,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_get_policy(knet_handle_t knet_h, uint16_t host_id,
+int knet_host_get_policy(knet_handle_t knet_h, uint8_t host_id,
 			 uint8_t *policy)
 {
 	int savederrno = 0, err = 0;
@@ -447,7 +447,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_host_get_status(knet_handle_t knet_h, uint16_t host_id,
+int knet_host_get_status(knet_handle_t knet_h, uint8_t host_id,
 			 struct knet_host_status *status)
 {
 	int savederrno = 0, err = 0;
@@ -492,7 +492,7 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 					  void *host_status_change_notify_fn_private_data,
 					  void (*host_status_change_notify_fn) (
 						void *private_data,
-						uint16_t host_id,
+						uint8_t host_id,
 						uint8_t reachable,
 						uint8_t remote,
 						uint8_t external))
@@ -622,7 +622,7 @@ void _seq_num_set(struct knet_host *host, seq_num_t seq_num, int defrag_buf)
 int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host)
 {
 	int savederrno = 0;
-	uint16_t host_id = host->host_id;
+	uint8_t host_id = host->host_id;
 
 	if (sendto(knet_h->dstsockfd[1], &host_id, sizeof(host_id), MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != sizeof(host_id)) {
 		savederrno = errno;
