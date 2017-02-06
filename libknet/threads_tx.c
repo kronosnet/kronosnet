@@ -29,25 +29,11 @@
  * SEND
  */
 
-static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct iovec *iov_out)
+static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct mmsghdr *msg, int msgs_to_send)
 {
-	int link_idx, msg_idx, sent_msgs, msgs_to_send, prev_sent, progress;
-	struct mmsghdr msg[PCKT_FRAG_MAX];
-	struct mmsghdr *cur;
+	int link_idx, msg_idx, sent_msgs, prev_sent, progress;
 	int err = 0, savederrno = 0;
-
-	memset(&msg, 0, sizeof(struct mmsghdr));
-	msgs_to_send = knet_h->send_to_links_buf[0]->khp_data_frag_num;
-
-	msg_idx = 0;
-
-	while (msg_idx < msgs_to_send) {
-		memset(&msg[msg_idx].msg_hdr, 0, sizeof(struct msghdr));
-		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx];
-		msg[msg_idx].msg_hdr.msg_iovlen = 1;
-		msg_idx++;
-	}
+	struct mmsghdr *cur;
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 		sent_msgs = 0;
@@ -138,6 +124,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	int savederrno = 0;
 	int err = 0;
 	seq_num_t tx_seq_num;
+	struct mmsghdr msg[PCKT_FRAG_MAX];
+	int msgs_to_send, msg_idx;
 
 	inbuf = knet_h->recv_from_sock_buf[buf_idx];
 
@@ -364,11 +352,24 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		}
 	}
 
+	memset(&msg, 0, sizeof(msg));
+
+	msgs_to_send = knet_h->send_to_links_buf[0]->khp_data_frag_num;
+
+	msg_idx = 0;
+
+	while (msg_idx < msgs_to_send) {
+		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx];
+		msg[msg_idx].msg_hdr.msg_iovlen = 1;
+		msg_idx++;
+	}
+
 	if (!bcast) {
 		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
 
-			err = _dispatch_to_links(knet_h, dst_host, iov_out);
+			err = _dispatch_to_links(knet_h, dst_host, msg, msgs_to_send);
 			savederrno = errno;
 			if (err) {
 				goto out_unlock;
@@ -377,7 +378,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	} else {
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			if (dst_host->status.reachable) {
-				err = _dispatch_to_links(knet_h, dst_host, iov_out);
+				err = _dispatch_to_links(knet_h, dst_host, msg, msgs_to_send);
 				savederrno = errno;
 				if (err) {
 					goto out_unlock;
