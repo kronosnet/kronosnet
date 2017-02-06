@@ -346,7 +346,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 					iov_out[frag_idx].iov_len,
 					knet_h->send_to_links_buf_crypt[frag_idx],
 					&outlen) < 0) {
-				log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt unicast packet");
+				log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt packet");
 				savederrno = ECHILD;
 				err = -1;
 				goto out_unlock;
