@@ -36,8 +36,8 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 		goto exit_error;
 	}
 
-#ifdef SO_RCVBUFFORCE
 	value = KNET_RING_RCVBUFF;
+#ifdef SO_RCVBUFFORCE
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
@@ -46,7 +46,6 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 		goto exit_error;
 	}
 #else
-	value = KNET_RING_RCVBUFF;
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;
