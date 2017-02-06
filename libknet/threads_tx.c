@@ -33,31 +33,38 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 {
 	int link_idx, msg_idx, sent_msgs, msgs_to_send, prev_sent, progress;
 	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct mmsghdr *cur;
 	int err = 0, savederrno = 0;
 
 	memset(&msg, 0, sizeof(struct mmsghdr));
+	msgs_to_send = knet_h->send_to_links_buf[0]->khp_data_frag_num;
+
+	msg_idx = 0;
+
+	while (msg_idx < msgs_to_send) {
+		memset(&msg[msg_idx].msg_hdr, 0, sizeof(struct msghdr));
+		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx];
+		msg[msg_idx].msg_hdr.msg_iovlen = 1;
+		msg_idx++;
+	}
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-
-		msgs_to_send = knet_h->send_to_links_buf[0]->khp_data_frag_num;
 		sent_msgs = 0;
 		prev_sent = 0;
 		progress = 1;
 
-retry:
 		msg_idx = 0;
-
 		while (msg_idx < msgs_to_send) {
-			memset(&msg[msg_idx].msg_hdr, 0, sizeof(struct msghdr));
 			msg[msg_idx].msg_hdr.msg_name = &dst_host->link[dst_host->active_links[link_idx]].dst_addr;
-			msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-			msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx + prev_sent];
-			msg[msg_idx].msg_hdr.msg_iovlen = 1;
 			msg_idx++;
 		}
 
+retry:
+		cur = &msg[prev_sent];
+
 		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
-				     msg, msg_idx, MSG_DONTWAIT | MSG_NOSIGNAL);
+				     cur, msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
 		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
@@ -72,10 +79,10 @@ retry:
 				break;
 		}
 
-		if ((sent_msgs >= 0) && (sent_msgs < msg_idx)) {
+		prev_sent = prev_sent + sent_msgs;
+
+		if ((sent_msgs >= 0) && (prev_sent < msgs_to_send)) {
 			if ((sent_msgs) || (progress)) {
-				msgs_to_send = msg_idx - sent_msgs;
-				prev_sent = prev_sent + sent_msgs;
 				if (sent_msgs) {
 					progress = 1;
 				} else {
