@@ -281,7 +281,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	 * cache the value in locked context
 	 */
 	tx_seq_num = knet_h->tx_seq_num;
-	knet_h->send_to_links_buf[0]->khp_data_seq_num = htons(knet_h->tx_seq_num);
+	inbuf->khp_data_seq_num = htons(knet_h->tx_seq_num);
 	pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
 
 	/*
@@ -299,45 +299,49 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		_send_pings(knet_h, 0);
 	}
 
-	while (frag_idx < inbuf->khp_data_frag_num) {
-		/*
-		 * set the iov_base
-		 */
-		iov_out[frag_idx].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
+	if (inbuf->khp_data_frag_num > 1) {
+		while (frag_idx < inbuf->khp_data_frag_num) {
+			/*
+			 * set the iov_base
+			 */
+			iov_out[frag_idx].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
 
-		/*
-		 * set the len
-		 */
-		if (frag_len > temp_data_mtu) {
-			iov_out[frag_idx].iov_len = temp_data_mtu + KNET_HEADER_DATA_SIZE;
-		} else {
-			iov_out[frag_idx].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
+			/*
+			 * set the len
+			 */
+			if (frag_len > temp_data_mtu) {
+				iov_out[frag_idx].iov_len = temp_data_mtu + KNET_HEADER_DATA_SIZE;
+			} else {
+				iov_out[frag_idx].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
+			}
+
+			/*
+			 * copy the frag info on all buffers
+			 */
+			knet_h->send_to_links_buf[frag_idx]->kh_type = inbuf->kh_type;
+			knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = inbuf->khp_data_seq_num;
+			knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = inbuf->khp_data_frag_num;
+			knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = inbuf->khp_data_bcast;
+			knet_h->send_to_links_buf[frag_idx]->khp_data_channel = inbuf->khp_data_channel;
+
+			memmove(knet_h->send_to_links_buf[frag_idx]->khp_data_userdata,
+				inbuf->khp_data_userdata + (temp_data_mtu * frag_idx),
+				iov_out[frag_idx].iov_len - KNET_HEADER_DATA_SIZE);
+
+			frag_len = frag_len - temp_data_mtu;
+			frag_idx++;
 		}
-
-		/*
-		 * copy the frag info on all buffers
-		 */
-		knet_h->send_to_links_buf[frag_idx]->kh_type = inbuf->kh_type;
-
-		knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = knet_h->send_to_links_buf[0]->khp_data_seq_num;
-		knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = inbuf->khp_data_frag_num;
-		knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = inbuf->khp_data_bcast;
-		knet_h->send_to_links_buf[frag_idx]->khp_data_channel = inbuf->khp_data_channel;
-
-		memmove(knet_h->send_to_links_buf[frag_idx]->khp_data_userdata,
-			inbuf->khp_data_userdata + (temp_data_mtu * frag_idx),
-			iov_out[frag_idx].iov_len - KNET_HEADER_DATA_SIZE);
-
-		frag_len = frag_len - temp_data_mtu;
-		frag_idx++;
+	} else {
+		iov_out[frag_idx].iov_base = (void *)inbuf;
+		iov_out[frag_idx].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
 	}
 
 	if (knet_h->crypto_instance) {
 		frag_idx = 0;
-		while (frag_idx < knet_h->send_to_links_buf[0]->khp_data_frag_num) {
+		while (frag_idx < inbuf->khp_data_frag_num) {
 			if (crypto_encrypt_and_sign(
 					knet_h,
-					(const unsigned char *)knet_h->send_to_links_buf[frag_idx],
+					(const unsigned char *)iov_out[frag_idx].iov_base,
 					iov_out[frag_idx].iov_len,
 					knet_h->send_to_links_buf_crypt[frag_idx],
 					&outlen) < 0) {
@@ -354,7 +358,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 
 	memset(&msg, 0, sizeof(msg));
 
-	msgs_to_send = knet_h->send_to_links_buf[0]->khp_data_frag_num;
+	msgs_to_send = inbuf->khp_data_frag_num;
 
 	msg_idx = 0;
 
