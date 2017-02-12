@@ -373,7 +373,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
 
-			err = _dispatch_to_links(knet_h, dst_host, msg, msgs_to_send);
+			err = _dispatch_to_links(knet_h, dst_host, &msg[0], msgs_to_send);
 			savederrno = errno;
 			if (err) {
 				goto out_unlock;
@@ -382,7 +382,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	} else {
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 			if (dst_host->status.reachable) {
-				err = _dispatch_to_links(knet_h, dst_host, msg, msgs_to_send);
+				err = _dispatch_to_links(knet_h, dst_host, &msg[0], msgs_to_send);
 				savederrno = errno;
 				if (err) {
 					goto out_unlock;
@@ -596,7 +596,7 @@ void *_handle_send_to_links_thread(void *data)
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
 				continue;
 			}
-			_handle_send_to_links(knet_h, events[i].data.fd, channel, msg, type);
+			_handle_send_to_links(knet_h, events[i].data.fd, channel, &msg[0], type);
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
