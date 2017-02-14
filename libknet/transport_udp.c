@@ -260,6 +260,8 @@ static int udp_transport_init(knet_handle_t knet_h)
 		return -1;
 	}
 
+	memset(handle_info, 0, sizeof(udp_handle_info_t));
+
 	knet_h->transports[KNET_TRANSPORT_UDP] = handle_info;
 
 	knet_list_init(&handle_info->links_list);
