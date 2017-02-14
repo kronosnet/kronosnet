@@ -38,10 +38,10 @@ static int dhost_filter(void *pvt_data,
 			const unsigned char *outdata,
 			ssize_t outdata_len,
 			uint8_t tx_rx,
-			uint8_t this_host_id,
-			uint8_t src_host_id,
+			knet_node_id_t this_host_id,
+			knet_node_id_t src_host_id,
 			int8_t *dst_channel,
-			uint8_t *dst_host_ids,
+			knet_node_id_t *dst_host_ids,
 			size_t *dst_host_ids_entries)
 {
 	dst_host_ids[0] = 0;

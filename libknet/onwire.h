@@ -17,6 +17,8 @@
 
 #include <stdint.h>
 
+#include "libknet.h"
+
 #if 0
 
 /*
@@ -33,13 +35,13 @@ struct knet_hinfo_link {
 } __attribute__((packed));
 
 struct knet_hinfo_link_table {
-	uint8_t			khlt_node_id;
+	knet_node_id_t		khlt_node_id;
 	uint8_t			khlt_local; /* we have this node connected locally */
 	struct knet_hinfo_link	khlt_link[KNET_MAX_LINK]; /* info we send about each link in the node */
 } __attribute__((packed));
 
 struct link_table {
-	uint8_t			khdt_host_entries;
+	knet_node_id_t		khdt_host_entries;
 	uint8_t			khdt_host_maps[0]; /* array of knet_hinfo_link_table[khdt_host_entries] */
 } __attribute__((packed));
 #endif
@@ -78,7 +80,7 @@ union knet_hostinfo_payload {
 struct knet_hostinfo {
 	uint8_t				khi_type;	/* type of hostinfo we are sending */
 	uint8_t				khi_bcast;	/* hostinfo destination bcast/ucast */
-	uint8_t				khi_dst_node_id;/* used only if in ucast mode */
+	knet_node_id_t			khi_dst_node_id;/* used only if in ucast mode */
 	union knet_hostinfo_payload	khi_payload;
 } __attribute__((packed));
 
@@ -159,7 +161,7 @@ union knet_header_payload {
 struct knet_header {
 	uint8_t				kh_version; /* pckt format/version */
 	uint8_t				kh_type;    /* from above defines. Tells what kind of pckt it is */
-	uint8_t				kh_node;    /* host id of the source host for this pckt */
+	knet_node_id_t			kh_node;    /* host id of the source host for this pckt */
 	uint8_t				kh_pad1;    /* make sure to have space in the header to grow features */
 	uint8_t				kh_pad2;
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */

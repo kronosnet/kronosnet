@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "libknet.h"
 
 #define KNET_VTY_DEFAULT_PORT		50000
 
@@ -57,7 +58,7 @@ struct knet_vty {
 	int			logfd;		/* fd to pass to iface create */
 	int			loglevel;	/* loglevel (debug, etc) */
 	void			*iface;		/* pointer to iface we are working on */
-	uint8_t			host_id;	/* peer/host we are working on */
+	knet_node_id_t		host_id;	/* peer/host we are working on */
 	uint8_t			link_id;	/* link id we are working on */
 	int			filemode;	/* tell print_conf to add or not carriage return */
 	struct knet_vty_global_conf *vty_global_conf; /* pointer to vty global config */

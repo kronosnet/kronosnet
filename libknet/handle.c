@@ -505,9 +505,9 @@ static void _stop_threads(knet_handle_t knet_h)
 	}
 }
 
-knet_handle_t knet_handle_new(uint8_t host_id,
-			      int     log_fd,
-			      uint8_t default_log_level)
+knet_handle_t knet_handle_new(knet_node_id_t host_id,
+			      int	     log_fd,
+			      uint8_t	     default_log_level)
 {
 	knet_handle_t knet_h;
 	int savederrno = 0;
@@ -1033,10 +1033,10 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					const unsigned char *outdata,
 					ssize_t outdata_len,
 					uint8_t tx_rx,
-					uint8_t this_host_id,
-					uint8_t src_node_id,
+					knet_node_id_t this_host_id,
+					knet_node_id_t src_node_id,
 					int8_t *channel,
-					uint8_t *dst_host_ids,
+					knet_node_id_t *dst_host_ids,
 					size_t *dst_host_ids_entries))
 {
 	int savederrno = 0;

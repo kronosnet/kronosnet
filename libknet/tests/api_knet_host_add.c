@@ -22,7 +22,7 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	uint8_t host_ids[KNET_MAX_HOST];
+	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
 
 	printf("Test knet_host_add incorrect knet_h\n");

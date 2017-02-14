@@ -20,7 +20,7 @@
 #include "transports.h"
 #include "host.h"
 
-int _link_updown(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected)
 {
 	struct knet_link *link = &knet_h->host_index[host_id]->link[link_id];
@@ -41,7 +41,7 @@ int _link_updown(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
 	return 0;
 }
 
-int knet_link_set_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr)
@@ -184,7 +184,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
@@ -269,7 +269,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_clear_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id)
+int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
@@ -339,7 +339,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_set_enable(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 unsigned int enabled)
 {
 	int savederrno = 0, err = 0;
@@ -409,7 +409,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_enable(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 unsigned int *enabled)
 {
 	int savederrno = 0, err = 0;
@@ -466,7 +466,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_set_pong_count(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			     uint8_t pong_count)
 {
 	int savederrno = 0, err = 0;
@@ -527,7 +527,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_pong_count(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			     uint8_t *pong_count)
 {
 	int savederrno = 0, err = 0;
@@ -584,7 +584,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_set_ping_timers(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			      time_t interval, time_t timeout, unsigned int precision)
 {
 	int savederrno = 0, err = 0;
@@ -659,7 +659,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_ping_timers(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			      time_t *interval, time_t *timeout, unsigned int *precision)
 {
 	int savederrno = 0, err = 0;
@@ -728,7 +728,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_set_priority(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			   uint8_t priority)
 {
 	int savederrno = 0, err = 0;
@@ -802,7 +802,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_priority(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			   uint8_t *priority)
 {
 	int savederrno = 0, err = 0;
@@ -859,7 +859,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_link_list(knet_handle_t knet_h, uint8_t host_id,
+int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 			    uint8_t *link_ids, size_t *link_ids_entries)
 {
 	int savederrno = 0, err = 0, i, count = 0;
@@ -915,7 +915,7 @@ exit_unlock:
 	return err;
 }
 
-int knet_link_get_status(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 struct knet_link_status *status)
 {
 	int savederrno = 0, err = 0;

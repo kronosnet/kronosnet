@@ -351,7 +351,7 @@ void *_handle_pmtud_link_thread(void *data)
 	/* preparing pmtu buffer */
 	knet_h->pmtudbuf->kh_version = KNET_HEADER_VERSION;
 	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
-	knet_h->pmtudbuf->kh_node = knet_h->host_id;
+	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 
 	while (!shutdown_in_progress(knet_h)) {
 		usleep(KNET_THREADS_TIMERES);

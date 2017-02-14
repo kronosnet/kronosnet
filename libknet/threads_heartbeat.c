@@ -147,7 +147,7 @@ void *_handle_heartbt_thread(void *data)
 	/* preparing ping buffer */
 	knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
 	knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
-	knet_h->pingbuf->kh_node = knet_h->host_id;
+	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
 	while (!shutdown_in_progress(knet_h)) {
 		usleep(KNET_THREADS_TIMERES);

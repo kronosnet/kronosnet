@@ -23,7 +23,7 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	uint8_t host_id;
+	knet_node_id_t host_id;
 
 	printf("Test knet_host_get_id_by_host_name incorrect knet_h\n");
 

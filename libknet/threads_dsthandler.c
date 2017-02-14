@@ -20,7 +20,7 @@
 
 static void _handle_dst_link_updates(knet_handle_t knet_h)
 {
-	uint8_t host_id;
+	knet_node_id_t host_id;
 	struct knet_host *host;
 
 	if (recv(knet_h->dstsockfd[0], &host_id, sizeof(host_id), MSG_DONTWAIT | MSG_NOSIGNAL) != sizeof(host_id)) {

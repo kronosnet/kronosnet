@@ -1071,11 +1071,11 @@ static int knet_cmd_switch_policy(struct knet_vty *vty)
  *  0 host does not exist
  *  1 host exists
  */
-static int knet_find_host(struct knet_vty *vty,	const char *nodename, const uint8_t requested_node_id)
+static int knet_find_host(struct knet_vty *vty,	const char *nodename, const knet_node_id_t requested_node_id)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 	int have_nodeid, have_name;
-	uint8_t node_id;
+	knet_node_id_t node_id;
 	char name[KNET_MAX_HOST_LEN];
 
 	have_nodeid = knet_host_get_id_by_host_name(knet_iface->cfg_ring.knet_h, nodename, &node_id);
@@ -1522,7 +1522,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	char *ip_list = NULL;
 	int ip_list_entries = 0, j, i, offset = 0;
 	char *error_string = NULL;
-	uint8_t host_ids[KNET_MAX_HOST];
+	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 
@@ -1745,7 +1745,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 	const char *nl = telnet_newline;
 	struct timespec now;
 	char nodename[KNET_MAX_HOST_LEN];
-	uint8_t host_ids[KNET_MAX_HOST];
+	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	uint8_t policy;
@@ -1826,7 +1826,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	const char *nl = telnet_newline;
 	char *ip_list = NULL;
 	int ip_list_entries = 0;
-	uint8_t host_ids[KNET_MAX_HOST];
+	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	char nodename[KNET_MAX_HOST_LEN];

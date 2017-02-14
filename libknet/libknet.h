@@ -21,7 +21,8 @@
  * Maximum number of hosts
  */
 
-#define KNET_MAX_HOST 256
+typedef uint16_t knet_node_id_t;
+#define KNET_MAX_HOST 65536
 
 /*
  * Maximum number of links between 2 hosts
@@ -83,7 +84,7 @@ typedef struct knet_handle *knet_handle_t;
  * on failure, NULL is returned and errno is set.
  */
 
-knet_handle_t knet_handle_new(uint8_t  host_id,
+knet_handle_t knet_handle_new(knet_node_id_t host_id,
 			      int      log_fd,
 			      uint8_t  default_log_level);
 
@@ -379,10 +380,10 @@ int knet_send_sync(knet_handle_t knet_h,
  *            ssize_t outdata_len          - lenght of the above data
  *            uint8_t tx_rx                - filter is called on tx or rx
  *                                           (see defines below)
- *            uint8_t this_host_id        - host_id processing the packet
- *            uint8_t src_host_id         - host_id that generated the
+ *            knet_node_id_t this_host_id  - host_id processing the packet
+ *            knet_node_id_t src_host_id   - host_id that generated the
  *                                           packet
- *            uint8_t *dst_host_ids        - array of KNET_MAX_HOST uint8_t
+ *            knet_node_id_t *dst_host_ids - array of KNET_MAX_HOST knet_node_id_t
  *                                           where to store the destinations
  *            size_t *dst_host_ids_entries - number of hosts to send the message
  *
@@ -408,10 +409,10 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					const unsigned char *outdata,
 					ssize_t outdata_len,
 					uint8_t tx_rx,
-					uint8_t this_host_id,
-					uint8_t src_host_id,
+					knet_node_id_t this_host_id,
+					knet_node_id_t src_host_id,
 					int8_t *channel,
-					uint8_t *dst_host_ids,
+					knet_node_id_t *dst_host_ids,
 					size_t *dst_host_ids_entries));
 
 /*
@@ -607,7 +608,7 @@ int knet_handle_crypto(knet_handle_t knet_h,
  * -1 on error and errno is set.
  */
 
-int knet_host_add(knet_handle_t knet_h, uint8_t host_id);
+int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id);
 
 /*
  * knet_host_remove
@@ -623,7 +624,7 @@ int knet_host_add(knet_handle_t knet_h, uint8_t host_id);
  * -1 on error and errno is set.
  */
 
-int knet_host_remove(knet_handle_t knet_h, uint8_t host_id);
+int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id);
 
 /*
  * knet_host_set_name
@@ -643,7 +644,7 @@ int knet_host_remove(knet_handle_t knet_h, uint8_t host_id);
  * -1 on error and errno is set.
  */
 
-int knet_host_set_name(knet_handle_t knet_h, uint8_t host_id,
+int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id,
 		       const char *name);
 
 /*
@@ -663,7 +664,7 @@ int knet_host_set_name(knet_handle_t knet_h, uint8_t host_id,
  * -1 on error and errno is set (name is left untouched)
  */
 
-int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint8_t host_id,
+int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
 				  char *name);
 
 /*
@@ -682,7 +683,7 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, uint8_t host_id,
  */
 
 int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
-				  uint8_t *host_id);
+				  knet_node_id_t *host_id);
 
 /*
  * knet_host_get_host_list
@@ -701,7 +702,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
  */
 
 int knet_host_get_host_list(knet_handle_t knet_h,
-			    uint8_t *host_ids, size_t *host_ids_entries);
+			    knet_node_id_t *host_ids, size_t *host_ids_entries);
 
 /*
  * define switching policies
@@ -740,7 +741,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
  * -1 on error and errno is set.
  */
 
-int knet_host_set_policy(knet_handle_t knet_h, uint8_t host_id,
+int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 			 uint8_t policy);
 
 /*
@@ -759,7 +760,7 @@ int knet_host_set_policy(knet_handle_t knet_h, uint8_t host_id,
  * -1 on error and errno is set.
  */
 
-int knet_host_get_policy(knet_handle_t knet_h, uint8_t host_id,
+int knet_host_get_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 			 uint8_t *policy);
 
 /*
@@ -798,7 +799,7 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 					  void *host_status_change_notify_fn_private_data,
 					  void (*host_status_change_notify_fn) (
 						void *private_data,
-						uint8_t host_id,
+						knet_node_id_t host_id,
 						uint8_t reachable,
 						uint8_t remote,
 						uint8_t external));
@@ -837,7 +838,7 @@ struct knet_host_status {
  * -1 on error and errno is set.
  */
 
-int knet_host_get_status(knet_handle_t knet_h, uint8_t host_id,
+int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
 			 struct knet_host_status *status);
 
 /*
@@ -994,7 +995,7 @@ uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *n
  * -1 on error and errno is set.
  */
 
-int knet_link_set_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr);
@@ -1024,7 +1025,7 @@ int knet_link_set_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
  * -1 on error and errno is set.
  */
 
-int knet_link_get_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
@@ -1045,7 +1046,7 @@ int knet_link_get_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
  * -1 on error and errno is set.
  */
 
-int knet_link_clear_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id);
+int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id);
 
 /*
  * knet_link_set_enable
@@ -1064,7 +1065,7 @@ int knet_link_clear_config(knet_handle_t knet_h, uint8_t host_id, uint8_t link_i
  * -1 on error and errno is set.
  */
 
-int knet_link_set_enable(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 unsigned int enabled);
 
 /*
@@ -1084,7 +1085,7 @@ int knet_link_set_enable(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
  * -1 on error and errno is set.
  */
 
-int knet_link_get_enable(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 unsigned int *enabled);
 
 /*
@@ -1114,7 +1115,7 @@ int knet_link_get_enable(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
 #define KNET_LINK_DEFAULT_PING_TIMEOUT   2000 /* 2 seconds */
 #define KNET_LINK_DEFAULT_PING_PRECISION 2048 /* samples */
 
-int knet_link_set_ping_timers(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			      time_t interval, time_t timeout, unsigned int precision);
 
 /*
@@ -1140,7 +1141,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, uint8_t host_id, uint8_t lin
  * -1 on error and errno is set.
  */
 
-int knet_link_get_ping_timers(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			      time_t *interval, time_t *timeout, unsigned int *precision);
 
 /*
@@ -1163,7 +1164,7 @@ int knet_link_get_ping_timers(knet_handle_t knet_h, uint8_t host_id, uint8_t lin
 
 #define KNET_LINK_DEFAULT_PONG_COUNT 5
 
-int knet_link_set_pong_count(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			     uint8_t pong_count);
 
 /*
@@ -1183,7 +1184,7 @@ int knet_link_set_pong_count(knet_handle_t knet_h, uint8_t host_id, uint8_t link
  * -1 on error and errno is set.
  */
 
-int knet_link_get_pong_count(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			     uint8_t *pong_count);
 
 /*
@@ -1204,7 +1205,7 @@ int knet_link_get_pong_count(knet_handle_t knet_h, uint8_t host_id, uint8_t link
  * -1 on error and errno is set.
  */
 
-int knet_link_set_priority(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			   uint8_t priority);
 
 /*
@@ -1225,7 +1226,7 @@ int knet_link_set_priority(knet_handle_t knet_h, uint8_t host_id, uint8_t link_i
  * -1 on error and errno is set.
  */
 
-int knet_link_get_priority(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			   uint8_t *priority);
 
 /*
@@ -1245,7 +1246,7 @@ int knet_link_get_priority(knet_handle_t knet_h, uint8_t host_id, uint8_t link_i
  * -1 on error and errno is set.
  */
 
-int knet_link_get_link_list(knet_handle_t knet_h, uint8_t host_id,
+int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 			    uint8_t *link_ids, size_t *link_ids_entries);
 
 /*
@@ -1314,7 +1315,7 @@ struct knet_link_status {
  * -1 on error and errno is set.
  */
 
-int knet_link_get_status(knet_handle_t knet_h, uint8_t host_id, uint8_t link_id,
+int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 struct knet_link_status *status);
 
 /*

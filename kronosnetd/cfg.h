@@ -21,7 +21,7 @@
 struct knet_cfg_eth {
 	tap_t tap;
 	int auto_mtu;
-	uint8_t node_id;
+	knet_node_id_t node_id;
 };
 
 struct knet_cfg_ring {

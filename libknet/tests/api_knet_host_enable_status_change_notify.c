@@ -22,7 +22,7 @@
 static int private_data;
 
 static void host_notify(void *priv_data,
-			uint8_t host_id,
+			knet_node_id_t host_id,
 			uint8_t reachable,
 			uint8_t remote,
 			uint8_t external)
