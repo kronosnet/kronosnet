@@ -31,11 +31,6 @@
  */
 #define KNET_SCTP_SLEEP_TIME 1000000
 
-/*
- * this value is per listener
- */
-#define MAX_ACCEPTED_SOCKS 256
-
 typedef struct sctp_handle_info {
 	struct knet_list_head listen_links_list;
 	struct knet_list_head connect_links_list;
