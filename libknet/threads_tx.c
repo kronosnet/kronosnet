@@ -29,11 +29,11 @@
  * SEND
  */
 
-static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct mmsghdr *msg, int msgs_to_send)
+static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_mmsghdr *msg, int msgs_to_send)
 {
 	int link_idx, msg_idx, sent_msgs, prev_sent, progress;
 	int err = 0, savederrno = 0;
-	struct mmsghdr *cur;
+	struct knet_mmsghdr *cur;
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 		sent_msgs = 0;
@@ -50,7 +50,7 @@ retry:
 		cur = &msg[prev_sent];
 
 		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
-				     cur, msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
+				     (struct mmsghdr *)&cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
 		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
@@ -126,7 +126,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	int savederrno = 0;
 	int err = 0;
 	seq_num_t tx_seq_num;
-	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	int msgs_to_send, msg_idx;
 
 	inbuf = knet_h->recv_from_sock_buf[buf_idx];
@@ -469,7 +469,7 @@ out:
 	return err;
 }
 
-static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct mmsghdr *msg, int type)
+static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct knet_mmsghdr *msg, int type)
 {
 	ssize_t inlen = 0;
 	struct iovec iov_in;
@@ -495,7 +495,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		knet_h->recv_from_sock_buf[0]->kh_type = type;
 		_parse_recv_from_sock(knet_h, 0, inlen, channel, 0);
 	} else {
-		msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
+		msg_recv = recvmmsg(sockfd, (struct mmsghdr *)&msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 		if (msg_recv < 0) {
 			inlen = msg_recv;
 			savederrno = errno;
@@ -546,12 +546,12 @@ void *_handle_send_to_links_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 	struct sockaddr_storage address[PCKT_FRAG_MAX];
-	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	struct iovec iov_in[PCKT_FRAG_MAX];
 	int i, nev, type;
 	int8_t channel;
 
-	memset(&msg, 0, sizeof(struct mmsghdr));
+	memset(&msg, 0, sizeof(msg));
 
 	/* preparing data buffer */
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {

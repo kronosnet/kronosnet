@@ -22,13 +22,6 @@
 #undef HAVE_SENDMMSG
 #endif
 
-#ifndef HAVE_MMSGHDR
-struct mmsghdr {
-	struct msghdr msg_hdr;  /* Message header */
-	unsigned int  msg_len;  /* Number of bytes transmitted */
-};
-#endif
-
 #ifndef MSG_WAITFORONE
 #define MSG_WAITFORONE  0x10000
 #endif

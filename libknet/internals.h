@@ -32,6 +32,11 @@ typedef void *knet_transport_link_t; /* per link transport handle */
 typedef void *knet_transport_t;      /* per knet_h transport handle */
 struct  knet_transport_ops;          /* Forward because of circular dependancy */
 
+struct knet_mmsghdr {
+	struct msghdr msg_hdr;	/* Message header */
+	unsigned int  msg_len;	/* Number of bytes transmitted */
+};
+
 struct knet_link {
 	/* required */
 	struct sockaddr_storage src_addr;
@@ -285,7 +290,7 @@ typedef struct knet_transport_ops {
  * transport_rx_is_data is invoked with both global_rwlock
  * and fd_tracker read lock (from RX thread)
  */
-	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg);
+	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg);
 } knet_transport_ops_t;
 
 socklen_t sockaddr_len(const struct sockaddr_storage *ss);

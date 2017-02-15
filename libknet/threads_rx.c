@@ -223,7 +223,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
-static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct mmsghdr *msg)
+static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
 {
 	int err = 0, savederrno = 0;
 	ssize_t outlen;
@@ -601,7 +601,7 @@ retry_pmtud:
 	}
 }
 
-static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg)
+static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	int err, savederrno;
 	int i, msg_recv, transport;
@@ -630,7 +630,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct mms
 		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 	}
 
-	msg_recv = recvmmsg(sockfd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
+	msg_recv = recvmmsg(sockfd, (struct mmsghdr *)&msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
 	savederrno = errno;
 
 	/*
@@ -698,7 +698,7 @@ void *_handle_recv_from_links_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 	struct sockaddr_storage address[PCKT_FRAG_MAX];
-	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	struct iovec iov_in[PCKT_FRAG_MAX];
 
 	memset(&msg, 0, sizeof(msg));

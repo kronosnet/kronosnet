@@ -197,11 +197,6 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
 fi
 
-# Check entries in specific structs
-AC_CHECK_MEMBER([struct mmsghdr.msg_hdr],
-                [AC_DEFINE_UNQUOTED([HAVE_MMSGHDR], [1], [struct mmsghdr exists])],
-                [], [[#include <sys/socket.h>]])
-
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
 

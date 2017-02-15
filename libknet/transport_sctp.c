@@ -415,7 +415,7 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
  *       delegate any FD error management to sctp_transport_rx_sock_error
  *       and keep this code to parsing incoming data only
  */
-static int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg)
+static int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	int i;
 	struct iovec *iov = msg->msg_hdr.msg_iov;

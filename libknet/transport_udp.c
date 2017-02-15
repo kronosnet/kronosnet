@@ -374,7 +374,7 @@ static int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int rec
 	return 0;
 }
 
-static int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct mmsghdr *msg)
+static int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	if (msg->msg_len == 0)
 		return 0;
