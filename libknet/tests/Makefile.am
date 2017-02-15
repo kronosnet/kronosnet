@@ -86,4 +86,6 @@ crypto_bench_test_LDFLAGS = $(nss_LIBS)
 
 knet_bench_test_SOURCES	= knet_bench.c \
 			  test-common.c \
-			  ../compat.c
+			  ../common.c \
+			  ../logging.c \
+			  ../transport_common.c

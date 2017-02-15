@@ -20,6 +20,7 @@
 
 #include "internals.h"
 #include "netutils.h"
+#include "transports.h"
 #include "test-common.h"
 
 #define MAX_NODES 128
@@ -537,7 +538,7 @@ select_loop:
 		printf("RXT: No data for the past 5 seconds\n");
 	}
 	if (FD_ISSET(datafd, &rfds)) {
-		msg_recv = recvmmsg(datafd, msg, PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL, NULL);
+		msg_recv = _recvmmsg(datafd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
 		if (msg_recv < 0) {
 			printf("RXT: error from recvmmsg: %s\n", strerror(errno));
 		}
