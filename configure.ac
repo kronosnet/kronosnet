@@ -400,7 +400,6 @@ AC_CONFIG_FILES([
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile
-		poc-code/sctp-defrag-bug/Makefile
 		])
 
 AC_OUTPUT

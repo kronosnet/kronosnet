@@ -10,4 +10,4 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-SUBDIRS			= access-list iov-hash sctp-defrag-bug
+SUBDIRS			= access-list iov-hash
