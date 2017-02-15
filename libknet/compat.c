@@ -14,51 +14,6 @@
 
 #include "compat.h"
 
-#ifndef HAVE_RECVMMSG
-extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
-    unsigned int flags, struct timespec *timeout)
-{
-#ifdef SYS_recvmmsg
-	/*
-	 * For systems where kernel supports recvmmsg but glibc doesn't (RHEL 6)
-	 */
-	return (syscall(SYS_recvmmsg, sockfd, msgvec, vlen, flags, timeout));
-#else
-	/*
-	 * Generic implementation of recvmmsg using recvmsg
-	 */
-	unsigned int i;
-	ssize_t ret;
-
-	if (vlen == 0) {
-		return (0);
-	}
-
-	if ((timeout != NULL) || (flags & MSG_WAITFORONE)) {
-		/*
-		 * Not implemented
-		 */
-		errno = EINVAL;
-		return (-1);
-	}
-
-	for (i = 0; i < vlen; i++) {
-		ret = recvmsg(sockfd, &msgvec[i].msg_hdr, flags);
-		if (ret >= 0) {
-			msgvec[i].msg_len = ret;
-		} else {
-			if (ret == -1 && errno == EAGAIN) {
-				ret = 0;
-			}
-			break ;
-		}
-	}
-
-	return ((ret >= 0) ? i : ret);
-#endif
-}
-#endif
-
 #ifndef HAVE_SYS_EPOLL_H
 #ifdef HAVE_KEVENT
 

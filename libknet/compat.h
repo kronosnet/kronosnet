@@ -13,22 +13,6 @@
 #include <sys/socket.h>
 #include <stdint.h>
 
-
-/* FreeBSD has recvmmsg but it's a buggy wrapper */
-#ifdef __FreeBSD__
-#define recvmmsg COMPAT_recvmmsg
-#undef HAVE_RECVMMSG
-#endif
-
-#ifndef MSG_WAITFORONE
-#define MSG_WAITFORONE  0x10000
-#endif
-
-#ifndef HAVE_RECVMMSG
-extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
-    unsigned int flags, struct timespec *timeout);
-#endif
-
 #ifndef ETIME
 #define ETIME ETIMEDOUT
 #endif

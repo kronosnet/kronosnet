@@ -184,7 +184,6 @@ AC_CHECK_FUNCS([strrchr])
 AC_CHECK_FUNCS([strstr])
 AC_CHECK_FUNCS([clock_gettime])
 AC_CHECK_FUNCS([strcasecmp])
-AC_CHECK_FUNCS([recvmmsg])
 AC_CHECK_FUNCS([kevent])
 # if neither sys/epoll.h nor kevent are present, we should fail.
 

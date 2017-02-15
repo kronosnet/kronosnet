@@ -21,6 +21,28 @@
  * TODO: kill those wrappers once we work on packet delivery guaranteed
  */
 
+int _recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
+{
+	int savederrno = 0, err = 0;
+	unsigned int i;
+
+	for (i = 0; i < vlen; i++) {
+		err = recvmsg(sockfd, &msgvec[i].msg_hdr, flags);
+		savederrno = errno;
+		if (err >= 0) {
+			msgvec[i].msg_len = err;
+		} else {
+			if (err == -1 && errno == EAGAIN) {
+				err = 0;
+			}
+			break;
+		}
+	}
+
+	errno = savederrno;
+	return ((err >= 0) ? i : err);
+}
+
 int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
 {
 	int savederrno = 0, err = 0;
