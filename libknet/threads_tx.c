@@ -49,8 +49,8 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 retry:
 		cur = &msg[prev_sent];
 
-		sent_msgs = sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
-				     (struct mmsghdr *)&cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
+		sent_msgs = _sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
+				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
 		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);

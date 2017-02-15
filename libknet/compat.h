@@ -17,18 +17,11 @@
 /* FreeBSD has recvmmsg but it's a buggy wrapper */
 #ifdef __FreeBSD__
 #define recvmmsg COMPAT_recvmmsg
-#define sendmmsg COMPAT_sendmmsg
 #undef HAVE_RECVMMSG
-#undef HAVE_SENDMMSG
 #endif
 
 #ifndef MSG_WAITFORONE
 #define MSG_WAITFORONE  0x10000
-#endif
-
-#ifndef HAVE_SENDMMSG
-extern int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
-    unsigned int flags);
 #endif
 
 #ifndef HAVE_RECVMMSG

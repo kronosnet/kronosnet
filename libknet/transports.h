@@ -21,4 +21,6 @@ void _close_socketpair(knet_handle_t knet_h, int *sock);
 int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data);
 int _is_valid_fd(knet_handle_t knet_h, int sockfd);
 
+int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
+
 #endif

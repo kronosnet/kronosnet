@@ -14,40 +14,6 @@
 
 #include "compat.h"
 
-#ifndef HAVE_SENDMMSG
-int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
-    unsigned int flags)
-{
-#ifdef SYS_sendmmsg
-	/*
-	 * For systems where kernel supports sendmmsg but glibc doesn't (RHEL 6)
-	 */
-	return (syscall(SYS_sendmmsg, sockfd, msgvec, vlen, flags));
-#else
-	/*
-	 * Generic implementation of sendmmsg using sendmsg
-	 */
-	unsigned int i;
-	ssize_t ret;
-
-	if (vlen == 0) {
-		return (0);
-	}
-
-	for (i = 0; i < vlen; i++) {
-		ret = sendmsg(sockfd, &msgvec[i].msg_hdr, flags);
-		if (ret >= 0) {
-			msgvec[i].msg_len = ret;
-		} else {
-			break ;
-		}
-	}
-
-	return ((ret >= 0) ? vlen : ret);
-#endif
-}
-#endif
-
 #ifndef HAVE_RECVMMSG
 extern int recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen,
     unsigned int flags, struct timespec *timeout)

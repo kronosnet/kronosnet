@@ -15,6 +15,31 @@
 #include "common.h"
 #include "transports.h"
 
+/*
+ * reuse Jan Friesse's compat layer as wrapper to drop usage of sendmmsg
+ *
+ * TODO: kill those wrappers once we work on packet delivery guaranteed
+ */
+
+int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
+{
+	int savederrno = 0, err = 0;
+	unsigned int i;
+
+	for (i = 0; i < vlen; i++) {
+		err = sendmsg(sockfd, &msgvec[i].msg_hdr, flags);
+		savederrno = errno;
+		if (err >= 0) {
+			msgvec[i].msg_len = err;
+		} else {
+			break;
+		}
+	}
+
+	errno = savederrno;
+	return ((err >= 0) ? vlen : err);
+}
+
 int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 {
 	int err = 0, savederrno = 0;
