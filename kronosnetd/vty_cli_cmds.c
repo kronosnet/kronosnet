@@ -1091,8 +1091,8 @@ static int knet_find_host(struct knet_vty *vty,	const char *nodename, const knet
 	/*
 	 * internal error.. get out
 	 */
-	if ((have_nodeid < 0) || (have_name < 0)) {
-		knet_vty_write(vty, "Error: unable to query libknet for name/nodeid info%s", telnet_newline);
+	if (have_nodeid < 0) {
+		knet_vty_write(vty, "Error: unable to query libknet for nodeid info%s", telnet_newline);
 		return -1;
 	}
 
