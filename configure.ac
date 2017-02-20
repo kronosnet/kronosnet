@@ -61,7 +61,12 @@ AC_PROG_GREP
 AC_PROG_SED
 AC_PROG_CPP
 AC_PROG_CC
-AM_PROG_CC_C_O
+AC_PROG_CC_C99
+if test "x$ac_cv_prog_cc_c99" = "xno"; then
+	AC_MSG_ERROR([C99 support is required])
+else
+	CFLAGS="-std=gnu99 $CFLAGS"
+fi
 AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
