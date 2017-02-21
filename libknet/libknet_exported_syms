@@ -1,8 +1,0 @@
-# Version and symbol export for libknet.so
-
-LIBKNET_0.0 {
-	global:
-		knet_*;
-	local:
-		*;
-};

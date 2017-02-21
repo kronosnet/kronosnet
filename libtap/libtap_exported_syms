@@ -1,6 +1,0 @@
-Base {
-	global:
-		tap_*;
-	local:
-		*;
-};
