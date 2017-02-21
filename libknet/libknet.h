@@ -229,35 +229,6 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
 int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
 
 /*
- * knet_handle_enable_sock_notify
- *
- * knet_h   - pointer to knet_handle_t
- *
- * sock_notify_fn_private_data
- *            void pointer to data that can be used to identify
- *            the callback.
- *
- * sock_notify_fn
- *            A callback function that is invoked every time
- *            a socket in the datafd pool will report an error (-1)
- *            or an end of read (0) (see socket.7).
- *            This function MUST NEVER block or add substantial delays.
- *            The callback is invoked in an internal unlocked area
- *            to allow calls to knet_handle_add_datafd/knet_handle_remove_datafd
- *            to swap/replace the bad fd.
- *            if both err and errno are 0, it means that the socket
- *            has received a 0 byte packet (EOF?).
- *            The callback function must either remove the fd from knet
- *            (by calling knet_handle_remove_fd()) or dup a new fd in its place.
- *            Failure to do this can cause problems.
- *
- * knet_handle_enable_sock_notify returns:
- *
- * 0 on success
- * -1 on error and errno is set.
- */
-
-/*
  * knet_handle_get_channel
  *
  * knet_h  - pointer to knet_handle_t
@@ -274,6 +245,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
  * -1 on error and errno is set.
  *   and *channel content is meaningless
  */
+
 int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *channel);
 
 /*
