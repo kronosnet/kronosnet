@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __THREADS_COMMON_H__
-#define __THREADS_COMMON_H__
+#ifndef __KNET_THREADS_COMMON_H__
+#define __KNET_THREADS_COMMON_H__
 
 #include "internals.h"
 

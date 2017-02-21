@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __ETHERFILTER_H__
-#define __ETHERFILTER_H__
+#ifndef __KNETD_ETHERFILTER_H__
+#define __KNETD_ETHERFILTER_H__
 
 #include <stdint.h>
 #include "libknet.h"

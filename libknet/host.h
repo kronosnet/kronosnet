@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __HOST_H__
-#define __HOST_H__
+#ifndef __KNET_HOST_H__
+#define __KNET_HOST_H__
 
 #include "internals.h"
 

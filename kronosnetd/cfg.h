@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __CFG_H__
-#define __CFG_H__
+#ifndef __KNETD_CFG_H__
+#define __KNETD_CFG_H__
 
 #include <stdint.h>
 #include <net/if.h>

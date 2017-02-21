@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __THREADS_HEARTBEAT_H__
-#define __THREADS_HEARTBEAT_H__
+#ifndef __KNET_THREADS_HEARTBEAT_H__
+#define __KNET_THREADS_HEARTBEAT_H__
 
 void _send_pings(knet_handle_t knet_h, int timed);
 void *_handle_heartbt_thread(void *data);

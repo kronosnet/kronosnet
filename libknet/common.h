@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#ifndef __KNET_COMMON_H__
+#define __KNET_COMMON_H__
 
 int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);

@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __NETUTILS_H__
-#define __NETUTILS_H__
+#ifndef __KNET_NETUTILS_H__
+#define __KNET_NETUTILS_H__
 
 #include <sys/socket.h>
 

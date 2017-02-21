@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __VTY_UTILS_H__
-#define __VTY_UTILS_H__
+#ifndef __KNETD_VTY_UTILS_H__
+#define __KNETD_VTY_UTILS_H__
 
 #include "vty.h"
 

@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __TEST_COMMON_H__
-#define __TEST_COMMON_H__
+#ifndef __KNET_TEST_COMMON_H__
+#define __KNET_TEST_COMMON_H__
 
 #include "internals.h"
 #include <sched.h>

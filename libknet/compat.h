@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __COMPAT_H__
-#define __COMPAT_H__
+#ifndef __KNET_COMPAT_H__
+#define __KNET_COMPAT_H__
 
 #include "config.h"
 #include <sys/socket.h>
@@ -47,4 +47,4 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout_
 
 #endif /* HAVE_KEVENT */
 #endif /* HAVE_SYS_EPOLL_H */
-#endif /* __COMPAT_H__ */
+#endif /* __KNET_COMPAT_H__ */

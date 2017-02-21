@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __VTY_CLI_CMDS_H__
-#define __VTY_CLI_CMDS_H__
+#ifndef __KNETD_VTY_CLI_CMDS_H__
+#define __KNETD_VTY_CLI_CMDS_H__
 
 #include "vty.h"
 

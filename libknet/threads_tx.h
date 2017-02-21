@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __THREADS_TX_H__
-#define __THREADS_TX_H__
+#ifndef __KNET_THREADS_TX_H__
+#define __KNET_THREADS_TX_H__
 
 void *_handle_send_to_links_thread(void *data);
 

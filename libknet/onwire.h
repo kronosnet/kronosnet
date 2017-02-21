@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __ONWIRE_H__
-#define __ONWIRE_H__
+#ifndef __KNET_ONWIRE_H__
+#define __KNET_ONWIRE_H__
 
 /*
  * data structures to define network packets.

@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __THREADS_RX_H__
-#define __THREADS_RX_H__
+#ifndef __KNET_THREADS_RX_H__
+#define __KNET_THREADS_RX_H__
 
 void *_handle_recv_from_links_thread(void *data);
 

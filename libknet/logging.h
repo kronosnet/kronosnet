@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __LOGGING_H__
-#define __LOGGING_H__
+#ifndef __KNET_LOGGING_H__
+#define __KNET_LOGGING_H__
 
 #include "internals.h"
 

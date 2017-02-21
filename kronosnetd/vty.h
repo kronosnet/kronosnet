@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __VTY_H__
-#define __VTY_H__
+#ifndef __KNETD_VTY_H__
+#define __KNETD_VTY_H__
 
 #include <pthread.h>
 #include <sys/types.h>

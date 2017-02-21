@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __TRANSPORTS_H__
-#define __TRANSPORTS_H__
+#ifndef __KNET_TRANSPORTS_H__
+#define __KNET_TRANSPORTS_H__
 
 knet_transport_ops_t *get_udp_transport(void);
 knet_transport_ops_t *get_sctp_transport(void);

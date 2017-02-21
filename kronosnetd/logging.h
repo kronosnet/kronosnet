@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __LOGGING_H__
-#define __LOGGING_H__
+#ifndef __KNETD_LOGGING_H__
+#define __KNETD_LOGGING_H__
 
 #include <qb/qblog.h>
 

@@ -7,8 +7,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __LINK_H__
-#define __LINK_H__
+#ifndef __KNET_LINK_H__
+#define __KNET_LINK_H__
 
 #include "internals.h"
 

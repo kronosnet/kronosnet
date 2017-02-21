@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __CRYPTO_H__
-#define __CRYPTO_H__
+#ifndef __KNET_CRYPTO_H__
+#define __KNET_CRYPTO_H__
 
 #include "internals.h"
 
