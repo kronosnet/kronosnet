@@ -92,10 +92,10 @@ typedef struct sctp_connect_link_info {
  * sockets are removed from rx_epoll from callers
  * see also error handling functions
  */
-static int _close_connect_socket(knet_handle_t knet_h, struct knet_link *link)
+static int _close_connect_socket(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
-	sctp_connect_link_info_t *info = link->transport_link;
+	sctp_connect_link_info_t *info = kn_link->transport_link;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event ev;
 
@@ -898,7 +898,7 @@ static void *_sctp_listen_thread(void *data)
  * sctp_link_listener_start/stop are called in global write lock
  * context from set_config and clear_config.
  */
-static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, struct knet_link *link)
+static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	int listen_sock = -1;
@@ -910,7 +910,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	 * Only allocate a new listener if src address is different
 	 */
 	knet_list_for_each_entry(info, &handle_info->listen_links_list, list) {
-		if (memcmp(&info->src_address, &link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
+		if (memcmp(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
 			return info;
 		}
 	}
@@ -924,9 +924,9 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	memset(info, 0, sizeof(sctp_listen_link_info_t));
 
 	memset(info->accepted_socks, -1, sizeof(info->accepted_socks));
-	memcpy(&info->src_address, &link->src_addr, sizeof(struct sockaddr_storage));
+	memcpy(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
 
-	listen_sock = socket(link->src_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
+	listen_sock = socket(kn_link->src_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
 	if (listen_sock < 0) {
 		savederrno = errno;
 		err = -1;
@@ -935,13 +935,13 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (_configure_sctp_socket(knet_h, listen_sock, &link->src_addr, "SCTP listener") < 0) {
+	if (_configure_sctp_socket(knet_h, listen_sock, &kn_link->src_addr, "SCTP listener") < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
 	}
 
-	if (bind(listen_sock, (struct sockaddr *)&link->src_addr, sockaddr_len(&link->src_addr)) < 0) {
+	if (bind(listen_sock, (struct sockaddr *)&kn_link->src_addr, sockaddr_len(&kn_link->src_addr)) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to bind listener socket: %s",
@@ -980,7 +980,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	info->listen_sock = listen_sock;
 	knet_list_add(&info->list, &handle_info->listen_links_list);
 
-	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Listening on fd %d for %s:%s", listen_sock, link->status.src_ipaddr, link->status.src_port);
+	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Listening on fd %d for %s:%s", listen_sock, kn_link->status.src_ipaddr, kn_link->status.src_port);
 
 exit_error:
 	if (err) {
@@ -999,21 +999,21 @@ exit_error:
 	return info;
 }
 
-static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *link)
+static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	int found = 0, i;
 	struct knet_host *host;
 	int link_idx;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
-	sctp_connect_link_info_t *this_link_info = link->transport_link;
+	sctp_connect_link_info_t *this_link_info = kn_link->transport_link;
 	sctp_listen_link_info_t *info = this_link_info->listener;
 	sctp_connect_link_info_t *link_info;
 	struct epoll_event ev;
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
-			if (&host->link[link_idx] == link)
+			if (&host->link[link_idx] == kn_link)
 				continue;
 
 			link_info = host->link[link_idx].transport_link;
@@ -1093,7 +1093,7 @@ exit_error:
 /*
  * Links config/clear. Both called with global wrlock from link_set_config/clear_config
  */
-static int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *link)
+static int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int savederrno = 0, err = 0;
 	sctp_connect_link_info_t *info;
@@ -1106,27 +1106,27 @@ static int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link
 
 	memset(info, 0, sizeof(sctp_connect_link_info_t));
 
-	link->transport_link = info;
-	info->link = link;
+	kn_link->transport_link = info;
+	info->link = kn_link;
 
-	memcpy(&info->dst_address, &link->dst_addr, sizeof(struct sockaddr_storage));
+	memcpy(&info->dst_address, &kn_link->dst_addr, sizeof(struct sockaddr_storage));
 	info->on_connected_epoll = 0;
 	info->connect_sock = -1;
 
-	info->listener = sctp_link_listener_start(knet_h, link);
+	info->listener = sctp_link_listener_start(knet_h, kn_link);
 	if (!info->listener) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
 	}
 
-	if (link->dynamic == KNET_LINK_STATIC) {
-		if (_create_connect_socket(knet_h, link) < 0) {
+	if (kn_link->dynamic == KNET_LINK_STATIC) {
+		if (_create_connect_socket(knet_h, kn_link) < 0) {
 			savederrno = errno;
 			err = -1;
 			goto exit_error;
 		}
-		link->outsock = info->connect_sock;
+		kn_link->outsock = info->connect_sock;
 	}
 
 	knet_list_add(&info->list, &handle_info->connect_links_list);
@@ -1138,9 +1138,9 @@ exit_error:
 				close(info->connect_sock);
 			}
 			if (info->listener) {
-				sctp_link_listener_stop(knet_h, link);
+				sctp_link_listener_stop(knet_h, kn_link);
 			}
-			link->transport_link = NULL;
+			kn_link->transport_link = NULL;
 			free(info);
 		}
 	}
@@ -1151,25 +1151,25 @@ exit_error:
 /*
  * called with global wrlock
  */
-static int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *link)
+static int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	sctp_connect_link_info_t *info;
 	struct epoll_event ev;
 
-	if (!link) {
+	if (!kn_link) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	info = link->transport_link;
+	info = kn_link->transport_link;
 
 	if (!info) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if ((sctp_link_listener_stop(knet_h, link) <0) && (errno != EBUSY)) {
+	if ((sctp_link_listener_stop(knet_h, kn_link) <0) && (errno != EBUSY)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to remove listener trasport: %s",
@@ -1191,7 +1191,7 @@ static int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_li
 		info->on_rx_epoll = 0;
 	}
 
-	if (_close_connect_socket(knet_h, link) < 0) {
+	if (_close_connect_socket(knet_h, kn_link) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to close connected socket: %s",
@@ -1202,7 +1202,7 @@ static int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_li
 	knet_list_del(&info->list);
 
 	free(info);
-	link->transport_link = NULL;
+	kn_link->transport_link = NULL;
 
 exit_error:
 	errno = savederrno;
