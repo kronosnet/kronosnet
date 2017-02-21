@@ -257,6 +257,23 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
  * -1 on error and errno is set.
  */
 
+/*
+ * knet_handle_get_channel
+ *
+ * knet_h  - pointer to knet_handle_t
+ *
+ * datafd  - get the channel associated to this datafd
+ *
+ * *channel - will contain the result
+ *
+ * knet_handle_get_channel returns:
+ *
+ * 0 on success
+ *   and *channel will contain the result
+ *
+ * -1 on error and errno is set.
+ *   and *channel content is meaningless
+ */
 int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *channel);
 
 /*
