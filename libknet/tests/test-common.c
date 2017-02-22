@@ -260,7 +260,7 @@ static void *_logthread(void *args)
 	struct timeval tv;
 
 select_loop:
-	tv.tv_sec = 5;
+	tv.tv_sec = 60;
 	tv.tv_usec = 0;
 
 	FD_ZERO(&rfds);
@@ -272,7 +272,7 @@ select_loop:
 		return NULL;
 	}
 	if (!len) {
-		fprintf(data.std, "knet logs: No logs in the last 5 seconds\n");
+		fprintf(data.std, "knet logs: No logs in the last 60 seconds\n");
 	}
 	if (FD_ISSET(data.logfd, &rfds)) {
 		flush_logs(data.logfd, data.std);
