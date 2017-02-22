@@ -22,6 +22,6 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 int _is_valid_fd(knet_handle_t knet_h, int sockfd);
 
 int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
-int _recvmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
+int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
 
 #endif

@@ -495,7 +495,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 		knet_h->recv_from_sock_buf[0]->kh_type = type;
 		_parse_recv_from_sock(knet_h, 0, inlen, channel, 0);
 	} else {
-		msg_recv = _recvmmsg(sockfd, (struct mmsghdr *)&msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
+		msg_recv = _recvmmsg(sockfd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
 		if (msg_recv < 0) {
 			inlen = msg_recv;
 			savederrno = errno;
