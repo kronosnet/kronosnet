@@ -18,14 +18,17 @@
 
 #include "libknet.h"
 
+#include "compat.h"
 #include "internals.h"
 #include "netutils.h"
 #include "transports.h"
+#include "threads_common.h"
 #include "test-common.h"
 
 #define MAX_NODES 128
 
 static int senderid = -1;
+static int thisnodeid = -1;
 static knet_handle_t knet_h;
 static int datafd = 0;
 static int8_t channel = 0;
@@ -36,14 +39,25 @@ static struct sockaddr_storage allv6;
 static int broadcast_test = 1;
 static pthread_t rx_thread = (pthread_t)NULL;
 static char *rx_buf[PCKT_FRAG_MAX];
-static int shutdown_in_progress = 0;
+static int wait_for_perf_rx = 0;
+
+static int bench_shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define TEST_PING 0
 #define TEST_PING_AND_DATA 1
-#define TEST_PERF 2
+#define TEST_PERF_BY_SIZE 2
+#define TEST_PERF_BY_TIME 3
 
 static int test_type = TEST_PING;
+
+#define TEST_START 2
+#define TEST_STOP 4
+#define TEST_COMPLETE 6
+
+#define ONE_GIGABYTE 1073741824
+
+static uint64_t perf_by_size_size = 1 * ONE_GIGABYTE;
 
 struct node {
 	int nodeid;
@@ -68,15 +82,23 @@ static void print_help(void)
 	printf(" -l                                        enable global listener on 0.0.0.0/:: (default: off, incompatible with -o)\n");
 	printf(" -o                                        enable baseport offset per nodeid\n");
 	printf(" -w                                        dont wait for all nodes to be up before starting the test (default: wait)\n");
-	printf(" -T [ping|ping_data|perf]                  test type (default: ping)\n");
+	printf(" -T [ping|ping_data|perf-by-size|perf-by-time]\n");
+	printf("                                           test type (default: ping)\n");
 	printf("                                           ping: will wait for all hosts to join the knet network, sleep 5 seconds and quit\n");
 	printf("                                           ping_data: will wait for all hosts to join the knet network, sends some data to all nodes and quit\n");
-	printf("                                           perf: will wait for all hosts to join the knet network, perform a series of benchmarks and quit\n");
+	printf("                                           perf-by-size: will wait for all hosts to join the knet network,\n");
+	printf("                                                         perform a series of benchmarks by transmitting a known\n");
+	printf("                                                         size/quantity of packets and measuring the time, then quit\n");
+	printf("                                           perf-by-time: will wait for all hosts to join the knet network,\n");
+	printf("                                                         perform a series of benchmarks by transmitting a known\n");
+	printf("                                                         size of packets for a given amount of time (10 seconds)\n");
+	printf("                                                         and measuring the quantity of data transmitted, then quit\n");
 	printf(" -s                                        nodeid that will generate traffic for benchmarks\n");
+	printf(" -S [size]                                 when used in combination with -T perf-by-size it indicates how many GB of traffic to generate for the test. (default: 1GB)\n");
 	printf(" -C                                        repeat the test continously (default: off)\n");
 }
 
-static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct node nodes[MAX_NODES], int thisnodeid, int *thisidx)
+static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct node nodes[MAX_NODES], int *thisidx)
 {
 	int i;
 	char *temp = NULL;
@@ -142,6 +164,29 @@ static void sock_notify(void *pvt_data,
 	return;
 }
 
+static int ping_dst_host_filter(void *pvt_data,
+				const unsigned char *outdata,
+				ssize_t outdata_len,
+				uint8_t tx_rx,
+				knet_node_id_t this_host_id,
+				knet_node_id_t src_host_id,
+				int8_t *dst_channel,
+				knet_node_id_t *dst_host_ids,
+				size_t *dst_host_ids_entries)
+{
+	if (broadcast_test) {
+		return 1;
+	}
+
+	if (tx_rx == KNET_NOTIFY_TX) {
+		memmove(&dst_host_ids[0], outdata, 2);
+	} else {
+		dst_host_ids[0] = this_host_id;
+	}
+	*dst_host_ids_entries = 1;
+	return 0;
+}
+
 static void setup_knet(int argc, char *argv[])
 {
 	int logfd;
@@ -149,7 +194,6 @@ static void setup_knet(int argc, char *argv[])
 	char *cryptocfg = NULL, *policystr = NULL, *protostr = NULL;
 	char *othernodeinfo[MAX_NODES];
 	struct node nodes[MAX_NODES];
-	int thisnodeid = -1;
 	int thisidx = -1;
 	int onidx = 0;
 	int debug = KNET_LOG_INFO;
@@ -168,7 +212,7 @@ static void setup_knet(int argc, char *argv[])
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "CT:s:ldowb:t:n:c:p:P:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:P:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -286,9 +330,17 @@ static void setup_knet(int argc, char *argv[])
 				if (!strcmp("ping_data", optarg)) {
 					test_type = TEST_PING_AND_DATA;
 				}
-				if (!strcmp("perf", optarg)) {
-					test_type = TEST_PERF;
+				if (!strcmp("perf-by-size", optarg)) {
+					test_type = TEST_PERF_BY_SIZE;
 				}
+				if (!strcmp("perf-by-time", optarg)) {
+					test_type = TEST_PERF_BY_TIME;
+					printf("Error: perf-by-time not implemented yet\n");
+					exit(FAIL);
+				}
+				break;
+			case 'S':
+				perf_by_size_size = (uint64_t)atoi(optarg) * ONE_GIGABYTE;
 				break;
 			case 'C':
 				continous = 1;
@@ -308,7 +360,7 @@ static void setup_knet(int argc, char *argv[])
 		exit(FAIL);
 	}
 
-	parse_nodes(othernodeinfo, onidx, port, nodes, thisnodeid, &thisidx);
+	parse_nodes(othernodeinfo, onidx, port, nodes, &thisidx);
 
 	if (thisidx < 0) {
 		printf("no config for this node found\n");
@@ -327,7 +379,7 @@ static void setup_knet(int argc, char *argv[])
 		}
 	}
 
-	if ((test_type == TEST_PERF) && (senderid < 0)) {
+	if (((test_type == TEST_PERF_BY_SIZE) || (test_type == TEST_PERF_BY_TIME)) && (senderid < 0)) {
 		printf("Error: performance test requires -s to be set (for now)\n");
 		exit(FAIL);
 	}
@@ -372,6 +424,12 @@ static void setup_knet(int argc, char *argv[])
 
 	if (knet_handle_add_datafd(knet_h, &datafd, &channel) < 0) {
 		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		exit(FAIL);
+	}
+
+	if (knet_handle_pmtud_setfreq(knet_h, 60) < 0) {
+		printf("knet_handle_pmtud_setfreq failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		exit(FAIL);
 	}
@@ -445,7 +503,20 @@ static void setup_knet(int argc, char *argv[])
 				printf("knet_link_set_enable failed: %s\n", strerror(errno));
 				exit(FAIL);
 			}
+			if (knet_link_set_ping_timers(knet_h, nodes[i].nodeid, link_idx, 1000, 10000, 2048) < 0) {
+				printf("knet_link_set_ping_timers failed: %s\n", strerror(errno));
+				exit(FAIL);
+			}
+			if (knet_link_set_pong_count(knet_h, nodes[i].nodeid, link_idx, 2) < 0) {
+				printf("knet_link_set_pong_count failed: %s\n", strerror(errno));
+				exit(FAIL);
+			}
 		}
+	}
+
+	if (knet_handle_enable_filter(knet_h, NULL, ping_dst_host_filter)) {
+		printf("Unable to enable dst_host_filter: %s\n", strerror(errno));
+		exit(FAIL);
 	}
 
 	if (knet_handle_setfwd(knet_h, 1) < 0) {
@@ -473,38 +544,21 @@ static void setup_knet(int argc, char *argv[])
 	}
 }
 
-static int ping_dst_host_filter(void *pvt_data,
-				const unsigned char *outdata,
-				ssize_t outdata_len,
-				uint8_t tx_rx,
-				knet_node_id_t this_host_id,
-				knet_node_id_t src_host_id,
-				int8_t *dst_channel,
-				knet_node_id_t *dst_host_ids,
-				size_t *dst_host_ids_entries)
-{
-	if (broadcast_test) {
-		return 1;
-	}
-
-	if (tx_rx == KNET_NOTIFY_TX) {
-		memmove(&dst_host_ids[0], outdata, 2);
-	} else {
-		dst_host_ids[0] = this_host_id;
-	}
-	*dst_host_ids_entries = 1;
-	return 0;
-}
-
 static void *_rx_thread(void *args)
 {
-	fd_set rfds;
-	ssize_t len;
-	struct timeval tv;
+	int rx_epoll;
+	struct epoll_event ev;
+	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
+
 	struct sockaddr_storage address[PCKT_FRAG_MAX];
-	struct mmsghdr msg[PCKT_FRAG_MAX];
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	struct iovec iov_in[PCKT_FRAG_MAX];
 	int i, msg_recv;
+	struct timespec clock_start, clock_end;
+	unsigned long long time_diff = 0;
+	uint64_t rx_pkts = 0;
+	uint64_t rx_bytes = 0;
+	unsigned int current_pckt_size = 0;
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		rx_buf[i] = malloc(KNET_MAX_PACKET_SIZE);
@@ -522,40 +576,102 @@ static void *_rx_thread(void *args)
 		msg[i].msg_hdr.msg_iovlen = 1;
 	}
 
-select_loop:
-	tv.tv_sec = 5;
-	tv.tv_usec = 0;
-
-	FD_ZERO(&rfds);
-	FD_SET(datafd, &rfds);
-
-	len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
-	if (len < 0) {
-		printf("RXT: Unable select over datafd\nHALTING RX THREAD!\n");
+	rx_epoll = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
+	if (rx_epoll < 0) {
+		printf("RXT: Unable to create epoll!\nHALTING RX THREAD!\n");
 		return NULL;
 	}
-	if (!len) {
-		printf("RXT: No data for the past 5 seconds\n");
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+	ev.events = EPOLLIN;
+	ev.data.fd = datafd;
+
+	if (epoll_ctl(rx_epoll, EPOLL_CTL_ADD, datafd, &ev)) {
+		printf("RXT: Unable to add datafd to epoll\nHALTING RX THREAD!\n");
+		return NULL;
 	}
-	if (FD_ISSET(datafd, &rfds)) {
-		msg_recv = _recvmmsg(datafd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
-		if (msg_recv < 0) {
-			printf("RXT: error from recvmmsg: %s\n", strerror(errno));
-		}
-		for (i = 0; i < msg_recv; i++) {
-			if (msg[i].msg_len == 0) {
-				printf("RXT: received 0 bytes message?\n");
+
+	memset(&clock_start, 0, sizeof(clock_start));
+	memset(&clock_end, 0, sizeof(clock_start));
+
+	while (!bench_shutdown_in_progress) {
+		if (epoll_wait(rx_epoll, events, KNET_EPOLL_MAX_EVENTS, 1) >= 1) {
+			msg_recv = _recvmmsg(datafd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
+			if (msg_recv < 0) {
+				printf("RXT: error from recvmmsg: %s\n", strerror(errno));
 			}
-			if (test_type == TEST_PING_AND_DATA) {
-				printf("received %lu bytes message: %s\n", (long)msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
+			switch(test_type) {
+				case TEST_PING_AND_DATA:
+					for (i = 0; i < msg_recv; i++) {
+						if (msg[i].msg_len == 0) {
+							printf("RXT: received 0 bytes message?\n");
+						}
+						printf("received %u bytes message: %s\n", msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
+					}
+					break;
+				case TEST_PERF_BY_SIZE:
+					for (i = 0; i < msg_recv; i++) {
+						if (msg[i].msg_len < 64) {
+							if (msg[i].msg_len == 0) {
+								printf("RXT: received 0 bytes message?\n");
+							}
+							if (msg[i].msg_len == TEST_START) {
+								if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
+									printf("Unable to get start time!\n");
+								}
+							}
+							if (msg[i].msg_len == TEST_STOP) {
+								double average_rx_mbytes;
+								double average_rx_pkts;
+								double time;
+								if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
+									printf("Unable to get end time!\n");
+								}
+								timespec_diff(clock_start, clock_end, &time_diff);
+								/*
+								 * adjust for sleep(2) between sending the last data and TEST_STOP
+								 */
+								time_diff = time_diff - 2000000000llu;
+
+								/*
+								 * convert to seconds
+								 */
+								time = (double)time_diff / 1000000000llu;
+
+								average_rx_mbytes = (double)((rx_bytes / time) / (1024 * 1024));
+								average_rx_pkts = (double)(rx_pkts / time);
+								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %zu)\n", time, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
+
+								rx_pkts = 0;
+								rx_bytes = 0;
+								current_pckt_size = 0;
+							}
+							if (msg[i].msg_len == TEST_COMPLETE) {
+								wait_for_perf_rx = 1;
+							}
+							continue;
+						}
+						rx_pkts++;
+						rx_bytes = rx_bytes + msg[i].msg_len;
+						current_pckt_size = msg[i].msg_len;
+					}
+					break;
+				case TEST_PERF_BY_TIME:
+					/*
+					 * do stats here
+					 * potential logic:
+					 * - start timer when first packet arrives, end timer will stop counting.
+					 *   - be careful there might still be packets in flight that we need flush.
+					 */
+					sleep(1);
+					wait_for_perf_rx = 1;
+					break;
 			}
-			/*
-			 * do stats here
-			 */
 		}
 	}
 
-	goto select_loop;
+	epoll_ctl(rx_epoll, EPOLL_CTL_DEL, datafd, &ev);
+	close(rx_epoll);
 
 	return NULL;
 }
@@ -582,6 +698,7 @@ static void stop_rx_thread(void)
 
 	if (rx_thread) {
 		printf("Shutting down rx thread\n");
+		sleep(2);
 		pthread_cancel(rx_thread);
 		pthread_join(rx_thread, &retval);
 		for (i = 0; i < PCKT_FRAG_MAX; i ++) {
@@ -601,18 +718,145 @@ static void send_ping_data(void)
 	sleep(1);
 }
 
+static int send_messages(struct knet_mmsghdr *msg, int msgs_to_send)
+{
+	int sent_msgs, prev_sent, progress, total_sent;
+
+	total_sent = 0;
+	sent_msgs = 0;
+	prev_sent = 0;
+	progress = 1;
+
+retry:
+	errno = 0;
+	sent_msgs = _sendmmsg(datafd, &msg[0], msgs_to_send, MSG_NOSIGNAL);
+
+	if (sent_msgs < 0) {
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+			usleep(KNET_THREADS_TIMERES / 16);
+			goto retry;
+		}
+		printf("Unable to send messages: %s\n", strerror(errno));
+		return -1;
+	}
+
+	total_sent = total_sent + sent_msgs;
+
+	if ((sent_msgs >= 0) && (sent_msgs < msgs_to_send)) {
+		if ((sent_msgs) || (progress)) {
+			msgs_to_send = msgs_to_send - sent_msgs;
+			prev_sent = prev_sent + sent_msgs;
+			if (sent_msgs) {
+				progress = 1;
+			} else {
+				progress = 0;
+			}
+			goto retry;
+		}
+		if (!progress) {
+			printf("Unable to send more messages after retry\n");
+		}
+	}
+	return total_sent;
+}
+
+static int setup_send_buffers_common(struct knet_mmsghdr *msg, struct iovec *iov_out, char *tx_buf[])
+{
+	int i;
+
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+		tx_buf[i] = malloc(KNET_MAX_PACKET_SIZE);
+		if (!tx_buf[i]) {
+			printf("TXT: Unable to malloc!\n");
+			return -1;
+		}
+		memset(tx_buf[i], 0, KNET_MAX_PACKET_SIZE);
+		iov_out[i].iov_base = (void *)tx_buf[i];
+		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
+		msg[i].msg_hdr.msg_iov = &iov_out[i];
+		msg[i].msg_hdr.msg_iovlen = 1;
+	}
+	return 0;
+}
+
+static void send_perf_data_by_size(void)
+{
+	char *tx_buf[PCKT_FRAG_MAX];
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
+	struct iovec iov_out[PCKT_FRAG_MAX];
+	char ctrl_message[16];
+	int sent_msgs;
+	int i;
+	uint64_t total_pkts_to_tx;
+	uint64_t packets_to_send;
+	uint32_t packetsize = 64;
+
+	setup_send_buffers_common(msg, iov_out, tx_buf);
+
+	while (packetsize <= KNET_MAX_PACKET_SIZE) {
+		for (i = 0; i < PCKT_FRAG_MAX; i++) {
+			iov_out[i].iov_len = packetsize;
+		}
+
+		total_pkts_to_tx = perf_by_size_size / packetsize;
+
+		printf("Testing with %u packet size. Total bytes to transfer: %zu (%zu packets)\n", packetsize, perf_by_size_size, total_pkts_to_tx);
+
+		memset(ctrl_message, 0, sizeof(ctrl_message));
+		knet_send(knet_h, ctrl_message, TEST_START, channel);
+
+		while (total_pkts_to_tx > 0) {
+			if (total_pkts_to_tx >= PCKT_FRAG_MAX) {
+				packets_to_send = PCKT_FRAG_MAX;
+			} else {
+				packets_to_send = total_pkts_to_tx;
+			}
+			sent_msgs = send_messages(&msg[0], packets_to_send);
+			if (sent_msgs < 0) {
+				printf("Something went wrong, aborting\n");
+				exit(FAIL);
+			}
+			total_pkts_to_tx = total_pkts_to_tx - sent_msgs;
+		}
+
+		sleep(2);
+
+		knet_send(knet_h, ctrl_message, TEST_STOP, channel);
+
+		if (packetsize == KNET_MAX_PACKET_SIZE) {
+			break;
+		}
+
+		/*
+		 * Use a multiplier that can always divide properly a GB
+		 * into smaller chunks without worry about boundaries
+		 */
+		packetsize *= 4;
+
+		if (packetsize > KNET_MAX_PACKET_SIZE) {
+			packetsize = KNET_MAX_PACKET_SIZE;
+		}
+	}
+
+	knet_send(knet_h, ctrl_message, TEST_COMPLETE, channel);
+
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+		free(tx_buf[i]);
+	}
+}
+
 static void cleanup_all(void)
 {
 	if (pthread_mutex_lock(&shutdown_mutex)) {
 		return;
 	}
 
-	if (shutdown_in_progress) {
+	if (bench_shutdown_in_progress) {
 		pthread_mutex_unlock(&shutdown_mutex);
 		return;
 	}
 
-	shutdown_in_progress = 1;
+	bench_shutdown_in_progress = 1;
 
 	pthread_mutex_unlock(&shutdown_mutex);
 
@@ -640,6 +884,10 @@ int main(int argc, char *argv[])
 
 	setup_knet(argc, argv);
 
+	setup_data_txrx_common();
+
+	sleep(5);
+
 restart:
 	switch(test_type) {
 		default:
@@ -647,11 +895,20 @@ restart:
 			sleep(5);
 			break;
 		case TEST_PING_AND_DATA:
-			setup_data_txrx_common();
 			send_ping_data();
 			break;
-		case TEST_PERF:
-			setup_data_txrx_common();
+		case TEST_PERF_BY_SIZE:
+			if (senderid == thisnodeid) {
+				send_perf_data_by_size();
+			} else {
+				printf("Waiting for perf rx thread to finish\n");
+				while(!wait_for_perf_rx) {
+					sleep(1);
+				}
+			}
+			break;
+		case TEST_PERF_BY_TIME:
+			//send_perf_data_by_time();
 			break;
 	}
 	if (continous) {
