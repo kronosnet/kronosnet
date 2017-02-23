@@ -58,6 +58,7 @@ static int test_type = TEST_PING;
 #define ONE_GIGABYTE 1073741824
 
 static uint64_t perf_by_size_size = 1 * ONE_GIGABYTE;
+static uint64_t perf_by_time_secs = 10;
 
 struct node {
 	int nodeid;
@@ -94,7 +95,8 @@ static void print_help(void)
 	printf("                                                         size of packets for a given amount of time (10 seconds)\n");
 	printf("                                                         and measuring the quantity of data transmitted, then quit\n");
 	printf(" -s                                        nodeid that will generate traffic for benchmarks\n");
-	printf(" -S [size]                                 when used in combination with -T perf-by-size it indicates how many GB of traffic to generate for the test. (default: 1GB)\n");
+	printf(" -S [size|seconds]                         when used in combination with -T perf-by-size it indicates how many GB of traffic to generate for the test. (default: 1GB)\n");
+	printf("                                           when used in combination with -T perf-by-time it indicates how many Seconds of traffic to generate for the test. (default: 10 seconds)\n");
 	printf(" -C                                        repeat the test continously (default: off)\n");
 }
 
@@ -335,12 +337,11 @@ static void setup_knet(int argc, char *argv[])
 				}
 				if (!strcmp("perf-by-time", optarg)) {
 					test_type = TEST_PERF_BY_TIME;
-					printf("Error: perf-by-time not implemented yet\n");
-					exit(FAIL);
 				}
 				break;
 			case 'S':
 				perf_by_size_size = (uint64_t)atoi(optarg) * ONE_GIGABYTE;
+				perf_by_time_secs = (uint64_t)atoi(optarg);
 				break;
 			case 'C':
 				continous = 1;
@@ -609,6 +610,7 @@ static void *_rx_thread(void *args)
 						printf("received %u bytes message: %s\n", msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
 					}
 					break;
+				case TEST_PERF_BY_TIME:
 				case TEST_PERF_BY_SIZE:
 					for (i = 0; i < msg_recv; i++) {
 						if (msg[i].msg_len < 64) {
@@ -655,16 +657,6 @@ static void *_rx_thread(void *args)
 						rx_bytes = rx_bytes + msg[i].msg_len;
 						current_pckt_size = msg[i].msg_len;
 					}
-					break;
-				case TEST_PERF_BY_TIME:
-					/*
-					 * do stats here
-					 * potential logic:
-					 * - start timer when first packet arrives, end timer will stop counting.
-					 *   - be careful there might still be packets in flight that we need flush.
-					 */
-					sleep(1);
-					wait_for_perf_rx = 1;
 					break;
 			}
 		}
@@ -845,6 +837,77 @@ static void send_perf_data_by_size(void)
 	}
 }
 
+static void send_perf_data_by_time(void)
+{
+	char *tx_buf[PCKT_FRAG_MAX];
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
+	struct iovec iov_out[PCKT_FRAG_MAX];
+	char ctrl_message[16];
+	int sent_msgs;
+	int i;
+	uint32_t packetsize = 64;
+	struct timespec clock_start, clock_end;
+	unsigned long long time_diff = 0;
+
+	setup_send_buffers_common(msg, iov_out, tx_buf);
+
+	memset(&clock_start, 0, sizeof(clock_start));
+	memset(&clock_end, 0, sizeof(clock_start));
+
+	while (packetsize <= KNET_MAX_PACKET_SIZE) {
+		for (i = 0; i < PCKT_FRAG_MAX; i++) {
+			iov_out[i].iov_len = packetsize;
+		}
+
+		printf("Testing with %u bytes packet size for %zu seconds.\n", packetsize, perf_by_time_secs);
+
+		memset(ctrl_message, 0, sizeof(ctrl_message));
+		knet_send(knet_h, ctrl_message, TEST_START, channel);
+
+		if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
+			printf("Unable to get start time!\n");
+		}
+
+		time_diff = 0;
+
+		while (time_diff < (perf_by_time_secs * 1000000000llu)) {
+			sent_msgs = send_messages(&msg[0], PCKT_FRAG_MAX);
+			if (sent_msgs < 0) {
+				printf("Something went wrong, aborting\n");
+				exit(FAIL);
+			}
+			if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
+				printf("Unable to get end time!\n");
+			}
+			timespec_diff(clock_start, clock_end, &time_diff);
+		}
+
+		sleep(2);
+
+		knet_send(knet_h, ctrl_message, TEST_STOP, channel);
+
+		if (packetsize == KNET_MAX_PACKET_SIZE) {
+			break;
+		}
+
+		/*
+		 * Use a multiplier that can always divide properly a GB
+		 * into smaller chunks without worry about boundaries
+		 */
+		packetsize *= 4;
+
+		if (packetsize > KNET_MAX_PACKET_SIZE) {
+			packetsize = KNET_MAX_PACKET_SIZE;
+		}
+	}
+
+	knet_send(knet_h, ctrl_message, TEST_COMPLETE, channel);
+
+	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+		free(tx_buf[i]);
+	}
+}
+
 static void cleanup_all(void)
 {
 	if (pthread_mutex_lock(&shutdown_mutex)) {
@@ -908,7 +971,14 @@ restart:
 			}
 			break;
 		case TEST_PERF_BY_TIME:
-			//send_perf_data_by_time();
+			if (senderid == thisnodeid) {
+				send_perf_data_by_time();
+			} else {
+				printf("Waiting for perf rx thread to finish\n");
+				while(!wait_for_perf_rx) {
+					sleep(1);
+				}
+			}
 			break;
 	}
 	if (continous) {
