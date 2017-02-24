@@ -85,6 +85,7 @@ retry:
 		len = sendto(dst_link->outsock, outbuf, outlen,
 			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
 			sizeof(struct sockaddr_storage));
+		savederrno = errno;
 
 		dst_link->ping_last = clock_now;
 
@@ -94,7 +95,7 @@ retry:
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
 						  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-						  dst_link->outsock, errno, strerror(errno),
+						  dst_link->outsock, savederrno, strerror(savederrno),
 						  dst_link->status.src_ipaddr, dst_link->status.src_port,
 						  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
 					break;
