@@ -960,6 +960,38 @@ const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t t
 uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name);
 
 /*
+ * knet_handle_set_transport_reconnect_interval
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * msecs     - milliseconds
+ *
+ * knet_handle_set_transport_reconnect_interval returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+#define KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL 1000
+
+int knet_handle_set_transport_reconnect_interval(knet_handle_t knet_h, uint32_t msecs);
+
+/*
+ * knet_handle_get_transport_reconnect_interval
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * msecs     - milliseconds
+ *
+ * knet_handle_get_transport_reconnect_interval returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t *msecs);
+
+/*
  * knet_link_set_config
  *
  * knet_h    - pointer to knet_handle_t

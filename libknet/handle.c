@@ -566,6 +566,11 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	knet_h->pmtud_interval = KNET_PMTUD_DEFAULT_INTERVAL;
 
 	/*
+	 * set transports reconnect default timers
+	 */
+	knet_h->reconnect_int = KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL;
+
+	/*
 	 * init main locking structures
 	 */
 

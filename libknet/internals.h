@@ -147,6 +147,7 @@ struct knet_handle {
 	knet_transport_t transports[KNET_MAX_TRANSPORTS+1];
 	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS+1];
 	struct knet_fd_trackers knet_transport_fd_tracker[KNET_MAX_FDS]; /* track status for each fd handled by transports */
+	uint32_t reconnect_int;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
 	struct knet_header *recv_from_sock_buf[PCKT_FRAG_MAX];

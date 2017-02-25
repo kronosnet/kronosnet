@@ -20,6 +20,8 @@ api_checks		= \
 			  api_knet_handle_get_transport_list_test \
 			  api_knet_handle_get_transport_name_by_id_test \
 			  api_knet_handle_get_transport_id_by_name_test \
+			  api_knet_handle_set_transport_reconnect_interval_test \
+			  api_knet_handle_get_transport_reconnect_interval_test \
 			  api_knet_recv_test \
 			  api_knet_send_test \
 			  api_knet_send_sync_test \
@@ -97,6 +99,12 @@ api_knet_handle_get_transport_name_by_id_test_SOURCES = api_knet_handle_get_tran
 
 api_knet_handle_get_transport_id_by_name_test_SOURCES = api_knet_handle_get_transport_id_by_name.c \
 							test-common.c
+
+api_knet_handle_set_transport_reconnect_interval_test_SOURCES = api_knet_handle_set_transport_reconnect_interval.c \
+								test-common.c
+
+api_knet_handle_get_transport_reconnect_interval_test_SOURCES = api_knet_handle_get_transport_reconnect_interval.c \
+								test-common.c
 
 api_knet_recv_test_SOURCES = api_knet_recv.c \
 			     test-common.c

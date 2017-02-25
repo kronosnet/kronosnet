@@ -447,3 +447,67 @@ uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *n
 	errno = savederrno;
 	return err;
 }
+
+int knet_handle_set_transport_reconnect_interval(knet_handle_t knet_h, uint32_t msecs)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!msecs) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (msecs < 1000) {
+		log_warn(knet_h, KNET_SUB_HANDLE, "reconnect internval below 1 sec (%u msecs) might be too aggressive", msecs);
+	}
+
+	if (msecs > 60000) {
+		log_warn(knet_h, KNET_SUB_HANDLE, "reconnect internval above 1 minute (%u msecs) could cause long delays in network convergiance", msecs);
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->reconnect_int = msecs;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	return 0;
+}
+
+int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t *msecs)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!msecs) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*msecs = knet_h->reconnect_int;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	return 0;
+}

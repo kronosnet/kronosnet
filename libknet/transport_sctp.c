@@ -26,11 +26,6 @@
 #define KNET_PMTUD_SCTP_OVERHEAD_DATA_CHUNK 16
 #define KNET_PMTUD_SCTP_OVERHEAD KNET_PMTUD_SCTP_OVERHEAD_COMMON + KNET_PMTUD_SCTP_OVERHEAD_DATA_CHUNK
 
-/*
- * Time to sleep before reconnection attempts. in microseconds
- */
-#define KNET_SCTP_SLEEP_TIME 1000000
-
 typedef struct sctp_handle_info {
 	struct knet_list_head listen_links_list;
 	struct knet_list_head connect_links_list;
@@ -670,7 +665,7 @@ static void *_sctp_connect_thread(void *data)
 		 * we need to sleep in between loops to allow other threads
 		 * to be scheduled
 		 */
-		usleep(KNET_SCTP_SLEEP_TIME);
+		usleep(knet_h->reconnect_int * 1000);
 	}
 	return NULL;
 }
