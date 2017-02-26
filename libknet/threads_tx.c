@@ -117,7 +117,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
 	struct knet_hostinfo *knet_hostinfo;
-	struct iovec iov_out[PCKT_FRAG_MAX];
+	struct iovec iov_out[PCKT_FRAG_MAX][2];
+	int iovcnt_out = 2;
 	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
 	int host_idx;
@@ -307,15 +308,17 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			/*
 			 * set the iov_base
 			 */
-			iov_out[frag_idx].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
+			iov_out[frag_idx][0].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
+			iov_out[frag_idx][0].iov_len = KNET_HEADER_DATA_SIZE;
+			iov_out[frag_idx][1].iov_base = inbuf->khp_data_userdata + (temp_data_mtu * frag_idx);
 
 			/*
 			 * set the len
 			 */
 			if (frag_len > temp_data_mtu) {
-				iov_out[frag_idx].iov_len = temp_data_mtu + KNET_HEADER_DATA_SIZE;
+				iov_out[frag_idx][1].iov_len = temp_data_mtu;
 			} else {
-				iov_out[frag_idx].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
+				iov_out[frag_idx][1].iov_len = frag_len;
 			}
 
 			/*
@@ -327,25 +330,22 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 			knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = inbuf->khp_data_bcast;
 			knet_h->send_to_links_buf[frag_idx]->khp_data_channel = inbuf->khp_data_channel;
 
-			memmove(knet_h->send_to_links_buf[frag_idx]->khp_data_userdata,
-				inbuf->khp_data_userdata + (temp_data_mtu * frag_idx),
-				iov_out[frag_idx].iov_len - KNET_HEADER_DATA_SIZE);
-
 			frag_len = frag_len - temp_data_mtu;
 			frag_idx++;
 		}
+		iovcnt_out = 2;
 	} else {
-		iov_out[frag_idx].iov_base = (void *)inbuf;
-		iov_out[frag_idx].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
+		iov_out[frag_idx][0].iov_base = (void *)inbuf;
+		iov_out[frag_idx][0].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
+		iovcnt_out = 1;
 	}
 
 	if (knet_h->crypto_instance) {
 		frag_idx = 0;
 		while (frag_idx < inbuf->khp_data_frag_num) {
-			if (crypto_encrypt_and_sign(
+			if (crypto_encrypt_and_signv(
 					knet_h,
-					(const unsigned char *)iov_out[frag_idx].iov_base,
-					iov_out[frag_idx].iov_len,
+					iov_out[frag_idx], iovcnt_out,
 					knet_h->send_to_links_buf_crypt[frag_idx],
 					&outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt packet");
@@ -353,10 +353,11 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 				err = -1;
 				goto out_unlock;
 			}
-			iov_out[frag_idx].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
-			iov_out[frag_idx].iov_len = outlen;
+			iov_out[frag_idx][0].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
+			iov_out[frag_idx][0].iov_len = outlen;
 			frag_idx++;
 		}
+		iovcnt_out = 1;
 	}
 
 	memset(&msg, 0, sizeof(msg));
@@ -367,8 +368,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 
 	while (msg_idx < msgs_to_send) {
 		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx];
-		msg[msg_idx].msg_hdr.msg_iovlen = 1;
+		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx][0];
+		msg[msg_idx].msg_hdr.msg_iovlen = iovcnt_out;
 		msg_idx++;
 	}
 

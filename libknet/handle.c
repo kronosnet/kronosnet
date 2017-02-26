@@ -138,15 +138,14 @@ static int _init_buffers(knet_handle_t knet_h)
 	size_t bufsize;
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
-		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE;
-		knet_h->send_to_links_buf[i] = malloc(bufsize);
+		knet_h->send_to_links_buf[i] = malloc(KNET_HEADER_DATA_SIZE);
 		if (!knet_h->send_to_links_buf[i]) {
 			savederrno = errno;
 			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory datafd to link buffer: %s",
 				strerror(savederrno));
 			goto exit_fail;
 		}
-		memset(knet_h->send_to_links_buf[i], 0, bufsize);
+		memset(knet_h->send_to_links_buf[i], 0, KNET_HEADER_DATA_SIZE);
 
 		knet_h->recv_from_sock_buf[i] = malloc(KNET_DATABUFSIZE);
 		if (!knet_h->recv_from_sock_buf[i]) {
