@@ -625,7 +625,7 @@ static void *_rx_thread(void *args)
 							if (msg[i].msg_len == TEST_STOP) {
 								double average_rx_mbytes;
 								double average_rx_pkts;
-								double time;
+								double time_diff_sec;
 								if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
 									printf("Unable to get end time!\n");
 								}
@@ -638,11 +638,11 @@ static void *_rx_thread(void *args)
 								/*
 								 * convert to seconds
 								 */
-								time = (double)time_diff / 1000000000llu;
+								time_diff_sec = (double)time_diff / 1000000000llu;
 
-								average_rx_mbytes = (double)((rx_bytes / time) / (1024 * 1024));
-								average_rx_pkts = (double)(rx_pkts / time);
-								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %zu)\n", time, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
+								average_rx_mbytes = (double)((rx_bytes / time_diff_sec) / (1024 * 1024));
+								average_rx_pkts = (double)(rx_pkts / time_diff_sec);
+								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %zu)\n", time_diff_sec, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
 
 								rx_pkts = 0;
 								rx_bytes = 0;
