@@ -310,7 +310,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 		for (cmsg = CMSG_FIRSTHDR(&msg);cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 			if (((cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == IP_RECVERR)) ||
 			    ((cmsg->cmsg_level == SOL_IPV6 && (cmsg->cmsg_type == IPV6_RECVERR)))) {
-				sock_err = (struct sock_extended_err*)CMSG_DATA(cmsg);
+				sock_err = (struct sock_extended_err*)(void *)CMSG_DATA(cmsg);
 				if (sock_err) {
 					switch (sock_err->ee_origin) {
 						case 0: /* no origin */
@@ -321,7 +321,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 							break;
 						case 2: /* ICMP */
 						case 3: /* ICMP6 */
-							origin = (struct sockaddr_storage *)SO_EE_OFFENDER(sock_err);
+							origin = (struct sockaddr_storage *)(void *)SO_EE_OFFENDER(sock_err);
 							if (knet_addrtostr(origin, sizeof(origin),
 									   addr_str, KNET_MAX_HOST_LEN,
 									   port_str, KNET_MAX_PORT_LEN) < 0) {

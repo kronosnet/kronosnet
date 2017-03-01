@@ -1081,7 +1081,7 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		return -1;
 	}
 
-	if ((enabled < 0) || (enabled > 1)) {
+	if (enabled > 1) {
 		errno = EINVAL;
 		return -1;
 	}

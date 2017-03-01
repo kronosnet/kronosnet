@@ -240,7 +240,11 @@ static void setup_knet(int argc, char *argv[])
 					policy = KNET_LINK_POLICY_ACTIVE;
 					policyfound = 1;
 				}
-				if (!strcmp(policystr, "rr")) {
+				/*
+				 * we can't use rr because clangs can't compile
+				 * an array of 3 strings, one of which is 2 bytes long
+				 */
+				if (!strcmp(policystr, "round-robin")) {
 					policy = KNET_LINK_POLICY_RR;
 					policyfound = 1;
 				}
