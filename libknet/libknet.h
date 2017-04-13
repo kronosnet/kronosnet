@@ -11,6 +11,7 @@
 #define __LIBKNET_H__
 
 #include <stdint.h>
+#include <time.h>
 #include <netinet/in.h>
 
 /*

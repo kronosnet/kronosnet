@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/uio.h>
 #include <pthread.h>
 
 #include "compat.h"
