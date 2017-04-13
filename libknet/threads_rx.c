@@ -258,7 +258,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	}
 
 	if (len < (KNET_HEADER_SIZE + 1)) {
-		log_debug(knet_h, KNET_SUB_RX, "Packet is too short: %ld", len);
+		log_debug(knet_h, KNET_SUB_RX, "Packet is too short: %ld", (long)len);
 		return;
 	}
 

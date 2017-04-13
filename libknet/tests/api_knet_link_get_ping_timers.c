@@ -167,7 +167,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	printf("DEFAULT: int: %zu timeout: %zu prec: %u\n", interval, timeout, precision);
+	printf("DEFAULT: int: %lu timeout: %lu prec: %u\n", interval, timeout, precision);
 
 	if ((interval != KNET_LINK_DEFAULT_PING_INTERVAL) ||
 	    (timeout != KNET_LINK_DEFAULT_PING_TIMEOUT) ||
