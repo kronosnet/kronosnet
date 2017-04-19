@@ -15,6 +15,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <inttypes.h>
 
 #include "libknet.h"
 
@@ -646,12 +648,7 @@ static void *_rx_thread(void *args)
 
 								average_rx_mbytes = (double)((rx_bytes / time_diff_sec) / (1024 * 1024));
 								average_rx_pkts = (double)(rx_pkts / time_diff_sec);
-#if !(defined(__i386__))
-								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %zu)\n", time_diff_sec, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
-#else
-
-								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %llu)\n", time_diff_sec, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
-#endif
+								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %" PRIu64 ")\n", time_diff_sec, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
 								rx_pkts = 0;
 								rx_bytes = 0;
 								current_pckt_size = 0;
@@ -799,11 +796,7 @@ static void send_perf_data_by_size(void)
 		}
 
 		total_pkts_to_tx = perf_by_size_size / packetsize;
-#if !(defined(__i386__))
-		printf("Testing with %u packet size. Total bytes to transfer: %zu (%zu packets)\n", packetsize, perf_by_size_size, total_pkts_to_tx);
-#else
-		printf("Testing with %u packet size. Total bytes to transfer: %llu (%llu packets)\n", packetsize, perf_by_size_size, total_pkts_to_tx);
-#endif
+		printf("Testing with %u packet size. Total bytes to transfer: %" PRIu64 " (%" PRIu64 " packets)\n", packetsize, perf_by_size_size, total_pkts_to_tx);
 
 		memset(ctrl_message, 0, sizeof(ctrl_message));
 		knet_send(knet_h, ctrl_message, TEST_START, channel);
@@ -869,11 +862,7 @@ static void send_perf_data_by_time(void)
 		for (i = 0; i < PCKT_FRAG_MAX; i++) {
 			iov_out[i].iov_len = packetsize;
 		}
-#if !(defined(__i386__))
-		printf("Testing with %u bytes packet size for %zu seconds.\n", packetsize, perf_by_time_secs);
-#else
-		printf("Testing with %u bytes packet size for %llu seconds.\n", packetsize, perf_by_time_secs);
-#endif
+		printf("Testing with %u bytes packet size for %" PRIu64 " seconds.\n", packetsize, perf_by_time_secs);
 
 		memset(ctrl_message, 0, sizeof(ctrl_message));
 		knet_send(knet_h, ctrl_message, TEST_START, channel);
