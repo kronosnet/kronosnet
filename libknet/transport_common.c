@@ -120,6 +120,17 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 	}
 #endif
 
+#ifdef SO_PRIORITY
+	value = 6; /* TC_PRIO_INTERACTIVE */
+	if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
+			type, strerror(savederrno));
+		goto exit_error;
+	}
+#endif
+
 exit_error:
 	errno = savederrno;
 	return err;
