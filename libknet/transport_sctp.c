@@ -299,7 +299,10 @@ static int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int re
 #ifdef DEBUG
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 #endif
+			/* Don't hold onto the lock while sleeping */
+			pthread_rwlock_unlock(&knet_h->global_rwlock);
 			usleep(KNET_THREADS_TIMERES / 16);
+			pthread_rwlock_rdlock(&knet_h->global_rwlock);
 			return 1;
 		}
 		return -1;
@@ -401,7 +404,11 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
 	/*
 	 * Under RX pressure we need to give time to IPC to pick up the message
 	 */
+
+	/* Don't hold onto the lock while sleeping */
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	usleep(KNET_THREADS_TIMERES / 2);
+	pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	return 0;
 }
 
