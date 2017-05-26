@@ -229,8 +229,9 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
-		if (len <= 0)
-			return;
+		if (len <= 0) {
+			goto out_unlock;
+		}
 
 		byte_cnt += len;
 	}
