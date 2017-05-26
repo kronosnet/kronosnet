@@ -355,11 +355,26 @@ WARNLIST="
 	float-equal
 	format=2
 	format-signedness
+	format-security
+	format-nonliteral
+	unsigned-char
+	error
+	address
+	cpp
+	overflow
+	parentheses
+	sequence-point
+	switch
 	shift-overflow=2
 	overlength-strings
 	redundent-decls
 	init-self
 	uninitialized
+	unused-but-set-variable
+	unused-function
+	unused-result
+	unused-value
+	unused-variable
 	unknown-pragmas
 	no-unused-parameter
 	"
