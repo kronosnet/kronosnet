@@ -339,36 +339,29 @@ EXTRA_WARNINGS=""
 
 WARNLIST="
 	all
+	extra
+	unused
 	shadow
 	missing-prototypes
 	missing-declarations
+	suggest-attribute=noreturn
+	suggest-attribute=format
 	strict-prototypes
-	declaration-after-statement
 	pointer-arith
 	write-strings
 	cast-align
 	bad-function-cast
 	missing-format-attribute
+	float-equal
 	format=2
-	format-security
-	format-nonliteral
-	no-long-long
-	unsigned-char
-	gnu89-inline
-	no-strict-aliasing
-	error
-	address
-	cpp
-	overflow
-	parentheses
-	sequence-point
-	switch
+	format-signedness
+	shift-overflow=2
+	overlength-strings
+	redundent-decls
+	init-self
 	uninitialized
-	unused-but-set-variable
-	unused-function
-	unused-result
-	unused-value
-	unused-variable
+	unknown-pragmas
+	no-unused-parameter
 	"
 
 for j in $WARNLIST; do
