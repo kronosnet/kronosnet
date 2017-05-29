@@ -355,6 +355,7 @@ WARNLIST="
 	missing-format-attribute
 	float-equal
 	format=2
+	format-signedness
 	format-security
 	format-nonliteral
 	no-long-long

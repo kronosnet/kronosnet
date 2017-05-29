@@ -25,7 +25,7 @@ static void test(void)
 	printf("Testing knet_log_get_loglevel_id normal lookup\n");
 	res = knet_log_get_loglevel_id("debug");
 	if (res != KNET_LOG_DEBUG) {
-		printf("knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %u\n",
+		printf("knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d\n",
 		       res, KNET_LOG_DEBUG);
 		exit(FAIL);
 	}
@@ -33,7 +33,7 @@ static void test(void)
 	printf("Testing knet_log_get_loglevel_id bad lookup\n");
 	res = knet_log_get_loglevel_id("whatever");
 	if (res != KNET_LOG_ERR) {
-		printf("knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %u\n",
+		printf("knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d\n",
 		       res, KNET_LOG_ERR);
 		exit(FAIL);
 	}

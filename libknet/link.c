@@ -650,7 +650,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 			    ((link->ping_interval * precision) / 8000000);
 
 	log_debug(knet_h, KNET_SUB_LINK,
-		  "host: %u link: %u timeout update - interval: %llu timeout: %llu precision: %d",
+		  "host: %u link: %u timeout update - interval: %llu timeout: %llu precision: %u",
 		  host_id, link_id, link->ping_interval, link->pong_timeout, precision);
 
 exit_unlock:

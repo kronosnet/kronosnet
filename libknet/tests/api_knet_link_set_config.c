@@ -141,7 +141,7 @@ static void test(void)
 	    (strcmp(link_status.src_ipaddr, "127.0.0.1")) ||
 	    (strcmp(link_status.src_port, "50000")) ||
 	    (knet_h->host_index[1]->link[0].dynamic != KNET_LINK_DYNIP)) {
-		printf("knet_link_set_config failed to set configuration. enabled: %u src_addr %s src_port %s dynamic %u\n",
+		printf("knet_link_set_config failed to set configuration. enabled: %d src_addr %s src_port %s dynamic %u\n",
 		       link_status.enabled, link_status.src_ipaddr, link_status.src_port, knet_h->host_index[1]->link[0].dynamic);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -242,7 +242,7 @@ static void test(void)
 	    (strcmp(link_status.dst_ipaddr, "127.0.0.1")) ||
 	    (strcmp(link_status.dst_port, "50001")) || 
 	    (knet_h->host_index[1]->link[0].dynamic != KNET_LINK_STATIC)) {
-		printf("knet_link_set_config failed to set configuration. enabled: %u src_addr %s src_port %s dst_addr %s dst_port %s dynamic %u\n",
+		printf("knet_link_set_config failed to set configuration. enabled: %d src_addr %s src_port %s dst_addr %s dst_port %s dynamic %u\n",
 		       link_status.enabled, link_status.src_ipaddr, link_status.src_port, link_status.dst_ipaddr, link_status.dst_port, knet_h->host_index[1]->link[0].dynamic);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
