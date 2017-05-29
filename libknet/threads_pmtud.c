@@ -177,7 +177,7 @@ retry:
 		if (savederrno == EMSGSIZE) {
 			dst_link->last_bad_mtu = onwire_len;
 		} else {
-			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zd err: %s", onwire_len, strerror(savederrno));
 		}
 
 	} else {

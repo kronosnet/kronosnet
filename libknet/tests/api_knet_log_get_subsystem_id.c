@@ -25,7 +25,7 @@ static void test(void)
 	printf("Testing knet_log_get_subsystem_id normal lookup\n");
 	res = knet_log_get_subsystem_id("nsscrypto");
 	if (res != KNET_SUB_NSSCRYPTO) {
-		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %u\n",
+		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d\n",
 		       res, KNET_SUB_NSSCRYPTO);
 		exit(FAIL);
 	}
@@ -33,7 +33,7 @@ static void test(void)
 	printf("Testing knet_log_get_subsystem_id bad lookup\n");
 	res = knet_log_get_subsystem_id("whatever");
 	if (res != KNET_SUB_UNKNOWN) {
-		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %u\n",
+		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d\n",
 		       res, KNET_SUB_UNKNOWN);
 		exit(FAIL);
 	}
