@@ -347,7 +347,6 @@ WARNLIST="
 	suggest-attribute=noreturn
 	suggest-attribute=format
 	strict-prototypes
-	declaration-after-statement
 	pointer-arith
 	write-strings
 	cast-align
@@ -381,7 +380,6 @@ WARNLIST="
 	unused-variable
 	unknown-pragmas
 	no-unused-parameter
-	no-sign-compare
 	"
 
 for j in $WARNLIST; do

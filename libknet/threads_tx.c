@@ -122,7 +122,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	int iovcnt_out = 2;
 	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
-	int host_idx;
 	int send_mcast = 0;
 	struct knet_header *inbuf;
 	int savederrno = 0;
@@ -210,7 +209,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 
 	if (!bcast) {
 		dst_host_ids_entries = 0;
-		for (host_idx = 0; host_idx < dst_host_ids_entries_temp; host_idx++) {
+		for (size_t host_idx = 0; host_idx < dst_host_ids_entries_temp; host_idx++) {
 			dst_host = knet_h->host_index[dst_host_ids_temp[host_idx]];
 			if (!dst_host) {
 				continue;
@@ -375,7 +374,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	}
 
 	if (!bcast) {
-		for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+		for (size_t host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 			dst_host = knet_h->host_index[dst_host_ids[host_idx]];
 
 			err = _dispatch_to_links(knet_h, dst_host, &msg[0], msgs_to_send);

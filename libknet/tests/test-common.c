@@ -370,7 +370,7 @@ int start_logging(FILE *std)
 
 int knet_handle_stop(knet_handle_t knet_h)
 {
-	int i, j, savederrno;
+	int savederrno;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
@@ -402,12 +402,12 @@ int knet_handle_stop(knet_handle_t knet_h)
 		return -1;
 	}
 
-	for (i = 0; i < host_ids_entries; i++) {
+	for (size_t i = 0; i < host_ids_entries; i++) {
 		if (knet_link_get_link_list(knet_h, host_ids[i], link_ids, &link_ids_entries)) {
 			printf("knet_link_get_link_list failed: %s\n", strerror(errno));
 			return -1;
 		}
-		for (j = 0; j < link_ids_entries; j++) {
+		for (size_t j = 0; j < link_ids_entries; j++) {
 			if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status)) {
 				printf("knet_link_get_status failed: %s\n", strerror(errno));
 				return -1;

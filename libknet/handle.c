@@ -516,7 +516,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		return NULL;
 	}
 
-	if ((log_fd < 0) || (log_fd >= cur.rlim_max)) {
+	if ((log_fd < 0) || ((unsigned int)log_fd >= cur.rlim_max)) {
 		errno = EINVAL;
 		return NULL;
 	}
