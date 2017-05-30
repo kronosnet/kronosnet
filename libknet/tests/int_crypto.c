@@ -89,7 +89,7 @@ static void test(void)
 
 	printf("Encrypted Data: ");
 	for (i=0; i<outbuf_len; i++) {
-		printf("%02x ", buf2[i]);
+		printf("%02x ", (unsigned char)buf2[i]);
 	}
 	printf("\n");
 

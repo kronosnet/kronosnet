@@ -339,17 +339,22 @@ EXTRA_WARNINGS=""
 
 WARNLIST="
 	all
+	extra
+	unused
 	shadow
 	missing-prototypes
 	missing-declarations
+	suggest-attribute=noreturn
+	suggest-attribute=format
 	strict-prototypes
-	declaration-after-statement
 	pointer-arith
 	write-strings
 	cast-align
 	bad-function-cast
 	missing-format-attribute
+	float-equal
 	format=2
+	format-signedness
 	format-security
 	format-nonliteral
 	no-long-long
@@ -363,12 +368,18 @@ WARNLIST="
 	parentheses
 	sequence-point
 	switch
+	shift-overflow=2
+	overlength-strings
+	retundent-decls
+	init-self
 	uninitialized
 	unused-but-set-variable
 	unused-function
 	unused-result
 	unused-value
 	unused-variable
+	unknown-pragmas
+	no-unused-parameter
 	"
 
 for j in $WARNLIST; do

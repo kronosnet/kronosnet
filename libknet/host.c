@@ -531,8 +531,14 @@ int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen
 		return 0;
 	}
 
-	if (sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != datalen) {
-		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
+	const ssize_t retval = sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+	if (retval < 0) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe with error: %zd", retval);
+		return -1;
+	}
+	else if ((size_t)retval != datalen) {
+		log_debug(knet_h, KNET_SUB_HOST, "Data written to hostpipe differs in length from buffer size.\n"
+						"Expected: %zu, Written: %zd", datalen, retval);
 		return -1;
 	}
 

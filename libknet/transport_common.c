@@ -41,7 +41,7 @@ int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 	}
 
 	errno = savederrno;
-	return ((i > 0) ? i : err);
+	return ((i > 0) ? (int)i : err);
 }
 
 int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
@@ -58,7 +58,7 @@ int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 	}
 
 	errno = savederrno;
-	return ((i > 0) ? i : err);
+	return ((i > 0) ? (int)i : err);
 }
 
 int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)

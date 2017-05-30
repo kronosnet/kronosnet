@@ -184,7 +184,7 @@ static void test(void)
 	}
 
 	if (recv_len != sizeof(send_buff)) {
-		printf("knet_recv received only %zu bytes: %s\n", recv_len, strerror(errno));
+		printf("knet_recv received only %zd bytes: %s\n", recv_len, strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);

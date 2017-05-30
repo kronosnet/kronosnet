@@ -258,7 +258,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
 	}
 
-	if (len < (KNET_HEADER_SIZE + 1)) {
+	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
 		log_debug(knet_h, KNET_SUB_RX, "Packet is too short: %ld", (long)len);
 		return;
 	}
@@ -355,7 +355,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				break;
 
 			if (knet_h->dst_host_filter_fn) {
-				int host_idx;
 				int found = 0;
 
 				bcast = knet_h->dst_host_filter_fn(
@@ -380,7 +379,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 				/* check if we are dst for this packet */
 				if (!bcast) {
-					for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+					for (size_t host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 						if (dst_host_ids[host_idx] == knet_h->host_id) {
 							found = 1;
 							break;
@@ -416,7 +415,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 						       errno);
 				return;
 			}
-			if (outlen == iov_out[0].iov_len) {
+			if ((size_t)outlen == iov_out[0].iov_len) {
 				_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
 			}
 		} else { /* HOSTINFO */

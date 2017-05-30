@@ -516,7 +516,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		return NULL;
 	}
 
-	if ((log_fd < 0) || (log_fd >= cur.rlim_max)) {
+	if ((log_fd < 0) || ((unsigned int)log_fd >= cur.rlim_max)) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -1263,7 +1263,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	}
 
 	if (knet_handle_crypto_cfg->private_key_len < KNET_MIN_KEY_LEN) {
-		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too short (min %u): %u",
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too short (min %d): %u",
 			  KNET_MIN_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
 		savederrno = EINVAL;
 		err = -1;
@@ -1271,7 +1271,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	}
 
 	if (knet_handle_crypto_cfg->private_key_len > KNET_MAX_KEY_LEN) {
-		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too long (max %u): %u",
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too long (max %d): %u",
 			  KNET_MAX_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
 		savederrno = EINVAL;
 		err = -1;
