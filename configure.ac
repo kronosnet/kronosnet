@@ -381,7 +381,6 @@ WARNLIST="
 	unused-variable
 	unknown-pragmas
 	no-unused-parameter
-	no-sign-compare
 	"
 
 for j in $WARNLIST; do

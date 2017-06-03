@@ -202,7 +202,7 @@ retry_fcntl:
 	}
 
 	memset(buffer, 0, sizeof(buffer));
-	snprintf(buffer, sizeof(buffer)-1, "%u\n", getpid());
+	snprintf(buffer, sizeof(buffer)-1, "%d\n", getpid());
 
 	bufferlen = strlen(buffer);
 	write_out = write(fd, buffer, bufferlen);
@@ -214,9 +214,9 @@ retry_fcntl:
 		goto fail_close_unlink;
 	}
 
-	if ((write_out == 0) || (write_out < bufferlen)) {
+	if ((write_out == 0) || ((size_t)write_out < bufferlen)) {
 		fprintf(stderr, "Cannot write pid to pidfile [%s], shortwrite of"
-				"[%zu] bytes, expected [%zu]\n",
+				"[%zd] bytes, expected [%zu]\n",
 				lockfile, write_out, bufferlen);
 
 		goto fail_close_unlink;

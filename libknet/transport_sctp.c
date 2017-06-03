@@ -419,7 +419,7 @@ static int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int re
  */
 static int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
-	int i;
+	size_t i;
 	struct iovec *iov = msg->msg_hdr.msg_iov;
 	size_t iovlen = msg->msg_hdr.msg_iovlen;
 	struct sctp_assoc_change *sac;

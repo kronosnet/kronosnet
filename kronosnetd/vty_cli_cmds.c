@@ -866,7 +866,7 @@ vty_nodes_t knet_vty_nodes[] = {
 	{ NODE_PEER, "peer", peer_cmds, no_peer_cmds },
 	{ NODE_LINK, "link", link_cmds, NULL },
 	{ NODE_VTY, "vty", vty_cmds, NULL },
-	{ -1, NULL, NULL },
+	{ -1, NULL, NULL, NULL },
 };
 
 /* command execution */
@@ -1259,7 +1259,7 @@ static void knet_cmd_auto_mtu_notify(void *private_data,
 		if (mtu < 0) {
 			log_debug("Unable to get current MTU?");
 		} else {
-			if (data_mtu < mtu) {
+			if (data_mtu < (unsigned int)mtu) {
 				log_debug("Manually configured MTU (%d) is higher than automatically detected MTU (%d)",
 					  mtu, data_mtu);
 			}
@@ -1447,7 +1447,7 @@ static int knet_cmd_crypto(struct knet_vty *vty)
 	knet_handle_crypto_cfg_new.private_key_len = (unsigned int)sb.st_size;
 	if ((knet_handle_crypto_cfg_new.private_key_len < KNET_MIN_KEY_LEN) ||
 	    (knet_handle_crypto_cfg_new.private_key_len > KNET_MAX_KEY_LEN)) {
-		knet_vty_write(vty, "Error: Key %s is %u long. Must be %u <= key_len <= %u%s",
+		knet_vty_write(vty, "Error: Key %s is %u long. Must be %d <= key_len <= %d%s",
 			       keyfile, knet_handle_crypto_cfg_new.private_key_len,
 			       KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN, telnet_newline);
 		goto key_error;
@@ -1520,7 +1520,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	char device[IFNAMSIZ];
 	struct knet_cfg *knet_iface = NULL;
 	char *ip_list = NULL;
-	int ip_list_entries = 0, j, i, offset = 0;
+	int ip_list_entries = 0, offset = 0;
+	size_t j, i;
 	char *error_string = NULL;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
@@ -1544,7 +1545,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 
 	tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
 	if ((ip_list) && (ip_list_entries > 0)) {
-		for (i = 1; i <= ip_list_entries; i++) {
+		for (i = 1; i <= (size_t)ip_list_entries; i++) {
 			tap_del_ip(knet_iface->cfg_eth.tap,
 					ip_list + offset,
 					ip_list + offset + strlen(ip_list + offset) + 1, &error_string);
@@ -1739,7 +1740,7 @@ static int knet_cmd_exit_node(struct knet_vty *vty)
 
 static int knet_cmd_status(struct knet_vty *vty)
 {
-	int i, j;
+	size_t i, j;
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
 	struct knet_link_status status;
 	const char *nl = telnet_newline;
@@ -1820,7 +1821,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 
 static int knet_cmd_print_conf(struct knet_vty *vty)
 {
-	int i, j;
+	size_t i, j;
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
 	struct knet_link_status status;
 	const char *nl = telnet_newline;
@@ -1843,7 +1844,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "  exit%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, " interface %s %u %u%s", tap_get_name(knet_iface->cfg_eth.tap),
+		knet_vty_write(vty, " interface %s %d %d%s", tap_get_name(knet_iface->cfg_eth.tap),
 							     knet_iface->cfg_eth.node_id,
 							     knet_iface->cfg_ring.base_port, nl);
 
@@ -1852,12 +1853,12 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 		knet_handle_pmtud_getfreq(knet_iface->cfg_ring.knet_h, &pmtudfreq);
 		if ((pmtudfreq > 0) && (pmtudfreq != 5))
-			knet_vty_write(vty, "  pmtudfreq %d%s", pmtudfreq, nl);
+			knet_vty_write(vty, "  pmtudfreq %u%s", pmtudfreq, nl);
 
 		tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
 		if ((ip_list) && (ip_list_entries > 0)) {
 			char *ipaddr = NULL, *prefix = NULL, *next = ip_list;
-			for (i = 1; i <= ip_list_entries; i++) {
+			for (i = 1; i <= (size_t)ip_list_entries; i++) {
 				ipaddr = next;
 				prefix = ipaddr + strlen(ipaddr) + 1;
 				next = prefix + strlen(prefix) + 1;

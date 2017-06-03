@@ -25,7 +25,7 @@ static void test(void)
 	int logfds[2];
 	struct transport_info transport_list[KNET_MAX_TRANSPORTS];
 	size_t transport_list_entries;
-	int i, expected_count;
+	size_t i, expected_count;
 
 	memset(transport_list, 0, sizeof(transport_list));
 
@@ -92,7 +92,7 @@ static void test(void)
 #endif
 
 	if (transport_list_entries != expected_count) {
-		printf("Error! expected: %d transports, got: %zu\n", expected_count, transport_list_entries);
+		printf("Error! expected: %zu transports, got: %zu\n", expected_count, transport_list_entries);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);

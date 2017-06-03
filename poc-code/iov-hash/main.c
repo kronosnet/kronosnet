@@ -30,7 +30,7 @@ int main(int argc, char **argv)
   SECStatus          rv, rv1, rv2;
   unsigned char      buf1[1024], buf2[1024];
   char		     data[1024];
-  int                i;
+  unsigned int	     i;
   unsigned int       tmp2_outlen;
 
   /* Initialize NSS

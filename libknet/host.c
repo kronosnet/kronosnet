@@ -527,12 +527,19 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 
 int _send_host_info(knet_handle_t knet_h, const void *data, const size_t datalen)
 {
+	ssize_t ret = 0;
+
 	if (knet_h->fini_in_progress) {
 		return 0;
 	}
 
-	if (sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != datalen) {
-		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe");
+	ret = sendto(knet_h->hostsockfd[1], data, datalen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+	if (ret < 0) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to write data to hostpipe. Error: %s", strerror(errno));
+		return -1;
+	}
+	if ((size_t)ret != datalen) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to write all data to hostpipe. Expected: %zu, Written: %zd.", datalen, ret);
 		return -1;
 	}
 

@@ -122,7 +122,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	int iovcnt_out = 2;
 	uint8_t frag_idx;
 	unsigned int temp_data_mtu;
-	int host_idx;
+	size_t host_idx;
 	int send_mcast = 0;
 	struct knet_header *inbuf;
 	int savederrno = 0;

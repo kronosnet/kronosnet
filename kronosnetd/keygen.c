@@ -55,7 +55,7 @@ static int read_arguments(int argc, char **argv)
 		case 's':
 			keylen = atoi(optarg);
 			if ((keylen < KNET_MIN_KEY_LEN) || (keylen > KNET_MAX_KEY_LEN)) {
-				fprintf(stderr, "Error: Key size should be a value between %u and %u (default) included\n",
+				fprintf(stderr, "Error: Key size should be a value between %d and %d (default) included\n",
 					KNET_MIN_KEY_LEN, KNET_MAX_KEY_LEN);
 				return -1;
 			}
@@ -117,7 +117,7 @@ int main (int argc, char *argv[])
 		goto exit_error;
 	}
 
-	printf("Gathering %zu bytes for key from /dev/random.\n", keylen);
+	printf("Gathering %zd bytes for key from /dev/random.\n", keylen);
 	printf("This process might take a long time due the amount on entropy required\n");
 	printf("Press keys on your keyboard, perform any kind of disk I/O and/or network to generate entropy faster.\n");
 
@@ -129,7 +129,7 @@ keep_reading:
 	}
 	bytes_read += res;
 	if (bytes_read != keylen) {
-		printf("bytes read = %zu, missing = %zu.\n", bytes_read, keylen - bytes_read);
+		printf("bytes read = %zd, missing = %zd.\n", bytes_read, keylen - bytes_read);
 		goto keep_reading;
 	}
 	close (fd);
