@@ -108,7 +108,7 @@ out_unlock:
 	return err;
 }
 
-static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inlen, int8_t channel, int is_sync)
+static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t channel, int is_sync)
 {
 	ssize_t outlen, frag_len;
 	struct knet_host *dst_host;
@@ -131,7 +131,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, int buf_idx, ssize_t inle
 	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	int msgs_to_send, msg_idx;
 
-	inbuf = knet_h->recv_from_sock_buf[buf_idx];
+	inbuf = knet_h->recv_from_sock_buf;
 
 	if ((knet_h->enabled != 1) &&
 	    (inbuf->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
@@ -457,9 +457,9 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		goto out;
 	}
 
-	knet_h->recv_from_sock_buf[0]->kh_type = KNET_HEADER_TYPE_DATA;
-	memmove(knet_h->recv_from_sock_buf[0]->khp_data_userdata, buff, buff_len);
-	err = _parse_recv_from_sock(knet_h, 0, buff_len, channel, 1);
+	knet_h->recv_from_sock_buf->kh_type = KNET_HEADER_TYPE_DATA;
+	memmove(knet_h->recv_from_sock_buf->khp_data_userdata, buff, buff_len);
+	err = _parse_recv_from_sock(knet_h, buff_len, channel, 1);
 	savederrno = errno;
 
 	pthread_mutex_unlock(&knet_h->tx_mutex);
@@ -471,51 +471,32 @@ out:
 	return err;
 }
 
-static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel, struct knet_mmsghdr *msg, int type)
+static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int sockfd, int8_t channel, int type)
 {
 	ssize_t inlen = 0;
-	struct iovec iov_in;
-	int msg_recv, i;
 	int savederrno = 0, docallback = 0;
 
 	if ((channel >= 0) &&
 	    (channel < KNET_DATAFD_MAX) &&
 	    (!knet_h->sockfd[channel].is_socket)) {
-		memset(&iov_in, 0, sizeof(iov_in));
-		iov_in.iov_base = (void *)knet_h->recv_from_sock_buf[0]->khp_data_userdata;
-		iov_in.iov_len = KNET_MAX_PACKET_SIZE;
-
-		inlen = readv(sockfd, &iov_in, 1);
-
-		if (inlen <= 0) {
-			savederrno = errno;
-			docallback = 1;
-			goto out;
-		}
-
-		msg_recv = 1;
-		knet_h->recv_from_sock_buf[0]->kh_type = type;
-		_parse_recv_from_sock(knet_h, 0, inlen, channel, 0);
+		inlen = readv(sockfd, msg->msg_iov, 1);
 	} else {
-		msg_recv = _recvmmsg(sockfd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
-		if (msg_recv < 0) {
-			inlen = msg_recv;
-			savederrno = errno;
-			docallback = 1;
-			goto out;
-		}
-		for (i = 0; i < msg_recv; i++) {
-			inlen = msg[i].msg_len;
-			if (inlen  == 0) {
-				savederrno = 0;
-				docallback = 1;
-				goto out;
-				break;
-			}
-			knet_h->recv_from_sock_buf[i]->kh_type = type;
-			_parse_recv_from_sock(knet_h, i, inlen, channel, 0);
-		}
+		inlen = recvmsg(sockfd, msg, MSG_DONTWAIT | MSG_NOSIGNAL);
 	}
+
+	if (inlen == 0) {
+		savederrno = 0;
+		docallback = 1;
+		goto out;
+	}
+	if (inlen < 0) {
+		savederrno = errno;
+		docallback = 1;
+		goto out;
+	}
+
+	knet_h->recv_from_sock_buf->kh_type = type;
+	_parse_recv_from_sock(knet_h, inlen, channel, 0);
 
 out:
 	if (inlen < 0) {
@@ -547,30 +528,27 @@ void *_handle_send_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
-	struct sockaddr_storage address[PCKT_FRAG_MAX];
-	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
-	struct iovec iov_in[PCKT_FRAG_MAX];
 	int i, nev, type;
 	int8_t channel;
+	struct iovec iov_in;
+	struct msghdr msg;
+	struct sockaddr_storage address;
 
-	memset(&msg, 0, sizeof(msg));
+	memset(&iov_in, 0, sizeof(iov_in));
+	iov_in.iov_base = (void *)knet_h->recv_from_sock_buf->khp_data_userdata;
+	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
 
-	/* preparing data buffer */
+	memset(&msg, 0, sizeof(struct msghdr));
+	msg.msg_name = &address;
+	msg.msg_namelen = sizeof(struct sockaddr_storage);
+	msg.msg_iov = &iov_in;
+	msg.msg_iovlen = 1;
+
+	knet_h->recv_from_sock_buf->kh_version = KNET_HEADER_VERSION;
+	knet_h->recv_from_sock_buf->khp_data_frag_seq = 0;
+	knet_h->recv_from_sock_buf->kh_node = htons(knet_h->host_id);
+
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
-		iov_in[i].iov_base = (void *)knet_h->recv_from_sock_buf[i]->khp_data_userdata;
-		iov_in[i].iov_len = KNET_MAX_PACKET_SIZE;
-
-		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
-
-		msg[i].msg_hdr.msg_name = &address[i];
-		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
-		msg[i].msg_hdr.msg_iov = &iov_in[i];
-		msg[i].msg_hdr.msg_iovlen = 1;
-
-		knet_h->recv_from_sock_buf[i]->kh_version = KNET_HEADER_VERSION;
-		knet_h->recv_from_sock_buf[i]->khp_data_frag_seq = 0;
-		knet_h->recv_from_sock_buf[i]->kh_node = htons(knet_h->host_id);
-
 		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
 		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
 		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
@@ -601,7 +579,7 @@ void *_handle_send_to_links_thread(void *data)
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
 				continue;
 			}
-			_handle_send_to_links(knet_h, events[i].data.fd, channel, &msg[0], type);
+			_handle_send_to_links(knet_h, &msg, events[i].data.fd, channel, type);
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
 		pthread_rwlock_unlock(&knet_h->global_rwlock);

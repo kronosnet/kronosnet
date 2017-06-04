@@ -147,15 +147,6 @@ static int _init_buffers(knet_handle_t knet_h)
 		}
 		memset(knet_h->send_to_links_buf[i], 0, KNET_HEADER_DATA_SIZE);
 
-		knet_h->recv_from_sock_buf[i] = malloc(KNET_DATABUFSIZE);
-		if (!knet_h->recv_from_sock_buf[i]) {
-			savederrno = errno;
-			log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for app to datafd buffer: %s",
-				strerror(savederrno));
-			goto exit_fail;
-		}
-		memset(knet_h->recv_from_sock_buf[i], 0, KNET_DATABUFSIZE);
-
 		knet_h->recv_from_links_buf[i] = malloc(KNET_DATABUFSIZE);
 		if (!knet_h->recv_from_links_buf[i]) {
 			savederrno = errno;
@@ -165,6 +156,15 @@ static int _init_buffers(knet_handle_t knet_h)
 		}
 		memset(knet_h->recv_from_links_buf[i], 0, KNET_DATABUFSIZE);
 	}
+
+	knet_h->recv_from_sock_buf = malloc(KNET_DATABUFSIZE);
+	if (!knet_h->recv_from_sock_buf) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for app to datafd buffer: %s",
+				strerror(savederrno));
+		goto exit_fail;
+	}
+	memset(knet_h->recv_from_sock_buf, 0, KNET_DATABUFSIZE);
 
 	knet_h->pingbuf = malloc(KNET_HEADER_PING_SIZE);
 	if (!knet_h->pingbuf) {
@@ -247,10 +247,11 @@ static void _destroy_buffers(knet_handle_t knet_h)
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		free(knet_h->send_to_links_buf[i]);
-		free(knet_h->recv_from_sock_buf[i]);
 		free(knet_h->send_to_links_buf_crypt[i]);
 		free(knet_h->recv_from_links_buf[i]);
 	}
+
+	free(knet_h->recv_from_sock_buf);
 	free(knet_h->recv_from_links_buf_decrypt);
 	free(knet_h->recv_from_links_buf_crypt);
 	free(knet_h->pingbuf);

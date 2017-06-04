@@ -150,7 +150,7 @@ struct knet_handle {
 	uint32_t reconnect_int;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
-	struct knet_header *recv_from_sock_buf[PCKT_FRAG_MAX];
+	struct knet_header *recv_from_sock_buf;
 	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];
 	struct knet_header *pingbuf;
