@@ -278,6 +278,47 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	printf("Test knet_link_get_config with flags\n");
+
+	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
+		printf("Unable to deconfigure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 1) < 0) {
+		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_get_config(knet_h, 1, 0, &transport, &get_src, &get_dst, &dynamic, &flags) < 0) {
+		printf("knet_link_get_config failed: %s\n", strerror(errno));
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!flags) {
+		printf("knet_link_get_config returned no flags\n");
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	flush_logs(logfds[0], stdout);
 
 	knet_link_clear_config(knet_h, 1, 0);
