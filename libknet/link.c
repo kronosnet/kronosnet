@@ -44,7 +44,8 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
-			 struct sockaddr_storage *dst_addr)
+			 struct sockaddr_storage *dst_addr,
+			 uint64_t flags)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
@@ -169,6 +170,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->latency_fix = KNET_LINK_DEFAULT_PING_PRECISION;
 	link->latency_exp = KNET_LINK_DEFAULT_PING_PRECISION - \
 			    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);
+	link->flags = flags;
 
 	if (knet_h->transport_ops[link->transport_type]->transport_link_set_config(knet_h, link) < 0) {
 		savederrno = errno;
@@ -188,7 +190,8 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
-			 uint8_t *dynamic)
+			 uint8_t *dynamic,
+			 uint64_t *flags)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
@@ -215,6 +218,11 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	}
 
 	if (!transport) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!flags) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -255,6 +263,7 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	memmove(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
 
 	*transport = link->transport_type;
+	*flags = link->flags;
 
 	if (link->dynamic == KNET_LINK_STATIC) {
 		*dynamic = 0;
