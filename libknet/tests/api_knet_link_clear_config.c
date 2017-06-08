@@ -107,7 +107,7 @@ static void test(void)
 
 	printf("Test knet_link_clear_config with enabled linkid\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

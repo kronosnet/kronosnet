@@ -44,7 +44,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config incorrect knet_h\n");
 
-	if ((!knet_link_set_config(NULL, 1, 0, KNET_TRANSPORT_UDP, &src, &dst)) || (errno != EINVAL)) {
+	if ((!knet_link_set_config(NULL, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_config accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -62,7 +62,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config with unconfigured host_id\n");
 
-	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst)) || (errno != EINVAL)) {
+	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_config accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -72,7 +72,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config with bad transport type\n");
 
-	if ((!knet_link_set_config(knet_h, 1, 0, KNET_MAX_TRANSPORTS+1, &src, &dst)) || (errno != EINVAL)) {
+	if ((!knet_link_set_config(knet_h, 1, 0, KNET_MAX_TRANSPORTS+1, &src, &dst, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_config accepted invalid transport or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -92,7 +92,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if ((!knet_link_set_config(knet_h, 1, KNET_MAX_LINK, KNET_TRANSPORT_UDP, &src, &dst)) || (errno != EINVAL)) {
+	if ((!knet_link_set_config(knet_h, 1, KNET_MAX_LINK, KNET_TRANSPORT_UDP, &src, &dst, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_config accepted invalid linkid or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -105,7 +105,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config with incorrect src_addr\n");
 
-	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, NULL, &dst)) || (errno != EINVAL)) {
+	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, NULL, &dst, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_config accepted invalid src_addr or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -118,7 +118,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config with dynamic dst_addr\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -154,7 +154,7 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_link_set_config with already configured link\n");
-	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL) || (errno != EBUSY))) {
+	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 0) || (errno != EBUSY))) {
 		printf("knet_link_set_config accepted request while link configured or returned incorrect error: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -186,7 +186,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL)) || (errno != EBUSY)) {
+	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 0)) || (errno != EBUSY)) {
 		printf("knet_link_set_config accepted request while link enabled or returned incorrect error: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -217,7 +217,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config with static dst_addr\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

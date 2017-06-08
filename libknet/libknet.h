@@ -1011,6 +1011,8 @@ int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
  *             till the node on the other end will initiate a
  *             connection
  *
+ * flags     - KNET_LINK_FLAG_*
+ *
  * knet_link_set_config returns:
  *
  * 0 on success
@@ -1020,7 +1022,8 @@ int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
 int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
-			 struct sockaddr_storage *dst_addr);
+			 struct sockaddr_storage *dst_addr,
+			 uint64_t flags);
 
 /*
  * knet_link_get_config
@@ -1041,6 +1044,8 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *             In case of 1, dst_addr can be NULL and it will be left
  *             untouched.
  *
+ * flags     - KNET_LINK_FLAG_*
+ *
  * knet_link_get_config returns:
  *
  * 0 on success.
@@ -1051,7 +1056,8 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 uint8_t *transport,
 			 struct sockaddr_storage *src_addr,
 			 struct sockaddr_storage *dst_addr,
-			 uint8_t *dynamic);
+			 uint8_t *dynamic,
+			 uint64_t *flags);
 
 /*
  * knet_link_clear_config

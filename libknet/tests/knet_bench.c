@@ -489,7 +489,7 @@ static void setup_knet(int argc, char *argv[])
 			}
 			if (knet_link_set_config(knet_h, nodes[i].nodeid, link_idx,
 						 protocol, src,
-						 &nodes[i].address[link_idx]) < 0) {
+						 &nodes[i].address[link_idx], 0) < 0) {
 				printf("Unable to configure link: %s\n", strerror(errno));
 				exit(FAIL);
 			}
