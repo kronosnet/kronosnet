@@ -53,6 +53,19 @@ typedef uint16_t knet_node_id_t;
 #define KNET_NOTIFY_TX 0
 #define KNET_NOTIFY_RX 1
 
+
+/*
+ * Link flags
+ */
+
+/*
+ * Where possible, set traffic priority to high.
+ * On Linux this sets the TOS to INTERACTIVE (6),
+ * see tc-prio(8) for more infomation
+ */
+#define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
+
+
 typedef struct knet_handle *knet_handle_t;
 
 /*
