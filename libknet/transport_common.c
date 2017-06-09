@@ -61,7 +61,7 @@ int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 	return ((i > 0) ? (int)i : err);
 }
 
-int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
+int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, const char *type)
 {
 	int err = 0, savederrno = 0;
 	int value;
@@ -121,13 +121,15 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, const char *type)
 #endif
 
 #ifdef SO_PRIORITY
-	value = 6; /* TC_PRIO_INTERACTIVE */
-	if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
-			type, strerror(savederrno));
-		goto exit_error;
+	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
+		value = 6; /* TC_PRIO_INTERACTIVE */
+		if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
+				type, strerror(savederrno));
+			goto exit_error;
+		}
 	}
 #endif
 
@@ -136,12 +138,12 @@ exit_error:
 	return err;
 }
 
-int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
+int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, uint64_t flags, const char *type)
 {
 	int err = 0, savederrno = 0;
 	int value;
 
-	if (_configure_common_socket(knet_h, sock, type) < 0) {
+	if (_configure_common_socket(knet_h, sock, flags, type) < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
@@ -248,7 +250,7 @@ int _init_socketpair(knet_handle_t knet_h, int *sock)
 	}
 
 	for (i = 0; i < 2; i++) {
-		if (_configure_common_socket(knet_h, sock[i], "local socketpair") < 0) {
+		if (_configure_common_socket(knet_h, sock[i], 0, "local socketpair") < 0) {
 			savederrno = errno;
 			err = -1;
 			goto exit_fail;

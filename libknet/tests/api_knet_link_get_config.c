@@ -289,7 +289,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 1) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, KNET_LINK_FLAG_TRAFFICHIPRIO) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -309,7 +309,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (!flags) {
+	if (flags != KNET_LINK_FLAG_TRAFFICHIPRIO) {
 		printf("knet_link_get_config returned no flags\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);

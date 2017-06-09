@@ -74,7 +74,7 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		goto exit_error;
 	}
 
-	if (_configure_transport_socket(knet_h, sock, &kn_link->src_addr, "UDP") < 0) {
+	if (_configure_transport_socket(knet_h, sock, &kn_link->src_addr, kn_link->flags, "UDP") < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
