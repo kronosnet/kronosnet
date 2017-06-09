@@ -148,7 +148,7 @@ static int _enable_sctp_notifications(knet_handle_t knet_h, int sock, const char
 	return err;
 }
 
-static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, const char *type)
+static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, uint64_t flags, const char *type)
 {
 	int err = 0, savederrno = 0;
 	int value;
@@ -160,7 +160,7 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 	level = IPPROTO_SCTP;
 #endif
 
-	if (_configure_transport_socket(knet_h, sock, address, type) < 0) {
+	if (_configure_transport_socket(knet_h, sock, address, flags, type) < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
@@ -238,7 +238,7 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *kn_lin
 		goto exit_error;
 	}
 
-	if (_configure_sctp_socket(knet_h, connect_sock, &kn_link->dst_addr, "SCTP connect") < 0) {
+	if (_configure_sctp_socket(knet_h, connect_sock, &kn_link->dst_addr, kn_link->flags, "SCTP connect") < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
@@ -735,7 +735,7 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 		goto exit_error;
 	}
 
-	if (_configure_common_socket(knet_h, new_fd, "SCTP incoming") < 0) {
+	if (_configure_common_socket(knet_h, new_fd, 0, "SCTP incoming") < 0) { /* Inherit flags from listener? */
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
@@ -937,7 +937,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (_configure_sctp_socket(knet_h, listen_sock, &kn_link->src_addr, "SCTP listener") < 0) {
+	if (_configure_sctp_socket(knet_h, listen_sock, &kn_link->src_addr, kn_link->flags, "SCTP listener") < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_error;
