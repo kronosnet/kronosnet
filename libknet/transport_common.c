@@ -121,7 +121,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 #endif
 
 #ifdef SO_PRIORITY
-	if (flags && KNET_LINK_FLAG_TRAFFICHIPRIO) {
+	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
 		value = 6; /* TC_PRIO_INTERACTIVE */
 		if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
 			savederrno = errno;
