@@ -627,11 +627,11 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 	 * each msg_namelen will contain sizeof sockaddr_in or sockaddr_in6
 	 */
 
-	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+	for (i = 0; i < PCKT_RX_BUFS; i++) {
 		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
 	}
 
-	msg_recv = _recvmmsg(sockfd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
+	msg_recv = _recvmmsg(sockfd, &msg[0], PCKT_RX_BUFS, MSG_DONTWAIT | MSG_NOSIGNAL);
 	savederrno = errno;
 
 	/*
@@ -698,13 +698,13 @@ void *_handle_recv_from_links_thread(void *data)
 	int i, nev;
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
-	struct sockaddr_storage address[PCKT_FRAG_MAX];
-	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
-	struct iovec iov_in[PCKT_FRAG_MAX];
+	struct sockaddr_storage address[PCKT_RX_BUFS];
+	struct knet_mmsghdr msg[PCKT_RX_BUFS];
+	struct iovec iov_in[PCKT_RX_BUFS];
 
 	memset(&msg, 0, sizeof(msg));
 
-	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+	for (i = 0; i < PCKT_RX_BUFS; i++) {
 		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];
 		iov_in[i].iov_len = KNET_DATABUFSIZE;
 

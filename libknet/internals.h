@@ -25,6 +25,7 @@
 #define KNET_RING_RCVBUFF 8388608
 
 #define PCKT_FRAG_MAX UINT8_MAX
+#define PCKT_RX_BUFS  512
 
 #define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX
 
@@ -153,7 +154,7 @@ struct knet_handle {
 	size_t host_ids_entries;
 	struct knet_header *recv_from_sock_buf;
 	struct knet_header *send_to_links_buf[PCKT_FRAG_MAX];
-	struct knet_header *recv_from_links_buf[PCKT_FRAG_MAX];
+	struct knet_header *recv_from_links_buf[PCKT_RX_BUFS];
 	struct knet_header *pingbuf;
 	struct knet_header *pmtudbuf;
 	pthread_t send_to_links_thread;

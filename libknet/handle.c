@@ -147,7 +147,9 @@ static int _init_buffers(knet_handle_t knet_h)
 			goto exit_fail;
 		}
 		memset(knet_h->send_to_links_buf[i], 0, bufsize);
+	}
 
+	for (i = 0; i < PCKT_RX_BUFS; i++) {
 		knet_h->recv_from_links_buf[i] = malloc(KNET_DATABUFSIZE);
 		if (!knet_h->recv_from_links_buf[i]) {
 			savederrno = errno;
@@ -249,6 +251,9 @@ static void _destroy_buffers(knet_handle_t knet_h)
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		free(knet_h->send_to_links_buf[i]);
 		free(knet_h->send_to_links_buf_crypt[i]);
+	}
+
+	for (i = 0; i < PCKT_RX_BUFS; i++) {
 		free(knet_h->recv_from_links_buf[i]);
 	}
 
