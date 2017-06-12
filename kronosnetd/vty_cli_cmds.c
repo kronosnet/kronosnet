@@ -1023,7 +1023,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 			dst = &dst_addr;
 		}
 
-		knet_link_set_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, transport_id, &src_addr, dst);
+		knet_link_set_config(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, transport_id, &src_addr, dst, KNET_LINK_FLAG_TRAFFICHIPRIO);
 
 		knet_link_set_ping_timers(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 1000, 5000, 2048);
 
@@ -1784,8 +1784,9 @@ static int knet_cmd_status(struct knet_vty *vty)
 				const char *transport_name;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
+				uint64_t flags;
 
-				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic)) {
+				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
 					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
@@ -1898,8 +1899,9 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 				const char *transport_name;
 				struct sockaddr_storage src_addr;
 				struct sockaddr_storage dst_addr;
+				uint64_t flags;
 
-				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic)) {
+				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
 					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
 					if (status.enabled == 1) {
