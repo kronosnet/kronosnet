@@ -520,7 +520,6 @@ retry_pong:
 						  src_link->status.dst_ipaddr, src_link->status.dst_port);
 					src_link->status.stats.tx_pong_errors++;
 					break;
-					src_link->status.stats.tx_pong_errors++;
 				case 0: /* ignore error and continue */
 					break;
 				case 1: /* retry to send those same data */
