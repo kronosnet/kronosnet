@@ -1290,6 +1290,28 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 			    uint8_t *link_ids, size_t *link_ids_entries);
 
+struct knet_link_stats {
+	uint64_t tx_packets;
+	uint64_t rx_packets;
+	uint64_t tx_bytes;
+	uint64_t rx_bytes;
+	uint64_t rx_pings;
+	uint64_t tx_pings;
+	uint64_t rx_pongs;
+	uint64_t tx_pongs;
+	uint64_t rx_pmtu;
+	uint64_t tx_pmtu;
+	uint32_t latency_min;
+	uint32_t latency_max;
+	uint32_t latency_ave;
+	uint32_t latency_samples;
+	uint32_t down_count;
+	uint32_t up_count;
+	time_t   last_up_time;
+	time_t   last_down_time;
+	/* Always add new stats at the end */
+};
+
 /*
  * define link status structure for quick lookup
  * struct is in flux as more stats will be added soon
@@ -1318,6 +1340,7 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
  */
 
 struct knet_link_status {
+	size_t size;                    /* For ABI checking */
 	char src_ipaddr[KNET_MAX_HOST_LEN];
 	char src_port[KNET_MAX_PORT_LEN];
 	char dst_ipaddr[KNET_MAX_HOST_LEN];
@@ -1336,7 +1359,8 @@ struct knet_link_status {
 					 * WARNING: in general mtu + proto_overhead might or might
 					 * not match the output of ifconfig mtu due to crypto
 					 * requirements to pad packets to some specific boundaries. */
-	/* add link statistics */
+	/* Link statistics */
+	struct knet_link_stats stats;
 };
 
 /*
@@ -1350,6 +1374,11 @@ struct knet_link_status {
  *
  * status    - pointer to knet_link_status struct (see above)
  *
+ * struct_size - max size of knet_link_status - allows library to
+ *               add fields without ABI change. Returned structure
+ *               will be truncated to this length and .size member
+ *               indicates the full size.
+ *
  * knet_link_get_status returns:
  *
  * 0 on success
@@ -1357,7 +1386,7 @@ struct knet_link_status {
  */
 
 int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
-			 struct knet_link_status *status);
+			 struct knet_link_status *status, size_t struct_size);
 
 /*
  * logging structs/API calls

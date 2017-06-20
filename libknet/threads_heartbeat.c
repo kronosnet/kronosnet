@@ -88,6 +88,7 @@ retry:
 		savederrno = errno;
 
 		dst_link->ping_last = clock_now;
+		dst_link->status.stats.tx_pings++;
 
 		if (len != outlen) {
 			err = knet_h->transport_ops[dst_link->transport_type]->transport_tx_sock_error(knet_h, dst_link->outsock, len, savederrno);

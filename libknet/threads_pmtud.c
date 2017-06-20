@@ -183,6 +183,7 @@ retry:
 	} else {
 		dst_link->last_sent_mtu = onwire_len;
 		dst_link->last_recv_mtu = 0;
+		dst_link->status.stats.tx_pmtu++;
 
 		if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));

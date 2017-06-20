@@ -46,7 +46,7 @@ static void test(void)
 
 	memset(&status, 0, sizeof(struct knet_link_status));
 
-	if ((!knet_link_get_status(NULL, 1, 0, &status)) || (errno != EINVAL)) {
+	if ((!knet_link_get_status(NULL, 1, 0, &status, sizeof(struct knet_link_status))) || (errno != EINVAL)) {
 		printf("knet_link_get_status accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -64,7 +64,7 @@ static void test(void)
 
 	printf("Test knet_link_get_status with unconfigured host_id\n");
 
-	if ((!knet_link_get_status(knet_h, 1, 0, &status)) || (errno != EINVAL)) {
+	if ((!knet_link_get_status(knet_h, 1, 0, &status, sizeof(struct knet_link_status))) || (errno != EINVAL)) {
 		printf("knet_link_get_status accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -84,7 +84,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if ((!knet_link_get_status(knet_h, 1, KNET_MAX_LINK, &status)) || (errno != EINVAL)) {
+	if ((!knet_link_get_status(knet_h, 1, KNET_MAX_LINK, &status, sizeof(struct knet_link_status))) || (errno != EINVAL)) {
 		printf("knet_link_get_status accepted invalid linkid or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -97,7 +97,7 @@ static void test(void)
 
 	printf("Test knet_link_get_status with incorrect status\n");
 
-	if ((!knet_link_get_status(knet_h, 1, 0, NULL)) || (errno != EINVAL)) {
+	if ((!knet_link_get_status(knet_h, 1, 0, NULL, 0)) || (errno != EINVAL)) {
 		printf("knet_link_get_status accepted invalid status or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -110,7 +110,7 @@ static void test(void)
 
 	printf("Test knet_link_get_status with unconfigured link\n");
 
-	if ((!knet_link_get_status(knet_h, 1, 0, &status)) || (errno != EINVAL)) {
+	if ((!knet_link_get_status(knet_h, 1, 0, &status, sizeof(struct knet_link_status))) || (errno != EINVAL)) {
 		printf("knet_link_get_status accepted unconfigured link or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -132,7 +132,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_get_status(knet_h, 1, 0, &status) < 0) {
+	if (knet_link_get_status(knet_h, 1, 0, &status, sizeof(struct knet_link_status)) < 0) {
 		printf("knet_link_get_status failed: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);

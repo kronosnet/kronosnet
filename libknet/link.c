@@ -38,6 +38,13 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 	    (!link->status.connected))
 		link->status.dynconnected = 0;
 
+	if (connected) {
+		time(&link->status.stats.last_up_time);
+		link->status.stats.up_count++;
+	} else {
+		time(&link->status.stats.last_down_time);
+		link->status.stats.down_count++;
+	}
 	return 0;
 }
 
@@ -925,7 +932,7 @@ exit_unlock:
 }
 
 int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
-			 struct knet_link_status *status)
+			 struct knet_link_status *status, size_t struct_size)
 {
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
@@ -973,7 +980,10 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
-	memmove(status, &link->status, sizeof(struct knet_link_status));
+	memmove(status, &link->status, struct_size);
+
+	/* Tell the caller our full size in case they have an old version */
+	status->size = sizeof(struct knet_link_status);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

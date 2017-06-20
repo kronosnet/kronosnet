@@ -409,7 +409,7 @@ int knet_handle_stop(knet_handle_t knet_h)
 			return -1;
 		}
 		for (j = 0; j < link_ids_entries; j++) {
-			if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status)) {
+			if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status, sizeof(struct knet_link_status))) {
 				printf("knet_link_get_status failed: %s\n", strerror(errno));
 				return -1;
 			}
