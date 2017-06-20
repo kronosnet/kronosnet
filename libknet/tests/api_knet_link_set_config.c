@@ -127,7 +127,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_get_status(knet_h, 1, 0, &link_status) < 0) {
+	if (knet_link_get_status(knet_h, 1, 0, &link_status, sizeof(struct knet_link_status)) < 0) {
 		printf("Unable to get link status: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -176,7 +176,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_get_status(knet_h, 1, 0, &link_status) < 0) {
+	if (knet_link_get_status(knet_h, 1, 0, &link_status, sizeof(struct knet_link_status)) < 0) {
 		printf("Unable to get link status: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -226,7 +226,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_get_status(knet_h, 1, 0, &link_status) < 0) {
+	if (knet_link_get_status(knet_h, 1, 0, &link_status, sizeof(struct knet_link_status)) < 0) {
 		printf("Unable to get link status: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);

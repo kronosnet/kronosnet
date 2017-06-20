@@ -958,7 +958,7 @@ static int knet_cmd_no_link(struct knet_vty *vty)
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	vty->link_id = param_to_int(param, paramlen);
 
-	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status);
+	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status, sizeof(status));
 
 	if (status.enabled) {
 		if (knet_link_set_enable(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, 0)) {
@@ -1004,7 +1004,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 
 	transport_id = knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, transport);
 
-	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status);
+	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status, sizeof(status));
 	if (!status.enabled) {
 		if (knet_strtoaddr(src_ipaddr, src_port, &src_addr, sizeof(struct sockaddr_storage)) != 0) {
 			knet_vty_write(vty, "Error: unable to convert source ip addr to sockaddr!%s", telnet_newline);
@@ -1788,7 +1788,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
 					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
-					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
+					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status, sizeof(status));
 					if (status.enabled == 1) {
 						if (dynamic) {
 							knet_vty_write(vty, "    link %s dynamic (%s/connected: %d)%s", status.src_ipaddr, transport_name, status.connected, nl);
@@ -1903,7 +1903,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
 					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
-					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status);
+					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status, sizeof(status));
 					if (status.enabled == 1) {
 						uint8_t priority, pong_count;
 						unsigned int precision;

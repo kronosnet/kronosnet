@@ -83,6 +83,7 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 	 */
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		host->link[link_idx].link_id = link_idx;
+		host->link[link_idx].status.stats.latency_min = UINT32_MAX;
 	}
 
 	/*

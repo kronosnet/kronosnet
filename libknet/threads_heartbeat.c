@@ -88,6 +88,8 @@ retry:
 		savederrno = errno;
 
 		dst_link->ping_last = clock_now;
+		dst_link->status.stats.tx_ping_packets++;
+		dst_link->status.stats.tx_ping_bytes += outlen;
 
 		if (len != outlen) {
 			err = knet_h->transport_ops[dst_link->transport_type]->transport_tx_sock_error(knet_h, dst_link->outsock, len, savederrno);
@@ -98,10 +100,12 @@ retry:
 						  dst_link->outsock, savederrno, strerror(savederrno),
 						  dst_link->status.src_ipaddr, dst_link->status.src_port,
 						  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
+					dst_link->status.stats.tx_ping_errors++;
 					break;
 				case 0:
 					break;
 				case 1:
+					dst_link->status.stats.tx_ping_retries++;
 					goto retry;
 					break;
 			}

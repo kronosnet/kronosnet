@@ -1290,6 +1290,56 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 			    uint8_t *link_ids, size_t *link_ids_entries);
 
+#define MAX_LINK_EVENTS 16
+struct knet_link_stats {
+	uint64_t tx_data_packets;
+	uint64_t rx_data_packets;
+	uint64_t tx_data_bytes;
+	uint64_t rx_data_bytes;
+	uint64_t rx_ping_packets;
+	uint64_t tx_ping_packets;
+	uint64_t rx_ping_bytes;
+	uint64_t tx_ping_bytes;
+	uint64_t rx_pong_packets;
+	uint64_t tx_pong_packets;
+	uint64_t rx_pong_bytes;
+	uint64_t tx_pong_bytes;
+	uint64_t rx_pmtu_packets;
+	uint64_t tx_pmtu_packets;
+	uint64_t rx_pmtu_bytes;
+	uint64_t tx_pmtu_bytes;
+
+	/* Only filled in when requested */
+	uint64_t tx_total_packets;
+	uint64_t rx_total_packets;
+	uint64_t tx_total_bytes;
+	uint64_t rx_total_bytes;
+	uint64_t tx_total_errors;
+	uint64_t tx_total_retries;
+
+	uint32_t tx_pmtu_errors;
+	uint32_t tx_pmtu_retries;
+	uint32_t tx_ping_errors;
+	uint32_t tx_ping_retries;
+	uint32_t tx_pong_errors;
+	uint32_t tx_pong_retries;
+	uint32_t tx_data_errors;
+	uint32_t tx_data_retries;
+
+	uint32_t latency_min;
+	uint32_t latency_max;
+	uint32_t latency_ave;
+	uint32_t latency_samples;
+
+	uint32_t down_count;
+	uint32_t up_count;
+	time_t   last_up_times[MAX_LINK_EVENTS];
+	time_t   last_down_times[MAX_LINK_EVENTS];
+	int8_t   last_up_time_index;
+	int8_t   last_down_time_index;
+	/* Always add new stats at the end */
+};
+
 /*
  * define link status structure for quick lookup
  * struct is in flux as more stats will be added soon
@@ -1318,6 +1368,7 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
  */
 
 struct knet_link_status {
+	size_t size;                    /* For ABI checking */
 	char src_ipaddr[KNET_MAX_HOST_LEN];
 	char src_port[KNET_MAX_PORT_LEN];
 	char dst_ipaddr[KNET_MAX_HOST_LEN];
@@ -1336,7 +1387,8 @@ struct knet_link_status {
 					 * WARNING: in general mtu + proto_overhead might or might
 					 * not match the output of ifconfig mtu due to crypto
 					 * requirements to pad packets to some specific boundaries. */
-	/* add link statistics */
+	/* Link statistics */
+	struct knet_link_stats stats;
 };
 
 /*
@@ -1350,6 +1402,11 @@ struct knet_link_status {
  *
  * status    - pointer to knet_link_status struct (see above)
  *
+ * struct_size - max size of knet_link_status - allows library to
+ *               add fields without ABI change. Returned structure
+ *               will be truncated to this length and .size member
+ *               indicates the full size.
+ *
  * knet_link_get_status returns:
  *
  * 0 on success
@@ -1357,7 +1414,7 @@ struct knet_link_status {
  */
 
 int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
-			 struct knet_link_status *status);
+			 struct knet_link_status *status, size_t struct_size);
 
 /*
  * logging structs/API calls

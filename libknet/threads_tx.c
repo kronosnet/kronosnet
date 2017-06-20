@@ -34,16 +34,24 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 {
 	int link_idx, msg_idx, sent_msgs, prev_sent, progress;
 	int err = 0, savederrno = 0;
+	unsigned int i;
 	struct knet_mmsghdr *cur;
+	struct knet_link *cur_link;
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 		sent_msgs = 0;
 		prev_sent = 0;
 		progress = 1;
 
+		cur_link = &dst_host->link[dst_host->active_links[link_idx]];
 		msg_idx = 0;
 		while (msg_idx < msgs_to_send) {
-			msg[msg_idx].msg_hdr.msg_name = &dst_host->link[dst_host->active_links[link_idx]].dst_addr;
+			msg[msg_idx].msg_hdr.msg_name = &cur_link->dst_addr;
+
+			for (i=0; i<msg[msg_idx].msg_hdr.msg_iovlen; i++) {
+				cur_link->status.stats.tx_data_bytes += msg[msg_idx].msg_hdr.msg_iov[i].iov_len;
+			}
+			cur_link->status.stats.tx_data_packets++;
 			msg_idx++;
 		}
 
@@ -57,11 +65,13 @@ retry:
 		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
 		switch(err) {
 			case -1: /* unrecoverable error */
+				cur_link->status.stats.tx_data_errors++;
 				goto out_unlock;
 				break;
 			case 0: /* ignore error and continue */
 				break;
 			case 1: /* retry to send those same data */
+				cur_link->status.stats.tx_data_retries++;
 				goto retry;
 				break;
 		}

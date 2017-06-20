@@ -38,6 +38,7 @@ static void test(void)
 	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
+	struct knet_link_status link_status;
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	char recv_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t send_len = 0;
@@ -267,6 +268,31 @@ static void test(void)
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
 		exit(FAIL);
+	}
+
+	/* A sanity check on the stats */
+	if (knet_link_get_status(knet_h, 1, 0, &link_status, sizeof(link_status)) < 0) {
+		printf("knet_link_get_status failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (link_status.stats.tx_data_packets != 2 ||
+	    link_status.stats.rx_data_packets != 2 ||
+	    link_status.stats.tx_data_bytes < KNET_MAX_PACKET_SIZE ||
+	    link_status.stats.rx_data_bytes < KNET_MAX_PACKET_SIZE ||
+	    link_status.stats.tx_data_bytes > KNET_MAX_PACKET_SIZE*2 ||
+	    link_status.stats.rx_data_bytes > KNET_MAX_PACKET_SIZE*2) {
+	    printf("stats look wrong: tx_packets: %lu (%lu bytes), rx_packets: %lu (%lu bytes)\n",
+		   link_status.stats.tx_data_packets,
+		   link_status.stats.tx_data_bytes,
+		   link_status.stats.rx_data_packets,
+		   link_status.stats.rx_data_bytes);
 	}
 
 	flush_logs(logfds[0], stdout);
