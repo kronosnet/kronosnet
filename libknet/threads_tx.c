@@ -49,9 +49,9 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 			msg[msg_idx].msg_hdr.msg_name = &cur_link->dst_addr;
 
 			for (i=0; i<msg[msg_idx].msg_hdr.msg_iovlen; i++) {
-				cur_link->status.stats.tx_bytes += msg[msg_idx].msg_hdr.msg_iov[i].iov_len;
+				cur_link->status.stats.tx_data_bytes += msg[msg_idx].msg_hdr.msg_iov[i].iov_len;
 			}
-			cur_link->status.stats.tx_packets++;
+			cur_link->status.stats.tx_data_packets++;
 			msg_idx++;
 		}
 
@@ -65,11 +65,13 @@ retry:
 		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
 		switch(err) {
 			case -1: /* unrecoverable error */
+				cur_link->status.stats.tx_data_errors++;
 				goto out_unlock;
 				break;
 			case 0: /* ignore error and continue */
 				break;
 			case 1: /* retry to send those same data */
+				cur_link->status.stats.tx_data_retries++;
 				goto retry;
 				break;
 		}

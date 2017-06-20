@@ -39,11 +39,17 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		link->status.dynconnected = 0;
 
 	if (connected) {
-		time(&link->status.stats.last_up_time);
+		time(&link->status.stats.last_up_times[link->status.stats.last_up_time_index]);
 		link->status.stats.up_count++;
+		if (++link->status.stats.last_up_time_index > MAX_LINK_EVENTS) {
+			link->status.stats.last_up_time_index = 0;
+		}
 	} else {
-		time(&link->status.stats.last_down_time);
+		time(&link->status.stats.last_down_times[link->status.stats.last_down_time_index]);
 		link->status.stats.down_count++;
+		if (++link->status.stats.last_down_time_index > MAX_LINK_EVENTS) {
+			link->status.stats.last_down_time_index = 0;
+		}
 	}
 	return 0;
 }
@@ -981,6 +987,38 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	}
 
 	memmove(status, &link->status, struct_size);
+
+	/* Calculate totals - no point in doing this on-the-fly */
+	status->stats.rx_total_packets =
+		status->stats.rx_data_packets +
+		status->stats.rx_ping_packets +
+		status->stats.rx_pong_packets +
+		status->stats.rx_pmtu_packets;
+	status->stats.tx_total_packets =
+		status->stats.tx_data_packets +
+		status->stats.tx_ping_packets +
+		status->stats.tx_pong_packets +
+		status->stats.tx_pmtu_packets;
+	status->stats.rx_total_bytes =
+		status->stats.rx_data_bytes +
+		status->stats.rx_ping_bytes +
+		status->stats.rx_pong_bytes +
+		status->stats.rx_pmtu_bytes;
+	status->stats.tx_total_bytes =
+		status->stats.tx_data_bytes +
+		status->stats.tx_ping_bytes +
+		status->stats.tx_pong_bytes +
+		status->stats.tx_pmtu_bytes;
+	status->stats.tx_total_errors =
+		status->stats.tx_data_errors +
+		status->stats.tx_ping_errors +
+		status->stats.tx_pong_errors +
+		status->stats.tx_pmtu_errors;
+	status->stats.tx_total_retries =
+		status->stats.tx_data_retries +
+		status->stats.tx_ping_retries +
+		status->stats.tx_pong_retries +
+		status->stats.tx_pmtu_retries;
 
 	/* Tell the caller our full size in case they have an old version */
 	status->size = sizeof(struct knet_link_status);

@@ -330,8 +330,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		src_host->got_data = 1;
 
 		if (src_link) {
-			src_link->status.stats.rx_packets++;
-			src_link->status.stats.rx_bytes += len;
+			src_link->status.stats.rx_data_packets++;
+			src_link->status.stats.rx_data_bytes += len;
 		}
 
 		if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
@@ -450,7 +450,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		inbuf->kh_type = KNET_HEADER_TYPE_PONG;
 		inbuf->kh_node = htons(knet_h->host_id);
 		recv_seq_num = ntohs(inbuf->khp_ping_seq_num);
-		src_link->status.stats.rx_pings++;
+		src_link->status.stats.rx_ping_packets++;
+		src_link->status.stats.rx_ping_bytes += len;
 
 		wipe_bufs = 0;
 
@@ -517,18 +518,23 @@ retry_pong:
 						  src_link->outsock, errno, strerror(errno),
 						  src_link->status.src_ipaddr, src_link->status.src_port,
 						  src_link->status.dst_ipaddr, src_link->status.dst_port);
+					src_link->status.stats.tx_pong_errors++;
 					break;
+					src_link->status.stats.tx_pong_errors++;
 				case 0: /* ignore error and continue */
 					break;
 				case 1: /* retry to send those same data */
+					src_link->status.stats.tx_pong_retries++;
 					goto retry_pong;
 					break;
 			}
 		}
-		src_link->status.stats.tx_pongs++;
+		src_link->status.stats.tx_pong_packets++;
+		src_link->status.stats.tx_pong_bytes += outlen;
 		break;
 	case KNET_HEADER_TYPE_PONG:
-		src_link->status.stats.rx_pongs++;
+		src_link->status.stats.rx_pong_packets++;
+		src_link->status.stats.rx_pong_bytes += len;
 		clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
 		memmove(&recvtime, &inbuf->khp_ping_time[0], sizeof(struct timespec));
@@ -568,7 +574,8 @@ retry_pong:
 
 		break;
 	case KNET_HEADER_TYPE_PMTUD:
-		src_link->status.stats.rx_pmtu++;
+		src_link->status.stats.rx_pmtu_packets++;
+		src_link->status.stats.rx_pmtu_bytes += len;
 		outlen = KNET_HEADER_PMTUD_SIZE;
 		inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
 		inbuf->kh_node = htons(knet_h->host_id);
@@ -598,10 +605,14 @@ retry_pmtud:
 						  src_link->outsock, errno, strerror(errno),
 						  src_link->status.src_ipaddr, src_link->status.src_port,
 						  src_link->status.dst_ipaddr, src_link->status.dst_port);
+
+					src_link->status.stats.tx_pmtu_errors++;
 					break;
 				case 0: /* ignore error and continue */
+					src_link->status.stats.tx_pmtu_errors++;
 					break;
 				case 1: /* retry to send those same data */
+					src_link->status.stats.tx_pmtu_retries++;
 					goto retry_pmtud;
 					break;
 			}
@@ -609,7 +620,8 @@ retry_pmtud:
 
 		break;
 	case KNET_HEADER_TYPE_PMTUD_REPLY:
-		src_link->status.stats.rx_pmtu++;
+		src_link->status.stats.rx_pmtu_packets++;
+		src_link->status.stats.rx_pmtu_bytes += len;
 		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
 			break;

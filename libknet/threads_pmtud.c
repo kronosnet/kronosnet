@@ -165,10 +165,12 @@ retry:
 		case -1: /* unrecoverable error */
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+			dst_link->status.stats.tx_pmtu_errors++;
 			return -1;
 		case 0: /* ignore error and continue */
 			break;
 		case 1: /* retry to send those same data */
+			dst_link->status.stats.tx_pmtu_retries++;
 			goto retry;
 			break;
 	}
@@ -183,7 +185,8 @@ retry:
 	} else {
 		dst_link->last_sent_mtu = onwire_len;
 		dst_link->last_recv_mtu = 0;
-		dst_link->status.stats.tx_pmtu++;
+		dst_link->status.stats.tx_pmtu_packets++;
+		dst_link->status.stats.tx_pmtu_bytes += data_len;
 
 		if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));

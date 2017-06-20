@@ -1290,25 +1290,53 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 			    uint8_t *link_ids, size_t *link_ids_entries);
 
+#define MAX_LINK_EVENTS 16
 struct knet_link_stats {
-	uint64_t tx_packets;
-	uint64_t rx_packets;
-	uint64_t tx_bytes;
-	uint64_t rx_bytes;
-	uint64_t rx_pings;
-	uint64_t tx_pings;
-	uint64_t rx_pongs;
-	uint64_t tx_pongs;
-	uint64_t rx_pmtu;
-	uint64_t tx_pmtu;
+	uint64_t tx_data_packets;
+	uint64_t rx_data_packets;
+	uint64_t tx_data_bytes;
+	uint64_t rx_data_bytes;
+	uint64_t rx_ping_packets;
+	uint64_t tx_ping_packets;
+	uint64_t rx_ping_bytes;
+	uint64_t tx_ping_bytes;
+	uint64_t rx_pong_packets;
+	uint64_t tx_pong_packets;
+	uint64_t rx_pong_bytes;
+	uint64_t tx_pong_bytes;
+	uint64_t rx_pmtu_packets;
+	uint64_t tx_pmtu_packets;
+	uint64_t rx_pmtu_bytes;
+	uint64_t tx_pmtu_bytes;
+
+	/* Only filled in when requested */
+	uint64_t tx_total_packets;
+	uint64_t rx_total_packets;
+	uint64_t tx_total_bytes;
+	uint64_t rx_total_bytes;
+	uint64_t tx_total_errors;
+	uint64_t tx_total_retries;
+
+	uint32_t tx_pmtu_errors;
+	uint32_t tx_pmtu_retries;
+	uint32_t tx_ping_errors;
+	uint32_t tx_ping_retries;
+	uint32_t tx_pong_errors;
+	uint32_t tx_pong_retries;
+	uint32_t tx_data_errors;
+	uint32_t tx_data_retries;
+
 	uint32_t latency_min;
 	uint32_t latency_max;
 	uint32_t latency_ave;
 	uint32_t latency_samples;
+
 	uint32_t down_count;
 	uint32_t up_count;
-	time_t   last_up_time;
-	time_t   last_down_time;
+	time_t   last_up_times[MAX_LINK_EVENTS];
+	time_t   last_down_times[MAX_LINK_EVENTS];
+	int8_t   last_up_time_index;
+	int8_t   last_down_time_index;
 	/* Always add new stats at the end */
 };
 
