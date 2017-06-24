@@ -959,7 +959,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
 			strerror(savederrno));
