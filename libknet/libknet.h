@@ -1290,8 +1290,37 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 			    uint8_t *link_ids, size_t *link_ids_entries);
 
+/*
+ * define link status structure for quick lookup
+ *
+ * src/dst_{ipaddr,port} strings are filled by
+ *                       getnameinfo(3) when configuring the link.
+ *                       if the link is dynamic (see knet_link_set_config)
+ *                       dst_ipaddr/port will contain ipaddr/port of the currently
+ *                       connected peer or "Unknown" if it was not possible
+ *                       to determine the ipaddr/port at runtime.
+ *
+ * enabled               see also knet_link_set/get_enable.
+ *
+ * connected             the link is connected to a peer and ping/pong traffic
+ *                       is flowing.
+ *
+ * dynconnected          the link has dynamic ip on the other end, and
+ *                       we can see the other host is sending pings to us.
+ *
+ * latency               average latency of this link
+ *                       see also knet_link_set/get_timeout.
+ *
+ * pong_last             if the link is down, this value tells us how long
+ *                       ago this link was active. A value of 0 means that the link
+ *                       has never been active.
+ *
+ * knet_link_stats       structure that contains details statistics for the link
+ */
+
 #define MAX_LINK_EVENTS 16
 struct knet_link_stats {
+	/* onwire values */
 	uint64_t tx_data_packets;
 	uint64_t rx_data_packets;
 	uint64_t tx_data_bytes;
@@ -1326,46 +1355,28 @@ struct knet_link_stats {
 	uint32_t tx_data_errors;
 	uint32_t tx_data_retries;
 
+	/* measured in usecs */
 	uint32_t latency_min;
 	uint32_t latency_max;
 	uint32_t latency_ave;
 	uint32_t latency_samples;
 
+	/* how many times the link has been going up/down */
 	uint32_t down_count;
 	uint32_t up_count;
+
+	/*
+	 * circular buffer of time_t structs collecting the history
+	 * of up/down events on this link.
+	 * the index indicates current/last event.
+	 * it is safe to walk back the history by decreasing the index
+	 */
 	time_t   last_up_times[MAX_LINK_EVENTS];
 	time_t   last_down_times[MAX_LINK_EVENTS];
 	int8_t   last_up_time_index;
 	int8_t   last_down_time_index;
 	/* Always add new stats at the end */
 };
-
-/*
- * define link status structure for quick lookup
- * struct is in flux as more stats will be added soon
- *
- * src/dst_{ipaddr,port} strings are filled by
- *                       getnameinfo(3) when configuring the link.
- *                       if the link is dynamic (see knet_link_set_config)
- *                       dst_ipaddr/port will contain ipaddr/port of the currently
- *                       connected peer or "Unknown" if it was not possible
- *                       to determine the ipaddr/port at runtime.
- *
- * enabled               see also knet_link_set/get_enable.
- *
- * connected             the link is connected to a peer and ping/pong traffic
- *                       is flowing.
- *
- * dynconnected          the link has dynamic ip on the other end, and
- *                       we can see the other host is sending pings to us.
- *
- * latency               average latency of this link
- *                       see also knet_link_set/get_timeout.
- *
- * pong_last             if the link is down, this value tells us how long
- *                       ago this link was active. A value of 0 means that the link
- *                       has never been active.
- */
 
 struct knet_link_status {
 	size_t size;                    /* For ABI checking */
