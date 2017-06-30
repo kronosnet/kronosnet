@@ -17,6 +17,7 @@
 #include <hasht.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <secerr.h>
 
 #include "crypto.h"
 #include "nsscrypto.h"
@@ -155,9 +156,20 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	PK11SymKey *res_key;
 	CK_MECHANISM_TYPE cipher;
 	CK_ATTRIBUTE_TYPE operation;
+	CK_MECHANISM_TYPE wrap_mechanism;
+	int wrap_key_len;
+	PK11SymKey *wrap_key;
+	PK11Context *wrap_key_crypt_context;
+	SECItem tmp_sec_item;
+	SECItem wrapped_key;
+	int wrapped_key_len;
+	unsigned char wrapped_key_data[KNET_MAX_KEY_LEN];
 
 	memset(&key_item, 0, sizeof(key_item));
 	slot = NULL;
+	wrap_key = NULL;
+	res_key = NULL;
+	wrap_key_crypt_context = NULL;
 
 	key_item.type = siBuffer;
 	key_item.data = instance->private_key;
@@ -179,17 +191,100 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	if (slot == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (%d): %s",
 			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-		return (NULL);
+		goto exit_res_key;
 	}
 
-	res_key = PK11_ImportSymKey(slot, cipher, PK11_OriginUnwrap, operation, &key_item, NULL);
+	/*
+	 * Without FIPS it would be possible to just use
+	 * 	res_key = PK11_ImportSymKey(slot, cipher, PK11_OriginUnwrap, operation, &key_item, NULL);
+	 * with FIPS NSS Level 2 certification has to be "workarounded" (so it becomes Level 1) by using
+	 * following method:
+	 * 1. Generate wrap key
+	 * 2. Encrypt authkey with wrap key
+	 * 3. Unwrap encrypted authkey using wrap key
+	 */
+
+	/*
+	 * Generate wrapping key
+	 */
+	wrap_mechanism = PK11_GetBestWrapMechanism(slot);
+	wrap_key_len = PK11_GetBestKeyLength(slot, wrap_mechanism);
+	wrap_key = PK11_KeyGen(slot, wrap_mechanism, NULL, wrap_key_len, NULL);
+	if (wrap_key == NULL) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to generate wrapping key (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	/*
+	 * Encrypt authkey with wrapping key
+	 */
+
+	/*
+	 * Initialization of IV is not needed because PK11_GetBestWrapMechanism should return ECB mode
+	 */
+	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
+	wrap_key_crypt_context = PK11_CreateContextBySymKey(wrap_mechanism, CKA_ENCRYPT,
+	    wrap_key, &tmp_sec_item);
+	if (wrap_key_crypt_context == NULL) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to create encrypt context (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	wrapped_key_len = (int)sizeof(wrapped_key_data);
+
+	if (PK11_CipherOp(wrap_key_crypt_context, wrapped_key_data, &wrapped_key_len,
+	    sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to encrypt authkey (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	if (PK11_Finalize(wrap_key_crypt_context) != SECSuccess) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to finalize encryption of authkey (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	/*
+	 * Finally unwrap sym key
+	 */
+	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
+	wrapped_key.data = wrapped_key_data;
+	wrapped_key.len = wrapped_key_len;
+
+	res_key = PK11_UnwrapSymKey(wrap_key, wrap_mechanism, &tmp_sec_item, &wrapped_key,
+	    cipher, operation, key_item.len);
 	if (res_key == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (%d): %s",
 			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-		goto exit_err;
+
+		if (PR_GetError() == SEC_ERROR_BAD_DATA) {
+			/*
+			 * Maximum key length for FIPS enabled softtoken is limited to
+			 * MAX_KEY_LEN (pkcs11i.h - 256) and checked in NSC_UnwrapKey. Returned
+			 * error is CKR_TEMPLATE_INCONSISTENT which is mapped to SEC_ERROR_BAD_DATA.
+			 */
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Secret key is probably too long. "
+			    "Try reduce it to 256 bytes");
+		}
+		goto exit_res_key;
 	}
-exit_err:
-	PK11_FreeSlot(slot);
+
+exit_res_key:
+	if (wrap_key_crypt_context != NULL) {
+		PK11_DestroyContext(wrap_key_crypt_context, PR_TRUE);
+	}
+
+	if (wrap_key != NULL) {
+		PK11_FreeSymKey(wrap_key);
+	}
+
+	if (slot != NULL) {
+		PK11_FreeSlot(slot);
+	}
+
 	return (res_key);
 }
 
