@@ -17,6 +17,7 @@
 #include <hasht.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <secerr.h>
 
 #include "crypto.h"
 #include "nsscrypto.h"
@@ -109,6 +110,11 @@ size_t hash_len[] = {
 	SHA512_LENGTH			/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
+enum sym_key_type {
+	SYM_KEY_TYPE_CRYPT,
+	SYM_KEY_TYPE_HASH
+};
+
 struct nsscrypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
@@ -142,38 +148,158 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return -1;
 }
 
+static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type key_type)
+{
+	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	SECItem key_item;
+	PK11SlotInfo *slot;
+	PK11SymKey *res_key;
+	CK_MECHANISM_TYPE cipher;
+	CK_ATTRIBUTE_TYPE operation;
+	CK_MECHANISM_TYPE wrap_mechanism;
+	int wrap_key_len;
+	PK11SymKey *wrap_key;
+	PK11Context *wrap_key_crypt_context;
+	SECItem tmp_sec_item;
+	SECItem wrapped_key;
+	int wrapped_key_len;
+	unsigned char wrapped_key_data[KNET_MAX_KEY_LEN];
+
+	memset(&key_item, 0, sizeof(key_item));
+	slot = NULL;
+	wrap_key = NULL;
+	res_key = NULL;
+	wrap_key_crypt_context = NULL;
+
+	key_item.type = siBuffer;
+	key_item.data = instance->private_key;
+
+	switch (key_type) {
+	case SYM_KEY_TYPE_CRYPT:
+		key_item.len = cipher_key_len[instance->crypto_cipher_type];
+		cipher = cipher_to_nss[instance->crypto_cipher_type];
+		operation = CKA_ENCRYPT|CKA_DECRYPT;
+		break;
+	case SYM_KEY_TYPE_HASH:
+		key_item.len = instance->private_key_len;
+		cipher = hash_to_nss[instance->crypto_hash_type];
+		operation = CKA_SIGN;
+		break;
+	}
+
+	slot = PK11_GetBestSlot(cipher, NULL);
+	if (slot == NULL) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	/*
+	 * Without FIPS it would be possible to just use
+	 * 	res_key = PK11_ImportSymKey(slot, cipher, PK11_OriginUnwrap, operation, &key_item, NULL);
+	 * with FIPS NSS Level 2 certification has to be "workarounded" (so it becomes Level 1) by using
+	 * following method:
+	 * 1. Generate wrap key
+	 * 2. Encrypt authkey with wrap key
+	 * 3. Unwrap encrypted authkey using wrap key
+	 */
+
+	/*
+	 * Generate wrapping key
+	 */
+	wrap_mechanism = PK11_GetBestWrapMechanism(slot);
+	wrap_key_len = PK11_GetBestKeyLength(slot, wrap_mechanism);
+	wrap_key = PK11_KeyGen(slot, wrap_mechanism, NULL, wrap_key_len, NULL);
+	if (wrap_key == NULL) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to generate wrapping key (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	/*
+	 * Encrypt authkey with wrapping key
+	 */
+
+	/*
+	 * Initialization of IV is not needed because PK11_GetBestWrapMechanism should return ECB mode
+	 */
+	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
+	wrap_key_crypt_context = PK11_CreateContextBySymKey(wrap_mechanism, CKA_ENCRYPT,
+	    wrap_key, &tmp_sec_item);
+	if (wrap_key_crypt_context == NULL) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to create encrypt context (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	wrapped_key_len = (int)sizeof(wrapped_key_data);
+
+	if (PK11_CipherOp(wrap_key_crypt_context, wrapped_key_data, &wrapped_key_len,
+	    sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to encrypt authkey (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	if (PK11_Finalize(wrap_key_crypt_context) != SECSuccess) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to finalize encryption of authkey (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+
+	/*
+	 * Finally unwrap sym key
+	 */
+	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
+	wrapped_key.data = wrapped_key_data;
+	wrapped_key.len = wrapped_key_len;
+
+	res_key = PK11_UnwrapSymKey(wrap_key, wrap_mechanism, &tmp_sec_item, &wrapped_key,
+	    cipher, operation, key_item.len);
+	if (res_key == NULL) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+
+		if (PR_GetError() == SEC_ERROR_BAD_DATA) {
+			/*
+			 * Maximum key length for FIPS enabled softtoken is limited to
+			 * MAX_KEY_LEN (pkcs11i.h - 256) and checked in NSC_UnwrapKey. Returned
+			 * error is CKR_TEMPLATE_INCONSISTENT which is mapped to SEC_ERROR_BAD_DATA.
+			 */
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Secret key is probably too long. "
+			    "Try reduce it to 256 bytes");
+		}
+		goto exit_res_key;
+	}
+
+exit_res_key:
+	if (wrap_key_crypt_context != NULL) {
+		PK11_DestroyContext(wrap_key_crypt_context, PR_TRUE);
+	}
+
+	if (wrap_key != NULL) {
+		PK11_FreeSymKey(wrap_key);
+	}
+
+	if (slot != NULL) {
+		PK11_FreeSlot(slot);
+	}
+
+	return (res_key);
+}
+
 static int init_nss_crypto(knet_handle_t knet_h)
 {
-	PK11SlotInfo*	crypt_slot = NULL;
-	SECItem		crypt_param;
 	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 
 	if (!cipher_to_nss[instance->crypto_cipher_type]) {
 		return 0;
 	}
 
-	crypt_param.type = siBuffer;
-	crypt_param.data = instance->private_key;
-	crypt_param.len = cipher_key_len[instance->crypto_cipher_type];
-
-	crypt_slot = PK11_GetBestSlot(cipher_to_nss[instance->crypto_cipher_type], NULL);
-	if (crypt_slot == NULL) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (err %d)",
-			   PR_GetError());
-		return -1;
-	}
-
-	instance->nss_sym_key = PK11_ImportSymKey(crypt_slot,
-						  cipher_to_nss[instance->crypto_cipher_type],
-						  PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
-						  &crypt_param, NULL);
+	instance->nss_sym_key = import_symmetric_key(knet_h, SYM_KEY_TYPE_CRYPT);
 	if (instance->nss_sym_key == NULL) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (err %d)",
-			   PR_GetError());
 		return -1;
 	}
-
-	PK11_FreeSlot(crypt_slot);
 
 	return 0;
 }
@@ -347,36 +473,16 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 
 static int init_nss_hash(knet_handle_t knet_h)
 {
-	PK11SlotInfo*	hash_slot = NULL;
-	SECItem		hash_param;
 	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 
 	if (!hash_to_nss[instance->crypto_hash_type]) {
 		return 0;
 	}
 
-	hash_param.type = siBuffer;
-	hash_param.data = instance->private_key;
-	hash_param.len = instance->private_key_len;
-
-	hash_slot = PK11_GetBestSlot(hash_to_nss[instance->crypto_hash_type], NULL);
-	if (hash_slot == NULL) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (err %d)",
-			   PR_GetError());
-		return -1;
-	}
-
-	instance->nss_sym_key_sign = PK11_ImportSymKey(hash_slot,
-						       hash_to_nss[instance->crypto_hash_type],
-						       PK11_OriginUnwrap, CKA_SIGN,
-						       &hash_param, NULL);
+	instance->nss_sym_key_sign = import_symmetric_key(knet_h, SYM_KEY_TYPE_HASH);
 	if (instance->nss_sym_key_sign == NULL) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (err %d)",
-			   PR_GetError());
 		return -1;
 	}
-
-	PK11_FreeSlot(hash_slot);
 
 	return 0;
 }
