@@ -175,22 +175,22 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	key_item.data = instance->private_key;
 
 	switch (key_type) {
-	case SYM_KEY_TYPE_CRYPT:
-		key_item.len = cipher_key_len[instance->crypto_cipher_type];
-		cipher = cipher_to_nss[instance->crypto_cipher_type];
-		operation = CKA_ENCRYPT|CKA_DECRYPT;
-		break;
-	case SYM_KEY_TYPE_HASH:
-		key_item.len = instance->private_key_len;
-		cipher = hash_to_nss[instance->crypto_hash_type];
-		operation = CKA_SIGN;
-		break;
+		case SYM_KEY_TYPE_CRYPT:
+			key_item.len = cipher_key_len[instance->crypto_cipher_type];
+			cipher = cipher_to_nss[instance->crypto_cipher_type];
+			operation = CKA_ENCRYPT|CKA_DECRYPT;
+			break;
+		case SYM_KEY_TYPE_HASH:
+			key_item.len = instance->private_key_len;
+			cipher = hash_to_nss[instance->crypto_hash_type];
+			operation = CKA_SIGN;
+			break;
 	}
 
 	slot = PK11_GetBestSlot(cipher, NULL);
 	if (slot == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (%d): %s",
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
@@ -212,7 +212,7 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	wrap_key = PK11_KeyGen(slot, wrap_mechanism, NULL, wrap_key_len, NULL);
 	if (wrap_key == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to generate wrapping key (%d): %s",
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
@@ -225,25 +225,25 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	 */
 	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
 	wrap_key_crypt_context = PK11_CreateContextBySymKey(wrap_mechanism, CKA_ENCRYPT,
-	    wrap_key, &tmp_sec_item);
+							    wrap_key, &tmp_sec_item);
 	if (wrap_key_crypt_context == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to create encrypt context (%d): %s",
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
 	wrapped_key_len = (int)sizeof(wrapped_key_data);
 
 	if (PK11_CipherOp(wrap_key_crypt_context, wrapped_key_data, &wrapped_key_len,
-	    sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
+			  sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to encrypt authkey (%d): %s",
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
 	if (PK11_Finalize(wrap_key_crypt_context) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to finalize encryption of authkey (%d): %s",
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
@@ -255,10 +255,10 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	wrapped_key.len = wrapped_key_len;
 
 	res_key = PK11_UnwrapSymKey(wrap_key, wrap_mechanism, &tmp_sec_item, &wrapped_key,
-	    cipher, operation, key_item.len);
+				    cipher, operation, key_item.len);
 	if (res_key == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (%d): %s",
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 
 		if (PR_GetError() == SEC_ERROR_BAD_DATA) {
 			/*
@@ -267,7 +267,7 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 			 * error is CKR_TEMPLATE_INCONSISTENT which is mapped to SEC_ERROR_BAD_DATA.
 			 */
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Secret key is probably too long. "
-			    "Try reduce it to 256 bytes");
+				"Try reduce it to 256 bytes");
 		}
 		goto exit_res_key;
 	}
@@ -324,7 +324,7 @@ static int encrypt_nss(
 
 	if (PK11_GenerateRandom (salt, SALT_SIZE) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to generate a random number %d",
-			   PR_GetError());
+			PR_GetError());
 		goto out;
 	}
 
@@ -332,21 +332,21 @@ static int encrypt_nss(
 	crypt_param.data = salt;
 	crypt_param.len = SALT_SIZE;
 
-	nss_sec_param = PK11_ParamFromIV (cipher_to_nss[instance->crypto_cipher_type],
-					  &crypt_param);
+	nss_sec_param = PK11_ParamFromIV(cipher_to_nss[instance->crypto_cipher_type],
+					 &crypt_param);
 	if (nss_sec_param == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to set up PKCS11 param (err %d)",
-			   PR_GetError());
+			PR_GetError());
 		goto out;
 	}
 
 	/*
 	 * Create cipher context for encryption
 	 */
-	crypt_context = PK11_CreateContextBySymKey (cipher_to_nss[instance->crypto_cipher_type],
-						    CKA_ENCRYPT,
-						    instance->nss_sym_key,
-						    nss_sec_param);
+	crypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
+						   CKA_ENCRYPT,
+						   instance->nss_sym_key,
+						   nss_sec_param);
 	if (!crypt_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext failed (encrypt) crypt_type=%d (err %d)",
 			   (int)cipher_to_nss[instance->crypto_cipher_type],
@@ -360,8 +360,8 @@ static int encrypt_nss(
 				  KNET_DATABUFSIZE_CRYPT,
 				  (unsigned char *)iov[i].iov_base, iov[i].iov_len) != SECSuccess) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d)",
-				   (int)cipher_to_nss[instance->crypto_cipher_type],
-				   PR_GetError());
+				(int)cipher_to_nss[instance->crypto_cipher_type],
+				PR_GetError());
 			goto out;
 		}
 		tmp1_outlen = tmp1_outlen + tmp_outlen;
@@ -370,8 +370,8 @@ static int encrypt_nss(
 	if (PK11_DigestFinal(crypt_context, data + tmp1_outlen,
 			     &tmp2_outlen, KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d)",
-			   (int)cipher_to_nss[instance->crypto_cipher_type],
-			   PR_GetError());
+			(int)cipher_to_nss[instance->crypto_cipher_type],
+			PR_GetError());
 		goto out;
 
 	}
@@ -417,21 +417,21 @@ static int decrypt_nss (
 						     instance->nss_sym_key, &decrypt_param);
 	if (!decrypt_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext (decrypt) failed (err %d)",
-			   PR_GetError());
+			PR_GetError());
 		goto out;
 	}
 
 	if (PK11_CipherOp(decrypt_context, buf_out, &tmp1_outlen,
 			  KNET_DATABUFSIZE_CRYPT, data, datalen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d)",
-			   PR_GetError());
+			PR_GetError());
 		goto out;
 	}
 
 	if (PK11_DigestFinal(decrypt_context, buf_out + tmp1_outlen, &tmp2_outlen,
 			     KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d)",
-			   PR_GetError()); 
+			PR_GetError()); 
 		goto out;
 	}
 
@@ -505,40 +505,36 @@ static int calculate_nss_hash(
 	hash_param.len = 0;
 
 	hash_context = PK11_CreateContextBySymKey(hash_to_nss[instance->crypto_hash_type],
-						 CKA_SIGN,
-						 instance->nss_sym_key_sign,
-						 &hash_param);
+						  CKA_SIGN,
+						  instance->nss_sym_key_sign,
+						  &hash_param);
 
 	if (!hash_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+			(int)hash_to_nss[instance->crypto_hash_type],
+			PR_GetError());
 		goto out;
 	}
 
 	if (PK11_DigestBegin(hash_context) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestBegin failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+			(int)hash_to_nss[instance->crypto_hash_type],
+			PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestOp(hash_context,
-			  buf,
-			  buf_len) != SECSuccess) {
+	if (PK11_DigestOp(hash_context, buf, buf_len) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestOp failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+			(int)hash_to_nss[instance->crypto_hash_type],
+			PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestFinal(hash_context,
-			     hash,
-			     &hash_tmp_outlen,
-			     hash_len[instance->crypto_hash_type]) != SECSuccess) {
+	if (PK11_DigestFinal(hash_context, hash,
+			     &hash_tmp_outlen, hash_len[instance->crypto_hash_type]) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+			(int)hash_to_nss[instance->crypto_hash_type],
+			PR_GetError());
 		goto out;
 	}
 
@@ -588,7 +584,7 @@ static int init_nss_db(knet_handle_t knet_h)
 
 	if (NSS_NoDB_Init(".") != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d)",
-			   PR_GetError());
+			PR_GetError());
 		err = -1;
 		goto out_unlock;
 	}
