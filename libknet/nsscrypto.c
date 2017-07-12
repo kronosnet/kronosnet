@@ -185,6 +185,10 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 			cipher = hash_to_nss[instance->crypto_hash_type];
 			operation = CKA_SIGN;
 			break;
+		default:
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Import symmetric key failed. Unknown keyimport request");
+			goto exit_res_key;
+			break;
 	}
 
 	slot = PK11_GetBestSlot(cipher, NULL);
