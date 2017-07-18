@@ -1384,9 +1384,9 @@ struct knet_link_status {
 	char src_port[KNET_MAX_PORT_LEN];
 	char dst_ipaddr[KNET_MAX_HOST_LEN];
 	char dst_port[KNET_MAX_PORT_LEN];
-	unsigned int enabled:1;		/* link is configured and admin enabled for traffic */
-	unsigned int connected:1;       /* link is connected for data (local view) */
-	unsigned int dynconnected:1;	/* link has been activated by remote dynip */
+	uint8_t enabled;	        /* link is configured and admin enabled for traffic */
+	uint8_t connected;              /* link is connected for data (local view) */
+	uint8_t dynconnected;	        /* link has been activated by remote dynip */
 	unsigned long long latency;	/* average latency computed by fix/exp */
 	struct timespec pong_last;
 	unsigned int mtu;		/* current detected MTU on this link */
