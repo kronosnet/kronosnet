@@ -272,7 +272,7 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
 		goto exit_unlock;
 	}
 
-	snprintf(name, KNET_MAX_HOST_LEN - 1, "%s", knet_h->host_index[host_id]->name);
+	snprintf(name, KNET_MAX_HOST_LEN, "%s", knet_h->host_index[host_id]->name);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

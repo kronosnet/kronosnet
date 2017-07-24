@@ -303,6 +303,7 @@ static void setup_knet(int argc, char *argv[])
 					printf("Error: port %d out of range (1 - 65536)\n", port);
 					exit(FAIL);
 				}
+				break;
 			case 'o':
 				if (globallistener) {
 					printf("Error: -l cannot be used with -o\n");
