@@ -87,9 +87,14 @@ publish:
 ifeq (,$(release))
 	@echo Building test release $(version), no publishing!
 else
-	@echo CHANGEME git push --tags origin
-	@echo CHANGEME scp $(project)-$(version).* \
-		fedorahosted.org:$(project)
+	@echo CHANGEME git push --follow-tags origin
+	@echo : TODO: Either a scp-friendly substitute for fedorahosted.org
+	@echo : needs to be found, no-value-added archives by git hosting fallback
+	@echo : can be used, or up to consideration whether to restore a tradition
+	@echo : of customized possibly signed archives on GH, automation exists:
+	@echo : https://developer.github.com/v3/repos/releases/#upload-a-release-asset
+	@echo : http://github3py.readthedocs.io/en/latest/repos.html#github3.repos.release.Release.upload_asset
+	@echo : NOTE: precaution required so as NOT TO LEAK the API token!
 endif
 
 
