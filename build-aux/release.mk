@@ -54,22 +54,19 @@ $(project)-$(version).sha256:
 	# checksum anything from deliverables except for in-prep checksums file
 	sha256sum $(deliverables:$@=) | sort -k2 > $@
 
-sign: $(project)-$(version).sha256.asc  # "$(deliverables:=.asc)" to sign all
-
-# NOTE: cannot sign multiple files at once like this
-$(project)-$(version).%.asc: $(project)-$(version).%
 ifeq (,$(gpgsignkey))
+sign: $(deliverables)
 	@echo No GPG signing key defined
 else
-ifeq (,$(release))
-	@echo Building test release $(version), no sign
-else
-	gpg --default-key $(gpgsignkey) \
+sign: $(project)-$(version).sha256.asc  # "$(deliverables:=.asc)" to sign all
+endif
+
+# NOTE: cannot sign multiple files at once
+$(project)-$(version).%.asc: $(project)-$(version).%
+	gpg --default-key "$(gpgsignkey)" \
 		--detach-sign \
 		--armor \
 		$<
-endif
-endif
 
 publish:
 ifeq (,$(release))
