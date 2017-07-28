@@ -31,7 +31,9 @@ tag: setup ./tag-$(version)
 tag-$(version):
 ifeq (,$(release))
 	@echo Building test release $(version), no tagging
+	echo '$(version)' > .tarball-version
 else
+	# following will be captured by git-version-gen automatically
 	git tag -a -m "v$(version) release" v$(version) HEAD
 	@touch $@
 endif
@@ -49,12 +51,8 @@ sha256: $(project)-$(version).sha256
 $(deliverables): tarballs
 
 $(project)-$(version).sha256:
-ifeq (,$(release))
-	@echo Building test release $(version), no sha256
-else
 	# checksum anything from deliverables except for in-prep checksums file
 	sha256sum $(deliverables:$@=) | sort -k2 > $@
-endif
 
 sign: $(project)-$(version).sha256.asc  # "$(deliverables:=.asc)" to sign all
 
@@ -83,4 +81,4 @@ else
 endif
 
 clean:
-	rm -rf $(project)-* tag-*
+	rm -rf $(project)-* tag-* .tarball-version
