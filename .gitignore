@@ -10,8 +10,12 @@ Makefile
 .deps
 .libs
 .version
-.tarball-version
 .dirstamp
+
+# build-aux/release.mk related litter
+/.tarball-version
+/tag-*
+
 aclocal.m4
 autoconf
 autoheader
