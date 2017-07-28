@@ -1,9 +1,13 @@
 # to build official release tarballs, handle tagging and publish.
 
-# signing key
-gpgsignkey=
+gpgsignkey =  # signing key
 
-project=kronosnet
+project = kronosnet
+
+deliverables = $(project)-$(version).sha256 \
+               $(project)-$(version).tar.bz2 \
+               $(project)-$(version).tar.gz \
+               $(project)-$(version).tar.xz
 
 all: checks setup tag tarballs sha256 sign
 
@@ -38,18 +42,24 @@ tarballs: tag
 	#make distcheck (disabled.. needs root)
 	make dist
 
-sha256: tarballs $(project)-$(version).sha256
+sha256: $(project)-$(version).sha256
+
+# NOTE: dependency backtrack may fail trying to sign missing tarballs otherwise
+#       (actually, only when signing tarballs directly, but doesn't hurt anyway)
+$(deliverables): tarballs
 
 $(project)-$(version).sha256:
 ifeq (,$(release))
 	@echo Building test release $(version), no sha256
 else
-	sha256sum $(project)-$(version)*tar* | sort -k2 > $@
+	# checksum anything from deliverables except for in-prep checksums file
+	sha256sum $(deliverables:$@=) | sort -k2 > $@
 endif
 
-sign: sha256 $(project)-$(version).sha256.asc
+sign: $(project)-$(version).sha256.asc  # "$(deliverables:=.asc)" to sign all
 
-$(project)-$(version).sha256.asc: $(project)-$(version).sha256
+# NOTE: cannot sign multiple files at once like this
+$(project)-$(version).%.asc: $(project)-$(version).%
 ifeq (,$(gpgsignkey))
 	@echo No GPG signing key defined
 else
