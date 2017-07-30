@@ -3,7 +3,7 @@
 # example:
 # make -f build-aux/release.mk all version=0.9 release=yes publish
 
-gpgsignkey = 6CE95CA7
+gpgsignkey = 1F22889A
 
 project = kronosnet
 
