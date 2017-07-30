@@ -1,6 +1,6 @@
 # to build official release tarballs, handle tagging and publish.
 
-gpgsignkey =  # signing key
+gpgsignkey = 6CE95CA7
 
 project = kronosnet
 
