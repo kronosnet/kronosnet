@@ -55,7 +55,7 @@ clean-local:
 	rm -f $(DEBPOSTINST)
 
 distclean-local:
-	rm -f $(PACKAGE_NAME)-*.tar.*
+	rm -f $(PACKAGE_NAME)-*.tar.* $(PACKAGE_NAME)-*.sha256* tag-*
 
 maintainer-clean-local:
 	make -f debian/rules clean || true
