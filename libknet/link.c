@@ -89,6 +89,10 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		return 0;
+	}
+
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
@@ -307,6 +311,10 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		return 0;
+	}
+
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
@@ -381,6 +389,11 @@ int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	if (enabled > 1) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		knet_h->allow_local_send = 1;
+		return 0;
 	}
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
@@ -461,6 +474,12 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		*enabled = knet_h->allow_local_send;
+		goto exit_unlock;
+	}
+
+
 	host = knet_h->host_index[host_id];
 	if (!host) {
 		err = -1;
@@ -508,6 +527,10 @@ int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 	if (pong_count < 1) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		return 0;
 	}
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
@@ -569,6 +592,11 @@ int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 	if (!pong_count) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		*pong_count = 0;
+		return 0;
 	}
 
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
@@ -636,6 +664,10 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 	if (!precision) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		return 0;
 	}
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
@@ -713,6 +745,13 @@ int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		*interval = 0;
+		*timeout = 0;
+		*precision = 0;
+		return 0;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
@@ -766,6 +805,10 @@ int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	if (link_id >= KNET_MAX_LINK) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		return 0;
 	}
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
@@ -846,6 +889,11 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		*priority = 0;
+		return 0;
+	}
+
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
@@ -911,6 +959,17 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		if (knet_h->allow_local_send) {
+			link_ids[0] = 0;
+			count = 1;
+		}
+		else {
+			count = 0;
+		}
+		goto exit_unlock;
+	}
+
 	host = knet_h->host_index[host_id];
 	if (!host) {
 		err = -1;
@@ -967,6 +1026,11 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
+	if (host_id == knet_h->host_id) {
+		memmove(status, &knet_h->local_send_stats, struct_size);
+		goto calc_stats;
+	}
+
 	host = knet_h->host_index[host_id];
 	if (!host) {
 		err = -1;
@@ -988,6 +1052,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 	memmove(status, &link->status, struct_size);
 
+calc_stats:
 	/* Calculate totals - no point in doing this on-the-fly */
 	status->stats.rx_total_packets =
 		status->stats.rx_data_packets +

@@ -12,6 +12,7 @@
 #include <math.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <sys/uio.h>
 #include <errno.h>
 
@@ -140,6 +141,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	seq_num_t tx_seq_num;
 	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	int msgs_to_send, msg_idx;
+	unsigned int i;
+	int send_local = 0;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -180,6 +183,41 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 					savederrno = EINVAL;
 					err = -1;
 					goto out_unlock;
+				}
+
+				/* Send to localhost if appropriate and enabled */
+				if (bcast) {
+					send_local = 1;
+				}
+				else {
+					for (i=0; i< dst_host_ids_entries_temp; i++) {
+						if (dst_host_ids_temp[i] == knet_h->host_id) {
+							send_local = 1;
+						}
+					}
+				}
+				if (send_local && knet_h->allow_local_send) {
+					const unsigned char *buf = inbuf->khp_data_userdata;
+					ssize_t buflen = inlen;
+
+				local_retry:
+					err = write(knet_h->sockfd[0].sockfd[1], buf, buflen);
+					if (err < 0) {
+						log_err(knet_h, KNET_SUB_TX, "send local failed. error=%s\n", strerror(errno));
+						knet_h->local_send_stats.stats.tx_data_errors++;
+					}
+					if (err > 0 && err < buflen) {
+						log_debug(knet_h, KNET_SUB_TX, "send local incomplete=%d bytes of %ld\n", err, inlen);
+						knet_h->local_send_stats.stats.tx_data_retries++;
+						buf += err;
+						buflen -= err;
+						goto local_retry;
+					}
+					if (err == buflen) {
+						knet_h->local_send_stats.stats.tx_data_packets++;
+						knet_h->local_send_stats.stats.tx_data_bytes += inlen;
+					}
+
 				}
 			}
 			break;

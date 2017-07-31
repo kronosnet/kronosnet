@@ -41,6 +41,11 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 		return -1;
 	}
 
+	/* Localhost sending is handled separately */
+	if (host_id == knet_h->host_id) {
+		return 0;
+	}
+
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
@@ -127,6 +132,11 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id)
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		knet_h->allow_local_send = 0;
+		goto exit_unlock;
 	}
 
 	host = knet_h->host_index[host_id];
@@ -372,6 +382,10 @@ int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 	if (policy > KNET_LINK_POLICY_RR) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		return 0;
 	}
 
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
