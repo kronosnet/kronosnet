@@ -74,7 +74,7 @@ AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
 AC_ARG_ENABLE([poc],
-        [  --enable-poc                      : build poc code ],,
+        [  --disable-poc                     : avoid building poc code ],,
         [ enable_poc="yes" ])
 AM_CONDITIONAL([BUILD_POC], test x$enable_poc = xyes)
 
@@ -93,7 +93,7 @@ fi
 AM_CONDITIONAL([BUILD_LIBTAP], test x$enable_libtap = xyes)
 
 AC_ARG_ENABLE([libknet-sctp],
-        [  --enable-libknet-sctp             : libknet SCTP support ],,
+        [  --disable-libknet-sctp            : avoid libknet SCTP support ],,
         [ enable_libknet_sctp="yes" ])
 
 ## local helper functions
