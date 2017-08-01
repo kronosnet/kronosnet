@@ -180,6 +180,8 @@ struct knet_handle {
 	unsigned char *pmtudbuf_crypt;
 	seq_num_t tx_seq_num;
 	pthread_mutex_t tx_seq_num_mutex;
+	uint8_t has_loop_link;
+	uint8_t loop_link;
 	void *dst_host_filter_fn_private_data;
 	int (*dst_host_filter_fn) (
 		void *private_data,

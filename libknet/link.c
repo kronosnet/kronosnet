@@ -97,6 +97,18 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
+	if (transport == KNET_TRANSPORT_LOOPBACK && knet_h->host_id != host_id) {
+		log_err(knet_h, KNET_SUB_LINK, "Cannot create loopback link to remote node");
+		errno = EINVAL;
+		goto exit_unlock;
+	}
+
+	if (transport == KNET_TRANSPORT_LOOPBACK && knet_h->host_id != host_id && knet_h->has_loop_link) {
+		log_err(knet_h, KNET_SUB_LINK, "Cannot create more than 1 loopback link");
+		errno = EINVAL;
+		goto exit_unlock;
+	}
+
 	host = knet_h->host_index[host_id];
 	if (!host) {
 		err = -1;
@@ -192,6 +204,12 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	}
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is configured",
 		  host_id, link_id);
+
+	if (transport == KNET_TRANSPORT_LOOPBACK) {
+		knet_h->has_loop_link = 1;
+		knet_h->loop_link = link_id;
+		host->status.reachable = 1;
+	}
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
@@ -351,6 +369,13 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 
 	memset(link, 0, sizeof(struct knet_link));
 	link->link_id = link_id;
+
+	if (knet_h->has_loop_link && link_id == knet_h->loop_link) {
+		knet_h->has_loop_link = 0;
+		if (host->active_link_entries == 0) {
+			host->status.reachable = 0;
+		}
+	}
 
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u config has been wiped",
 		  host_id, link_id);

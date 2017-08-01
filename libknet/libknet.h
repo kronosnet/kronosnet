@@ -930,9 +930,19 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
  * -1 on error and errno is set.
  */
 
-#define KNET_TRANSPORT_UDP   0
-#define KNET_TRANSPORT_SCTP  1
-#define KNET_MAX_TRANSPORTS  2
+#define KNET_TRANSPORT_LOOPBACK 0
+#define KNET_TRANSPORT_UDP      1
+#define KNET_TRANSPORT_SCTP     2
+#define KNET_MAX_TRANSPORTS     3
+
+/*
+ * The Loopback transport is only valid for connections to localhost, the host
+ * with the same node_id specified in knet_handle_new(). Only one link of this
+ * type is allowed. Data sent down a LOOPBACK link will be copied directly from
+ * the knet send datafd to the knet receive datafd so the application must be set
+ * up to take data from that socket at least as often as it is sent or deadlocks
+ * could occur.
+ */
 
 struct transport_info {
 	const char *name;   /* UDP/SCTP/etc... */
@@ -1458,8 +1468,10 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_TX          23 /* send to link thread */
 #define KNET_SUB_RX          24 /* recv from link thread */
 
-#define KNET_SUB_TRANSP_UDP  40 /* UDP Transport */
-#define KNET_SUB_TRANSP_SCTP 41 /* SCTP Transport */
+#define KNET_SUB_TRANSP_BASE 40 /* Base log level for transports */
+#define KNET_SUB_TRANSP_LOOPBACK (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_LOOPBACK)
+#define KNET_SUB_TRANSP_UDP      (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_UDP)
+#define KNET_SUB_TRANSP_SCTP     (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_SCTP)
 
 #define KNET_SUB_NSSCRYPTO   60 /* nsscrypto.c */
 

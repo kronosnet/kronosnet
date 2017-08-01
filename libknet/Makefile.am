@@ -40,6 +40,7 @@ sources			= \
 			  threads_tx.c \
 			  transport_udp.c \
 			  transport_sctp.c \
+			  transport_loopback.c \
 			  transport_common.c
 
 include_HEADERS		= libknet.h

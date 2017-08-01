@@ -12,6 +12,7 @@
 #include <math.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <sys/uio.h>
 #include <errno.h>
 
@@ -44,6 +45,11 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 		progress = 1;
 
 		cur_link = &dst_host->link[dst_host->active_links[link_idx]];
+
+		if (cur_link->transport_type == KNET_TRANSPORT_LOOPBACK) {
+			continue;
+		}
+
 		msg_idx = 0;
 		while (msg_idx < msgs_to_send) {
 			msg[msg_idx].msg_hdr.msg_name = &cur_link->dst_addr;
@@ -140,6 +146,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	seq_num_t tx_seq_num;
 	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	int msgs_to_send, msg_idx;
+	unsigned int i;
+	int send_local = 0;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -180,6 +188,46 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 					savederrno = EINVAL;
 					err = -1;
 					goto out_unlock;
+				}
+			}
+
+			/* Send to localhost if appropriate and enabled */
+			if (knet_h->has_loop_link) {
+				send_local = 0;
+				if (bcast) {
+					send_local = 1;
+				} else {
+					for (i=0; i< dst_host_ids_entries_temp; i++) {
+						if (dst_host_ids_temp[i] == knet_h->host_id) {
+							send_local = 1;
+						}
+					}
+				}
+				if (send_local) {
+					const unsigned char *buf = inbuf->khp_data_userdata;
+					ssize_t buflen = inlen;
+					struct knet_link *local_link;
+
+					local_link = knet_h->host_index[knet_h->host_id]->link;
+
+				local_retry:
+					err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
+					if (err < 0) {
+						log_err(knet_h, KNET_SUB_TX, "send local failed. error=%s\n", strerror(errno));
+						local_link->status.stats.tx_data_errors++;
+					}
+					if (err > 0 && err < buflen) {
+						log_debug(knet_h, KNET_SUB_TX, "send local incomplete=%d bytes of %ld\n", err, inlen);
+						local_link->status.stats.tx_data_retries++;
+						buf += err;
+						buflen -= err;
+						usleep(KNET_THREADS_TIMERES / 16);
+						goto local_retry;
+					}
+					if (err == buflen) {
+						local_link->status.stats.tx_data_packets++;
+						local_link->status.stats.tx_data_bytes += inlen;
+					}
 				}
 			}
 			break;

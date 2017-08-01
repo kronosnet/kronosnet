@@ -11,6 +11,7 @@
 
 knet_transport_ops_t *get_udp_transport(void);
 knet_transport_ops_t *get_sctp_transport(void);
+knet_transport_ops_t *get_loopback_transport(void);
 
 int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, const char *type);
 int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, uint64_t flags, const char *type);

@@ -375,6 +375,7 @@ void *_handle_pmtud_link_thread(void *data)
 
 				if ((dst_link->status.enabled != 1) ||
 				    (dst_link->status.connected != 1) ||
+				    (dst_host->link[link_idx].transport_type == KNET_TRANSPORT_LOOPBACK) ||
 				    (!dst_link->last_ping_size) ||
 				    ((dst_link->dynamic == KNET_LINK_DYNIP) &&
 				     (dst_link->status.dynconnected != 1)))

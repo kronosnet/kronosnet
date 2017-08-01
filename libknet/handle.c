@@ -386,6 +386,9 @@ static int _start_transports(knet_handle_t knet_h)
 			case KNET_TRANSPORT_SCTP:
 				knet_h->transport_ops[i] = get_sctp_transport();
 				break;
+			case KNET_TRANSPORT_LOOPBACK:
+				knet_h->transport_ops[i] = get_loopback_transport();
+				break;
 		}
 
 		if (knet_h->transport_ops[i]) {
