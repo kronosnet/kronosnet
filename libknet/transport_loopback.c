@@ -68,7 +68,7 @@ static int loopback_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd,
 static knet_transport_ops_t loopback_transport_ops = {
 	.transport_name = "LOOPBACK",
 	.transport_id = KNET_TRANSPORT_LOOPBACK,
-	.transport_mtu_overhead = 0,
+	.transport_mtu_overhead = KNET_PMTUD_LOOPBACK_OVERHEAD,
 	.transport_init = loopback_transport_init,
 	.transport_free = loopback_transport_free,
 	.transport_link_set_config = loopback_transport_link_set_config,
