@@ -22,7 +22,7 @@
  * internal module switch data
  */
 
-crypto_model_t modules_cmds[] = {
+crypto_model_t crypto_modules_cmds[] = {
 	{ "nss", nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
 	{ NULL, NULL, NULL, NULL, NULL, NULL },
 };
@@ -31,8 +31,8 @@ static int get_model(const char *model)
 {
 	int idx = 0;
 
-	while (modules_cmds[idx].model_name != NULL) {
-		if (!strcmp(modules_cmds[idx].model_name, model))
+	while (crypto_modules_cmds[idx].model_name != NULL) {
+		if (!strcmp(crypto_modules_cmds[idx].model_name, model))
 			return idx;
 		idx++;
 	}
@@ -50,7 +50,7 @@ int crypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return modules_cmds[knet_h->crypto_instance->model].crypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+	return crypto_modules_cmds[knet_h->crypto_instance->model].crypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
 int crypto_encrypt_and_signv (
@@ -60,7 +60,7 @@ int crypto_encrypt_and_signv (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return modules_cmds[knet_h->crypto_instance->model].cryptv(knet_h, iov_in, iovcnt_in, buf_out, buf_out_len);
+	return crypto_modules_cmds[knet_h->crypto_instance->model].cryptv(knet_h, iov_in, iovcnt_in, buf_out, buf_out_len);
 }
 
 int crypto_authenticate_and_decrypt (
@@ -70,7 +70,7 @@ int crypto_authenticate_and_decrypt (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return modules_cmds[knet_h->crypto_instance->model].decrypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+	return crypto_modules_cmds[knet_h->crypto_instance->model].decrypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
 int crypto_init(
@@ -96,7 +96,7 @@ int crypto_init(
 		goto out_err;
 	}
 
-	if (modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
+	if (crypto_modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
 		goto out_err;
 
 	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %u", knet_h->sec_header_size);
@@ -113,7 +113,7 @@ void crypto_fini(
 	knet_handle_t knet_h)
 {
 	if (knet_h->crypto_instance) {
-		modules_cmds[knet_h->crypto_instance->model].fini(knet_h);
+		crypto_modules_cmds[knet_h->crypto_instance->model].fini(knet_h);
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}
