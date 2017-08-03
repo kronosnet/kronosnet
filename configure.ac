@@ -76,12 +76,12 @@ AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 AC_ARG_ENABLE([poc],
         [  --disable-poc                     : avoid building poc code ],,
         [ enable_poc="yes" ])
-AM_CONDITIONAL([BUILD_POC], test x$enable_poc = xyes)
+AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
 
 AC_ARG_ENABLE([kronosnetd],
         [  --enable-kronosnetd               : Kronosnetd support ],,
         [ enable_kronosnetd="no" ])
-AM_CONDITIONAL([BUILD_KRONOSNETD], test x$enable_kronosnetd = xyes)
+AM_CONDITIONAL([BUILD_KRONOSNETD], [test x$enable_kronosnetd = xyes])
 
 AC_ARG_ENABLE([libtap],
         [  --enable-libtap                   : libtap support ],,
@@ -90,7 +90,7 @@ AC_ARG_ENABLE([libtap],
 if test "x$enable_kronosnetd" = xyes; then
    enable_libtap=yes
 fi
-AM_CONDITIONAL([BUILD_LIBTAP], test x$enable_libtap = xyes)
+AM_CONDITIONAL([BUILD_LIBTAP], [test x$enable_libtap = xyes])
 
 AC_ARG_ENABLE([libknet-sctp],
         [  --disable-libknet-sctp            : avoid libknet SCTP support ],,
@@ -153,7 +153,7 @@ AC_CHECK_HEADERS([stdint.h])
 AC_CHECK_HEADERS([sys/epoll.h])
 
 if test "x$enable_libknet_sctp" = xyes; then
-AC_CHECK_HEADERS([netinet/sctp.h],, AC_MSG_ERROR(["missing required SCTP headers"]))
+	AC_CHECK_HEADERS([netinet/sctp.h],, AC_MSG_ERROR(["missing required SCTP headers"]))
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -216,7 +216,7 @@ AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
              [have_qb_log_thread_priority_set="no"])
 
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
-	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
+	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], [1], [have qb_log_thread_priority_set])
 fi
 
 fi
