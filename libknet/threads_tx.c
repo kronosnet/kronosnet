@@ -213,11 +213,11 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 				local_retry:
 					err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
 					if (err < 0) {
-						log_err(knet_h, KNET_SUB_TX, "send local failed. error=%s\n", strerror(errno));
+						log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
 						local_link->status.stats.tx_data_errors++;
 					}
 					if (err > 0 && err < buflen) {
-						log_debug(knet_h, KNET_SUB_TX, "send local incomplete=%d bytes of %ld\n", err, inlen);
+						log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %ld\n", err, inlen);
 						local_link->status.stats.tx_data_retries++;
 						buf += err;
 						buflen -= err;
