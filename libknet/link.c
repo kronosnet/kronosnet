@@ -60,7 +60,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 struct sockaddr_storage *dst_addr,
 			 uint64_t flags)
 {
-	int savederrno = 0, err = 0;
+	int savederrno = 0, err = 0, i;
 	struct knet_host *host;
 	struct knet_link *link;
 
@@ -99,12 +99,14 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 	if (transport == KNET_TRANSPORT_LOOPBACK && knet_h->host_id != host_id) {
 		log_err(knet_h, KNET_SUB_LINK, "Cannot create loopback link to remote node");
+		err = -1;
 		errno = EINVAL;
 		goto exit_unlock;
 	}
 
-	if (transport == KNET_TRANSPORT_LOOPBACK && knet_h->host_id != host_id && knet_h->has_loop_link) {
-		log_err(knet_h, KNET_SUB_LINK, "Cannot create more than 1 loopback link");
+	if (knet_h->host_id == host_id && knet_h->has_loop_link) {
+		log_err(knet_h, KNET_SUB_LINK, "Cannot create more than 1 link when loopback is active");
+		err = -1;
 		errno = EINVAL;
 		goto exit_unlock;
 	}
@@ -116,6 +118,17 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		log_err(knet_h, KNET_SUB_LINK, "Unable to find host %u: %s",
 			host_id, strerror(savederrno));
 		goto exit_unlock;
+	}
+
+	if (transport == KNET_TRANSPORT_LOOPBACK && knet_h->host_id == host_id) {
+		for (i=0; i<KNET_MAX_LINK; i++) {
+			if (host->link[i].configured) {
+				log_err(knet_h, KNET_SUB_LINK, "Cannot add loopback link when other links are already configured.");
+				err = -1;
+				errno = EINVAL;
+				goto exit_unlock;
+			}
+		}
 	}
 
 	link = &host->link[link_id];
