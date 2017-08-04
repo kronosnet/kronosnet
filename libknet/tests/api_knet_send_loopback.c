@@ -65,43 +65,9 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	printf("Test knet_send with no send_buff\n");
-
-	if ((!knet_send(knet_h, NULL, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
-		printf("knet_send accepted invalid send_buff or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_send with invalid send_buff len (0)\n");
-
-	if ((!knet_send(knet_h, send_buff, 0, channel)) || (errno != EINVAL)) {
-		printf("knet_send accepted invalid send_buff len (0) or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	printf("Test knet_send with invalid send_buff len (> KNET_MAX_PACKET_SIZE)\n");
-
-	if ((!knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE + 1, channel)) || (errno != EINVAL)) {
-		printf("knet_send accepted invalid send_buff len (> KNET_MAX_PACKET_SIZE) or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	printf("Test knet_send with valid data\n");
+	printf("Test configuring multiple links with loopback\n");
 
 	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
 		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
@@ -132,6 +98,78 @@ static void test(void)
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_LOOPBACK, &lo, &lo, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 1, KNET_TRANSPORT_LOOPBACK, &lo, &lo, 0) == 0) {
+		printf("Managed to configure two LOOPBACK links - this is wrong\n");
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+	printf("Test configuring UDP link after loopback\n");
+
+	if (knet_link_set_config(knet_h, 1, 1, KNET_TRANSPORT_UDP, &lo, &lo, 0) == 0) {
+		printf("Managed to configure UDP and LOOPBACK links together: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+	printf("Test configuring UDP link before loopback\n");
+
+	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
+		printf("Failed to clear existing LOOPBACK link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0) < 0) {
+		printf("Failed to configure UDP link for testing: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 1, KNET_TRANSPORT_LOOPBACK, &lo, &lo, 0) == 0) {
+		printf("Managed to configure LOOPBACK link after UDP: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+	printf("Test knet_send with valid data\n");
+
+	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
+		printf("Failed to clear existing UDP link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_LOOPBACK, &lo, &lo, 0) < 0) {
+		printf("Failed configure LOOPBACK link for sending: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

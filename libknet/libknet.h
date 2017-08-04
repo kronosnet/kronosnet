@@ -941,7 +941,8 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
  * type is allowed. Data sent down a LOOPBACK link will be copied directly from
  * the knet send datafd to the knet receive datafd so the application must be set
  * up to take data from that socket at least as often as it is sent or deadlocks
- * could occur.
+ * could occur. If used, a LOOPBACK link must be the only link configured to the
+ * local host.
  */
 
 struct transport_info {
