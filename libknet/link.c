@@ -100,14 +100,14 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	if (transport == KNET_TRANSPORT_LOOPBACK && knet_h->host_id != host_id) {
 		log_err(knet_h, KNET_SUB_LINK, "Cannot create loopback link to remote node");
 		err = -1;
-		errno = EINVAL;
+		savederrno = EINVAL;
 		goto exit_unlock;
 	}
 
 	if (knet_h->host_id == host_id && knet_h->has_loop_link) {
 		log_err(knet_h, KNET_SUB_LINK, "Cannot create more than 1 link when loopback is active");
 		err = -1;
-		errno = EINVAL;
+		savederrno = EINVAL;
 		goto exit_unlock;
 	}
 
@@ -125,7 +125,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			if (host->link[i].configured) {
 				log_err(knet_h, KNET_SUB_LINK, "Cannot add loopback link when other links are already configured.");
 				err = -1;
-				errno = EINVAL;
+				savederrno = EINVAL;
 				goto exit_unlock;
 			}
 		}
