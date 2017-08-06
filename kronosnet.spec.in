@@ -45,6 +45,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
 BuildRequires: nss-devel lksctp-tools-devel
+BuildRequires: zlib-devel
 %if %{defined buildkronosnetd}
 BuildRequires: libqb-devel pam-devel
 %endif
