@@ -594,6 +594,48 @@ int knet_handle_crypto(knet_handle_t knet_h,
 		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
 /*
+ * knet_handle_compress
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * knet_handle_compress_cfg -
+ *            pointer to a knet_handle_compress_cfg structure
+ *
+ *            compress_model should contain the mode name.
+ *                           Currently only "zlib" is supported.
+ *                           Setting to "none" will disable compress.
+ *
+ *            compress_level many compression libraries adopted
+ *                           the standard values ranging from 0 for
+ *                           fast compression to 9 for high compression.
+ *                           Please refere to the library man pages
+ *                           on how to be set this value, as it is passed
+ *                           unmodified to the compression algorithm.
+ *
+ * Implementation notes:
+ * - it is possible to enable/disable compression at any time.
+ * - nodes can be using different compression algorithm at any time.
+ * - knet does NOT implement compression algorithm directly. it relies
+ *   on external libraries for this functionality. Please read
+ *   the libraries man pages to figure out which algorithm/compression
+ *   level is best for the data you are planning to transmit.
+ *
+ * knet_handle_compress returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set. EINVAL means that either the model or the
+ *    level are not supported.
+ */
+
+struct knet_handle_compress_cfg {
+	char	compress_model[16];
+	int	compress_level;
+};
+
+int knet_handle_compress(knet_handle_t knet_h,
+			 struct knet_handle_compress_cfg *knet_handle_compress_cfg);
+
+/*
  * host structs/API calls
  */
 
@@ -864,8 +906,6 @@ int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
  *   host_id 1 link_id 1 _must_ connect IP4 to IP3.
  *   We might be able to lift this restriction in future, by using
  *   other data to determine src/dst link_id, but for now, deal with it.
- *
- * -
  */
 
 /*
@@ -906,7 +946,6 @@ int knet_strtoaddr(const char *host, const char *port,
  *             (recommended size: KNET_MAX_PORT_LEN)
  *
  * knet_strtoaddr returns same error codes as getnameinfo
- *
  */
 
 int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
@@ -1460,6 +1499,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_LINK         4 /* link add/del/modify */
 #define KNET_SUB_TRANSPORT    5 /* Transport common */
 #define KNET_SUB_CRYPTO       6 /* crypto.c config generic layer */
+#define KNET_SUB_COMPRESS     7 /* compress.c config generic layer */
 
 #define KNET_SUB_FILTER      19 /* allocated for users to log from dst_filter */
 
@@ -1475,6 +1515,8 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_TRANSP_SCTP     (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_SCTP)
 
 #define KNET_SUB_NSSCRYPTO   60 /* nsscrypto.c */
+
+#define KNET_SUB_ZLIBCOMP    70 /* zlibcompress.c */
 
 #define KNET_SUB_UNKNOWN     254
 #define KNET_MAX_SUBSYSTEMS  KNET_SUB_UNKNOWN + 1

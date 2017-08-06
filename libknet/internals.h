@@ -19,8 +19,12 @@
 #include "compat.h"
 
 #define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_HEADER_ALL_SIZE
+
 #define KNET_DATABUFSIZE_CRYPT_PAD 1024
 #define KNET_DATABUFSIZE_CRYPT KNET_DATABUFSIZE + KNET_DATABUFSIZE_CRYPT_PAD
+
+#define KNET_DATABUFSIZE_COMPRESS_PAD 1024
+#define KNET_DATABUFSIZE_COMPRESS KNET_DATABUFSIZE + KNET_DATABUFSIZE_COMPRESS_PAD
 
 #define KNET_RING_RCVBUFF 8388608
 
@@ -178,6 +182,11 @@ struct knet_handle {
 	unsigned char *recv_from_links_buf_decrypt;
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;
+	int compress_model;
+	int compress_max_model;
+	int compress_level;
+	unsigned char *recv_from_links_buf_decompress;
+	unsigned char *send_to_links_buf_compress;
 	seq_num_t tx_seq_num;
 	pthread_mutex_t tx_seq_num_mutex;
 	uint8_t has_loop_link;

@@ -33,6 +33,7 @@ static struct pretty_names subsystem_names[] =
 	{ "link", KNET_SUB_LINK },
 	{ "transport", KNET_SUB_TRANSPORT },
 	{ "crypto", KNET_SUB_CRYPTO },
+	{ "compress", KNET_SUB_COMPRESS },
 	{ "filter", KNET_SUB_FILTER },
 	{ "dstcache", KNET_SUB_DSTCACHE },
 	{ "heartbeat", KNET_SUB_HEARTBEAT },
@@ -43,6 +44,7 @@ static struct pretty_names subsystem_names[] =
 	{ "udp", KNET_SUB_TRANSP_UDP },
 	{ "sctp", KNET_SUB_TRANSP_SCTP },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO },
+	{ "zlibcomp", KNET_SUB_ZLIBCOMP },
 	{ "unknown", KNET_SUB_UNKNOWN }		/* unknown MUST always be last in this array */
 };
 

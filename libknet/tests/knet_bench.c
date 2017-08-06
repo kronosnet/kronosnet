@@ -42,6 +42,7 @@ static int broadcast_test = 1;
 static pthread_t rx_thread = (pthread_t)NULL;
 static char *rx_buf[PCKT_FRAG_MAX];
 static int wait_for_perf_rx = 0;
+static char *compresscfg = NULL;
 
 static int bench_shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -75,6 +76,8 @@ static void print_help(void)
 	printf(" -d                                        enable debug logs (default INFO)\n");
 	printf(" -c [implementation]:[crypto]:[hashing]    crypto configuration. (default disabled)\n");
 	printf("                                           Example: -c nss:aes128:sha1\n");
+	printf(" -z [implementation]:[level]               compress configuration. (default disabled)\n");
+	printf("                                           Example: -z zlib:5\n");
 	printf(" -p [active|passive|rr]                    (default: passive)\n");
 	printf(" -P [udp|sctp]                             (default: udp) protocol (transport) to use\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
@@ -213,10 +216,11 @@ static void setup_knet(int argc, char *argv[])
 	int wait = 1;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	char *cryptomodel = NULL, *cryptotype = NULL, *cryptohash = NULL;
+	struct knet_handle_compress_cfg knet_handle_compress_cfg;
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:P:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:P:z:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -353,6 +357,13 @@ static void setup_knet(int argc, char *argv[])
 			case 'C':
 				continous = 1;
 				break;
+			case 'z':
+				if (compresscfg) {
+					printf("Error: -c can only be specified once\n");
+					exit(FAIL);
+				}
+				compresscfg = optarg;
+				break;
 			default:
 				break;
 		}
@@ -417,6 +428,16 @@ static void setup_knet(int argc, char *argv[])
 		knet_handle_crypto_cfg.private_key_len = KNET_MAX_KEY_LEN;
 		if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
 			printf("Unable to init crypto\n");
+			exit(FAIL);
+		}
+	}
+
+	if (compresscfg) {
+		memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
+		snprintf(knet_handle_compress_cfg.compress_model, 16, "%s", strtok(compresscfg, ":"));
+		knet_handle_compress_cfg.compress_level = atoi(strtok(NULL, ":"));
+		if (knet_handle_compress(knet_h, &knet_handle_compress_cfg)) {
+			printf("Unable to configure compress\n");
 			exit(FAIL);
 		}
 	}
@@ -707,8 +728,17 @@ static void stop_rx_thread(void)
 
 static void send_ping_data(void)
 {
-	const char *buf = "Hello world!\x0";
-	ssize_t len = strlen(buf);
+	char buf[65535];
+	ssize_t len;
+
+	memset(&buf, 0, sizeof(buf));
+	snprintf(buf, sizeof(buf), "Hello world!");
+
+	if (compresscfg) {
+		len = sizeof(buf);
+	} else {
+		len = strlen(buf);
+	}
 
 	if (knet_send(knet_h, buf, len, channel) != len) {
 		printf("Error sending hello world: %s\n", strerror(errno));
@@ -850,7 +880,7 @@ static void send_perf_data_by_time(void)
 	char ctrl_message[16];
 	int sent_msgs;
 	int i;
-	uint32_t packetsize = 64;
+	uint32_t packetsize = 65536;
 	struct timespec clock_start, clock_end;
 	unsigned long long time_diff = 0;
 

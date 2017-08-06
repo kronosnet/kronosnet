@@ -21,6 +21,7 @@
 
 #include "internals.h"
 #include "crypto.h"
+#include "compress.h"
 #include "compat.h"
 #include "common.h"
 #include "threads_common.h"
@@ -235,6 +236,24 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pmtudbuf_crypt, 0, KNET_DATABUFSIZE_CRYPT);
 
+	knet_h->recv_from_links_buf_decompress = malloc(KNET_DATABUFSIZE_COMPRESS);
+	if (!knet_h->recv_from_links_buf_decompress) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for decompress buffer: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+	memset(knet_h->recv_from_links_buf_decompress, 0, KNET_DATABUFSIZE_COMPRESS);
+
+	knet_h->send_to_links_buf_compress = malloc(KNET_DATABUFSIZE_COMPRESS);
+	if (!knet_h->send_to_links_buf_compress) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for compress buffer: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+	memset(knet_h->send_to_links_buf_compress, 0, KNET_DATABUFSIZE_COMPRESS);
+
 	memset(knet_h->knet_transport_fd_tracker, KNET_MAX_TRANSPORTS, sizeof(knet_h->knet_transport_fd_tracker));
 
 	return 0;
@@ -257,6 +276,8 @@ static void _destroy_buffers(knet_handle_t knet_h)
 		free(knet_h->recv_from_links_buf[i]);
 	}
 
+	free(knet_h->recv_from_links_buf_decompress);
+	free(knet_h->send_to_links_buf_compress);
 	free(knet_h->recv_from_sock_buf);
 	free(knet_h->recv_from_links_buf_decrypt);
 	free(knet_h->recv_from_links_buf_crypt);
@@ -603,6 +624,11 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 
 	if (_init_buffers(knet_h)) {
 		savederrno = errno;
+		goto exit_fail;
+	}
+
+	if (compress_init(knet_h, NULL)) {
+		savederrno = EINVAL;
 		goto exit_fail;
 	}
 
@@ -1295,6 +1321,37 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	}
 
 exit_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *knet_handle_compress_cfg)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_handle_compress_cfg) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	err = compress_init(knet_h, knet_handle_compress_cfg);
+	savederrno = errno;
+
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;

@@ -17,6 +17,7 @@
 #include <errno.h>
 
 #include "compat.h"
+#include "compress.h"
 #include "crypto.h"
 #include "host.h"
 #include "link.h"
@@ -148,6 +149,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	int msgs_to_send, msg_idx;
 	unsigned int i;
 	int send_local = 0;
+	int data_compressed = 0;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -321,6 +323,26 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	}
 
 	/*
+	 * compress data
+	 */
+	if (knet_h->compress_model > 0) {
+		ssize_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
+
+		err = compress(knet_h,
+			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
+			       knet_h->send_to_links_buf_compress, &cmp_outlen);
+		if (err < 0) {
+			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
+		} else {
+			if (cmp_outlen < inlen) {
+				memmove(inbuf->khp_data_userdata, knet_h->send_to_links_buf_compress, cmp_outlen);
+				inlen = cmp_outlen;
+				data_compressed = 1;
+			}
+		}
+	}
+
+	/*
 	 * prepare the outgoing buffers
 	 */
 
@@ -330,6 +352,11 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	inbuf->khp_data_bcast = bcast;
 	inbuf->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
 	inbuf->khp_data_channel = channel;
+	if (data_compressed) {
+		inbuf->khp_data_compress = knet_h->compress_model;
+	} else {
+		inbuf->khp_data_compress = 0;
+	}
 
 	if (pthread_mutex_lock(&knet_h->tx_seq_num_mutex)) {
 		log_debug(knet_h, KNET_SUB_TX, "Unable to get seq mutex lock");
@@ -392,6 +419,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 			knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = inbuf->khp_data_frag_num;
 			knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = inbuf->khp_data_bcast;
 			knet_h->send_to_links_buf[frag_idx]->khp_data_channel = inbuf->khp_data_channel;
+			knet_h->send_to_links_buf[frag_idx]->khp_data_compress = inbuf->khp_data_compress;
 
 			frag_len = frag_len - temp_data_mtu;
 			frag_idx++;

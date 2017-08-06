@@ -25,6 +25,8 @@ LIBS			=
 sources			= \
 			  common.c \
 			  compat.c \
+			  compress.c \
+			  compress_zlib.c \
 			  crypto.c \
 			  handle.c \
 			  host.c \
@@ -52,6 +54,8 @@ pkgconfig_DATA		= libknet.pc
 noinst_HEADERS		= \
 			  common.h \
 			  compat.h \
+			  compress.h \
+			  compress_zlib.h \
 			  crypto.h \
 			  host.h \
 			  internals.h \
@@ -72,7 +76,7 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-libknet_la_CFLAGS	= $(nss_CFLAGS)
+libknet_la_CFLAGS	= $(nss_CFLAGS) $(zlib_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
@@ -80,4 +84,5 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
-libknet_la_LIBADD	= $(nss_LIBS) -lrt -lpthread -lm
+libknet_la_LIBADD	= $(nss_LIBS) $(zlib_LIBS) \
+			  -lrt -lpthread -lm
