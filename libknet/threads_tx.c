@@ -261,7 +261,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	/*
 	 * check destinations hosts before spending time
 	 * in fragmenting/encrypting packets to save
-	 * time processing data for unrechable hosts.
+	 * time processing data for unreachable hosts.
 	 * for unicast, also remap the destination data
 	 * to skip unreachable hosts.
 	 */
@@ -273,7 +273,9 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 			if (!dst_host) {
 				continue;
 			}
-			if (dst_host->status.reachable) {
+			if (!(dst_host->host_id == knet_h->host_id &&
+			     knet_h->has_loop_link) &&
+			    dst_host->status.reachable) {
 				dst_host_ids[dst_host_ids_entries] = dst_host_ids_temp[host_idx];
 				dst_host_ids_entries++;
 			}
@@ -286,7 +288,9 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	} else {
 		send_mcast = 0;
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-			if (dst_host->status.reachable) {
+			if (!(dst_host->host_id == knet_h->host_id &&
+			      knet_h->has_loop_link) &&
+			    dst_host->status.reachable) {
 				send_mcast = 1;
 				break;
 			}

@@ -32,6 +32,23 @@ static void sock_notify(void *pvt_data,
 	return;
 }
 
+static int dhost_filter(void *pvt_data,
+			const unsigned char *outdata,
+			ssize_t outdata_len,
+			uint8_t tx_rx,
+			knet_node_id_t this_host_id,
+			knet_node_id_t src_host_id,
+			int8_t *dst_channel,
+			knet_node_id_t *dst_host_ids,
+			size_t *dst_host_ids_entries)
+{
+	dst_host_ids[0] = 1;
+	*dst_host_ids_entries = 1;
+
+	return 0;
+}
+
+
 static void test(void)
 {
 	knet_handle_t knet_h;
@@ -281,6 +298,74 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
+
+
+	printf("Test knet_send with only localhost\n");
+
+	if (knet_handle_enable_filter(knet_h, NULL, dhost_filter) < 0) {
+		printf("knet_handle_enable_filter failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);
+	if (send_len <= 0) {
+		printf("knet_send failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (send_len != sizeof(send_buff)) {
+		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
+	sleep(1);
+
+	recv_len = knet_recv(knet_h, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	savederrno = errno;
+	if (recv_len != send_len) {
+		printf("knet_recv received only %d bytes: %s (errno: %d)\n", recv_len, strerror(errno), errno);
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
+			printf("helgrind exception. this is normal due to possible timeouts\n");
+			exit(PASS);
+		}
+		exit(FAIL);
+	}
+
+	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
+		printf("recv and send buffers are different!\n");
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	knet_link_set_enable(knet_h, 1, 0, 0);
 	knet_link_clear_config(knet_h, 1, 0);
