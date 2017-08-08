@@ -7,7 +7,7 @@
  */
 
 #ifndef __KNET_COMPRESS_ZLIB_H__
-#define __KNET_COMPRESS_ZLIB H__
+#define __KNET_COMPRESS_ZLIB_H__
 
 #include "internals.h"
 
