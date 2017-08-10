@@ -150,7 +150,6 @@ int lz4_decompress(
 	}
 
 	if (lzerr > 0) {
-		log_debug(knet_h, KNET_SUB_LZ4COMP, "lz4 decompress from %zd to %d", buf_in_len, lzerr);
 		*buf_out_len = lzerr;
 	}
 
