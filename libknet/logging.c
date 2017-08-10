@@ -45,6 +45,8 @@ static struct pretty_names subsystem_names[] =
 	{ "sctp", KNET_SUB_TRANSP_SCTP },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO },
 	{ "zlibcomp", KNET_SUB_ZLIBCOMP },
+	{ "lz4comp", KNET_SUB_LZ4COMP },
+	{ "lz4hccomp", KNET_SUB_LZ4HCCOMP },
 	{ "unknown", KNET_SUB_UNKNOWN }		/* unknown MUST always be last in this array */
 };
 

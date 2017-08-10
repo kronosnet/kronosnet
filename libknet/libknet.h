@@ -602,15 +602,22 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *            pointer to a knet_handle_compress_cfg structure
  *
  *            compress_model should contain the mode name.
- *                           Currently only "zlib" is supported.
+ *                           Currently only "zlib" and "lz4" are supported.
  *                           Setting to "none" will disable compress.
  *
- *            compress_level many compression libraries adopted
- *                           the standard values ranging from 0 for
- *                           fast compression to 9 for high compression.
+ *            compress_level some compression libraries allows tuning of compression
+ *                           parameters.
+ *                           For example zlib value ranges from 0 to 9 where 0 is no
+ *                           compression and 9 is max compression.
+ *                           This value is passed pristine to the compression library.
+ *                           zlib: 0 (no compression), 1 (minimal) .. 9 (max compression).
+ *                           lz4: 1 (max compression)... 9 (fastest compression).
+ *                           lz4hc: 1 (min compression) ... LZ4HC_MAX_CLEVEL (16) or LZ4HC_CLEVEL_MAX (12)
+ *                                  depends on the installed version of lz4hc. libknet can detects the max
+ *                                  value and will print an appropriate warning.
  *                           Please refere to the library man pages
  *                           on how to be set this value, as it is passed
- *                           unmodified to the compression algorithm.
+ *                           unmodified to the compression algorithm where supported.
  *
  * Implementation notes:
  * - it is possible to enable/disable compression at any time.
@@ -1516,7 +1523,9 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 #define KNET_SUB_NSSCRYPTO   60 /* nsscrypto.c */
 
-#define KNET_SUB_ZLIBCOMP    70 /* zlibcompress.c */
+#define KNET_SUB_ZLIBCOMP    70 /* compress_zlib.c */
+#define KNET_SUB_LZ4COMP     71 /* compress_lz4.c */
+#define KNET_SUB_LZ4HCCOMP   72 /* compress_lz4.c */
 
 #define KNET_SUB_UNKNOWN     254
 #define KNET_MAX_SUBSYSTEMS  KNET_SUB_UNKNOWN + 1

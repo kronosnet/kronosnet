@@ -140,6 +140,7 @@ PKG_CHECK_MODULES([nss],[nss])
 # compress libraries checks
 # zlib is cheap because it's pulled in by nss
 PKG_CHECK_MODULES([zlib], [zlib])
+PKG_CHECK_MODULES([liblz4], [liblz4])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])

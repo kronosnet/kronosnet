@@ -16,6 +16,7 @@
 #include "compress.h"
 #include "logging.h"
 #include "compress_zlib.h"
+#include "compress_lz4.h"
 
 /*
  * internal module switch data
@@ -31,6 +32,8 @@
 compress_model_t compress_modules_cmds[] = {
 	{ "none", NULL, NULL, NULL },
 	{ "zlib", zlib_val_level, zlib_compress, zlib_decompress },
+	{ "lz4", lz4_val_level, lz4_compress, lz4_decompress },
+	{ "lz4hc", lz4hc_val_level, lz4hc_compress, lz4_decompress },
         { NULL, NULL, NULL, NULL },
 };
 
