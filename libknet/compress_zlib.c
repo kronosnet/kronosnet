@@ -59,22 +59,22 @@ int zlib_compress(
 			savederrno = 0;
 			break;
 		case Z_MEM_ERROR:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress mem error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress mem error");
 			err = -1; 
 			savederrno = ENOMEM;
 			break;
 		case Z_BUF_ERROR:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress buf error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress buf error");
 			err = -1;
 			savederrno = ENOBUFS;
 			break;
 		case Z_STREAM_ERROR:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress stream error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress stream error");
 			err = -1;
 			savederrno = EINVAL;
 			break;
 		default:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress unknown error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib unknown compress error: %d", zerr);
 			break;
 	}
 
@@ -104,22 +104,22 @@ int zlib_decompress(
 			savederrno = 0;
 			break;
 		case Z_MEM_ERROR:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib decompress mem error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib decompress mem error");
 			err = -1;
 			savederrno = ENOMEM;
 			break;
 		case Z_BUF_ERROR:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib decompress buf error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib decompress buf error");
 			err = -1;
 			savederrno = ENOBUFS;
 			break;
 		case Z_DATA_ERROR:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib decompress data error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib decompress data error");
 			err = -1;
 			savederrno = EINVAL;
 			break;
 		default:
-			log_debug(knet_h, KNET_SUB_ZLIBCOMP, "zlib unknown error");
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib unknown decompress error: %d", zerr);
 			break;
 	}
 
