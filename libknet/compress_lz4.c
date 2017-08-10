@@ -22,7 +22,7 @@ int lz4_val_level(
 	int compress_level)
 {
 	if (compress_level <= 0) {
-		log_warn(knet_h, KNET_SUB_LZ4COMP, "lz4 acceleration level 0 (or negatives) are automatically remapped to 1 by liblz4");
+		log_info(knet_h, KNET_SUB_LZ4COMP, "lz4 acceleration level 0 (or negatives) are automatically remapped to 1 by liblz4");
 	}
 
 	return 0;
@@ -58,7 +58,7 @@ int lz4_compress(
 	 * lz4 internal error
 	 */
 	if (lzerr < 0) {
-		log_debug(knet_h, KNET_SUB_LZ4COMP, "lz4 compression error: %d", lzerr);
+		log_err(knet_h, KNET_SUB_LZ4COMP, "lz4 compression error: %d", lzerr);
 		savederrno = EINVAL;
 		err = -1;
 	}
@@ -89,7 +89,7 @@ int lz4hc_val_level(
 	}
 
 	if (compress_level < 4) {
-		log_err(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc recommends 4+ compression level for better results");
+		log_info(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc recommends 4+ compression level for better results");
 	}
 
 	if (compress_level > KNET_LZ4HC_MAX) {
@@ -122,7 +122,7 @@ int lz4hc_compress(
 	 * unable to compress
 	 */
 	if (lzerr <= 0) {
-		log_debug(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc compression error: %d", lzerr);
+		log_err(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc compression error: %d", lzerr);
 		savederrno = EINVAL;
 		err = -1;
 	}
@@ -144,7 +144,7 @@ int lz4_decompress(
 	lzerr = LZ4_decompress_safe((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE);
 
 	if (lzerr < 0) {
-		log_debug(knet_h, KNET_SUB_LZ4COMP, "lz4 decompression error: %d", lzerr);
+		log_err(knet_h, KNET_SUB_LZ4COMP, "lz4 decompression error: %d", lzerr);
 		savederrno = EINVAL;
 		err = -1;
 	}
