@@ -46,4 +46,9 @@ int decompress(
 	unsigned char *buf_out,
 	ssize_t *buf_out_len);
 
+/*
+ * used exclusively by the test suite (see api_knet_send_compress)
+ */
+const char *get_model_by_idx(int idx);
+
 #endif

@@ -37,6 +37,14 @@ compress_model_t compress_modules_cmds[] = {
         { NULL, NULL, NULL, NULL },
 };
 
+/*
+ * used exclusively by the test suite (see api_knet_send_compress)
+ */
+const char *get_model_by_idx(int idx)
+{
+	return compress_modules_cmds[idx].model_name;
+}
+
 static int get_model(const char *model)
 {
 	int idx = 0;
