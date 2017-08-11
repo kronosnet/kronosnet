@@ -141,6 +141,7 @@ PKG_CHECK_MODULES([nss],[nss])
 # zlib is cheap because it's pulled in by nss
 PKG_CHECK_MODULES([zlib], [zlib])
 PKG_CHECK_MODULES([liblz4], [liblz4])
+AC_CHECK_HEADERS([lzo/lzo1x.h], [AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe])], [AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
@@ -159,7 +160,7 @@ AC_CHECK_HEADERS([stdint.h])
 AC_CHECK_HEADERS([sys/epoll.h])
 
 if test "x$enable_libknet_sctp" = xyes; then
-	AC_CHECK_HEADERS([netinet/sctp.h],, AC_MSG_ERROR(["missing required SCTP headers"]))
+	AC_CHECK_HEADERS([netinet/sctp.h],, [AC_MSG_ERROR(["missing required SCTP headers"])])
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.

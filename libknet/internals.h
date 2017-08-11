@@ -134,6 +134,8 @@ struct knet_fd_trackers {
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
 
+#define KNET_MAX_COMPRESS_METHODS 3
+
 struct knet_handle {
 	knet_node_id_t host_id;
 	unsigned int enabled:1;
@@ -186,6 +188,7 @@ struct knet_handle {
 	int compress_max_model;
 	int compress_level;
 	uint32_t compress_threshold;
+	void *compress_int_data[KNET_MAX_COMPRESS_METHODS]; /* for compress method private data */
 	unsigned char *recv_from_links_buf_decompress;
 	unsigned char *send_to_links_buf_compress;
 	seq_num_t tx_seq_num;

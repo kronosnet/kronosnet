@@ -623,6 +623,14 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *                           lz4hc: 1 (min compression) ... LZ4HC_MAX_CLEVEL (16) or LZ4HC_CLEVEL_MAX (12)
  *                                  depends on the installed version of lz4hc. libknet can detects the max
  *                                  value and will print an appropriate warning.
+ *                           lzo2: accepts only some specific values depending on the
+ *                                 requested algorithm:
+ *                                 1  : lzo1x_1_compress (default)
+ *                                 11 : lzo1x_1_11_compress
+ *                                 12 : lzo1x_1_12_compress
+ *                                 15 : lzo1x_1_15_compress
+ *                                 999: lzo1x_999_compress
+ *                                 every other values will use default
  *                           Please refere to the library man pages
  *                           on how to be set this value, as it is passed
  *                           unmodified to the compression algorithm where supported.
@@ -1537,6 +1545,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_ZLIBCOMP    70 /* compress_zlib.c */
 #define KNET_SUB_LZ4COMP     71 /* compress_lz4.c */
 #define KNET_SUB_LZ4HCCOMP   72 /* compress_lz4.c */
+#define KNET_SUB_LZO2COMP    73 /* compress_lzo.c */
 
 #define KNET_SUB_UNKNOWN     254
 #define KNET_MAX_SUBSYSTEMS  KNET_SUB_UNKNOWN + 1

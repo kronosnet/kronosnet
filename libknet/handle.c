@@ -628,7 +628,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	}
 
 	if (compress_init(knet_h, NULL)) {
-		savederrno = EINVAL;
+		savederrno = errno;
 		goto exit_fail;
 	}
 
@@ -721,7 +721,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	_destroy_buffers(knet_h);
 	_close_socks(knet_h);
 	crypto_fini(knet_h);
-
+	compress_fini(knet_h);
 	_destroy_locks(knet_h);
 
 exit_nolock:

@@ -28,6 +28,7 @@ sources			= \
 			  compress.c \
 			  compress_zlib.c \
 			  compress_lz4.c \
+			  compress_lzo2.c \
 			  crypto.c \
 			  handle.c \
 			  host.c \
@@ -58,6 +59,7 @@ noinst_HEADERS		= \
 			  compress.h \
 			  compress_zlib.h \
 			  compress_lz4.h \
+			  compress_lzo2.h \
 			  crypto.h \
 			  host.h \
 			  internals.h \
@@ -86,5 +88,5 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
-libknet_la_LIBADD	= $(nss_LIBS) $(zlib_LIBS) $(liblz4_LIBS) \
+libknet_la_LIBADD	= $(nss_LIBS) $(zlib_LIBS) $(liblz4_LIBS) -llzo2 \
 			  -lrt -lpthread -lm
