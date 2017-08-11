@@ -185,6 +185,7 @@ struct knet_handle {
 	int compress_model;
 	int compress_max_model;
 	int compress_level;
+	uint32_t compress_threshold;
 	unsigned char *recv_from_links_buf_decompress;
 	unsigned char *send_to_links_buf_compress;
 	seq_num_t tx_seq_num;

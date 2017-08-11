@@ -76,7 +76,7 @@ static void print_help(void)
 	printf(" -d                                        enable debug logs (default INFO)\n");
 	printf(" -c [implementation]:[crypto]:[hashing]    crypto configuration. (default disabled)\n");
 	printf("                                           Example: -c nss:aes128:sha1\n");
-	printf(" -z [implementation]:[level]               compress configuration. (default disabled)\n");
+	printf(" -z [implementation]:[level]:[threshold]   compress configuration. (default disabled)\n");
 	printf("                                           Example: -z zlib:5\n");
 	printf(" -p [active|passive|rr]                    (default: passive)\n");
 	printf(" -P [udp|sctp]                             (default: udp) protocol (transport) to use\n");
@@ -436,6 +436,7 @@ static void setup_knet(int argc, char *argv[])
 		memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 		snprintf(knet_handle_compress_cfg.compress_model, 16, "%s", strtok(compresscfg, ":"));
 		knet_handle_compress_cfg.compress_level = atoi(strtok(NULL, ":"));
+		knet_handle_compress_cfg.compress_threshold = atoi(strtok(NULL, ":"));
 		if (knet_handle_compress(knet_h, &knet_handle_compress_cfg)) {
 			printf("Unable to configure compress\n");
 			exit(FAIL);

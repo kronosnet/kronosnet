@@ -78,8 +78,8 @@ int compress_init(
 	}
 
 	log_debug(knet_h, KNET_SUB_COMPRESS,
-		  "Initizializing compress module [%s/%d]",
-		  knet_handle_compress_cfg->compress_model, knet_handle_compress_cfg->compress_level);
+		  "Initizializing compress module [%s/%d/%u]",
+		  knet_handle_compress_cfg->compress_model, knet_handle_compress_cfg->compress_level, knet_handle_compress_cfg->compress_threshold);
 
 	cmp_model = get_model(knet_handle_compress_cfg->compress_model);
 	if (cmp_model < 0) {
@@ -95,7 +95,18 @@ int compress_init(
 			errno = EINVAL;
 			return -1;
 		}
-
+		if (knet_handle_compress_cfg->compress_threshold > KNET_MAX_PACKET_SIZE) {
+			log_err(knet_h, KNET_SUB_COMPRESS, "compress threshold cannot be higher than KNET_MAX_PACKET_SIZE (%d).",
+				 KNET_MAX_PACKET_SIZE);
+			errno = EINVAL;
+			return -1;
+		}
+		if (knet_handle_compress_cfg->compress_threshold == 0) {
+			knet_h->compress_threshold = KNET_COMPRESS_THRESHOLD;
+			log_debug(knet_h, KNET_SUB_COMPRESS, "resetting compression threshold to default (%d)", KNET_COMPRESS_THRESHOLD);
+		} else {
+			knet_h->compress_threshold = knet_handle_compress_cfg->compress_threshold;
+		}
 	}
 
 	knet_h->compress_model = cmp_model;

@@ -605,6 +605,14 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *                           Currently only "zlib" and "lz4" are supported.
  *                           Setting to "none" will disable compress.
  *
+ *            compress_threshold
+ *                           tells the transmission thread to NOT compress
+ *                           any packets that are smaller than the value
+ *                           indicated. Default 100 bytes.
+ *                           Set to 0 to reset to the default.
+ *                           Set to 1 to compress everything.
+ *                           Max accepted value is KNET_MAX_PACKET_SIZE.
+ *
  *            compress_level some compression libraries allows tuning of compression
  *                           parameters.
  *                           For example zlib value ranges from 0 to 9 where 0 is no
@@ -634,9 +642,12 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *    level are not supported.
  */
 
+#define KNET_COMPRESS_THRESHOLD 100
+
 struct knet_handle_compress_cfg {
-	char	compress_model[16];
-	int	compress_level;
+	char	 compress_model[16];
+	uint32_t compress_threshold;
+	int	 compress_level;
 };
 
 int knet_handle_compress(knet_handle_t knet_h,

@@ -325,7 +325,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	/*
 	 * compress data
 	 */
-	if (knet_h->compress_model > 0) {
+	if ((knet_h->compress_model > 0) && (inlen > knet_h->compress_threshold)) {
 		ssize_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
 
 		err = compress(knet_h,
