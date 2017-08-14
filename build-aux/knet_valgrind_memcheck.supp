@@ -1,0 +1,446 @@
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_stream_header_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_crc32
+   fun:lzma_stream_header_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_crc32
+   fun:lzma_stream_header_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_block_header_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:is_overlap
+   fun:memcpy@@GLIBC_2.14
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:memcpy@@GLIBC_2.14
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:memcpy@@GLIBC_2.14
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_vli_encode
+   fun:lzma_filter_flags_encode
+   fun:lzma_block_header_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_filter_flags_encode
+   fun:lzma_block_header_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:memset
+   fun:lzma_block_header_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:memset
+   fun:lzma_block_header_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_block_unpadded_size
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_index_append
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_vli_size
+   fun:lzma_index_append
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_vli_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_vli_encode
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_crc32
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_crc32
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_index_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_stream_footer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Value8
+   fun:lzma_crc32
+   fun:lzma_stream_footer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   fun:lzma_crc32
+   fun:lzma_stream_footer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   lzma internal stuff
+   Memcheck:Cond
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   obj:/usr/lib64/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+}
+

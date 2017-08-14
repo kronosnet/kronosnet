@@ -124,6 +124,7 @@ api_knet_send_compress_test_SOURCES = api_knet_send_compress.c \
 				      ../compress_zlib.c \
 				      ../compress_lz4.c \
 				      ../compress_lzo2.c \
+				      ../compress_lzma.c \
 				      test-common.c
 
 api_knet_send_loopback_test_SOURCES = api_knet_send_loopback.c \
