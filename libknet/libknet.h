@@ -631,6 +631,7 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *                                 15 : lzo1x_1_15_compress
  *                                 999: lzo1x_999_compress
  *                                 every other values will use default
+ *                           lzma: 0 (minimal) .. 9 (max compression)
  *                           Please refere to the library man pages
  *                           on how to be set this value, as it is passed
  *                           unmodified to the compression algorithm where supported.
