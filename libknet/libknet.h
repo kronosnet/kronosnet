@@ -603,7 +603,7 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *
  *            compress_model should contain the mode name.
  *                           Currently only "zlib" and "lz4" are supported.
- *                           Setting to "none" will disable compress.
+ *                           Setting to "none" will disable compression.
  *
  *            compress_threshold
  *                           tells the transmission thread to NOT compress
@@ -613,7 +613,7 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *                           Set to 1 to compress everything.
  *                           Max accepted value is KNET_MAX_PACKET_SIZE.
  *
- *            compress_level some compression libraries allows tuning of compression
+ *            compress_level some compression libraries allow tuning of compression
  *                           parameters.
  *                           For example zlib value ranges from 0 to 9 where 0 is no
  *                           compression and 9 is max compression.
@@ -633,14 +633,14 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *                                 every other values will use default
  *                           lzma: 0 (minimal) .. 9 (max compression)
  *                           bzip2: 1 (minimal) .. 9 (max compression)
- *                           Please refere to the library man pages
+ *                           Please refer to the library man pages
  *                           on how to be set this value, as it is passed
  *                           unmodified to the compression algorithm where supported.
  *
  * Implementation notes:
  * - it is possible to enable/disable compression at any time.
- * - nodes can be using different compression algorithm at any time.
- * - knet does NOT implement compression algorithm directly. it relies
+ * - nodes can be using a different compression algorithm at any time.
+ * - knet does NOT implement the compression algorithm directly. it relies
  *   on external libraries for this functionality. Please read
  *   the libraries man pages to figure out which algorithm/compression
  *   level is best for the data you are planning to transmit.

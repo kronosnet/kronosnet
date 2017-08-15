@@ -61,7 +61,7 @@ int zlib_compress(
 			break;
 		case Z_MEM_ERROR:
 			log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress mem error");
-			err = -1; 
+			err = -1;
 			savederrno = ENOMEM;
 			break;
 		case Z_BUF_ERROR:
