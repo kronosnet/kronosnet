@@ -359,11 +359,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		if (inbuf->khp_data_compress) {
 			ssize_t decmp_outlen = KNET_DATABUFSIZE_COMPRESS;
 
-			if (inbuf->khp_data_compress > knet_h->compress_max_model) {
-				log_err(knet_h, KNET_SUB_COMPRESS, "Received packet with unsupported compression method. Dropping");
-				return;
-			}
-
 			err = decompress(knet_h, inbuf->khp_data_compress,
 					 (const unsigned char *)inbuf->khp_data_userdata,
 					 len - KNET_HEADER_DATA_SIZE,

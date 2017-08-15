@@ -12,6 +12,8 @@
 #include "internals.h"
 
 typedef struct {
+	uint8_t		model_id;
+	uint8_t		built_in;
 	const char	*model_name;
 	int (*init)     (knet_handle_t knet_h, int method_idx);
 	void (*fini)    (knet_handle_t knet_h, int method_idx);
@@ -50,10 +52,5 @@ int decompress(
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len);
-
-/*
- * used exclusively by the test suite (see api_knet_send_compress)
- */
-const char *get_model_by_idx(int idx);
 
 #endif

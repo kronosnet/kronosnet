@@ -241,15 +241,14 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
-	int idx = 0;
-	const char *model = NULL;
-
 	need_root();
 
-	while ((model = get_model_by_idx(idx)) != NULL) {
-		test(model);
-		idx++;
-	}
+	test("zlib");
+	test("lz4");
+	test("lz4hc");
+	test("lzo2");
+	test("lzma");
+	test("bzip2");
 
 	return PASS;
 }

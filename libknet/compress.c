@@ -26,38 +26,32 @@
  */
 
 /*
- * DO NOT CHANGE ORDER HERE OR ONWIRE COMPATIBILITY
+ * DO NOT CHANGE MODEL_ID HERE OR ONWIRE COMPATIBILITY
  * WILL BREAK!
  *
  * always add before the last NULL/NULL/NULL.
  */
 
 compress_model_t compress_modules_cmds[] = {
-	{ "none", NULL, NULL, NULL, NULL, NULL },
-	{ "zlib", NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
-	{ "lz4", NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
-	{ "lz4hc", NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
-	{ "lzo2", lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
-	{ "lzma", NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
-	{ "bzip2", NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
-	{ NULL, NULL, NULL, NULL, NULL, NULL },
+	{ 0, 1, "none", NULL, NULL, NULL, NULL, NULL },
+	{ 1, 1, "zlib", NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+	{ 2, 1, "lz4", NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
+	{ 3, 1, "lz4hc", NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+	{ 4, 1, "lzo2", lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+	{ 5, 1, "lzma", NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+	{ 6, 1, "bzip2", NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+	{ 255, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 };
-
-/*
- * used exclusively by the test suite (see api_knet_send_compress)
- */
-const char *get_model_by_idx(int idx)
-{
-	return compress_modules_cmds[idx].model_name;
-}
 
 static int get_model(const char *model)
 {
 	int idx = 0;
 
 	while (compress_modules_cmds[idx].model_name != NULL) {
-		if (!strcmp(compress_modules_cmds[idx].model_name, model))
-			return idx;
+		if ((!strcmp(compress_modules_cmds[idx].model_name, model)) &&
+		    (compress_modules_cmds[idx].built_in == 1)) {
+			return compress_modules_cmds[idx].model_id;
+		}
 		idx++;
 	}
 	return -1;
@@ -70,6 +64,20 @@ static int get_max_model(void)
 		idx++;
 	}
 	return idx - 1;
+}
+
+static int is_valid_model(int compress_model)
+{
+	int idx = 0;
+
+	while (compress_modules_cmds[idx].model_name != NULL) {
+		if ((compress_model == compress_modules_cmds[idx].model_id) &&
+		    (compress_modules_cmds[idx].built_in == 1)) {
+			return 0;
+		}
+		idx++;
+	}
+	return -1;
 }
 
 static int val_level(
@@ -86,14 +94,14 @@ int compress_init(
 {
 	int cmp_model, idx = 0;
 
-	knet_h->compress_max_model = get_max_model();
-	if (knet_h->compress_max_model > KNET_MAX_COMPRESS_METHODS) {
+	if (get_max_model() > KNET_MAX_COMPRESS_METHODS) {
 		log_err(knet_h, KNET_SUB_COMPRESS, "Too many compress methods supported by compress.c. Please complain to knet developers to fix internals.h KNET_MAX_COMPRESS_METHODS define!");
 		errno = EINVAL;
 		return -1;
 	}
 	if (!knet_handle_compress_cfg) {
-		while (compress_modules_cmds[idx].model_name != NULL) {
+		while ((compress_modules_cmds[idx].model_name != NULL) &&
+		       (compress_modules_cmds[idx].built_in == 1)) {
 			if (compress_modules_cmds[idx].init != NULL) {
 				if (compress_modules_cmds[idx].init(knet_h, idx) < 0) {
 					log_err(knet_h, KNET_SUB_COMPRESS, "Failed to initialize %s library", compress_modules_cmds[idx].model_name);
@@ -148,7 +156,9 @@ void compress_fini(
 	knet_handle_t knet_h)
 {
 	int idx = 0;
-	while ((compress_modules_cmds[idx].model_name != NULL) && (idx < KNET_MAX_COMPRESS_METHODS)) {
+	while ((compress_modules_cmds[idx].model_name != NULL) &&
+	       (compress_modules_cmds[idx].built_in == 1) &&
+	       (idx < KNET_MAX_COMPRESS_METHODS)) {
 		if (compress_modules_cmds[idx].fini != NULL) {
 			compress_modules_cmds[idx].fini(knet_h, idx);
 		}
@@ -175,5 +185,10 @@ int decompress(
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
+	if (is_valid_model(compress_model) < 0) {
+		log_err(knet_h,  KNET_SUB_COMPRESS, "This build of libknet does not support %s compression. Please contact your distribution vendor or fix the build", compress_modules_cmds[compress_model].model_name);
+		errno = EINVAL;
+		return -1;
+	}
 	return compress_modules_cmds[compress_model].decompress(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }

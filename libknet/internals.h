@@ -185,7 +185,6 @@ struct knet_handle {
 	unsigned char *pingbuf_crypt;
 	unsigned char *pmtudbuf_crypt;
 	int compress_model;
-	int compress_max_model;
 	int compress_level;
 	uint32_t compress_threshold;
 	void *compress_int_data[KNET_MAX_COMPRESS_METHODS]; /* for compress method private data */
