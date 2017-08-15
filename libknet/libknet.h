@@ -632,6 +632,7 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *                                 999: lzo1x_999_compress
  *                                 every other values will use default
  *                           lzma: 0 (minimal) .. 9 (max compression)
+ *                           bzip2: 1 (minimal) .. 9 (max compression)
  *                           Please refere to the library man pages
  *                           on how to be set this value, as it is passed
  *                           unmodified to the compression algorithm where supported.
@@ -1548,6 +1549,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_LZ4HCCOMP   72 /* compress_lz4.c */
 #define KNET_SUB_LZO2COMP    73 /* compress_lzo.c */
 #define KNET_SUB_LZMACOMP    74 /* compress_lzma.c */
+#define KNET_SUB_BZIP2COMP   75 /* compress_bzip2.c */
 
 #define KNET_SUB_UNKNOWN     254
 #define KNET_MAX_SUBSYSTEMS  KNET_SUB_UNKNOWN + 1

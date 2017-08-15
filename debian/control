@@ -1,7 +1,7 @@
 Source: kronosnet
 Priority: extra
 Maintainer: Fabio M. Di Nitto <fabbione@kronosnet.org>
-Build-Depends: debhelper (>= 7.0.50~), autotools-dev, libqb-dev (>= 0.14.3), libnss3-dev, libnspr4-dev, pkg-config, libpam-dev, zlib1g-dev, liblz4-dev, liblzo2-dev, liblzma-dev
+Build-Depends: debhelper (>= 7.0.50~), autotools-dev, libqb-dev (>= 0.14.3), libnss3-dev, libnspr4-dev, pkg-config, libpam-dev, zlib1g-dev, liblz4-dev, liblzo2-dev, liblzma-dev, libbz2-devel
 Standards-Version: 3.8.4
 Section: admin
 

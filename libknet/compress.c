@@ -19,6 +19,7 @@
 #include "compress_lz4.h"
 #include "compress_lzo2.h"
 #include "compress_lzma.h"
+#include "compress_bzip2.h"
 
 /*
  * internal module switch data
@@ -38,6 +39,7 @@ compress_model_t compress_modules_cmds[] = {
 	{ "lz4hc", NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
 	{ "lzo2", lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
 	{ "lzma", NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+	{ "bzip2", NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
 	{ NULL, NULL, NULL, NULL, NULL, NULL },
 };
 
