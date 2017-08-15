@@ -243,12 +243,24 @@ int main(int argc, char *argv[])
 {
 	need_root();
 
+	test("none");
+
+#ifdef BUILDCOMPZLIB
 	test("zlib");
+#endif
+#ifdef BUILDCOMPLZ4
 	test("lz4");
 	test("lz4hc");
+#endif
+#ifdef BUILDCOMPLZO2
 	test("lzo2");
+#endif
+#ifdef BUILDCOMPLZMA
 	test("lzma");
+#endif
+#ifdef BUILDCOMPBZIP2
 	test("bzip2");
+#endif
 
 	return PASS;
 }
