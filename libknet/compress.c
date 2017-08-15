@@ -15,11 +15,22 @@
 #include "internals.h"
 #include "compress.h"
 #include "logging.h"
+
+#ifdef BUILDCOMPZLIB
 #include "compress_zlib.h"
+#endif
+#ifdef BUILDCOMPLZ4
 #include "compress_lz4.h"
+#endif
+#ifdef BUILDCOMPLZO2
 #include "compress_lzo2.h"
+#endif
+#ifdef BUILDCOMPLZMA
 #include "compress_lzma.h"
+#endif
+#ifdef BUILDCOMPBZIP2
 #include "compress_bzip2.h"
+#endif
 
 /*
  * internal module switch data
@@ -34,12 +45,33 @@
 
 compress_model_t compress_modules_cmds[] = {
 	{ 0, 1, "none", NULL, NULL, NULL, NULL, NULL },
+#ifdef BUILDCOMPZLIB
 	{ 1, 1, "zlib", NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+#else
+	{ 1, 0, "zlib", NULL, NULL, NULL, NULL, NULL },
+#endif
+#ifdef BUILDCOMPLZ4
 	{ 2, 1, "lz4", NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
 	{ 3, 1, "lz4hc", NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+#else
+	{ 2, 0, "lz4", NULL, NULL, NULL, NULL, NULL },
+	{ 3, 0, "lz4hc", NULL, NULL, NULL, NULL, NULL },
+#endif
+#ifdef BUILDCOMPLZO2
 	{ 4, 1, "lzo2", lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+#else
+	{ 4, 0, "lzo2", NULL, NULL, NULL, NULL, NULL },
+#endif
+#ifdef BUILDCOMPLZMA
 	{ 5, 1, "lzma", NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+#else
+	{ 5, 0, "lzma", NULL, NULL, NULL, NULL, NULL },
+#endif
+#ifdef BUILDCOMPBZIP2
 	{ 6, 1, "bzip2", NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+#else
+	{ 6, 0, "bzip2", NULL, NULL, NULL, NULL, NULL },
+#endif
 	{ 255, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 };
 

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef BUILDCOMPLZMA
 #include <lzma.h>
 
 #include "internals.h"
@@ -128,3 +129,4 @@ int lzma_decompress(
 	errno = savederrno;
 	return err;
 }
+#endif

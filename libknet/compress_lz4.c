@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef BUILDCOMPLZ4
 #include <lz4hc.h>
 
 #include "internals.h"
@@ -156,3 +157,4 @@ int lz4_decompress(
 	errno = savederrno;
 	return err;
 }
+#endif

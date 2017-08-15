@@ -73,28 +73,52 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
+AC_ARG_ENABLE([libknet-sctp],
+	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
+	[ enable_libknet_sctp="yes" ])
+
+AC_ARG_ENABLE([compress-zlib],
+	[  --disable-compress-zlib           : disable libknet zlib support ],,
+	[ enable_compress_zlib="yes" ])
+
+AC_ARG_ENABLE([compress-lz4],
+	[  --disable-compress-lz4            : disable libknet lz4 support ],,
+	[ enable_compress_lz4="yes" ])
+
+AC_ARG_ENABLE([compress-lzo2],
+	[  --disable-compress-lzo2           : disable libknet lzo2 support ],,
+	[ enable_compress_lzo2="yes" ])
+
+AC_ARG_ENABLE([compress-lzma],
+	[  --disable-compress-lzma           : disable libknet lzma support ],,
+	[ enable_compress_lzma="yes" ])
+
+AC_ARG_ENABLE([compress-bzip2],
+	[  --disable-compress-bzip2          : disable libknet bzip2 support ],,
+	[ enable_compress_bzip2="yes" ])
+
+AC_ARG_ENABLE([compress-all],
+	[  --disable-compress-all            : disable libknet all compress support ],,
+	[ enable_compress_all="yes" ])
+
 AC_ARG_ENABLE([poc],
-        [  --disable-poc                     : avoid building poc code ],,
-        [ enable_poc="yes" ])
+	[  --disable-poc                     : disable building poc code ],,
+	[ enable_poc="yes" ])
 AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
 
 AC_ARG_ENABLE([kronosnetd],
-        [  --enable-kronosnetd               : Kronosnetd support ],,
-        [ enable_kronosnetd="no" ])
+	[  --enable-kronosnetd               : Kronosnetd support ],,
+	[ enable_kronosnetd="no" ])
 AM_CONDITIONAL([BUILD_KRONOSNETD], [test x$enable_kronosnetd = xyes])
 
 AC_ARG_ENABLE([libtap],
-        [  --enable-libtap                   : libtap support ],,
-        [ enable_libtap="no" ])
+	[  --enable-libtap                   : libtap support ],,
+	[ enable_libtap="no" ])
 
 if test "x$enable_kronosnetd" = xyes; then
-   enable_libtap=yes
+	enable_libtap=yes
 fi
 AM_CONDITIONAL([BUILD_LIBTAP], [test x$enable_libtap = xyes])
-
-AC_ARG_ENABLE([libknet-sctp],
-        [  --disable-libknet-sctp            : avoid libknet SCTP support ],,
-        [ enable_libknet_sctp="yes" ])
 
 ## local helper functions
 # this function checks if CC support options passed as
@@ -138,20 +162,36 @@ AC_CHECK_LIB([rt], [clock_gettime])
 PKG_CHECK_MODULES([nss],[nss])
 
 # compress libraries checks
-# zlib is cheap because it's pulled in by nss
-PKG_CHECK_MODULES([zlib], [zlib])
-PKG_CHECK_MODULES([liblz4], [liblz4])
-PKG_CHECK_MODULES([liblzma], [liblzma])
-PKG_CHECK_MODULES([bzip2], [bzip2],,
-		  [AC_CHECK_HEADERS([bzlib.h],
-				    [AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
-						  [AC_SUBST([bzip2_LIBS], [-lbz2])])],
-						  [AC_MSG_ERROR(["missing required bzlib.h"])])])
-PKG_CHECK_MODULES([lzo2], [lzo2],,
-		  [AC_CHECK_HEADERS([lzo/lzo1x.h],
-				    [AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
-						  [AC_SUBST([lzo2_LIBS], [-llzo2])])],
-						  [AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
+if test "x$enable_compress_all" = xyes; then
+	if test "x$enable_compress_zlib" = xyes; then
+		PKG_CHECK_MODULES([zlib], [zlib])
+		AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
+	fi
+	if test "x$enable_compress_lz4" = xyes; then
+		PKG_CHECK_MODULES([liblz4], [liblz4])
+		AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
+	fi
+	if test "x$enable_compress_lzo2" = xyes; then
+		PKG_CHECK_MODULES([lzo2], [lzo2],,
+			[AC_CHECK_HEADERS([lzo/lzo1x.h],
+				[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
+					[AC_SUBST([lzo2_LIBS], [-llzo2])])],
+					[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
+		AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
+	fi
+	if test "x$enable_compress_lzma" = xyes; then
+		PKG_CHECK_MODULES([liblzma], [liblzma])
+		AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
+	fi
+	if test "x$enable_compress_bzip2" = xyes; then
+		PKG_CHECK_MODULES([bzip2], [bzip2],,
+			[AC_CHECK_HEADERS([bzlib.h],
+				[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
+					[AC_SUBST([bzip2_LIBS], [-lbz2])])],
+					[AC_MSG_ERROR(["missing required bzlib.h"])])])
+		AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
+	fi
+fi
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
@@ -217,25 +257,22 @@ fi
 
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
+	AC_CHECK_HEADERS([security/pam_appl.h],
+			 [AC_CHECK_LIB([pam], [pam_start])],
+			 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
 
-AC_CHECK_HEADERS([security/pam_appl.h],
-		 [AC_CHECK_LIB([pam], [pam_start])],
-		 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
+	AC_CHECK_HEADERS([security/pam_misc.h],
+			 [AC_CHECK_LIB([pam_misc], [misc_conv])],
+			 [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
 
-AC_CHECK_HEADERS([security/pam_misc.h],
-	        [AC_CHECK_LIB([pam_misc], [misc_conv])],
-                [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+	PKG_CHECK_MODULES([libqb], [libqb])
 
-PKG_CHECK_MODULES([libqb], [libqb])
-
-AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
-	     [have_qb_log_thread_priority_set="yes"],
-             [have_qb_log_thread_priority_set="no"])
-
-if test "x${have_qb_log_thread_priority_set}" = xyes; then
-	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], [1], [have qb_log_thread_priority_set])
-fi
-
+	AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
+		     [have_qb_log_thread_priority_set="yes"],
+		     [have_qb_log_thread_priority_set="no"])
+	if test "x${have_qb_log_thread_priority_set}" = xyes; then
+		AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], [1], [have qb_log_thread_priority_set])
+	fi
 fi
 
 # local options

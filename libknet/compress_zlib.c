@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef BUILDCOMPZLIB
 #include <zlib.h>
 
 #include "internals.h"
@@ -126,3 +127,4 @@ int zlib_decompress(
 	errno = savederrno;
 	return err;
 }
+#endif

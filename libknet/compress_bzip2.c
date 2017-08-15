@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef BUILDCOMPBZIP2
 #include <bzlib.h>
 
 #include "internals.h"
@@ -116,3 +117,4 @@ int bzip2_decompress(
 	errno = savederrno;
 	return err;
 }
+#endif

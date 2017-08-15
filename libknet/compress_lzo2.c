@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef BUILDCOMPLZO2
 #include <lzo/lzo1x.h>
 
 #include "internals.h"
@@ -150,3 +151,4 @@ int lzo2_decompress(
 	errno = savederrno;
 	return err;
 }
+#endif
