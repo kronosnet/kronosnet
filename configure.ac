@@ -147,7 +147,11 @@ PKG_CHECK_MODULES([bzip2], [bzip2],,
 				    [AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
 						  [AC_SUBST([bzip2_LIBS], [-lbz2])])],
 						  [AC_MSG_ERROR(["missing required bzlib.h"])])])
-AC_CHECK_HEADERS([lzo/lzo1x.h], [AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe])], [AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])
+PKG_CHECK_MODULES([lzo2], [lzo2],,
+		  [AC_CHECK_HEADERS([lzo/lzo1x.h],
+				    [AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
+						  [AC_SUBST([lzo2_LIBS], [-llzo2])])],
+						  [AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])

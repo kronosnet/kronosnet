@@ -85,7 +85,7 @@ lib_LTLIBRARIES		= libknet.la
 libknet_la_SOURCES	= $(sources)
 
 libknet_la_CFLAGS	= $(nss_CFLAGS) \
-			  $(zlib_CFLAGS) $(liblz4_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
+			  $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
@@ -94,5 +94,5 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  -version-number $(libversion)
 
 libknet_la_LIBADD	= $(nss_LIBS) \
-			  $(zlib_LIBS) $(liblz4_LIBS) -llzo2 $(liblzma_LIBS) $(bzip2_LIBS) \
+			  $(zlib_LIBS) $(liblz4_LIBS) $(lzo2_LIBS) $(liblzma_LIBS) $(bzip2_LIBS) \
 			  -lrt -lpthread -lm
