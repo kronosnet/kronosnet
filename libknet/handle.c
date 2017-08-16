@@ -627,7 +627,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		goto exit_fail;
 	}
 
-	if (compress_init(knet_h, NULL)) {
+	if (compress_init(knet_h)) {
 		savederrno = errno;
 		goto exit_fail;
 	}
@@ -1349,7 +1349,7 @@ int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *
 		return -1;
 	}
 
-	err = compress_init(knet_h, knet_handle_compress_cfg);
+	err = compress_cfg(knet_h, knet_handle_compress_cfg);
 	savederrno = errno;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

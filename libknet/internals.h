@@ -134,7 +134,7 @@ struct knet_fd_trackers {
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
 
-#define KNET_MAX_COMPRESS_METHODS 32
+#define KNET_MAX_COMPRESS_METHODS UINT8_MAX
 
 struct knet_handle {
 	knet_node_id_t host_id;

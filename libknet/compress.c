@@ -121,30 +121,36 @@ static int val_level(
 }
 
 int compress_init(
-	knet_handle_t knet_h,
-	struct knet_handle_compress_cfg *knet_handle_compress_cfg)
+	knet_handle_t knet_h)
 {
-	int cmp_model, idx = 0;
+	int idx = 0;
 
 	if (get_max_model() > KNET_MAX_COMPRESS_METHODS) {
-		log_err(knet_h, KNET_SUB_COMPRESS, "Too many compress methods supported by compress.c. Please complain to knet developers to fix internals.h KNET_MAX_COMPRESS_METHODS define!");
+		log_err(knet_h, KNET_SUB_COMPRESS, "Too many compress methods defined in compress.c.");
 		errno = EINVAL;
 		return -1;
 	}
-	if (!knet_handle_compress_cfg) {
-		while ((compress_modules_cmds[idx].model_name != NULL) &&
-		       (compress_modules_cmds[idx].built_in == 1)) {
-			if (compress_modules_cmds[idx].init != NULL) {
-				if (compress_modules_cmds[idx].init(knet_h, idx) < 0) {
-					log_err(knet_h, KNET_SUB_COMPRESS, "Failed to initialize %s library", compress_modules_cmds[idx].model_name);
-					errno = EINVAL;
-					return -1;
-				}
+
+	while ((compress_modules_cmds[idx].model_name != NULL) &&
+	       (compress_modules_cmds[idx].built_in == 1)) {
+		if (compress_modules_cmds[idx].init != NULL) {
+			if (compress_modules_cmds[idx].init(knet_h, idx) < 0) {
+				log_err(knet_h, KNET_SUB_COMPRESS, "Failed to initialize %s library", compress_modules_cmds[idx].model_name);
+				errno = EINVAL;
+				return -1;
 			}
-			idx++;
 		}
-		return 0;
+		idx++;
 	}
+
+	return 0;
+}
+
+int compress_cfg(
+	knet_handle_t knet_h,
+	struct knet_handle_compress_cfg *knet_handle_compress_cfg)
+{
+	int cmp_model;
 
 	log_debug(knet_h, KNET_SUB_COMPRESS,
 		  "Initizializing compress module [%s/%d/%u]",

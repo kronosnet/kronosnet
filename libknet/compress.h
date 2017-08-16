@@ -31,9 +31,12 @@ typedef struct {
 			 ssize_t *buf_out_len);
 } compress_model_t;
 
-int compress_init(
+int compress_cfg(
 	knet_handle_t knet_h,
 	struct knet_handle_compress_cfg *knet_handle_compress_cfg);
+
+int compress_init(
+	knet_handle_t knet_h);
 
 void compress_fini(
 	knet_handle_t knet_h);
