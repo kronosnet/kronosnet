@@ -170,6 +170,6 @@ int main(int argc, char *argv[])
 	return PASS;
 #else
 	printf("WARNING: zlib support not builtin the library. Unable to test/verify internal compress API calls\n");
-	return ERROR;
+	return SKIP;
 #endif
 }
