@@ -73,33 +73,33 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
-AC_ARG_ENABLE([libknet-sctp],
-	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
-	[ enable_libknet_sctp="yes" ])
-
-AC_ARG_ENABLE([compress-zlib],
-	[  --disable-compress-zlib           : disable libknet zlib support ],,
-	[ enable_compress_zlib="yes" ])
-
-AC_ARG_ENABLE([compress-lz4],
-	[  --disable-compress-lz4            : disable libknet lz4 support ],,
-	[ enable_compress_lz4="yes" ])
-
-AC_ARG_ENABLE([compress-lzo2],
-	[  --disable-compress-lzo2           : disable libknet lzo2 support ],,
-	[ enable_compress_lzo2="yes" ])
-
-AC_ARG_ENABLE([compress-lzma],
-	[  --disable-compress-lzma           : disable libknet lzma support ],,
-	[ enable_compress_lzma="yes" ])
-
-AC_ARG_ENABLE([compress-bzip2],
-	[  --disable-compress-bzip2          : disable libknet bzip2 support ],,
-	[ enable_compress_bzip2="yes" ])
-
 AC_ARG_ENABLE([compress-all],
 	[  --disable-compress-all            : disable libknet all compress support ],,
 	[ enable_compress_all="yes" ])
+
+AC_ARG_ENABLE([libknet-sctp],
+	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
+	[ enable_libknet_sctp="$enable_compress_all" ])
+
+AC_ARG_ENABLE([compress-zlib],
+	[  --disable-compress-zlib           : disable libknet zlib support ],,
+	[ enable_compress_zlib="$enable_compress_all" ])
+
+AC_ARG_ENABLE([compress-lz4],
+	[  --disable-compress-lz4            : disable libknet lz4 support ],,
+	[ enable_compress_lz4="$enable_compress_all" ])
+
+AC_ARG_ENABLE([compress-lzo2],
+	[  --disable-compress-lzo2           : disable libknet lzo2 support ],,
+	[ enable_compress_lzo2="$enable_compress_all" ])
+
+AC_ARG_ENABLE([compress-lzma],
+	[  --disable-compress-lzma           : disable libknet lzma support ],,
+	[ enable_compress_lzma="$enable_compress_all" ])
+
+AC_ARG_ENABLE([compress-bzip2],
+	[  --disable-compress-bzip2          : disable libknet bzip2 support ],,
+	[ enable_compress_bzip2="$enable_compress_all" ])
 
 AC_ARG_ENABLE([poc],
 	[  --disable-poc                     : disable building poc code ],,
@@ -162,35 +162,33 @@ AC_CHECK_LIB([rt], [clock_gettime])
 PKG_CHECK_MODULES([nss],[nss])
 
 # compress libraries checks
-if test "x$enable_compress_all" = xyes; then
-	if test "x$enable_compress_zlib" = xyes; then
-		PKG_CHECK_MODULES([zlib], [zlib])
-		AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
-	fi
-	if test "x$enable_compress_lz4" = xyes; then
-		PKG_CHECK_MODULES([liblz4], [liblz4])
-		AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
-	fi
-	if test "x$enable_compress_lzo2" = xyes; then
-		PKG_CHECK_MODULES([lzo2], [lzo2],,
-			[AC_CHECK_HEADERS([lzo/lzo1x.h],
-				[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
-					[AC_SUBST([lzo2_LIBS], [-llzo2])])],
-					[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
-		AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
-	fi
-	if test "x$enable_compress_lzma" = xyes; then
-		PKG_CHECK_MODULES([liblzma], [liblzma])
-		AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
-	fi
-	if test "x$enable_compress_bzip2" = xyes; then
-		PKG_CHECK_MODULES([bzip2], [bzip2],,
-			[AC_CHECK_HEADERS([bzlib.h],
-				[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
-					[AC_SUBST([bzip2_LIBS], [-lbz2])])],
-					[AC_MSG_ERROR(["missing required bzlib.h"])])])
-		AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
-	fi
+if test "x$enable_compress_zlib" = xyes; then
+	PKG_CHECK_MODULES([zlib], [zlib])
+	AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
+fi
+if test "x$enable_compress_lz4" = xyes; then
+	PKG_CHECK_MODULES([liblz4], [liblz4])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
+fi
+if test "x$enable_compress_lzo2" = xyes; then
+	PKG_CHECK_MODULES([lzo2], [lzo2],,
+		[AC_CHECK_HEADERS([lzo/lzo1x.h],
+			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
+				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
+				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
+fi
+if test "x$enable_compress_lzma" = xyes; then
+	PKG_CHECK_MODULES([liblzma], [liblzma])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
+fi
+if test "x$enable_compress_bzip2" = xyes; then
+	PKG_CHECK_MODULES([bzip2], [bzip2],,
+		[AC_CHECK_HEADERS([bzlib.h],
+			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
+				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
+				[AC_MSG_ERROR(["missing required bzlib.h"])])])
+	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
 fi
 
 # Checks for header files.
