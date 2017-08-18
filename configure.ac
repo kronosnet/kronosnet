@@ -73,13 +73,13 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 
+AC_ARG_ENABLE([libknet-sctp],
+	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
+	[ enable_libknet_sctp="yes" ])
+
 AC_ARG_ENABLE([compress-all],
 	[  --disable-compress-all            : disable libknet all compress support ],,
 	[ enable_compress_all="yes" ])
-
-AC_ARG_ENABLE([libknet-sctp],
-	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
-	[ enable_libknet_sctp="$enable_compress_all" ])
 
 AC_ARG_ENABLE([compress-zlib],
 	[  --disable-compress-zlib           : disable libknet zlib support ],,
