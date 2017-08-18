@@ -141,6 +141,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+#ifdef BUILDCRYPTONSS
 	printf("Test knet_handle_crypto with nss/aes128/sha1 and normal key\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
@@ -194,7 +195,7 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
-
+#endif
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
@@ -206,5 +207,10 @@ int main(int argc, char *argv[])
 
 	test();
 
+#ifdef BUILDCRYPTONSS
 	return PASS;
+#else
+	printf("WARNING: nss support not builtin the library. Unable to test/verify internal crypto API calls\n");
+	return SKIP;
+#endif
 }

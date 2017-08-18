@@ -8,6 +8,7 @@
 
 #include "config.h"
 
+#ifdef BUILDCRYPTONSS
 #include <nss.h>
 #include <nspr.h>
 #include <pk11pub.h>
@@ -818,3 +819,4 @@ void nsscrypto_fini(
 
 	return;
 }
+#endif

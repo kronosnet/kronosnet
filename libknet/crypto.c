@@ -23,8 +23,12 @@
  */
 
 crypto_model_t crypto_modules_cmds[] = {
-	{ "nss", nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
-	{ NULL, NULL, NULL, NULL, NULL, NULL },
+#ifdef BUILDCRYPTONSS
+	{ "nss", 1, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
+#else
+	{ "nss", 0, NULL, NULL, NULL, NULL, NULL },
+#endif
+	{ NULL, 0, NULL, NULL, NULL, NULL, NULL },
 };
 
 static int get_model(const char *model)
@@ -77,6 +81,19 @@ int crypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
+	int model = 0;
+
+	model = get_model(knet_handle_crypto_cfg->crypto_model);
+	if (model < 0) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "model %s not supported", knet_handle_crypto_cfg->crypto_model);
+		goto out_err;
+	}
+
+	if (crypto_modules_cmds[model].built_in == 0) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "this version of libknet was built without %s support. Please contact your vendor or fix the build.", knet_handle_crypto_cfg->crypto_model);
+		goto out_err;
+	}
+
 	log_debug(knet_h, KNET_SUB_CRYPTO,
 		  "Initizializing crypto module [%s/%s/%s]",
 		  knet_handle_crypto_cfg->crypto_model,
@@ -90,12 +107,7 @@ int crypto_init(
 		return -1;
 	}
 
-	knet_h->crypto_instance->model = get_model(knet_handle_crypto_cfg->crypto_model);
-	if (knet_h->crypto_instance->model < 0) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "model %s not supported", knet_handle_crypto_cfg->crypto_model);
-		goto out_err;
-	}
-
+	knet_h->crypto_instance->model = model;
 	if (crypto_modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
 		goto out_err;
 
@@ -104,8 +116,10 @@ int crypto_init(
 	return 0;
 
 out_err:
-	free(knet_h->crypto_instance);
-	knet_h->crypto_instance = NULL;
+	if (knet_h->crypto_instance) {
+		free(knet_h->crypto_instance);
+		knet_h->crypto_instance = NULL;
+	}
 	return -1;
 }
 

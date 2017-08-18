@@ -77,8 +77,16 @@ AC_ARG_ENABLE([libknet-sctp],
 	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
 	[ enable_libknet_sctp="yes" ])
 
+AC_ARG_ENABLE([crypto-all],
+	[  --disable-crypto-all              : disable libknet all crypto modules support ],,
+	[ enable_crypto_all="yes" ])
+
+AC_ARG_ENABLE([crypto-nss],
+	[  --disable-crypto-nss              : disable libknet nss support ],,
+	[ enable_crypto_nss="$enable_crypto_all" ])
+
 AC_ARG_ENABLE([compress-all],
-	[  --disable-compress-all            : disable libknet all compress support ],,
+	[  --disable-compress-all            : disable libknet all compress modules support ],,
 	[ enable_compress_all="yes" ])
 
 AC_ARG_ENABLE([compress-zlib],
@@ -158,8 +166,14 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([m], [ceil])
 AC_CHECK_LIB([rt], [clock_gettime])
 
+# workaround pkg-config bootstrapping
+PKG_CHECK_MODULES([foobarbaz],[foobarbaz], [AC_MSG_NOTICE([bootstrapping pkg-config])], [AC_MSG_NOTICE([bootstrapping pkg-config])])
+
 # crypto libraries checks
-PKG_CHECK_MODULES([nss],[nss])
+if test "x$enable_crypto_nss" = xyes; then
+	PKG_CHECK_MODULES([nss],[nss])
+	AC_DEFINE_UNQUOTED([BUILDCRYPTONSS], [1], [Enable nss crypto])
+fi
 
 # compress libraries checks
 if test "x$enable_compress_zlib" = xyes; then

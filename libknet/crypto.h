@@ -18,6 +18,7 @@ struct crypto_instance {
 
 typedef struct {
 	const char	*model_name;
+	uint8_t		built_in;
 	int (*init)	(knet_handle_t knet_h,
 			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 	void (*fini)	(knet_handle_t knet_h);
