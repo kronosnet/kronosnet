@@ -77,7 +77,7 @@ static void print_help(void)
 	printf(" -c [implementation]:[crypto]:[hashing]    crypto configuration. (default disabled)\n");
 	printf("                                           Example: -c nss:aes128:sha1\n");
 	printf(" -z [implementation]:[level]:[threshold]   compress configuration. (default disabled)\n");
-	printf("                                           Example: -z zlib:5\n");
+	printf("                                           Example: -z zlib:5:100\n");
 	printf(" -p [active|passive|rr]                    (default: passive)\n");
 	printf(" -P [udp|sctp]                             (default: udp) protocol (transport) to use\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
