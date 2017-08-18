@@ -247,6 +247,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	int wipe_bufs = 0;
 
 	if (knet_h->crypto_instance) {
+		struct timespec start_time;
+		struct timespec end_time;
+		uint64_t crypt_time;
+
+		clock_gettime(CLOCK_MONOTONIC, &start_time);
 		if (crypto_authenticate_and_decrypt(knet_h,
 						    (unsigned char *)inbuf,
 						    len,
@@ -255,6 +260,20 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			log_debug(knet_h, KNET_SUB_RX, "Unable to decrypt/auth packet");
 			return;
 		}
+		clock_gettime(CLOCK_MONOTONIC, &end_time);
+		timespec_diff(start_time, end_time, &crypt_time);
+
+		if (crypt_time < knet_h->stats.rx_crypt_time_min) {
+			knet_h->stats.rx_crypt_time_min = crypt_time;
+		}
+		if (crypt_time > knet_h->stats.rx_crypt_time_max) {
+			knet_h->stats.rx_crypt_time_max = crypt_time;
+		}
+		knet_h->stats.rx_crypt_time_ave =
+			(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
+			 crypt_time) / (knet_h->stats.rx_crypt_packets+1);
+		knet_h->stats.rx_crypt_packets++;
+
 		len = outlen;
 		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
 	}
@@ -358,13 +377,35 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 		if (inbuf->khp_data_compress) {
 			ssize_t decmp_outlen = KNET_DATABUFSIZE_COMPRESS;
+			struct timespec start_time;
+			struct timespec end_time;
+			uint64_t compress_time;
 
+			clock_gettime(CLOCK_MONOTONIC, &start_time);
 			err = decompress(knet_h, inbuf->khp_data_compress,
 					 (const unsigned char *)inbuf->khp_data_userdata,
 					 len - KNET_HEADER_DATA_SIZE,
 					 knet_h->recv_from_links_buf_decompress,
 					 &decmp_outlen);
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			if (!err) {
+				/* Collect stats */
+				timespec_diff(start_time, end_time, &compress_time);
+
+				if (compress_time < knet_h->stats.rx_compress_time_min) {
+					knet_h->stats.rx_compress_time_min = compress_time;
+				}
+				if (compress_time > knet_h->stats.rx_compress_time_max) {
+					knet_h->stats.rx_compress_time_max = compress_time;
+				}
+				knet_h->stats.rx_compress_time_ave =
+					(knet_h->stats.rx_compress_time_ave * knet_h->stats.rx_compressed_packets +
+					 compress_time) / (knet_h->stats.rx_compressed_packets+1);
+
+				knet_h->stats.rx_compressed_packets++;
+				knet_h->stats.rx_compressed_original_bytes += decmp_outlen;
+				knet_h->stats.rx_compressed_size_bytes += len - KNET_HEADER_SIZE;
+
 				memmove(inbuf->khp_data_userdata, knet_h->recv_from_links_buf_decompress, decmp_outlen);
 				len = decmp_outlen + KNET_HEADER_DATA_SIZE;
 			} else {

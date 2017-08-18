@@ -39,7 +39,7 @@ static void test(const char *model)
 	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
-	//struct knet_link_status link_status;
+	struct knet_handle_stats stats;
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	char recv_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t send_len = 0;
@@ -202,10 +202,9 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-#if 0
 	/* A sanity check on the stats */
-	if (knet_link_get_status(knet_h, 1, 0, &link_status, sizeof(link_status)) < 0) {
-		printf("knet_link_get_status failed: %s\n", strerror(errno));
+	if (knet_handle_get_stats(knet_h, &stats, sizeof(stats)) < 0) {
+		printf("knet_handle_get_stats failed: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -215,21 +214,34 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (link_status.stats.tx_data_packets != 2 ||
-	    link_status.stats.rx_data_packets != 2 ||
-	    link_status.stats.tx_data_bytes < KNET_MAX_PACKET_SIZE ||
-	    link_status.stats.rx_data_bytes < KNET_MAX_PACKET_SIZE ||
-	    link_status.stats.tx_data_bytes > KNET_MAX_PACKET_SIZE*2 ||
-	    link_status.stats.rx_data_bytes > KNET_MAX_PACKET_SIZE*2) {
-	    printf("stats look wrong: tx_packets: %lu (%lu bytes), rx_packets: %lu (%lu bytes)\n",
-		   link_status.stats.tx_data_packets,
-		   link_status.stats.tx_data_bytes,
-		   link_status.stats.rx_data_packets,
-		   link_status.stats.rx_data_bytes);
-	}
+	if (strcmp(model, "none") == 0) {
+		if (stats.tx_compressed_packets != 0 ||
+		    stats.rx_compressed_packets != 0) {
 
+			printf("stats look wrong: s/b all 0 for model 'none' tx_packets: %lu (%lu/%lu comp/uncomp), rx_packets: %lu (%lu/%lu comp/uncomp)\n",
+			       stats.tx_compressed_packets,
+			       stats.tx_compressed_size_bytes,
+			       stats.tx_compressed_original_bytes,
+			       stats.rx_compressed_packets,
+			       stats.rx_compressed_size_bytes,
+			       stats.rx_compressed_original_bytes);
+		}
+	} else {
+		if (stats.tx_compressed_packets != 1 ||
+		    stats.rx_compressed_packets != 1 ||
+		    stats.tx_compressed_original_bytes < stats.tx_compressed_size_bytes ||
+		    stats.tx_compressed_original_bytes < stats.tx_compressed_size_bytes) {
+			printf("stats look wrong: tx_packets: %lu (%lu/%lu comp/uncomp), rx_packets: %lu (%lu/%lu comp/uncomp)\n",
+			       stats.tx_compressed_packets,
+			       stats.tx_compressed_size_bytes,
+			       stats.tx_compressed_original_bytes,
+			       stats.rx_compressed_packets,
+			       stats.rx_compressed_size_bytes,
+			       stats.rx_compressed_original_bytes);
+
+		}
+	}
 	flush_logs(logfds[0], stdout);
-#endif
 
 	knet_link_set_enable(knet_h, 1, 0, 0);
 	knet_link_clear_config(knet_h, 1, 0);
