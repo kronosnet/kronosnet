@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2015 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
@@ -76,6 +76,7 @@ AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 AC_ARG_ENABLE([libknet-sctp],
 	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
 	[ enable_libknet_sctp="yes" ])
+AM_CONDITIONAL([BUILDSCTP], [test x$enable_libknet_sctp = xyes])
 
 AC_ARG_ENABLE([crypto-all],
 	[  --disable-crypto-all              : disable libknet all crypto modules support ],,
@@ -84,6 +85,7 @@ AC_ARG_ENABLE([crypto-all],
 AC_ARG_ENABLE([crypto-nss],
 	[  --disable-crypto-nss              : disable libknet nss support ],,
 	[ enable_crypto_nss="$enable_crypto_all" ])
+AM_CONDITIONAL([BUILDCRYPTONSS], [test x$enable_crypto_nss = xyes])
 
 AC_ARG_ENABLE([compress-all],
 	[  --disable-compress-all            : disable libknet all compress modules support ],,
@@ -92,22 +94,27 @@ AC_ARG_ENABLE([compress-all],
 AC_ARG_ENABLE([compress-zlib],
 	[  --disable-compress-zlib           : disable libknet zlib support ],,
 	[ enable_compress_zlib="$enable_compress_all" ])
+AM_CONDITIONAL([BUILDCOMPZLIB], [test x$enable_compress_zlib = xyes])
 
 AC_ARG_ENABLE([compress-lz4],
 	[  --disable-compress-lz4            : disable libknet lz4 support ],,
 	[ enable_compress_lz4="$enable_compress_all" ])
+AM_CONDITIONAL([BUILDCOMPLZ4], [test x$enable_compress_lz4 = xyes])
 
 AC_ARG_ENABLE([compress-lzo2],
 	[  --disable-compress-lzo2           : disable libknet lzo2 support ],,
 	[ enable_compress_lzo2="$enable_compress_all" ])
+AM_CONDITIONAL([BUILDCOMPLZO2], [test x$enable_compress_lzo2 = xyes])
 
 AC_ARG_ENABLE([compress-lzma],
 	[  --disable-compress-lzma           : disable libknet lzma support ],,
 	[ enable_compress_lzma="$enable_compress_all" ])
+AM_CONDITIONAL([BUILDCOMPLZMA], [test x$enable_compress_lzma = xyes])
 
 AC_ARG_ENABLE([compress-bzip2],
 	[  --disable-compress-bzip2          : disable libknet bzip2 support ],,
 	[ enable_compress_bzip2="$enable_compress_all" ])
+AM_CONDITIONAL([BUILDCOMPBZIP2], [test x$enable_compress_bzip2 = xyes])
 
 AC_ARG_ENABLE([poc],
 	[  --disable-poc                     : disable building poc code ],,

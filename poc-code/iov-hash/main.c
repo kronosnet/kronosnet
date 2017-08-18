@@ -9,7 +9,7 @@
  * practice to use raw DES Keys. This example shows the use of a RAW key.
  */
 
-
+#ifdef BUILDCRYPTONSS
 #include <nss.h>
 #include <pk11pub.h>
 #include <prerror.h>
@@ -169,3 +169,12 @@ out:
  return 0;
 
 }
+#else
+#include <stdio.h>
+
+int main(void)
+{
+	printf("you need nss build for this PoC to work\n");
+	return 0;
+}
+#endif

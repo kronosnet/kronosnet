@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2015 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -100,6 +100,41 @@ $(SPEC): $(SPEC).in .version config.status
 		$< > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
+if BUILDSCTP
+	sed -i -e "s#@sctp@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@sctp@#bcond_with#g" $@-t
+endif
+if BUILDCRYPTONSS
+	sed -i -e "s#@nss@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@nss@#bcond_with#g" $@-t
+endif
+if BUILDCOMPZLIB
+	sed -i -e "s#@zlib@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@zlib@#bcond_with#g" $@-t
+endif
+if BUILDCOMPLZ4
+	sed -i -e "s#@lz4@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@lz4@#bcond_with#g" $@-t
+endif
+if BUILDCOMPLZO2
+	sed -i -e "s#@lzo2@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@lzo2@#bcond_with#g" $@-t
+endif
+if BUILDCOMPLZMA
+	sed -i -e "s#@lzma@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@lzma@#bcond_with#g" $@-t
+endif
+if BUILDCOMPBZIP2
+	sed -i -e "s#@bzip2@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@bzip2@#bcond_with#g" $@-t
+endif
 if BUILD_KRONOSNETD
 	sed -i -e "s#@kronosnetd@#bcond_without#g" $@-t
 else

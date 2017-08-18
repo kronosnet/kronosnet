@@ -1,7 +1,7 @@
 ###############################################################################
 ###############################################################################
 ##
-##  Copyright (C) 2010-2015 Red Hat, Inc.  All rights reserved.
+##  Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
 ##
 ##  This copyrighted material is made available to anyone wishing to use,
 ##  modify, copy, or redistribute it subject to the terms and conditions
@@ -16,9 +16,37 @@
 %global dirty @dirty@
 
 # set defaults from ./configure invokation
+%@sctp@ sctp
+%@nss@ nss
+%@zlib@ zlib
+%@lz4@ lz4
+%@lzo2@ lzo2
+%@lzma@ lzma
+%@bzip2@ bzip2
 %@kronosnetd@ kronosnetd
 %@libtap@ libtap
 
+%if %{with sctp}
+%global buildsctp 1
+%endif
+%if %{with nss}
+%global buildcryptonss 1
+%endif
+%if %{with zlib}
+%global buildcompresszlib 1
+%endif
+%if %{with lz4}
+%global buildcompresslz4 1
+%endif
+%if %{with lzo2}
+%global buildcompresslzo2 1
+%endif
+%if %{with lzma}
+%global buildcompresslzma 1
+%endif
+%if %{with bzip2}
+%global buildcompressbzip2 1
+%endif
 %if %{with libtap}
 %global buildlibtap 1
 %endif
@@ -44,8 +72,27 @@ Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}%{?numc
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
-BuildRequires: nss-devel lksctp-tools-devel
-BuildRequires: zlib-devel lz4-devel lzo-devel xz-devel bzip2-devel
+%if %{defined buildsctp}
+BuildRequires: lksctp-tools-devel
+%endif
+%if %{defined buildcryptonss}
+BuildRequires: nss-devel
+%endif
+%if %{defined buildcompresszlib}
+BuildRequires: zlib-devel
+%endif
+%if %{defined buildcompresslz4}
+BuildRequires: lz4-devel
+%endif
+%if %{defined buildcompresslzo2}
+BuildRequires: lzo-devel
+%endif
+%if %{defined buildcompresslzma}
+BuildRequires: xz-devel
+%endif
+%if %{defined buildcompressbzip2}
+BuildRequires: bzip2-devel
+%endif
 %if %{defined buildkronosnetd}
 BuildRequires: libqb-devel pam-devel
 %endif
@@ -55,6 +102,41 @@ BuildRequires: libqb-devel pam-devel
 
 %build
 %{configure} --disable-poc \
+%if %{defined buildsctp}
+	--enable-libknet-sctp \
+%else
+	--disable-libknet-sctp \
+%endif
+%if %{defined buildcryptonss}
+	--enable-crypto-nss \
+%else
+	--disable-crypto-nss \
+%endif
+%if %{defined buildcompresszlib}
+	--enable-compress-zlib \
+%else
+	--disable-compress-zlib \
+%endif
+%if %{defined buildcompresslz4}
+	--enable-compress-lz4 \
+%else
+	--disable-compress-lz4 \
+%endif
+%if %{defined buildcompresslzo2}
+	--enable-compress-lzo2 \
+%else
+	--disable-compress-lzo2 \
+%endif
+%if %{defined buildcompresslzma}
+	--enable-compress-lzma \
+%else
+	--disable-compress-lzma \
+%endif
+%if %{defined buildcompressbzip2}
+	--enable-compress-bzip2 \
+%else
+	--disable-compress-bzip2 \
+%endif
 %if %{defined buildkronosnetd}
 	--enable-kronosnetd \
 %endif
