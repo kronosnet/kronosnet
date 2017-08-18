@@ -14,7 +14,7 @@
 #include <time.h>
 
 #include "crypto.h"
-#include "nsscrypto.h"
+#include "crypto_nss.h"
 #include "internals.h"
 #include "logging.h"
 

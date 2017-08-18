@@ -32,12 +32,12 @@ sources			= \
 			  compress_lzma.c \
 			  compress_bzip2.c \
 			  crypto.c \
+			  crypto_nss.c \
 			  handle.c \
 			  host.c \
 			  link.c \
 			  logging.c \
 			  netutils.c \
-			  nsscrypto.c \
 			  threads_common.c \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \
@@ -65,12 +65,12 @@ noinst_HEADERS		= \
 			  compress_lzma.h \
 			  compress_bzip2.h \
 			  crypto.h \
+			  crypto_nss.h \
 			  host.h \
 			  internals.h \
 			  link.h \
 			  logging.h \
 			  netutils.h \
-			  nsscrypto.h \
 			  onwire.h \
 			  threads_common.h \
 			  threads_dsthandler.h \

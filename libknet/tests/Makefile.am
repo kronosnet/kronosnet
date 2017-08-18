@@ -62,7 +62,7 @@ pckt_test_SOURCES	= pckt_test.c
 
 int_crypto_test_SOURCES = int_crypto.c \
 			  ../crypto.c \
-			  ../nsscrypto.c \
+			  ../crypto_nss.c \
 			  ../logging.c \
 			  test-common.c
 
@@ -74,7 +74,7 @@ int_timediff_test_SOURCES = int_timediff.c
 
 crypto_bench_test_SOURCES = crypto_bench.c \
 			    ../crypto.c \
-			    ../nsscrypto.c \
+			    ../crypto_nss.c \
 			    ../logging.c \
 			    test-common.c
 

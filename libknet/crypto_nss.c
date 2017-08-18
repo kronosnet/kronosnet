@@ -20,7 +20,7 @@
 #include <secerr.h>
 
 #include "crypto.h"
-#include "nsscrypto.h"
+#include "crypto_nss.h"
 #include "logging.h"
 
 static pthread_mutex_t nssdbinit_mutex = PTHREAD_MUTEX_INITIALIZER;
