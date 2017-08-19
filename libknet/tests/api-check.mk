@@ -9,6 +9,7 @@
 api_checks		= \
 			  api_knet_handle_new_test \
 			  api_knet_handle_free_test \
+			  api_knet_handle_new_limit_test \
 			  api_knet_handle_compress_test \
 			  api_knet_handle_crypto_test \
 			  api_knet_handle_setfwd_test \
@@ -70,6 +71,9 @@ api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 
 api_knet_handle_free_test_SOURCES = api_knet_handle_free.c \
 				    test-common.c
+
+api_knet_handle_new_limit_test_SOURCES = api_knet_handle_new_limit.c \
+					 test-common.c
 
 api_knet_handle_compress_test_SOURCES = api_knet_handle_compress.c \
 					test-common.c

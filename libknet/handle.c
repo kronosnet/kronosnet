@@ -35,6 +35,73 @@
 
 static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+pthread_rwlock_t shlib_rwlock;
+static uint8_t shlib_wrlock_init = 0;
+
+/*
+ * UINT8_MAX knet_handles need more than 20GB of RAM
+ * and you need to tune ulimit for tons of open file
+ * descriptors.
+ */
+static knet_handle_t *knet_handle_tracker[UINT8_MAX];
+static uint8_t knet_ref = 0;
+
+static int _init_handles_tracker(knet_handle_t knet_h)
+{
+	int savederrno = 0;
+	uint8_t idx = 0;
+
+	if (!shlib_wrlock_init) {
+		for (idx = 0; idx < UINT8_MAX; idx++) {
+			knet_handle_tracker[idx] = NULL;
+		}
+		savederrno = pthread_rwlock_init(&shlib_rwlock, NULL);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize shared lib rwlock: %s",
+				strerror(savederrno));
+			errno = savederrno;
+			return -1;
+		}
+		shlib_wrlock_init = 1;
+	}
+
+	return 0;
+}
+
+static void _fini_handles_tracker(void)
+{
+	if (knet_ref == 0) {
+		pthread_rwlock_destroy(&shlib_rwlock);
+		shlib_wrlock_init = 0;
+	}
+	return;
+}
+
+static int _register_handle(knet_handle_t knet_h)
+{
+	uint8_t idx = 0;
+
+	knet_h->this_knet_h_id = UINT8_MAX;
+	for (idx = 0; idx < UINT8_MAX; idx++) {
+		if (knet_handle_tracker[idx] == NULL) {
+			knet_handle_tracker[idx] = &knet_h;
+			knet_h->this_knet_h_id = idx;
+			return 0;
+		}
+	}
+
+	errno = EBUSY;
+	return -1;
+}
+
+static void _unregister_handle(knet_handle_t knet_h)
+{
+	if (knet_h->this_knet_h_id != UINT8_MAX) {
+		knet_handle_tracker[knet_h->this_knet_h_id] = NULL;
+	}
+	return;
+}
+
 static int _init_locks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -610,6 +677,25 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
 
 	/*
+	 * init global handles tracker
+	 */
+	if (_init_handles_tracker(knet_h) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init handles traceker: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		goto exit_fail;
+	}
+
+	if (_register_handle(knet_h) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to register handle: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		goto exit_fail;
+	}
+
+	/*
 	 * init main locking structures
 	 */
 
@@ -667,6 +753,8 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		savederrno = errno;
 		goto exit_fail;
 	}
+
+	knet_ref++;
 
 	pthread_mutex_unlock(&handle_config_mutex);
 	return knet_h;
@@ -732,10 +820,13 @@ int knet_handle_free(knet_handle_t knet_h)
 	crypto_fini(knet_h);
 	compress_fini(knet_h);
 	_destroy_locks(knet_h);
+	_unregister_handle(knet_h);
 
 exit_nolock:
 	free(knet_h);
 	knet_h = NULL;
+	knet_ref--;
+	_fini_handles_tracker();
 	pthread_mutex_unlock(&handle_config_mutex);
 	return 0;
 }
