@@ -9,7 +9,6 @@
 api_checks		= \
 			  api_knet_handle_new_test \
 			  api_knet_handle_free_test \
-			  api_knet_handle_new_limit_test \
 			  api_knet_handle_compress_test \
 			  api_knet_handle_crypto_test \
 			  api_knet_handle_setfwd_test \

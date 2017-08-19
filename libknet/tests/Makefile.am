@@ -43,6 +43,7 @@ benchmarks		= \
 			  knet_bench_test
 
 noinst_PROGRAMS		= \
+			  api_knet_handle_new_limit_test \
 			  pckt_test \
 			  $(benchmarks) \
 			  $(check_PROGRAMS)
