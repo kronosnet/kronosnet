@@ -250,8 +250,7 @@ out:
 }
 
 void compress_fini(
-	knet_handle_t knet_h,
-	int knet_ref)
+	knet_handle_t knet_h)
 {
 	int savederrno;
 	int idx = 0;
@@ -268,7 +267,7 @@ void compress_fini(
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
 			if (compress_modules_cmds[idx].fini != NULL) {
-				compress_modules_cmds[idx].fini(knet_h, idx, knet_ref);
+				compress_modules_cmds[idx].fini(knet_h, idx);
 			}
 			compress_modules_cmds[idx].loaded = 0;
 		}

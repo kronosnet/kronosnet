@@ -818,7 +818,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	_destroy_buffers(knet_h);
 	_close_socks(knet_h);
 	crypto_fini(knet_h);
-	compress_fini(knet_h, knet_ref - 1);
+	compress_fini(knet_h);
 	_destroy_locks(knet_h);
 	_unregister_handle(knet_h);
 

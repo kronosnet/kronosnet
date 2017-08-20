@@ -93,6 +93,6 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
-libknet_la_LIBADD	= $(nss_LIBS) \
-			  $(zlib_LIBS) $(liblz4_LIBS) $(lzo2_LIBS) $(liblzma_LIBS) $(bzip2_LIBS) \
+libknet_la_LIBADD	= $(dl_LIBS) \
+			  $(nss_LIBS) $(zlib_LIBS) $(liblz4_LIBS) $(liblzma_LIBS) $(bzip2_LIBS) \
 			  -lrt -lpthread -lm

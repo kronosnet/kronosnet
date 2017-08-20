@@ -173,6 +173,8 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([m], [ceil])
 AC_CHECK_LIB([rt], [clock_gettime])
 
+AC_SEARCH_LIBS([dlopen], [dl dld], [AC_SUBST([dl_LIBS], [$ac_res])], [AC_MSG_ERROR([unable to find the dlopen() function])])
+
 # workaround pkg-config bootstrapping
 PKG_CHECK_MODULES([foobarbaz],[foobarbaz], [AC_MSG_NOTICE([bootstrapping pkg-config])], [AC_MSG_NOTICE([bootstrapping pkg-config])])
 

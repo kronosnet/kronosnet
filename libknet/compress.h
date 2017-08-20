@@ -17,7 +17,7 @@ typedef struct {
 	uint8_t		loaded;
 	const char	*model_name;
 	int (*init)     (knet_handle_t knet_h, int method_idx);
-	void (*fini)    (knet_handle_t knet_h, int method_idx, int knet_ref);
+	void (*fini)    (knet_handle_t knet_h, int method_idx);
 	int (*val_level)(knet_handle_t knet_h,
 			 int compress_level);
 	int (*compress)	(knet_handle_t knet_h,
@@ -40,8 +40,7 @@ int compress_init(
 	knet_handle_t knet_h);
 
 void compress_fini(
-	knet_handle_t knet_h,
-	int knet_ref);
+	knet_handle_t knet_h);
 
 int compress(
 	knet_handle_t knet_h,
