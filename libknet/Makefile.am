@@ -94,5 +94,5 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  -version-number $(libversion)
 
 libknet_la_LIBADD	= $(dl_LIBS) \
-			  $(nss_LIBS) $(zlib_LIBS) $(liblz4_LIBS) $(liblzma_LIBS) $(bzip2_LIBS) \
+			  $(nss_LIBS) $(liblz4_LIBS) $(liblzma_LIBS) $(bzip2_LIBS) \
 			  -lrt -lpthread -lm

@@ -11,6 +11,14 @@
 
 #include "internals.h"
 
+int zlib_init(
+	knet_handle_t knet_h,
+	int method_idx);
+
+void zlib_fini(
+	knet_handle_t knet_h,
+	int method_idx);
+
 int zlib_val_level(
 	knet_handle_t knet_h,
 	int compress_level);

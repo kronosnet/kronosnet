@@ -47,7 +47,7 @@
 compress_model_t compress_modules_cmds[] = {
 	{ 0, 1, 0, "none", NULL, NULL, NULL, NULL, NULL, NULL },
 #ifdef BUILDCOMPZLIB
-	{ 1, 1, 0, "zlib", NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+	{ 1, 1, 0, "zlib", NULL, zlib_init, zlib_fini, zlib_val_level, zlib_compress, zlib_decompress },
 #else
 	{ 1, 0, 0, "zlib", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif

@@ -11,12 +11,103 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <dlfcn.h>
 #ifdef BUILDCOMPZLIB
 #include <zlib.h>
 
 #include "internals.h"
 #include "compress_zlib.h"
 #include "logging.h"
+
+/*
+ * global vars for dlopen
+ */
+static void* zlib_lib;
+static int zlib_libref = 0;
+
+/*
+ * symbols remapping
+ */
+int (*_int_uncompress)(Bytef *dest, uLongf *destLen,
+		       const Bytef *source, uLong sourceLen);
+int (*_int_compress2)(Bytef *dest, uLongf *destLen,
+		      const Bytef *source, uLong sourceLen,
+		      int level);
+
+static int zlib_remap_symbols(knet_handle_t knet_h)
+{
+	int err = 0;
+	char *error = NULL;
+
+	_int_uncompress = dlsym(zlib_lib, "uncompress");
+	if (!_int_uncompress) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to map uncompress: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_compress2 = dlsym(zlib_lib, "compress2");
+	if (!_int_compress2) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to map compress2: %s", error);
+		err = -1;
+		goto out;
+	}
+
+out:
+	if (err) {
+		_int_uncompress = NULL;
+		_int_compress2 = NULL;
+		errno = EINVAL;
+	}
+	return err;
+}
+
+void zlib_fini(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	zlib_libref--;
+	if ((zlib_lib) && (zlib_libref == 0)) {
+		dlclose(zlib_lib);
+	}
+	return;
+}
+
+int zlib_init(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	int err = 0, savederrno = 0;
+	char *error = NULL;
+
+	if (!zlib_lib) {
+		/*
+		 * clear any pending error
+		 */
+		dlerror();
+
+		zlib_lib = dlopen("libz.so.1", RTLD_LAZY | RTLD_GLOBAL);
+		error = dlerror();
+		if (error != NULL) {
+			log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to dlopen libz.so.1: %s", error);
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
+
+		if (zlib_remap_symbols(knet_h) < 0) {
+			savederrno = errno;
+			err = -1;
+			goto out;
+		}
+	}
+	zlib_libref++;
+out:
+	errno = savederrno;
+	return err;
+}
 
 int zlib_val_level(
 	knet_handle_t knet_h,
@@ -48,9 +139,9 @@ int zlib_compress(
 	int savederrno = 0;
 	uLongf destLen = *buf_out_len;
 
-	zerr = compress2(buf_out, &destLen,
-			 buf_in, buf_in_len,
-			 knet_h->compress_level);
+	zerr = (*_int_compress2)(buf_out, &destLen,
+				 buf_in, buf_in_len,
+				 knet_h->compress_level);
 
 	*buf_out_len = destLen;
 
@@ -94,8 +185,8 @@ int zlib_decompress(
 	int savederrno = 0;
 	uLongf destLen = *buf_out_len;
 
-	zerr = uncompress(buf_out, &destLen,
-			  buf_in, buf_in_len);
+	zerr = (*_int_uncompress)(buf_out, &destLen,
+				  buf_in, buf_in_len);
 
 	*buf_out_len = destLen;
 
