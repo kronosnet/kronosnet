@@ -46,7 +46,8 @@ int lzo2_init(
 
 void lzo2_fini(
 	knet_handle_t knet_h,
-	int method_idx)
+	int method_idx,
+	int knet_ref)
 {
 	if (knet_h->compress_int_data[method_idx]) {
 		free(knet_h->compress_int_data[method_idx]);

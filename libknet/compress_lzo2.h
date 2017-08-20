@@ -17,7 +17,8 @@ int lzo2_init(
 
 void lzo2_fini(
 	knet_handle_t knet_h,
-	int method_idx);
+	int method_idx,
+	int knet_ref);
 
 int lzo2_val_level(
 	knet_handle_t knet_h,
