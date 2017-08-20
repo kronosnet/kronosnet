@@ -22,7 +22,7 @@
 /*
  * global vars for dlopen
  */
-static int lzo2_libref = 0;
+static void* lzo2_lib;
 
 /*
  * symbols remapping
@@ -47,20 +47,12 @@ int (*_int_lzo1x_999_compress)(const lzo_bytep src, lzo_uint src_len,
 			       lzo_bytep dst, lzo_uintp dst_len,
 			       lzo_voidp wrkmem);
 
-/*
- * per handle dlopen + internal init
- */
-struct lzo2_data {
-	void *lib;
-	void *workmem;
-};
-
-static int lzo2_remap_symbols(knet_handle_t knet_h, void *lib)
+static int lzo2_remap_symbols(knet_handle_t knet_h)
 {
 	int err = 0;
 	char *error = NULL;
 
-	_int_lzo1x_decompress = dlsym(lib, "lzo1x_decompress");
+	_int_lzo1x_decompress = dlsym(lzo2_lib, "lzo1x_decompress");
 	if (!_int_lzo1x_decompress) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_decompress: %s", error);
@@ -68,7 +60,7 @@ static int lzo2_remap_symbols(knet_handle_t knet_h, void *lib)
 		goto out;
 	}
 
-	_int_lzo1x_1_compress = dlsym(lib, "lzo1x_1_compress");
+	_int_lzo1x_1_compress = dlsym(lzo2_lib, "lzo1x_1_compress");
 	if (!_int_lzo1x_1_compress) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_compress: %s", error);
@@ -76,7 +68,7 @@ static int lzo2_remap_symbols(knet_handle_t knet_h, void *lib)
 		goto out;
 	}
 
-	_int_lzo1x_1_11_compress = dlsym(lib, "lzo1x_1_11_compress");
+	_int_lzo1x_1_11_compress = dlsym(lzo2_lib, "lzo1x_1_11_compress");
 	if (!_int_lzo1x_1_11_compress) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_11_compress: %s", error);
@@ -84,7 +76,7 @@ static int lzo2_remap_symbols(knet_handle_t knet_h, void *lib)
 		goto out;
 	}
 
-	_int_lzo1x_1_12_compress = dlsym(lib, "lzo1x_1_12_compress");
+	_int_lzo1x_1_12_compress = dlsym(lzo2_lib, "lzo1x_1_12_compress");
 	if (!_int_lzo1x_1_12_compress) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_12_compress: %s", error);
@@ -92,7 +84,7 @@ static int lzo2_remap_symbols(knet_handle_t knet_h, void *lib)
 		goto out;
 	}
 
-	_int_lzo1x_1_15_compress = dlsym(lib, "lzo1x_1_15_compress");
+	_int_lzo1x_1_15_compress = dlsym(lzo2_lib, "lzo1x_1_15_compress");
 	if (!_int_lzo1x_1_15_compress) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_15_compress: %s", error);
@@ -100,7 +92,7 @@ static int lzo2_remap_symbols(knet_handle_t knet_h, void *lib)
 		goto out;
 	}
 
-	_int_lzo1x_999_compress = dlsym(lib, "lzo1x_999_compress");
+	_int_lzo1x_999_compress = dlsym(lzo2_lib, "lzo1x_999_compress");
 	if (!_int_lzo1x_999_compress) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_999_compress: %s", error);
@@ -125,24 +117,15 @@ void lzo2_fini(
 	knet_handle_t knet_h,
 	int method_idx)
 {
-	struct lzo2_data *lzo2_data = knet_h->compress_int_data[method_idx];
-
-	if (lzo2_data) {
-		lzo2_libref--;
-		if (lzo2_data->workmem) {
-			free(lzo2_data->workmem);
-			lzo2_data->workmem = NULL;
-		}
-		if ((lzo2_libref == 0) && (lzo2_data->lib)) {
-			dlclose(lzo2_data->lib);
-		}
-		lzo2_data->lib = NULL;
-		lzo2_data = NULL;
-		if (knet_h->compress_int_data[method_idx]) {
-			free(knet_h->compress_int_data[method_idx]);
-			knet_h->compress_int_data[method_idx] = NULL;
-		}
+	if (knet_h->compress_int_data[method_idx]) {
+		free(knet_h->compress_int_data[method_idx]);
+		knet_h->compress_int_data[method_idx] = NULL;
 	}
+	/*
+	if ((lzo2_libref == 0) && (lzo2_data->lib)) {
+		dlclose(lzo2_data->lib);
+	}
+	*/
 	return;
 }
 
@@ -151,24 +134,14 @@ int lzo2_init(
 	int method_idx)
 {
 	int err = 0, savederrno = 0;
-	struct lzo2_data *lzo2_data;
 	char *error = NULL;
-
-	knet_h->compress_int_data[method_idx] = malloc(sizeof(struct lzo2_data));
-	if (!knet_h->compress_int_data[method_idx]) {
-		errno = ENOMEM;
-		return -1;
-	}
-
-	lzo2_data = knet_h->compress_int_data[method_idx];
-	memset(lzo2_data, 0, sizeof(struct lzo2_data));
 
 	/*
 	 * clear any pending error
 	 */
 	dlerror();
 
-	lzo2_data->lib = dlopen("liblzo2.so.2", RTLD_LAZY | RTLD_GLOBAL);
+	lzo2_lib = dlopen("liblzo2.so.2", RTLD_LAZY | RTLD_GLOBAL);
 	error = dlerror();
 	if (error != NULL) {
 		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to dlopen liblzo2.so.2: %s", error);
@@ -177,7 +150,7 @@ int lzo2_init(
 		goto out;
 	}
 
-	if (lzo2_remap_symbols(knet_h, lzo2_data->lib) > 0) {
+	if (lzo2_remap_symbols(knet_h) < 0) {
 		savederrno = errno;
 		err = -1;
 		goto out;
@@ -186,19 +159,16 @@ int lzo2_init(
 	/*
 	 * LZO1X_999_MEM_COMPRESS is the highest amount of memory lzo2 can use
 	 */
-	lzo2_data->workmem = malloc(LZO1X_999_MEM_COMPRESS);
-
-	if (!lzo2_data->workmem) {
+	knet_h->compress_int_data[method_idx] = malloc(LZO1X_999_MEM_COMPRESS);
+	if (!knet_h->compress_int_data[method_idx]) {
 		log_err(knet_h, KNET_SUB_LZO2COMP, "lzo2 unable to allocate work memory");
 		savederrno = ENOMEM;
 		err = -1;
 		goto out;
 	}
-
-	memset(lzo2_data->workmem, 0, LZO1X_999_MEM_COMPRESS);
+	memset(knet_h->compress_int_data[method_idx], 0, LZO1X_999_MEM_COMPRESS);
 
 out:
-	lzo2_libref++;
 	if (err) {
 		lzo2_fini(knet_h, method_idx);
 	}
@@ -242,27 +212,26 @@ int lzo2_compress(
 	ssize_t *buf_out_len)
 {
 	int savederrno = 0, lzerr = 0, err = 0;
-	struct lzo2_data *lzo2_data = knet_h->compress_int_data[knet_h->compress_model];
 	lzo_uint cmp_len;
 
 	switch(knet_h->compress_level) {
 		case 1:
-			lzerr = (*_int_lzo1x_1_compress)(buf_in, buf_in_len, buf_out, &cmp_len, lzo2_data->workmem);
+			lzerr = (*_int_lzo1x_1_compress)(buf_in, buf_in_len, buf_out, &cmp_len, knet_h->compress_int_data[knet_h->compress_model]);
 			break;
 		case 11:
-			lzerr = (*_int_lzo1x_1_11_compress)(buf_in, buf_in_len, buf_out, &cmp_len, lzo2_data->workmem);
+			lzerr = (*_int_lzo1x_1_11_compress)(buf_in, buf_in_len, buf_out, &cmp_len, knet_h->compress_int_data[knet_h->compress_model]);
 			break;
 		case 12:
-			lzerr = (*_int_lzo1x_1_12_compress)(buf_in, buf_in_len, buf_out, &cmp_len, lzo2_data->workmem);
+			lzerr = (*_int_lzo1x_1_12_compress)(buf_in, buf_in_len, buf_out, &cmp_len, knet_h->compress_int_data[knet_h->compress_model]);
 			break;
 		case 15:
-			lzerr = (*_int_lzo1x_1_15_compress)(buf_in, buf_in_len, buf_out, &cmp_len, lzo2_data->workmem);
+			lzerr = (*_int_lzo1x_1_15_compress)(buf_in, buf_in_len, buf_out, &cmp_len, knet_h->compress_int_data[knet_h->compress_model]);
 			break;
 		case 999:
-			lzerr = (*_int_lzo1x_999_compress)(buf_in, buf_in_len, buf_out, &cmp_len, lzo2_data->workmem);
+			lzerr = (*_int_lzo1x_999_compress)(buf_in, buf_in_len, buf_out, &cmp_len, knet_h->compress_int_data[knet_h->compress_model]);
 			break;
 		default:
-			lzerr = (*_int_lzo1x_1_compress)(buf_in, buf_in_len, buf_out, &cmp_len, lzo2_data->workmem);
+			lzerr = (*_int_lzo1x_1_compress)(buf_in, buf_in_len, buf_out, &cmp_len, knet_h->compress_int_data[knet_h->compress_model]);
 			break;
 	}
 
