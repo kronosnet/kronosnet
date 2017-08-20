@@ -23,6 +23,7 @@
  * global vars for dlopen
  */
 static void* lzo2_lib;
+static int lzo2_libref = 0;
 
 /*
  * symbols remapping
@@ -120,13 +121,22 @@ void lzo2_fini(
 	if (knet_h->compress_int_data[method_idx]) {
 		free(knet_h->compress_int_data[method_idx]);
 		knet_h->compress_int_data[method_idx] = NULL;
+		lzo2_libref--;
 	}
-	/*
-	if ((lzo2_libref == 0) && (lzo2_data->lib)) {
-		dlclose(lzo2_data->lib);
+	if ((lzo2_lib) && (lzo2_libref == 0)) {
+		dlclose(lzo2_lib);
 	}
-	*/
 	return;
+}
+
+int lzo2_is_init(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	if (knet_h->compress_int_data[method_idx]) {
+		return 1;
+	}
+	return 0;
 }
 
 int lzo2_init(
@@ -136,37 +146,42 @@ int lzo2_init(
 	int err = 0, savederrno = 0;
 	char *error = NULL;
 
-	/*
-	 * clear any pending error
-	 */
-	dlerror();
+	if (!lzo2_lib) {
+		/*
+		 * clear any pending error
+		 */
+		dlerror();
 
-	lzo2_lib = dlopen("liblzo2.so.2", RTLD_LAZY | RTLD_GLOBAL);
-	error = dlerror();
-	if (error != NULL) {
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to dlopen liblzo2.so.2: %s", error);
-		savederrno = EAGAIN;
-		err = -1;
-		goto out;
-	}
+		lzo2_lib = dlopen("liblzo2.so.2", RTLD_LAZY | RTLD_GLOBAL);
+		error = dlerror();
+		if (error != NULL) {
+			log_err(knet_h, KNET_SUB_LZO2COMP, "unable to dlopen liblzo2.so.2: %s", error);
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
 
-	if (lzo2_remap_symbols(knet_h) < 0) {
-		savederrno = errno;
-		err = -1;
-		goto out;
+		if (lzo2_remap_symbols(knet_h) < 0) {
+			savederrno = errno;
+			err = -1;
+			goto out;
+		}
 	}
 
 	/*
 	 * LZO1X_999_MEM_COMPRESS is the highest amount of memory lzo2 can use
 	 */
-	knet_h->compress_int_data[method_idx] = malloc(LZO1X_999_MEM_COMPRESS);
 	if (!knet_h->compress_int_data[method_idx]) {
-		log_err(knet_h, KNET_SUB_LZO2COMP, "lzo2 unable to allocate work memory");
-		savederrno = ENOMEM;
-		err = -1;
-		goto out;
+		knet_h->compress_int_data[method_idx] = malloc(LZO1X_999_MEM_COMPRESS);
+		if (!knet_h->compress_int_data[method_idx]) {
+			log_err(knet_h, KNET_SUB_LZO2COMP, "lzo2 unable to allocate work memory");
+			savederrno = ENOMEM;
+			err = -1;
+			goto out;
+		}
+		memset(knet_h->compress_int_data[method_idx], 0, LZO1X_999_MEM_COMPRESS);
+		lzo2_libref++;
 	}
-	memset(knet_h->compress_int_data[method_idx], 0, LZO1X_999_MEM_COMPRESS);
 
 out:
 	if (err) {

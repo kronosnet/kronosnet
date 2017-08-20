@@ -16,6 +16,7 @@ typedef struct {
 	uint8_t		built_in;
 	uint8_t		loaded;
 	const char	*model_name;
+	int (*is_init)  (knet_handle_t knet_h, int method_idx);
 	int (*init)     (knet_handle_t knet_h, int method_idx);
 	void (*fini)    (knet_handle_t knet_h, int method_idx);
 	int (*val_level)(knet_handle_t knet_h,

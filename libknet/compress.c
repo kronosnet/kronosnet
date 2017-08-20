@@ -45,35 +45,35 @@
  */
 
 compress_model_t compress_modules_cmds[] = {
-	{ 0, 1, 0, "none", NULL, NULL, NULL, NULL, NULL },
+	{ 0, 1, 0, "none", NULL, NULL, NULL, NULL, NULL, NULL },
 #ifdef BUILDCOMPZLIB
-	{ 1, 1, 0, "zlib", NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+	{ 1, 1, 0, "zlib", NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
 #else
-	{ 1, 0, 0, "zlib", NULL, NULL, NULL, NULL, NULL },
+	{ 1, 0, 0, "zlib", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPLZ4
-	{ 2, 1, 0, "lz4", NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
-	{ 3, 1, 0, "lz4hc", NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+	{ 2, 1, 0, "lz4", NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
+	{ 3, 1, 0, "lz4hc", NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
 #else
-	{ 2, 0, 0, "lz4", NULL, NULL, NULL, NULL, NULL },
-	{ 3, 0, 0, "lz4hc", NULL, NULL, NULL, NULL, NULL },
+	{ 2, 0, 0, "lz4", NULL, NULL, NULL, NULL, NULL, NULL },
+	{ 3, 0, 0, "lz4hc", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPLZO2
-	{ 4, 1, 0, "lzo2", lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+	{ 4, 1, 0, "lzo2", lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
 #else
-	{ 4, 0, 0, "lzo2", NULL, NULL, NULL, NULL, NULL },
+	{ 4, 0, 0, "lzo2", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPLZMA
-	{ 5, 1, 0, "lzma", NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+	{ 5, 1, 0, "lzma", NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
 #else
-	{ 5, 0, 0, "lzma", NULL, NULL, NULL, NULL, NULL },
+	{ 5, 0, 0, "lzma", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPBZIP2
-	{ 6, 1, 0, "bzip2", NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+	{ 6, 1, 0, "bzip2", NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
 #else
-	{ 6, 0, 0, "bzip2", NULL, NULL, NULL, NULL, NULL },
+	{ 6, 0, 0, "bzip2", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
-	{ 255, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+	{ 255, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 };
 
 static int get_model(const char *model)
@@ -133,16 +133,22 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model)
 	}
 
 	/*
-	 * if the module is already loaded, we will return
-	 * and keep the lock to avoid any race condition
-	 * on other threads potentially unloading or reloading
+	 * if the module is already loaded and init for this handle,
+	 * we will return and keep the lock to avoid any race condition
+	 * on other threads potentially unloading or reloading.
+	 *
+	 * lack of a .is_init function means that the module does not require
+	 * init per handle
 	 */
-	if (compress_modules_cmds[cmp_model].loaded == 1) {
+	if ((compress_modules_cmds[cmp_model].loaded == 1) &&
+	    ((compress_modules_cmds[cmp_model].is_init == NULL) ||
+	     (compress_modules_cmds[cmp_model].is_init(knet_h, cmp_model) == 1))) {
 		return 0;
 	}
 
 	/*
 	 * need to switch to write lock, load the lib, and return with a write lock
+	 * this is not racy because .init should be written idempotent.
 	 */
 	pthread_rwlock_unlock(&shlib_rwlock);
 	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
@@ -154,17 +160,16 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model)
 	}
 
 	/*
-	 * check again after changing locking context
+	 * every module must provide a .init function
+	 * but this is useful while transition to dlopen model
 	 */
-	if (compress_modules_cmds[cmp_model].loaded == 0) {
-		if (compress_modules_cmds[cmp_model].init != NULL) {
-			if (compress_modules_cmds[cmp_model].init(knet_h, cmp_model) < 0) {
-				pthread_rwlock_unlock(&shlib_rwlock);
-				return -1;
-			}
+	if (compress_modules_cmds[cmp_model].init != NULL) {
+		if (compress_modules_cmds[cmp_model].init(knet_h, cmp_model) < 0) {
+			pthread_rwlock_unlock(&shlib_rwlock);
+			return -1;
 		}
-		compress_modules_cmds[cmp_model].loaded = 1;
 	}
+	compress_modules_cmds[cmp_model].loaded = 1;
 
 	return 0;
 }

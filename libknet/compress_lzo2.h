@@ -11,6 +11,10 @@
 
 #include "internals.h"
 
+int lzo2_is_init(
+	knet_handle_t knet_h,
+	int method_idx);
+
 int lzo2_init(
 	knet_handle_t knet_h,
 	int method_idx);
