@@ -148,9 +148,10 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	int msgs_to_send, msg_idx;
 	unsigned int i;
+	int j;
 	int send_local = 0;
 	int data_compressed = 0;
-	size_t uncrypt_outlen;
+	size_t uncrypted_frag_size;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -352,6 +353,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 			knet_h->stats.tx_compress_time_ave =
 				(unsigned long long)(knet_h->stats.tx_compress_time_ave * knet_h->stats.tx_compressed_packets +
 				 compress_time) / (knet_h->stats.tx_compressed_packets+1);
+
 			knet_h->stats.tx_compressed_packets++;
 			knet_h->stats.tx_compressed_original_bytes += inlen;
 			knet_h->stats.tx_compressed_size_bytes += cmp_outlen;
@@ -486,13 +488,13 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 			knet_h->stats.tx_crypt_time_ave =
 				(knet_h->stats.tx_crypt_time_ave * knet_h->stats.tx_crypt_packets +
 				 crypt_time) / (knet_h->stats.tx_crypt_packets+1);
-			knet_h->stats.tx_crypt_packets++;
 
-			uncrypt_outlen = 0;
-			for (i=0; i<iovcnt_out; i++) {
-				uncrypt_outlen += iov_out[i].iov_len;
+			uncrypted_frag_size = 0;
+			for (j=0; j < iovcnt_out; j++) {
+				uncrypted_frag_size += iov_out[frag_idx][j].iov_len;
 			}
-			knet_h->stats.tx_crypt_byte_overhead += (outlen - uncrypt_outlen);
+			knet_h->stats.tx_crypt_byte_overhead += (outlen - uncrypted_frag_size);
+			knet_h->stats.tx_crypt_packets++;
 
 			iov_out[frag_idx][0].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
 			iov_out[frag_idx][0].iov_len = outlen;
