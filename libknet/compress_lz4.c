@@ -22,7 +22,7 @@
 /*
  * global vars for dlopen
  */
-static void* lz4_lib;
+static void *lz4_lib;
 static int lz4_libref = 0;
 
 /*
