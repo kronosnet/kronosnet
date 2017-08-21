@@ -22,7 +22,7 @@
 /*
  * global vars for dlopen
  */
-static void* lzma_lib;
+static void *lzma_lib;
 static int lmza_libref = 0;
 
 /*
@@ -89,6 +89,8 @@ int lzma_init(
 		/*
 		 * clear any pending error
 		 */
+		dlerror();
+
 		lzma_lib = dlopen("liblzma.so.5", RTLD_LAZY | RTLD_GLOBAL);
 		error = dlerror();
 		if (error != NULL) {
