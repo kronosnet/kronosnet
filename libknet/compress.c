@@ -69,7 +69,7 @@ compress_model_t compress_modules_cmds[] = {
 	{ 5, 0, 0, "lzma", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPBZIP2
-	{ 6, 1, 0, "bzip2", NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+	{ 6, 1, 0, "bzip2", NULL, bzip2_init, bzip2_fini, bzip2_val_level, bzip2_compress, bzip2_decompress },
 #else
 	{ 6, 0, 0, "bzip2", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif

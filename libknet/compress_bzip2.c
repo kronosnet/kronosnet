@@ -11,12 +11,103 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <dlfcn.h>
 #ifdef BUILDCOMPBZIP2
 #include <bzlib.h>
 
 #include "internals.h"
 #include "compress_bzip2.h"
 #include "logging.h"
+
+/*
+ * global vars for dlopen
+ */
+static void *bzip2_lib;
+static int bzip2_libref;
+
+/*
+ * symbols remapping
+ */
+int (*_int_BZ2_bzBuffToBuffCompress)(char* dest, unsigned int* destLen,
+				     char* source, unsigned int sourceLen,
+				     int blockSize100k, int verbosity,
+				     int workFactor);
+int (*_int_BZ2_bzBuffToBuffDecompress)(char* dest, unsigned int* destLen,
+				       char* source, unsigned int sourceLen,
+				       int samll, int verbosity);
+
+static int bzip2_remap_symbols(knet_handle_t knet_h)
+{
+	int err = 0;
+	char *error = NULL;
+
+	_int_BZ2_bzBuffToBuffCompress = dlsym(bzip2_lib, "BZ2_bzBuffToBuffCompress");
+	if (!_int_BZ2_bzBuffToBuffCompress) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_BZIP2COMP, "unable to map BZ2_bzBuffToBuffCompress: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_BZ2_bzBuffToBuffDecompress = dlsym(bzip2_lib, "BZ2_bzBuffToBuffDecompress");
+	if (!_int_BZ2_bzBuffToBuffDecompress) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_BZIP2COMP, "unable to map BZ2_bzBuffToBuffDecompress: %s", error);
+		err = -1;
+		goto out;
+	}
+out:
+	if (err) {
+		errno = EINVAL;
+	}
+	return err;
+}
+
+void bzip2_fini(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	bzip2_libref--;
+	if ((bzip2_lib) && (bzip2_libref == 0)) {
+		dlclose(bzip2_lib);
+		bzip2_lib = NULL;
+	}
+	return;
+}
+
+int bzip2_init(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	int err = 0, savederrno = 0;
+	char *error = NULL;
+
+	if (!bzip2_lib) {
+		/*
+		 * clear any pending error
+		 */
+		dlerror();
+
+		bzip2_lib = dlopen("libbz2.so.1", RTLD_LAZY | RTLD_GLOBAL);
+		error = dlerror();
+		if (error != NULL) {
+			log_err(knet_h, KNET_SUB_BZIP2COMP, "unable to dlopen libbz2.so.1: %s", error);
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
+
+		if (bzip2_remap_symbols(knet_h) < 0) {
+			savederrno = errno;
+			err = -1;
+			goto out;
+		}
+	}
+	bzip2_libref++;
+out:
+	errno = savederrno;
+	return err;
+}
 
 int bzip2_val_level(
 	knet_handle_t knet_h,
@@ -41,10 +132,10 @@ int bzip2_compress(
 	int savederrno = 0;
 	unsigned int destLen = KNET_DATABUFSIZE_COMPRESS;
 
-	err = BZ2_bzBuffToBuffCompress((char *)buf_out, &destLen,
-				       (char *)buf_in, buf_in_len,
-				       knet_h->compress_level,
-				       0, 0);
+	err = (*_int_BZ2_bzBuffToBuffCompress)((char *)buf_out, &destLen,
+					       (char *)buf_in, buf_in_len,
+					       knet_h->compress_level,
+					       0, 0);
 
 	switch(err) {
 		case BZ_OK:
@@ -82,9 +173,9 @@ int bzip2_decompress(
 	int savederrno = 0;
 	unsigned int destLen = KNET_DATABUFSIZE_COMPRESS;
 
-	err = BZ2_bzBuffToBuffDecompress((char *)buf_out, &destLen,
-					 (char *)buf_in, buf_in_len,
-					 0, 0);
+	err = (*_int_BZ2_bzBuffToBuffDecompress)((char *)buf_out, &destLen,
+						 (char *)buf_in, buf_in_len,
+						 0, 0);
 
 	switch(err) {
 		case BZ_OK:

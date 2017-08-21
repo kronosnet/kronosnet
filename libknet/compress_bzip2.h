@@ -11,6 +11,14 @@
 
 #include "internals.h"
 
+int bzip2_init(
+	knet_handle_t knet_h,
+	int method_idx);
+
+void bzip2_fini(
+	knet_handle_t knet_h,
+	int method_idx);
+
 int bzip2_val_level(
 	knet_handle_t knet_h,
 	int compress_level);
