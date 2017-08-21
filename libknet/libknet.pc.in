@@ -15,5 +15,5 @@ Name: libknet
 Version: @VERSION@
 Description: kronosnet library
 Requires:
-Libs: -L${libdir} -lknet -lpthread
+Libs: -L${libdir} -lknet
 Cflags: -I${includedir}

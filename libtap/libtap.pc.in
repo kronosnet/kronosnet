@@ -15,5 +15,5 @@ Name: libtap
 Version: @VERSION@
 Description: library to manage a pool of tap devices
 Requires:
-Libs: -L${libdir} -ltap -lpthread
+Libs: -L${libdir} -ltap
 Cflags: -I${includedir}
