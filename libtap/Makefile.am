@@ -20,7 +20,7 @@ sources			= libtap.c
 libversion		= 0:0:0
 
 # override global LIBS that pulls in lots of craft we don't need here
-LIBS			= -lpthread
+LIBS			= $(pthread_LIBS)
 
 if BUILD_LIBTAP
 
