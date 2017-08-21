@@ -71,6 +71,7 @@ void zlib_fini(
 	zlib_libref--;
 	if ((zlib_lib) && (zlib_libref == 0)) {
 		dlclose(zlib_lib);
+		zlib_lib = NULL;
 	}
 	return;
 }

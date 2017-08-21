@@ -125,6 +125,7 @@ void lzo2_fini(
 	}
 	if ((lzo2_lib) && (lzo2_libref == 0)) {
 		dlclose(lzo2_lib);
+		lzo2_lib = NULL;
 	}
 	return;
 }
