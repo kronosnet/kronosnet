@@ -11,6 +11,14 @@
 
 #include "internals.h"
 
+int lz4_init(
+	knet_handle_t knet_h,
+	int method_idx);
+
+void lz4_fini(
+	knet_handle_t knet_h,
+	int method_idx);
+
 int lz4_val_level(
 	knet_handle_t knet_h,
 	int compress_level);

@@ -52,8 +52,8 @@ compress_model_t compress_modules_cmds[] = {
 	{ 1, 0, 0, "zlib", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPLZ4
-	{ 2, 1, 0, "lz4", NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
-	{ 3, 1, 0, "lz4hc", NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+	{ 2, 1, 0, "lz4", NULL, lz4_init, lz4_fini, lz4_val_level, lz4_compress, lz4_decompress },
+	{ 3, 1, 0, "lz4hc", NULL, lz4_init, lz4_fini, lz4hc_val_level, lz4hc_compress, lz4_decompress },
 #else
 	{ 2, 0, 0, "lz4", NULL, NULL, NULL, NULL, NULL, NULL },
 	{ 3, 0, 0, "lz4hc", NULL, NULL, NULL, NULL, NULL, NULL },

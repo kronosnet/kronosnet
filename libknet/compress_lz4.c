@@ -11,12 +11,116 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <dlfcn.h>
 #ifdef BUILDCOMPLZ4
 #include <lz4hc.h>
 
 #include "internals.h"
 #include "compress_lz4.h"
 #include "logging.h"
+
+/*
+ * global vars for dlopen
+ */
+static void* lz4_lib;
+static int lz4_libref = 0;
+
+/*
+ * symbols remapping
+ */
+int (*_int_LZ4_compress_HC)(const char* src, char* dst,
+			    int srcSize, int dstCapacity,
+			    int compressionLevel);
+int (*_int_LZ4_compress_fast)(const char* source, char* dest,
+			      int sourceSize, int maxDestSize,
+			      int acceleration);
+int (*_int_LZ4_decompress_safe)(const char* source, char* dest,
+			        int compressedSize, int maxDecompressedSize);
+
+static int lz4_remap_symbols(knet_handle_t knet_h)
+{
+	int err = 0;
+	char *error = NULL;
+
+	_int_LZ4_compress_HC = dlsym(lz4_lib, "LZ4_compress_HC");
+	if (!_int_LZ4_compress_HC) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_LZ4COMP, "unable to map LZ4_compress_HC: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_LZ4_compress_fast = dlsym(lz4_lib, "LZ4_compress_fast");
+	if (!_int_LZ4_compress_fast) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_LZ4COMP, "unable to map LZ4_compress_fast: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_LZ4_decompress_safe = dlsym(lz4_lib, "LZ4_decompress_safe");
+	if (!_int_LZ4_decompress_safe) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_LZ4COMP, "unable to map LZ4_decompress_safe: %s", error);
+		err = -1;
+		goto out;
+	}
+
+out:
+	if (err) {
+		_int_LZ4_compress_HC = NULL;
+		_int_LZ4_compress_fast = NULL;
+		_int_LZ4_decompress_safe = NULL;
+		errno = EINVAL;
+	}
+	return err;
+}
+
+void lz4_fini(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	lz4_libref--;
+	if ((lz4_lib) && (lz4_libref == 0)) {
+		dlclose(lz4_lib);
+		lz4_lib = NULL;
+	}
+	return;
+}
+
+int lz4_init(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	int err = 0, savederrno = 0;
+	char *error = NULL;
+
+	if (!lz4_lib) {
+		/*
+		 * clear any pending error
+		 */
+		dlerror();
+
+		lz4_lib = dlopen("liblz4.so.1", RTLD_LAZY | RTLD_GLOBAL);
+		error = dlerror();
+		if (error != NULL) {
+			log_err(knet_h, KNET_SUB_LZ4COMP, "unable to dlopen liblz4.so.1: %s", error);
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
+
+		if (lz4_remap_symbols(knet_h) < 0) {
+			savederrno = errno;
+			err = -1;
+			goto out;
+		}
+	}
+	lz4_libref++;
+out:
+	errno = savederrno;
+	return err;
+}
 
 int lz4_val_level(
 	knet_handle_t knet_h,
@@ -39,7 +143,7 @@ int lz4_compress(
 	int lzerr = 0, err = 0;
 	int savederrno = 0;
 
-	lzerr = LZ4_compress_fast((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE_COMPRESS, knet_h->compress_level);
+	lzerr = (*_int_LZ4_compress_fast)((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE_COMPRESS, knet_h->compress_level);
 
 	/*
 	 * data compressed
@@ -110,7 +214,7 @@ int lz4hc_compress(
 	int lzerr = 0, err = 0;
 	int savederrno = 0;
 
-	lzerr = LZ4_compress_HC((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE_COMPRESS, knet_h->compress_level);
+	lzerr = (*_int_LZ4_compress_HC)((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE_COMPRESS, knet_h->compress_level);
 
 	/*
 	 * data compressed
@@ -142,7 +246,7 @@ int lz4_decompress(
 	int lzerr = 0, err = 0;
 	int savederrno = 0;
 
-	lzerr = LZ4_decompress_safe((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE);
+	lzerr = (*_int_LZ4_decompress_safe)((const char *)buf_in, (char *)buf_out, buf_in_len, KNET_DATABUFSIZE);
 
 	if (lzerr < 0) {
 		log_err(knet_h, KNET_SUB_LZ4COMP, "lz4 decompression error: %d", lzerr);
