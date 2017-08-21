@@ -148,8 +148,10 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
 	int msgs_to_send, msg_idx;
 	unsigned int i;
+	int j;
 	int send_local = 0;
 	int data_compressed = 0;
+	size_t uncrypted_frag_size;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -327,19 +329,44 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	 */
 	if ((knet_h->compress_model > 0) && (inlen > knet_h->compress_threshold)) {
 		ssize_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
+		struct timespec start_time;
+		struct timespec end_time;
+		uint64_t compress_time;
 
+		clock_gettime(CLOCK_MONOTONIC, &start_time);
 		err = compress(knet_h,
 			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
 			       knet_h->send_to_links_buf_compress, &cmp_outlen);
 		if (err < 0) {
 			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
 		} else {
+			/* Collect stats */
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
+			timespec_diff(start_time, end_time, &compress_time);
+
+	                if (compress_time < knet_h->stats.tx_compress_time_min) {
+				knet_h->stats.tx_compress_time_min = compress_time;
+			}
+			if (compress_time > knet_h->stats.tx_compress_time_max) {
+				knet_h->stats.tx_compress_time_max = compress_time;
+			}
+			knet_h->stats.tx_compress_time_ave =
+				(unsigned long long)(knet_h->stats.tx_compress_time_ave * knet_h->stats.tx_compressed_packets +
+				 compress_time) / (knet_h->stats.tx_compressed_packets+1);
+
+			knet_h->stats.tx_compressed_packets++;
+			knet_h->stats.tx_compressed_original_bytes += inlen;
+			knet_h->stats.tx_compressed_size_bytes += cmp_outlen;
+
 			if (cmp_outlen < inlen) {
 				memmove(inbuf->khp_data_userdata, knet_h->send_to_links_buf_compress, cmp_outlen);
 				inlen = cmp_outlen;
 				data_compressed = 1;
 			}
 		}
+	}
+	if ((knet_h->compress_model > 0) && (inlen <= knet_h->compress_threshold)) {
+		knet_h->stats.tx_uncompressed_packets++;
 	}
 
 	/*
@@ -432,8 +459,13 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	}
 
 	if (knet_h->crypto_instance) {
+		struct timespec start_time;
+		struct timespec end_time;
+		uint64_t crypt_time;
+
 		frag_idx = 0;
 		while (frag_idx < inbuf->khp_data_frag_num) {
+			clock_gettime(CLOCK_MONOTONIC, &start_time);
 			if (crypto_encrypt_and_signv(
 					knet_h,
 					iov_out[frag_idx], iovcnt_out,
@@ -444,6 +476,26 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 				err = -1;
 				goto out_unlock;
 			}
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
+			timespec_diff(start_time, end_time, &crypt_time);
+
+	                if (crypt_time < knet_h->stats.tx_crypt_time_min) {
+				knet_h->stats.tx_crypt_time_min = crypt_time;
+			}
+			if (crypt_time > knet_h->stats.tx_crypt_time_max) {
+				knet_h->stats.tx_crypt_time_max = crypt_time;
+			}
+			knet_h->stats.tx_crypt_time_ave =
+				(knet_h->stats.tx_crypt_time_ave * knet_h->stats.tx_crypt_packets +
+				 crypt_time) / (knet_h->stats.tx_crypt_packets+1);
+
+			uncrypted_frag_size = 0;
+			for (j=0; j < iovcnt_out; j++) {
+				uncrypted_frag_size += iov_out[frag_idx][j].iov_len;
+			}
+			knet_h->stats.tx_crypt_byte_overhead += (outlen - uncrypted_frag_size);
+			knet_h->stats.tx_crypt_packets++;
+
 			iov_out[frag_idx][0].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
 			iov_out[frag_idx][0].iov_len = outlen;
 			frag_idx++;

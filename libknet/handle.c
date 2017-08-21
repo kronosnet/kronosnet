@@ -601,6 +601,15 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	knet_h->reconnect_int = KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL;
 
 	/*
+	 * Set 'min' stats to the maximum value so the
+	 * first value we get is always less
+	 */
+	knet_h->stats.tx_compress_time_min = UINT64_MAX;
+	knet_h->stats.rx_compress_time_min = UINT64_MAX;
+	knet_h->stats.tx_crypt_time_min = UINT64_MAX;
+	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
+
+	/*
 	 * init main locking structures
 	 */
 
@@ -1479,6 +1488,43 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 	savederrno = errno;
 
 out_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!stats) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (struct_size > sizeof(struct knet_handle_stats)) {
+		struct_size = sizeof(struct knet_handle_stats);
+	}
+
+	memmove(stats, &knet_h->stats, struct_size);
+
+	/* Tell the caller our full size in case they have an old version */
+	stats->size = sizeof(struct knet_handle_stats);
+
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;
 	return err;

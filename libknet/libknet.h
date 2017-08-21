@@ -664,6 +664,59 @@ int knet_handle_compress(knet_handle_t knet_h,
 			 struct knet_handle_compress_cfg *knet_handle_compress_cfg);
 
 /*
+ * knet_handle_get_stats
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * knet_handle_stats
+ *            pointer to a knet_handle_stats structure
+ *
+ * struct_size
+ *            size of knet_handle_stats structure to allow
+ *            for backwards compatibility. libknet will only
+ *            copy this much data into the stats structure
+ *            so that older callers will not get overflowed if
+ *            new fields are added.
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ */
+
+struct knet_handle_stats {
+	size_t   size;
+
+	uint64_t tx_uncompressed_packets;
+	uint64_t tx_compressed_packets;
+	uint64_t tx_compressed_original_bytes;
+	uint64_t tx_compressed_size_bytes;
+	uint64_t tx_compress_time_ave;
+	uint64_t tx_compress_time_min;
+	uint64_t tx_compress_time_max;
+
+	uint64_t rx_compressed_packets;
+	uint64_t rx_compressed_original_bytes;
+	uint64_t rx_compressed_size_bytes;
+	uint64_t rx_compress_time_ave;
+	uint64_t rx_compress_time_min;
+	uint64_t rx_compress_time_max;
+
+	/* Overhead times, measured in usecs */
+	uint64_t tx_crypt_packets;
+	uint64_t tx_crypt_byte_overhead;
+	uint64_t tx_crypt_time_ave;
+	uint64_t tx_crypt_time_min;
+	uint64_t tx_crypt_time_max;
+
+	uint64_t rx_crypt_packets;
+	uint64_t rx_crypt_time_ave;
+	uint64_t rx_crypt_time_min;
+	uint64_t rx_crypt_time_max;
+};
+
+int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size);
+
+/*
  * host structs/API calls
  */
 
