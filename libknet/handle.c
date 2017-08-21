@@ -571,10 +571,6 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		return NULL;
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
-	knet_h->stats.tx_compress_time_min = UINT64_MAX;
-	knet_h->stats.rx_compress_time_min = UINT64_MAX;
-	knet_h->stats.tx_crypt_time_min = UINT64_MAX;
-	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
 
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
 	if (savederrno) {
@@ -603,6 +599,15 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	 * set transports reconnect default timers
 	 */
 	knet_h->reconnect_int = KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL;
+
+	/*
+	 * Set 'min' stats to the maximum value so the
+	 * first value we get is always less
+	 */
+	knet_h->stats.tx_compress_time_min = UINT64_MAX;
+	knet_h->stats.rx_compress_time_min = UINT64_MAX;
+	knet_h->stats.tx_crypt_time_min = UINT64_MAX;
+	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
 
 	/*
 	 * init main locking structures

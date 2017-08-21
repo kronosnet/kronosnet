@@ -387,9 +387,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 					 len - KNET_HEADER_DATA_SIZE,
 					 knet_h->recv_from_links_buf_decompress,
 					 &decmp_outlen);
-			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			if (!err) {
 				/* Collect stats */
+				clock_gettime(CLOCK_MONOTONIC, &end_time);
 				timespec_diff(start_time, end_time, &compress_time);
 
 				if (compress_time < knet_h->stats.rx_compress_time_min) {

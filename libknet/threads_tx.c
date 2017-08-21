@@ -337,11 +337,11 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 		err = compress(knet_h,
 			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
 			       knet_h->send_to_links_buf_compress, &cmp_outlen);
-		clock_gettime(CLOCK_MONOTONIC, &end_time);
 		if (err < 0) {
 			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
 		} else {
 			/* Collect stats */
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			timespec_diff(start_time, end_time, &compress_time);
 
 	                if (compress_time < knet_h->stats.tx_compress_time_min) {
