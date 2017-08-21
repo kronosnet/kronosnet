@@ -706,6 +706,7 @@ struct knet_handle_stats {
 	uint64_t tx_crypt_time_min;
 	uint64_t tx_crypt_time_max;
 	uint64_t tx_crypt_packets;
+	uint64_t tx_crypt_byte_overhead;
 
 	uint64_t rx_crypt_time_ave;
 	uint64_t rx_crypt_time_min;

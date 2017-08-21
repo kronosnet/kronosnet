@@ -150,6 +150,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	unsigned int i;
 	int send_local = 0;
 	int data_compressed = 0;
+	size_t uncrypt_outlen;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -486,6 +487,12 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 				(knet_h->stats.tx_crypt_time_ave * knet_h->stats.tx_crypt_packets +
 				 crypt_time) / (knet_h->stats.tx_crypt_packets+1);
 			knet_h->stats.tx_crypt_packets++;
+
+			uncrypt_outlen = 0;
+			for (i=0; i<iovcnt_out; i++) {
+				uncrypt_outlen += iov_out[i].iov_len;
+			}
+			knet_h->stats.tx_crypt_byte_overhead += (outlen - uncrypt_outlen);
 
 			iov_out[frag_idx][0].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
 			iov_out[frag_idx][0].iov_len = outlen;
