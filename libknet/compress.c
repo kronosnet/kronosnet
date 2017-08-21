@@ -64,7 +64,7 @@ compress_model_t compress_modules_cmds[] = {
 	{ 4, 0, 0, "lzo2", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 #ifdef BUILDCOMPLZMA
-	{ 5, 1, 0, "lzma", NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+	{ 5, 1, 0, "lzma", NULL, lzma_init, lzma_fini, lzma_val_level, lzma_compress, lzma_decompress },
 #else
 	{ 5, 0, 0, "lzma", NULL, NULL, NULL, NULL, NULL, NULL },
 #endif

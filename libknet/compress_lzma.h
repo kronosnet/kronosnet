@@ -11,6 +11,14 @@
 
 #include "internals.h"
 
+int lzma_init(
+	knet_handle_t knet_h,
+	int method_idx);
+
+void lzma_fini(
+	knet_handle_t knet_h,
+	int method_idx);
+
 int lzma_val_level(
 	knet_handle_t knet_h,
 	int compress_level);
