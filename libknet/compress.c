@@ -87,6 +87,8 @@ empty_module
 	{ NULL, 255, empty_module
 };
 
+static int max_model = 0;
+
 static int get_model(const char *model)
 {
 	int idx = 0;
@@ -188,7 +190,8 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model)
 int compress_init(
 	knet_handle_t knet_h)
 {
-	if (get_max_model() > KNET_MAX_COMPRESS_METHODS) {
+	max_model = get_max_model();
+	if (max_model > KNET_MAX_COMPRESS_METHODS) {
 		log_err(knet_h, KNET_SUB_COMPRESS, "Too many compress methods defined in compress.c.");
 		errno = EINVAL;
 		return -1;
@@ -329,8 +332,13 @@ int decompress(
 {
 	int savederrno = 0, err = 0;
 
+	if (compress_model >= max_model) {
+		log_err(knet_h,  KNET_SUB_COMPRESS, "Received packet with unknown compress model %d", compress_model);
+		errno = EINVAL;
+		return -1;
+	}
 	if (is_valid_model(compress_model) < 0) {
-		log_err(knet_h,  KNET_SUB_COMPRESS, "This build of libknet does not support %s compression. Please contact your distribution vendor or fix the build", compress_modules_cmds[compress_model].model_name);
+		log_err(knet_h,  KNET_SUB_COMPRESS, "Received packet compressed with %s but support is not built in this version of libknet. Please contact your distribution vendor or fix the build.", compress_modules_cmds[compress_model].model_name);
 		errno = EINVAL;
 		return -1;
 	}
