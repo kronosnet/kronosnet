@@ -55,7 +55,8 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 		while (msg_idx < msgs_to_send) {
 			msg[msg_idx].msg_hdr.msg_name = &cur_link->dst_addr;
 
-			for (i=0; i<msg[msg_idx].msg_hdr.msg_iovlen; i++) {
+			/* Cast for Linux/BSD compatibility */
+			for (i=0; i<(unsigned int)msg[msg_idx].msg_hdr.msg_iovlen; i++) {
 				cur_link->status.stats.tx_data_bytes += msg[msg_idx].msg_hdr.msg_iov[i].iov_len;
 			}
 			cur_link->status.stats.tx_data_packets++;

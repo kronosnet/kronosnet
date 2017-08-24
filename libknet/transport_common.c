@@ -132,6 +132,18 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		}
 	}
 #endif
+#if defined(IP_TOS) && defined(IPTOS_LOWDELAY)
+	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
+		value = IPTOS_LOWDELAY;
+		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &value, sizeof(value)) < 0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
+				type, strerror(savederrno));
+			goto exit_error;
+		}
+	}
+#endif
 
 exit_error:
 	errno = savederrno;

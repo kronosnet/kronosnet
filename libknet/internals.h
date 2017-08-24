@@ -14,6 +14,7 @@
  * NOTE: you shouldn't need to include this header normally
  */
 
+#include <pthread.h>
 #include "libknet.h"
 #include "onwire.h"
 #include "compat.h"
