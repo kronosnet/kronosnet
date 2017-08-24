@@ -12,15 +12,78 @@
 #include "internals.h"
 
 typedef struct {
-	uint8_t		model_id;
-	uint8_t		built_in;
-	uint8_t		loaded;
 	const char	*model_name;
+	uint8_t		model_id;    /* sequencial unique identifier */
+	uint8_t		built_in;    /* set at configure/build time to 1 if available */
+
+	/*
+	 * shared lib load/unload functions
+	 *
+	 * both are called in shlib_rwlock write context and should
+	 * update the loaded status below.
+	 */
+	int (*load_lib) (void);
+
+	/*
+	 * unload_lib will call dlclose only after all handles using
+	 * the given shared lib have finished using it.
+	 * set force to 1 will unload the library unconditionally.
+	 */
+	void (*unload_lib)(int force);
+
+	/*
+	 * set to 1 when shlib is loaded, 0 otherwise
+	 */
+	uint8_t		loaded;
+
+	/*
+	 * runtime bits
+	 */
+
+	/*
+	 * some libs need special init and handling of buffers etc.
+	 * is_init is called in shlib_rwlock read only context to see if
+	 * the module has been initialized within this knet_handle.
+	 * Providing is_init is optional. A module that does not export
+	 * an is_init and if the associated shared library is already loaded
+	 * is treated as "does not require init".
+	 */
 	int (*is_init)  (knet_handle_t knet_h, int method_idx);
+
+	/*
+	 * init is called when the library requires special init handling,
+	 * such as memory allocation and such.
+	 * init is invoked in shlib_rwlock write only context when
+	 * the module exports this function.
+	 * It is optional to provide an init function if the module
+	 * does not require any init.
+	 */
 	int (*init)     (knet_handle_t knet_h, int method_idx);
+
+	/*
+	 * fini is invoked only on knet_handle_free in a write only context.
+	 * It is optional to provide this function if the module
+	 * does not require any finalization
+	 */
 	void (*fini)    (knet_handle_t knet_h, int method_idx);
+
+	/*
+	 * runtime config validation and compress/decompress
+	 */
+
+	/*
+	 * required functions
+	 *
+	 * val_level is called upon compress configuration changes
+	 * to make sure that the requested compress_level is valid
+	 * within the context of a given module.
+	 */
 	int (*val_level)(knet_handle_t knet_h,
 			 int compress_level);
+
+	/*
+	 * hopefully those 2 don't require any explanation....
+	 */
 	int (*compress)	(knet_handle_t knet_h,
 			 const unsigned char *buf_in,
 			 const ssize_t buf_in_len,

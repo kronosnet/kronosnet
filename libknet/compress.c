@@ -44,36 +44,47 @@
  * always add before the last NULL/NULL/NULL.
  */
 
+#define empty_module 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+
 compress_model_t compress_modules_cmds[] = {
-	{ 0, 1, 0, "none", NULL, NULL, NULL, NULL, NULL, NULL },
+	{ "none", 0, empty_module
+	{ "zlib", 1,
 #ifdef BUILDCOMPZLIB
-	{ 1, 1, 0, "zlib", NULL, zlib_init, zlib_fini, zlib_val_level, zlib_compress, zlib_decompress },
+		     1, NULL, NULL, 0, NULL, zlib_init, zlib_fini, zlib_val_level, zlib_compress, zlib_decompress },
 #else
-	{ 1, 0, 0, "zlib", NULL, NULL, NULL, NULL, NULL, NULL },
+empty_module
 #endif
+	{ "lz4", 2,
 #ifdef BUILDCOMPLZ4
-	{ 2, 1, 0, "lz4", NULL, lz4_init, lz4_fini, lz4_val_level, lz4_compress, lz4_decompress },
-	{ 3, 1, 0, "lz4hc", NULL, lz4_init, lz4_fini, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+		     1, NULL, NULL, 0, NULL, lz4_init, lz4_fini, lz4_val_level, lz4_compress, lz4_decompress },
 #else
-	{ 2, 0, 0, "lz4", NULL, NULL, NULL, NULL, NULL, NULL },
-	{ 3, 0, 0, "lz4hc", NULL, NULL, NULL, NULL, NULL, NULL },
+empty_module
 #endif
+	{ "lz4hc", 3,
+#ifdef BUILDCOMPLZ4
+		     1, NULL, NULL, 0, NULL, lz4_init, lz4_fini, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+#else
+empty_module
+#endif
+	{ "lzo2", 4,
 #ifdef BUILDCOMPLZO2
-	{ 4, 1, 0, "lzo2", lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+		     1, NULL, NULL, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
 #else
-	{ 4, 0, 0, "lzo2", NULL, NULL, NULL, NULL, NULL, NULL },
+empty_module
 #endif
+	{ "lzma", 5,
 #ifdef BUILDCOMPLZMA
-	{ 5, 1, 0, "lzma", NULL, lzma_init, lzma_fini, lzma_val_level, lzma_compress, lzma_decompress },
+		     1, NULL, NULL, 0, NULL, lzma_init, lzma_fini, lzma_val_level, lzma_compress, lzma_decompress },
 #else
-	{ 5, 0, 0, "lzma", NULL, NULL, NULL, NULL, NULL, NULL },
+empty_module
 #endif
+	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-	{ 6, 1, 0, "bzip2", NULL, bzip2_init, bzip2_fini, bzip2_val_level, bzip2_compress, bzip2_decompress },
+		     1, NULL, NULL, 0, NULL, bzip2_init, bzip2_fini, bzip2_val_level, bzip2_compress, bzip2_decompress },
 #else
-	{ 6, 0, 0, "bzip2", NULL, NULL, NULL, NULL, NULL, NULL },
+empty_module
 #endif
-	{ 255, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+	{ NULL, 255, empty_module
 };
 
 static int get_model(const char *model)
