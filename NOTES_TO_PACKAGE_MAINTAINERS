@@ -23,5 +23,14 @@ incompatible with newer versions. Make sure to warn your users
 about it. Plan is to release a stable version (1.0) when
 we are confident that the current implementation is stable enough.
 
+libknet has a lot of build dependencies due to it's modular
+implementation. It does not, however, link with all those libraries
+but uses a dlopen model to save runtime resources and provide
+flexibility to users to install only the libraries they are
+planning to use. Make sure that you do build with all feature
+enabled (compatible with your distribution licencing/patent
+policy of course) and tune your packaging to Recommend/Suggest
+the external libraries.
+
 Thanks
 Your upstream maintainers
