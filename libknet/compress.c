@@ -12,10 +12,12 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "internals.h"
 #include "compress.h"
 #include "logging.h"
+#include "threads_common.h"
 
 #ifdef BUILDCOMPZLIB
 #include "compress_zlib.h"
@@ -88,6 +90,7 @@ empty_module
 };
 
 static int max_model = 0;
+static struct timespec last_load_failure;
 
 static int get_model(const char *model)
 {
@@ -133,8 +136,10 @@ static int val_level(
 	return compress_modules_cmds[compress_model].val_level(knet_h, compress_level);
 }
 
-static int check_init_lib(knet_handle_t knet_h, int cmp_model)
+static int check_init_lib(knet_handle_t knet_h, int cmp_model, int rate_limit)
 {
+	struct timespec clock_now;
+	unsigned long long timediff;
 	int savederrno = 0;
 
 	savederrno = pthread_rwlock_rdlock(&shlib_rwlock);
@@ -160,6 +165,30 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model)
 	}
 
 	/*
+	 * due to the fact that decompress can load libraries
+	 * on demand, depending on the compress model selected
+	 * on other nodes, it is possible for an attacker
+	 * to send crafted packets to attempt to load libraries
+	 * at random in a DoS fashion.
+	 * If there is an error loading a library, then we want
+	 * to rate_limit a retry to reload the library every X
+	 * seconds to avoid a lock DoS that could greatly slow
+	 * down libknet.
+	 */
+	if (rate_limit) {
+		if ((last_load_failure.tv_sec != 0) ||
+		    (last_load_failure.tv_nsec != 0)) {
+			clock_gettime(CLOCK_MONOTONIC, &clock_now);
+			timespec_diff(last_load_failure, clock_now, &timediff);
+			if (timediff < 10000000000) {
+				pthread_rwlock_unlock(&shlib_rwlock);
+				errno = EAGAIN;
+				return -1;
+			}
+		}
+	}
+
+	/*
 	 * need to switch to write lock, load the lib, and return with a write lock
 	 * this is not racy because .init should be written idempotent.
 	 */
@@ -174,6 +203,7 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model)
 
 	if (compress_modules_cmds[cmp_model].load_lib != NULL) {
 		if (compress_modules_cmds[cmp_model].load_lib(knet_h) < 0) {
+			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			pthread_rwlock_unlock(&shlib_rwlock);
 			return -1;
 		}
@@ -199,6 +229,8 @@ int compress_init(
 		errno = EINVAL;
 		return -1;
 	}
+
+	memset(&last_load_failure, 0, sizeof(struct timespec));
 
 	return 0;
 }
@@ -229,7 +261,7 @@ int compress_cfg(
 			goto out;
 		}
 
-		if (check_init_lib(knet_h, cmp_model) < 0) {
+		if (check_init_lib(knet_h, cmp_model, 0) < 0) {
 			savederrno = errno;
 			log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load/init shared lib for model %s: %s",
 				knet_handle_compress_cfg->compress_model, strerror(errno));
@@ -312,7 +344,7 @@ int compress(
 {
 	int savederrno = 0, err = 0;
 
-	if (check_init_lib(knet_h, knet_h->compress_model) < 0) {
+	if (check_init_lib(knet_h, knet_h->compress_model, 0) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load/init shared lib (compress) for model %s: %s",
 			compress_modules_cmds[knet_h->compress_model].model_name, strerror(savederrno));
@@ -350,7 +382,7 @@ int decompress(
 		return -1;
 	}
 
-	if (check_init_lib(knet_h, compress_model) < 0) {
+	if (check_init_lib(knet_h, compress_model, 1) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load/init shared lib (decompress) for model %s: %s",
 			compress_modules_cmds[compress_model].model_name, strerror(savederrno));
