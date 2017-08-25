@@ -76,21 +76,8 @@ out:
 	return err;
 }
 
-void lz4_fini(
-	knet_handle_t knet_h,
-	int method_idx)
-{
-	lz4_libref--;
-	if ((lz4_lib) && (lz4_libref == 0)) {
-		dlclose(lz4_lib);
-		lz4_lib = NULL;
-	}
-	return;
-}
-
-int lz4_init(
-	knet_handle_t knet_h,
-	int method_idx)
+int lz4_load_lib(
+	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
 	char *error = NULL;
@@ -120,6 +107,18 @@ int lz4_init(
 out:
 	errno = savederrno;
 	return err;
+}
+
+void lz4_unload_lib(
+	knet_handle_t knet_h,
+	int force)
+{
+	lz4_libref--;
+	if ((force) || ((lz4_lib) && (lz4_libref == 0))) {
+		dlclose(lz4_lib);
+		lz4_lib = NULL;
+	}
+	return;
 }
 
 int lz4_val_level(

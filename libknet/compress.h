@@ -22,14 +22,14 @@ typedef struct {
 	 * both are called in shlib_rwlock write context and should
 	 * update the loaded status below.
 	 */
-	int (*load_lib) (void);
+	int (*load_lib)		(knet_handle_t knet_h);
 
 	/*
 	 * unload_lib will call dlclose only after all handles using
 	 * the given shared lib have finished using it.
 	 * set force to 1 will unload the library unconditionally.
 	 */
-	void (*unload_lib)(int force);
+	void (*unload_lib)	(knet_handle_t knet_h, int force);
 
 	/*
 	 * set to 1 when shlib is loaded, 0 otherwise

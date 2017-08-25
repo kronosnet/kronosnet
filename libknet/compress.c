@@ -50,37 +50,37 @@ compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, empty_module
 	{ "zlib", 1,
 #ifdef BUILDCOMPZLIB
-		     1, NULL, NULL, 0, NULL, zlib_init, zlib_fini, zlib_val_level, zlib_compress, zlib_decompress },
+		     1, zlib_load_lib, zlib_unload_lib, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
 #else
 empty_module
 #endif
 	{ "lz4", 2,
 #ifdef BUILDCOMPLZ4
-		     1, NULL, NULL, 0, NULL, lz4_init, lz4_fini, lz4_val_level, lz4_compress, lz4_decompress },
+		     1, lz4_load_lib, lz4_unload_lib, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
 #else
 empty_module
 #endif
 	{ "lz4hc", 3,
 #ifdef BUILDCOMPLZ4
-		     1, NULL, NULL, 0, NULL, lz4_init, lz4_fini, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+		     1, lz4_load_lib, lz4_unload_lib, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
 #else
 empty_module
 #endif
 	{ "lzo2", 4,
 #ifdef BUILDCOMPLZO2
-		     1, NULL, NULL, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+		     1, lzo2_load_lib, lzo2_unload_lib, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
 #else
 empty_module
 #endif
 	{ "lzma", 5,
 #ifdef BUILDCOMPLZMA
-		     1, NULL, NULL, 0, NULL, lzma_init, lzma_fini, lzma_val_level, lzma_compress, lzma_decompress },
+		     1, lzma_load_lib, lzma_unload_lib, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
 #else
 empty_module
 #endif
 	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-		     1, NULL, NULL, 0, NULL, bzip2_init, bzip2_fini, bzip2_val_level, bzip2_compress, bzip2_decompress },
+		     1, bzip2_load_lib, bzip2_unload_lib, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
 #else
 empty_module
 #endif
@@ -172,17 +172,20 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model)
 		return -1;
 	}
 
-	/*
-	 * every module must provide a .init function
-	 * but this is useful while transition to dlopen model
-	 */
+	if (compress_modules_cmds[cmp_model].load_lib != NULL) {
+		if (compress_modules_cmds[cmp_model].load_lib(knet_h) < 0) {
+			pthread_rwlock_unlock(&shlib_rwlock);
+			return -1;
+		}
+	}
+	compress_modules_cmds[cmp_model].loaded = 1;
+
 	if (compress_modules_cmds[cmp_model].init != NULL) {
 		if (compress_modules_cmds[cmp_model].init(knet_h, cmp_model) < 0) {
 			pthread_rwlock_unlock(&shlib_rwlock);
 			return -1;
 		}
 	}
-	compress_modules_cmds[cmp_model].loaded = 1;
 
 	return 0;
 }
@@ -285,10 +288,13 @@ void compress_fini(
 		if ((compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
+			if (compress_modules_cmds[idx].unload_lib != NULL) {
+				compress_modules_cmds[idx].unload_lib(knet_h, 0);
+			}
+			compress_modules_cmds[idx].loaded = 0;
 			if (compress_modules_cmds[idx].fini != NULL) {
 				compress_modules_cmds[idx].fini(knet_h, idx);
 			}
-			compress_modules_cmds[idx].loaded = 0;
 		}
 		idx++;
 	}
@@ -332,11 +338,12 @@ int decompress(
 {
 	int savederrno = 0, err = 0;
 
-	if (compress_model >= max_model) {
+	if (compress_model > max_model) {
 		log_err(knet_h,  KNET_SUB_COMPRESS, "Received packet with unknown compress model %d", compress_model);
 		errno = EINVAL;
 		return -1;
 	}
+
 	if (is_valid_model(compress_model) < 0) {
 		log_err(knet_h,  KNET_SUB_COMPRESS, "Received packet compressed with %s but support is not built in this version of libknet. Please contact your distribution vendor or fix the build.", compress_modules_cmds[compress_model].model_name);
 		errno = EINVAL;

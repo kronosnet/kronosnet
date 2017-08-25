@@ -11,13 +11,12 @@
 
 #include "internals.h"
 
-int lz4_init(
-	knet_handle_t knet_h,
-	int method_idx);
+int lz4_load_lib(
+	knet_handle_t knet_h);
 
-void lz4_fini(
+void lz4_unload_lib(
 	knet_handle_t knet_h,
-	int method_idx);
+	int force);
 
 int lz4_val_level(
 	knet_handle_t knet_h,

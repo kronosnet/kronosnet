@@ -11,13 +11,12 @@
 
 #include "internals.h"
 
-int zlib_init(
-	knet_handle_t knet_h,
-	int method_idx);
+int zlib_load_lib(
+	knet_handle_t knet_h);
 
-void zlib_fini(
+void zlib_unload_lib(
 	knet_handle_t knet_h,
-	int method_idx);
+	int force);
 
 int zlib_val_level(
 	knet_handle_t knet_h,

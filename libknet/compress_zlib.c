@@ -64,21 +64,8 @@ out:
 	return err;
 }
 
-void zlib_fini(
-	knet_handle_t knet_h,
-	int method_idx)
-{
-	zlib_libref--;
-	if ((zlib_lib) && (zlib_libref == 0)) {
-		dlclose(zlib_lib);
-		zlib_lib = NULL;
-	}
-	return;
-}
-
-int zlib_init(
-	knet_handle_t knet_h,
-	int method_idx)
+int zlib_load_lib(
+	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
 	char *error = NULL;
@@ -108,6 +95,18 @@ int zlib_init(
 out:
 	errno = savederrno;
 	return err;
+}
+
+void zlib_unload_lib(
+	knet_handle_t knet_h,
+	int force)
+{
+	zlib_libref--;
+	if ((force) || ((zlib_lib) && (zlib_libref == 0))) {
+		dlclose(zlib_lib);
+		zlib_lib = NULL;
+	}
+	return;
 }
 
 int zlib_val_level(

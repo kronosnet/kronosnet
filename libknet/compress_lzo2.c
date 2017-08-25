@@ -114,35 +114,8 @@ out:
 	return err;
 }
 
-void lzo2_fini(
-	knet_handle_t knet_h,
-	int method_idx)
-{
-	if (knet_h->compress_int_data[method_idx]) {
-		free(knet_h->compress_int_data[method_idx]);
-		knet_h->compress_int_data[method_idx] = NULL;
-		lzo2_libref--;
-	}
-	if ((lzo2_lib) && (lzo2_libref == 0)) {
-		dlclose(lzo2_lib);
-		lzo2_lib = NULL;
-	}
-	return;
-}
-
-int lzo2_is_init(
-	knet_handle_t knet_h,
-	int method_idx)
-{
-	if (knet_h->compress_int_data[method_idx]) {
-		return 1;
-	}
-	return 0;
-}
-
-int lzo2_init(
-	knet_handle_t knet_h,
-	int method_idx)
+int lzo2_load_lib(
+	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
 	char *error = NULL;
@@ -169,6 +142,38 @@ int lzo2_init(
 		}
 	}
 
+	lzo2_libref++;
+out:
+	errno = savederrno;
+	return err;
+}
+
+void lzo2_unload_lib(
+	knet_handle_t knet_h,
+	int force)
+{
+	lzo2_libref--;
+	if ((force) || ((lzo2_lib) && (lzo2_libref == 0))) {
+		dlclose(lzo2_lib);
+		lzo2_lib = NULL;
+	}
+	return;
+}
+
+int lzo2_is_init(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	if (knet_h->compress_int_data[method_idx]) {
+		return 1;
+	}
+	return 0;
+}
+
+int lzo2_init(
+	knet_handle_t knet_h,
+	int method_idx)
+{
 	/*
 	 * LZO1X_999_MEM_COMPRESS is the highest amount of memory lzo2 can use
 	 */
@@ -176,20 +181,24 @@ int lzo2_init(
 		knet_h->compress_int_data[method_idx] = malloc(LZO1X_999_MEM_COMPRESS);
 		if (!knet_h->compress_int_data[method_idx]) {
 			log_err(knet_h, KNET_SUB_LZO2COMP, "lzo2 unable to allocate work memory");
-			savederrno = ENOMEM;
-			err = -1;
-			goto out;
+			errno = ENOMEM;
+			return -1;
 		}
 		memset(knet_h->compress_int_data[method_idx], 0, LZO1X_999_MEM_COMPRESS);
-		lzo2_libref++;
 	}
 
-out:
-	if (err) {
-		lzo2_fini(knet_h, method_idx);
+	return 0;
+}
+
+void lzo2_fini(
+	knet_handle_t knet_h,
+	int method_idx)
+{
+	if (knet_h->compress_int_data[method_idx]) {
+		free(knet_h->compress_int_data[method_idx]);
+		knet_h->compress_int_data[method_idx] = NULL;
 	}
-	errno = savederrno;
-	return err;
+	return;
 }
 
 int lzo2_val_level(

@@ -63,21 +63,8 @@ out:
 	return err;
 }
 
-void bzip2_fini(
-	knet_handle_t knet_h,
-	int method_idx)
-{
-	bzip2_libref--;
-	if ((bzip2_lib) && (bzip2_libref == 0)) {
-		dlclose(bzip2_lib);
-		bzip2_lib = NULL;
-	}
-	return;
-}
-
-int bzip2_init(
-	knet_handle_t knet_h,
-	int method_idx)
+int bzip2_load_lib(
+	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
 	char *error = NULL;
@@ -107,6 +94,18 @@ int bzip2_init(
 out:
 	errno = savederrno;
 	return err;
+}
+
+void bzip2_unload_lib(
+	knet_handle_t knet_h,
+	int force)
+{
+	bzip2_libref--;
+	if ((force) || ((bzip2_lib) && (bzip2_libref == 0))) {
+		dlclose(bzip2_lib);
+		bzip2_lib = NULL;
+	}
+	return;
 }
 
 int bzip2_val_level(

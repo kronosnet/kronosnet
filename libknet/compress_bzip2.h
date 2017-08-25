@@ -11,13 +11,12 @@
 
 #include "internals.h"
 
-int bzip2_init(
-	knet_handle_t knet_h,
-	int method_idx);
+int bzip2_load_lib(
+	knet_handle_t knet_h);
 
-void bzip2_fini(
+void bzip2_unload_lib(
 	knet_handle_t knet_h,
-	int method_idx);
+	int force);
 
 int bzip2_val_level(
 	knet_handle_t knet_h,

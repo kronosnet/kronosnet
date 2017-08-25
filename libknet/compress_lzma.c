@@ -66,21 +66,8 @@ out:
 	return err;
 }
 
-void lzma_fini(
-	knet_handle_t knet_h,
-	int method_idx)
-{
-	lmza_libref--;
-	if ((lzma_lib) && (lmza_libref == 0)) {
-		dlclose(lzma_lib);
-		lzma_lib = NULL;
-	}
-	return;
-}
-
-int lzma_init(
-	knet_handle_t knet_h,
-	int method_idx)
+int lzma_load_lib(
+	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
 	char *error = NULL;
@@ -110,6 +97,18 @@ int lzma_init(
 out:
 	errno = savederrno;
 	return err;
+}
+
+void lzma_unload_lib(
+	knet_handle_t knet_h,
+	int force)
+{
+	lmza_libref--;
+	if ((force) || ((lzma_lib) && (lmza_libref == 0))) {
+		dlclose(lzma_lib);
+		lzma_lib = NULL;
+	}
+	return;
 }
 
 int lzma_val_level(
