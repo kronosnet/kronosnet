@@ -87,6 +87,8 @@ int bzip2_load_lib(
 		if (bzip2_remap_symbols(knet_h) < 0) {
 			savederrno = errno;
 			err = -1;
+			dlclose(bzip2_lib);
+			bzip2_lib = NULL;
 			goto out;
 		}
 	}
@@ -100,10 +102,12 @@ void bzip2_unload_lib(
 	knet_handle_t knet_h,
 	int force)
 {
-	bzip2_libref--;
-	if ((force) || ((bzip2_lib) && (bzip2_libref == 0))) {
-		dlclose(bzip2_lib);
-		bzip2_lib = NULL;
+	if (bzip2_lib) {
+		bzip2_libref--;
+		if ((force) || (bzip2_libref == 0)) {
+			dlclose(bzip2_lib);
+			bzip2_lib = NULL;
+		}
 	}
 	return;
 }

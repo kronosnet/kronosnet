@@ -88,6 +88,8 @@ int zlib_load_lib(
 		if (zlib_remap_symbols(knet_h) < 0) {
 			savederrno = errno;
 			err = -1;
+			dlclose(zlib_lib);
+			zlib_lib = NULL;
 			goto out;
 		}
 	}
@@ -101,10 +103,12 @@ void zlib_unload_lib(
 	knet_handle_t knet_h,
 	int force)
 {
-	zlib_libref--;
-	if ((force) || ((zlib_lib) && (zlib_libref == 0))) {
-		dlclose(zlib_lib);
-		zlib_lib = NULL;
+	if (zlib_lib) {
+		zlib_libref--;
+		if ((force) || (zlib_libref == 0)) {
+			dlclose(zlib_lib);
+			zlib_lib = NULL;
+		}
 	}
 	return;
 }

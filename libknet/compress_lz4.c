@@ -100,6 +100,8 @@ int lz4_load_lib(
 		if (lz4_remap_symbols(knet_h) < 0) {
 			savederrno = errno;
 			err = -1;
+			dlclose(lz4_lib);
+			lz4_lib = NULL;
 			goto out;
 		}
 	}
@@ -113,10 +115,12 @@ void lz4_unload_lib(
 	knet_handle_t knet_h,
 	int force)
 {
-	lz4_libref--;
-	if ((force) || ((lz4_lib) && (lz4_libref == 0))) {
-		dlclose(lz4_lib);
-		lz4_lib = NULL;
+	if (lz4_lib) {
+		lz4_libref--;
+		if ((force) || (lz4_libref == 0)) {
+			dlclose(lz4_lib);
+			lz4_lib = NULL;
+		}
 	}
 	return;
 }

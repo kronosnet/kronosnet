@@ -90,6 +90,8 @@ int lzma_load_lib(
 		if (lzma_remap_symbols(knet_h) < 0) {
 			savederrno = errno;
 			err = -1;
+			dlclose(lzma_lib);
+			lzma_lib = NULL;
 			goto out;
 		}
 	}
@@ -103,10 +105,12 @@ void lzma_unload_lib(
 	knet_handle_t knet_h,
 	int force)
 {
-	lmza_libref--;
-	if ((force) || ((lzma_lib) && (lmza_libref == 0))) {
-		dlclose(lzma_lib);
-		lzma_lib = NULL;
+	if (lzma_lib) {
+		lmza_libref--;
+		if ((force) || (lmza_libref == 0)) {
+			dlclose(lzma_lib);
+			lzma_lib = NULL;
+		}
 	}
 	return;
 }
