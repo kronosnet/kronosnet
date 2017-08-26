@@ -13,12 +13,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "libknet.h"
 
 #include "internals.h"
 #include "crypto.h"
 #include "test-common.h"
+
+pthread_rwlock_t shlib_rwlock;
 
 static void test(void)
 {
@@ -30,6 +33,13 @@ static void test(void)
 	ssize_t input_len = strlen(input) + 1;
 	ssize_t outbuf_len;
 	int i;
+	int err = 0;
+
+	err = pthread_rwlock_init(&shlib_rwlock, NULL);
+	if (err) {
+		printf("unable to init lock: %s\n", strerror(err));
+		exit(FAIL);
+	}
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 
@@ -136,6 +146,7 @@ static void test(void)
 	free(buf1);
 	free(buf2);
 	free(buf3);
+	pthread_rwlock_destroy(&shlib_rwlock);
 }
 
 int main(int argc, char *argv[])

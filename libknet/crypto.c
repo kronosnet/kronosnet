@@ -22,13 +22,16 @@
  * internal module switch data
  */
 
+#define empty_module NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL },
+
 crypto_model_t crypto_modules_cmds[] = {
+	{ "nss",
 #ifdef BUILDCRYPTONSS
-	{ "nss", 1, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
+		 1, nsscrypto_load_lib, nsscrypto_unload_lib, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
 #else
-	{ "nss", 0, NULL, NULL, NULL, NULL, NULL },
+		 0,empty_module
 #endif
-	{ NULL, 0, NULL, NULL, NULL, NULL, NULL },
+	{ NULL, 0, empty_module
 };
 
 static int get_model(const char *model)
@@ -41,6 +44,33 @@ static int get_model(const char *model)
 		idx++;
 	}
 	return -1;
+}
+
+static int check_init_lib(knet_handle_t knet_h, int model)
+{
+	int savederrno = 0;
+
+	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to get write lock: %s",
+			strerror(savederrno));
+		return -1;
+	}
+
+	if (crypto_modules_cmds[model].loaded == 1) {
+		return 0;
+	}
+
+	if (crypto_modules_cmds[model].load_lib != NULL) {
+		if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
+			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
+			pthread_rwlock_unlock(&shlib_rwlock);
+			return -1;
+		}
+	}
+	crypto_modules_cmds[model].loaded = 1;
+
+	return 0;
 }
 
 /*
@@ -100,10 +130,16 @@ int crypto_init(
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
+	if (check_init_lib(knet_h, model) < 0) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load crypto library");
+		return -1;
+	}
+
 	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
 
 	if (!knet_h->crypto_instance) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
+		pthread_rwlock_unlock(&shlib_rwlock);
 		return -1;
 	}
 
@@ -112,10 +148,11 @@ int crypto_init(
 		goto out_err;
 
 	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %u", knet_h->sec_header_size);
-
+	pthread_rwlock_unlock(&shlib_rwlock);
 	return 0;
 
 out_err:
+	pthread_rwlock_unlock(&shlib_rwlock);
 	if (knet_h->crypto_instance) {
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
@@ -126,11 +163,29 @@ out_err:
 void crypto_fini(
 	knet_handle_t knet_h)
 {
-	if (knet_h->crypto_instance) {
-		crypto_modules_cmds[knet_h->crypto_instance->model].fini(knet_h);
-		free(knet_h->crypto_instance);
-		knet_h->crypto_instance = NULL;
+	int savederrno = 0;
+	int model = 0;
+
+	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to get write lock: %s",
+			strerror(savederrno));
+		return;
 	}
 
+	if (knet_h->crypto_instance) {
+		model = knet_h->crypto_instance->model;
+		if (crypto_modules_cmds[model].fini != NULL) {
+			crypto_modules_cmds[model].fini(knet_h);
+		}
+		free(knet_h->crypto_instance);
+		knet_h->crypto_instance = NULL;
+
+		if (crypto_modules_cmds[model].unload_lib != NULL) {
+			crypto_modules_cmds[model].loaded = crypto_modules_cmds[model].unload_lib(knet_h, 0);
+		}
+	}
+
+	pthread_rwlock_unlock(&shlib_rwlock);
 	return;
 }

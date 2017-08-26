@@ -306,7 +306,7 @@ out:
 void compress_fini(
 	knet_handle_t knet_h)
 {
-	int savederrno;
+	int savederrno = 0;
 	int idx = 0;
 
 	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
@@ -320,13 +320,13 @@ void compress_fini(
 		if ((compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
+			if (compress_modules_cmds[idx].fini != NULL) {
+				compress_modules_cmds[idx].fini(knet_h, idx);
+			}
 			if (compress_modules_cmds[idx].unload_lib != NULL) {
 				compress_modules_cmds[idx].unload_lib(knet_h, 0);
 			}
 			compress_modules_cmds[idx].loaded = 0;
-			if (compress_modules_cmds[idx].fini != NULL) {
-				compress_modules_cmds[idx].fini(knet_h, idx);
-			}
 		}
 		idx++;
 	}

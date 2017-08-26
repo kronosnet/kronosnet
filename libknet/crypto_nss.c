@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2015 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -8,6 +8,8 @@
 
 #include "config.h"
 
+#include <errno.h>
+#include <dlfcn.h>
 #ifdef BUILDCRYPTONSS
 #include <nss.h>
 #include <nspr.h>
@@ -23,6 +25,354 @@
 #include "crypto.h"
 #include "crypto_nss.h"
 #include "logging.h"
+
+/*
+ * global vars for dlopen
+ */
+static void *nss_lib;
+static int nss_libref = 0;
+
+/*
+ * symbols remapping
+ */
+/*
+ * nss3
+ */
+CK_MECHANISM_TYPE (*_int_PK11_GetBestWrapMechanism)(PK11SlotInfo *slot);
+PK11SlotInfo *(*_int_PK11_GetBestSlot)(CK_MECHANISM_TYPE type, void *wincx);
+int (*_int_PK11_GetBestKeyLength)(PK11SlotInfo *slot, CK_MECHANISM_TYPE type);
+SECStatus (*_int_PK11_DigestFinal)(PK11Context *context, unsigned char *data,
+				   unsigned int *outLen, unsigned int length);
+void (*_int_SECITEM_FreeItem)(SECItem *zap, PRBool freeit);
+SECStatus (*_int_NSS_NoDB_Init)(const char *configdir);
+SECStatus (*_int_NSS_Shutdown)(void);
+SECStatus (*_int_PK11_DigestBegin)(PK11Context *cx);
+SECStatus (*_int_PK11_DigestOp)(PK11Context *context, const unsigned char *in, unsigned len);
+void (*_int_PK11_DestroyContext)(PK11Context *context, PRBool freeit);
+SECStatus (*_int_PK11_Finalize)(PK11Context *context);
+SECStatus (*_int_PK11_CipherOp)(PK11Context *context, unsigned char *out, int *outlen,
+				int maxout, const unsigned char *in, int inlen);
+PK11SymKey *(*_int_PK11_UnwrapSymKey)(PK11SymKey *key,
+				      CK_MECHANISM_TYPE wraptype, SECItem *param, SECItem *wrapppedKey,
+				      CK_MECHANISM_TYPE target, CK_ATTRIBUTE_TYPE operation, int keySize);
+void (*_int_PK11_FreeSymKey)(PK11SymKey *key);
+PK11Context *(*_int_PK11_CreateContextBySymKey)(CK_MECHANISM_TYPE type,
+						CK_ATTRIBUTE_TYPE operation,
+						PK11SymKey *symKey, SECItem *param);
+SECStatus (*_int_PK11_GenerateRandom)(unsigned char *data, int len);
+SECItem *(*_int_PK11_ParamFromIV)(CK_MECHANISM_TYPE type, SECItem *iv);
+void (*_int_PK11_FreeSlot)(PK11SlotInfo *slot);
+int (*_int_PK11_GetBlockSize)(CK_MECHANISM_TYPE type, SECItem *params);
+PK11SymKey *(*_int_PK11_KeyGen)(PK11SlotInfo *slot, CK_MECHANISM_TYPE type,
+				SECItem *param, int keySize, void *wincx);
+
+/*
+ * nspr4
+ */
+PRStatus (*_int_PR_Cleanup)(void);
+const char * (*_int_PR_ErrorToString)(PRErrorCode code, PRLanguageCode language);
+void (*_int_PR_Init)(PRThreadType type, PRThreadPriority priority, PRUintn maxPTDs);
+PRErrorCode (*_int_PR_GetError)(void);
+void (*_int_PL_ArenaFinish)(void);
+
+static int nsscrypto_remap_symbols(knet_handle_t knet_h)
+{
+	int err = 0;
+	char *error = NULL;
+
+	/*
+	 * nss3
+	 */
+
+	_int_PK11_GetBestWrapMechanism = dlsym(nss_lib, "PK11_GetBestWrapMechanism");
+	if (!_int_PK11_GetBestWrapMechanism) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_GetBestWrapMechanism: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_GetBestSlot = dlsym(nss_lib, "PK11_GetBestSlot");
+	if (!_int_PK11_GetBestSlot) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_GetBestSlot: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_GetBestKeyLength = dlsym(nss_lib, "PK11_GetBestKeyLength");
+	if (!_int_PK11_GetBestKeyLength) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_GetBestKeyLength: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_DigestFinal = dlsym(nss_lib, "PK11_DigestFinal");
+	if (!_int_PK11_DigestFinal) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_DigestFinal: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_SECITEM_FreeItem = dlsym(nss_lib, "SECITEM_FreeItem");
+	if (!_int_SECITEM_FreeItem) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map SECITEM_FreeItem: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_NSS_NoDB_Init = dlsym(nss_lib, "NSS_NoDB_Init");
+	if (!_int_NSS_NoDB_Init) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map NSS_NoDB_Init: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_NSS_Shutdown = dlsym(nss_lib, "NSS_Shutdown");
+	if (!_int_NSS_Shutdown) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map NSS_Shutdown: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_DigestBegin = dlsym(nss_lib, "PK11_DigestBegin");
+	if (!_int_PK11_DigestBegin) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_DigestBegin: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_DigestOp = dlsym(nss_lib, "PK11_DigestOp");
+	if (!_int_PK11_DigestOp) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_DigestOp: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_DestroyContext = dlsym(nss_lib, "PK11_DestroyContext");
+	if (!_int_PK11_DestroyContext) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_DestroyContext: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_Finalize = dlsym(nss_lib, "PK11_Finalize");
+	if (!_int_PK11_Finalize) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_Finalize: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_CipherOp = dlsym(nss_lib, "PK11_CipherOp");
+	if (!_int_PK11_CipherOp) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_CipherOp: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_UnwrapSymKey = dlsym(nss_lib, "PK11_UnwrapSymKey");
+	if (!_int_PK11_UnwrapSymKey) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_UnwrapSymKey: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_FreeSymKey = dlsym(nss_lib, "PK11_FreeSymKey");
+	if (!_int_PK11_FreeSymKey) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_FreeSymKey: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_CreateContextBySymKey = dlsym(nss_lib, "PK11_CreateContextBySymKey");
+	if (!_int_PK11_CreateContextBySymKey) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_CreateContextBySymKey: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_GenerateRandom = dlsym(nss_lib, "PK11_GenerateRandom");
+	if (!_int_PK11_GenerateRandom) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_GenerateRandom: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_ParamFromIV = dlsym(nss_lib, "PK11_ParamFromIV");
+	if (!_int_PK11_ParamFromIV) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_ParamFromIV: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_FreeSlot = dlsym(nss_lib, "PK11_FreeSlot");
+	if (!_int_PK11_FreeSlot) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_FreeSlot: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_GetBlockSize = dlsym(nss_lib, "PK11_GetBlockSize");
+	if (!_int_PK11_GetBlockSize) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_GetBlockSize: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PK11_KeyGen = dlsym(nss_lib, "PK11_KeyGen");
+	if (!_int_PK11_KeyGen) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PK11_KeyGen: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	/*
+	 * nspr4
+	 */
+	_int_PR_Cleanup = dlsym(nss_lib, "PR_Cleanup");
+	if (!_int_PR_Cleanup) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_Cleanup: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PR_ErrorToString = dlsym(nss_lib, "PR_ErrorToString");
+	if (!_int_PR_ErrorToString) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_ErrorToString: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PR_Init = dlsym(nss_lib, "PR_Init");
+	if (!_int_PR_Init) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_Init: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PR_GetError = dlsym(nss_lib, "PR_GetError");
+	if (!_int_PR_GetError) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_GetError: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PL_ArenaFinish = dlsym(nss_lib, "PL_ArenaFinish");
+	if (!_int_PL_ArenaFinish) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PL_ArenaFinish: %s", error);
+		err = -1;
+		goto out;
+	}
+
+
+out:
+	if (err) {
+		_int_PK11_GetBestWrapMechanism = NULL;
+		_int_PK11_GetBestSlot = NULL;
+		_int_PK11_GetBestKeyLength = NULL;
+		_int_PK11_DigestFinal = NULL;
+		_int_SECITEM_FreeItem = NULL;
+		_int_NSS_NoDB_Init = NULL;
+		_int_NSS_Shutdown = NULL;
+		_int_PK11_DigestBegin = NULL;
+		_int_PK11_DigestOp = NULL;
+		_int_PK11_DestroyContext = NULL;
+		_int_PK11_Finalize = NULL;
+		_int_PK11_CipherOp = NULL;
+		_int_PK11_UnwrapSymKey = NULL;
+		_int_PK11_FreeSymKey = NULL;
+		_int_PK11_CreateContextBySymKey = NULL;
+		_int_PK11_GenerateRandom = NULL;
+		_int_PK11_ParamFromIV = NULL;
+		_int_PK11_FreeSlot = NULL;
+		_int_PK11_GetBlockSize = NULL;
+		_int_PK11_KeyGen = NULL;
+
+		_int_PR_Cleanup = NULL;
+		_int_PR_ErrorToString = NULL;
+		_int_PR_Init = NULL;
+		_int_PR_GetError = NULL;
+		_int_PL_ArenaFinish = NULL;
+	}
+	return err;
+}
+
+int nsscrypto_load_lib(
+	knet_handle_t knet_h)
+{
+	int err = 0, savederrno = 0;
+	char *error = NULL;
+
+	if (!nss_lib) {
+		/*
+		 * clear any pending error
+		 */
+		nss_lib = dlopen("libnss3.so", RTLD_NOW | RTLD_GLOBAL);
+		error = dlerror();
+		if (error != NULL) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to dlopen libnss3.so: %s", error);
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
+
+		if (nsscrypto_remap_symbols(knet_h) < 0) {
+			savederrno = errno;
+			err = -1;
+			dlclose(nss_lib);
+			nss_lib = NULL;
+			goto out;
+		}
+	}
+
+	nss_libref++;
+out:
+	errno = savederrno;
+	return err;
+}
+
+int nsscrypto_unload_lib(
+	knet_handle_t knet_h,
+	int force)
+{
+	int ret = 1;
+
+	if (nss_lib) {
+		nss_libref--;
+		if ((force) || (nss_libref == 0)) {
+			dlclose(nss_lib);
+			nss_lib = NULL;
+			ret = 0;
+		}
+	} else {
+		ret = 0;
+	}
+
+	return ret;
+}
 
 static pthread_mutex_t nssdbinit_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int nssdbinit_done = 0;
@@ -192,10 +542,10 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 			break;
 	}
 
-	slot = PK11_GetBestSlot(cipher, NULL);
+	slot = (*_int_PK11_GetBestSlot)(cipher, NULL);
 	if (slot == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to find security slot (%d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
@@ -212,12 +562,12 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	/*
 	 * Generate wrapping key
 	 */
-	wrap_mechanism = PK11_GetBestWrapMechanism(slot);
-	wrap_key_len = PK11_GetBestKeyLength(slot, wrap_mechanism);
-	wrap_key = PK11_KeyGen(slot, wrap_mechanism, NULL, wrap_key_len, NULL);
+	wrap_mechanism = (*_int_PK11_GetBestWrapMechanism)(slot);
+	wrap_key_len = (*_int_PK11_GetBestKeyLength)(slot, wrap_mechanism);
+	wrap_key = (*_int_PK11_KeyGen)(slot, wrap_mechanism, NULL, wrap_key_len, NULL);
 	if (wrap_key == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to generate wrapping key (%d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
@@ -229,26 +579,26 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	 * Initialization of IV is not needed because PK11_GetBestWrapMechanism should return ECB mode
 	 */
 	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
-	wrap_key_crypt_context = PK11_CreateContextBySymKey(wrap_mechanism, CKA_ENCRYPT,
-							    wrap_key, &tmp_sec_item);
+	wrap_key_crypt_context = (*_int_PK11_CreateContextBySymKey)(wrap_mechanism, CKA_ENCRYPT,
+								    wrap_key, &tmp_sec_item);
 	if (wrap_key_crypt_context == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to create encrypt context (%d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
 	wrapped_key_len = (int)sizeof(wrapped_key_data);
 
-	if (PK11_CipherOp(wrap_key_crypt_context, wrapped_key_data, &wrapped_key_len,
-			  sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
+	if ((*_int_PK11_CipherOp)(wrap_key_crypt_context, wrapped_key_data, &wrapped_key_len,
+				  sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to encrypt authkey (%d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
-	if (PK11_Finalize(wrap_key_crypt_context) != SECSuccess) {
+	if ((*_int_PK11_Finalize)(wrap_key_crypt_context) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to finalize encryption of authkey (%d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
 	}
 
@@ -259,13 +609,13 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 	wrapped_key.data = wrapped_key_data;
 	wrapped_key.len = wrapped_key_len;
 
-	res_key = PK11_UnwrapSymKey(wrap_key, wrap_mechanism, &tmp_sec_item, &wrapped_key,
-				    cipher, operation, key_item.len);
+	res_key = (*_int_PK11_UnwrapSymKey)(wrap_key, wrap_mechanism, &tmp_sec_item, &wrapped_key,
+					    cipher, operation, key_item.len);
 	if (res_key == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to import key into NSS (%d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 
-		if (PR_GetError() == SEC_ERROR_BAD_DATA) {
+		if ((*_int_PR_GetError)() == SEC_ERROR_BAD_DATA) {
 			/*
 			 * Maximum key length for FIPS enabled softtoken is limited to
 			 * MAX_KEY_LEN (pkcs11i.h - 256) and checked in NSC_UnwrapKey. Returned
@@ -279,15 +629,15 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 
 exit_res_key:
 	if (wrap_key_crypt_context != NULL) {
-		PK11_DestroyContext(wrap_key_crypt_context, PR_TRUE);
+		(*_int_PK11_DestroyContext)(wrap_key_crypt_context, PR_TRUE);
 	}
 
 	if (wrap_key != NULL) {
-		PK11_FreeSymKey(wrap_key);
+		(*_int_PK11_FreeSymKey)(wrap_key);
 	}
 
 	if (slot != NULL) {
-		PK11_FreeSlot(slot);
+		(*_int_PK11_FreeSlot)(slot);
 	}
 
 	return (res_key);
@@ -327,9 +677,9 @@ static int encrypt_nss(
 	int		err = -1;
 	int		i;
 
-	if (PK11_GenerateRandom (salt, SALT_SIZE) != SECSuccess) {
+	if ((*_int_PK11_GenerateRandom)(salt, SALT_SIZE) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to generate a random number (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
@@ -337,46 +687,47 @@ static int encrypt_nss(
 	crypt_param.data = salt;
 	crypt_param.len = SALT_SIZE;
 
-	nss_sec_param = PK11_ParamFromIV(cipher_to_nss[instance->crypto_cipher_type],
-					 &crypt_param);
+	nss_sec_param = (*_int_PK11_ParamFromIV)(cipher_to_nss[instance->crypto_cipher_type],
+						 &crypt_param);
 	if (nss_sec_param == NULL) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to set up PKCS11 param (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
 	/*
 	 * Create cipher context for encryption
 	 */
-	crypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
-						   CKA_ENCRYPT,
-						   instance->nss_sym_key,
-						   nss_sec_param);
+	crypt_context = (*_int_PK11_CreateContextBySymKey)(cipher_to_nss[instance->crypto_cipher_type],
+							   CKA_ENCRYPT,
+							   instance->nss_sym_key,
+							   nss_sec_param);
 	if (!crypt_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s",
 			   (int)cipher_to_nss[instance->crypto_cipher_type],
-			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			   (*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
 	for (i=0; i<iovcnt; i++) {
-		if (PK11_CipherOp(crypt_context, data,
-				  &tmp_outlen,
-				  KNET_DATABUFSIZE_CRYPT,
-				  (unsigned char *)iov[i].iov_base, iov[i].iov_len) != SECSuccess) {
+		if ((*_int_PK11_CipherOp)(crypt_context, data,
+					  &tmp_outlen,
+					  KNET_DATABUFSIZE_CRYPT,
+					  (unsigned char *)iov[i].iov_base,
+					  iov[i].iov_len) != SECSuccess) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d): %s",
 				(int)cipher_to_nss[instance->crypto_cipher_type],
-				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+				(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 			goto out;
 		}
 		tmp1_outlen = tmp1_outlen + tmp_outlen;
 	}
 
-	if (PK11_DigestFinal(crypt_context, data + tmp1_outlen,
-			     &tmp2_outlen, KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
+	if ((*_int_PK11_DigestFinal)(crypt_context, data + tmp1_outlen,
+				     &tmp2_outlen, KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d): %s",
 			(int)cipher_to_nss[instance->crypto_cipher_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 
 	}
@@ -387,10 +738,10 @@ static int encrypt_nss(
 
 out:
 	if (crypt_context) {
-		PK11_DestroyContext(crypt_context, PR_TRUE);
+		(*_int_PK11_DestroyContext)(crypt_context, PR_TRUE);
 	}
 	if (nss_sec_param) {
-		SECITEM_FreeItem(nss_sec_param, PR_TRUE);
+		(*_int_SECITEM_FreeItem)(nss_sec_param, PR_TRUE);
 	}
 	return err;
 }
@@ -417,26 +768,26 @@ static int decrypt_nss (
 	decrypt_param.data = salt;
 	decrypt_param.len = SALT_SIZE;
 
-	decrypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
-						     CKA_DECRYPT,
-						     instance->nss_sym_key, &decrypt_param);
+	decrypt_context = (*_int_PK11_CreateContextBySymKey)(cipher_to_nss[instance->crypto_cipher_type],
+							     CKA_DECRYPT,
+							     instance->nss_sym_key, &decrypt_param);
 	if (!decrypt_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext (decrypt) failed (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
-	if (PK11_CipherOp(decrypt_context, buf_out, &tmp1_outlen,
-			  KNET_DATABUFSIZE_CRYPT, data, datalen) != SECSuccess) {
+	if ((*_int_PK11_CipherOp)(decrypt_context, buf_out, &tmp1_outlen,
+				  KNET_DATABUFSIZE_CRYPT, data, datalen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
-	if (PK11_DigestFinal(decrypt_context, buf_out + tmp1_outlen, &tmp2_outlen,
-			     KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
+	if ((*_int_PK11_DigestFinal)(decrypt_context, buf_out + tmp1_outlen, &tmp2_outlen,
+				     KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
@@ -446,7 +797,7 @@ static int decrypt_nss (
 
 out:
 	if (decrypt_context) {
-		PK11_DestroyContext(decrypt_context, PR_TRUE);
+		(*_int_PK11_DestroyContext)(decrypt_context, PR_TRUE);
 	}
 
 	return err;
@@ -509,37 +860,37 @@ static int calculate_nss_hash(
 	hash_param.data = 0;
 	hash_param.len = 0;
 
-	hash_context = PK11_CreateContextBySymKey(hash_to_nss[instance->crypto_hash_type],
-						  CKA_SIGN,
-						  instance->nss_sym_key_sign,
-						  &hash_param);
+	hash_context = (*_int_PK11_CreateContextBySymKey)(hash_to_nss[instance->crypto_hash_type],
+							  CKA_SIGN,
+							  instance->nss_sym_key_sign,
+							  &hash_param);
 
 	if (!hash_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext failed (hash) hash_type=%d (err %d): %s",
 			(int)hash_to_nss[instance->crypto_hash_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
-	if (PK11_DigestBegin(hash_context) != SECSuccess) {
+	if ((*_int_PK11_DigestBegin)(hash_context) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestBegin failed (hash) hash_type=%d (err %d): %s",
 			(int)hash_to_nss[instance->crypto_hash_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
-	if (PK11_DigestOp(hash_context, buf, buf_len) != SECSuccess) {
+	if ((*_int_PK11_DigestOp)(hash_context, buf, buf_len) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestOp failed (hash) hash_type=%d (err %d): %s",
 			(int)hash_to_nss[instance->crypto_hash_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
-	if (PK11_DigestFinal(hash_context, hash,
-			     &hash_tmp_outlen, hash_len[instance->crypto_hash_type]) != SECSuccess) {
+	if ((*_int_PK11_DigestFinal)(hash_context, hash,
+				     &hash_tmp_outlen, hash_len[instance->crypto_hash_type]) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d): %s",
 			(int)hash_to_nss[instance->crypto_hash_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		goto out;
 	}
 
@@ -547,7 +898,7 @@ static int calculate_nss_hash(
 
 out:
 	if (hash_context) {
-		PK11_DestroyContext(hash_context, PR_TRUE);
+		(*_int_PK11_DestroyContext)(hash_context, PR_TRUE);
 	}
 
 	return err;
@@ -559,9 +910,9 @@ out:
 
 static void nss_atexit_handler(void)
 {
-	NSS_Shutdown();
-	PL_ArenaFinish();
-	PR_Cleanup();
+	(*_int_NSS_Shutdown)();
+	(*_int_PL_ArenaFinish)();
+	(*_int_PR_Cleanup)();
 }
 
 static int init_nss_db(knet_handle_t knet_h)
@@ -585,11 +936,11 @@ static int init_nss_db(knet_handle_t knet_h)
 		goto out_unlock;
 	}
 
-	PR_Init(PR_USER_THREAD, PR_PRIORITY_URGENT, 0);
+	(*_int_PR_Init)(PR_USER_THREAD, PR_PRIORITY_URGENT, 0);
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
+	if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
 		err = -1;
 		goto out_unlock;
 	}
@@ -779,7 +1130,7 @@ int nsscrypto_init(
 		if (cypher_block_len[nsscrypto_instance->crypto_cipher_type]) {
 			block_size = cypher_block_len[nsscrypto_instance->crypto_cipher_type];
 		} else {
-			block_size = PK11_GetBlockSize(nsscrypto_instance->crypto_cipher_type, NULL);
+			block_size = (*_int_PK11_GetBlockSize)(nsscrypto_instance->crypto_cipher_type, NULL);
 			if (block_size < 0) {
 				goto out_err;
 			}
@@ -805,11 +1156,11 @@ void nsscrypto_fini(
 
 	if (nsscrypto_instance) {
 		if (nsscrypto_instance->nss_sym_key) {
-			PK11_FreeSymKey(nsscrypto_instance->nss_sym_key);
+			(*_int_PK11_FreeSymKey)(nsscrypto_instance->nss_sym_key);
 			nsscrypto_instance->nss_sym_key = NULL;
 		}
 		if (nsscrypto_instance->nss_sym_key_sign) {
-			PK11_FreeSymKey(nsscrypto_instance->nss_sym_key_sign);
+			(*_int_PK11_FreeSymKey)(nsscrypto_instance->nss_sym_key_sign);
 			nsscrypto_instance->nss_sym_key_sign = NULL;
 		}
 		free(nsscrypto_instance);

@@ -13,6 +13,20 @@
 
 struct nsscrypto_instance;
 
+int nsscrypto_load_lib(
+	knet_handle_t knet_h);
+
+int nsscrypto_unload_lib(
+	knet_handle_t knet_h,
+	int force);
+
+int nsscrypto_init(
+	knet_handle_t knet_h,
+	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+
+void nsscrypto_fini(
+	knet_handle_t knet_h);
+
 int nsscrypto_authenticate_and_decrypt (
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -33,12 +47,5 @@ int nsscrypto_encrypt_and_signv (
 	int iovcnt_in,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len);
-
-int nsscrypto_init(
-	knet_handle_t knet_h,
-	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
-
-void nsscrypto_fini(
-	knet_handle_t knet_h);
 
 #endif
