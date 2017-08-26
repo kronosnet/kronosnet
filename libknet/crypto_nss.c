@@ -19,7 +19,6 @@
 #include <blapit.h>
 #include <hasht.h>
 #include <pthread.h>
-#include <stdlib.h>
 #include <secerr.h>
 
 #include "crypto.h"
@@ -319,6 +318,37 @@ out:
 	return err;
 }
 
+static int init_nss_db(knet_handle_t knet_h)
+{
+	(*_int_PR_Init)(PR_USER_THREAD, PR_PRIORITY_URGENT, 0);
+
+	if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
+			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int dbloaded = 0;
+
+void nsscrypto_unload_lib(
+	knet_handle_t knet_h)
+{
+	if (nss_lib) {
+		if (dbloaded) {
+			(*_int_NSS_Shutdown)();
+			(*_int_PL_ArenaFinish)();
+			(*_int_PR_Cleanup)();
+		}
+		dlclose(nss_lib);
+		nss_lib = NULL;
+		dbloaded = 0;
+	}
+	return;
+}
+
 int nsscrypto_load_lib(
 	knet_handle_t knet_h)
 {
@@ -341,29 +371,24 @@ int nsscrypto_load_lib(
 		if (nsscrypto_remap_symbols(knet_h) < 0) {
 			savederrno = errno;
 			err = -1;
-			dlclose(nss_lib);
-			nss_lib = NULL;
 			goto out;
 		}
+
+		if (init_nss_db(knet_h) < 0) {
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
+		dbloaded = 1;
 	}
 
 out:
+	if (err) {
+		nsscrypto_unload_lib(knet_h);
+	}
 	errno = savederrno;
 	return err;
 }
-
-void nsscrypto_unload_lib(
-	knet_handle_t knet_h)
-{
-	if (nss_lib) {
-		dlclose(nss_lib);
-		nss_lib = NULL;
-	}
-	return;
-}
-
-static pthread_mutex_t nssdbinit_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int nssdbinit_done = 0;
 
 /*
  * crypto definitions and conversion tables
@@ -896,62 +921,8 @@ out:
  * global/glue nss functions
  */
 
-static void nss_atexit_handler(void)
-{
-	(*_int_NSS_Shutdown)();
-	(*_int_PL_ArenaFinish)();
-	(*_int_PR_Cleanup)();
-}
-
-static int init_nss_db(knet_handle_t knet_h)
-{
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
-	int err = 0;
-
-	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
-	    (!hash_to_nss[instance->crypto_hash_type])) {
-		return 0;
-	}
-
-	err = pthread_mutex_lock(&nssdbinit_mutex);
-	if (err) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB unable to get mutex lock (%d)", err);
-		return -1;
-	}
-
-	if (nssdbinit_done) {
-		err = 0;
-		goto out_unlock;
-	}
-
-	(*_int_PR_Init)(PR_USER_THREAD, PR_PRIORITY_URGENT, 0);
-
-	if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
-			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
-		err = -1;
-		goto out_unlock;
-	}
-
-	if (atexit(&nss_atexit_handler) != 0) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB unable to register atexit handler");
-		err = -1;
-		goto out_unlock;
-	}
-
-	nssdbinit_done = 1;
-
-out_unlock:
-	pthread_mutex_unlock(&nssdbinit_mutex);
-	return err;
-}
-
 static int init_nss(knet_handle_t knet_h)
 {
-	if (init_nss_db(knet_h) < 0) {
-		return -1;
-	}
-
 	if (init_nss_crypto(knet_h) < 0) {
 		return -1;
 	}
