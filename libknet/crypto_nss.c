@@ -30,7 +30,6 @@
  * global vars for dlopen
  */
 static void *nss_lib;
-static int nss_libref = 0;
 
 /*
  * symbols remapping
@@ -348,30 +347,19 @@ int nsscrypto_load_lib(
 		}
 	}
 
-	nss_libref++;
 out:
 	errno = savederrno;
 	return err;
 }
 
-int nsscrypto_unload_lib(
-	knet_handle_t knet_h,
-	int force)
+void nsscrypto_unload_lib(
+	knet_handle_t knet_h)
 {
-	int ret = 1;
-
 	if (nss_lib) {
-		nss_libref--;
-		if ((force) || (nss_libref == 0)) {
-			dlclose(nss_lib);
-			nss_lib = NULL;
-			ret = 0;
-		}
-	} else {
-		ret = 0;
+		dlclose(nss_lib);
+		nss_lib = NULL;
 	}
-
-	return ret;
+	return;
 }
 
 static pthread_mutex_t nssdbinit_mutex = PTHREAD_MUTEX_INITIALIZER;
