@@ -67,7 +67,7 @@ static void test(void)
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
-	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
+	if (crypto_init(knet_h, &knet_handle_crypto_cfg) < 0) {
 		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		exit(FAIL);
@@ -234,17 +234,7 @@ static void test(void)
 
 	printf("Shutdown crypto\n");
 
-	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
-	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg) < 0) {
-		printf("Unable to shutdown crypto: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		exit(FAIL);
-	}
+	crypto_fini(knet_h);
 
 	knet_handle_free(knet_h);
 	free(buf1);

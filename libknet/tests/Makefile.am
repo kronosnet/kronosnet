@@ -69,8 +69,6 @@ int_crypto_test_SOURCES = int_crypto.c \
 
 int_crypto_test_CFLAGS	= $(nss_CFLAGS)
 
-int_crypto_test_LDFLAGS = $(nss_LIBS)
-
 int_timediff_test_SOURCES = int_timediff.c
 
 crypto_bench_test_SOURCES = crypto_bench.c \
@@ -80,8 +78,6 @@ crypto_bench_test_SOURCES = crypto_bench.c \
 			    test-common.c
 
 crypto_bench_test_CFLAGS  = $(nss_CFLAGS)
-
-crypto_bench_test_LDFLAGS = $(nss_LIBS)
 
 knet_bench_test_SOURCES	= knet_bench.c \
 			  test-common.c \
