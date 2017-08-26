@@ -23,7 +23,6 @@
  * global vars for dlopen
  */
 static void *lzo2_lib;
-static int lzo2_libref = 0;
 
 /*
  * symbols remapping
@@ -144,22 +143,17 @@ int lzo2_load_lib(
 		}
 	}
 
-	lzo2_libref++;
 out:
 	errno = savederrno;
 	return err;
 }
 
 void lzo2_unload_lib(
-	knet_handle_t knet_h,
-	int force)
+	knet_handle_t knet_h)
 {
 	if (lzo2_lib) {
-		lzo2_libref--;
-		if ((force) || (lzo2_libref == 0)) {
-			dlclose(lzo2_lib);
-			lzo2_lib = NULL;
-		}
+		dlclose(lzo2_lib);
+		lzo2_lib = NULL;
 	}
 	return;
 }

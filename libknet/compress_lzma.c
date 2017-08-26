@@ -23,7 +23,6 @@
  * global vars for dlopen
  */
 static void *lzma_lib;
-static int lmza_libref = 0;
 
 /*
  * symbols remapping
@@ -95,22 +94,17 @@ int lzma_load_lib(
 			goto out;
 		}
 	}
-	lmza_libref++;
 out:
 	errno = savederrno;
 	return err;
 }
 
 void lzma_unload_lib(
-	knet_handle_t knet_h,
-	int force)
+	knet_handle_t knet_h)
 {
 	if (lzma_lib) {
-		lmza_libref--;
-		if ((force) || (lmza_libref == 0)) {
-			dlclose(lzma_lib);
-			lzma_lib = NULL;
-		}
+		dlclose(lzma_lib);
+		lzma_lib = NULL;
 	}
 	return;
 }

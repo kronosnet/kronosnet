@@ -23,7 +23,6 @@
  * global vars for dlopen
  */
 static void *zlib_lib;
-static int zlib_libref = 0;
 
 /*
  * symbols remapping
@@ -93,22 +92,17 @@ int zlib_load_lib(
 			goto out;
 		}
 	}
-	zlib_libref++;
 out:
 	errno = savederrno;
 	return err;
 }
 
 void zlib_unload_lib(
-	knet_handle_t knet_h,
-	int force)
+	knet_handle_t knet_h)
 {
 	if (zlib_lib) {
-		zlib_libref--;
-		if ((force) || (zlib_libref == 0)) {
-			dlclose(zlib_lib);
-			zlib_lib = NULL;
-		}
+		dlclose(zlib_lib);
+		zlib_lib = NULL;
 	}
 	return;
 }

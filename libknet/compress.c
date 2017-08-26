@@ -46,43 +46,43 @@
  * always add before the last NULL/NULL/NULL.
  */
 
-#define empty_module 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 
 compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, empty_module
 	{ "zlib", 1,
 #ifdef BUILDCOMPZLIB
-		     1, zlib_load_lib, zlib_unload_lib, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+		     1, zlib_load_lib, zlib_unload_lib, 0, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
 #else
 empty_module
 #endif
 	{ "lz4", 2,
 #ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, lz4_unload_lib, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
+		     1, lz4_load_lib, lz4_unload_lib, 0, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
 #else
 empty_module
 #endif
 	{ "lz4hc", 3,
 #ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, lz4_unload_lib, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+		     1, lz4_load_lib, lz4_unload_lib, 0, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
 #else
 empty_module
 #endif
 	{ "lzo2", 4,
 #ifdef BUILDCOMPLZO2
-		     1, lzo2_load_lib, lzo2_unload_lib, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+		     1, lzo2_load_lib, lzo2_unload_lib, 0, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
 #else
 empty_module
 #endif
 	{ "lzma", 5,
 #ifdef BUILDCOMPLZMA
-		     1, lzma_load_lib, lzma_unload_lib, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+		     1, lzma_load_lib, lzma_unload_lib, 0, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
 #else
 empty_module
 #endif
 	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-		     1, bzip2_load_lib, bzip2_unload_lib, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+		     1, bzip2_load_lib, bzip2_unload_lib, 0, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
 #else
 empty_module
 #endif
@@ -156,12 +156,19 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model, int rate_limit)
 	 * on other threads potentially unloading or reloading.
 	 *
 	 * lack of a .is_init function means that the module does not require
-	 * init per handle
+	 * init per handle so we use a fake reference in the compress_int_data
+	 * to identify that we already increased the libref for this handle
 	 */
-	if ((compress_modules_cmds[cmp_model].loaded == 1) &&
-	    ((compress_modules_cmds[cmp_model].is_init == NULL) ||
-	     (compress_modules_cmds[cmp_model].is_init(knet_h, cmp_model) == 1))) {
-		return 0;
+	if (compress_modules_cmds[cmp_model].loaded == 1) {
+		if (compress_modules_cmds[cmp_model].is_init == NULL) {
+			if (knet_h->compress_int_data[cmp_model] != NULL) {
+				return 0;
+			}
+		} else {
+			if (compress_modules_cmds[cmp_model].is_init(knet_h, cmp_model) == 1) {
+				return 0;
+			}
+		}
 	}
 
 	/*
@@ -201,21 +208,25 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model, int rate_limit)
 		return -1;
 	}
 
-	if (compress_modules_cmds[cmp_model].load_lib != NULL) {
+	if (compress_modules_cmds[cmp_model].loaded == 0) {
 		if (compress_modules_cmds[cmp_model].load_lib(knet_h) < 0) {
 			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			pthread_rwlock_unlock(&shlib_rwlock);
 			return -1;
 		}
+		compress_modules_cmds[cmp_model].loaded = 1;
 	}
-	compress_modules_cmds[cmp_model].loaded = 1;
 
 	if (compress_modules_cmds[cmp_model].init != NULL) {
 		if (compress_modules_cmds[cmp_model].init(knet_h, cmp_model) < 0) {
 			pthread_rwlock_unlock(&shlib_rwlock);
 			return -1;
 		}
+	} else {
+		knet_h->compress_int_data[cmp_model] = &"1";
 	}
+
+	compress_modules_cmds[cmp_model].libref++;
 
 	return 0;
 }
@@ -322,11 +333,15 @@ void compress_fini(
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
 			if (compress_modules_cmds[idx].fini != NULL) {
 				compress_modules_cmds[idx].fini(knet_h, idx);
+			} else {
+				knet_h->compress_int_data[idx] = NULL;
 			}
-			if (compress_modules_cmds[idx].unload_lib != NULL) {
-				compress_modules_cmds[idx].unload_lib(knet_h, 0);
+			compress_modules_cmds[idx].libref--;
+
+			if (compress_modules_cmds[idx].libref == 0) {
+				compress_modules_cmds[idx].unload_lib(knet_h);
+				compress_modules_cmds[idx].loaded = 0;
 			}
-			compress_modules_cmds[idx].loaded = 0;
 		}
 		idx++;
 	}

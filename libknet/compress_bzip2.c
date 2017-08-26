@@ -23,7 +23,6 @@
  * global vars for dlopen
  */
 static void *bzip2_lib;
-static int bzip2_libref;
 
 /*
  * symbols remapping
@@ -92,22 +91,17 @@ int bzip2_load_lib(
 			goto out;
 		}
 	}
-	bzip2_libref++;
 out:
 	errno = savederrno;
 	return err;
 }
 
 void bzip2_unload_lib(
-	knet_handle_t knet_h,
-	int force)
+	knet_handle_t knet_h)
 {
 	if (bzip2_lib) {
-		bzip2_libref--;
-		if ((force) || (bzip2_libref == 0)) {
-			dlclose(bzip2_lib);
-			bzip2_lib = NULL;
-		}
+		dlclose(bzip2_lib);
+		bzip2_lib = NULL;
 	}
 	return;
 }

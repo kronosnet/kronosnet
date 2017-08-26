@@ -27,14 +27,17 @@ typedef struct {
 	/*
 	 * unload_lib will call dlclose only after all handles using
 	 * the given shared lib have finished using it.
-	 * set force to 1 will unload the library unconditionally.
 	 */
-	void (*unload_lib)	(knet_handle_t knet_h, int force);
+	void (*unload_lib)	(knet_handle_t knet_h);
 
 	/*
-	 * set to 1 when shlib is loaded, 0 otherwise
+	 * library is loaded
 	 */
 	uint8_t		loaded;
+	/*
+	 * number of users for this library
+	 */
+	uint8_t		libref;
 
 	/*
 	 * runtime bits
