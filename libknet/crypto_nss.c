@@ -9,6 +9,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #ifdef BUILDCRYPTONSS
 #include <nss.h>
@@ -71,6 +72,10 @@ PRStatus (*_int_PR_Cleanup)(void);
 const char * (*_int_PR_ErrorToString)(PRErrorCode code, PRLanguageCode language);
 void (*_int_PR_Init)(PRThreadType type, PRThreadPriority priority, PRUintn maxPTDs);
 PRErrorCode (*_int_PR_GetError)(void);
+
+/*
+ * plds4
+ */
 void (*_int_PL_ArenaFinish)(void);
 
 static int nsscrypto_remap_symbols(knet_handle_t knet_h)
@@ -245,6 +250,7 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 	/*
 	 * nspr4
 	 */
+
 	_int_PR_Cleanup = dlsym(nss_lib, "PR_Cleanup");
 	if (!_int_PR_Cleanup) {
 		error = dlerror();
@@ -276,6 +282,10 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 		err = -1;
 		goto out;
 	}
+
+	/*
+	 * plds4
+	 */
 
 	_int_PL_ArenaFinish = dlsym(nss_lib, "PL_ArenaFinish");
 	if (!_int_PL_ArenaFinish) {
@@ -313,9 +323,17 @@ out:
 		_int_PR_ErrorToString = NULL;
 		_int_PR_Init = NULL;
 		_int_PR_GetError = NULL;
+
 		_int_PL_ArenaFinish = NULL;
 	}
 	return err;
+}
+
+static void nss_atexit_handler(void)
+{
+	(*_int_NSS_Shutdown)();
+	(*_int_PL_ArenaFinish)();
+	(*_int_PR_Cleanup)();
 }
 
 static int init_nss_db(knet_handle_t knet_h)
@@ -328,24 +346,17 @@ static int init_nss_db(knet_handle_t knet_h)
 		return -1;
 	}
 
+	if (atexit(&nss_atexit_handler) != 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB unable to register atexit handler");
+		return -1;
+	}
+
 	return 0;
 }
-
-static int dbloaded = 0;
 
 void nsscrypto_unload_lib(
 	knet_handle_t knet_h)
 {
-	if (nss_lib) {
-		if (dbloaded) {
-			(*_int_NSS_Shutdown)();
-			(*_int_PL_ArenaFinish)();
-			(*_int_PR_Cleanup)();
-		}
-		dlclose(nss_lib);
-		nss_lib = NULL;
-		dbloaded = 0;
-	}
 	return;
 }
 
@@ -359,7 +370,7 @@ int nsscrypto_load_lib(
 		/*
 		 * clear any pending error
 		 */
-		nss_lib = dlopen("libnss3.so", RTLD_NOW | RTLD_GLOBAL);
+		nss_lib = dlopen("libnss3.so", RTLD_LAZY | RTLD_GLOBAL | RTLD_NODELETE);
 		error = dlerror();
 		if (error != NULL) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to dlopen libnss3.so: %s", error);
@@ -379,7 +390,6 @@ int nsscrypto_load_lib(
 			err = -1;
 			goto out;
 		}
-		dbloaded = 1;
 	}
 
 out:
