@@ -138,7 +138,7 @@ int crypto_init(
 	if (!knet_h->crypto_instance) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
 		pthread_rwlock_unlock(&shlib_rwlock);
-		return -1;
+		goto out_err;
 	}
 
 	knet_h->crypto_instance->model = model;
@@ -151,11 +151,15 @@ int crypto_init(
 	return 0;
 
 out_err:
-	pthread_rwlock_unlock(&shlib_rwlock);
 	if (knet_h->crypto_instance) {
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}
+	if (crypto_modules_cmds[model].libref == 0) {
+		crypto_modules_cmds[model].unload_lib(knet_h);
+		crypto_modules_cmds[model].loaded = 0;
+	}
+	pthread_rwlock_unlock(&shlib_rwlock);
 	return -1;
 }
 
