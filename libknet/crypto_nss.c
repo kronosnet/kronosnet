@@ -371,6 +371,8 @@ int nsscrypto_load_lib(
 		/*
 		 * clear any pending error
 		 */
+		dlerror();
+
 		nss_lib = dlopen("libnss3.so", RTLD_LAZY | RTLD_GLOBAL | RTLD_NODELETE);
 		error = dlerror();
 		if (error != NULL) {
