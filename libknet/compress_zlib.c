@@ -18,6 +18,7 @@
 #include "internals.h"
 #include "compress_zlib.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * global vars for dlopen
@@ -67,18 +68,10 @@ int zlib_load_lib(
 	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
-	char *error = NULL;
 
 	if (!zlib_lib) {
-		/*
-		 * clear any pending error
-		 */
-		dlerror();
-
-		zlib_lib = dlopen("libz.so.1", RTLD_LAZY | RTLD_GLOBAL);
-		error = dlerror();
-		if (error != NULL) {
-			log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to dlopen libz.so.1: %s", error);
+		zlib_lib = open_lib(knet_h, "libz.so.1", 0);
+		if (!zlib_lib) {
 			savederrno = EAGAIN;
 			err = -1;
 			goto out;

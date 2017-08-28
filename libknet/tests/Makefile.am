@@ -62,6 +62,7 @@ check-api-test-coverage:
 pckt_test_SOURCES	= pckt_test.c
 
 int_crypto_test_SOURCES = int_crypto.c \
+			  ../common.c \
 			  ../crypto.c \
 			  ../crypto_nss.c \
 			  ../logging.c \
@@ -72,6 +73,7 @@ int_crypto_test_CFLAGS	= $(nss_CFLAGS)
 int_timediff_test_SOURCES = int_timediff.c
 
 crypto_bench_test_SOURCES = crypto_bench.c \
+			    ../common.c \
 			    ../crypto.c \
 			    ../crypto_nss.c \
 			    ../logging.c \

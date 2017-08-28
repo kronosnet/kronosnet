@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <secerr.h>
 
+#include "common.h"
 #include "crypto.h"
 #include "crypto_nss.h"
 #include "logging.h"
@@ -365,19 +366,11 @@ int nsscrypto_load_lib(
 	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
-	char *error = NULL;
 
 	if (!nss_lib) {
-		/*
-		 * clear any pending error
-		 */
-		dlerror();
-
-		nss_lib = dlopen("libnss3.so", RTLD_LAZY | RTLD_GLOBAL | RTLD_NODELETE);
-		error = dlerror();
-		if (error != NULL) {
-			log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to dlopen libnss3.so: %s", error);
-			savederrno = EAGAIN;
+		nss_lib = open_lib(knet_h, "libnss3.so", RTLD_NODELETE);
+		if (!nss_lib) {
+			savederrno = errno;
 			err = -1;
 			goto out;
 		}

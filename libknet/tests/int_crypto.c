@@ -17,6 +17,7 @@
 
 #include "libknet.h"
 
+#include "common.h"
 #include "internals.h"
 #include "crypto.h"
 #include "test-common.h"

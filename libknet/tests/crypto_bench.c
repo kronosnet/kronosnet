@@ -18,6 +18,7 @@
 
 #include "libknet.h"
 
+#include "common.h"
 #include "internals.h"
 #include "crypto.h"
 #include "threads_common.h"

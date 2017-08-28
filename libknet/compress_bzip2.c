@@ -18,6 +18,7 @@
 #include "internals.h"
 #include "compress_bzip2.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * global vars for dlopen
@@ -66,19 +67,11 @@ int bzip2_load_lib(
 	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
-	char *error = NULL;
 
 	if (!bzip2_lib) {
-		/*
-		 * clear any pending error
-		 */
-		dlerror();
-
-		bzip2_lib = dlopen("libbz2.so.1", RTLD_LAZY | RTLD_GLOBAL);
-		error = dlerror();
-		if (error != NULL) {
-			log_err(knet_h, KNET_SUB_BZIP2COMP, "unable to dlopen libbz2.so.1: %s", error);
-			savederrno = EAGAIN;
+		bzip2_lib = open_lib(knet_h, "libbz2.so.1", 0);
+		if (!bzip2_lib) {
+			savederrno = errno;
 			err = -1;
 			goto out;
 		}

@@ -18,6 +18,7 @@
 #include "internals.h"
 #include "compress_lz4.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * global vars for dlopen
@@ -79,18 +80,10 @@ int lz4_load_lib(
 	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
-	char *error = NULL;
 
 	if (!lz4_lib) {
-		/*
-		 * clear any pending error
-		 */
-		dlerror();
-
-		lz4_lib = dlopen("liblz4.so.1", RTLD_LAZY | RTLD_GLOBAL);
-		error = dlerror();
-		if (error != NULL) {
-			log_err(knet_h, KNET_SUB_LZ4COMP, "unable to dlopen liblz4.so.1: %s", error);
+		lz4_lib = open_lib(knet_h, "liblz4.so.1", 0);
+		if (!lz4_lib) {
 			savederrno = EAGAIN;
 			err = -1;
 			goto out;

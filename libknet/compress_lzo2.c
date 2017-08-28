@@ -18,6 +18,7 @@
 #include "internals.h"
 #include "compress_lzo2.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * global vars for dlopen
@@ -117,18 +118,10 @@ int lzo2_load_lib(
 	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
-	char *error = NULL;
 
 	if (!lzo2_lib) {
-		/*
-		 * clear any pending error
-		 */
-		dlerror();
-
-		lzo2_lib = dlopen("liblzo2.so.2", RTLD_LAZY | RTLD_GLOBAL);
-		error = dlerror();
-		if (error != NULL) {
-			log_err(knet_h, KNET_SUB_LZO2COMP, "unable to dlopen liblzo2.so.2: %s", error);
+		lzo2_lib = open_lib(knet_h, "liblzo2.so.2", 0);
+		if (!lzo2_lib) {
 			savederrno = EAGAIN;
 			err = -1;
 			goto out;

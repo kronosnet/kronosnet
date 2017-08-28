@@ -18,6 +18,7 @@
 #include "internals.h"
 #include "compress_lzma.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * global vars for dlopen
@@ -69,18 +70,10 @@ int lzma_load_lib(
 	knet_handle_t knet_h)
 {
 	int err = 0, savederrno = 0;
-	char *error = NULL;
 
 	if (!lzma_lib) {
-		/*
-		 * clear any pending error
-		 */
-		dlerror();
-
-		lzma_lib = dlopen("liblzma.so.5", RTLD_LAZY | RTLD_GLOBAL);
-		error = dlerror();
-		if (error != NULL) {
-			log_err(knet_h, KNET_SUB_LZMACOMP, "unable to dlopen liblzma.so.5: %s", error);
+		lzma_lib = open_lib(knet_h, "liblzma.so.5", 0);
+		if (!lzma_lib) {
 			savederrno = EAGAIN;
 			err = -1;
 			goto out;

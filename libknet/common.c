@@ -10,7 +10,11 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <string.h>
 
+#include "logging.h"
 #include "common.h"
 
 int _fdset_cloexec(int fd)
@@ -43,4 +47,36 @@ int _fdset_nonblock(int fd)
 		return -1;
 
 	return 0;
+}
+
+void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
+{
+	char *error = NULL;
+	char path[4096];
+	void *ret = NULL;
+
+	/*
+	 * clear any pending error
+	 */
+	dlerror();
+
+	ret = dlopen(libname, RTLD_LAZY | RTLD_GLOBAL | extra_flags);
+	error = dlerror();
+	if (error != NULL) {
+		log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: %s",
+			libname, error);
+		errno = EAGAIN;
+		return NULL;
+	}
+
+	memset(path, 0, sizeof(path));
+	if (dlinfo(ret, RTLD_DI_ORIGIN, &path) < 0) {
+		log_warn(knet_h, KNET_SUB_COMMON, "unable to dlinfo %s: %s",
+			 libname, error);
+	} else {
+		log_info(knet_h, KNET_SUB_COMMON, "%s has been loaded from %s/%s",
+			 libname, path, libname);
+	}
+
+	return ret;
 }
