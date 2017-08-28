@@ -338,7 +338,9 @@ void compress_fini(
 			}
 			compress_modules_cmds[idx].libref--;
 
-			if (compress_modules_cmds[idx].libref == 0) {
+			if ((compress_modules_cmds[idx].libref == 0) &&
+			    (compress_modules_cmds[idx].loaded == 1)) {
+				log_debug(knet_h, KNET_SUB_COMPRESS, "Unloading %s library", compress_modules_cmds[idx].model_name);
 				compress_modules_cmds[idx].unload_lib(knet_h);
 				compress_modules_cmds[idx].loaded = 0;
 			}

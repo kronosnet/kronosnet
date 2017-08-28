@@ -155,7 +155,9 @@ out_err:
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}
-	if (crypto_modules_cmds[model].libref == 0) {
+	if ((crypto_modules_cmds[model].libref == 0) &&
+	    (crypto_modules_cmds[model].loaded == 1)) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "Unloading %s library", crypto_modules_cmds[model].model_name);
 		crypto_modules_cmds[model].unload_lib(knet_h);
 		crypto_modules_cmds[model].loaded = 0;
 	}
@@ -185,7 +187,9 @@ void crypto_fini(
 		knet_h->crypto_instance = NULL;
 		crypto_modules_cmds[model].libref--;
 
-		if (crypto_modules_cmds[model].libref == 0) {
+		if ((crypto_modules_cmds[model].libref == 0) &&
+		    (crypto_modules_cmds[model].loaded == 1)) {
+			log_debug(knet_h, KNET_SUB_CRYPTO, "Unloading %s library", crypto_modules_cmds[model].model_name);
 			crypto_modules_cmds[model].unload_lib(knet_h);
 			crypto_modules_cmds[model].loaded = 0;
 		}
