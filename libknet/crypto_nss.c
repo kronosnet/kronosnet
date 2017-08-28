@@ -357,7 +357,7 @@ static int init_nss_db(knet_handle_t knet_h)
 void nsscrypto_unload_lib(
 	knet_handle_t knet_h)
 {
-	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "libnss cannot be unloaded at runtime! Please restart your application");
+	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "libnss cannot be unloaded at runtime! Please restart your application (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless)");
 	return;
 }
 
