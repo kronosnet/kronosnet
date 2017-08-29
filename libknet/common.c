@@ -13,6 +13,7 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/param.h>
 
 #include "logging.h"
 #include "common.h"
@@ -52,7 +53,7 @@ int _fdset_nonblock(int fd)
 void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
 {
 	char *error = NULL;
-	char path[4096];
+	char path[MAXPATHLEN];
 	void *ret = NULL;
 
 	/*
