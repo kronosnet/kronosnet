@@ -9,7 +9,6 @@
 #include "config.h"
 
 #include <errno.h>
-#include <stdlib.h>
 #include <dlfcn.h>
 #ifdef BUILDCRYPTONSS
 #include <nss.h>
@@ -69,15 +68,8 @@ PK11SymKey *(*_int_PK11_KeyGen)(PK11SlotInfo *slot, CK_MECHANISM_TYPE type,
 /*
  * nspr4
  */
-PRStatus (*_int_PR_Cleanup)(void);
 const char * (*_int_PR_ErrorToString)(PRErrorCode code, PRLanguageCode language);
-void (*_int_PR_Init)(PRThreadType type, PRThreadPriority priority, PRUintn maxPTDs);
 PRErrorCode (*_int_PR_GetError)(void);
-
-/*
- * plds4
- */
-void (*_int_PL_ArenaFinish)(void);
 
 static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 {
@@ -252,26 +244,10 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 	 * nspr4
 	 */
 
-	_int_PR_Cleanup = dlsym(nss_lib, "PR_Cleanup");
-	if (!_int_PR_Cleanup) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_Cleanup: %s", error);
-		err = -1;
-		goto out;
-	}
-
 	_int_PR_ErrorToString = dlsym(nss_lib, "PR_ErrorToString");
 	if (!_int_PR_ErrorToString) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_ErrorToString: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_PR_Init = dlsym(nss_lib, "PR_Init");
-	if (!_int_PR_Init) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_Init: %s", error);
 		err = -1;
 		goto out;
 	}
@@ -283,19 +259,6 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 		err = -1;
 		goto out;
 	}
-
-	/*
-	 * plds4
-	 */
-
-	_int_PL_ArenaFinish = dlsym(nss_lib, "PL_ArenaFinish");
-	if (!_int_PL_ArenaFinish) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PL_ArenaFinish: %s", error);
-		err = -1;
-		goto out;
-	}
-
 
 out:
 	if (err) {
@@ -320,35 +283,17 @@ out:
 		_int_PK11_GetBlockSize = NULL;
 		_int_PK11_KeyGen = NULL;
 
-		_int_PR_Cleanup = NULL;
 		_int_PR_ErrorToString = NULL;
-		_int_PR_Init = NULL;
 		_int_PR_GetError = NULL;
-
-		_int_PL_ArenaFinish = NULL;
 	}
 	return err;
 }
 
-static void nss_atexit_handler(void)
-{
-	(*_int_NSS_Shutdown)();
-	(*_int_PL_ArenaFinish)();
-	(*_int_PR_Cleanup)();
-}
-
 static int init_nss_db(knet_handle_t knet_h)
 {
-	(*_int_PR_Init)(PR_USER_THREAD, PR_PRIORITY_URGENT, 0);
-
 	if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
 			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
-		return -1;
-	}
-
-	if (atexit(&nss_atexit_handler) != 0) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB unable to register atexit handler");
 		return -1;
 	}
 
@@ -358,7 +303,11 @@ static int init_nss_db(knet_handle_t knet_h)
 void nsscrypto_unload_lib(
 	knet_handle_t knet_h)
 {
-	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "libnss cannot be unloaded at runtime! Please restart your application (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless)");
+	if (nss_lib) {
+		(*_int_NSS_Shutdown)();
+		dlclose(nss_lib);
+		nss_lib = NULL;
+	}
 	return;
 }
 
