@@ -92,7 +92,7 @@ empty_module
 static int max_model = 0;
 static struct timespec last_load_failure;
 
-static int get_model(const char *model)
+static int compress_get_model(const char *model)
 {
 	int idx = 0;
 
@@ -105,7 +105,7 @@ static int get_model(const char *model)
 	return -1;
 }
 
-static int get_max_model(void)
+static int compress_get_max_model(void)
 {
 	int idx = 0;
 	while (compress_modules_cmds[idx].model_name != NULL) {
@@ -114,7 +114,7 @@ static int get_max_model(void)
 	return idx - 1;
 }
 
-static int is_valid_model(int compress_model)
+static int compress_is_valid_model(int compress_model)
 {
 	int idx = 0;
 
@@ -136,7 +136,7 @@ static int val_level(
 	return compress_modules_cmds[compress_model].val_level(knet_h, compress_level);
 }
 
-static int check_init_lib(knet_handle_t knet_h, int cmp_model, int rate_limit)
+static int compress_check_init_lib(knet_handle_t knet_h, int cmp_model, int rate_limit)
 {
 	struct timespec clock_now;
 	unsigned long long timediff;
@@ -234,7 +234,7 @@ static int check_init_lib(knet_handle_t knet_h, int cmp_model, int rate_limit)
 int compress_init(
 	knet_handle_t knet_h)
 {
-	max_model = get_max_model();
+	max_model = compress_get_max_model();
 	if (max_model > KNET_MAX_COMPRESS_METHODS) {
 		log_err(knet_h, KNET_SUB_COMPRESS, "Too many compress methods defined in compress.c.");
 		errno = EINVAL;
@@ -257,7 +257,7 @@ int compress_cfg(
 		  "Initizializing compress module [%s/%d/%u]",
 		  knet_handle_compress_cfg->compress_model, knet_handle_compress_cfg->compress_level, knet_handle_compress_cfg->compress_threshold);
 
-	cmp_model = get_model(knet_handle_compress_cfg->compress_model);
+	cmp_model = compress_get_model(knet_handle_compress_cfg->compress_model);
 	if (cmp_model < 0) {
 		log_err(knet_h, KNET_SUB_COMPRESS, "compress model %s not supported", knet_handle_compress_cfg->compress_model);
 		errno = EINVAL;
@@ -272,7 +272,7 @@ int compress_cfg(
 			goto out;
 		}
 
-		if (check_init_lib(knet_h, cmp_model, 0) < 0) {
+		if (compress_check_init_lib(knet_h, cmp_model, 0) < 0) {
 			savederrno = errno;
 			log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load/init shared lib for model %s: %s",
 				knet_handle_compress_cfg->compress_model, strerror(errno));
@@ -361,7 +361,7 @@ int compress(
 {
 	int savederrno = 0, err = 0;
 
-	if (check_init_lib(knet_h, knet_h->compress_model, 0) < 0) {
+	if (compress_check_init_lib(knet_h, knet_h->compress_model, 0) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load/init shared lib (compress) for model %s: %s",
 			compress_modules_cmds[knet_h->compress_model].model_name, strerror(savederrno));
@@ -393,13 +393,13 @@ int decompress(
 		return -1;
 	}
 
-	if (is_valid_model(compress_model) < 0) {
+	if (compress_is_valid_model(compress_model) < 0) {
 		log_err(knet_h,  KNET_SUB_COMPRESS, "Received packet compressed with %s but support is not built in this version of libknet. Please contact your distribution vendor or fix the build.", compress_modules_cmds[compress_model].model_name);
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (check_init_lib(knet_h, compress_model, 1) < 0) {
+	if (compress_check_init_lib(knet_h, compress_model, 1) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load/init shared lib (decompress) for model %s: %s",
 			compress_modules_cmds[compress_model].model_name, strerror(savederrno));

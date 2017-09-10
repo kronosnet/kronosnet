@@ -34,7 +34,7 @@ crypto_model_t crypto_modules_cmds[] = {
 	{ NULL, 0, empty_module
 };
 
-static int get_model(const char *model)
+static int crypto_get_model(const char *model)
 {
 	int idx = 0;
 
@@ -46,7 +46,7 @@ static int get_model(const char *model)
 	return -1;
 }
 
-static int check_init_lib(knet_handle_t knet_h, int model)
+static int crypto_check_init_lib(knet_handle_t knet_h, int model)
 {
 	int savederrno = 0;
 
@@ -111,7 +111,7 @@ int crypto_init(
 {
 	int model = 0;
 
-	model = get_model(knet_handle_crypto_cfg->crypto_model);
+	model = crypto_get_model(knet_handle_crypto_cfg->crypto_model);
 	if (model < 0) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "model %s not supported", knet_handle_crypto_cfg->crypto_model);
 		goto out_err;
@@ -128,7 +128,7 @@ int crypto_init(
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
-	if (check_init_lib(knet_h, model) < 0) {
+	if (crypto_check_init_lib(knet_h, model) < 0) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load crypto library");
 		return -1;
 	}
