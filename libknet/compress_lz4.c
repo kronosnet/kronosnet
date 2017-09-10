@@ -20,6 +20,8 @@
 #include "logging.h"
 #include "common.h"
 
+#define LIBLZ4_1 "liblz4.so.1"
+
 /*
  * global vars for dlopen
  */
@@ -82,7 +84,7 @@ int lz4_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!lz4_lib) {
-		lz4_lib = open_lib(knet_h, "liblz4.so.1", 0);
+		lz4_lib = open_lib(knet_h, LIBLZ4_1, 0);
 		if (!lz4_lib) {
 			savederrno = EAGAIN;
 			err = -1;
@@ -117,7 +119,7 @@ int lz4_val_level(
 	int compress_level)
 {
 	if (compress_level <= 0) {
-		log_info(knet_h, KNET_SUB_LZ4COMP, "lz4 acceleration level 0 (or negatives) are automatically remapped to 1 by liblz4");
+		log_info(knet_h, KNET_SUB_LZ4COMP, "lz4 acceleration level 0 (or negatives) are automatically remapped to 1 by %s", LIBLZ4_1);
 	}
 
 	return 0;

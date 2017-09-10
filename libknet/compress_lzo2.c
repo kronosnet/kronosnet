@@ -20,6 +20,8 @@
 #include "logging.h"
 #include "common.h"
 
+#define LIBLZO2_2 "liblzo2.so.2"
+
 /*
  * global vars for dlopen
  */
@@ -120,7 +122,7 @@ int lzo2_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!lzo2_lib) {
-		lzo2_lib = open_lib(knet_h, "liblzo2.so.2", 0);
+		lzo2_lib = open_lib(knet_h, LIBLZO2_2, 0);
 		if (!lzo2_lib) {
 			savederrno = EAGAIN;
 			err = -1;

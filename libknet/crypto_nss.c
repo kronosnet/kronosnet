@@ -27,6 +27,8 @@
 #include "crypto_nss.h"
 #include "logging.h"
 
+#define LIBNSS3 "libnss3.so"
+
 /*
  * global vars for dlopen
  */
@@ -344,7 +346,7 @@ static int init_nss_db(knet_handle_t knet_h)
 void nsscrypto_unload_lib(
 	knet_handle_t knet_h)
 {
-	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "libnss runtime unload can cause minor (< 2kb) memory leaks! Please reload your application at a convenient time (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless).");
+	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "%s runtime unload can cause minor (< 2kb) memory leaks! Please reload your application at a convenient time (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless).", LIBNSS3);
 	if (nss_lib) {
 		(*_int_NSS_Shutdown)();
 		if ((*_int_PR_Initialized)()) {
@@ -363,7 +365,7 @@ int nsscrypto_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!nss_lib) {
-		nss_lib = open_lib(knet_h, "libnss3.so", 0);
+		nss_lib = open_lib(knet_h, LIBNSS3, 0);
 		if (!nss_lib) {
 			savederrno = errno;
 			err = -1;

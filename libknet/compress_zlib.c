@@ -20,6 +20,8 @@
 #include "logging.h"
 #include "common.h"
 
+#define LIBZ_1 "libz.so.1"
+
 /*
  * global vars for dlopen
  */
@@ -70,7 +72,7 @@ int zlib_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!zlib_lib) {
-		zlib_lib = open_lib(knet_h, "libz.so.1", 0);
+		zlib_lib = open_lib(knet_h, LIBZ_1, 0);
 		if (!zlib_lib) {
 			savederrno = EAGAIN;
 			err = -1;

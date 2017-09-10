@@ -20,6 +20,8 @@
 #include "logging.h"
 #include "common.h"
 
+#define LIBLZMA_5 "liblzma.so.5"
+
 /*
  * global vars for dlopen
  */
@@ -72,7 +74,7 @@ int lzma_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!lzma_lib) {
-		lzma_lib = open_lib(knet_h, "liblzma.so.5", 0);
+		lzma_lib = open_lib(knet_h, LIBLZMA_5, 0);
 		if (!lzma_lib) {
 			savederrno = EAGAIN;
 			err = -1;

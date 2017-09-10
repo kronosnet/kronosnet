@@ -20,6 +20,8 @@
 #include "logging.h"
 #include "common.h"
 
+#define LIBBZ2_1 "libbz2.so.1"
+
 /*
  * global vars for dlopen
  */
@@ -69,7 +71,7 @@ int bzip2_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!bzip2_lib) {
-		bzip2_lib = open_lib(knet_h, "libbz2.so.1", 0);
+		bzip2_lib = open_lib(knet_h, LIBBZ2_1, 0);
 		if (!bzip2_lib) {
 			savederrno = errno;
 			err = -1;
