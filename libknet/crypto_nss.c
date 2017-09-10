@@ -20,6 +20,7 @@
 #include <hasht.h>
 #include <pthread.h>
 #include <secerr.h>
+#include <prinit.h>
 
 #include "common.h"
 #include "crypto.h"
@@ -68,8 +69,15 @@ PK11SymKey *(*_int_PK11_KeyGen)(PK11SlotInfo *slot, CK_MECHANISM_TYPE type,
 /*
  * nspr4
  */
+PRStatus (*_int_PR_Cleanup)(void);
 const char * (*_int_PR_ErrorToString)(PRErrorCode code, PRLanguageCode language);
 PRErrorCode (*_int_PR_GetError)(void);
+PRBool (*_int_PR_Initialized)(void);
+
+/*
+ * plds4
+ */
+void (*_int_PL_ArenaFinish)(void);
 
 static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 {
@@ -244,10 +252,26 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 	 * nspr4
 	 */
 
+	_int_PR_Cleanup = dlsym(nss_lib, "PR_Cleanup");
+	if (!_int_PR_Cleanup) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_Cleanup: %s", error);
+		err = -1;
+		goto out;
+	}
+
 	_int_PR_ErrorToString = dlsym(nss_lib, "PR_ErrorToString");
 	if (!_int_PR_ErrorToString) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PR_ErrorToString: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_PR_Initialized = dlsym(nss_lib, "PR_Initialized");
+	if (!_int_PR_Initialized) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map Initialized: %s", error);
 		err = -1;
 		goto out;
 	}
@@ -259,6 +283,19 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 		err = -1;
 		goto out;
 	}
+
+	/*
+	 * plds4
+	 */
+
+	_int_PL_ArenaFinish = dlsym(nss_lib, "PL_ArenaFinish");
+	if (!_int_PL_ArenaFinish) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unable to map PL_ArenaFinish: %s", error);
+		err = -1;
+		goto out;
+	}
+
 
 out:
 	if (err) {
@@ -283,8 +320,12 @@ out:
 		_int_PK11_GetBlockSize = NULL;
 		_int_PK11_KeyGen = NULL;
 
+		_int_PR_Cleanup = NULL;
 		_int_PR_ErrorToString = NULL;
+		_int_PR_Initialized = NULL;
 		_int_PR_GetError = NULL;
+
+		_int_PL_ArenaFinish = NULL;
 	}
 	return err;
 }
@@ -303,8 +344,13 @@ static int init_nss_db(knet_handle_t knet_h)
 void nsscrypto_unload_lib(
 	knet_handle_t knet_h)
 {
+	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "libnss runtime unload can cause minor (< 2kb) memory leaks! Please reload your application at a convenient time (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless).");
 	if (nss_lib) {
 		(*_int_NSS_Shutdown)();
+		if ((*_int_PR_Initialized)()) {
+			(*_int_PL_ArenaFinish)();
+			(*_int_PR_Cleanup)();
+		}
 		dlclose(nss_lib);
 		nss_lib = NULL;
 	}
@@ -317,7 +363,7 @@ int nsscrypto_load_lib(
 	int err = 0, savederrno = 0;
 
 	if (!nss_lib) {
-		nss_lib = open_lib(knet_h, "libnss3.so", RTLD_NODELETE);
+		nss_lib = open_lib(knet_h, "libnss3.so", 0);
 		if (!nss_lib) {
 			savederrno = errno;
 			err = -1;
