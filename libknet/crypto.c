@@ -46,31 +46,6 @@ static int crypto_get_model(const char *model)
 	return -1;
 }
 
-static int crypto_check_init_lib(knet_handle_t knet_h, int model)
-{
-	int savederrno = 0;
-
-	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to get write lock: %s",
-			strerror(savederrno));
-		return -1;
-	}
-
-	if (crypto_modules_cmds[model].loaded == 1) {
-		return 0;
-	}
-
-	if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
-		pthread_rwlock_unlock(&shlib_rwlock);
-		return -1;
-	}
-	crypto_modules_cmds[model].loaded = 1;
-
-	return 0;
-}
-
 /*
  * exported API
  */
@@ -109,29 +84,38 @@ int crypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
+	int savederrno = 0;
 	int model = 0;
 
 	model = crypto_get_model(knet_handle_crypto_cfg->crypto_model);
 	if (model < 0) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "model %s not supported", knet_handle_crypto_cfg->crypto_model);
-		goto out_err;
+		return -1;
 	}
 
 	if (crypto_modules_cmds[model].built_in == 0) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "this version of libknet was built without %s support. Please contact your vendor or fix the build.", knet_handle_crypto_cfg->crypto_model);
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to get write lock: %s",
+			strerror(savederrno));
+		return -1;
+	}
+
+	if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
 		goto out_err;
 	}
+	crypto_modules_cmds[model].loaded = 1;
 
 	log_debug(knet_h, KNET_SUB_CRYPTO,
 		  "Initizializing crypto module [%s/%s/%s]",
 		  knet_handle_crypto_cfg->crypto_model,
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
-
-	if (crypto_check_init_lib(knet_h, model) < 0) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load crypto library");
-		return -1;
-	}
 
 	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
 
@@ -141,6 +125,11 @@ int crypto_init(
 		goto out_err;
 	}
 
+	/*
+	 * if crypto_modules_cmds.init fails, it is expected that
+	 * it will clean everything by itself.
+	 * crypto_modules_cmds.fini is not invoked on error.
+	 */
 	knet_h->crypto_instance->model = model;
 	if (crypto_modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
 		goto out_err;

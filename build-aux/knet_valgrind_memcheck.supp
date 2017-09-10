@@ -10,7 +10,6 @@
    obj:*
    fun:init_nss_db
    fun:nsscrypto_load_lib
-   fun:crypto_check_init_lib
    fun:crypto_init
    fun:knet_handle_crypto
    fun:test
@@ -28,7 +27,6 @@
    obj:*
    fun:init_nss_db
    fun:nsscrypto_load_lib
-   fun:crypto_check_init_lib
    fun:crypto_init
    fun:knet_handle_crypto
    fun:test
@@ -46,7 +44,6 @@
    obj:*
    fun:init_nss_db
    fun:nsscrypto_load_lib
-   fun:crypto_check_init_lib
    fun:crypto_init
    fun:test
    fun:main
@@ -63,7 +60,6 @@
    obj:*
    fun:init_nss_db
    fun:nsscrypto_load_lib
-   fun:crypto_check_init_lib
    fun:crypto_init
    fun:test
    fun:main
