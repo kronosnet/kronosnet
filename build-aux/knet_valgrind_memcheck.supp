@@ -1,5 +1,5 @@
 {
-   Internal NSPR/NSS leaks
+   Internal NSPR/NSS leaks (libknet direct)
    Memcheck:Leak
    match-leak-kinds: definite
    fun:calloc
@@ -17,7 +17,7 @@
    fun:main
 }
 {
-   Internal NSPR/NSS leaks
+   Internal NSPR/NSS leaks (libknet direct)
    Memcheck:Leak
    match-leak-kinds: definite
    fun:malloc
@@ -31,6 +31,40 @@
    fun:crypto_check_init_lib
    fun:crypto_init
    fun:knet_handle_crypto
+   fun:test
+   fun:main
+}
+{
+   Internal NSPR/NSS leaks (internal crypto test)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:init_nss_db
+   fun:nsscrypto_load_lib
+   fun:crypto_check_init_lib
+   fun:crypto_init
+   fun:test
+   fun:main
+}
+{
+   Internal NSPR/NSS leaks (internal crypto test)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:init_nss_db
+   fun:nsscrypto_load_lib
+   fun:crypto_check_init_lib
+   fun:crypto_init
    fun:test
    fun:main
 }
