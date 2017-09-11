@@ -16,7 +16,7 @@
 
 #include "internals.h"
 #include "logging.h"
-#include "link.h"
+#include "links.h"
 #include "transports.h"
 #include "host.h"
 

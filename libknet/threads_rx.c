@@ -19,7 +19,7 @@
 #include "compress.h"
 #include "crypto.h"
 #include "host.h"
-#include "link.h"
+#include "links.h"
 #include "logging.h"
 #include "transports.h"
 #include "threads_common.h"

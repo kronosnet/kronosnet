@@ -15,7 +15,7 @@
 #include <pthread.h>
 
 #include "crypto.h"
-#include "link.h"
+#include "links.h"
 #include "host.h"
 #include "logging.h"
 #include "threads_common.h"

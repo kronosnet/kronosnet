@@ -35,7 +35,7 @@ sources			= \
 			  crypto_nss.c \
 			  handle.c \
 			  host.c \
-			  link.c \
+			  links.c \
 			  logging.c \
 			  netutils.c \
 			  threads_common.c \
@@ -68,7 +68,7 @@ noinst_HEADERS		= \
 			  crypto_nss.h \
 			  host.h \
 			  internals.h \
-			  link.h \
+			  links.h \
 			  logging.h \
 			  netutils.h \
 			  onwire.h \

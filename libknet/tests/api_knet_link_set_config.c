@@ -17,7 +17,7 @@
 #include "libknet.h"
 
 #include "internals.h"
-#include "link.h"
+#include "links.h"
 #include "netutils.h"
 #include "test-common.h"
 

@@ -16,7 +16,7 @@
 #include <time.h>
 
 #include "crypto.h"
-#include "link.h"
+#include "links.h"
 #include "logging.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"

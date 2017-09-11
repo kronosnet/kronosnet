@@ -10,7 +10,7 @@
 
 #include "compat.h"
 #include "host.h"
-#include "link.h"
+#include "links.h"
 #include "logging.h"
 #include "common.h"
 #include "transports.h"
