@@ -1405,6 +1405,7 @@ int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *
 		return -1;
 	}
 
+	compress_fini(knet_h);
 	err = compress_cfg(knet_h, knet_handle_compress_cfg);
 	savederrno = errno;
 
