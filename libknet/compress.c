@@ -223,6 +223,7 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	}
 
 	compress_modules_cmds[cmp_model].libref++;
+	knet_h->compress_activated[cmp_model] = 1;
 
 	return 0;
 }
@@ -237,6 +238,7 @@ int compress_init(
 		return -1;
 	}
 
+	memset(knet_h->compress_activated, 0, KNET_MAX_COMPRESS_METHODS);
 	memset(&last_load_failure, 0, sizeof(struct timespec));
 
 	return 0;
@@ -310,6 +312,9 @@ int compress_cfg(
 				err = -1;
 				goto out_unlock;
 			}
+		} else {
+			compress_modules_cmds[cmp_model].libref++;
+			knet_h->compress_activated[cmp_model] = 1;
 		}
 
 		if (val_level(knet_h, cmp_model, knet_handle_compress_cfg->compress_level) < 0) {
@@ -327,6 +332,8 @@ out_unlock:
 	if (!err) {
 		knet_h->compress_model = cmp_model;
 		knet_h->compress_level = knet_handle_compress_cfg->compress_level;
+	} else {
+		knet_h->compress_model = 0;
 	}
 
 	errno = savederrno;
@@ -334,7 +341,8 @@ out_unlock:
 }
 
 void compress_fini(
-	knet_handle_t knet_h)
+	knet_handle_t knet_h,
+	int all)
 {
 	int savederrno = 0;
 	int idx = 0;
@@ -349,19 +357,24 @@ void compress_fini(
 	while (compress_modules_cmds[idx].model_name != NULL) {
 		if ((compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
+		    (compress_modules_cmds[idx].model_id > 0) &&
+		    (knet_h->compress_activated[compress_modules_cmds[idx].model_id] == 1) &&
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
-			if (compress_modules_cmds[idx].fini != NULL) {
-				compress_modules_cmds[idx].fini(knet_h, idx);
-			} else {
-				knet_h->compress_int_data[idx] = NULL;
-			}
-			compress_modules_cmds[idx].libref--;
+			if ((all) || (compress_modules_cmds[idx].model_id == knet_h->compress_model)) {
+				if (compress_modules_cmds[idx].fini != NULL) {
+					compress_modules_cmds[idx].fini(knet_h, idx);
+				} else {
+					knet_h->compress_int_data[idx] = NULL;
+				}
+				compress_modules_cmds[idx].libref--;
+				knet_h->compress_activated[compress_modules_cmds[idx].model_id] = 0;
 
-			if ((compress_modules_cmds[idx].libref == 0) &&
-			    (compress_modules_cmds[idx].loaded == 1)) {
-				log_debug(knet_h, KNET_SUB_COMPRESS, "Unloading %s library", compress_modules_cmds[idx].model_name);
-				compress_modules_cmds[idx].unload_lib(knet_h);
-				compress_modules_cmds[idx].loaded = 0;
+				if ((compress_modules_cmds[idx].libref == 0) &&
+				    (compress_modules_cmds[idx].loaded == 1)) {
+					log_debug(knet_h, KNET_SUB_COMPRESS, "Unloading %s library", compress_modules_cmds[idx].model_name);
+					compress_modules_cmds[idx].unload_lib(knet_h);
+					compress_modules_cmds[idx].loaded = 0;
+				}
 			}
 		}
 		idx++;
@@ -435,6 +448,11 @@ int decompress(
 			log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load library: %s",
 				strerror(savederrno));
 			goto out_unlock;
+		}
+	} else {
+		if (!knet_h->compress_activated[compress_model]) {
+			compress_modules_cmds[compress_model].libref++;
+			knet_h->compress_activated[compress_model] = 1;
 		}
 	}
 

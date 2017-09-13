@@ -775,7 +775,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	_destroy_buffers(knet_h);
 	_close_socks(knet_h);
 	crypto_fini(knet_h);
-	compress_fini(knet_h);
+	compress_fini(knet_h, 1);
 	_destroy_locks(knet_h);
 
 exit_nolock:
@@ -1405,7 +1405,7 @@ int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *
 		return -1;
 	}
 
-	compress_fini(knet_h);
+	compress_fini(knet_h, 0);
 	err = compress_cfg(knet_h, knet_handle_compress_cfg);
 	savederrno = errno;
 

@@ -107,7 +107,8 @@ int compress_init(
 	knet_handle_t knet_h);
 
 void compress_fini(
-	knet_handle_t knet_h);
+	knet_handle_t knet_h,
+	int all);
 
 int compress(
 	knet_handle_t knet_h,
