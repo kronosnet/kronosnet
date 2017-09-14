@@ -223,7 +223,6 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	}
 
 	compress_modules_cmds[cmp_model].libref++;
-	knet_h->compress_activated[cmp_model] = 1;
 
 	return 0;
 }
@@ -238,7 +237,6 @@ int compress_init(
 		return -1;
 	}
 
-	memset(knet_h->compress_activated, 0, KNET_MAX_COMPRESS_METHODS);
 	memset(&last_load_failure, 0, sizeof(struct timespec));
 
 	return 0;
@@ -291,8 +289,7 @@ int compress_cfg(
 			return -1;
 		}
 
-		if ((!compress_check_lib_is_init(knet_h, cmp_model)) ||
-		    (!knet_h->compress_activated[cmp_model])) {
+		if (!compress_check_lib_is_init(knet_h, cmp_model)) {
 			/*
 			 * need to switch to write lock, load the lib, and return with a write lock
 			 * this is not racy because compress_load_lib is written idempotent.
@@ -356,7 +353,7 @@ void compress_fini(
 		if ((compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (compress_modules_cmds[idx].model_id > 0) &&
-		    (knet_h->compress_activated[compress_modules_cmds[idx].model_id] == 1) &&
+		    (knet_h->compress_int_data[idx] != NULL) &&
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
 			if ((all) || (compress_modules_cmds[idx].model_id == knet_h->compress_model)) {
 				if (compress_modules_cmds[idx].fini != NULL) {
@@ -365,7 +362,6 @@ void compress_fini(
 					knet_h->compress_int_data[idx] = NULL;
 				}
 				compress_modules_cmds[idx].libref--;
-				knet_h->compress_activated[compress_modules_cmds[idx].model_id] = 0;
 
 				if ((compress_modules_cmds[idx].libref == 0) &&
 				    (compress_modules_cmds[idx].loaded == 1)) {
@@ -426,8 +422,7 @@ int decompress(
 		return -1;
 	}
 
-	if ((!compress_check_lib_is_init(knet_h, compress_model)) ||
-	    (!knet_h->compress_activated[compress_model])) {
+	if (!compress_check_lib_is_init(knet_h, compress_model)) {
 		/*
 		 * need to switch to write lock, load the lib, and return with a write lock
 		 * this is not racy because compress_load_lib is written idempotent.

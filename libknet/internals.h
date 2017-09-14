@@ -190,7 +190,6 @@ struct knet_handle {
 	int compress_level;
 	uint32_t compress_threshold;
 	void *compress_int_data[KNET_MAX_COMPRESS_METHODS]; /* for compress method private data */
-	uint8_t compress_activated[KNET_MAX_COMPRESS_METHODS]; /* track active compression library used by this handle */
 	unsigned char *recv_from_links_buf_decompress;
 	unsigned char *send_to_links_buf_compress;
 	seq_num_t tx_seq_num;
