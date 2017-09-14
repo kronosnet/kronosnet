@@ -17,7 +17,7 @@ EXTRA_DIST		= $(SYMFILE)
 
 SUBDIRS			= . tests
 
-libversion		= 0:0:0
+libversion		= 1:0:0
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=

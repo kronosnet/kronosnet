@@ -257,36 +257,36 @@ fi
 %endif
 
 %if %{defined buildlibtap}
-%package -n libtap0
+%package -n libtap1
 Group: System Environment/Libraries
 Summary: Simple userland wrapper around kernel tap devices
 
-%description -n libtap0
+%description -n libtap1
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
  pre-up.d/up.d/down.d/post-down.d infrastructure.
 
-%files -n libtap0
+%files -n libtap1
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
 %{_libdir}/libtap.so.*
 
-%post -n libtap0 -p /sbin/ldconfig
+%post -n libtap1 -p /sbin/ldconfig
 
-%postun -n libtap0 -p /sbin/ldconfig
+%postun -n libtap1 -p /sbin/ldconfig
 
-%package -n libtap0-devel
+%package -n libtap1-devel
 Group: Development/Libraries
 Summary: Simple userland wrapper around kernel tap devices (developer files)
-Requires: libtap0 = %{version}-%{release}
+Requires: libtap1 = %{version}-%{release}
 Requires: pkgconfig
 
-%description -n libtap0-devel
+%description -n libtap1-devel
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
  pre-up.d/up.d/down.d/post-down.d infrastructure.
 
-%files -n libtap0-devel
+%files -n libtap1-devel
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
 %{_libdir}/libtap.so
@@ -294,36 +294,36 @@ Requires: pkgconfig
 %{_libdir}/pkgconfig/libtap.pc
 %endif
 
-%package -n libknet0
+%package -n libknet1
 Group: System Environment/Libraries
 Summary: Kronosnet core switching implementation
 
-%description -n libknet0
+%description -n libknet1
  The whole kronosnet core is implemented in this library.
  Please refer to the not-yet-existing documentation for further
  information.
 
-%files -n libknet0
+%files -n libknet1
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
 %{_libdir}/libknet.so.*
 
-%post -n libknet0 -p /sbin/ldconfig
+%post -n libknet1 -p /sbin/ldconfig
 
-%postun -n libknet0 -p /sbin/ldconfig
+%postun -n libknet1 -p /sbin/ldconfig
 
-%package -n libknet0-devel
+%package -n libknet1-devel
 Group: Development/Libraries
 Summary: Kronosnet core switching implementation (developer files)
-Requires: libknet0 = %{version}-%{release}
+Requires: libknet1 = %{version}-%{release}
 Requires: pkgconfig
 
-%description -n libknet0-devel
+%description -n libknet1-devel
  The whole kronosnet core is implemented in this library.
  Please refer to the not-yet-existing documentation for further
  information. 
 
-%files -n libknet0-devel
+%files -n libknet1-devel
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
 %{_libdir}/libknet.so

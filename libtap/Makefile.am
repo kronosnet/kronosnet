@@ -17,7 +17,7 @@ EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good api-test-coverage
 
 sources			= libtap.c
 
-libversion		= 0:0:0
+libversion		= 1:0:0
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			= $(pthread_LIBS)
