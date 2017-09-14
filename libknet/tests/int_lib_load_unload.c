@@ -58,6 +58,7 @@ static void free_loop(void)
 	}
 }
 
+#if defined(BUILDCRYPTONSS) || defined(BUILDCOMPZLIB)
 static int find_lib(const char *libname)
 {
 	int i;
@@ -69,13 +70,18 @@ static int find_lib(const char *libname)
 	}
 	return 0;
 }
+#endif
 
 static void test(void)
 {
 	int logfds[2];
 	knet_handle_t knet_h1, knet_h2;
+#ifdef BUILDCRYPTONSS
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
+#endif
+#ifdef BUILDCOMPZLIB
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
+#endif
 	int do_close = 0;
 
 	use_cur = 0;
