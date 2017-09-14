@@ -291,7 +291,8 @@ int compress_cfg(
 			return -1;
 		}
 
-		if (!compress_check_lib_is_init(knet_h, cmp_model)) {
+		if ((!compress_check_lib_is_init(knet_h, cmp_model)) ||
+		    (!knet_h->compress_activated[cmp_model])) {
 			/*
 			 * need to switch to write lock, load the lib, and return with a write lock
 			 * this is not racy because compress_load_lib is written idempotent.
@@ -312,9 +313,6 @@ int compress_cfg(
 				err = -1;
 				goto out_unlock;
 			}
-		} else {
-			compress_modules_cmds[cmp_model].libref++;
-			knet_h->compress_activated[cmp_model] = 1;
 		}
 
 		if (val_level(knet_h, cmp_model, knet_handle_compress_cfg->compress_level) < 0) {
@@ -428,7 +426,8 @@ int decompress(
 		return -1;
 	}
 
-	if (!compress_check_lib_is_init(knet_h, compress_model)) {
+	if ((!compress_check_lib_is_init(knet_h, compress_model)) ||
+	    (!knet_h->compress_activated[compress_model])) {
 		/*
 		 * need to switch to write lock, load the lib, and return with a write lock
 		 * this is not racy because compress_load_lib is written idempotent.
@@ -448,11 +447,6 @@ int decompress(
 			log_err(knet_h, KNET_SUB_COMPRESS, "Unable to load library: %s",
 				strerror(savederrno));
 			goto out_unlock;
-		}
-	} else {
-		if (!knet_h->compress_activated[compress_model]) {
-			compress_modules_cmds[compress_model].libref++;
-			knet_h->compress_activated[compress_model] = 1;
 		}
 	}
 
