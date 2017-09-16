@@ -414,7 +414,7 @@ out:
 #define AES_128_KEY_LENGTH 16
 #endif
 
-enum crypto_crypt_t {
+enum nsscrypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
 	CRYPTO_CIPHER_TYPE_AES256 = 1,
 	CRYPTO_CIPHER_TYPE_AES192 = 2,
@@ -430,7 +430,7 @@ CK_MECHANISM_TYPE cipher_to_nss[] = {
 	CKM_DES3_CBC_PAD 		/* CRYPTO_CIPHER_TYPE_3DES */
 };
 
-size_t cipher_key_len[] = {
+size_t nsscipher_key_len[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
 	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256 */
 	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192 */
@@ -438,7 +438,7 @@ size_t cipher_key_len[] = {
 	24				/* CRYPTO_CIPHER_TYPE_3DES */
 };
 
-size_t cypher_block_len[] = {
+size_t nsscypher_block_len[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
 	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES256 */
 	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES192 */
@@ -450,7 +450,7 @@ size_t cypher_block_len[] = {
  * hash definitions and conversion tables
  */
 
-enum crypto_hash_t {
+enum nsscrypto_hash_t {
 	CRYPTO_HASH_TYPE_NONE	= 0,
 	CRYPTO_HASH_TYPE_MD5	= 1,
 	CRYPTO_HASH_TYPE_SHA1	= 2,
@@ -468,7 +468,7 @@ CK_MECHANISM_TYPE hash_to_nss[] = {
 	CKM_SHA512_HMAC			/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
-size_t hash_len[] = {
+size_t nsshash_len[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
 	MD5_LENGTH,			/* CRYPTO_HASH_TYPE_MD5 */
 	SHA1_LENGTH,			/* CRYPTO_HASH_TYPE_SHA1 */
@@ -499,7 +499,7 @@ struct nsscrypto_instance {
  * crypt/decrypt functions
  */
 
-static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
+static int nssstring_to_crypto_cipher_type(const char* crypto_cipher_type)
 {
 	if (strcmp(crypto_cipher_type, "none") == 0) {
 		return CRYPTO_CIPHER_TYPE_NONE;
@@ -515,7 +515,7 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return -1;
 }
 
-static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type key_type)
+static PK11SymKey *nssimport_symmetric_key(knet_handle_t knet_h, enum sym_key_type key_type)
 {
 	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
 	SECItem key_item;
@@ -543,7 +543,7 @@ static PK11SymKey *import_symmetric_key(knet_handle_t knet_h, enum sym_key_type 
 
 	switch (key_type) {
 		case SYM_KEY_TYPE_CRYPT:
-			key_item.len = cipher_key_len[instance->crypto_cipher_type];
+			key_item.len = nsscipher_key_len[instance->crypto_cipher_type];
 			cipher = cipher_to_nss[instance->crypto_cipher_type];
 			operation = CKA_ENCRYPT|CKA_DECRYPT;
 			break;
@@ -667,7 +667,7 @@ static int init_nss_crypto(knet_handle_t knet_h)
 		return 0;
 	}
 
-	instance->nss_sym_key = import_symmetric_key(knet_h, SYM_KEY_TYPE_CRYPT);
+	instance->nss_sym_key = nssimport_symmetric_key(knet_h, SYM_KEY_TYPE_CRYPT);
 	if (instance->nss_sym_key == NULL) {
 		return -1;
 	}
@@ -824,7 +824,7 @@ out:
  * hash/hmac/digest functions
  */
 
-static int string_to_crypto_hash_type(const char* crypto_hash_type)
+static int nssstring_to_crypto_hash_type(const char* crypto_hash_type)
 {
 	if (strcmp(crypto_hash_type, "none") == 0) {
 		return CRYPTO_HASH_TYPE_NONE;
@@ -851,7 +851,7 @@ static int init_nss_hash(knet_handle_t knet_h)
 		return 0;
 	}
 
-	instance->nss_sym_key_sign = import_symmetric_key(knet_h, SYM_KEY_TYPE_HASH);
+	instance->nss_sym_key_sign = nssimport_symmetric_key(knet_h, SYM_KEY_TYPE_HASH);
 	if (instance->nss_sym_key_sign == NULL) {
 		return -1;
 	}
@@ -903,7 +903,7 @@ static int calculate_nss_hash(
 	}
 
 	if ((*_int_PK11_DigestFinal)(hash_context, hash,
-				     &hash_tmp_outlen, hash_len[instance->crypto_hash_type]) != SECSuccess) {
+				     &hash_tmp_outlen, nsshash_len[instance->crypto_hash_type]) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d): %s",
 			(int)hash_to_nss[instance->crypto_hash_type],
 			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
@@ -983,7 +983,7 @@ int nsscrypto_encrypt_and_signv (
 		if (calculate_nss_hash(knet_h, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
 			return -1;
 		}
-		*buf_out_len = *buf_out_len + hash_len[instance->crypto_hash_type];
+		*buf_out_len = *buf_out_len + nsshash_len[instance->crypto_hash_type];
 	}
 
 	return 0;
@@ -1000,8 +1000,8 @@ int nsscrypto_authenticate_and_decrypt (
 	ssize_t temp_len = buf_in_len;
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
-		unsigned char tmp_hash[hash_len[instance->crypto_hash_type]];
-		ssize_t temp_buf_len = buf_in_len - hash_len[instance->crypto_hash_type];
+		unsigned char tmp_hash[nsshash_len[instance->crypto_hash_type]];
+		ssize_t temp_buf_len = buf_in_len - nsshash_len[instance->crypto_hash_type];
 
 		if ((temp_buf_len < 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Incorrect packet size.");
@@ -1012,12 +1012,12 @@ int nsscrypto_authenticate_and_decrypt (
 			return -1;
 		}
 
-		if (memcmp(tmp_hash, buf_in + temp_buf_len, hash_len[instance->crypto_hash_type]) != 0) {
+		if (memcmp(tmp_hash, buf_in + temp_buf_len, nsshash_len[instance->crypto_hash_type]) != 0) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
 			return -1;
 		}
 
-		temp_len = temp_len - hash_len[instance->crypto_hash_type];
+		temp_len = temp_len - nsshash_len[instance->crypto_hash_type];
 		*buf_out_len = temp_len;
 	}
 
@@ -1054,13 +1054,13 @@ int nsscrypto_init(
 
 	memset(nsscrypto_instance, 0, sizeof(struct nsscrypto_instance));
 
-	nsscrypto_instance->crypto_cipher_type = string_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
+	nsscrypto_instance->crypto_cipher_type = nssstring_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (nsscrypto_instance->crypto_cipher_type < 0) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto cipher type requested");
 		goto out_err;
 	}
 
-	nsscrypto_instance->crypto_hash_type = string_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
+	nsscrypto_instance->crypto_hash_type = nssstring_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
 	if (nsscrypto_instance->crypto_hash_type < 0) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto hash type requested");
 		goto out_err;
@@ -1082,15 +1082,15 @@ int nsscrypto_init(
 	knet_h->sec_header_size = 0;
 
 	if (nsscrypto_instance->crypto_hash_type > 0) {
-		knet_h->sec_header_size += hash_len[nsscrypto_instance->crypto_hash_type];
-		knet_h->sec_hash_size = hash_len[nsscrypto_instance->crypto_hash_type];
+		knet_h->sec_header_size += nsshash_len[nsscrypto_instance->crypto_hash_type];
+		knet_h->sec_hash_size = nsshash_len[nsscrypto_instance->crypto_hash_type];
 	}
 
 	if (nsscrypto_instance->crypto_cipher_type > 0) {
 		int block_size;
 
-		if (cypher_block_len[nsscrypto_instance->crypto_cipher_type]) {
-			block_size = cypher_block_len[nsscrypto_instance->crypto_cipher_type];
+		if (nsscypher_block_len[nsscrypto_instance->crypto_cipher_type]) {
+			block_size = nsscypher_block_len[nsscrypto_instance->crypto_cipher_type];
 		} else {
 			block_size = (*_int_PK11_GetBlockSize)(nsscrypto_instance->crypto_cipher_type, NULL);
 			if (block_size < 0) {
