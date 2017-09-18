@@ -579,7 +579,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
  * -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
  */
 
-#define KNET_MIN_KEY_LEN  256
+#define KNET_MIN_KEY_LEN   16
 #define KNET_MAX_KEY_LEN 4096
 
 struct knet_handle_crypto_cfg {
@@ -1573,39 +1573,40 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  * 60-69 crypto implementations
  */
 
-#define KNET_SUB_COMMON       0 /* common.c */
-#define KNET_SUB_HANDLE       1 /* handle.c alloc/dealloc config changes */
-#define KNET_SUB_HOST         2 /* host add/del/modify */
-#define KNET_SUB_LISTENER     3 /* listeners add/del/modify... */
-#define KNET_SUB_LINK         4 /* link add/del/modify */
-#define KNET_SUB_TRANSPORT    5 /* Transport common */
-#define KNET_SUB_CRYPTO       6 /* crypto.c config generic layer */
-#define KNET_SUB_COMPRESS     7 /* compress.c config generic layer */
+#define KNET_SUB_COMMON         0 /* common.c */
+#define KNET_SUB_HANDLE         1 /* handle.c alloc/dealloc config changes */
+#define KNET_SUB_HOST           2 /* host add/del/modify */
+#define KNET_SUB_LISTENER       3 /* listeners add/del/modify... */
+#define KNET_SUB_LINK           4 /* link add/del/modify */
+#define KNET_SUB_TRANSPORT      5 /* Transport common */
+#define KNET_SUB_CRYPTO         6 /* crypto.c config generic layer */
+#define KNET_SUB_COMPRESS       7 /* compress.c config generic layer */
 
-#define KNET_SUB_FILTER      19 /* allocated for users to log from dst_filter */
+#define KNET_SUB_FILTER        19 /* allocated for users to log from dst_filter */
 
-#define KNET_SUB_DSTCACHE    20 /* switching thread (destination cache handling) */
-#define KNET_SUB_HEARTBEAT   21 /* heartbeat thread */
-#define KNET_SUB_PMTUD       22 /* Path MTU Discovery thread */
-#define KNET_SUB_TX          23 /* send to link thread */
-#define KNET_SUB_RX          24 /* recv from link thread */
+#define KNET_SUB_DSTCACHE      20 /* switching thread (destination cache handling) */
+#define KNET_SUB_HEARTBEAT     21 /* heartbeat thread */
+#define KNET_SUB_PMTUD         22 /* Path MTU Discovery thread */
+#define KNET_SUB_TX            23 /* send to link thread */
+#define KNET_SUB_RX            24 /* recv from link thread */
 
-#define KNET_SUB_TRANSP_BASE 40 /* Base log level for transports */
+#define KNET_SUB_TRANSP_BASE   40 /* Base log level for transports */
 #define KNET_SUB_TRANSP_LOOPBACK (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_LOOPBACK)
 #define KNET_SUB_TRANSP_UDP      (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_UDP)
 #define KNET_SUB_TRANSP_SCTP     (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_SCTP)
 
-#define KNET_SUB_NSSCRYPTO   60 /* nsscrypto.c */
+#define KNET_SUB_NSSCRYPTO     60 /* nsscrypto.c */
+#define KNET_SUB_OPENSSLCRYPTO 61 /* opensslcrypto.c */
 
-#define KNET_SUB_ZLIBCOMP    70 /* compress_zlib.c */
-#define KNET_SUB_LZ4COMP     71 /* compress_lz4.c */
-#define KNET_SUB_LZ4HCCOMP   72 /* compress_lz4.c */
-#define KNET_SUB_LZO2COMP    73 /* compress_lzo.c */
-#define KNET_SUB_LZMACOMP    74 /* compress_lzma.c */
-#define KNET_SUB_BZIP2COMP   75 /* compress_bzip2.c */
+#define KNET_SUB_ZLIBCOMP      70 /* compress_zlib.c */
+#define KNET_SUB_LZ4COMP       71 /* compress_lz4.c */
+#define KNET_SUB_LZ4HCCOMP     72 /* compress_lz4.c */
+#define KNET_SUB_LZO2COMP      73 /* compress_lzo.c */
+#define KNET_SUB_LZMACOMP      74 /* compress_lzma.c */
+#define KNET_SUB_BZIP2COMP     75 /* compress_bzip2.c */
 
-#define KNET_SUB_UNKNOWN     254
-#define KNET_MAX_SUBSYSTEMS  KNET_SUB_UNKNOWN + 1
+#define KNET_SUB_UNKNOWN       254
+#define KNET_MAX_SUBSYSTEMS    KNET_SUB_UNKNOWN + 1
 
 /*
  * Convert between subsystem IDs and names

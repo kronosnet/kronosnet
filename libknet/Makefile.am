@@ -33,6 +33,7 @@ sources			= \
 			  compress_bzip2.c \
 			  crypto.c \
 			  crypto_nss.c \
+			  crypto_openssl.c \
 			  handle.c \
 			  host.c \
 			  links.c \
@@ -66,6 +67,7 @@ noinst_HEADERS		= \
 			  compress_bzip2.h \
 			  crypto.h \
 			  crypto_nss.h \
+			  crypto_openssl.h \
 			  host.h \
 			  internals.h \
 			  links.h \
@@ -84,7 +86,7 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-libknet_la_CFLAGS	= $(nss_CFLAGS) \
+libknet_la_CFLAGS	= $(nss_CFLAGS) $(openssl_CFLAGS) \
 			  $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
@@ -93,4 +95,4 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
-libknet_la_LIBADD	= $(dl_LIBS) $(pthread_LIBS) $(rt_LIBS) $(m_LIBS)
+libknet_la_LIBADD	= $(dl_LIBS) $(pthread_LIBS) $(rt_LIBS) $(m_LIBS) $(openssl_LIBS)

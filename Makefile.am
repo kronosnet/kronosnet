@@ -110,6 +110,11 @@ if BUILDCRYPTONSS
 else
 	sed -i -e "s#@nss@#bcond_with#g" $@-t
 endif
+if BUILDCRYPTOOPENSSL
+	sed -i -e "s#@openssl@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@openssl@#bcond_with#g" $@-t
+endif
 if BUILDCOMPZLIB
 	sed -i -e "s#@zlib@#bcond_without#g" $@-t
 else

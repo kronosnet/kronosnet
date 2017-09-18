@@ -70,6 +70,7 @@ int_crypto_test_SOURCES = int_crypto.c \
 			  ../common.c \
 			  ../crypto.c \
 			  ../crypto_nss.c \
+			  ../crypto_openssl.c \
 			  ../logging.c \
 			  test-common.c
 
@@ -81,6 +82,7 @@ crypto_bench_test_SOURCES = crypto_bench.c \
 			    ../common.c \
 			    ../crypto.c \
 			    ../crypto_nss.c \
+			    ../crypto_openssl.c \
 			    ../logging.c \
 			    test-common.c
 

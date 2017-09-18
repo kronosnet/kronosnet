@@ -18,6 +18,7 @@
 # set defaults from ./configure invokation
 %@sctp@ sctp
 %@nss@ nss
+%@openssl@ openssl
 %@zlib@ zlib
 %@lz4@ lz4
 %@lzo2@ lzo2
@@ -31,6 +32,9 @@
 %endif
 %if %{with nss}
 %global buildcryptonss 1
+%endif
+%if %{with openssl}
+%global buildcryptoopenssl 1
 %endif
 %if %{with zlib}
 %global buildcompresszlib 1
@@ -78,6 +82,9 @@ BuildRequires: lksctp-tools-devel
 %if %{defined buildcryptonss}
 BuildRequires: nss-devel
 %endif
+%if %{defined buildcryptoopenssl}
+BuildRequires: openssl-devel
+%endif
 %if %{defined buildcompresszlib}
 BuildRequires: zlib-devel
 %endif
@@ -111,6 +118,11 @@ BuildRequires: libqb-devel pam-devel
 	--enable-crypto-nss \
 %else
 	--disable-crypto-nss \
+%endif
+%if %{defined buildcryptoopenssl}
+	--enable-crypto-openssl \
+%else
+	--disable-crypto-openssl \
 %endif
 %if %{defined buildcompresszlib}
 	--enable-compress-zlib \

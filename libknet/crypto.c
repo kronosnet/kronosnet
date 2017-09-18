@@ -15,6 +15,7 @@
 
 #include "crypto.h"
 #include "crypto_nss.h"
+#include "crypto_openssl.h"
 #include "internals.h"
 #include "logging.h"
 
@@ -28,6 +29,12 @@ crypto_model_t crypto_modules_cmds[] = {
 	{ "nss",
 #ifdef BUILDCRYPTONSS
 		 1, nsscrypto_load_lib, nsscrypto_unload_lib, 0, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
+#else
+		 0,empty_module
+#endif
+	{ "openssl",
+#ifdef BUILDCRYPTOOPENSSL
+		 1, opensslcrypto_load_lib, opensslcrypto_unload_lib, 0, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt },
 #else
 		 0,empty_module
 #endif

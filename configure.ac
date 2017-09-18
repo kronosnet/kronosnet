@@ -87,6 +87,11 @@ AC_ARG_ENABLE([crypto-nss],
 	[ enable_crypto_nss="$enable_crypto_all" ])
 AM_CONDITIONAL([BUILDCRYPTONSS], [test x$enable_crypto_nss = xyes])
 
+AC_ARG_ENABLE([crypto-openssl],
+	[  --disable-crypto-openssl          : disable libknet openssl support ],,
+	[ enable_crypto_openssl="$enable_crypto_all" ])
+AM_CONDITIONAL([BUILDCRYPTOOPENSSL], [test x$enable_crypto_openssl = xyes])
+
 AC_ARG_ENABLE([compress-all],
 	[  --disable-compress-all            : disable libknet all compress modules support ],,
 	[ enable_compress_all="yes" ])
@@ -182,6 +187,11 @@ PKG_CHECK_MODULES([foobarbaz],[foobarbaz], [AC_MSG_NOTICE([bootstrapping pkg-con
 if test "x$enable_crypto_nss" = xyes; then
 	PKG_CHECK_MODULES([nss],[nss])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTONSS], [1], [Enable nss crypto])
+fi
+
+if test "x$enable_crypto_openssl" = xyes; then
+	PKG_CHECK_MODULES([openssl],[openssl])
+	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
 fi
 
 # compress libraries checks
