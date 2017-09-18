@@ -219,7 +219,7 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 			return -1;
 		}
 	} else {
-		knet_h->compress_int_data[cmp_model] = &"1";
+		knet_h->compress_int_data[cmp_model] = (void *)&"1";
 	}
 
 	compress_modules_cmds[cmp_model].libref++;
