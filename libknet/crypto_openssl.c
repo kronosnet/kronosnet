@@ -604,16 +604,24 @@ int opensslcrypto_init(
 
 	memset(opensslcrypto_instance, 0, sizeof(struct opensslcrypto_instance));
 
-	opensslcrypto_instance->crypto_cipher_type = (*_int_EVP_get_cipherbyname)(knet_handle_crypto_cfg->crypto_cipher_type);
-	if (!opensslcrypto_instance->crypto_cipher_type) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto cipher type requested");
-		goto out_err;
+	if (strcmp(knet_handle_crypto_cfg->crypto_cipher_type, "none") == 0) {
+		opensslcrypto_instance->crypto_cipher_type = NULL;
+	} else {
+		opensslcrypto_instance->crypto_cipher_type = (*_int_EVP_get_cipherbyname)(knet_handle_crypto_cfg->crypto_cipher_type);
+		if (!opensslcrypto_instance->crypto_cipher_type) {
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto cipher type requested");
+			goto out_err;
+		}
 	}
 
-	opensslcrypto_instance->crypto_hash_type = (*_int_EVP_get_digestbyname)(knet_handle_crypto_cfg->crypto_hash_type);
-	if (!opensslcrypto_instance->crypto_hash_type) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto hash type requested");
-		goto out_err;
+	if (strcmp(knet_handle_crypto_cfg->crypto_hash_type, "none") == 0) {
+		opensslcrypto_instance->crypto_hash_type = NULL;
+	} else {
+		opensslcrypto_instance->crypto_hash_type = (*_int_EVP_get_digestbyname)(knet_handle_crypto_cfg->crypto_hash_type);
+		if (!opensslcrypto_instance->crypto_hash_type) {
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto hash type requested");
+			goto out_err;
+		}
 	}
 
 	if ((opensslcrypto_instance->crypto_cipher_type) &&
