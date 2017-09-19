@@ -529,7 +529,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
  *            pointer to a knet_handle_crypto_cfg structure
  *
  *            crypto_model should contain the model name.
- *                         Currently only "nss" is supported.
+ *                         Currently only "openssl" and "nss" are supported.
  *                         Setting to "none" will disable crypto.
  *
  *            crypto_cipher_type
@@ -538,6 +538,9 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
  *                         encryption.
  *                         Currently supported by "nss" model:
  *                         "3des", "aes128", "aes192" and "aes256".
+ *                         "openssl" model supports more modes and it strictly
+ *                         depends on the openssl build. See: EVP_get_cipherbyname
+ *                         openssl API call for details.
  *
  *            crypto_hash_type
  *                         should contain the hashing algo name.
@@ -545,6 +548,9 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
  *                         hashing.
  *                         Currently supported by "nss" model:
  *                         "md5", "sha1", "sha256", "sha384" and "sha512".
+ *                         "openssl" model supports more modes and it strictly
+ *                         depends on the openssl build. See: EVP_get_digestbyname
+ *                         openssl API call for details.
  *
  *            private_key  will contain the private shared key.
  *                         It has to be at least KNET_MIN_KEY_LEN long.
