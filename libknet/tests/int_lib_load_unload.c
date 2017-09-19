@@ -100,7 +100,7 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 #ifdef BUILDCRYPTONSS
-	printf("Testing loading crypto library\n");
+	printf("Testing loading nss crypto library\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -175,6 +175,84 @@ static void test(void)
 	free_loop();
 #else
 	printf("WARNING: nss support not builtin the library. Unable to test/verify internal crypto load/unload code\n");
+#endif
+
+#ifdef BUILDCRYPTOOPENSSL
+	printf("Testing loading openssl crypto library\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "openssl", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error loading library\n");
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libcrypto")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	printf("Testing unloading crypto library\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx != orig_idx) {
+		printf("Error unloading library\n");
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (find_lib("libcrypto")) {
+		printf("library doesn't appear to be unloaded\n");
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+#else
+	printf("WARNING: openssl support not builtin the library. Unable to test/verify internal crypto load/unload code\n");
 #endif
 
 #ifdef BUILDCOMPZLIB
@@ -264,7 +342,7 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 #ifdef BUILDCRYPTONSS
-	printf("Testing multiple handles loading crypto library\n");
+	printf("Testing multiple handles loading nss crypto library\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -387,6 +465,132 @@ static void test(void)
 	free_loop();
 #else
 	printf("WARNING: nss support not builtin the library. Unable to test/verify internal crypto load/unload code\n");
+#endif
+
+#ifdef BUILDCRYPTOOPENSSL
+	printf("Testing multiple handles loading openssl crypto library\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "openssl", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	if (knet_handle_crypto(knet_h2, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error loading library\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libcrypto")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	printf("Testing multiple handles unloading crypto library\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error library has been unloaded prematurely\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libcrypto")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	if (knet_handle_crypto(knet_h2, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx != orig_idx) {
+		printf("Error unloading library\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (find_lib("libcrypto")) {
+		printf("library doesn't appear to be unloaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+#else
+	printf("WARNING: openssl support not builtin the library. Unable to test/verify internal crypto load/unload code\n");
 #endif
 
 #ifdef BUILDCOMPZLIB
@@ -513,6 +717,296 @@ static void test(void)
 	printf("WARNING: zlib support not builtin the library. Unable to test/verify internal compress load/unload code\n");
 #endif
 
+#ifdef BUILDCRYPTONSS
+#ifdef BUILDCRYPTOOPENSSL
+	printf("Testing multiple handles loading different crypto libraries\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "openssl", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h2, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error loading library\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libnss")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libcrypto")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	printf("Testing multiple handles unloading crypto library\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error library has been unloaded prematurely\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (find_lib("libnss")) {
+		printf("library doesn't appear to be unloaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	if (knet_handle_crypto(knet_h2, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx != orig_idx) {
+		printf("Error library has been unloaded prematurely\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (find_lib("libcrypto")) {
+		printf("library doesn't appear to be unloaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+#else
+	printf("WARNING: openssl support not builtin the library. Unable to test/verify internal compress load/unload code\n");
+#endif
+#else
+	printf("WARNING: nss support not builtin the library. Unable to test/verify internal compress load/unload code\n");
+#endif
+
+#ifdef BUILDCRYPTONSS
+#ifdef BUILDCRYPTOOPENSSL
+	printf("Testing multiple handles loading different crypto libraries (part 2)\n");
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, "openssl", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h2, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error loading library\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libnss")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (!find_lib("libcrypto")) {
+		printf("library doesn't appear to be loaded\n");
+		knet_handle_free(knet_h1);
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	printf("Testing multiple handles unloading crypto library by closing handles\n");
+
+	knet_handle_free(knet_h1);
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	if (cur_idx <= orig_idx) {
+		printf("Error library has been unloaded prematurely\n");
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (find_lib("libnss")) {
+		printf("library doesn't appear to be unloaded\n");
+		knet_handle_free(knet_h2);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+
+	knet_handle_free(knet_h2);
+	flush_logs(logfds[0], stdout);
+
+	dl_iterate_phdr(callback, NULL);
+
+	/*
+	 * something is pulling in libgcc and we need to account for it
+	 */
+	if (cur_idx != orig_idx + 1) {
+		printf("Error unloading library\n");
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	if (find_lib("libcrypto")) {
+		printf("library doesn't appear to be unloaded\n");
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	free_loop();
+#else
+	printf("WARNING: openssl support not builtin the library. Unable to test/verify internal compress load/unload code\n");
+	do_close = 1;
+#endif
+#else
+	printf("WARNING: nss support not builtin the library. Unable to test/verify internal compress load/unload code\n");
+	do_close = 1;
+#endif
+
+	knet_h1 = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
+	if (!knet_h1) {
+		printf("knet_handle_new failed: %s\n", strerror(errno));
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+	knet_h2 = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
+	if (!knet_h2) {
+		printf("knet_handle_new failed: %s\n", strerror(errno));
+		knet_handle_free(knet_h1);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+	flush_logs(logfds[0], stdout);
+
+
 #ifdef BUILDCOMPZLIB
 #ifdef BUILDCOMPBZIP2
 	printf("Testing multiple handles loading different compress libraries\n");
@@ -629,7 +1123,7 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx != orig_idx) {
+	if (cur_idx != orig_idx + 1) {
 		printf("Error unloading library\n");
 		knet_handle_free(knet_h1);
 		knet_handle_free(knet_h2);
