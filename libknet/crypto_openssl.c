@@ -36,7 +36,6 @@ static void *openssl_lib;
  * symbols remapping
  */
 void (*_int_OPENSSL_add_all_algorithms_noconf)(void);
-void (*_int_OPENSSL_config)(const char *config_name);
 
 void (*_int_ERR_load_crypto_strings)(void);
 unsigned long (*_int_ERR_get_error)(void);
@@ -76,7 +75,6 @@ void (*_int_EVP_cleanup)(void);
 static void clean_openssl_syms(void)
 {
 	_int_OPENSSL_add_all_algorithms_noconf = NULL;
-	_int_OPENSSL_config = NULL;
 	_int_ERR_load_crypto_strings = NULL;
 	_int_ERR_get_error = NULL;
 	_int_ERR_error_string_n = NULL;
@@ -109,14 +107,6 @@ static int opensslcrypto_remap_symbols(knet_handle_t knet_h)
 	if (!_int_OPENSSL_add_all_algorithms_noconf) {
 		error = dlerror();
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map OPENSSL_add_all_algorithms_noconf: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_OPENSSL_config = dlsym(openssl_lib, "OPENSSL_config");
-	if (!_int_OPENSSL_config) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map OPENSSL_config: %s", error);
 		err = -1;
 		goto out;
 	}
@@ -329,7 +319,6 @@ int opensslcrypto_load_lib(
 
 		(*_int_ERR_load_crypto_strings)();
 		(*_int_OPENSSL_add_all_algorithms_noconf)();
-		(*_int_OPENSSL_config)(NULL);
 	}
 
 out:
