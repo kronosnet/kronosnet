@@ -25,70 +25,296 @@
 
 #define SSLERR_BUF_SIZE 256 /* https://www.openssl.org/docs/man1.0.2/crypto/ERR_error_string.html */
 
+#define LIBOPENSSL_10 "libcrypto.so.10"
+
 /*
  * global vars for dlopen
  */
-//static void *openssl_lib;
+static void *openssl_lib;
 
 /*
  * symbols remapping
  */
+void (*_int_OPENSSL_add_all_algorithms_noconf)(void);
+void (*_int_OPENSSL_config)(const char *config_name);
 
+void (*_int_ERR_load_crypto_strings)(void);
+unsigned long (*_int_ERR_get_error)(void);
+void (*_int_ERR_error_string_n)(unsigned long e, char *buf, size_t len);
+void (*_int_ERR_free_strings)(void);
 
-#if 0
+void (*_int_RAND_seed)(const void *buf, int num);
+int (*_int_RAND_bytes)(unsigned char *buf, int num);
+
+const EVP_MD *(*_int_EVP_get_digestbyname)(const char *name);
+int (*_int_EVP_MD_size)(const EVP_MD *md);
+unsigned char *(*_int_HMAC)(const EVP_MD *evp_md, const void *key, int key_len,
+			    const unsigned char *d, size_t n, unsigned char *md,
+			    unsigned int *md_len);
+
+const EVP_CIPHER *(*_int_EVP_get_cipherbyname)(const char *name);
+int (*_int_EVP_CIPHER_block_size)(const EVP_CIPHER *cipher);
+void (*_int_EVP_CIPHER_CTX_init)(EVP_CIPHER_CTX *a);
+int (*_int_EVP_CIPHER_CTX_cleanup)(EVP_CIPHER_CTX *a);
+
+int (*_int_EVP_EncryptInit_ex)(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+			       ENGINE *impl, const unsigned char *key,
+			       const unsigned char *iv);
+int (*_int_EVP_EncryptUpdate)(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
+			      const unsigned char *in, int inl);
+int (*_int_EVP_EncryptFinal_ex)(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl);
+
+int (*_int_EVP_DecryptInit_ex)(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+			       ENGINE *impl, const unsigned char *key,
+			       const unsigned char *iv);
+int (*_int_EVP_DecryptUpdate)(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
+			      const unsigned char *in, int inl);
+int (*_int_EVP_DecryptFinal_ex)(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
+
+void (*_int_EVP_cleanup)(void);
+
+static void clean_openssl_syms(void)
+{
+	_int_OPENSSL_add_all_algorithms_noconf = NULL;
+	_int_OPENSSL_config = NULL;
+	_int_ERR_load_crypto_strings = NULL;
+	_int_ERR_get_error = NULL;
+	_int_ERR_error_string_n = NULL;
+	_int_ERR_free_strings = NULL;
+	_int_RAND_seed = NULL;
+	_int_RAND_bytes = NULL;
+	_int_EVP_get_digestbyname = NULL;
+	_int_EVP_MD_size = NULL;
+	_int_HMAC = NULL;
+	_int_EVP_get_cipherbyname = NULL;
+	_int_EVP_CIPHER_block_size = NULL;
+	_int_EVP_CIPHER_CTX_init = NULL;
+	_int_EVP_CIPHER_CTX_cleanup = NULL;
+	_int_EVP_EncryptInit_ex = NULL;
+	_int_EVP_EncryptUpdate = NULL;
+	_int_EVP_EncryptFinal_ex = NULL;
+	_int_EVP_DecryptInit_ex = NULL;
+	_int_EVP_DecryptUpdate = NULL;
+	_int_EVP_DecryptFinal_ex = NULL;
+	_int_EVP_cleanup = NULL;
+	return;
+}
+
 static int opensslcrypto_remap_symbols(knet_handle_t knet_h)
 {
 	int err = 0;
 	char *error = NULL;
 
-	_int_PK11_GetBestWrapMechanism = dlsym(openssl_lib, "PK11_GetBestWrapMechanism");
-	if (!_int_PK11_GetBestWrapMechanism) {
+	_int_OPENSSL_add_all_algorithms_noconf = dlsym(openssl_lib, "OPENSSL_add_all_algorithms_noconf");
+	if (!_int_OPENSSL_add_all_algorithms_noconf) {
 		error = dlerror();
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map PK11_GetBestWrapMechanism: %s", error);
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map OPENSSL_add_all_algorithms_noconf: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_OPENSSL_config = dlsym(openssl_lib, "OPENSSL_config");
+	if (!_int_OPENSSL_config) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map OPENSSL_config: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_ERR_load_crypto_strings = dlsym(openssl_lib, "ERR_load_crypto_strings");
+	if (!_int_ERR_load_crypto_strings) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map ERR_load_crypto_strings: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_ERR_get_error = dlsym(openssl_lib, "ERR_get_error");
+	if (!_int_ERR_get_error) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map ERR_get_error: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_ERR_error_string_n = dlsym(openssl_lib, "ERR_error_string_n");
+	if (!_int_ERR_error_string_n) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map ERR_error_string_n: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_ERR_free_strings = dlsym(openssl_lib, "ERR_free_strings");
+	if (!_int_ERR_free_strings) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map ERR_free_strings: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_RAND_seed = dlsym(openssl_lib, "RAND_seed");
+	if (!_int_RAND_seed) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map RAND_seed: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_RAND_bytes = dlsym(openssl_lib, "RAND_bytes");
+	if (!_int_RAND_bytes) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map RAND_bytes: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_get_digestbyname = dlsym(openssl_lib, "EVP_get_digestbyname");
+	if (!_int_EVP_get_digestbyname) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_get_digestbyname: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_MD_size = dlsym(openssl_lib, "EVP_MD_size");
+	if (!_int_EVP_MD_size) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_MD_size: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_HMAC = dlsym(openssl_lib, "HMAC");
+	if (!_int_HMAC) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map HMAC: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_get_cipherbyname = dlsym(openssl_lib, "EVP_get_cipherbyname");
+	if (!_int_EVP_get_cipherbyname) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_get_cipherbyname: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_CIPHER_block_size = dlsym(openssl_lib, "EVP_CIPHER_block_size");
+	if (!_int_EVP_CIPHER_block_size) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_CIPHER_block_size: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_CIPHER_CTX_init = dlsym(openssl_lib, "EVP_CIPHER_CTX_init");
+	if (!_int_EVP_CIPHER_CTX_init) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_CIPHER_CTX_init: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_CIPHER_CTX_cleanup = dlsym(openssl_lib, "EVP_CIPHER_CTX_cleanup");
+	if (!_int_EVP_CIPHER_CTX_cleanup) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_CIPHER_CTX_cleanup: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_EncryptInit_ex = dlsym(openssl_lib, "EVP_EncryptInit_ex");
+	if (!_int_EVP_EncryptInit_ex) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_EncryptInit_ex: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_EncryptUpdate = dlsym(openssl_lib, "EVP_EncryptUpdate");
+	if (!_int_EVP_EncryptUpdate) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_EncryptUpdate: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_EncryptFinal_ex = dlsym(openssl_lib, "EVP_EncryptFinal_ex");
+	if (!_int_EVP_EncryptFinal_ex) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_EncryptFinal_ex: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_DecryptInit_ex = dlsym(openssl_lib, "EVP_DecryptInit_ex");
+	if (!_int_EVP_DecryptInit_ex) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_DecryptInit_ex: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_DecryptUpdate = dlsym(openssl_lib, "EVP_DecryptUpdate");
+	if (!_int_EVP_DecryptUpdate) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_DecryptUpdate: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_DecryptFinal_ex = dlsym(openssl_lib, "EVP_DecryptFinal_ex");
+	if (!_int_EVP_DecryptFinal_ex) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_DecryptFinal_ex: %s", error);
+		err = -1;
+		goto out;
+	}
+
+	_int_EVP_cleanup = dlsym(openssl_lib, "EVP_cleanup");
+	if (!_int_EVP_cleanup) {
+		error = dlerror();
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_cleanup: %s", error);
 		err = -1;
 		goto out;
 	}
 
 out:
 	if (err) {
-		_int_PK11_GetBestWrapMechanism = NULL;
+		clean_openssl_syms();
 	}
+
 	return err;
 }
-
-static int init_openssl_db(knet_handle_t knet_h)
-{
-	if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "NSS DB initialization failed (err %d): %s",
-			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
-		return -1;
-	}
-	return 0;
-}
-#endif
 
 void opensslcrypto_unload_lib(
 	knet_handle_t knet_h)
 {
-	EVP_cleanup();
-	ERR_free_strings();
-#if 0
 	if (openssl_lib) {
+		if (_int_EVP_cleanup) {
+			(*_int_EVP_cleanup)();
+		}
+		if (_int_ERR_free_strings) {
+			(*_int_ERR_free_strings)();
+		}
+
 		dlclose(openssl_lib);
 		openssl_lib = NULL;
+		clean_openssl_syms();
 	}
-#endif
+
 	return;
 }
 
 int opensslcrypto_load_lib(
 	knet_handle_t knet_h)
 {
-#if 0
 	int err = 0, savederrno = 0;
 
 	if (!openssl_lib) {
-		openssl_lib = open_lib(knet_h, "libopenssl3.so", RTLD_NODELETE);
+		openssl_lib = open_lib(knet_h, LIBOPENSSL_10, 0);
 		if (!openssl_lib) {
 			savederrno = errno;
 			err = -1;
@@ -101,11 +327,9 @@ int opensslcrypto_load_lib(
 			goto out;
 		}
 
-		if (init_openssl_db(knet_h) < 0) {
-			savederrno = EAGAIN;
-			err = -1;
-			goto out;
-		}
+		(*_int_ERR_load_crypto_strings)();
+		(*_int_OPENSSL_add_all_algorithms_noconf)();
+		(*_int_OPENSSL_config)(NULL);
 	}
 
 out:
@@ -114,12 +338,6 @@ out:
 	}
 	errno = savederrno;
 	return err;
-#endif
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
-	OPENSSL_config(NULL);
-
-	return 0;
 }
 
 /*
@@ -158,15 +376,16 @@ static int encrypt_openssl(
 	int		i;
 	char		sslerr[SSLERR_BUF_SIZE];
 
-	EVP_CIPHER_CTX_init(&ctx);
+	(*_int_EVP_CIPHER_CTX_init)(&ctx);
 
 	/*
 	 * contribute to PRNG for each packet we send/receive
 	 */
-	RAND_seed((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
+	(*_int_RAND_seed)((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
 
-	if (!RAND_bytes(salt, SALT_SIZE)) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to get random salt data");
+	if (!(*_int_RAND_bytes)(salt, SALT_SIZE)) {
+		(*_int_ERR_error_string_n)((*_int_ERR_get_error)(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to get random salt data: %s", sslerr);
 		err = -1;
 		goto out;
 	}
@@ -174,13 +393,13 @@ static int encrypt_openssl(
 	/*
 	 * add warning re keylength
 	 */
-	EVP_EncryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
+	(*_int_EVP_EncryptInit_ex)(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
 
 	for (i=0; i<iovcnt; i++) {
-		if (!EVP_EncryptUpdate(&ctx,
-				       data + offset, &tmplen,
-				       (unsigned char *)iov[i].iov_base, iov[i].iov_len)) {
-			ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		if (!(*_int_EVP_EncryptUpdate)(&ctx,
+					       data + offset, &tmplen,
+					       (unsigned char *)iov[i].iov_base, iov[i].iov_len)) {
+			(*_int_ERR_error_string_n)((*_int_ERR_get_error)(), sslerr, sizeof(sslerr));
 			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to encrypt: %s", sslerr);
 			err = -1;
 			goto out;
@@ -188,8 +407,8 @@ static int encrypt_openssl(
 		offset = offset + tmplen;
 	}
 
-	if (!EVP_EncryptFinal_ex(&ctx, data + offset, &tmplen)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+	if (!(*_int_EVP_EncryptFinal_ex)(&ctx, data + offset, &tmplen)) {
+		(*_int_ERR_error_string_n)((*_int_ERR_get_error)(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize encrypt: %s", sslerr);
 		err = -1;
 		goto out;
@@ -198,7 +417,7 @@ static int encrypt_openssl(
 	*buf_out_len = offset + tmplen + SALT_SIZE;
 
 out:
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	(*_int_EVP_CIPHER_CTX_cleanup)(&ctx);
 	return err;
 }
 
@@ -218,27 +437,27 @@ static int decrypt_openssl (
 	int		err = 0;
 	char		sslerr[SSLERR_BUF_SIZE];
 
-	EVP_CIPHER_CTX_init(&ctx);
+	(*_int_EVP_CIPHER_CTX_init)(&ctx);
 
 	/*
 	 * contribute to PRNG for each packet we send/receive
 	 */
-	RAND_seed(buf_in, buf_in_len);
+	(*_int_RAND_seed)(buf_in, buf_in_len);
 
 	/*
 	 * add warning re keylength
 	 */
-	EVP_DecryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
+	(*_int_EVP_DecryptInit_ex)(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
 
-	if (!EVP_DecryptUpdate(&ctx, buf_out, &tmplen1, data, datalen)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+	if (!(*_int_EVP_DecryptUpdate)(&ctx, buf_out, &tmplen1, data, datalen)) {
+		(*_int_ERR_error_string_n)((*_int_ERR_get_error)(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to decrypt: %s", sslerr);
 		err = -1;
 		goto out;
 	}
 
-	if (!EVP_DecryptFinal_ex(&ctx, buf_out + tmplen1, &tmplen2)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+	if (!(*_int_EVP_DecryptFinal_ex)(&ctx, buf_out + tmplen1, &tmplen2)) {
+		(*_int_ERR_error_string_n)((*_int_ERR_get_error)(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize decrypt: %s", sslerr);
 		err = -1;
 		goto out;
@@ -247,7 +466,7 @@ static int decrypt_openssl (
 	*buf_out_len = tmplen1 + tmplen2;
 
 out:
-	EVP_CIPHER_CTX_cleanup(&ctx);
+	(*_int_EVP_CIPHER_CTX_cleanup)(&ctx);
 	return err;
 }
 
@@ -266,13 +485,13 @@ static int calculate_openssl_hash(
 	unsigned char *hash_out = NULL;
 	char sslerr[SSLERR_BUF_SIZE];
 
-	hash_out = HMAC(instance->crypto_hash_type,
-			instance->private_key, instance->private_key_len,
-			buf, buf_len,
-			hash, &hash_len);
+	hash_out = (*_int_HMAC)(instance->crypto_hash_type,
+				instance->private_key, instance->private_key_len,
+				buf, buf_len,
+				hash, &hash_len);
 
 	if ((!hash_out) || (hash_len != knet_h->sec_hash_size)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		(*_int_ERR_error_string_n)((*_int_ERR_get_error)(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to calculate hash: %s", sslerr);
 		return -1;
 	}
@@ -396,13 +615,13 @@ int opensslcrypto_init(
 
 	memset(opensslcrypto_instance, 0, sizeof(struct opensslcrypto_instance));
 
-	opensslcrypto_instance->crypto_cipher_type = EVP_get_cipherbyname(knet_handle_crypto_cfg->crypto_cipher_type);
+	opensslcrypto_instance->crypto_cipher_type = (*_int_EVP_get_cipherbyname)(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (!opensslcrypto_instance->crypto_cipher_type) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto cipher type requested");
 		goto out_err;
 	}
 
-	opensslcrypto_instance->crypto_hash_type = EVP_get_digestbyname(knet_handle_crypto_cfg->crypto_hash_type);
+	opensslcrypto_instance->crypto_hash_type = (*_int_EVP_get_digestbyname)(knet_handle_crypto_cfg->crypto_hash_type);
 	if (!opensslcrypto_instance->crypto_hash_type) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto hash type requested");
 		goto out_err;
@@ -425,14 +644,14 @@ int opensslcrypto_init(
 	knet_h->sec_header_size = 0;
 
 	if (opensslcrypto_instance->crypto_hash_type) {
-		knet_h->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
+		knet_h->sec_hash_size = (*_int_EVP_MD_size)(opensslcrypto_instance->crypto_hash_type);
 		knet_h->sec_header_size += knet_h->sec_hash_size;
 	}
 
 	if (opensslcrypto_instance->crypto_cipher_type) {
 		int block_size;
 
-		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
+		block_size = (*_int_EVP_CIPHER_block_size)(opensslcrypto_instance->crypto_cipher_type);
 		if (block_size < 0) {
 			goto out_err;
 		}
