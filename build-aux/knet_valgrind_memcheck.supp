@@ -509,4 +509,19 @@
    fun:_handle_send_to_links_thread
    fun:start_thread
 }
-
+{
+   lzma internal stuff (Debian Unstable)
+   Memcheck:Cond
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+}
