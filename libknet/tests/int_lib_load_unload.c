@@ -24,9 +24,14 @@ int cur_idx = 0;
 
 int use_cur = 0;
 
+static int dump_all = 0;
+
 static int callback(struct dl_phdr_info *info, size_t size, void *data)
 {
 	if (strlen(info->dlpi_name) > 0) {
+		if (dump_all) {
+			printf("lib: %s\n", info->dlpi_name);
+		}
 		if (use_cur) {
 			cur[cur_idx] = strdup(info->dlpi_name);
 			cur_idx++;
@@ -59,15 +64,11 @@ static void free_loop(void)
 }
 
 #if defined(BUILDCRYPTONSS) || defined(BUILDCOMPZLIB)
-static int dump_all = 0;
 static int find_lib(const char *libname)
 {
 	int i;
 
 	for (i = 0; i < cur_idx; i++) {
-		if (dump_all) {
-			printf("BLA: %s\n", cur[i]);
-		}
 		if (strstr(cur[i], libname) != NULL) {
 			return 1;
 		}
