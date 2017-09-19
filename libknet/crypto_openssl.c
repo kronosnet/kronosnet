@@ -164,6 +164,7 @@ static int encrypt_openssl(
 	 * contribute to PRNG for each packet we send/receive
 	 */
 	RAND_seed((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
+
 	if (!RAND_bytes(salt, SALT_SIZE)) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to get random salt data");
 		err = -1;
@@ -174,13 +175,6 @@ static int encrypt_openssl(
 	 * add warning re keylength
 	 */
 	EVP_EncryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
-
-	if (!EVP_CIPHER_CTX_set_key_length(&ctx, instance->private_key_len)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set keylen: %s", sslerr);
-		err = -1;
-		goto out;
-	}
 
 	for (i=0; i<iovcnt; i++) {
 		if (!EVP_EncryptUpdate(&ctx,
@@ -235,13 +229,6 @@ static int decrypt_openssl (
 	 * add warning re keylength
 	 */
 	EVP_DecryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
-
-	if (!EVP_CIPHER_CTX_set_key_length(&ctx, instance->private_key_len)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set keylen: %s", sslerr);
-		err = -1;
-		goto out;
-	}
 
 	if (!EVP_DecryptUpdate(&ctx, buf_out, &tmplen1, data, datalen)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));

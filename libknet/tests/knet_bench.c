@@ -425,7 +425,7 @@ static void setup_knet(int argc, char *argv[])
 		if (cryptohash) {
 			strncpy(knet_handle_crypto_cfg.crypto_hash_type, cryptohash, sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 		}
-		knet_handle_crypto_cfg.private_key_len = 16;
+		knet_handle_crypto_cfg.private_key_len = 4096;
 		if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
 			printf("Unable to init crypto\n");
 			exit(FAIL);
