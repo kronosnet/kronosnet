@@ -649,8 +649,12 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	int best_priority = -1;
 	int reachable = 0;
 
-	host->active_link_entries = 0;
+	if (knet_h->host_id == host->host_id && knet_h->has_loop_link) {
+		host->active_link_entries = 1;
+		return 0;
+	}
 
+	host->active_link_entries = 0;
 	for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 		if (host->link[link_idx].status.enabled != 1) /* link is not enabled */
 			continue;
