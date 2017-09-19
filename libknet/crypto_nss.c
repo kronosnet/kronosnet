@@ -81,6 +81,38 @@ PRBool (*_int_PR_Initialized)(void);
  */
 void (*_int_PL_ArenaFinish)(void);
 
+static void clean_nss_syms(void)
+{
+	_int_PK11_GetBestWrapMechanism = NULL;
+	_int_PK11_GetBestSlot = NULL;
+	_int_PK11_GetBestKeyLength = NULL;
+	_int_PK11_DigestFinal = NULL;
+	_int_SECITEM_FreeItem = NULL;
+	_int_NSS_NoDB_Init = NULL;
+	_int_NSS_Shutdown = NULL;
+	_int_PK11_DigestBegin = NULL;
+	_int_PK11_DigestOp = NULL;
+	_int_PK11_DestroyContext = NULL;
+	_int_PK11_Finalize = NULL;
+	_int_PK11_CipherOp = NULL;
+	_int_PK11_UnwrapSymKey = NULL;
+	_int_PK11_FreeSymKey = NULL;
+	_int_PK11_CreateContextBySymKey = NULL;
+	_int_PK11_GenerateRandom = NULL;
+	_int_PK11_ParamFromIV = NULL;
+	_int_PK11_FreeSlot = NULL;
+	_int_PK11_GetBlockSize = NULL;
+	_int_PK11_KeyGen = NULL;
+
+	_int_PR_Cleanup = NULL;
+	_int_PR_ErrorToString = NULL;
+	_int_PR_Initialized = NULL;
+	_int_PR_GetError = NULL;
+
+	_int_PL_ArenaFinish = NULL;
+	return;
+}
+
 static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 {
 	int err = 0;
@@ -301,33 +333,7 @@ static int nsscrypto_remap_symbols(knet_handle_t knet_h)
 
 out:
 	if (err) {
-		_int_PK11_GetBestWrapMechanism = NULL;
-		_int_PK11_GetBestSlot = NULL;
-		_int_PK11_GetBestKeyLength = NULL;
-		_int_PK11_DigestFinal = NULL;
-		_int_SECITEM_FreeItem = NULL;
-		_int_NSS_NoDB_Init = NULL;
-		_int_NSS_Shutdown = NULL;
-		_int_PK11_DigestBegin = NULL;
-		_int_PK11_DigestOp = NULL;
-		_int_PK11_DestroyContext = NULL;
-		_int_PK11_Finalize = NULL;
-		_int_PK11_CipherOp = NULL;
-		_int_PK11_UnwrapSymKey = NULL;
-		_int_PK11_FreeSymKey = NULL;
-		_int_PK11_CreateContextBySymKey = NULL;
-		_int_PK11_GenerateRandom = NULL;
-		_int_PK11_ParamFromIV = NULL;
-		_int_PK11_FreeSlot = NULL;
-		_int_PK11_GetBlockSize = NULL;
-		_int_PK11_KeyGen = NULL;
-
-		_int_PR_Cleanup = NULL;
-		_int_PR_ErrorToString = NULL;
-		_int_PR_Initialized = NULL;
-		_int_PR_GetError = NULL;
-
-		_int_PL_ArenaFinish = NULL;
+		clean_nss_syms();
 	}
 	return err;
 }
@@ -348,13 +354,20 @@ void nsscrypto_unload_lib(
 {
 	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "%s runtime unload can cause minor (< 2kb) memory leaks! Please reload your application at a convenient time (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless).", LIBNSS3);
 	if (nss_lib) {
-		(*_int_NSS_Shutdown)();
-		if ((*_int_PR_Initialized)()) {
-			(*_int_PL_ArenaFinish)();
-			(*_int_PR_Cleanup)();
+		if (_int_NSS_Shutdown) {
+			(*_int_NSS_Shutdown)();
+		}
+		if ((_int_PR_Initialized) && ((*_int_PR_Initialized)())) {
+			if (_int_PL_ArenaFinish) {
+				(*_int_PL_ArenaFinish)();
+			}
+			if (_int_PR_Cleanup) {
+				(*_int_PR_Cleanup)();
+			}
 		}
 		dlclose(nss_lib);
 		nss_lib = NULL;
+		clean_nss_syms();
 	}
 	return;
 }
