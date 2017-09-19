@@ -59,11 +59,15 @@ static void free_loop(void)
 }
 
 #if defined(BUILDCRYPTONSS) || defined(BUILDCOMPZLIB)
+static int dump_all = 0;
 static int find_lib(const char *libname)
 {
 	int i;
 
 	for (i = 0; i < cur_idx; i++) {
+		if (dump_all) {
+			printf("BLA: %s\n", cur[i]);
+		}
 		if (strstr(cur[i], libname) != NULL) {
 			return 1;
 		}
@@ -119,14 +123,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libnss")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -137,7 +133,7 @@ static void test(void)
 
 	free_loop();
 
-	printf("Testing unloading crypto library\n");
+	printf("Testing unloading nss crypto library\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -155,14 +151,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libnss")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -197,14 +185,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libcrypto")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -215,7 +195,7 @@ static void test(void)
 
 	free_loop();
 
-	printf("Testing unloading crypto library\n");
+	printf("Testing unloading openssl crypto library\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -233,14 +213,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libcrypto")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -274,14 +246,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libz")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -309,14 +273,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libz")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -372,15 +328,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libnss")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -412,15 +359,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libnss")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -443,15 +381,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libnss")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -498,15 +427,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libcrypto")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -538,15 +458,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libcrypto")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -569,15 +480,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libcrypto")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -623,15 +525,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libz")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -662,15 +555,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libz")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -693,15 +577,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libz")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -755,15 +630,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libnss")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -804,15 +670,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (find_lib("libnss")) {
 		printf("library doesn't appear to be unloaded\n");
 		knet_handle_free(knet_h1);
@@ -835,15 +692,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libcrypto")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -901,15 +749,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libnss")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -937,14 +776,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (find_lib("libnss")) {
 		printf("library doesn't appear to be unloaded\n");
 		knet_handle_free(knet_h2);
@@ -959,16 +790,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	/*
-	 * something is pulling in libgcc and we need to account for it
-	 */
-	if (cur_idx != orig_idx + 1) {
-		printf("Error unloading library\n");
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libcrypto")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -1043,15 +864,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libz")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -1091,15 +903,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (find_lib("libz")) {
 		printf("library doesn't appear to be unloaded\n");
 		knet_handle_free(knet_h1);
@@ -1122,15 +925,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	if (cur_idx != orig_idx + 1) {
-		printf("Error unloading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libbz2")) {
 		printf("library doesn't appear to be unloaded\n");
@@ -1185,15 +979,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error loading library\n");
-		knet_handle_free(knet_h1);
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (!find_lib("libz")) {
 		printf("library doesn't appear to be loaded\n");
 		knet_handle_free(knet_h1);
@@ -1221,14 +1006,6 @@ static void test(void)
 
 	dl_iterate_phdr(callback, NULL);
 
-	if (cur_idx <= orig_idx) {
-		printf("Error library has been unloaded prematurely\n");
-		knet_handle_free(knet_h2);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	if (find_lib("libz")) {
 		printf("library doesn't appear to be unloaded\n");
 		knet_handle_free(knet_h2);
@@ -1243,16 +1020,6 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	dl_iterate_phdr(callback, NULL);
-
-	/*
-	 * something is pulling in libgcc and we need to account for it
-	 */
-	if (cur_idx != orig_idx + 1) {
-		printf("Error unloading library\n");
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
 
 	if (find_lib("libbz2")) {
 		printf("library doesn't appear to be unloaded\n");
