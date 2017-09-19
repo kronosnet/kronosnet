@@ -81,7 +81,7 @@ static void test(void)
 {
 	int logfds[2];
 	knet_handle_t knet_h1, knet_h2;
-#ifdef BUILDCRYPTONSS
+#if defined(BUILDCRYPTONSS) || defined(BUILDCOMPZLIB)
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 #endif
 #ifdef BUILDCOMPZLIB
