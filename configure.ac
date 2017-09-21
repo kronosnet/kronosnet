@@ -178,7 +178,11 @@ AC_CHECK_LIB([pthread], [pthread_create], [AC_SUBST([pthread_LIBS], [-lpthread])
 AC_CHECK_LIB([m], [ceil], [AC_SUBST([m_LIBS], [-lm])], [AC_MSG_ERROR([kronosnet requires m library])])
 AC_CHECK_LIB([rt], [clock_gettime], [AC_SUBST([rt_LIBS], [-lrt])], [AC_MSG_ERROR([kronosnet requires rt library])])
 
-AC_SEARCH_LIBS([dlopen], [dl dld], [AC_SUBST([dl_LIBS], [$ac_res])], [AC_MSG_ERROR([kronosnet requires dl library])])
+AC_SEARCH_LIBS([dlopen], [dl dld], [dllibs=$ac_res], [AC_MSG_ERROR([kronosnet requires dl library])])
+
+if test "x$dllibs" != "xnone required"; then
+	AC_SUBST([dl_LIBS], [$dllibs])
+fi
 
 # workaround pkg-config bootstrapping
 PKG_CHECK_MODULES([foobarbaz],[foobarbaz], [AC_MSG_NOTICE([bootstrapping pkg-config])], [AC_MSG_NOTICE([bootstrapping pkg-config])])
