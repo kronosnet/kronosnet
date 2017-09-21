@@ -14,9 +14,6 @@
 int lzma_load_lib(
 	knet_handle_t knet_h);
 
-void lzma_unload_lib(
-	knet_handle_t knet_h);
-
 int lzma_val_level(
 	knet_handle_t knet_h,
 	int compress_level);

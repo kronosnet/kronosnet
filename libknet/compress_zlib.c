@@ -78,28 +78,15 @@ int zlib_load_lib(
 			err = -1;
 			goto out;
 		}
+	}
 
-		if (zlib_remap_symbols(knet_h) < 0) {
-			savederrno = errno;
-			err = -1;
-			dlclose(zlib_lib);
-			zlib_lib = NULL;
-			goto out;
-		}
+	if (zlib_remap_symbols(knet_h) < 0) {
+		savederrno = errno;
+		err = -1;
 	}
 out:
 	errno = savederrno;
 	return err;
-}
-
-void zlib_unload_lib(
-	knet_handle_t knet_h)
-{
-	if (zlib_lib) {
-		dlclose(zlib_lib);
-		zlib_lib = NULL;
-	}
-	return;
 }
 
 int zlib_val_level(

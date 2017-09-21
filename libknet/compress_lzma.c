@@ -80,28 +80,15 @@ int lzma_load_lib(
 			err = -1;
 			goto out;
 		}
+	}
 
-		if (lzma_remap_symbols(knet_h) < 0) {
-			savederrno = errno;
-			err = -1;
-			dlclose(lzma_lib);
-			lzma_lib = NULL;
-			goto out;
-		}
+	if (lzma_remap_symbols(knet_h) < 0) {
+		savederrno = errno;
+		err = -1;
 	}
 out:
 	errno = savederrno;
 	return err;
-}
-
-void lzma_unload_lib(
-	knet_handle_t knet_h)
-{
-	if (lzma_lib) {
-		dlclose(lzma_lib);
-		lzma_lib = NULL;
-	}
-	return;
 }
 
 int lzma_val_level(

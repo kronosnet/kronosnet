@@ -34,7 +34,6 @@ check_PROGRAMS		= \
 			  $(fun_checks)
 
 int_checks		= \
-			  int_lib_load_unload \
 			  int_crypto_test \
 			  int_timediff_test
 
@@ -62,9 +61,6 @@ check-api-test-coverage:
 	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir) $(top_builddir)
 
 pckt_test_SOURCES	= pckt_test.c
-
-int_lib_load_unload_SOURCES = int_lib_load_unload.c \
-			      test-common.c
 
 int_crypto_test_SOURCES = int_crypto.c \
 			  ../common.c \

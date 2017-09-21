@@ -14,9 +14,6 @@
 int lz4_load_lib(
 	knet_handle_t knet_h);
 
-void lz4_unload_lib(
-	knet_handle_t knet_h);
-
 int lz4_val_level(
 	knet_handle_t knet_h,
 	int compress_level);

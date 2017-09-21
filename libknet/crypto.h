@@ -24,9 +24,7 @@ typedef struct {
 	 * see compress.h for explanation of the various lib related functions
 	 */
 	int (*load_lib)	(knet_handle_t knet_h);
-	void (*unload_lib) (knet_handle_t knet_h);
 	uint8_t		loaded;
-	uint8_t		libref;
 
 	int (*init)	(knet_handle_t knet_h,
 			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);

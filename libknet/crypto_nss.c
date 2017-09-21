@@ -10,6 +10,7 @@
 
 #include <errno.h>
 #include <dlfcn.h>
+#include <stdlib.h>
 #ifdef BUILDCRYPTONSS
 #include <nss.h>
 #include <nspr.h>
@@ -338,22 +339,12 @@ out:
 	return err;
 }
 
-static int init_nss_db(knet_handle_t knet_h)
-{
-	if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
-			(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
-		return -1;
-	}
+static int nss_db_is_init = 0;
+static int at_exit_registered = 0;
 
-	return 0;
-}
-
-void nsscrypto_unload_lib(
-	knet_handle_t knet_h)
+static void nss_atexit_handler(void)
 {
-	log_warn(knet_h, KNET_SUB_NSSCRYPTO, "%s runtime unload can cause minor (< 2kb) memory leaks! Please reload your application at a convenient time (and no, we cannot detect if you are shutting down the app or closing one handle, so you will get this message regardless).", LIBNSS3);
-	if (nss_lib) {
+	if (nss_db_is_init) {
 		if (_int_NSS_Shutdown) {
 			(*_int_NSS_Shutdown)();
 		}
@@ -365,9 +356,6 @@ void nsscrypto_unload_lib(
 				(*_int_PR_Cleanup)();
 			}
 		}
-		dlclose(nss_lib);
-		nss_lib = NULL;
-		clean_nss_syms();
 	}
 	return;
 }
@@ -384,24 +372,35 @@ int nsscrypto_load_lib(
 			err = -1;
 			goto out;
 		}
+	}
 
-		if (nsscrypto_remap_symbols(knet_h) < 0) {
-			savederrno = errno;
-			err = -1;
-			goto out;
-		}
+	if (nsscrypto_remap_symbols(knet_h) < 0) {
+		savederrno = errno;
+		err = -1;
+		goto out;
+	}
 
-		if (init_nss_db(knet_h) < 0) {
+	if (!at_exit_registered) {
+		if (atexit(nss_atexit_handler)) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to register NSS atexit handler");
 			savederrno = EAGAIN;
 			err = -1;
 			goto out;
 		}
+		at_exit_registered = 1;
 	}
 
-out:
-	if (err) {
-		nsscrypto_unload_lib(knet_h);
+	if ((nss_lib) && (_int_NSS_NoDB_Init) && (!nss_db_is_init)) {
+		if ((*_int_NSS_NoDB_Init)(".") != SECSuccess) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
+				(*_int_PR_GetError)(), (*_int_PR_ErrorToString)((*_int_PR_GetError)(), PR_LANGUAGE_I_DEFAULT));
+			savederrno = EAGAIN;
+			err = -1;
+			goto out;
+		}
+		nss_db_is_init = 1;
 	}
+out:
 	errno = savederrno;
 	return err;
 }

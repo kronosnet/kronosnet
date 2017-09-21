@@ -23,18 +23,18 @@
  * internal module switch data
  */
 
-#define empty_module NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL },
+#define empty_module NULL, 0, NULL, NULL, NULL, NULL, NULL },
 
 crypto_model_t crypto_modules_cmds[] = {
 	{ "nss",
 #ifdef BUILDCRYPTONSS
-		 1, nsscrypto_load_lib, nsscrypto_unload_lib, 0, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
+		 1, nsscrypto_load_lib, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
 #else
 		 0,empty_module
 #endif
 	{ "openssl",
 #ifdef BUILDCRYPTOOPENSSL
-		 1, opensslcrypto_load_lib, opensslcrypto_unload_lib, 0, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt },
+		 1, opensslcrypto_load_lib, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt },
 #else
 		 0,empty_module
 #endif
@@ -112,11 +112,13 @@ int crypto_init(
 		return -1;
 	}
 
-	if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
-		goto out_err;
+	if (!crypto_modules_cmds[model].loaded) {
+		if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
+			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
+			goto out_err;
+		}
+		crypto_modules_cmds[model].loaded = 1;
 	}
-	crypto_modules_cmds[model].loaded = 1;
 
 	log_debug(knet_h, KNET_SUB_CRYPTO,
 		  "Initizializing crypto module [%s/%s/%s]",
@@ -142,7 +144,6 @@ int crypto_init(
 		goto out_err;
 
 	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %u", knet_h->sec_header_size);
-	crypto_modules_cmds[model].libref++;
 	pthread_rwlock_unlock(&shlib_rwlock);
 	return 0;
 
@@ -151,12 +152,7 @@ out_err:
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
 	}
-	if ((crypto_modules_cmds[model].libref == 0) &&
-	    (crypto_modules_cmds[model].loaded == 1)) {
-		log_debug(knet_h, KNET_SUB_CRYPTO, "Unloading %s library", crypto_modules_cmds[model].model_name);
-		crypto_modules_cmds[model].unload_lib(knet_h);
-		crypto_modules_cmds[model].loaded = 0;
-	}
+
 	pthread_rwlock_unlock(&shlib_rwlock);
 	return -1;
 }
@@ -181,14 +177,6 @@ void crypto_fini(
 		}
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;
-		crypto_modules_cmds[model].libref--;
-
-		if ((crypto_modules_cmds[model].libref == 0) &&
-		    (crypto_modules_cmds[model].loaded == 1)) {
-			log_debug(knet_h, KNET_SUB_CRYPTO, "Unloading %s library", crypto_modules_cmds[model].model_name);
-			crypto_modules_cmds[model].unload_lib(knet_h);
-			crypto_modules_cmds[model].loaded = 0;
-		}
 	}
 
 	pthread_rwlock_unlock(&shlib_rwlock);

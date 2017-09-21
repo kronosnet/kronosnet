@@ -128,29 +128,15 @@ int lzo2_load_lib(
 			err = -1;
 			goto out;
 		}
-
-		if (lzo2_remap_symbols(knet_h) < 0) {
-			savederrno = errno;
-			err = -1;
-			dlclose(lzo2_lib);
-			lzo2_lib = NULL;
-			goto out;
-		}
 	}
 
+	if (lzo2_remap_symbols(knet_h) < 0) {
+		savederrno = errno;
+		err = -1;
+	}
 out:
 	errno = savederrno;
 	return err;
-}
-
-void lzo2_unload_lib(
-	knet_handle_t knet_h)
-{
-	if (lzo2_lib) {
-		dlclose(lzo2_lib);
-		lzo2_lib = NULL;
-	}
-	return;
 }
 
 int lzo2_is_init(

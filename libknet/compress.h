@@ -17,7 +17,7 @@ typedef struct {
 	uint8_t		built_in;    /* set at configure/build time to 1 if available */
 
 	/*
-	 * shared lib load/unload functions
+	 * shared lib load functions
 	 *
 	 * both are called in shlib_rwlock write context and should
 	 * update the loaded status below.
@@ -25,19 +25,9 @@ typedef struct {
 	int (*load_lib)		(knet_handle_t knet_h);
 
 	/*
-	 * unload_lib will call dlclose only after all handles using
-	 * the given shared lib have finished using it.
-	 */
-	void (*unload_lib)	(knet_handle_t knet_h);
-
-	/*
 	 * library is loaded
 	 */
 	uint8_t		loaded;
-	/*
-	 * number of users for this library
-	 */
-	uint8_t		libref;
 
 	/*
 	 * runtime bits

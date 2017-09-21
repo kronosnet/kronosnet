@@ -46,43 +46,43 @@
  * always add before the last NULL/NULL/NULL.
  */
 
-#define empty_module 0, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 
 compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, empty_module
 	{ "zlib", 1,
 #ifdef BUILDCOMPZLIB
-		     1, zlib_load_lib, zlib_unload_lib, 0, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+		     1, zlib_load_lib, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
 #else
 empty_module
 #endif
 	{ "lz4", 2,
 #ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, lz4_unload_lib, 0, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
+		     1, lz4_load_lib, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
 #else
 empty_module
 #endif
 	{ "lz4hc", 3,
 #ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, lz4_unload_lib, 0, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+		     1, lz4_load_lib, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
 #else
 empty_module
 #endif
 	{ "lzo2", 4,
 #ifdef BUILDCOMPLZO2
-		     1, lzo2_load_lib, lzo2_unload_lib, 0, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+		     1, lzo2_load_lib, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
 #else
 empty_module
 #endif
 	{ "lzma", 5,
 #ifdef BUILDCOMPLZMA
-		     1, lzma_load_lib, lzma_unload_lib, 0, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+		     1, lzma_load_lib, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
 #else
 empty_module
 #endif
 	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-		     1, bzip2_load_lib, bzip2_unload_lib, 0, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+		     1, bzip2_load_lib, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
 #else
 empty_module
 #endif
@@ -142,10 +142,6 @@ static int val_level(
 static int compress_check_lib_is_init(knet_handle_t knet_h, int cmp_model)
 {
 	/*
-	 * if the module is already loaded and init for this handle,
-	 * we will return and keep the lock to avoid any race condition
-	 * on other threads potentially unloading or reloading.
-	 *
 	 * lack of a .is_init function means that the module does not require
 	 * init per handle so we use a fake reference in the compress_int_data
 	 * to identify that we already increased the libref for this handle
@@ -221,8 +217,6 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	} else {
 		knet_h->compress_int_data[cmp_model] = (void *)&"1";
 	}
-
-	compress_modules_cmds[cmp_model].libref++;
 
 	return 0;
 }
@@ -360,14 +354,6 @@ void compress_fini(
 					compress_modules_cmds[idx].fini(knet_h, idx);
 				} else {
 					knet_h->compress_int_data[idx] = NULL;
-				}
-				compress_modules_cmds[idx].libref--;
-
-				if ((compress_modules_cmds[idx].libref == 0) &&
-				    (compress_modules_cmds[idx].loaded == 1)) {
-					log_debug(knet_h, KNET_SUB_COMPRESS, "Unloading %s library", compress_modules_cmds[idx].model_name);
-					compress_modules_cmds[idx].unload_lib(knet_h);
-					compress_modules_cmds[idx].loaded = 0;
 				}
 			}
 		}

@@ -16,9 +16,6 @@ struct nsscrypto_instance;
 int nsscrypto_load_lib(
 	knet_handle_t knet_h);
 
-void nsscrypto_unload_lib(
-	knet_handle_t knet_h);
-
 int nsscrypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);

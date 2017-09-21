@@ -90,28 +90,15 @@ int lz4_load_lib(
 			err = -1;
 			goto out;
 		}
+	}
 
-		if (lz4_remap_symbols(knet_h) < 0) {
-			savederrno = errno;
-			err = -1;
-			dlclose(lz4_lib);
-			lz4_lib = NULL;
-			goto out;
-		}
+	if (lz4_remap_symbols(knet_h) < 0) {
+		savederrno = errno;
+		err = -1;
 	}
 out:
 	errno = savederrno;
 	return err;
-}
-
-void lz4_unload_lib(
-	knet_handle_t knet_h)
-{
-	if (lz4_lib) {
-		dlclose(lz4_lib);
-		lz4_lib = NULL;
-	}
-	return;
 }
 
 int lz4_val_level(

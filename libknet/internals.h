@@ -229,7 +229,7 @@ struct knet_handle {
 	int fini_in_progress;
 };
 
-extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load/unload lock */
+extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */
 
 /*
  * NOTE: every single operation must be implementend

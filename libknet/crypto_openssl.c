@@ -56,9 +56,6 @@ void (*_int_ERR_load_crypto_strings)(void);
 #endif
 unsigned long (*_int_ERR_get_error)(void);
 void (*_int_ERR_error_string_n)(unsigned long e, char *buf, size_t len);
-#ifdef BUILDCRYPTOOPENSSL10
-void (*_int_ERR_free_strings)(void);
-#endif
 
 void (*_int_RAND_seed)(const void *buf, int num);
 int (*_int_RAND_bytes)(unsigned char *buf, int num);
@@ -95,9 +92,6 @@ int (*_int_EVP_DecryptUpdate)(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl
 			      const unsigned char *in, int inl);
 int (*_int_EVP_DecryptFinal_ex)(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
 
-#ifdef BUILDCRYPTOOPENSSL10
-void (*_int_EVP_cleanup)(void);
-#endif
 
 static void clean_openssl_syms(void)
 {
@@ -112,9 +106,7 @@ static void clean_openssl_syms(void)
 #endif
 	_int_ERR_get_error = NULL;
 	_int_ERR_error_string_n = NULL;
-#ifdef BUILDCRYPTOOPENSSL10
-	_int_ERR_free_strings = NULL;
-#endif
+
 	_int_RAND_seed = NULL;
 	_int_RAND_bytes = NULL;
 	_int_EVP_get_digestbyname = NULL;
@@ -136,9 +128,6 @@ static void clean_openssl_syms(void)
 	_int_EVP_DecryptInit_ex = NULL;
 	_int_EVP_DecryptUpdate = NULL;
 	_int_EVP_DecryptFinal_ex = NULL;
-#ifdef BUILDCRYPTOOPENSSL10
-	_int_EVP_cleanup = NULL;
-#endif
 	return;
 }
 
@@ -190,16 +179,6 @@ static int opensslcrypto_remap_symbols(knet_handle_t knet_h)
 		err = -1;
 		goto out;
 	}
-
-#ifdef BUILDCRYPTOOPENSSL10
-	_int_ERR_free_strings = dlsym(openssl_lib, "ERR_free_strings");
-	if (!_int_ERR_free_strings) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map ERR_free_strings: %s", error);
-		err = -1;
-		goto out;
-	}
-#endif
 
 	_int_RAND_seed = dlsym(openssl_lib, "RAND_seed");
 	if (!_int_RAND_seed) {
@@ -340,16 +319,6 @@ static int opensslcrypto_remap_symbols(knet_handle_t knet_h)
 		goto out;
 	}
 
-#ifdef BUILDCRYPTOOPENSSL10
-	_int_EVP_cleanup = dlsym(openssl_lib, "EVP_cleanup");
-	if (!_int_EVP_cleanup) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to map EVP_cleanup: %s", error);
-		err = -1;
-		goto out;
-	}
-#endif
-
 out:
 	if (err) {
 		clean_openssl_syms();
@@ -358,25 +327,7 @@ out:
 	return err;
 }
 
-void opensslcrypto_unload_lib(
-	knet_handle_t knet_h)
-{
-	if (openssl_lib) {
-#ifdef BUILDCRYPTOOPENSSL10
-		if (_int_EVP_cleanup) {
-			(*_int_EVP_cleanup)();
-		}
-		if (_int_ERR_free_strings) {
-			(*_int_ERR_free_strings)();
-		}
-#endif
-		dlclose(openssl_lib);
-		openssl_lib = NULL;
-		clean_openssl_syms();
-	}
-
-	return;
-}
+static int openssl_is_init = 0;
 
 int opensslcrypto_load_lib(
 	knet_handle_t knet_h)
@@ -390,13 +341,15 @@ int opensslcrypto_load_lib(
 			err = -1;
 			goto out;
 		}
+	}
 
-		if (opensslcrypto_remap_symbols(knet_h) < 0) {
-			savederrno = errno;
-			err = -1;
-			goto out;
-		}
+	if (opensslcrypto_remap_symbols(knet_h) < 0) {
+		savederrno = errno;
+		err = -1;
+		goto out;
+	}
 
+	if (!openssl_is_init) {
 #ifdef BUILDCRYPTOOPENSSL10
 		(*_int_ERR_load_crypto_strings)();
 		(*_int_OPENSSL_add_all_algorithms_noconf)();
@@ -410,12 +363,10 @@ int opensslcrypto_load_lib(
 			goto out;
 		}
 #endif
+		openssl_is_init = 1;
 	}
 
 out:
-	if (err) {
-		opensslcrypto_unload_lib(knet_h);
-	}
 	errno = savederrno;
 	return err;
 }

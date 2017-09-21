@@ -14,9 +14,6 @@
 int bzip2_load_lib(
 	knet_handle_t knet_h);
 
-void bzip2_unload_lib(
-	knet_handle_t knet_h);
-
 int bzip2_val_level(
 	knet_handle_t knet_h,
 	int compress_level);

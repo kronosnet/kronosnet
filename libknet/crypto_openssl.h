@@ -16,9 +16,6 @@ struct opensslcrypto_instance;
 int opensslcrypto_load_lib(
 	knet_handle_t knet_h);
 
-void opensslcrypto_unload_lib(
-	knet_handle_t knet_h);
-
 int opensslcrypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
