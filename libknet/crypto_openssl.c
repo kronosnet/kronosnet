@@ -402,8 +402,13 @@ int opensslcrypto_load_lib(
 		(*_int_OPENSSL_add_all_algorithms_noconf)();
 #endif
 #ifdef BUILDCRYPTOOPENSSL11
-		(*_int_OPENSSL_init_crypto)(OPENSSL_INIT_ADD_ALL_CIPHERS \
-					    | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL);
+		if (!(*_int_OPENSSL_init_crypto)(OPENSSL_INIT_ADD_ALL_CIPHERS \
+						 | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL)) {
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
+			err = -1;
+			savederrno = EAGAIN;
+			goto out;
+		}
 #endif
 	}
 
