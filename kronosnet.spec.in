@@ -108,7 +108,7 @@ BuildRequires: libqb-devel pam-devel
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
-%{configure} --disable-poc \
+%{configure} \
 %if %{defined buildsctp}
 	--enable-libknet-sctp \
 %else
