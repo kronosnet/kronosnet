@@ -122,7 +122,7 @@ AC_ARG_ENABLE([compress-bzip2],
 AM_CONDITIONAL([BUILDCOMPBZIP2], [test x$enable_compress_bzip2 = xyes])
 
 AC_ARG_ENABLE([poc],
-	[  --enable-poc                     : enable building poc code ],,
+	[  --enable-poc                      : enable building poc code ],,
 	[ enable_poc="no" ])
 AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
 
