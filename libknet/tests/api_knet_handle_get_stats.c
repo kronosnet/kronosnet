@@ -25,8 +25,8 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	unsigned char test_byte_array[128];
-	unsigned char ref_byte_array[128];
+	struct knet_handle_stats test_byte_array[2];
+	struct knet_handle_stats ref_byte_array[2];
 	struct knet_handle_stats stats;
 
 	printf("Test knet_handle_get_stats incorrect knet_h\n");
@@ -63,8 +63,8 @@ static void test(void)
 
 	printf("Test knet_handle_get_stats with small structure size\n");
 
-	memset(test_byte_array, 0x55, sizeof(test_byte_array));
-	memset(ref_byte_array, 0x55, sizeof(ref_byte_array));
+	memset(test_byte_array, 0x55, sizeof(struct knet_handle_stats) * 2);
+	memset(ref_byte_array, 0x55, sizeof(struct knet_handle_stats) * 2);
 	if (knet_handle_get_stats(knet_h, (struct knet_handle_stats *)test_byte_array, sizeof(size_t)) < 0) {
 		printf("knet_handle_get_stats failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
@@ -73,7 +73,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (memcmp(test_byte_array+sizeof(size_t), ref_byte_array, sizeof(test_byte_array)-sizeof(size_t))) {
+	if (memcmp(&test_byte_array[1], ref_byte_array, sizeof(struct knet_handle_stats))) {
 		printf("knet_handle_get_stats corrupted memory after stats structure\n");
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
