@@ -72,6 +72,8 @@ AC_PROG_CXX
 AC_PROG_RANLIB
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
+AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
+AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
 AC_ARG_ENABLE([libknet-sctp],
 	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
