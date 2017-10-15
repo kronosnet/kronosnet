@@ -218,7 +218,7 @@ static void test(const char *model)
 		if (stats.tx_compressed_packets != 0 ||
 		    stats.rx_compressed_packets != 0) {
 
-			printf("stats look wrong: s/b all 0 for model 'none' tx_packets: %lu (%lu/%lu comp/uncomp), rx_packets: %lu (%lu/%lu comp/uncomp)\n",
+			printf("stats look wrong: s/b all 0 for model 'none' tx_packets: %llu (%llu/%llu comp/uncomp), rx_packets: %llu (%llu/%llu comp/uncomp)\n",
 			       stats.tx_compressed_packets,
 			       stats.tx_compressed_size_bytes,
 			       stats.tx_compressed_original_bytes,
@@ -231,7 +231,7 @@ static void test(const char *model)
 		    stats.rx_compressed_packets != 1 ||
 		    stats.tx_compressed_original_bytes < stats.tx_compressed_size_bytes ||
 		    stats.tx_compressed_original_bytes < stats.tx_compressed_size_bytes) {
-			printf("stats look wrong: tx_packets: %lu (%lu/%lu comp/uncomp), rx_packets: %lu (%lu/%lu comp/uncomp)\n",
+			printf("stats look wrong: tx_packets: %llu (%llu/%llu comp/uncomp), rx_packets: %llu (%llu/%llu comp/uncomp)\n",
 			       stats.tx_compressed_packets,
 			       stats.tx_compressed_size_bytes,
 			       stats.tx_compressed_original_bytes,

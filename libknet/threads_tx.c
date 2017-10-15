@@ -126,9 +126,9 @@ out_unlock:
 	return err;
 }
 
-static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t channel, int is_sync)
+static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t channel, int is_sync)
 {
-	ssize_t outlen, frag_len;
+	size_t outlen, frag_len;
 	struct knet_host *dst_host;
 	knet_node_id_t dst_host_ids_temp[KNET_MAX_HOST];
 	size_t dst_host_ids_entries_temp = 0;
@@ -222,7 +222,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 						local_link->status.stats.tx_data_errors++;
 					}
 					if (err > 0 && err < buflen) {
-						log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %ld\n", err, inlen);
+						log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %u\n", err, inlen);
 						local_link->status.stats.tx_data_retries++;
 						buf += err;
 						buflen -= err;
@@ -329,7 +329,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 	 * compress data
 	 */
 	if ((knet_h->compress_model > 0) && (inlen > knet_h->compress_threshold)) {
-		ssize_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
+		size_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
 		struct timespec start_time;
 		struct timespec end_time;
 		uint64_t compress_time;
@@ -337,7 +337,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 		clock_gettime(CLOCK_MONOTONIC, &start_time);
 		err = compress(knet_h,
 			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
-			       knet_h->send_to_links_buf_compress, &cmp_outlen);
+			       knet_h->send_to_links_buf_compress, (ssize_t *)&cmp_outlen);
 		if (err < 0) {
 			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
 		} else {
@@ -471,7 +471,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, ssize_t inlen, int8_t cha
 					knet_h,
 					iov_out[frag_idx], iovcnt_out,
 					knet_h->send_to_links_buf_crypt[frag_idx],
-					&outlen) < 0) {
+					(ssize_t *)&outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt packet");
 				savederrno = ECHILD;
 				err = -1;

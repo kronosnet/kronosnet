@@ -288,7 +288,7 @@ static void test(void)
 	    link_status.stats.rx_data_bytes < KNET_MAX_PACKET_SIZE ||
 	    link_status.stats.tx_data_bytes > KNET_MAX_PACKET_SIZE*2 ||
 	    link_status.stats.rx_data_bytes > KNET_MAX_PACKET_SIZE*2) {
-	    printf("stats look wrong: tx_packets: %lu (%lu bytes), rx_packets: %lu (%lu bytes)\n",
+	    printf("stats look wrong: tx_packets: %llu (%llu bytes), rx_packets: %llu (%llu bytes)\n",
 		   link_status.stats.tx_data_packets,
 		   link_status.stats.tx_data_bytes,
 		   link_status.stats.rx_data_packets,

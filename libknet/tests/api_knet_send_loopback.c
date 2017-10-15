@@ -290,7 +290,7 @@ static void test(void)
 	if (link_status.stats.tx_data_packets != 1 ||
 	    link_status.stats.rx_data_packets != 0 ||
 	    link_status.stats.tx_data_bytes != KNET_MAX_PACKET_SIZE) {
-	    printf("stats look wrong: tx_packets: %lu (%lu bytes), rx_packets: %lu (%lu bytes)\n",
+	    printf("stats look wrong: tx_packets: %llu (%llu bytes), rx_packets: %llu (%llu bytes)\n",
 		   link_status.stats.tx_data_packets,
 		   link_status.stats.tx_data_bytes,
 		   link_status.stats.rx_data_packets,

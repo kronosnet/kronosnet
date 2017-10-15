@@ -177,10 +177,10 @@ struct knet_handle {
 	pthread_mutex_t tx_mutex;		/* used to protect knet_send_sync and TX thread */
 	pthread_mutex_t hb_mutex;		/* used to protect heartbeat thread and seq_num broadcasting */
 	struct crypto_instance *crypto_instance;
-	uint16_t sec_header_size;
-	uint16_t sec_block_size;
-	uint16_t sec_hash_size;
-	uint16_t sec_salt_size;
+	size_t sec_header_size;
+	size_t sec_block_size;
+	size_t sec_hash_size;
+	size_t sec_salt_size;
 	unsigned char *send_to_links_buf_crypt[PCKT_FRAG_MAX];
 	unsigned char *recv_from_links_buf_crypt;
 	unsigned char *recv_from_links_buf_decrypt;
@@ -188,7 +188,7 @@ struct knet_handle {
 	unsigned char *pmtudbuf_crypt;
 	int compress_model;
 	int compress_level;
-	uint32_t compress_threshold;
+	size_t compress_threshold;
 	void *compress_int_data[KNET_MAX_COMPRESS_METHODS]; /* for compress method private data */
 	unsigned char *recv_from_links_buf_decompress;
 	unsigned char *send_to_links_buf_compress;

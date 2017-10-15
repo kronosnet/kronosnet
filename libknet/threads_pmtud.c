@@ -24,15 +24,15 @@
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int err, ret, savederrno, mutex_retry_limit, failsafe;
-	ssize_t onwire_len;   /* current packet onwire size */
-	ssize_t overhead_len; /* onwire packet overhead (protocol based) */
-	ssize_t max_mtu_len;  /* max mtu for protocol */
-	ssize_t data_len;     /* how much data we can send in the packet
-			       * generally would be onwire_len - overhead_len
-			       * needs to be adjusted for crypto
-			       */
-	ssize_t pad_len;      /* crypto packet pad size, needs to move into crypto.c callbacks */
-	int len;	      /* len of what we were able to sendto onwire */
+	size_t onwire_len;   /* current packet onwire size */
+	size_t overhead_len; /* onwire packet overhead (protocol based) */
+	size_t max_mtu_len;  /* max mtu for protocol */
+	size_t data_len;     /* how much data we can send in the packet
+			      * generally would be onwire_len - overhead_len
+			      * needs to be adjusted for crypto
+			      */
+	size_t pad_len;	     /* crypto packet pad size, needs to move into crypto.c callbacks */
+	ssize_t len;	     /* len of what we were able to sendto onwire */
 
 	struct timespec ts;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
@@ -125,7 +125,7 @@ restart:
 					    (const unsigned char *)knet_h->pmtudbuf,
 					    data_len - (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size),
 					    knet_h->pmtudbuf_crypt,
-					    &data_len) < 0) {
+					    (ssize_t *)&data_len) < 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to crypto pmtud packet");
 			return -1;
 		}
@@ -175,11 +175,11 @@ retry:
 			break;
 	}
 
-	if (len != data_len) {
+	if (len != (ssize_t )data_len) {
 		if (savederrno == EMSGSIZE) {
 			dst_link->last_bad_mtu = onwire_len;
 		} else {
-			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zd err: %s", onwire_len, strerror(savederrno));
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
 		}
 
 	} else {
