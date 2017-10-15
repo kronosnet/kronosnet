@@ -143,7 +143,7 @@ int crypto_init(
 	if (crypto_modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
 		goto out_err;
 
-	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %u", knet_h->sec_header_size);
+	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
 	pthread_rwlock_unlock(&shlib_rwlock);
 	return 0;
 

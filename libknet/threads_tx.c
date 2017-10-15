@@ -222,7 +222,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 						local_link->status.stats.tx_data_errors++;
 					}
 					if (err > 0 && err < buflen) {
-						log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %u\n", err, inlen);
+						log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %zu\n", err, inlen);
 						local_link->status.stats.tx_data_retries++;
 						buf += err;
 						buflen -= err;
