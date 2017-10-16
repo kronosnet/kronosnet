@@ -74,7 +74,7 @@ static int _read_pipe(int fd, char **file, size_t *length)
 		if (!*file)
 			return -1;
 
-		memcpy((*file) + (*length), buf, n);
+		memmove((*file) + (*length), buf, n);
 		*length += (done + n);
 	}
 

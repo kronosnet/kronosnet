@@ -22,7 +22,7 @@ static int get_ipaddress(char *buf, struct sockaddr_storage *addr)
 
 	res = getaddrinfo(buf, NULL, &hints, &info);
 	if (!res) {
-		memcpy(addr, info->ai_addr, info->ai_addrlen);
+		memmove(addr, info->ai_addr, info->ai_addrlen);
 		free(info);
 	}
 	return res;

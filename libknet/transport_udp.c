@@ -135,7 +135,7 @@ static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link 
 		goto exit_error;
 	}
 
-	memcpy(&info->local_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
+	memmove(&info->local_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
 	info->socket_fd = sock;
 	knet_list_add(&info->list, &handle_info->links_list);
 

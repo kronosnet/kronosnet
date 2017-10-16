@@ -193,8 +193,8 @@ int ipcheck_addip(struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 	if (!new_match_entry)
 		return -1;
 
-	memcpy(&new_match_entry->addr1, ip1, sizeof(struct sockaddr_storage));
-	memcpy(&new_match_entry->addr2, ip2, sizeof(struct sockaddr_storage));
+	memmove(&new_match_entry->addr1, ip1, sizeof(struct sockaddr_storage));
+	memmove(&new_match_entry->addr2, ip2, sizeof(struct sockaddr_storage));
 	new_match_entry->type = type;
 	new_match_entry->acceptreject = acceptreject;
 	new_match_entry->next = NULL;

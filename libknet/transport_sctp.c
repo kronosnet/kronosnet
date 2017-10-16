@@ -926,7 +926,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	memset(info, 0, sizeof(sctp_listen_link_info_t));
 
 	memset(info->accepted_socks, -1, sizeof(info->accepted_socks));
-	memcpy(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
+	memmove(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
 
 	listen_sock = socket(kn_link->src_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
 	if (listen_sock < 0) {
@@ -1111,7 +1111,7 @@ static int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link
 	kn_link->transport_link = info;
 	info->link = kn_link;
 
-	memcpy(&info->dst_address, &kn_link->dst_addr, sizeof(struct sockaddr_storage));
+	memmove(&info->dst_address, &kn_link->dst_addr, sizeof(struct sockaddr_storage));
 	info->on_connected_epoll = 0;
 	info->connect_sock = -1;
 

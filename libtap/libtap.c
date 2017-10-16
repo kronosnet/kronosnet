@@ -123,7 +123,7 @@ static int _read_pipe(int fd, char **file, size_t *length)
 		if (!*file)
 			return -1;
 
-		memcpy((*file) + (*length), buf, n);
+		memmove((*file) + (*length), buf, n);
 		*length += (done + n);
 	}
 
@@ -600,7 +600,7 @@ int tap_set_mac(tap_t tap, const char *ether_addr)
 	if (err)
 		goto out_clean;
 
-	memcpy(tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
+	memmove(tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &tap->ifr);
 
@@ -961,10 +961,10 @@ int tap_get_ips(const tap_t tap, char **ip_addr_list, int *entries)
 
 	while (ip) {
 		len = strlen(ip->ip_addr);
-		memcpy(ip_list + offset, ip->ip_addr, len);
+		memmove(ip_list + offset, ip->ip_addr, len);
 		offset = offset + len + 1;
 		len = strlen(ip->prefix);
-		memcpy(ip_list + offset, ip->prefix, len);
+		memmove(ip_list + offset, ip->prefix, len);
 		offset = offset + len + 1;
 		ip = ip->next;
 	}
