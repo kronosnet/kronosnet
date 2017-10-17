@@ -357,18 +357,18 @@ static int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int rec
 static int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	if (recv_err < 0) {
+		if (recv_errno == EMSGSIZE) {
+			return 0;
+		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
 #ifdef DEBUG
 			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 #endif
 			usleep(KNET_THREADS_TIMERES / 16);
-			return 1;
+		} else {
+			read_errs_from_sock(knet_h, sockfd);
 		}
-		read_errs_from_sock(knet_h, sockfd);
-		if (recv_errno == EMSGSIZE) {
-			return 0;
-		}
-		return -1;
+		return 1;
 	}
 
 	return 0;
