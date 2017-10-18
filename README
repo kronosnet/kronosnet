@@ -18,6 +18,7 @@ be guaranteed till 1.0 release.
 QUICK SETUP
 -----------
 
+* dont merge
 * build/install
 * create /etc/pam.d/kronosnetd
   - the users that can login with those credentials will gain access
