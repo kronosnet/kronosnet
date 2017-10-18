@@ -76,6 +76,7 @@ Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}%{?numc
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
+BuildRequires: gcc
 %if %{defined buildsctp}
 BuildRequires: lksctp-tools-devel
 %endif
