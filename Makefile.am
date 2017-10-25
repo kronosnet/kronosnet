@@ -150,6 +150,11 @@ if BUILD_LIBTAP
 else
 	sed -i -e "s#@libtap@#bcond_with#g" $@-t
 endif
+if BUILD_RUNAUTOGEN
+	sed -i -e "s#@runautogen@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@runautogen@#bcond_with#g" $@-t
+endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
 	mv $@-t $@
