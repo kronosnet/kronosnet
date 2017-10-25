@@ -133,6 +133,11 @@ AC_ARG_ENABLE([kronosnetd],
 	[ enable_kronosnetd="no" ])
 AM_CONDITIONAL([BUILD_KRONOSNETD], [test x$enable_kronosnetd = xyes])
 
+AC_ARG_ENABLE([runautogen],
+	[  --enable-runautogen               : run autogen.sh ],,
+	[ enable_runautogen="no" ])
+AM_CONDITIONAL([BUILD_RUNAUTOGEN], [test x$enable_runautogen = xyes])
+
 AC_ARG_ENABLE([libtap],
 	[  --enable-libtap                   : libtap support ],,
 	[ enable_libtap="no" ])

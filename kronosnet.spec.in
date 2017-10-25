@@ -26,6 +26,7 @@
 %@bzip2@ bzip2
 %@kronosnetd@ kronosnetd
 %@libtap@ libtap
+%@runautogen@ runautogen
 
 %if %{with sctp}
 %global buildsctp 1
@@ -57,6 +58,9 @@
 %if %{with kronosnetd}
 %global buildlibtap 1
 %global buildkronosnetd 1
+%endif
+%if %{with runautogen}
+%global buildautogen 1
 %endif
 
 # main (empty) package
@@ -104,11 +108,20 @@ BuildRequires: bzip2-devel
 %if %{defined buildkronosnetd}
 BuildRequires: libqb-devel pam-devel
 %endif
+%if %{defined buildautogen}
+BuildRequires:  autoconf
+BuildRequires:  automake
+BuildRequires:  libtool
+%endif
 
 %prep
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
+%if %{with runautogen}
+    ./autogen.sh
+%endif
+
 %{configure} \
 %if %{defined buildsctp}
 	--enable-libknet-sctp \
