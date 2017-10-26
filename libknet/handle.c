@@ -21,6 +21,7 @@
 
 #include "internals.h"
 #include "crypto.h"
+#include "links.h"
 #include "compress.h"
 #include "compat.h"
 #include "common.h"
@@ -1577,3 +1578,38 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 	errno = savederrno;
 	return err;
 }
+
+int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (clear_option != KNET_CLEARSTATS_HANDLE_ONLY &&
+	    clear_option != KNET_CLEARSTATS_HANDLE_AND_LINK) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	memset(&knet_h->stats, 0, sizeof(struct knet_handle_stats));
+	if (clear_option == KNET_CLEARSTATS_HANDLE_AND_LINK) {
+		_link_clear_stats(knet_h);
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
+}
+
