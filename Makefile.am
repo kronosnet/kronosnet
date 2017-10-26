@@ -65,15 +65,15 @@ maintainer-clean-local:
 
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
-	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
+	date="`LC_ALL=C date "+%a %b %d %Y"`" && \
 	if [ -f .tarball-version ]; then \
-		gitver="$(shell cat .tarball-version)" && \
+		gitver="`cat .tarball-version`" && \
 		rpmver=$$gitver && \
 		alphatag="" && \
 		dirty="" && \
 		numcomm="0"; \
 	else \
-		gitver="$(shell GIT_DIR=$(abs_srcdir)/.git git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		gitver="`GIT_DIR=$(abs_srcdir)/.git git describe --abbrev=4 --match='v*' HEAD 2>/dev/null`" && \
 		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
 		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
 		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
@@ -89,7 +89,7 @@ $(SPEC): $(SPEC).in .version config.status
 			-e "s#%glo.*numcomm.*##g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
+		$(abs_srcdir)/$@.in > $@-t; \
 	else \
 		sed \
 			-e "s#@version@#$$rpmver#g" \
@@ -97,7 +97,7 @@ $(SPEC): $(SPEC).in .version config.status
 			-e "s#@numcomm@#$$numcomm#g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
+		$(abs_srcdir)/$@.in > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
 if BUILDSCTP
@@ -181,22 +181,22 @@ rpm: clean
 $(DEBPOSTINST): $(DEBPOSTINST).in config.h
 	mkdir -p debian
 	rm -f $@-t $@
-	sed -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $< > $@-t
+	sed -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $(abs_srcdir)/$@.in > $@-t
 	chmod a-w $@-t
 	mv $@-t $@
 
 $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
 	mkdir -p debian
 	rm -f $@-t $@
-	date="$(shell LC_ALL=C date -R)" && \
+	date="`LC_ALL=C date -R`" && \
 	if [ -f .tarball-version ]; then \
-		gitver="$(shell cat .tarball-version)" && \
+		gitver="`cat .tarball-version`" && \
 		debver=$$gitver && \
 		alphatag="" && \
 		dirty="" && \
 		numcomm="0"; \
 	else \
-		gitver="$(shell GIT_DIR=$(abs_srcdir)/.git git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		gitver="`GIT_DIR=$(abs_srcdir)/.git git describe --abbrev=4 --match='v*' HEAD 2>/dev/null`" && \
 		debver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
 		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
 		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
@@ -212,7 +212,7 @@ $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
 			-e "s#.@numcomm@##g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
+		$(abs_srcdir)/$@.in > $@-t; \
 	else \
 		sed \
 			-e "s#@version@#$$debver#g" \
@@ -220,7 +220,7 @@ $(DEBCHANGELOG): $(DEBCHANGELOG).in .version
 			-e "s#@numcomm@#$$numcomm#g" \
 			-e "s#@dirty@#$$dirty#g" \
 			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
+		$(abs_srcdir)/$@.in > $@-t; \
 	fi;
 	chmod a-w $@-t
 	mv $@-t $@
@@ -231,9 +231,9 @@ deb-clean:
 
 debs: deb-clean dist
 	if [ -f .tarball-version ]; then \
-		gitver="$(shell cat .tarball-version)"; \
+		gitver="`cat .tarball-version`"; \
 	else \
-		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		gitver="`git describe --abbrev=4 --match='v*' HEAD 2>/dev/null`" && \
 		gitver=`echo $$gitver | sed -e "s/^v//" -e "s/-g/-/" -e "s/-/./"`; \
 	fi && \
 	cp $(TARGZFILE) ../$(PACKAGE_NAME)_$$gitver.orig.tar.gz
