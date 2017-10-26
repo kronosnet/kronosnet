@@ -1,7 +1,0 @@
-etc/kronosnet/*
-etc/default/kronosnetd
-etc/init.d/kronosnetd
-etc/logrotate.d/kronosnetd
-etc/pam.d/kronosnetd
-usr/sbin/*
-usr/share/man/man8/*
