@@ -51,11 +51,6 @@ if test "$prefix" = "NONE"; then
 	fi
 fi
 
-# Checks for programs.
-if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
-	AC_MSG_ERROR(["you don't seem to have GNU make; it is required"])
-fi
-
 AC_PROG_AWK
 AC_PROG_GREP
 AC_PROG_SED
