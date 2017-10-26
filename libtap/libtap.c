@@ -49,7 +49,7 @@ struct _iface {
 	char default_mac[MAX_MAC_CHAR];
 	int default_mtu;
 	int current_mtu;
-	char updownpath[PATH_MAX];
+	char updownpath[PATH_MAX - 11 - 1 - IFNAMSIZ]; /* 11 = post-down.d 1 = / */
 	int hasupdown;
 	int up;
 	struct _ip *ip;
