@@ -446,6 +446,7 @@ int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_na
 	int savederrno = 0;
 	int err = 0;
 	int idx = 0;
+	int outidx = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -457,7 +458,7 @@ int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_na
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -466,12 +467,15 @@ int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_na
 	}
 
 	while (compress_modules_cmds[idx].model_name != NULL) {
-		if (compress_names) {
-			compress_names[idx] = compress_modules_cmds[idx].model_name;
+		if (compress_modules_cmds[idx].built_in) {
+			if (compress_names) {
+				compress_names[outidx] = compress_modules_cmds[idx].model_name;
+			}
+			outidx++;
 		}
 		idx++;
 	}
-	*num_names = idx;
+	*num_names = outidx;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = savederrno;

@@ -762,7 +762,6 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
  * -1 on error and errno is set.
  */
 
-#define KNET_MAX_CRYPTOS 16
 int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names, size_t *num_names);
 
 /*
