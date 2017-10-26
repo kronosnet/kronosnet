@@ -723,6 +723,67 @@ struct knet_handle_stats {
 int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size);
 
 /*
+ * knet_handle_clear_stats
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * clear_option
+ *            Which stats to clear (see below)
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ */
+
+/*
+ * Tell knet_handle_clear_stats whether to clear just the handle stats
+ * or all of them.
+ */
+#define KNET_CLEARSTATS_HANDLE_ONLY     1
+#define KNET_CLEARSTATS_HANDLE_AND_LINK 2
+
+int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
+
+
+/*
+ * knet_handle_get_crypto_list
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * crypto_names - array of char *
+ *                If NULL then only the number of names is returned in num_names to
+ *		  to allow the caller to allocate sufficient space.
+ *
+ * num_names - returns the number of strings in crypto_names
+ *
+ * knet_host_add returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names, size_t *num_names);
+
+/*
+ * knet_handle_get_compress_list
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * compress_names - array of char *
+ *                If NULL then only the number of names is returned in num_names to
+ *		  to allow the caller to allocate sufficient space.
+ *
+ * num_names - returns the number of strings in compres_names
+ *
+ * knet_host_add returns:
+ *
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_names, size_t *num_names);
+
+/*
  * host structs/API calls
  */
 
