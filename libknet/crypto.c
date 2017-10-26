@@ -8,6 +8,7 @@
 
 #include "config.h"
 
+#include <sys/errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -181,4 +182,45 @@ void crypto_fini(
 
 	pthread_rwlock_unlock(&shlib_rwlock);
 	return;
+}
+
+int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names, size_t *num_names)
+{
+	int savederrno = 0;
+	int err = 0;
+	int idx = 0;
+	int outidx = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!num_names) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	while (crypto_modules_cmds[idx].model_name != NULL) {
+		if (crypto_modules_cmds[idx].built_in) {
+			if (crypto_names) {
+				crypto_names[outidx] = crypto_modules_cmds[idx].model_name;
+			}
+			outidx++;
+		}
+		idx++;
+	}
+	*num_names = outidx;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
 }

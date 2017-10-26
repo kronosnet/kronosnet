@@ -54,6 +54,25 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 	return 0;
 }
 
+void _link_clear_stats(knet_handle_t knet_h)
+{
+	struct knet_host *host;
+	struct knet_link *link;
+	uint32_t host_id;
+	uint8_t link_id;
+
+	for (host_id = 0; host_id < KNET_MAX_HOST; host_id++) {
+		host = knet_h->host_index[host_id];
+		if (!host) {
+			continue;
+		}
+		for (link_id = 0; link_id < KNET_MAX_LINK; link_id++) {
+			link = &host->link[link_id];
+			memset(&link->status.stats, 0, sizeof(struct knet_link_stats));
+		}
+	}
+}
+
 int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 uint8_t transport,
 			 struct sockaddr_storage *src_addr,
