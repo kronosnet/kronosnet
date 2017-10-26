@@ -68,8 +68,8 @@ fi
 AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+PKG_PROG_PKG_CONFIG
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
-AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
@@ -188,9 +188,6 @@ AC_SEARCH_LIBS([dlopen], [dl dld], [dllibs=$ac_res], [AC_MSG_ERROR([kronosnet re
 if test "x$dllibs" != "xnone required"; then
 	AC_SUBST([dl_LIBS], [$dllibs])
 fi
-
-# workaround pkg-config bootstrapping
-PKG_CHECK_MODULES([foobarbaz],[foobarbaz], [AC_MSG_NOTICE([bootstrapping pkg-config])], [AC_MSG_NOTICE([bootstrapping pkg-config])])
 
 # crypto libraries checks
 if test "x$enable_crypto_nss" = xyes; then
