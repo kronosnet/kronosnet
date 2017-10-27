@@ -4,6 +4,7 @@
 *.lo
 *.pc
 *.tar.*
+*.sha256*
 stamp-h1
 Makefile.in
 Makefile
@@ -37,7 +38,6 @@ libtool
 autoscan.log
 init/kronosnetd
 init/kronosnetd.service
-kronosnetd-*tar*
 kronosnetd/kronosnetd
 kronosnetd/knet-keygen
 kronosnetd/kronosnetd.logrotate
