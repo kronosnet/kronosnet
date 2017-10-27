@@ -74,7 +74,7 @@ ifeq (,$(gpgsignkey))
 sign: $(deliverables)
 	@echo No GPG signing key defined
 else
-sign: $(project)-$(version).sha256.asc  # "$(deliverables:=.asc)" to sign all
+sign: $(deliverables:=.asc)
 endif
 
 # NOTE: cannot sign multiple files at once
@@ -93,7 +93,7 @@ else
 	@echo : pushing tags
 	@git push --follow-tags origin
 	@echo : publishing files
-	@scp $(deliverables) $(project)-$(version).sha256.asc www.kronosnet.org:kronosnet/releases/.
+	@scp $(deliverables) $(deliverables:=.asc) www.kronosnet.org:kronosnet/releases/.
 endif
 
 
