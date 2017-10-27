@@ -74,7 +74,7 @@ ifeq (,$(gpgsignkey))
 sign: $(deliverables)
 	@echo No GPG signing key defined
 else
-sign: $(project)-$(version).sha256.asc  # "$(deliverables:=.asc)" to sign all
+sign: $(deliverables:=.asc)
 endif
 
 # NOTE: cannot sign multiple files at once
