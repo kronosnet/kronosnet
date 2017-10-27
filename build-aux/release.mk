@@ -93,7 +93,7 @@ else
 	@echo : pushing tags
 	@git push --follow-tags origin
 	@echo : publishing files
-	@scp $(deliverables) $(project)-$(version).sha256.asc www.kronosnet.org:kronosnet/releases/.
+	@scp $(deliverables) $(deliverables:=.asc) www.kronosnet.org:kronosnet/releases/.
 endif
 
 
