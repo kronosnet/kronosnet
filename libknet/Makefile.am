@@ -96,3 +96,17 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  -version-number $(libversion)
 
 libknet_la_LIBADD	= $(dl_LIBS) $(pthread_LIBS) $(rt_LIBS) $(m_LIBS)
+
+directory		= $(builddir)/man
+
+dist_man_MANS		= $(directory)/*.3
+
+$(directory)/*.3: doxyfile.stamp
+
+doxyfile.stamp: Doxyfile
+	$(DOXYGEN) Doxyfile
+	$(DOXY2MAN) -o man -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
+	touch doxyfile.stamp
+
+clean-local:
+	rm -rf doxyfile.stamp xml man

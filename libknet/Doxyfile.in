@@ -1,8 +1,9 @@
 GENERATE_XML           = YES
 XML_OUTPUT             = xml
 XML_PROGRAMLISTING     = NO
-INPUT                  = libknet.h
+INPUT                  = @srcdir@/libknet.h
 AUTOLINK_SUPPORT       = NO
 GENERATE_HTML          = NO
 GENERATE_LATEX         = NO
-
+PROJECT_NAME	       = @PACKAGE_NAME@
+PROJECT_NUMBER         = @PACKAGE_VERSION@
