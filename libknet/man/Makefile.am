@@ -1,0 +1,87 @@
+#
+# Copyright (C) 2017 Red Hat, Inc.  All rights reserved.
+#
+# Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#          Federico Simoncelli <fsimon@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
+
+MAINTAINERCLEANFILES	= Makefile.in
+
+include $(top_srcdir)/build-aux/check.mk
+
+dist_man_MANS = \
+		knet_addrtostr.3 \
+		knet_handle_add_datafd.3 \
+		knet_handle_clear_stats.3 \
+		knet_handle_compress.3 \
+		knet_handle_crypto.3 \
+		knet_handle_enable_filter.3 \
+		knet_handle_enable_pmtud_notify.3 \
+		knet_handle_enable_sock_notify.3 \
+		knet_handle_free.3 \
+		knet_handle_get_channel.3 \
+		knet_handle_get_compress_list.3 \
+		knet_handle_get_crypto_list.3 \
+		knet_handle_get_datafd.3 \
+		knet_handle_get_stats.3 \
+		knet_handle_get_transport_id_by_name.3 \
+		knet_handle_get_transport_list.3 \
+		knet_handle_get_transport_name_by_id.3 \
+		knet_handle_get_transport_reconnect_interval.3 \
+		knet_handle_new.3 \
+		knet_handle_pmtud_get.3 \
+		knet_handle_pmtud_getfreq.3 \
+		knet_handle_pmtud_setfreq.3 \
+		knet_handle_remove_datafd.3 \
+		knet_handle_setfwd.3 \
+		knet_handle_set_transport_reconnect_interval.3 \
+		knet_host_add.3 \
+		knet_host_enable_status_change_notify.3 \
+		knet_host_get_host_list.3 \
+		knet_host_get_id_by_host_name.3 \
+		knet_host_get_name_by_host_id.3 \
+		knet_host_get_policy.3 \
+		knet_host_get_status.3 \
+		knet_host_remove.3 \
+		knet_host_set_name.3 \
+		knet_host_set_policy.3 \
+		knet_link_clear_config.3 \
+		knet_link_get_config.3 \
+		knet_link_get_enable.3 \
+		knet_link_get_link_list.3 \
+		knet_link_get_ping_timers.3 \
+		knet_link_get_pong_count.3 \
+		knet_link_get_priority.3 \
+		knet_link_get_status.3 \
+		knet_link_set_config.3 \
+		knet_link_set_enable.3 \
+		knet_link_set_ping_timers.3 \
+		knet_link_set_pong_count.3 \
+		knet_link_set_priority.3 \
+		knet_log_get_loglevel.3 \
+		knet_log_get_loglevel_id.3 \
+		knet_log_get_loglevel_name.3 \
+		knet_log_get_subsystem_id.3 \
+		knet_log_get_subsystem_name.3 \
+		knet_log_set_loglevel.3 \
+		knet_recv.3 \
+		knet_send.3 \
+		knet_send_sync.3 \
+		knet_strtoaddr.3 \
+		libknet.h.3
+
+update-man-pages: doxyfile.stamp
+
+doxyfile.stamp: Doxyfile
+if MANPAGEUPDATES
+	$(DOXYGEN) Doxyfile
+	$(DOXY2MAN) -o $(abs_srcdir) -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
+else
+	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
+endif
+	touch doxyfile.stamp
+
+clean-local:
+	rm -rf doxyfile.stamp xml

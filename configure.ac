@@ -66,13 +66,15 @@ AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
-if test "x$DOXYGEN" = "x"; then
-	AC_MSG_ERROR(["doxygen is required to build man pages"])
-fi
 AC_CHECK_PROGS([DOXY2MAN], [doxy2man])
-if test "x$DOXY2MAN" = "x"; then
-	AC_MSG_ERROR(["doxy2man is required to build man pages"])
+
+manpageupdates=1
+if test "x$DOXYGEN" = "x" || test "x$DOXY2MAN" = "x"; then
+	manpageupdates=0;
 fi
+
+AM_CONDITIONAL([MANPAGEUPDATES], [test $manpageupdates -gt 0])
+
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
@@ -499,9 +501,10 @@ AC_CONFIG_FILES([
 		kronosnetd/Makefile
 		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
-		libknet/Doxyfile
 		libknet/libknet.pc
 		libknet/tests/Makefile
+		libknet/man/Doxyfile
+		libknet/man/Makefile
 		docs/Makefile
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile

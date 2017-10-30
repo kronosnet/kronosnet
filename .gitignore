@@ -48,3 +48,6 @@ kronosnet.spec
 test-driver
 *.trs
 *.log
+Doxyfile
+doxyfile.stamp
+xml/
