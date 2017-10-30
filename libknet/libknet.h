@@ -92,17 +92,16 @@ typedef struct knet_handle *knet_handle_t;
  *            is unique, or bad things might happen.
  *
  * log_fd   - Write file descriptor. If set to a value > 0, it will be used
- *            to write log packets (see below) from libknet to the application.
+ *            to write log packets from libknet to the application.
  *            Setting to 0 will disable logging from libknet.
- *            It is possible to enable logging at any given time (see logging API
- *            below).
+ *            It is possible to enable logging at any given time (see logging API).
  *            Make sure to either read from this filedescriptor properly and/or
  *            mark it O_NONBLOCK, otherwise if the fd becomes full, libknet could
  *            block.
  *
  * default_log_level -
  *            If logfd is specified, it will initialize all subsystems to log
- *            at default_log_level value. (see logging API below)
+ *            at default_log_level value. (see logging API)
  *
  * @return
  * on success, a new knet_handle_t is returned.
@@ -305,6 +304,8 @@ int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *data
  *
  * buff_len - buffer length
  *
+ * channel  - channel number
+ *
  * @return
  * knet_recv is a commodity function to wrap iovec operations
  * around a socket. It returns a call to readv(2).
@@ -324,6 +325,8 @@ ssize_t knet_recv(knet_handle_t knet_h,
  * buff     - pointer to the buffer of data to send
  *
  * buff_len - length of data to send
+ *
+ * channel  - channel number
  *
  * @return
  * knet_send is a commodity function to wrap iovec operations
@@ -397,9 +400,9 @@ int knet_send_sync(knet_handle_t knet_h,
  *
  *            const unsigned char *outdata - is a pointer to the
  *                                           current packet
- *            ssize_t outdata_len          - lenght of the above data
+ *            ssize_t outdata_len          - length of the above data
  *            uint8_t tx_rx                - filter is called on tx or rx
- *                                           (see defines below)
+ *                                           (KNET_NOTIFY_TX, KNET_NOTIFY_RX)
  *            knet_node_id_t this_host_id  - host_id processing the packet
  *            knet_node_id_t src_host_id   - host_id that generated the
  *                                           packet
@@ -771,12 +774,14 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 /**
  * knet_handle_clear_stats
  *
- * @brief Clear knet stats - link and/or handle
+ * @brief Clear knet stats, link and/or handle
  *
  * knet_h   - pointer to knet_handle_t
  *
- * clear_option
- *            Which stats to clear (see below)
+ * clear_option -  Which stats to clear, must be one of
+ *
+ * KNET_CLEARSTATS_HANDLE_ONLY or 
+ * KNET_CLEARSTATS_HANDLE_AND_LINK
  *
  * @return
  * 0 on success
@@ -876,7 +881,7 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id);
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_id  - see above
+ * host_id  - see knet_host_add(3)
  *
  * name     - this name will be used for pretty logging and eventually
  *            search for hosts (see also knet_handle_host_get_name(2) and knet_handle_host_get_id(3)).
@@ -973,7 +978,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
  * host_id  - see knet_host_add(3)
  *
  * policy   - there are currently 3 kind of simple switching policies
- *            as defined above, based on link configuration.
+ *            based on link configuration.
  *            KNET_LINK_POLICY_PASSIVE - the active link with the lowest
  *                                       priority will be used.
  *                                       if one or more active links share
@@ -1025,11 +1030,11 @@ int knet_host_get_policy(knet_handle_t knet_h, knet_node_id_t host_id,
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_status_change_notify_fn_private_data
+ * host_status_change_notify_fn_private_data -
  *            void pointer to data that can be used to identify
- *            the callback.
+ *            the callback
  *
- * host_status_change_notify_fn
+ * host_status_change_notify_fn -
  *            is a callback function that is invoked every time
  *            there is a change in the host status.
  *            host status is identified by:
@@ -1089,7 +1094,9 @@ struct knet_host_status {
  *
  * knet_h   - pointer to knet_handle_t
  *
- * status    - pointer to knet_host_status struct
+ * host_id  - see knet_host_add(3)
+ *
+ * status   - pointer to knet_host_status struct
  *
  * @return
  * knet_handle_pmtud_get returns
@@ -1223,7 +1230,7 @@ int knet_handle_get_transport_list(knet_handle_t knet_h,
  *
  * knet_h    - pointer to knet_handle_t
  *
- * transport - one of the above KNET_TRANSPORT_xxx constants
+ * transport - one of the KNET_TRANSPORT_xxx constants
  *
  * @return
  * knet_handle_get_transport_name_by_id returns:
@@ -1300,7 +1307,7 @@ int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
  *
  * link_id   - see knet_link_set_config(3)
  *
- * transport - one of the above KNET_TRANSPORT_xxx constants
+ * transport - one of the KNET_TRANSPORT_xxx constants
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -1367,9 +1374,9 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * @return
  * knet_link_clear_config returns
@@ -1386,9 +1393,9 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * enabled   - 0 disable the link, 1 enable the link
  *
@@ -1408,9 +1415,9 @@ int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * enabled   - 0 disable the link, 1 enable the link
  *
@@ -1436,9 +1443,9 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * interval  - specify the ping interval
  *
@@ -1446,7 +1453,7 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *             the link is declared dead
  *
  * precision - how many values of latency are used to calculate
- *             the average link latency (see also get_status below)
+ *             the average link latency (see also knet_link_get_status(3))
  *
  * @return
  * knet_link_set_ping_timers returns
@@ -1464,17 +1471,17 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * interval  - ping intervall
+ * interval  - ping interval
  *
  * timeout   - if no pong is received within this time,
  *             the link is declared dead
  *
  * precision - how many values of latency are used to calculate
- *             the average link latency (see also get_status below)
+ *             the average link latency (see also knet_link_get_status(3))
  *
  * @return
  * knet_link_get_ping_timers returns
@@ -1491,13 +1498,13 @@ int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 /**
  * knet_link_set_pong_count
  *
- * @brief Set the poing count for a link
+ * @brief Set the pong count for a link
  *
- * knet_h     - pointer to knet_handle_t
+ * knet_h    - pointer to knet_handle_t
  *
- * host_id    - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id    - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * pong_count - how many valid ping/pongs before a link is marked UP.
  *              default: 5, value should be > 0
@@ -1514,15 +1521,16 @@ int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 /**
  * knet_link_get_pong_count
  *
- * @brief Get the poing count for a link
+ * @brief Get the pong count for a link
  *
  * knet_h     - pointer to knet_handle_t
  *
- * host_id    - see above
+ * host_id    - see knet_host_add(3)
  *
- * link_id    - see above
+ * link_id    - see knet_link_set_config(3)
  *
- * pong_count - see above
+ * pong_count - how many valid ping/pongs before a link is marked UP.
+ *              default: 5, value should be > 0
  *
  * @return
  * knet_link_get_pong_count returns
@@ -1540,9 +1548,9 @@ int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * priority  - specify the switching priority for this link
  *             see also knet_host_set_policy
@@ -1563,9 +1571,9 @@ int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * priority  - gather the switching priority for this link
  *             see also knet_host_set_policy
@@ -1720,11 +1728,11 @@ struct knet_link_status {
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * status    - pointer to knet_link_status struct (see above)
+ * status    - pointer to knet_link_status struct
  *
  * struct_size - max size of knet_link_status - allows library to
  *               add fields without ABI change. Returned structure
