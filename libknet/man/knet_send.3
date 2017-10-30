@@ -21,6 +21,8 @@ knet_send knet_h - pointer to knet_handle_t
 buff - pointer to the buffer of data to send
 .PP 
 buff_len - length of data to send
+.PP 
+channel - channel number
 .SH RETURN VALUE
 .PP
 knet_send is a commodity function to wrap iovec operations around a socket. It returns a call to writev(2). 

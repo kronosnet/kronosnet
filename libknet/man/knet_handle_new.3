@@ -19,9 +19,9 @@ knet_handle_new
 .PP 
 host_id - Each host in a knet is identified with a unique ID. when creating a new handle local host_id must be specified (0 to UINT16T_MAX are all valid). It is the user's responsibility to check that the value is unique, or bad things might happen.
 .PP 
-log_fd - Write file descriptor. If set to a value > 0, it will be used to write log packets (see below) from libknet to the application. Setting to 0 will disable logging from libknet. It is possible to enable logging at any given time (see logging API below). Make sure to either read from this filedescriptor properly and/or mark it O_NONBLOCK, otherwise if the fd becomes full, libknet could block.
+log_fd - Write file descriptor. If set to a value > 0, it will be used to write log packets from libknet to the application. Setting to 0 will disable logging from libknet. It is possible to enable logging at any given time (see logging API). Make sure to either read from this filedescriptor properly and/or mark it O_NONBLOCK, otherwise if the fd becomes full, libknet could block.
 .PP 
-default_log_level - If logfd is specified, it will initialize all subsystems to log at default_log_level value. (see logging API below)
+default_log_level - If logfd is specified, it will initialize all subsystems to log at default_log_level value. (see logging API)
 .SH RETURN VALUE
 .PP
 on success, a new knet_handle_t is returned. on failure, NULL is returned and errno is set. 

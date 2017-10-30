@@ -2,7 +2,7 @@
 .\" Generation date: Mon Oct 30 2017
 .TH knet_link_set_pong_count 3 2017-10-30 "kronosnet" "Kronosnet Programmer's Manual"
 .SH "NAME"
-knet_link_set_pong_count \- Set the poing count for a link.
+knet_link_set_pong_count \- Set the pong count for a link.
 .SH SYNOPSIS
 .nf
 .B #include <libknet.h>
@@ -20,9 +20,9 @@ knet_link_set_pong_count
 .PP 
 knet_h - pointer to knet_handle_t
 .PP 
-host_id - see above
+host_id - see knet_host_add(3)
 .PP 
-link_id - see above
+link_id - see knet_link_set_config(3)
 .PP 
 pong_count - how many valid ping/pongs before a link is marked UP. default: 5, value should be > 0
 .SH RETURN VALUE

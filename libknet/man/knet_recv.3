@@ -21,6 +21,8 @@ knet_recv knet_h - pointer to knet_handle_t
 buff - pointer to buffer to store the received data
 .PP 
 buff_len - buffer length
+.PP 
+channel - channel number
 .SH RETURN VALUE
 .PP
 knet_recv is a commodity function to wrap iovec operations around a socket. It returns a call to readv(2). 

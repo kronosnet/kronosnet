@@ -22,15 +22,15 @@ knet_link_set_ping_timers
 .PP 
 knet_h - pointer to knet_handle_t
 .PP 
-host_id - see above
+host_id - see knet_host_add(3)
 .PP 
-link_id - see above
+link_id - see knet_link_set_config(3)
 .PP 
 interval - specify the ping interval
 .PP 
 timeout - if no pong is received within this time, the link is declared dead
 .PP 
-precision - how many values of latency are used to calculate the average link latency (see also get_status below)
+precision - how many values of latency are used to calculate the average link latency (see also knet_link_get_status(3))
 .SH RETURN VALUE
 .PP
 knet_link_set_ping_timers returns 0 on success -1 on error and errno is set. 

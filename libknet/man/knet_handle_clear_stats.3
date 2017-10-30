@@ -2,7 +2,7 @@
 .\" Generation date: Mon Oct 30 2017
 .TH knet_handle_clear_stats 3 2017-10-30 "kronosnet" "Kronosnet Programmer's Manual"
 .SH "NAME"
-knet_handle_clear_stats \- Clear knet stats - link and/or handle.
+knet_handle_clear_stats \- Clear knet stats, link and/or handle.
 .SH SYNOPSIS
 .nf
 .B #include <libknet.h>
@@ -18,7 +18,9 @@ knet_handle_clear_stats
 .PP 
 knet_h - pointer to knet_handle_t
 .PP 
-clear_option Which stats to clear (see below)
+clear_option - Which stats to clear, must be one of
+.PP 
+KNET_CLEARSTATS_HANDLE_ONLY or KNET_CLEARSTATS_HANDLE_AND_LINK
 .SH RETURN VALUE
 .PP
 0 on success -1 on error and errno is set. 

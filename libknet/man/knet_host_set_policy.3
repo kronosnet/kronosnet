@@ -21,7 +21,7 @@ knet_h - pointer to knet_handle_t
 .PP 
 host_id - see knet_host_add(3)
 .PP 
-policy - there are currently 3 kind of simple switching policies as defined above, based on link configuration. KNET_LINK_POLICY_PASSIVE - the active link with the lowest priority will be used. if one or more active links share the same priority, the one with lowest link_id will be used.
+policy - there are currently 3 kind of simple switching policies based on link configuration. KNET_LINK_POLICY_PASSIVE - the active link with the lowest priority will be used. if one or more active links share the same priority, the one with lowest link_id will be used.
 .PP 
 KNET_LINK_POLICY_ACTIVE - all active links will be used simultaneously to send traffic. link priority is ignored.
 .PP 

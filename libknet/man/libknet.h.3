@@ -83,57 +83,12 @@ int           knet_strtoaddr(const char *, const char *, struct sockaddr_storage
 .RS
 .nf
 \fB
-struct knet_host_status {
-  uint8_t  \fIreachable\fP;
-  uint8_t  \fIremote\fP;
-  uint8_t  \fIexternal\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
-struct transport_info {
-  const char  *\fIname\fP;
-  uint8_t      \fIid\fP;
-  uint8_t      \fIproperties\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
 struct knet_handle_crypto_cfg {
   char          \fIcrypto_model\fP;
   char          \fIcrypto_cipher_type\fP;
   char          \fIcrypto_hash_type\fP;
   unsigned char \fIprivate_key\fP;
   unsigned int  \fIprivate_key_len\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
-struct knet_handle_compress_cfg {
-  char     \fIcompress_model\fP;
-  uint32_t \fIcompress_threshold\fP;
-  int      \fIcompress_level\fP;
 };
 \fP
 .fi
@@ -169,6 +124,51 @@ struct knet_handle_stats {
   uint64_t \fIrx_crypt_time_ave\fP;
   uint64_t \fIrx_crypt_time_min\fP;
   uint64_t \fIrx_crypt_time_max\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct transport_info {
+  const char  *\fIname\fP;
+  uint8_t      \fIid\fP;
+  uint8_t      \fIproperties\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct knet_handle_compress_cfg {
+  char     \fIcompress_model\fP;
+  uint32_t \fIcompress_threshold\fP;
+  int      \fIcompress_level\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct knet_host_status {
+  uint8_t  \fIreachable\fP;
+  uint8_t  \fIremote\fP;
+  uint8_t  \fIexternal\fP;
 };
 \fP
 .fi

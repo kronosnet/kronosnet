@@ -23,7 +23,7 @@ dst_host_filter_fn_private_data void pointer to data that can be used to identif
 .PP 
 dst_host_filter_fn - is a callback function that is invoked every time a packet hits datafd (see knet_handle_new(3)). the function allows users to tell libknet where the packet has to be delivered.
 .PP 
-const unsigned char *outdata - is a pointer to the current packet ssize_t outdata_len - lenght of the above data uint8_t tx_rx - filter is called on tx or rx (see defines below) knet_node_id_t this_host_id - host_id processing the packet knet_node_id_t src_host_id - host_id that generated the packet knet_node_id_t *dst_host_ids - array of KNET_MAX_HOST knet_node_id_t where to store the destinations size_t *dst_host_ids_entries - number of hosts to send the message
+const unsigned char *outdata - is a pointer to the current packet ssize_t outdata_len - length of the above data uint8_t tx_rx - filter is called on tx or rx (KNET_NOTIFY_TX, KNET_NOTIFY_RX) knet_node_id_t this_host_id - host_id processing the packet knet_node_id_t src_host_id - host_id that generated the packet knet_node_id_t *dst_host_ids - array of KNET_MAX_HOST knet_node_id_t where to store the destinations size_t *dst_host_ids_entries - number of hosts to send the message
 .PP 
 dst_host_filter_fn should return -1 on error, packet is discarded. 0 packet is unicast and should be sent to dst_host_ids and there are dst_host_ids_entries in the buffer. 1 packet is broadcast/multicast and is sent all hosts. contents of dst_host_ids and dst_host_ids_entries are ignored. (see also kronosnetd/etherfilter.* for an example that filters based on ether protocol)
 .SH RETURN VALUE

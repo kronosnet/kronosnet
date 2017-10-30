@@ -19,7 +19,7 @@ knet_host_enable_status_change_notify
 .PP 
 knet_h - pointer to knet_handle_t
 .PP 
-host_status_change_notify_fn_private_data void pointer to data that can be used to identify the callback.
+host_status_change_notify_fn_private_data - void pointer to data that can be used to identify the callback
 .PP 
 external, 0 if the host_id is configured locally or 1 if it has been added from remote nodes config. NOTE: dynamic topology is NOT currently implemented, but this is ready for future and can avoid an API/ABI breakage later on. This function MUST NEVER block or add substantial delays.
 .SH RETURN VALUE
