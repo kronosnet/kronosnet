@@ -717,6 +717,10 @@ void *_handle_send_to_links_thread(void *data)
 						break;
 					}
 				}
+				if (channel >= KNET_DATAFD_MAX) {
+					log_debug(knet_h, KNET_SUB_TX, "No available channels");
+					continue; /* channel not found */
+				}
 			}
 			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
