@@ -23,7 +23,7 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	struct transport_info transport_list[KNET_MAX_TRANSPORTS];
+	struct knet_transport_info transport_list[KNET_MAX_TRANSPORTS];
 	size_t transport_list_entries;
 	size_t i, expected_count;
 

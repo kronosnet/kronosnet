@@ -1194,7 +1194,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
  * local host.
  */
 
-struct transport_info {
+struct knet_transport_info {
 	const char *name;   /* UDP/SCTP/etc... */
 	uint8_t id;         /* value that can be used for link_set_config */
 	uint8_t properties; /* currently unused */
@@ -1220,7 +1220,8 @@ struct transport_info {
  */
 
 int knet_handle_get_transport_list(knet_handle_t knet_h,
-				   struct transport_info *transport_list, size_t *transport_list_entries);
+				   struct knet_transport_info *transport_list,
+				   size_t *transport_list_entries);
 
 /**
  * knet_handle_get_transport_name_by_id

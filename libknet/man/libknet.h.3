@@ -30,7 +30,7 @@ int           knet_handle_get_crypto_list(knet_handle_t, const char **, size_t *
 int           knet_handle_get_datafd(knet_handle_t, const int8_t, int *);
 int           knet_handle_get_stats(knet_handle_t, struct knet_handle_stats *, size_t);
 uint8_t       knet_handle_get_transport_id_by_name(knet_handle_t, const char *);
-int           knet_handle_get_transport_list(knet_handle_t, struct transport_info *, size_t *);
+int           knet_handle_get_transport_list(knet_handle_t, struct knet_transport_info *, size_t *);
 const char   *knet_handle_get_transport_name_by_id(knet_handle_t, uint8_t);
 int           knet_handle_get_transport_reconnect_interval(knet_handle_t, uint32_t *);
 knet_handle_t knet_handle_new(knet_node_id_t, int, uint8_t);
@@ -73,6 +73,31 @@ ssize_t       knet_recv(knet_handle_t, char *, const size_t, const int8_t);
 ssize_t       knet_send(knet_handle_t, const char *, const size_t, const int8_t);
 int           knet_send_sync(knet_handle_t, const char *, const size_t, const int8_t);
 int           knet_strtoaddr(const char *, const char *, struct sockaddr_storage *, socklen_t);
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct knet_link_status {
+  size_t                 \fIsize\fP;
+  char                   \fIsrc_ipaddr\fP;
+  char                   \fIsrc_port\fP;
+  char                   \fIdst_ipaddr\fP;
+  char                   \fIdst_port\fP;
+  uint8_t                \fIenabled\fP;
+  uint8_t                \fIconnected\fP;
+  uint8_t                \fIdynconnected\fP;
+  unsigned long long     \fIlatency\fP;
+  struct timespec        \fIpong_last\fP;
+  unsigned int           \fImtu\fP;
+  unsigned int           \fIproto_overhead\fP;
+  struct knet_link_stats \fIstats\fP;
+};
 \fP
 .fi
 .RE
@@ -135,7 +160,22 @@ struct knet_handle_stats {
 .RS
 .nf
 \fB
-struct transport_info {
+struct knet_host_status {
+  uint8_t  \fIreachable\fP;
+  uint8_t  \fIremote\fP;
+  uint8_t  \fIexternal\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct knet_transport_info {
   const char  *\fIname\fP;
   uint8_t      \fIid\fP;
   uint8_t      \fIproperties\fP;
@@ -154,46 +194,6 @@ struct knet_handle_compress_cfg {
   char     \fIcompress_model\fP;
   uint32_t \fIcompress_threshold\fP;
   int      \fIcompress_level\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
-struct knet_host_status {
-  uint8_t  \fIreachable\fP;
-  uint8_t  \fIremote\fP;
-  uint8_t  \fIexternal\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
-struct knet_link_status {
-  size_t                 \fIsize\fP;
-  char                   \fIsrc_ipaddr\fP;
-  char                   \fIsrc_port\fP;
-  char                   \fIdst_ipaddr\fP;
-  char                   \fIdst_port\fP;
-  uint8_t                \fIenabled\fP;
-  uint8_t                \fIconnected\fP;
-  uint8_t                \fIdynconnected\fP;
-  unsigned long long     \fIlatency\fP;
-  struct timespec        \fIpong_last\fP;
-  unsigned int           \fImtu\fP;
-  unsigned int           \fIproto_overhead\fP;
-  struct knet_link_stats \fIstats\fP;
 };
 \fP
 .fi
