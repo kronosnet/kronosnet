@@ -14,6 +14,13 @@
 #include <time.h>
 #include <netinet/in.h>
 
+/**
+ * @file libknet.h
+ * @brief kronosnet API include file
+ *
+ * Kronosnet is an advanced VPN system for High Availability applications.
+ */
+
 /*
  * libknet limits
  */
@@ -23,6 +30,7 @@
  */
 
 typedef uint16_t knet_node_id_t;
+
 #define KNET_MAX_HOST 65536
 
 /*
@@ -53,7 +61,6 @@ typedef uint16_t knet_node_id_t;
 #define KNET_NOTIFY_TX 0
 #define KNET_NOTIFY_RX 1
 
-
 /*
  * Link flags
  */
@@ -63,8 +70,8 @@ typedef uint16_t knet_node_id_t;
  * On Linux this sets the TOS to INTERACTIVE (6),
  * see tc-prio(8) for more infomation
  */
-#define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
 
+#define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
 
 typedef struct knet_handle *knet_handle_t;
 
@@ -72,8 +79,10 @@ typedef struct knet_handle *knet_handle_t;
  * Handle structs/API calls
  */
 
-/*
+/**
  * knet_handle_new
+ *
+ * @brief create a new instance of a knet handle
  *
  * host_id  - Each host in a knet is identified with a unique
  *            ID. when creating a new handle local host_id
@@ -82,18 +91,18 @@ typedef struct knet_handle *knet_handle_t;
  *            is unique, or bad things might happen.
  *
  * log_fd   - Write file descriptor. If set to a value > 0, it will be used
- *            to write log packets (see below) from libknet to the application.
+ *            to write log packets from libknet to the application.
  *            Setting to 0 will disable logging from libknet.
- *            It is possible to enable logging at any given time (see logging API
- *            below).
+ *            It is possible to enable logging at any given time (see logging API).
  *            Make sure to either read from this filedescriptor properly and/or
  *            mark it O_NONBLOCK, otherwise if the fd becomes full, libknet could
  *            block.
  *
  * default_log_level -
  *            If logfd is specified, it will initialize all subsystems to log
- *            at default_log_level value. (see logging API below)
+ *            at default_log_level value. (see logging API)
  *
+ * @return
  * on success, a new knet_handle_t is returned.
  * on failure, NULL is returned and errno is set.
  */
@@ -102,23 +111,23 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 			      int      log_fd,
 			      uint8_t  default_log_level);
 
-/*
+/**
  * knet_handle_free
+ * @brief Destroy a knet handle, free all resources
  *
  * knet_h   - pointer to knet_handle_t
  *
- * Destroy a knet handle, free all resources
- *
- * knet_handle_free returns:
- *
+ * @return
+ * knet_handle_free returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
 int knet_handle_free(knet_handle_t knet_h);
 
-/*
+/**
  * knet_handle_enable_sock_notify
+ * @brief Register a callback to receive socket events
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -140,8 +149,8 @@ int knet_handle_free(knet_handle_t knet_h);
  *            (by calling knet_handle_remove_fd()) or dup a new fd in its place.
  *            Failure to do this can cause problems.
  *
- * knet_handle_enable_sock_notify returns:
- *
+ * @return
+ * knet_handle_enable_sock_notify returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -156,8 +165,12 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 						int error,
 						int errorno)); /* sorry! can't call it errno ;) */
 
-/*
+#define KNET_DATAFD_MAX 32
+
+/**
  * knet_handle_add_datafd
+ *
+ * @brief Install a file descriptor for communication
  *
  * IMPORTANT: In order to add datafd to knet, knet_handle_enable_sock_notify
  *            _MUST_ be set and be able to handle both errors (-1) and
@@ -207,25 +220,24 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
  *            channel on another host, then you can use dst_host_filter
  *            to manipulate channel values on TX and RX.
  *
- * knet_handle_add_datafd returns:
- *
- * 0 on success
- *   *datafd  will be populated with a socket if the original value was 0
+ * @return
+ * knet_handle_add_datafd returns
+ * @retval 0 on success,
+ *         *datafd  will be populated with a socket if the original value was 0
  *            or if a specific fd was set, the value is untouched.
- *   *channel will be populated with a channel number if the original value
+ *         *channel will be populated with a channel number if the original value
  *            was negative or the value is untouched if a specific channel
  *            was requested.
  *
- * -1 on error and errno is set.
- *   *datafd and *channel are untouched or empty.
+ * @retval -1 on error and errno is set.
+ *         *datafd and *channel are untouched or empty.
  */
-
-#define KNET_DATAFD_MAX 32
 
 int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
 
-/*
+/**
  * knet_handle_remove_datafd
+ * @brief Remove a file descriptor from knet
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -233,17 +245,17 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
  *            NOTE that if the socket/fd was created by knet_handle_add_datafd,
  *                 the socket will be closed by libknet.
  *
- * knet_handle_remove_datafd returns:
- *
+ * @return
+ * knet_handle_remove_datafd returns
  * 0 on success
- *
  * -1 on error and errno is set.
  */
 
 int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
 
-/*
+/**
  * knet_handle_get_channel
+ * @brief Get the channel associated with a file descriptor
  *
  * knet_h  - pointer to knet_handle_t
  *
@@ -251,19 +263,19 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
  *
  * *channel - will contain the result
  *
- * knet_handle_get_channel returns:
- *
- * 0 on success
+ * @return
+ * knet_handle_get_channel returns
+ * @retval 0 on success
  *   and *channel will contain the result
- *
- * -1 on error and errno is set.
+ * @retval -1 on error and errno is set.
  *   and *channel content is meaningless
  */
 
 int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *channel);
 
-/*
+/**
  * knet_handle_get_datafd
+ * @brief Get the file descriptor associated with a channel
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -271,26 +283,29 @@ int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *chan
  *
  * *datafd  - will contain the result
  *
- * knet_handle_get_datafd returns:
- *
- * 0 on success
+ * @return
+ * knet_handle_get_datafd returns
+ * @retval 0 on success
  *   and *datafd will contain the results
- *
- * -1 on error and errno is set.
+ * @retval -1 on error and errno is set.
  *   and *datafd content is meaningless
  */
 
 int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *datafd);
 
-/*
+/**
  * knet_recv
+ * @brief Receive data from knet nodes
  *
  * knet_h   - pointer to knet_handle_t
  *
  * buff     - pointer to buffer to store the received data
  *
- * buff_len - buffer lenght
+ * buff_len - buffer length
  *
+ * channel  - channel number
+ *
+ * @return
  * knet_recv is a commodity function to wrap iovec operations
  * around a socket. It returns a call to readv(2).
  */
@@ -300,8 +315,9 @@ ssize_t knet_recv(knet_handle_t knet_h,
 		  const size_t buff_len,
 		  const int8_t channel);
 
-/*
+/**
  * knet_send
+ * @brief Send data to knet nodes
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -309,6 +325,9 @@ ssize_t knet_recv(knet_handle_t knet_h,
  *
  * buff_len - length of data to send
  *
+ * channel  - channel number
+ *
+ * @return
  * knet_send is a commodity function to wrap iovec operations
  * around a socket. It returns a call to writev(2).
  */
@@ -318,8 +337,10 @@ ssize_t knet_send(knet_handle_t knet_h,
 		  const size_t buff_len,
 		  const int8_t channel);
 
-/*
+/**
  * knet_send_sync
+ *
+ * @brief Synchronously send data to knet nodes
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -327,7 +348,7 @@ ssize_t knet_send(knet_handle_t knet_h,
  *
  * buff_len - length of data to send
  *
- * channel  - data channel to use (see knet_handle_add_datafd)
+ * channel  - data channel to use (see knet_handle_add_datafd(3))
  *
  * All knet RX/TX operations are async for performance reasons.
  * There are applications that might need a sync version of data
@@ -339,23 +360,19 @@ ssize_t knet_send(knet_handle_t knet_h,
  * a time. It does NOT support multiple destinations or multicast
  * packets. Decision is still based on dst_host_filter_fn.
  *
+ * @return
  * knet_send_sync returns 0 on success and -1 on error.
- *
  * In addition to normal sendmmsg errors, knet_send_sync can fail
  * due to:
  *
- * ECANCELED - data forward is disabled
- * EFAULT    - dst_host_filter fatal error
- * EINVAL    - dst_host_filter did not provide
- *             dst_host_ids_entries on unicast pckts
- * E2BIG     - dst_host_filter did return more than one
- *             dst_host_ids_entries on unicast pckts
- * ENOMSG    - received unknown message type
- * EHOSTDOWN - unicast pckt cannot be delivered because
- *             dest host is not connected yet
- * ECHILD    - crypto failed
- * EAGAIN    - sendmmsg was unable to send all messages and
- *             there was no progress during retry
+ * @retval ECANCELED - data forward is disabled
+ * @retval EFAULT    - dst_host_filter fatal error
+ * @retval EINVAL    - dst_host_filter did not provide dst_host_ids_entries on unicast pckts
+ * @retval E2BIG     - dst_host_filter did return more than one dst_host_ids_entries on unicast pckts
+ * @retval ENOMSG    - received unknown message type
+ * @retval EHOSTDOWN - unicast pckt cannot be delivered because dest host is not connected yet
+ * @retval ECHILD    - crypto failed
+ * @retval EAGAIN    - sendmmsg was unable to send all messages and there was no progress during retry
  */
 
 int knet_send_sync(knet_handle_t knet_h,
@@ -363,8 +380,10 @@ int knet_send_sync(knet_handle_t knet_h,
 		   const size_t buff_len,
 		   const int8_t channel);
 
-/*
+/**
  * knet_handle_enable_filter
+ *
+ * @brief install a filter to route packets
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -374,15 +393,15 @@ int knet_send_sync(knet_handle_t knet_h,
  *
  * dst_host_filter_fn -
  *            is a callback function that is invoked every time
- *            a packet hits datafd (see knet_handle_new).
+ *            a packet hits datafd (see knet_handle_new(3)).
  *            the function allows users to tell libknet where the
  *            packet has to be delivered.
  *
  *            const unsigned char *outdata - is a pointer to the
  *                                           current packet
- *            ssize_t outdata_len          - lenght of the above data
+ *            ssize_t outdata_len          - length of the above data
  *            uint8_t tx_rx                - filter is called on tx or rx
- *                                           (see defines below)
+ *                                           (KNET_NOTIFY_TX, KNET_NOTIFY_RX)
  *            knet_node_id_t this_host_id  - host_id processing the packet
  *            knet_node_id_t src_host_id   - host_id that generated the
  *                                           packet
@@ -399,8 +418,8 @@ int knet_send_sync(knet_handle_t knet_h,
  *  (see also kronosnetd/etherfilter.* for an example that filters based
  *   on ether protocol)
  *
- * knet_handle_enable_filter returns:
- *
+ * @return
+ * knet_handle_enable_filter returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -418,15 +437,17 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 					knet_node_id_t *dst_host_ids,
 					size_t *dst_host_ids_entries));
 
-/*
+/**
  * knet_handle_setfwd
+ *
+ * @brief Start packet forwarding
  *
  * knet_h   - pointer to knet_handle_t
  *
  * enable   - set to 1 to allow data forwarding, 0 to disable data forwarding.
  *
- * knet_handle_setfwd returns:
- *
+ * @return
+ * knet_handle_setfwd returns
  * 0 on success
  * -1 on error and errno is set.
  *
@@ -436,44 +457,49 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 
 int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 
-/*
+#define KNET_PMTUD_DEFAULT_INTERVAL 60
+
+/**
  * knet_handle_pmtud_setfreq
+ *
+ * @brief Set the interval between PMTUd scans
  *
  * knet_h   - pointer to knet_handle_t
  *
  * interval - define the interval in seconds between PMTUd scans
  *            range from 1 to 86400 (24h)
  *
- * knet_handle_pmtud_setfreq returns:
- *
+ * @return
+ * knet_handle_pmtud_setfreq returns
  * 0 on success
  * -1 on error and errno is set.
  *
  * default interval is 60.
  */
 
-#define KNET_PMTUD_DEFAULT_INTERVAL 60
-
 int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
 
-/*
+/**
  * knet_handle_pmtud_getfreq
+ *
+ * @brief Get the interval between PMTUd scans
  *
  * knet_h   - pointer to knet_handle_t
  *
  * interval - pointer where to store the current interval value
  *
- * knet_handle_pmtud_setfreq returns:
- *
+ * @return
+ * knet_handle_pmtud_setfreq returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-
 int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
 
-/*
+/**
  * knet_handle_enable_pmtud_notify
+ *
+ * @brief install a callback to receive PMTUd changes
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -492,27 +518,29 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
  *            crypto overhead,
  *            This function MUST NEVER block or add substantial delays.
  *
- * knet_handle_enable_pmtud_notify returns:
- *
+ * @return
+ * knet_handle_enable_pmtud_notify returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
 int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
-			      void *pmtud_notify_fn_private_data,
-			      void (*pmtud_notify_fn) (
-					void *private_data,
-					unsigned int data_mtu));
+				    void *pmtud_notify_fn_private_data,
+				    void (*pmtud_notify_fn) (
+						void *private_data,
+						unsigned int data_mtu));
 
-/*
+/**
  * knet_handle_pmtud_get
+ *
+ * @brief Get the current data MTU
  *
  * knet_h   - pointer to knet_handle_t
  *
- * data_mtu - pointer where to store data_mtu (see above)
+ * data_mtu - pointer where to store data_mtu
  *
- * knet_handle_pmtud_get returns:
- *
+ * @return
+ * knet_handle_pmtud_get returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -520,8 +548,23 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 int knet_handle_pmtud_get(knet_handle_t knet_h,
 				unsigned int *data_mtu);
 
-/*
+
+
+#define KNET_MIN_KEY_LEN  256
+#define KNET_MAX_KEY_LEN 4096
+
+struct knet_handle_crypto_cfg {
+	char		crypto_model[16];
+	char		crypto_cipher_type[16];
+	char		crypto_hash_type[16];
+	unsigned char	private_key[KNET_MAX_KEY_LEN];
+	unsigned int	private_key_len;
+};
+
+/**
  * knet_handle_crypto
+ *
+ * @brief set up packet cryptographic signing & encryption
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -575,32 +618,33 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
  *              2) errors to initializing the crypto level.
  *   This can happen even in subsequent calls to knet_handle_crypto.
  *   A failure in crypto init, might leave your traffic unencrypted!
- *   It's best to stop data forwarding (see above), change crypto config,
+ *   It's best to stop data forwarding (see knet_handle_setfwd(3)), change crypto config,
  *   start forward again.
  *
+ * @return
  * knet_handle_crypto returns:
- *
- * 0 on success
- * -1 on error and errno is set.
- * -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
+ * @retval 0 on success
+ * @retval -1 on error and errno is set.
+ * @retval -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
  */
-
-#define KNET_MIN_KEY_LEN  256
-#define KNET_MAX_KEY_LEN 4096
-
-struct knet_handle_crypto_cfg {
-	char		crypto_model[16];
-	char		crypto_cipher_type[16];
-	char		crypto_hash_type[16];
-	unsigned char	private_key[KNET_MAX_KEY_LEN];
-	unsigned int	private_key_len;
-};
 
 int knet_handle_crypto(knet_handle_t knet_h,
 		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
-/*
+
+
+#define KNET_COMPRESS_THRESHOLD 100
+
+struct knet_handle_compress_cfg {
+	char	 compress_model[16];
+	uint32_t compress_threshold;
+	int	 compress_level;
+};
+
+/**
  * knet_handle_compress
+ *
+ * @brief Set up packet compression
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -651,43 +695,17 @@ int knet_handle_crypto(knet_handle_t knet_h,
  *   the libraries man pages to figure out which algorithm/compression
  *   level is best for the data you are planning to transmit.
  *
- * knet_handle_compress returns:
- *
+ * @return
+ * knet_handle_compress returns
  * 0 on success
  * -1 on error and errno is set. EINVAL means that either the model or the
  *    level are not supported.
  */
 
-#define KNET_COMPRESS_THRESHOLD 100
-
-struct knet_handle_compress_cfg {
-	char	 compress_model[16];
-	uint32_t compress_threshold;
-	int	 compress_level;
-};
-
 int knet_handle_compress(knet_handle_t knet_h,
 			 struct knet_handle_compress_cfg *knet_handle_compress_cfg);
 
-/*
- * knet_handle_get_stats
- *
- * knet_h   - pointer to knet_handle_t
- *
- * knet_handle_stats
- *            pointer to a knet_handle_stats structure
- *
- * struct_size
- *            size of knet_handle_stats structure to allow
- *            for backwards compatibility. libknet will only
- *            copy this much data into the stats structure
- *            so that older callers will not get overflowed if
- *            new fields are added.
- *
- * 0 on success
- * -1 on error and errno is set.
- *
- */
+
 
 struct knet_handle_stats {
 	size_t   size;
@@ -720,20 +738,30 @@ struct knet_handle_stats {
 	uint64_t rx_crypt_time_max;
 };
 
-int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size);
-
-/*
- * knet_handle_clear_stats
+/**
+ * knet_handle_get_stats
+ *
+ * @brief Get statistics for compression & crypto
  *
  * knet_h   - pointer to knet_handle_t
  *
- * clear_option
- *            Which stats to clear (see below)
+ * knet_handle_stats
+ *            pointer to a knet_handle_stats structure
  *
+ * struct_size
+ *            size of knet_handle_stats structure to allow
+ *            for backwards compatibility. libknet will only
+ *            copy this much data into the stats structure
+ *            so that older callers will not get overflowed if
+ *            new fields are added.
+ *
+ * @return
  * 0 on success
  * -1 on error and errno is set.
  *
  */
+
+int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size);
 
 /*
  * Tell knet_handle_clear_stats whether to clear just the handle stats
@@ -742,11 +770,30 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 #define KNET_CLEARSTATS_HANDLE_ONLY     1
 #define KNET_CLEARSTATS_HANDLE_AND_LINK 2
 
+/**
+ * knet_handle_clear_stats
+ *
+ * @brief Clear knet stats, link and/or handle
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * clear_option -  Which stats to clear, must be one of
+ *
+ * KNET_CLEARSTATS_HANDLE_ONLY or
+ * KNET_CLEARSTATS_HANDLE_AND_LINK
+ *
+ * @return
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ */
+
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
 
-
-/*
+/**
  * knet_handle_get_crypto_list
+ *
+ * @brief Get a list of supported crypto libraries
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -756,16 +803,18 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
  *
  * num_names - returns the number of strings in crypto_names
  *
- * knet_host_add returns:
- *
+ * @return
+ * knet_host_add returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
 int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names, size_t *num_names);
 
-/*
+/**
  * knet_handle_get_compress_list
+ *
+ * @brief Get a list of support compression types
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -775,8 +824,8 @@ int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names,
  *
  * num_names - returns the number of strings in compres_names
  *
- * knet_host_add returns:
- *
+ * @return
+ * knet_host_add returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -787,52 +836,58 @@ int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_na
  * host structs/API calls
  */
 
-/*
+/**
  * knet_host_add
+ *
+ * @brief Add a new host ID to knet
  *
  * knet_h   - pointer to knet_handle_t
  *
  * host_id  - each host in a knet is identified with a unique ID
- *            (see also knet_handle_new documentation above)
+ *            (see also knet_handle_new(3))
  *
+ * @return
  * knet_host_add returns:
- *
  * 0 on success
  * -1 on error and errno is set.
  */
 
 int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id);
 
-/*
+/**
  * knet_host_remove
+ *
+ * @brief Remove a host ID from knet
  *
  * knet_h   - pointer to knet_handle_t
  *
  * host_id  - each host in a knet is identified with a unique ID
- *            (see also knet_handle_new documentation above)
+ *            (see also knet_handle_new(3))
  *
+ * @return
  * knet_host_remove returns:
- *
  * 0 on success
  * -1 on error and errno is set.
  */
 
 int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id);
 
-/*
+/**
  * knet_host_set_name
+ *
+ * @brief Set the name of a knet host
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_id  - see above
+ * host_id  - see knet_host_add(3)
  *
  * name     - this name will be used for pretty logging and eventually
- *            search for hosts (see also get_name and get_id below).
+ *            search for hosts (see also knet_handle_host_get_name(2) and knet_handle_host_get_id(3)).
  *            Only up to KNET_MAX_HOST_LEN - 1 bytes will be accepted and
  *            name has to be unique for each host.
  *
+ * @return
  * knet_host_set_name returns:
- *
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -840,19 +895,21 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id);
 int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id,
 		       const char *name);
 
-/*
+/**
  * knet_host_get_name_by_host_id
+ *
+ * @brief Get the name of a host given its ID
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_id  - see above
+ * host_id  - see knet_host_add(3)
  *
  * name     - pointer to a preallocated buffer of at least size KNET_MAX_HOST_LEN
  *            where the current host name will be stored
  *            (as set by knet_host_set_name or default by knet_host_add)
  *
+ * @return
  * knet_host_get_name_by_host_id returns:
- *
  * 0 on success
  * -1 on error and errno is set (name is left untouched)
  */
@@ -860,8 +917,10 @@ int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id,
 int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
 				  char *name);
 
-/*
+/**
  * knet_host_get_id_by_host_name
+ *
+ * @brief Get the ID of a host given its name
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -869,8 +928,8 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
  *
  * host_id  - where to store the result
  *
+ * @return
  * knet_host_get_id_by_host_name returns:
- *
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -878,8 +937,10 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
 int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 				  knet_node_id_t *host_id);
 
-/*
+/**
  * knet_host_get_host_list
+ *
+ * @brief Get a list of hosts known to knet
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -888,8 +949,8 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
  * host_ids_entries -
  *            number of entries writted in host_ids
  *
- * knet_host_get_host_list returns:
- *
+ * @return
+ * knet_host_get_host_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -905,15 +966,17 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 #define KNET_LINK_POLICY_ACTIVE  1
 #define KNET_LINK_POLICY_RR      2
 
-/*
+/**
  * knet_host_set_policy
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_id  - see above
+ * @brief Set the switching policy for a host's links
+ *
+ * host_id  - see knet_host_add(3)
  *
  * policy   - there are currently 3 kind of simple switching policies
- *            as defined above, based on link configuration.
+ *            based on link configuration.
  *            KNET_LINK_POLICY_PASSIVE - the active link with the lowest
  *                                       priority will be used.
  *                                       if one or more active links share
@@ -928,8 +991,8 @@ int knet_host_get_host_list(knet_handle_t knet_h,
  *                                       will be send on a different active
  *                                       link.
  *
- * knet_host_set_policy returns:
- *
+ * @return
+ * knet_host_set_policy returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -937,18 +1000,20 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 			 uint8_t policy);
 
-/*
+/**
  * knet_host_get_policy
+ *
+ * @brief Get the switching policy for a host's links
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_id  - see above
+ * host_id  - see knet_host_add(3)
  *
  * policy   - will contain the current configured switching policy.
  *            Default is passive when creating a new host.
  *
- * knet_host_get_policy returns:
- *
+ * @return
+ * knet_host_get_policy returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -956,16 +1021,18 @@ int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 int knet_host_get_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 			 uint8_t *policy);
 
-/*
+/**
  * knet_host_enable_status_change_notify
+ *
+ * @brief Install a callback to get host status change events
  *
  * knet_h   - pointer to knet_handle_t
  *
- * host_status_change_notify_fn_private_data
+ * host_status_change_notify_fn_private_data -
  *            void pointer to data that can be used to identify
- *            the callback.
+ *            the callback
  *
- * host_status_change_notify_fn
+ * host_status_change_notify_fn -
  *            is a callback function that is invoked every time
  *            there is a change in the host status.
  *            host status is identified by:
@@ -982,8 +1049,8 @@ int knet_host_get_policy(knet_handle_t knet_h, knet_node_id_t host_id,
  *                        an API/ABI breakage later on.
  *            This function MUST NEVER block or add substantial delays.
  *
- * knet_host_status_change_notify returns:
- *
+ * @return
+ * knet_host_status_change_notify returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1018,15 +1085,19 @@ struct knet_host_status {
 	/* add host statistics */
 };
 
-/*
+/**
  * knet_host_status_get
+ *
+ * @brief Get the status of a host
  *
  * knet_h   - pointer to knet_handle_t
  *
- * status    - pointer to knet_host_status struct (see above)
+ * host_id  - see knet_host_add(3)
  *
- * knet_handle_pmtud_get returns:
+ * status   - pointer to knet_host_status struct
  *
+ * @return
+ * knet_handle_pmtud_get returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1060,8 +1131,10 @@ int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
  * commodity functions to convert strings to sockaddr and viceversa
  */
 
-/*
+/**
  * knet_strtoaddr
+ *
+ * @brief Convert a hostname string to an address
  *
  * host      - IPaddr/hostname to convert
  *             be aware only the first IP address will be returned
@@ -1073,6 +1146,7 @@ int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
  *
  * sslen     - len of the sockaddr_storage
  *
+ * @return
  * knet_strtoaddr returns same error codes as getaddrinfo
  *
  */
@@ -1080,8 +1154,10 @@ int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
 int knet_strtoaddr(const char *host, const char *port,
 		   struct sockaddr_storage *ss, socklen_t sslen);
 
-/*
+/**
  * knet_addrtostr
+ *
+ * @brief Convert an address to a host name
  *
  * ss        - sockaddr_storage to convert
  *
@@ -1093,6 +1169,7 @@ int knet_strtoaddr(const char *host, const char *port,
  * port      - port buffer where to store data
  *             (recommended size: KNET_MAX_PORT_LEN)
  *
+ * @return
  * knet_strtoaddr returns same error codes as getnameinfo
  */
 
@@ -1100,22 +1177,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		   char *addr_buf, size_t addr_buf_size,
 		   char *port_buf, size_t port_buf_size);
 
-/*
- * knet_handle_get_transport_list
- *
- * knet_h                 - pointer to knet_handle_t
- *
- * transport_list         - an array of struct transport_info that must be
- *                          at least of size struct transport_info * KNET_MAX_TRANSPORTS
- *
- * transport_list_entries - pointer to a size_t where to store how many transports
- *                          are available in this build of libknet.
- *
- * knet_handle_get_transport_list returns:
- *
- * 0 on success
- * -1 on error and errno is set.
- */
+
 
 #define KNET_TRANSPORT_LOOPBACK 0
 #define KNET_TRANSPORT_UDP      1
@@ -1138,81 +1200,114 @@ struct transport_info {
 	uint8_t properties; /* currently unused */
 };
 
+/**
+ * knet_handle_get_transport_list
+ *
+ * @brief Get a list of the transports support by this build of knet
+ *
+ * knet_h                 - pointer to knet_handle_t
+ *
+ * transport_list         - an array of struct transport_info that must be
+ *                          at least of size struct transport_info * KNET_MAX_TRANSPORTS
+ *
+ * transport_list_entries - pointer to a size_t where to store how many transports
+ *                          are available in this build of libknet.
+ *
+ * @return
+ * knet_handle_get_transport_list returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
 int knet_handle_get_transport_list(knet_handle_t knet_h,
 				   struct transport_info *transport_list, size_t *transport_list_entries);
 
-/*
+/**
  * knet_handle_get_transport_name_by_id
+ *
+ * @brief Get a transport name from its ID number
  *
  * knet_h    - pointer to knet_handle_t
  *
- * transport - one of the above KNET_TRANSPORT_xxx constants
+ * transport - one of the KNET_TRANSPORT_xxx constants
  *
+ * @return
  * knet_handle_get_transport_name_by_id returns:
  *
- * pointer to the name on success or
- * NULL on error and errno is set.
+ * @retval pointer to the name on success or
+ * @retval NULL on error and errno is set.
  */
 
 const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t transport);
 
-/*
+/**
  * knet_handle_get_transport_id_by_name
+ *
+ * @brief Get a transport ID from its name
  *
  * knet_h    - pointer to knet_handle_t
  *
  * name      - transport name (UDP/SCTP/etc)
  *
+ * @return
  * knet_handle_get_transport_name_by_id returns:
  *
- * KNET_MAX_TRANSPORTS on error and errno is set accordingly
- * KNET_TRANSPORT_xxx on success.
+ * @retval KNET_MAX_TRANSPORTS on error and errno is set accordingly
+ * @retval KNET_TRANSPORT_xxx on success.
  */
 
 uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name);
 
-/*
+
+
+#define KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL 1000
+
+/**
  * knet_handle_set_transport_reconnect_interval
+ *
+ * @brief Set the interval between transport attempts to reconnect a failed link
  *
  * knet_h    - pointer to knet_handle_t
  *
  * msecs     - milliseconds
  *
- * knet_handle_set_transport_reconnect_interval returns:
- *
+ * @return
+ * knet_handle_set_transport_reconnect_interval returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-#define KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL 1000
-
 int knet_handle_set_transport_reconnect_interval(knet_handle_t knet_h, uint32_t msecs);
 
-/*
+/**
  * knet_handle_get_transport_reconnect_interval
+ *
+ * @brief Get the interval between transport attempts to reconnect a failed link
  *
  * knet_h    - pointer to knet_handle_t
  *
  * msecs     - milliseconds
  *
- * knet_handle_get_transport_reconnect_interval returns:
- *
+ * @return
+ * knet_handle_get_transport_reconnect_interval returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
 int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t *msecs);
 
-/*
+/**
  * knet_link_set_config
+ *
+ * @brief Configure the link to a host
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * transport - one of the above KNET_TRANSPORT_xxx constants
+ * transport - one of the KNET_TRANSPORT_xxx constants
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -1224,8 +1319,8 @@ int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
  *
  * flags     - KNET_LINK_FLAG_*
  *
- * knet_link_set_config returns:
- *
+ * @return
+ * knet_link_set_config returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1236,16 +1331,18 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 struct sockaddr_storage *dst_addr,
 			 uint64_t flags);
 
-/*
+/**
  * knet_link_get_config
+ *
+ * @brief Get the link configutation information
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * transport - see above
+ * transport - see knet_link_set_config(3)
  *
  * src_addr  - sockaddr_storage that can be either IPv4 or IPv6
  *
@@ -1257,8 +1354,8 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * flags     - KNET_LINK_FLAG_*
  *
- * knet_link_get_config returns:
- *
+ * @return
+ * knet_link_get_config returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1270,36 +1367,40 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 uint8_t *dynamic,
 			 uint64_t *flags);
 
-/*
+/**
  * knet_link_clear_config
+ *
+ * @brief Clear link information and disconnect the link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * knet_link_clear_config returns:
- *
+ * @return
+ * knet_link_clear_config returns
  * 0 on success.
  * -1 on error and errno is set.
  */
 
 int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id);
 
-/*
+/**
  * knet_link_set_enable
+ *
+ * @brief Enable traffic on a link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * enabled   - 0 disable the link, 1 enable the link
  *
- * knet_link_set_enable returns:
- *
+ * @return
+ * knet_link_set_enable returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1307,19 +1408,21 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 unsigned int enabled);
 
-/*
+/**
  * knet_link_get_enable
+ *
+ * @brief Find out whether a link is enabled or not
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * enabled   - 0 disable the link, 1 enable the link
  *
- * knet_link_get_enable returns:
- *
+ * @return
+ * knet_link_get_enable returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1327,14 +1430,22 @@ int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 unsigned int *enabled);
 
-/*
+
+
+#define KNET_LINK_DEFAULT_PING_INTERVAL  1000 /* 1 second */
+#define KNET_LINK_DEFAULT_PING_TIMEOUT   2000 /* 2 seconds */
+#define KNET_LINK_DEFAULT_PING_PRECISION 2048 /* samples */
+
+/**
  * knet_link_set_ping_timers
+ *
+ * @brief Set the ping timers for a link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * interval  - specify the ping interval
  *
@@ -1342,40 +1453,38 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *             the link is declared dead
  *
  * precision - how many values of latency are used to calculate
- *             the average link latency (see also get_status below)
+ *             the average link latency (see also knet_link_get_status(3))
  *
- * knet_link_set_ping_timers returns:
- *
+ * @return
+ * knet_link_set_ping_timers returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-#define KNET_LINK_DEFAULT_PING_INTERVAL  1000 /* 1 second */
-#define KNET_LINK_DEFAULT_PING_TIMEOUT   2000 /* 2 seconds */
-#define KNET_LINK_DEFAULT_PING_PRECISION 2048 /* samples */
-
 int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			      time_t interval, time_t timeout, unsigned int precision);
 
-/*
+/**
  * knet_link_get_ping_timers
+ *
+ * @brief Get the ping timers for a link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * interval  - ping intervall
+ * interval  - ping interval
  *
  * timeout   - if no pong is received within this time,
  *             the link is declared dead
  *
  * precision - how many values of latency are used to calculate
- *             the average link latency (see also get_status below)
+ *             the average link latency (see also knet_link_get_status(3))
  *
- * knet_link_get_ping_timers returns:
- *
+ * @return
+ * knet_link_get_ping_timers returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1383,42 +1492,49 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			      time_t *interval, time_t *timeout, unsigned int *precision);
 
-/*
+
+
+#define KNET_LINK_DEFAULT_PONG_COUNT 5
+
+/**
  * knet_link_set_pong_count
  *
- * knet_h     - pointer to knet_handle_t
+ * @brief Set the pong count for a link
  *
- * host_id    - see above
+ * knet_h    - pointer to knet_handle_t
  *
- * link_id    - see above
+ * host_id   - see knet_host_add(3)
+ *
+ * link_id   - see knet_link_set_config(3)
  *
  * pong_count - how many valid ping/pongs before a link is marked UP.
  *              default: 5, value should be > 0
  *
- * knet_link_set_pong_count returns:
- *
+ * @return
+ * knet_link_set_pong_count returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-#define KNET_LINK_DEFAULT_PONG_COUNT 5
-
 int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			     uint8_t pong_count);
 
-/*
+/**
  * knet_link_get_pong_count
+ *
+ * @brief Get the pong count for a link
  *
  * knet_h     - pointer to knet_handle_t
  *
- * host_id    - see above
+ * host_id    - see knet_host_add(3)
  *
- * link_id    - see above
+ * link_id    - see knet_link_set_config(3)
  *
- * pong_count - see above
+ * pong_count - how many valid ping/pongs before a link is marked UP.
+ *              default: 5, value should be > 0
  *
- * knet_link_get_pong_count returns:
- *
+ * @return
+ * knet_link_get_pong_count returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1426,20 +1542,22 @@ int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			     uint8_t *pong_count);
 
-/*
+/**
  * knet_link_set_priority
+ *
+ * @brief Set the priority for a link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * priority  - specify the switching priority for this link
  *             see also knet_host_set_policy
  *
- * knet_link_set_priority returns:
- *
+ * @return
+ * knet_link_set_priority returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1447,20 +1565,22 @@ int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			   uint8_t priority);
 
-/*
+/**
  * knet_link_get_priority
+ *
+ * @brief Get the priority for a link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
  * priority  - gather the switching priority for this link
  *             see also knet_host_set_policy
  *
- * knet_link_get_priority returns:
- *
+ * @return
+ * knet_link_get_priority returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1468,8 +1588,10 @@ int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			   uint8_t *priority);
 
-/*
+/**
  * knet_link_get_link_list
+ *
+ * @brief Get a list of links connecting a host
  *
  * knet_h   - pointer to knet_handle_t
  *
@@ -1479,8 +1601,8 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
  * link_ids_entries -
  *            number of entries contained in link_ids
  *
- * knet_link_get_link_list returns:
- *
+ * @return
+ * knet_link_get_link_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1493,7 +1615,7 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
  *
  * src/dst_{ipaddr,port} strings are filled by
  *                       getnameinfo(3) when configuring the link.
- *                       if the link is dynamic (see knet_link_set_config)
+ *                       if the link is dynamic (see knet_link_set_config(3))
  *                       dst_ipaddr/port will contain ipaddr/port of the currently
  *                       connected peer or "Unknown" if it was not possible
  *                       to determine the ipaddr/port at runtime.
@@ -1517,6 +1639,7 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
  */
 
 #define MAX_LINK_EVENTS 16
+
 struct knet_link_stats {
 	/* onwire values */
 	uint64_t tx_data_packets;
@@ -1600,24 +1723,26 @@ struct knet_link_status {
 	struct knet_link_stats stats;
 };
 
-/*
+/**
  * knet_link_get_status
+ *
+ * @brief Get the status (and statistics) for a link
  *
  * knet_h    - pointer to knet_handle_t
  *
- * host_id   - see above
+ * host_id   - see knet_host_add(3)
  *
- * link_id   - see above
+ * link_id   - see knet_link_set_config(3)
  *
- * status    - pointer to knet_link_status struct (see above)
+ * status    - pointer to knet_link_status struct
  *
  * struct_size - max size of knet_link_status - allows library to
  *               add fields without ABI change. Returned structure
  *               will be truncated to this length and .size member
  *               indicates the full size.
  *
- * knet_link_get_status returns:
- *
+ * @return
+ * knet_link_get_status returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1679,18 +1804,24 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  * Convert between subsystem IDs and names
  */
 
-/*
+/**
  * knet_log_get_subsystem_name
  *
- * return internal name of the subsystem or "common"
+ * @brief Get a logging system name from its numeric ID
+ *
+ * @return
+ * returns internal name of the subsystem or "common"
  */
 
 const char *knet_log_get_subsystem_name(uint8_t subsystem);
 
-/*
+/**
  * knet_log_get_subsystem_id
  *
- * return internal ID of the subsystem or KNET_SUB_COMMON
+ * @brief Get a logging system ID from its name
+ *
+ * @return
+ * returns internal ID of the subsystem or KNET_SUB_COMMON
  */
 
 uint8_t knet_log_get_subsystem_id(const char *name);
@@ -1708,18 +1839,24 @@ uint8_t knet_log_get_subsystem_id(const char *name);
  * Convert between log level values and names
  */
 
-/*
+/**
  * knet_log_get_loglevel_name
  *
- * return internal name of the log level or "ERROR" for unknown values
+ * @brief Get a logging level name from its numeric ID
+ *
+ * @return
+ * returns internal name of the log level or "ERROR" for unknown values
  */
 
 const char *knet_log_get_loglevel_name(uint8_t level);
 
-/*
+/**
  * knet_log_get_loglevel_id
  *
- * return internal log level ID or KNET_LOG_ERR for invalid names
+ * @brief Get a logging level ID from its name
+ *
+ * @return
+ * returns internal log level ID or KNET_LOG_ERR for invalid names
  */
 
 uint8_t knet_log_get_loglevel_id(const char *name);
@@ -1739,8 +1876,10 @@ struct knet_log_msg {
 	uint8_t msglevel;	/* KNET_LOG_* */
 };
 
-/*
+/**
  * knet_log_set_log_level
+ *
+ * @brief Set the logging level for a subsystem
  *
  * knet_h     - same as above
  *
@@ -1751,8 +1890,8 @@ struct knet_log_msg {
  * knet_log_set_loglevel allows fine control of log levels by subsystem.
  *                       See also knet_handle_new for defaults.
  *
- * knet_log_set_loglevel returns:
- *
+ * @return
+ * knet_log_set_loglevel returns
  * 0 on success
  * -1 on error and errno is set.
  */
@@ -1760,8 +1899,10 @@ struct knet_log_msg {
 int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 			  uint8_t level);
 
-/*
+/**
  * knet_log_get_log_level
+ *
+ * @brief Get the logging level for a subsystem
  *
  * knet_h     - same as above
  *
@@ -1769,8 +1910,8 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
  *
  * level      - same as above
  *
- * knet_log_get_loglevel returns:
- *
+ * @return
+ * knet_log_get_loglevel returns
  * 0 on success
  * -1 on error and errno is set.
  */

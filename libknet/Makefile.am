@@ -15,7 +15,7 @@ SYMFILE			= libknet_exported_syms
 
 EXTRA_DIST		= $(SYMFILE)
 
-SUBDIRS			= . tests
+SUBDIRS			= . tests man
 
 libversion		= 1:0:0
 
@@ -96,3 +96,19 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  -version-number $(libversion)
 
 libknet_la_LIBADD	= $(dl_LIBS) $(pthread_LIBS) $(rt_LIBS) $(m_LIBS)
+
+dist_man_MANS		= man
+
+update-man-pages: doxyfile.stamp
+
+doxyfile.stamp: Doxyfile
+if MANPAGEUPDATES
+	$(DOXYGEN) Doxyfile
+	$(DOXY2MAN) -o $(abs_srcdir)/man -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
+else
+	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
+endif
+	touch doxyfile.stamp
+
+clean-local:
+	rm -rf doxyfile.stamp xml

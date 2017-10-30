@@ -355,6 +355,7 @@ Requires: pkgconfig
 %{_libdir}/libknet.so
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
+%{_mandir}/man3/*.3.gz
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@

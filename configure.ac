@@ -65,6 +65,16 @@ AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
 AC_CHECK_PROGS([PUBLICAN], [publican], [:])
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AC_CHECK_PROGS([DOXY2MAN], [doxy2man])
+
+manpageupdates=1
+if test "x$DOXYGEN" = "x" || test "x$DOXY2MAN" = "x"; then
+	manpageupdates=0;
+fi
+
+AM_CONDITIONAL([MANPAGEUPDATES], [test $manpageupdates -gt 0])
+
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
@@ -493,6 +503,8 @@ AC_CONFIG_FILES([
 		libknet/Makefile
 		libknet/libknet.pc
 		libknet/tests/Makefile
+		libknet/man/Doxyfile
+		libknet/man/Makefile
 		docs/Makefile
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
