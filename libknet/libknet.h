@@ -14,7 +14,6 @@
 #include <time.h>
 #include <netinet/in.h>
 
-
 /**
  * @file libknet.h
  * @brief kronosnet API include file
@@ -31,6 +30,7 @@
  */
 
 typedef uint16_t knet_node_id_t;
+
 #define KNET_MAX_HOST 65536
 
 /*
@@ -61,7 +61,6 @@ typedef uint16_t knet_node_id_t;
 #define KNET_NOTIFY_TX 0
 #define KNET_NOTIFY_RX 1
 
-
 /*
  * Link flags
  */
@@ -71,8 +70,8 @@ typedef uint16_t knet_node_id_t;
  * On Linux this sets the TOS to INTERACTIVE (6),
  * see tc-prio(8) for more infomation
  */
-#define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
 
+#define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
 
 typedef struct knet_handle *knet_handle_t;
 
@@ -166,8 +165,8 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 						int error,
 						int errorno)); /* sorry! can't call it errno ;) */
 
-
 #define KNET_DATAFD_MAX 32
+
 /**
  * knet_handle_add_datafd
  *
@@ -458,8 +457,8 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 
 int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 
-
 #define KNET_PMTUD_DEFAULT_INTERVAL 60
+
 /**
  * knet_handle_pmtud_setfreq
  *
@@ -495,7 +494,6 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval);
  * -1 on error and errno is set.
  */
 
-
 int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
 
 /**
@@ -527,10 +525,10 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval);
  */
 
 int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
-			      void *pmtud_notify_fn_private_data,
-			      void (*pmtud_notify_fn) (
-					void *private_data,
-					unsigned int data_mtu));
+				    void *pmtud_notify_fn_private_data,
+				    void (*pmtud_notify_fn) (
+						void *private_data,
+						unsigned int data_mtu));
 
 /**
  * knet_handle_pmtud_get
@@ -634,6 +632,7 @@ int knet_handle_crypto(knet_handle_t knet_h,
 		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
 
+
 #define KNET_COMPRESS_THRESHOLD 100
 
 struct knet_handle_compress_cfg {
@@ -707,6 +706,7 @@ int knet_handle_compress(knet_handle_t knet_h,
 			 struct knet_handle_compress_cfg *knet_handle_compress_cfg);
 
 
+
 struct knet_handle_stats {
 	size_t   size;
 
@@ -763,7 +763,6 @@ struct knet_handle_stats {
 
 int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size);
 
-
 /*
  * Tell knet_handle_clear_stats whether to clear just the handle stats
  * or all of them.
@@ -780,7 +779,7 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
  *
  * clear_option -  Which stats to clear, must be one of
  *
- * KNET_CLEARSTATS_HANDLE_ONLY or 
+ * KNET_CLEARSTATS_HANDLE_ONLY or
  * KNET_CLEARSTATS_HANDLE_AND_LINK
  *
  * @return
@@ -790,7 +789,6 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
  */
 
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
-
 
 /**
  * knet_handle_get_crypto_list
@@ -1180,6 +1178,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		   char *port_buf, size_t port_buf_size);
 
 
+
 #define KNET_TRANSPORT_LOOPBACK 0
 #define KNET_TRANSPORT_UDP      1
 #define KNET_TRANSPORT_SCTP     2
@@ -1258,6 +1257,7 @@ const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t t
  */
 
 uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name);
+
 
 
 #define KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL 1000
@@ -1493,6 +1493,7 @@ int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 			      time_t *interval, time_t *timeout, unsigned int *precision);
 
 
+
 #define KNET_LINK_DEFAULT_PONG_COUNT 5
 
 /**
@@ -1638,6 +1639,7 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
  */
 
 #define MAX_LINK_EVENTS 16
+
 struct knet_link_stats {
 	/* onwire values */
 	uint64_t tx_data_packets;
