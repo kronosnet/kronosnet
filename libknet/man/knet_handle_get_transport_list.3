@@ -8,9 +8,9 @@ knet_handle_get_transport_list \- Get a list of the transports support by this b
 .B #include <libknet.h>
 .sp
 \fBint knet_handle_get_transport_list\fP(
-    \fBknet_handle_t           \fP\fIknet_h\fP,
-    \fBstruct transport_info  *\fP\fItransport_list\fP,
-    \fBsize_t                 *\fP\fItransport_list_entries\fP
+    \fBknet_handle_t                \fP\fIknet_h\fP,
+    \fBstruct knet_transport_info  *\fP\fItransport_list\fP,
+    \fBsize_t                      *\fP\fItransport_list_entries\fP
 );
 .fi
 .SH DESCRIPTION
@@ -30,7 +30,7 @@ transport_list_entries - pointer to a size_t where to store how many transports 
 .RS
 .nf
 \fB
-struct transport_info {
+struct knet_transport_info {
   const char  *\fIname\fP;
   uint8_t      \fIid\fP;
   uint8_t      \fIproperties\fP;

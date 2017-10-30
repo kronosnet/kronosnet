@@ -344,7 +344,8 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
  */
 
 int knet_handle_get_transport_list(knet_handle_t knet_h,
-				   struct transport_info *transport_list, size_t *transport_list_entries)
+				   struct knet_transport_info *transport_list,
+				   size_t *transport_list_entries)
 {
 	int err = 0, savederrno = 0;
 	int i, count;
