@@ -71,9 +71,7 @@ static void test(void)
 
 	printf("Test knet_host_remove with configured host_id and links\n");
 
-	memset(&ss, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.0", "50000", &ss, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&ss, 0) < 0) {
 		printf("Unable to convert str to sockaddr: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

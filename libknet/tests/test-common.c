@@ -433,3 +433,23 @@ int knet_handle_stop(knet_handle_t knet_h)
 	}
 	return 0;
 }
+
+int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset)
+{
+	uint32_t port;
+	char portstr[32];
+
+	/* Use the pid if we can. but makes sure its in a sensible range */
+	port = (uint32_t)getpid() + offset;
+	if (port < 1024) {
+		port += 1024;
+	}
+	if (port > 65536) {
+		port = port & 0xFFFF;
+	}
+	sprintf(portstr, "%d", port);
+	memset(lo, 0, sizeof(struct sockaddr_storage));
+	fprintf(stderr, "Using port %d\n", port);
+
+	return knet_strtoaddr("127.0.0.1", portstr, lo, sizeof(struct sockaddr_storage));
+}

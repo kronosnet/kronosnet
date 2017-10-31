@@ -101,9 +101,7 @@ static void test(void)
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	struct sockaddr_storage lo;
 
-	memset(&lo, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.1", "50000", &lo, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&lo, 1) < 0) {
 		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
