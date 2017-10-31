@@ -8,7 +8,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= kronosnet_architecture.odp
+EXTRA_DIST		= kronosnet_architecture.odp $(docbook)
 
 docbook			= Kronosnet
 
