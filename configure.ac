@@ -194,6 +194,26 @@ if test "x$dllibs" != "xnone required"; then
 	AC_SUBST([dl_LIBS], [$dllibs])
 fi
 
+# OS detection
+
+AC_MSG_CHECKING([for os in ${host_os}])
+case "$host_os" in
+	*linux*)
+		AC_DEFINE_UNQUOTED([KNET_LINUX], [1], [Compiling for Linux platform])
+		AC_MSG_RESULT([Linux])
+		;;
+	*bsd*)
+		AC_DEFINE_UNQUOTED([KNET_BSD], [1], [Compiling for BSD platform])
+		AC_MSG_RESULT([BSD])
+		if test "x$enable_libtap" = xyes; then
+			AC_MSG_ERROR([libtap is not currently supported on BSD platforms])
+		fi
+		;;
+	*)
+		AC_MSG_ERROR([Unsupported OS? hmmmm])
+		;;
+esac
+
 # crypto libraries checks
 if test "x$enable_crypto_nss" = xyes; then
 	PKG_CHECK_MODULES([nss],[nss])

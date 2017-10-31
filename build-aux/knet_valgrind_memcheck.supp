@@ -476,3 +476,51 @@
    fun:_handle_send_to_links_thread
    fun:start_thread
 }
+{
+   nss internal stuff (FreeBSD 11.1)
+   Memcheck:Addr8
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   fun:PR_LoadLibraryWithFlags
+   obj:/usr/local/lib/nss/libnssutil3.so
+   fun:PORT_LoadLibraryFromOrigin
+   obj:/usr/local/lib/nss/libnss3.so
+   fun:PR_CallOnce
+   obj:/usr/local/lib/nss/libnss3.so
+}
+{
+   nss internal stuff (FreeBSD 11.1)
+   Memcheck:Addr8
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   fun:PR_LoadLibraryWithFlags
+   obj:/usr/local/lib/nss/libnssutil3.so
+   fun:PORT_LoadLibraryFromOrigin
+   obj:/usr/local/lib/nss/libnss3.so
+   fun:PR_CallOnce
+   obj:/usr/local/lib/nss/libnss3.so
+   fun:SECMOD_LoadModule
+   obj:/usr/local/lib/nss/libnss3.so
+}
+{
+   nss internal stuff (FreeBSD 11.1)
+   Memcheck:Addr8
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/libexec/ld-elf.so.1
+   obj:/usr/local/lib/libcrypto.so.10
+   fun:DSO_load
+   fun:DSO_dsobyaddr
+   obj:/usr/local/lib/libcrypto.so.10
+   fun:pthread_once
+   fun:CRYPTO_THREAD_run_once
+   fun:OPENSSL_init_crypto
+   fun:opensslcrypto_load_lib
+}

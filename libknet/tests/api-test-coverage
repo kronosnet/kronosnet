@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 srcdir="$1"/libknet/tests
 builddir="$2"/libknet/tests
