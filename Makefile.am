@@ -71,8 +71,9 @@ $(SPEC): $(SPEC).in .version config.status
 		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
 		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
 		numcomm=`GIT_DIR=$(abs_srcdir)/.git git rev-list $$vtag..HEAD | wc -l` && \
-		GIT_DIR=$(abs_srcdir)/.git git update-index --refresh > /dev/null 2>&1 || true && \
-		dirty=`GIT_DIR=$(abs_srcdir)/.git git diff-index --name-only HEAD 2>/dev/null`; \
+		cd $(abs_srcdir) && \
+		git update-index --refresh > /dev/null 2>&1 || true && \
+		dirty=`git diff-index --name-only HEAD 2>/dev/null` && cd - 2>/dev/null; \
 	fi && \
 	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
 	if [ "$$numcomm" = "0" ]; then \
