@@ -59,8 +59,8 @@ maintainer-clean-local:
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
 	date="`LC_ALL=C date "+%a %b %d %Y"`" && \
-	if [ -f .tarball-version ]; then \
-		gitver="`cat .tarball-version`" && \
+	if [ -f $(abs_srcdir)/.tarball-version ]; then \
+		gitver="`cat $(abs_srcdir)/.tarball-version`" && \
 		rpmver=$$gitver && \
 		alphatag="" && \
 		dirty="" && \
