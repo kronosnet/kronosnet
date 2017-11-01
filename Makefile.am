@@ -15,8 +15,6 @@ include $(top_srcdir)/build-aux/check.mk
 
 AUTOMAKE_OPTIONS	= foreign
 
-AM_DISTCHECK_CONFIGURE_FLAGS = --enable-kronosnetd
-
 ACLOCAL_AMFLAGS		= -I m4
 
 SPEC			= $(PACKAGE_NAME).spec
@@ -25,7 +23,7 @@ TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
 EXTRA_DIST		= build-aux autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
-			  $(SPEC) $(SPEC).in
+			  $(SPEC).in
 
 SUBDIRS			= init libtap libknet kronosnetd
 
@@ -61,8 +59,8 @@ maintainer-clean-local:
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
 	date="`LC_ALL=C date "+%a %b %d %Y"`" && \
-	if [ -f .tarball-version ]; then \
-		gitver="`cat .tarball-version`" && \
+	if [ -f $(abs_srcdir)/.tarball-version ]; then \
+		gitver="`cat $(abs_srcdir)/.tarball-version`" && \
 		rpmver=$$gitver && \
 		alphatag="" && \
 		dirty="" && \
@@ -73,8 +71,9 @@ $(SPEC): $(SPEC).in .version config.status
 		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
 		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
 		numcomm=`GIT_DIR=$(abs_srcdir)/.git git rev-list $$vtag..HEAD | wc -l` && \
-		GIT_DIR=$(abs_srcdir)/.git git update-index --refresh > /dev/null 2>&1 || true && \
-		dirty=`GIT_DIR=$(abs_srcdir)/.git git diff-index --name-only HEAD 2>/dev/null`; \
+		cd $(abs_srcdir) && \
+		git update-index --refresh > /dev/null 2>&1 || true && \
+		dirty=`git diff-index --name-only HEAD 2>/dev/null` && cd - 2>/dev/null; \
 	fi && \
 	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
 	if [ "$$numcomm" = "0" ]; then \
@@ -153,6 +152,7 @@ endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
 	mv $@-t $@
+	rm -f $@-t*
 
 $(TARGZFILE):
 	$(MAKE) dist
@@ -182,8 +182,8 @@ dist-hook: gen-ChangeLog
 gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog
 gen-ChangeLog:
-	if test -d .git; then						\
-		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog		\
+	if test -d $(abs_sourcedir)/.git; then				\
+		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog	\
 			--since=$(gen_start_date) > $(distdir)/cl-t;	\
 		rm -f $(distdir)/ChangeLog;				\
 		mv $(distdir)/cl-t $(distdir)/ChangeLog;		\
