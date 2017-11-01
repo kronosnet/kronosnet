@@ -152,6 +152,7 @@ endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
 	mv $@-t $@
+	rm -f $@-t*
 
 $(TARGZFILE):
 	$(MAKE) dist
