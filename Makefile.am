@@ -15,8 +15,6 @@ include $(top_srcdir)/build-aux/check.mk
 
 AUTOMAKE_OPTIONS	= foreign
 
-AM_DISTCHECK_CONFIGURE_FLAGS = --enable-kronosnetd
-
 ACLOCAL_AMFLAGS		= -I m4
 
 SPEC			= $(PACKAGE_NAME).spec
