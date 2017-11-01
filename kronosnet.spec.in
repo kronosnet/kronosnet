@@ -85,16 +85,16 @@ BuildRequires: gcc
 BuildRequires: lksctp-tools-devel
 %endif
 %if %{defined buildcryptonss}
-BuildRequires: nss-devel
+BuildRequires: /usr/include/nss3/nss.h /usr/include/nspr4/nspr.h
 %endif
 %if %{defined buildcryptoopenssl}
-BuildRequires: openssl-devel
+BuildRequires: /usr/include/openssl/conf.h
 %endif
 %if %{defined buildcompresszlib}
 BuildRequires: zlib-devel
 %endif
 %if %{defined buildcompresslz4}
-BuildRequires: lz4-devel
+BuildRequires: /usr/include/lz4hc.h
 %endif
 %if %{defined buildcompresslzo2}
 BuildRequires: lzo-devel
@@ -103,7 +103,7 @@ BuildRequires: lzo-devel
 BuildRequires: xz-devel
 %endif
 %if %{defined buildcompressbzip2}
-BuildRequires: bzip2-devel
+BuildRequires: /usr/include/bzlib.h
 %endif
 %if %{defined buildkronosnetd}
 BuildRequires: libqb-devel pam-devel
