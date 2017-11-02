@@ -447,9 +447,9 @@ int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset)
 	if (port > 65536) {
 		port = port & 0xFFFF;
 	}
-	sprintf(portstr, "%d", port);
+	sprintf(portstr, "%u", port);
 	memset(lo, 0, sizeof(struct sockaddr_storage));
-	fprintf(stderr, "Using port %d\n", port);
+	printf("Using port %u\n", port);
 
 	return knet_strtoaddr("127.0.0.1", portstr, lo, sizeof(struct sockaddr_storage));
 }
