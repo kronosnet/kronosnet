@@ -47,9 +47,7 @@ static void test(void)
 	int savederrno;
 	struct sockaddr_storage lo;
 
-	memset(&lo, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.1", "50000", &lo, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&lo, 0) < 0) {
 		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}

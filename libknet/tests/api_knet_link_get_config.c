@@ -29,16 +29,12 @@ static void test(void)
 	uint8_t dynamic = 0, transport = 0;
 	uint64_t flags;
 
-	memset(&src, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.1", "50000", &src, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&src, 0) < 0) {
 		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
-	memset(&dst, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.1", "50001", &dst, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&dst, 1) < 0) {
 		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}

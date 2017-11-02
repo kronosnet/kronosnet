@@ -25,22 +25,24 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
+	char src_portstr[32];
+	char dst_portstr[32];
 	struct sockaddr_storage src, dst;
+	struct sockaddr_in *src_in = (struct sockaddr_in *)&src;
+	struct sockaddr_in *dst_in = (struct sockaddr_in *)&dst;
 	struct knet_link_status link_status;
 
-	memset(&src, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.1", "50000", &src, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&src, 0) < 0) {
 		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
+	sprintf(src_portstr, "%d", ntohs(src_in->sin_port));
 
-	memset(&dst, 0, sizeof(struct sockaddr_storage));
-
-	if (knet_strtoaddr("127.0.0.1", "50001", &dst, sizeof(struct sockaddr_storage)) < 0) {
+	if (make_local_sockaddr(&dst, 1) < 0) {
 		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
+	sprintf(dst_portstr, "%d", ntohs(dst_in->sin_port));
 
 	printf("Test knet_link_set_config incorrect knet_h\n");
 
@@ -139,7 +141,7 @@ static void test(void)
 
 	if ((link_status.enabled != 0) ||
 	    (strcmp(link_status.src_ipaddr, "127.0.0.1")) ||
-	    (strcmp(link_status.src_port, "50000")) ||
+	    (strcmp(link_status.src_port, src_portstr)) ||
 	    (knet_h->host_index[1]->link[0].dynamic != KNET_LINK_DYNIP)) {
 		printf("knet_link_set_config failed to set configuration. enabled: %d src_addr %s src_port %s dynamic %u\n",
 		       link_status.enabled, link_status.src_ipaddr, link_status.src_port, knet_h->host_index[1]->link[0].dynamic);
@@ -238,9 +240,9 @@ static void test(void)
 
 	if ((link_status.enabled != 0) ||
 	    (strcmp(link_status.src_ipaddr, "127.0.0.1")) ||
-	    (strcmp(link_status.src_port, "50000")) ||
+	    (strcmp(link_status.src_port, src_portstr)) ||
 	    (strcmp(link_status.dst_ipaddr, "127.0.0.1")) ||
-	    (strcmp(link_status.dst_port, "50001")) || 
+	    (strcmp(link_status.dst_port, dst_portstr)) || 
 	    (knet_h->host_index[1]->link[0].dynamic != KNET_LINK_STATIC)) {
 		printf("knet_link_set_config failed to set configuration. enabled: %d src_addr %s src_port %s dst_addr %s dst_port %s dynamic %u\n",
 		       link_status.enabled, link_status.src_ipaddr, link_status.src_port, link_status.dst_ipaddr, link_status.dst_port, knet_h->host_index[1]->link[0].dynamic);

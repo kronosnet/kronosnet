@@ -67,5 +67,6 @@ void close_logpipes(int *logfds);
 void flush_logs(int logfd, FILE *std);
 int start_logthread(int logfd, FILE *std);
 int stop_logthread(void);
+int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset);
 
 #endif
