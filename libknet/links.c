@@ -219,7 +219,6 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->transport_type = transport;
 	link->transport_connected = 0;
 	link->proto_overhead = knet_h->transport_ops[link->transport_type]->transport_mtu_overhead;
-	link->configured = 1;
 	link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
 	link->has_valid_mtu = 0;
 	link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */
@@ -234,6 +233,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		err = -1;
 		goto exit_unlock;
 	}
+	link->configured = 1;
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is configured",
 		  host_id, link_id);
 
