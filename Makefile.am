@@ -36,8 +36,7 @@ dist_doc_DATA		= \
 			  COPYING.libraries \
 			  COPYRIGHT \
 			  README.licence \
-			  README \
-			  TODO
+			  README
 
 all-local: $(SPEC)
 
