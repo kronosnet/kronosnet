@@ -17,6 +17,7 @@
 /**
  * @file libknet.h
  * @brief kronosnet API include file
+ * @copyright Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
  *
  * Kronosnet is an advanced VPN system for High Availability applications.
  */
