@@ -1,3 +1,11 @@
+#
+# Copyright (C) 2012-2017 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
+
 VALGRIND = $(VALGRIND_EXEC) -q --error-exitcode=127 --gen-suppressions=all
 
 MEMCHECK = $(VALGRIND) --track-fds=yes --leak-check=full --suppressions=$(abs_top_srcdir)/build-aux/knet_valgrind_memcheck.supp

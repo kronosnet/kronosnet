@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2017 Red Hat, Inc.  All rights reserved.
  *
  * Author: Jan Friesse <jfriesse@redhat.com>
  *
