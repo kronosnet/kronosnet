@@ -64,7 +64,6 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
-AC_CHECK_PROGS([PUBLICAN], [publican], [:])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
 AC_CHECK_PROGS([DOXY2MAN], [doxy2man])
 
@@ -345,10 +344,6 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug          enable debug build. ],
 	[ default="no" ])
 
-AC_ARG_ENABLE([publicandocs],
-	[  --enable-publicandocs   enable docs build. ],
-	[ default="no" ])
-
 AC_ARG_WITH([initdefaultdir],
 	[  --with-initdefaultdir   : path to /etc/sysconfig/.. or /etc/default dir. ],
 	[ INITDEFAULTDIR="$withval" ],
@@ -391,7 +386,6 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 
 ## do subst
 
-AM_CONDITIONAL([BUILD_DOCS], [test "x${enable_publicandocs}" = xyes])
 AM_CONDITIONAL([DEBUG], [test "x${enable_debug}" = xyes])
 
 AC_SUBST([DEFAULT_CONFIG_DIR])
@@ -525,7 +519,6 @@ AC_CONFIG_FILES([
 		libknet/tests/Makefile
 		libknet/man/Doxyfile
 		libknet/man/Makefile
-		docs/Makefile
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile

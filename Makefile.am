@@ -27,10 +27,6 @@ EXTRA_DIST		= build-aux autogen.sh .version \
 
 SUBDIRS			= init libtap libknet kronosnetd
 
-if BUILD_DOCS
-SUBDIRS			+= docs
-endif
-
 if BUILD_POC
 SUBDIRS			+= poc-code
 endif
