@@ -9,10 +9,11 @@
 
 # script to update copyright dates across the tree
 
-input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp)
+enddate=$(date +%Y)
+
+input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp |grep -v update-copyright)
 for i in $input; do
-	startdate=$(git log "$i" | grep ^Date: | tail -n 1 | awk '{print $6}')
-	enddate=$(git log "$i" | grep ^Date: | head -n 1 | awk '{print $6}')
+	startdate=$(git log --follow "$i" | grep ^Date: | tail -n 1 | awk '{print $6}')
 	if [ "$startdate" != "$enddate" ]; then
 		sed -i -e 's#Copyright (C).*Red Hat#Copyright (C) '$startdate'-'$enddate' Red Hat#g' $i
 	else
