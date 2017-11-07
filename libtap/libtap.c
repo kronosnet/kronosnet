@@ -2122,6 +2122,7 @@ static void make_local_ips(void)
 {
 	pid_t mypid;
 	uint8_t *pid;
+	uint8_t i;
 
 	if (sizeof(pid_t) < 4) {
 		printf("pid_t is smaller than 4 bytes?\n");
@@ -2136,33 +2137,39 @@ static void make_local_ips(void)
 	mypid = getpid();
 	pid = (uint8_t *)&mypid;
 
+	for (i = 0; i < sizeof(pid_t); i++) {
+		if (pid[i] == 0) {
+			pid[i] = 128;
+		}
+	}
+
 	snprintf(testipv4_1,
 		 sizeof(testipv4_1) - 1,
 		 "127.%u.%u.%u",
-		 pid[0],
 		 pid[1],
-		 pid[2]);
+		 pid[2],
+		 pid[0]);
 
 	snprintf(testipv4_2,
 		 sizeof(testipv4_2) - 1,
 		 "127.%u.%d.%u",
-		 pid[0],
-		 pid[1]+1,
-		 pid[2]);
+		 pid[1],
+		 pid[2]+1,
+		 pid[0]);
 
 	snprintf(testipv6_1,
 		 sizeof(testipv6_1) - 1,
-		 "::%u:%u:%u:1",
-		 pid[0],
+		 "fd%x:%x%x::1",
 		 pid[1],
-		 pid[2]);
+		 pid[2],
+		 pid[0]);
 
 	snprintf(testipv6_2,
 		 sizeof(testipv6_2) - 1,
-		 "::%u:%u:%d:1",
-		 pid[0],
+		 "fd%x:%x%x:1::1",
 		 pid[1],
-		 pid[2]+1);
+		 pid[2],
+		 pid[0]);
 }
 
 int main(void)
