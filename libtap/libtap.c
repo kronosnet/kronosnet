@@ -979,6 +979,12 @@ out_clean:
 }
 
 #ifdef TEST
+
+char testipv4_1[1024];
+char testipv4_2[1024];
+char testipv6_1[1024];
+char testipv6_2[1024];
+
 static int is_if_in_system(char *name)
 {
 	struct ifaddrs *ifap = NULL;
@@ -1263,6 +1269,7 @@ static int check_knet_mtu_ipv6(void)
 {
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
+	char verifycmd[1024];
 	int err=0;
 	tap_t tap;
 	char *error_string = NULL;
@@ -1277,9 +1284,9 @@ static int check_knet_mtu_ipv6(void)
 		return -1;
 	}
 
-	printf("Adding ip: 3ffe::1/64\n");
+	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = tap_add_ip(tap, "3ffe::1", "64", &error_string);
+	err = tap_add_ip(tap, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -1291,7 +1298,10 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1310,7 +1320,7 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1322,8 +1332,8 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	printf("Adding ip: 3ffe::2/64\n");
-	err = tap_add_ip(tap, "3ffe::2", "64", &error_string);
+	printf("Adding ip: %s/64\n", testipv6_2);
+	err = tap_add_ip(tap, testipv6_2, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -1335,7 +1345,10 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::2/64", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+		 "ip addr show dev kronostest | grep -q %s/64", testipv6_2);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1354,7 +1367,10 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd) -1,
+		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1366,7 +1382,10 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::2/64", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd) -1,
+		 "ip addr show dev kronostest | grep -q %s/64", testipv6_2);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1840,9 +1859,9 @@ static int check_knet_close_leak(void)
 		return -1;
 	}
 
-	printf("Adding ip: 192.168.168.168/24\n");
+	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
+	err = tap_add_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -1854,9 +1873,9 @@ static int check_knet_close_leak(void)
 		goto out_clean;
 	}
 
-	printf("Adding ip: 192.168.169.169/24\n");
+	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = tap_add_ip(tap, "192.168.169.169", "24", &error_string);
+	err = tap_add_ip(tap, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -1879,6 +1898,7 @@ static int check_knet_set_del_ip(void)
 {
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
+	char verifycmd[1024];
 	int err=0;
 	tap_t tap;
 	char *ip_list = NULL;
@@ -1895,9 +1915,9 @@ static int check_knet_set_del_ip(void)
 		return -1;
 	}
 
-	printf("Adding ip: 192.168.168.168/24\n");
+	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
+	err = tap_add_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -1909,9 +1929,9 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Adding ip: 192.168.169.169/24\n");
+	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = tap_add_ip(tap, "192.168.169.169", "24", &error_string);
+	err = tap_add_ip(tap, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -1923,9 +1943,9 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Adding duplicate ip: 192.168.168.168/24\n");
+	printf("Adding duplicate ip: %s/24\n", testipv4_1);
 
-	err = tap_add_ip(tap, "192.168.168.168", "24", &error_string);
+	err = tap_add_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -1937,9 +1957,12 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Checking ip: 192.168.168.168/24\n");
+	printf("Checking ip: %s/24\n", testipv4_1);
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+		 "ip addr show dev kronostest | grep -q %s/24", testipv4_1);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1973,9 +1996,9 @@ static int check_knet_set_del_ip(void)
 
 	free(ip_list);
 
-	printf("Deleting ip: 192.168.168.168/24\n");
+	printf("Deleting ip: %s/24\n", testipv4_1);
 
-	err = tap_del_ip(tap, "192.168.168.168", "24", &error_string);
+	err = tap_del_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -1987,9 +2010,9 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Deleting ip: 192.168.169.169/24\n");
+	printf("Deleting ip: %s/24\n", testipv4_2);
 
-	err = tap_del_ip(tap, "192.168.169.169", "24", &error_string);
+	err = tap_del_ip(tap, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2001,9 +2024,9 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Deleting again ip: 192.168.168.168/24\n");
+	printf("Deleting again ip: %s/24\n", testipv4_1);
 
-	err = tap_del_ip(tap, "192.168.168.168", "24", &error_string);
+	err = tap_del_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2015,7 +2038,10 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 192.168.168.168/24", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+		 "ip addr show dev kronostest | grep -q %s/24", testipv4_1);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -2027,9 +2053,9 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Adding ip: 3ffe::1/64\n");
+	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = tap_add_ip(tap, "3ffe::1", "64", &error_string);
+	err = tap_add_ip(tap, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -2041,7 +2067,10 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -2053,9 +2082,9 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Deleting ip: 3ffe::1/64\n");
+	printf("Deleting ip: %s/64\n", testipv6_1);
 
-	err = tap_del_ip(tap, "3ffe::1", "64", &error_string);
+	err = tap_del_ip(tap, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -2067,7 +2096,10 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ip addr show dev kronostest | grep -q 3ffe::1/64", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -2086,12 +2118,61 @@ out_clean:
 	return err;
 }
 
+static void make_local_ips(void)
+{
+	pid_t mypid;
+	uint8_t *pid;
+
+	if (sizeof(pid_t) < 4) {
+		printf("pid_t is smaller than 4 bytes?\n");
+		exit(77);
+	}
+
+	memset(testipv4_1, 0, sizeof(testipv4_1));
+	memset(testipv4_2, 0, sizeof(testipv4_2));
+	memset(testipv6_1, 0, sizeof(testipv6_1));
+	memset(testipv6_2, 0, sizeof(testipv6_2));
+
+	mypid = getpid();
+	pid = (uint8_t *)&mypid;
+
+	snprintf(testipv4_1,
+		 sizeof(testipv4_1) - 1,
+		 "127.%u.%u.%u",
+		 pid[0],
+		 pid[1],
+		 pid[2]);
+
+	snprintf(testipv4_2,
+		 sizeof(testipv4_2) - 1,
+		 "127.%u.%d.%u",
+		 pid[0],
+		 pid[1]+1,
+		 pid[2]);
+
+	snprintf(testipv6_1,
+		 sizeof(testipv6_1) - 1,
+		 "::%u:%u:%u:1",
+		 pid[0],
+		 pid[1],
+		 pid[2]);
+
+	snprintf(testipv6_2,
+		 sizeof(testipv6_2) - 1,
+		 "::%u:%u:%d:1",
+		 pid[0],
+		 pid[1],
+		 pid[2]+1);
+}
+
 int main(void)
 {
 	if (geteuid() != 0) {
 		printf("This test requires root privileges\n");
 		exit(77);
 	}
+
+	make_local_ips();
 
 	if (check_tap_open_close() < 0)
 		return -1;
