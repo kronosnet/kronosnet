@@ -1,4 +1,13 @@
-Base {
+# Version and symbol export for libtap.so
+#
+# Copyright (C) 2011-2017 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
+
+LIBTAP {
 	global:
 		tap_*;
 	local:

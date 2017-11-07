@@ -1,6 +1,13 @@
 # Version and symbol export for libknet.so
+#
+# Copyright (C) 2016-2017 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
 
-LIBKNET_0.0 {
+LIBKNET {
 	global:
 		knet_*;
 	local:

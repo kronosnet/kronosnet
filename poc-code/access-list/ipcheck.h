@@ -1,4 +1,10 @@
-
+/*
+ * Copyright (C) 2016-2017 Red Hat, Inc.  All rights reserved.
+ *
+ * Author: Christine Caulfield <ccaulfie@redhat.com>
+ *
+ * This software licensed under GPL-2.0+, LGPL-2.0+
+ */
 
 typedef enum {IPCHECK_TYPE_ADDRESS, IPCHECK_TYPE_MASK, IPCHECK_TYPE_RANGE} ipcheck_type_t;
 typedef	enum {IPCHECK_ACCEPT, IPCHECK_REJECT} ipcheck_acceptreject_t;

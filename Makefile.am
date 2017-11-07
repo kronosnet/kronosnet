@@ -27,10 +27,6 @@ EXTRA_DIST		= build-aux autogen.sh .version \
 
 SUBDIRS			= init libtap libknet kronosnetd
 
-if BUILD_DOCS
-SUBDIRS			+= docs
-endif
-
 if BUILD_POC
 SUBDIRS			+= poc-code
 endif
@@ -40,8 +36,7 @@ dist_doc_DATA		= \
 			  COPYING.libraries \
 			  COPYRIGHT \
 			  README.licence \
-			  README \
-			  TODO
+			  README
 
 all-local: $(SPEC)
 
