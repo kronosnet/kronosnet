@@ -217,9 +217,6 @@ case "$host_os" in
 	*bsd*)
 		AC_DEFINE_UNQUOTED([KNET_BSD], [1], [Compiling for BSD platform])
 		AC_MSG_RESULT([BSD])
-		if test "x$enable_libtap" = xyes; then
-			AC_MSG_ERROR([libtap is not currently supported on BSD platforms])
-		fi
 		;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
