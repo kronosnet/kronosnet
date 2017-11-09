@@ -18,9 +18,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <linux/if_tun.h>
 #include <net/ethernet.h>
-#include <netinet/ether.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <limits.h>
@@ -28,6 +26,14 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <stdint.h>
+
+#ifdef KNET_LINUX
+#include <linux/if_tun.h>
+#include <netinet/ether.h>
+#endif
+#ifdef KNET_BSD
+#include <net/if_dl.h>
+#endif
 
 #include "libtap.h"
 
@@ -79,7 +85,7 @@ static int _set_down(tap_t tap, char **error_down, char **error_postdown);
 static char *_get_v4_broadcast(const char *ip_addr, const char *prefix);
 static int _set_ip(tap_t tap, const char *command,
 		      const char *ip_addr, const char *prefix,
-		      char **error_string);
+		      char **error_string, int secondary);
 static int _find_ip(tap_t tap,
 			const char *ip_addr, const char *prefix,
 			struct _ip **ip, struct _ip **ip_prev);
@@ -242,11 +248,28 @@ static int _check(const tap_t tap)
 
 static void _close(tap_t tap)
 {
+#ifdef KNET_BSD
+	char command[PATH_MAX];
+	char *error_string = NULL;
+#endif
+
 	if (!tap)
 		return;
 
 	if (tap->fd)
 		close(tap->fd);
+
+#ifdef KNET_BSD
+	memset(command, 0, PATH_MAX);
+
+	snprintf(command, PATH_MAX, "ifconfig %s destroy", tap->tapname);
+
+	_execute_shell(command, &error_string);
+	if (error_string) {
+		free(error_string);
+		error_string = NULL;
+	}
+#endif
 
 	free(tap);
 
@@ -280,18 +303,56 @@ out_clean:
 
 static int _get_mac(const tap_t tap, char **ether_addr)
 {
-	int err;
+	int err = 0;
 	char mac[MAX_MAC_CHAR];
+#ifdef KNET_BSD
+	struct ifaddrs *ifap = NULL;
+	struct ifaddrs *ifa;
+	int found = 0;
+#endif
 
+	memset(&mac, 0, MAX_MAC_CHAR);
 	memset(&tap->ifr, 0, sizeof(struct ifreq));
 	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
 
+#ifdef KNET_LINUX
 	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
 	if (err)
 		goto out_clean;
 
 	ether_ntoa_r((struct ether_addr *)tap->ifr.ifr_hwaddr.sa_data, mac);
+#endif
+#ifdef KNET_BSD
+	/*
+	 * there is no ioctl to get the ether address of an interface on FreeBSD
+	 * (not to be confused with hwaddr). Use workaround described here:
+	 * https://lists.freebsd.org/pipermail/freebsd-hackers/2004-June/007394.html
+	 */
+	err = getifaddrs(&ifap);
+	if (err < 0)
+		goto out_clean;
 
+	ifa = ifap;
+
+	while (ifa) {
+		if (!strncmp(tap->tapname, ifa->ifa_name, IFNAMSIZ)) {
+			found = 1;
+			break;
+		}
+		ifa=ifa->ifa_next;
+	}
+
+	if (found) {
+		ether_ntoa_r((struct ether_addr *)LLADDR((struct sockaddr_dl *)ifa->ifa_addr), mac);
+	} else {
+		err = -1;
+	}
+	freeifaddrs(ifap);
+
+	if (err)
+		goto out_clean;
+
+#endif
 	*ether_addr = strdup(mac);
 	if (!*ether_addr)
 		err = -1;
@@ -337,6 +398,11 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 {
 	tap_t tap;
 	char *temp_mac = NULL;
+#ifdef KNET_BSD
+	uint16_t i;
+	long int tapnum = 0;
+	char curtap[IFNAMSIZ];
+#endif
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -353,6 +419,30 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		return NULL;
 	}
 
+#ifdef KNET_BSD
+	/*
+	 * BSD does not support named devices like Linux
+	 * but it is possible to force a tapX device number
+	 * where X is 0 to 255.
+	 */
+	if (strlen(dev)) {
+		if (strncmp(dev, "tap", 3)) {
+			errno = EINVAL;
+			return NULL;
+		}
+		errno = 0;
+		tapnum = strtol(dev+3, NULL, 10);
+		if (errno) {
+			errno = EINVAL;
+			return NULL;
+		}
+		if ((tapnum < 0) || (tapnum > 255)) {
+			errno = EINVAL;
+			return NULL;
+		}
+	}
+#endif
+
 	if (updownpath) {
 		/* only absolute paths */
 		if (updownpath[0] != '/') {
@@ -366,18 +456,42 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		}
 	}
 
-	pthread_mutex_lock(&lib_mutex);
-
 	tap = malloc(sizeof(struct _iface));
-	if (!tap)
+	if (!tap) {
 		return NULL;
+	}
 
 	memset(tap, 0, sizeof(struct _iface));
 
+	pthread_mutex_lock(&lib_mutex);
+
+#ifdef KNET_BSD
+	if (!strlen(dev)) {
+		for (i = 0; i < 256; i++) {
+			snprintf(curtap, sizeof(curtap) - 1, "/dev/tap%u", i);
+			tap->fd = open(curtap, O_RDWR);
+			if (tap->fd > 0) {
+				break;
+			}
+		}
+		snprintf(curtap, sizeof(curtap) -1 , "tap%u", i);
+	} else {
+		snprintf(curtap, sizeof(curtap) - 1, "/dev/%s", dev);
+		tap->fd = open(curtap, O_RDWR);
+		snprintf(curtap, sizeof(curtap) - 1, "%s", dev);
+	}
+	if (tap->fd < 0) {
+		errno = EBUSY;
+		goto out_error;
+	}
+	strncpy(dev, curtap, IFNAMSIZ);
+	strncpy(tap->tapname, curtap, IFNAMSIZ);
+#endif
+
+#ifdef KNET_LINUX
 	if ((tap->fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
 
-	strncpy(tap->tapname, dev, IFNAMSIZ);
 	memset(&tap->ifr, 0, sizeof(struct ifreq));
 	strncpy(tap->ifname, dev, IFNAMSIZ);
 	tap->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
@@ -390,12 +504,18 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		goto out_error;
 	}
 
-	strcpy(dev, tap->ifname);
-	strcpy(tap->tapname, tap->ifname);
+	strncpy(dev, tap->ifname, IFNAMSIZ);
+	strncpy(tap->tapname, tap->ifname, IFNAMSIZ);
+#endif
 
 	if (!lib_init) {
 		lib_cfg.head = NULL;
+#ifdef KNET_LINUX
 		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
+#endif
+#ifdef KNET_BSD
+		lib_cfg.sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+#endif
 		if (lib_cfg.sockfd < 0)
 			goto out_error;
 		lib_init = 1;
@@ -403,8 +523,14 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 
 	memset(&tap->ifr, 0, sizeof(struct ifreq));
 	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+#ifdef KNET_LINUX
 	if (ioctl(lib_cfg.sockfd, SIOGIFINDEX, &tap->ifr) < 0)
 		goto out_error;
+#endif
+#ifdef KNET_BSD
+	if (ioctl(lib_cfg.sockfd, SIOCGIFINDEX, &tap->ifr) < 0)
+		goto out_error;
+#endif
 
 	tap->default_mtu = _get_mtu(tap);
 	if (tap->default_mtu < 0)
@@ -477,7 +603,7 @@ int tap_close(tap_t tap)
 	ip = tap->ip;
 	while (ip) {
 		ip_next = ip->next;
-		_set_ip(tap, "del", ip->ip_addr, ip->prefix, &error_string);
+		_set_ip(tap, "del", ip->ip_addr, ip->prefix, &error_string, 0);
 		if (error_string) {
 			free(error_string);
 			error_string = NULL;
@@ -541,7 +667,7 @@ int tap_set_mtu(tap_t tap, const int mtu)
 		tmp_ip = tap->ip;
 		while(tmp_ip) {
 			if (tmp_ip->domain == AF_INET6) {
-				err = _set_ip(tap, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string);
+				err = _set_ip(tap, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string, 0);
 				if (error_string) {
 					free(error_string);
 					error_string = NULL;
@@ -596,6 +722,7 @@ int tap_set_mac(tap_t tap, const char *ether_addr)
 
 	memset(&tap->ifr, 0, sizeof(struct ifreq));
 	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+#ifdef KNET_LINUX
 	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
 	if (err)
 		goto out_clean;
@@ -603,7 +730,17 @@ int tap_set_mac(tap_t tap, const char *ether_addr)
 	memmove(tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &tap->ifr);
+#endif
+#ifdef KNET_BSD
+	err = ioctl(lib_cfg.sockfd, SIOCGIFADDR, &tap->ifr);
+	if (err)
+		goto out_clean;
 
+	memmove(tap->ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
+	tap->ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
+
+	err = ioctl(lib_cfg.sockfd, SIOCSIFLLADDR, &tap->ifr);
+#endif
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
 
@@ -741,10 +878,16 @@ static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
 
 static int _set_ip(tap_t tap, const char *command,
 		      const char *ip_addr, const char *prefix,
-		      char **error_string)
+		      char **error_string, int secondary)
 {
 	char *broadcast = NULL;
 	char cmdline[4096];
+#ifdef KNET_BSD
+	char proto[6];
+	int v4 = 1;
+
+	snprintf(proto, sizeof(proto), "inet");
+#endif
 
 	if (!strchr(ip_addr, ':')) {
 		broadcast = _get_v4_broadcast(ip_addr, prefix);
@@ -753,22 +896,52 @@ static int _set_ip(tap_t tap, const char *command,
 			return -1;
 		}
 	}
+#ifdef KNET_BSD
+	  else {
+		v4 = 0;
+		snprintf(proto, sizeof(proto), "inet6");
+	}
+#endif
 
 	memset(cmdline, 0, sizeof(cmdline));
 
+#ifdef KNET_LINUX
 	if (broadcast) {
 		snprintf(cmdline, sizeof(cmdline)-1,
-			"ip addr %s %s/%s dev %s broadcast %s",
+			 "ip addr %s %s/%s dev %s broadcast %s",
 			 command, ip_addr, prefix,
 			 tap->tapname, broadcast);
-		free(broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
-			"ip addr %s %s/%s dev %s",
+			 "ip addr %s %s/%s dev %s",
 			command, ip_addr, prefix,
 			tap->tapname);
 	}
-
+#endif
+#ifdef KNET_BSD
+	if (!strcmp(command, "add")) {
+		snprintf(cmdline, sizeof(cmdline)-1,
+			 "ifconfig %s %s %s/%s",
+			 tap->tapname, proto, ip_addr, prefix);
+		if (broadcast) {
+			snprintf(cmdline + strlen(cmdline),
+				 sizeof(cmdline) - strlen(cmdline) -1,
+				 " broadcast %s", broadcast);
+		}
+		if ((secondary) && (v4)) {
+			snprintf(cmdline + strlen(cmdline),
+				 sizeof(cmdline) - strlen(cmdline) -1,
+				 " alias");
+		}
+	} else {
+		snprintf(cmdline, sizeof(cmdline)-1,
+				 "ifconfig %s %s %s/%s delete",
+				 tap->tapname, proto, ip_addr, prefix);
+	}
+#endif
+	if (broadcast) {
+		free(broadcast);
+	}
 	return _execute_shell(cmdline, error_string);
 }
 
@@ -802,6 +975,7 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
+	int secondary = 0;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -836,7 +1010,10 @@ int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 	if ((ip->domain == AF_INET6) && (_get_mtu(tap) < 1280)) {
 		err = 0;
 	} else {
-		err = _set_ip(tap, "add", ip_addr, prefix, error_string);
+		if (tap->ip) {
+			secondary = 1;
+		}
+		err = _set_ip(tap, "add", ip_addr, prefix, error_string, secondary);
 	}
 
 	if (err) {
@@ -877,7 +1054,7 @@ int tap_del_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_
 	if (!found)
 		goto out_clean;
 
-	err = _set_ip(tap, "del", ip_addr, prefix, error_string);
+	err = _set_ip(tap, "del", ip_addr, prefix, error_string, 0);
 
 	if (!err) {
 		if (ip == ip_prev) {
@@ -984,6 +1161,11 @@ char testipv4_1[1024];
 char testipv4_2[1024];
 char testipv6_1[1024];
 char testipv6_2[1024];
+/*
+ * use this one to randomize knet interface name
+ * for named creation test
+ */
+uint8_t randombyte = 0;
 
 static int is_if_in_system(char *name)
 {
@@ -1057,12 +1239,29 @@ static int check_tap_open_close(void)
 		return -1;
 	}
 
-	printf("Creating kronostest tap interface:\n");
-	strncpy(device_name, "kronostest", IFNAMSIZ);
+#ifdef KNET_LINUX
+	printf("Creating kronostest%u tap interface:\n", randombyte);
+	snprintf(device_name, IFNAMSIZ, "kronostest%u", randombyte);
 	if (test_iface(device_name, size, NULL) < 0) {
-		printf("Unable to create kronosnet interface\n");
+		printf("Unable to create kronostest%u interface\n", randombyte);
 		return -1;
 	}
+#endif
+#ifdef KNET_BSD
+	printf("Creating tap%u tap interface:\n", randombyte);
+	snprintf(device_name, IFNAMSIZ, "tap%u", randombyte);
+	if (test_iface(device_name, size, NULL) < 0) {
+		printf("Unable to create tap%u interface\n", randombyte);
+		return -1;
+	}
+
+	printf("Creating kronostest%u tap interface:\n", randombyte);
+	snprintf(device_name, IFNAMSIZ, "kronostest%u", randombyte);
+	if (test_iface(device_name, size, NULL) == 0) {
+		printf("BSD should not accept kronostest%u interface\n", randombyte);
+		return -1;
+	}
+#endif
 
 	printf("Testing ERROR conditions\n");
 
@@ -1090,7 +1289,8 @@ static int check_tap_open_close(void)
 
 	printf("Testing updown path != abs\n");
 	errno=0;
-	strcpy(device_name, "kronostest");
+
+	memset(device_name, 0, IFNAMSIZ);
 	if ((test_iface(device_name, IFNAMSIZ, "foo")  >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
@@ -1101,7 +1301,8 @@ static int check_tap_open_close(void)
 
 	printf("Testing updown path > PATH_MAX\n");
 	errno=0;
-	strcpy(device_name, "kronostest");
+
+	memset(device_name, 0, IFNAMSIZ);
 	if ((test_iface(device_name, IFNAMSIZ, fakepath)  >= 0) || (errno != E2BIG)) {
 		printf("Something is wrong in tap_open sanity checks\n");
 		return -1;
@@ -1123,9 +1324,6 @@ static int check_knet_multi_eth(void)
 
 	memset(device_name1, 0, size);
 	memset(device_name2, 0, size);
-
-	strncpy(device_name1, "kronostest1", size);
-	strncpy(device_name2, "kronostest2", size);
 
 	tap1 = tap_open(device_name1, size, NULL);
 	if (!tap1) {
@@ -1161,6 +1359,8 @@ static int check_knet_multi_eth(void)
 	printf("Testing error conditions\n");
 
 	printf("Open same device twice\n");
+
+	memset(device_name1, 0, size);
 
 	tap1 = tap_open(device_name1, size, NULL);
 	if (!tap1) {
@@ -1203,7 +1403,6 @@ static int check_knet_mtu(void)
 	printf("Testing get/set MTU\n");
 
 	memset(device_name, 0, size);
-	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1277,7 +1476,7 @@ static int check_knet_mtu_ipv6(void)
 	printf("Testing get/set MTU with IPv6 address\n");
 
 	memset(device_name, 0, size);
-	strncpy(device_name, "kronostest", size);
+
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1292,15 +1491,21 @@ static int check_knet_mtu_ipv6(void)
 		free(error_string);
 		error_string = NULL;
 	}
-	if (err < 0) {
+	if (err) {
 		printf("Unable to assign IP address\n");
 		err=-1;
+		sleep(30);
 		goto out_clean;
 	}
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
-		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -1326,7 +1531,12 @@ static int check_knet_mtu_ipv6(void)
 		free(error_string);
 		error_string = NULL;
 	}
+#ifdef KNET_LINUX
 	if (!err) {
+#endif
+#ifdef KNET_BSD
+	if (err) {
+#endif
 		printf("Unable to verify IP address\n");
 		err=-1;
 		goto out_clean;
@@ -1347,7 +1557,12 @@ static int check_knet_mtu_ipv6(void)
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
-		 "ip addr show dev kronostest | grep -q %s/64", testipv6_2);
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_2);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_2);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -1368,8 +1583,13 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	memset(verifycmd, 0, sizeof(verifycmd));
-	snprintf(verifycmd, sizeof(verifycmd) -1,
-		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -1383,8 +1603,13 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	memset(verifycmd, 0, sizeof(verifycmd));
-	snprintf(verifycmd, sizeof(verifycmd) -1,
-		 "ip addr show dev kronostest | grep -q %s/64", testipv6_2);
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_2);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_2);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -1415,7 +1640,6 @@ static int check_knet_mac(void)
 	printf("Testing get/set MAC\n");
 
 	memset(device_name, 0, size);
-	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1455,6 +1679,7 @@ static int check_knet_mac(void)
 	if (memcmp(cur_mac, tmp_mac, sizeof(struct ether_addr))) {
 		printf("Mac addresses are not the same?!\n");
 		err = -1;
+		sleep(20);
 		goto out_clean;
 	}
 
@@ -1519,58 +1744,58 @@ static int check_tap_execute_shell(void)
 
 	printf("Testing _execute_shell\n");
 
-	printf("command /bin/true\n");
+	printf("command true\n");
 
-	err = _execute_shell("/bin/true", &error_string);
+	err = _execute_shell("true", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
-	if (err < 0) {
-		printf("Unable to execute /bin/true ?!?!\n");
+	if (err) {
+		printf("Unable to execute true ?!?!\n");
 		goto out_clean;
 	}
 
 	printf("Testing ERROR conditions\n");
 
-	printf("command /bin/false\n");
+	printf("command false\n");
 
-	err = _execute_shell("/bin/false", &error_string);
+	err = _execute_shell("false", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		printf("Can we really execute /bin/false successfully?!?!\n");
+		printf("Can we really execute false successfully?!?!\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("command that outputs to stdout (enforcing redirect)\n");
 
-	err = _execute_shell("/bin/grep -h 2>&1", &error_string);
+	err = _execute_shell("grep -h 2>&1", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		printf("Can we really execute /bin/grep -h successfully?!?\n");
+		printf("Can we really execute grep -h successfully?!?\n");
 		err = -1;
 		goto out_clean;
 	} 
 
 	printf("command that outputs to stderr\n");
-	err = _execute_shell("/bin/grep -h", &error_string);
+	err = _execute_shell("grep -h", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (!err) {
-		printf("Can we really execute /bin/grep -h successfully?!?\n");
+		printf("Can we really execute grep -h successfully?!?\n");
 		err = -1;
 		goto out_clean;
 	} 
@@ -1589,7 +1814,7 @@ static int check_tap_execute_shell(void)
 	}
 
 	printf("empty error\n");
-	err = _execute_shell("/bin/true", NULL);
+	err = _execute_shell("true", NULL);
 	if (!err) {
 		printf("Check EINVAL filter for no error_string!\n");
 		err = -1;
@@ -1605,6 +1830,7 @@ out_clean:
 
 static int check_knet_up_down(void)
 {
+	char verifycmd[1024];
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
@@ -1616,7 +1842,6 @@ static int check_knet_up_down(void)
 	printf("Testing interface up/down\n");
 
 	memset(device_name, 0, size);
-	strncpy(device_name, "kronostest", size);
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1642,8 +1867,15 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-
-	err = _execute_shell("ip addr show dev kronostest | grep -q UP", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q UP", tap->tapname);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q UP", tap->tapname);
+#endif
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1674,7 +1906,15 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell("ifconfig kronostest | grep -q UP", &error_string);
+	memset(verifycmd, 0, sizeof(verifycmd));
+	snprintf(verifycmd, sizeof(verifycmd)-1,
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q UP", tap->tapname);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q UP", tap->tapname);
+#endif
+	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1690,6 +1930,7 @@ static int check_knet_up_down(void)
 
 	printf("Testing interface pre-up/up/down/post-down (exec errors)\n");
 
+	memset(device_name, 0, size);
 	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_bad");
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1737,6 +1978,8 @@ static int check_knet_up_down(void)
 	tap_close(tap);
 
 	printf("Testing interface pre-up/up/down/post-down\n");
+
+	memset(device_name, 0, size);
 
 	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_good");
 	if (!tap) {
@@ -1852,7 +2095,7 @@ static int check_knet_close_leak(void)
 	printf("Testing close leak (needs valgrind)\n");
 
 	memset(device_name, 0, size);
-	strncpy(device_name, "kronostest", size);
+
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1908,7 +2151,7 @@ static int check_knet_set_del_ip(void)
 	printf("Testing interface add/remove ip\n");
 
 	memset(device_name, 0, size);
-	strncpy(device_name, "kronostest", size);
+
 	tap = tap_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
@@ -1961,7 +2204,12 @@ static int check_knet_set_del_ip(void)
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
-		 "ip addr show dev kronostest | grep -q %s/24", testipv4_1);
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/24", tap->tapname, testipv4_1);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv4_1);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -2040,7 +2288,12 @@ static int check_knet_set_del_ip(void)
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
-		 "ip addr show dev kronostest | grep -q %s/24", testipv4_1);
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/24", tap->tapname, testipv4_1);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv4_1);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -2069,7 +2322,12 @@ static int check_knet_set_del_ip(void)
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
-		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -2098,7 +2356,12 @@ static int check_knet_set_del_ip(void)
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
-		 "ip addr show dev kronostest | grep -q %s/64", testipv6_1);
+#ifdef KNET_LINUX
+		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+#endif
+#ifdef KNET_BSD
+		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+#endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -2142,6 +2405,8 @@ static void make_local_ips(void)
 			pid[i] = 128;
 		}
 	}
+
+	randombyte = pid[1];
 
 	snprintf(testipv4_1,
 		 sizeof(testipv4_1) - 1,
