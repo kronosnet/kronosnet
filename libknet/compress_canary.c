@@ -4,11 +4,15 @@
 
 #include "config.h"
 
+#define CANARY
+
 char BZ2_bzBuffToBuffCompress(void);
 char LZ4_compress_HC(void);
 char lzma_easy_buffer_encode(void);
 char lzo1x_1_compress(void);
-char compress2(void);
+#include "compress_zlib_remap.h"
+
+#define CANARY_CALL
 
 int main (void)
 {
@@ -26,7 +30,7 @@ int main (void)
     lzo1x_1_compress() +
 #endif
 #ifdef BUILDCOMPZLIB
-    compress2() +
+#include "compress_zlib_remap.h"
 #endif
     0;
 }

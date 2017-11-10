@@ -32,14 +32,7 @@
  */
 static void *zlib_lib;
 
-/*
- * symbols remapping
- */
-int (*_int_uncompress)(Bytef *dest, uLongf *destLen,
-		       const Bytef *source, uLong sourceLen);
-int (*_int_compress2)(Bytef *dest, uLongf *destLen,
-		      const Bytef *source, uLong sourceLen,
-		      int level);
+#include "compress_zlib_remap.h"
 
 static int zlib_remap_symbols(knet_handle_t knet_h)
 {
