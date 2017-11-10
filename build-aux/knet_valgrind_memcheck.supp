@@ -477,6 +477,22 @@
    fun:start_thread
 }
 {
+   lzma internal stuff (Ubuntu 17.10 i386)
+   Memcheck:Cond
+   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   fun:lzma_compress
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+}
+{
    nss internal stuff (FreeBSD 11.1)
    Memcheck:Addr8
    obj:/libexec/ld-elf.so.1
