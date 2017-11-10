@@ -97,6 +97,14 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 
 libknet_la_LIBADD	= $(dl_LIBS) $(pthread_LIBS) $(rt_LIBS) $(m_LIBS)
 
+noinst_PROGRAMS		= crypto_canary compress_canary
+crypto_canary_SOURCES	= crypto_canary.c
+crypto_canary_CFLAGS	= $(nss_CFLAGS) $(openssl_CFLAGS)
+crypto_canary_LDADD	= $(nss_LIBS)   $(openssl_LIBS)
+compress_canary_SOURCES	= compress_canary.c
+compress_canary_CFLAGS	= $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
+compress_canary_LDADD	= $(zlib_LIBS)   $(liblz4_LIBS)   $(lzo2_LIBS)   $(liblzma_LIBS)   $(bzip2_LIBS)
+
 dist_man_MANS		= man
 
 update-man-pages: doxyfile.stamp
