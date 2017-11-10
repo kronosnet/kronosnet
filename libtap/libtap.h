@@ -11,6 +11,10 @@
 
 #include <sys/types.h>
 
+#ifndef IFNAMSIZ
+#define IFNAMSIZ 16
+#endif
+
 typedef struct _iface *tap_t;
 
 tap_t tap_open(char *dev, size_t dev_size, const char *updownpath);
