@@ -488,6 +488,7 @@
    fun:lzma_stream_buffer_encode
    fun:lzma_easy_buffer_encode
    fun:lzma_compress
+   fun:compress
    fun:_parse_recv_from_sock
    fun:_handle_send_to_links
    fun:_handle_send_to_links_thread
