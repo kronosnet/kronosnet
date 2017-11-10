@@ -70,7 +70,7 @@ int_crypto_test_SOURCES = int_crypto.c \
 			  ../logging.c \
 			  test-common.c
 
-int_crypto_test_CFLAGS	= $(nss_CFLAGS)
+int_crypto_test_CFLAGS	= $(nss_CFLAGS) $(openssl_CFLAGS)
 
 int_timediff_test_SOURCES = int_timediff.c
 
@@ -82,7 +82,7 @@ crypto_bench_test_SOURCES = crypto_bench.c \
 			    ../logging.c \
 			    test-common.c
 
-crypto_bench_test_CFLAGS  = $(nss_CFLAGS)
+crypto_bench_test_CFLAGS  = $(nss_CFLAGS) $(openssl_CFLAGS)
 
 knet_bench_test_SOURCES	= knet_bench.c \
 			  test-common.c \
