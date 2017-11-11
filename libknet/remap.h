@@ -18,7 +18,9 @@
 #ifdef REMAP_WITH
 #define REMAP_PROTO(ret,name,args) if (!(_int_ ## name = REMAP_WITH(#name))) goto fail;
 #else
-#define REMAP_PROTO(ret,name,args) ret (*_int_ ## name)args;
+/* Provide the plain prototype as well for validation */
+#define REMAP_PROTO(ret,name,args) ret (*_int_ ## name)args; \
+				   ret name args;
 #endif /* REMAP_WITH */
 #endif /* REMAP_FAIL */
 
