@@ -32,6 +32,7 @@
 #include "threads_rx.h"
 #include "threads_tx.h"
 #include "transports.h"
+#include "transport_common.h"
 #include "logging.h"
 
 static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -428,51 +429,6 @@ static void _close_epolls(knet_handle_t knet_h)
 	close(knet_h->dst_link_handler_epollfd);
 }
 
-static int _start_transports(knet_handle_t knet_h)
-{
-	int i, savederrno = 0, err = 0;
-
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		switch (i) {
-			case KNET_TRANSPORT_UDP:
-				knet_h->transport_ops[i] = get_udp_transport();
-				break;
-			case KNET_TRANSPORT_SCTP:
-				knet_h->transport_ops[i] = get_sctp_transport();
-				break;
-			case KNET_TRANSPORT_LOOPBACK:
-				knet_h->transport_ops[i] = get_loopback_transport();
-				break;
-		}
-
-		if (knet_h->transport_ops[i]) {
-			if (knet_h->transport_ops[i]->transport_init(knet_h) < 0) {
-				savederrno = errno;
-				log_err(knet_h, KNET_SUB_HANDLE, "Failed to allocate transport handle for %s: %s",
-					knet_h->transport_ops[i]->transport_name,
-					strerror(savederrno));
-				err = -1;
-				goto out;
-			}
-		}
-	}
-
-out:
-	errno = savederrno;
-	return err;
-}
-
-static void _stop_transports(knet_handle_t knet_h)
-{
-	int i;
-
-	for (i=0; i<KNET_MAX_TRANSPORTS; i++) {
-		if (knet_h->transport_ops[i]) {
-			knet_h->transport_ops[i]->transport_free(knet_h);
-		}
-	}
-}
-
 static int _start_threads(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -698,7 +654,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	 * start transports
 	 */
 
-	if (_start_transports(knet_h)) {
+	if (start_all_transports(knet_h)) {
 		savederrno = errno;
 		goto exit_fail;
 	}
@@ -771,7 +727,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
 	_stop_threads(knet_h);
-	_stop_transports(knet_h);
+	stop_all_transports(knet_h);
 	_close_epolls(knet_h);
 	_destroy_buffers(knet_h);
 	_close_socks(knet_h);

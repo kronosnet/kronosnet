@@ -23,6 +23,7 @@
 #include "link.h"
 #include "logging.h"
 #include "transports.h"
+#include "transport_common.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"
 #include "threads_tx.h"
@@ -70,7 +71,7 @@ retry:
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
-		err = knet_h->transport_ops[dst_host->link[dst_host->active_links[link_idx]].transport_type]->transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
+		err = transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport_type, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
 		switch(err) {
 			case -1: /* unrecoverable error */
 				cur_link->status.stats.tx_data_errors++;

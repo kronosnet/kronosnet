@@ -154,7 +154,6 @@ struct knet_handle {
 	struct knet_host *host_head;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	knet_transport_t transports[KNET_MAX_TRANSPORTS+1];
-	struct knet_transport_ops *transport_ops[KNET_MAX_TRANSPORTS+1];
 	struct knet_fd_trackers knet_transport_fd_tracker[KNET_MAX_FDS]; /* track status for each fd handled by transports */
 	struct knet_handle_stats stats;
 	uint32_t reconnect_int;
@@ -242,6 +241,8 @@ typedef struct knet_transport_ops {
  */
 	const char *transport_name;
 	const uint8_t transport_id;
+	const uint8_t built_in;
+
 	uint32_t transport_mtu_overhead;
 /*
  * transport init must allocate the new transport

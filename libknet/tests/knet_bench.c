@@ -23,7 +23,7 @@
 #include "compat.h"
 #include "internals.h"
 #include "netutils.h"
-#include "transports.h"
+#include "transport_common.h"
 #include "threads_common.h"
 #include "test-common.h"
 

@@ -103,11 +103,6 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
-	if (!knet_h->transport_ops[transport]) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
@@ -216,9 +211,6 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		}
 	}
 
-	link->transport_type = transport;
-	link->transport_connected = 0;
-	link->proto_overhead = knet_h->transport_ops[link->transport_type]->transport_mtu_overhead;
 	link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
 	link->has_valid_mtu = 0;
 	link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */
@@ -228,7 +220,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);
 	link->flags = flags;
 
-	if (knet_h->transport_ops[link->transport_type]->transport_link_set_config(knet_h, link) < 0) {
+	if (transport_link_set_config(knet_h, link, transport) < 0) {
 		savederrno = errno;
 		err = -1;
 		goto exit_unlock;
@@ -392,7 +384,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		goto exit_unlock;
 	}
 
-	if ((knet_h->transport_ops[link->transport_type]->transport_link_clear_config(knet_h, link) < 0) &&
+	if ((transport_link_clear_config(knet_h, link) < 0)  &&
 	    (errno != EBUSY)) {
 		savederrno = errno;
 		err = -1;

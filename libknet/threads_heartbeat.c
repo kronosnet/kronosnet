@@ -18,6 +18,7 @@
 #include "crypto.h"
 #include "links.h"
 #include "logging.h"
+#include "transports.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"
 
@@ -92,7 +93,7 @@ retry:
 		dst_link->status.stats.tx_ping_bytes += outlen;
 
 		if (len != outlen) {
-			err = knet_h->transport_ops[dst_link->transport_type]->transport_tx_sock_error(knet_h, dst_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
