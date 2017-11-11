@@ -118,3 +118,13 @@ void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
 out:
 	return ret;
 }
+
+void *remap_symbol(knet_handle_t knet_h, uint8_t subsystem,
+		   void *lib_handle, const char *symbol_name)
+{
+	void *symbol = dlsym (lib_handle, symbol_name);
+	if (!symbol) {
+		log_err (knet_h, subsystem, "unable to map %s: %s", symbol_name, dlerror ());
+	}
+	return symbol;
+}
