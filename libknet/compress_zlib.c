@@ -36,13 +36,13 @@ static void *zlib_lib;
 
 static int zlib_remap_symbols(knet_handle_t knet_h)
 {
-	if (!(_int_uncompress = remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, "uncompress"))) goto fail;
-	if (!(_int_compress2 = remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, "compress2"))) goto fail;
+#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, name)
+#include "compress_zlib_remap.h"
 	return 0;
 
  fail:
-	_int_uncompress = NULL;
-	_int_compress2 = NULL;
+#define REMAP_FAIL
+#include "compress_zlib_remap.h"
 	errno = EINVAL;
 	return -1;
 }
