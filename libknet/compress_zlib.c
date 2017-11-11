@@ -43,32 +43,15 @@ int (*_int_compress2)(Bytef *dest, uLongf *destLen,
 
 static int zlib_remap_symbols(knet_handle_t knet_h)
 {
-	int err = 0;
-	char *error = NULL;
+	if (!(_int_uncompress = remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, "uncompress"))) goto fail;
+	if (!(_int_compress2 = remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, "compress2"))) goto fail;
+	return 0;
 
-	_int_uncompress = dlsym(zlib_lib, "uncompress");
-	if (!_int_uncompress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to map uncompress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_compress2 = dlsym(zlib_lib, "compress2");
-	if (!_int_compress2) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to map compress2: %s", error);
-		err = -1;
-		goto out;
-	}
-
-out:
-	if (err) {
-		_int_uncompress = NULL;
-		_int_compress2 = NULL;
-		errno = EINVAL;
-	}
-	return err;
+ fail:
+	_int_uncompress = NULL;
+	_int_compress2 = NULL;
+	errno = EINVAL;
+	return -1;
 }
 
 int zlib_load_lib(
