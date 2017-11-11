@@ -27,55 +27,19 @@
  */
 static void *lz4_lib;
 
-/*
- * symbols remapping
- */
-int (*_int_LZ4_compress_HC)(const char* src, char* dst,
-			    int srcSize, int dstCapacity,
-			    int compressionLevel);
-int (*_int_LZ4_compress_fast)(const char* source, char* dest,
-			      int sourceSize, int maxDestSize,
-			      int acceleration);
-int (*_int_LZ4_decompress_safe)(const char* source, char* dest,
-			        int compressedSize, int maxDecompressedSize);
+#include "compress_lz4_remap.h"
 
 static int lz4_remap_symbols(knet_handle_t knet_h)
 {
-	int err = 0;
-	char *error = NULL;
+#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_LZ4COMP, lz4_lib, name)
+#include "compress_lz4_remap.h"
+	return 0;
 
-	_int_LZ4_compress_HC = dlsym(lz4_lib, "LZ4_compress_HC");
-	if (!_int_LZ4_compress_HC) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZ4COMP, "unable to map LZ4_compress_HC: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_LZ4_compress_fast = dlsym(lz4_lib, "LZ4_compress_fast");
-	if (!_int_LZ4_compress_fast) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZ4COMP, "unable to map LZ4_compress_fast: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_LZ4_decompress_safe = dlsym(lz4_lib, "LZ4_decompress_safe");
-	if (!_int_LZ4_decompress_safe) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZ4COMP, "unable to map LZ4_decompress_safe: %s", error);
-		err = -1;
-		goto out;
-	}
-
-out:
-	if (err) {
-		_int_LZ4_compress_HC = NULL;
-		_int_LZ4_compress_fast = NULL;
-		_int_LZ4_decompress_safe = NULL;
-		errno = EINVAL;
-	}
-	return err;
+ fail:
+#define REMAP_FAIL
+#include "compress_lz4_remap.h"
+	errno = EINVAL;
+	return -1;
 }
 
 int lz4_load_lib(

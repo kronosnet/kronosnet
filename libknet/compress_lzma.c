@@ -27,45 +27,19 @@
  */
 static void *lzma_lib;
 
-/*
- * symbols remapping
- */
-int (*_int_lzma_easy_buffer_encode)(
-		uint32_t preset, lzma_check check,
-		const lzma_allocator *allocator,
-		const uint8_t *in, size_t in_size,
-		uint8_t *out, size_t *out_pos, size_t out_size);
-int (*_int_lzma_stream_buffer_decode)(
-		uint64_t *memlimit, uint32_t flags,
-		const lzma_allocator *allocator,
-		const uint8_t *in, size_t *in_pos, size_t in_size,
-		uint8_t *out, size_t *out_pos, size_t out_size);
+#include "compress_lzma_remap.h"
 
 static int lzma_remap_symbols(knet_handle_t knet_h)
 {
-	int err = 0;
-	char *error = NULL;
+#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_LZMACOMP, lzma_lib, name)
+#include "compress_lzma_remap.h"
+	return 0;
 
-	_int_lzma_easy_buffer_encode = dlsym(lzma_lib, "lzma_easy_buffer_encode");
-	if (!_int_lzma_easy_buffer_encode) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZMACOMP, "unable to map lzma_easy_buffer_encode: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_lzma_stream_buffer_decode = dlsym(lzma_lib, "lzma_stream_buffer_decode");
-	if (!_int_lzma_stream_buffer_decode) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZMACOMP, "unable to map lzma_stream_buffer_decode: %s", error);
-		err = -1;
-		goto out;
-	}
-out:
-	if (err) {
-		errno = EINVAL;
-	}
-	return err;
+ fail:
+#define REMAP_FAIL
+#include "compress_lzma_remap.h"
+	errno = EINVAL;
+	return -1;
 }
 
 int lzma_load_lib(

@@ -27,42 +27,19 @@
  */
 static void *bzip2_lib;
 
-/*
- * symbols remapping
- */
-int (*_int_BZ2_bzBuffToBuffCompress)(char* dest, unsigned int* destLen,
-				     char* source, unsigned int sourceLen,
-				     int blockSize100k, int verbosity,
-				     int workFactor);
-int (*_int_BZ2_bzBuffToBuffDecompress)(char* dest, unsigned int* destLen,
-				       char* source, unsigned int sourceLen,
-				       int samll, int verbosity);
+#include "compress_bzip2_remap.h"
 
 static int bzip2_remap_symbols(knet_handle_t knet_h)
 {
-	int err = 0;
-	char *error = NULL;
+#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_BZIP2COMP, bzip2_lib, name)
+#include "compress_bzip2_remap.h"
+	return 0;
 
-	_int_BZ2_bzBuffToBuffCompress = dlsym(bzip2_lib, "BZ2_bzBuffToBuffCompress");
-	if (!_int_BZ2_bzBuffToBuffCompress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_BZIP2COMP, "unable to map BZ2_bzBuffToBuffCompress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_BZ2_bzBuffToBuffDecompress = dlsym(bzip2_lib, "BZ2_bzBuffToBuffDecompress");
-	if (!_int_BZ2_bzBuffToBuffDecompress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_BZIP2COMP, "unable to map BZ2_bzBuffToBuffDecompress: %s", error);
-		err = -1;
-		goto out;
-	}
-out:
-	if (err) {
-		errno = EINVAL;
-	}
-	return err;
+ fail:
+#define REMAP_FAIL
+#include "compress_bzip2_remap.h"
+        errno = EINVAL;
+        return -1;
 }
 
 int bzip2_load_lib(

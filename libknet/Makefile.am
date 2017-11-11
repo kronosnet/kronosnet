@@ -60,10 +60,14 @@ noinst_HEADERS		= \
 			  common.h \
 			  compat.h \
 			  compress.h \
-			  compress_lz4.h \
-			  compress_lzo2.h \
-			  compress_lzma.h \
 			  compress_bzip2.h \
+			  compress_bzip2_remap.h \
+			  compress_lz4.h \
+			  compress_lz4_remap.h \
+			  compress_lzma.h \
+			  compress_lzma_remap.h \
+			  compress_lzo2.h \
+			  compress_lzo2_remap.h \
 			  compress_zlib.h \
 			  compress_zlib_remap.h \
 			  crypto.h \

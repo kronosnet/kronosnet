@@ -27,93 +27,19 @@
  */
 static void *lzo2_lib;
 
-/*
- * symbols remapping
- */
-int (*_int_lzo1x_decompress)(const lzo_bytep src, lzo_uint src_len,
-			     lzo_bytep dst, lzo_uintp dst_len,
-			     lzo_voidp wrkmem /* NOT USED */ );
-int (*_int_lzo1x_1_compress)(const lzo_bytep src, lzo_uint src_len,
-			     lzo_bytep dst, lzo_uintp dst_len,
-			     lzo_voidp wrkmem);
-int (*_int_lzo1x_1_11_compress)(const lzo_bytep src, lzo_uint src_len,
-				lzo_bytep dst, lzo_uintp dst_len,
-				lzo_voidp wrkmem);
-int (*_int_lzo1x_1_12_compress)(const lzo_bytep src, lzo_uint src_len,
-				lzo_bytep dst, lzo_uintp dst_len,
-				lzo_voidp wrkmem);
-int (*_int_lzo1x_1_15_compress)(const lzo_bytep src, lzo_uint src_len,
-				lzo_bytep dst, lzo_uintp dst_len,
-				lzo_voidp wrkmem);
-
-int (*_int_lzo1x_999_compress)(const lzo_bytep src, lzo_uint src_len,
-			       lzo_bytep dst, lzo_uintp dst_len,
-			       lzo_voidp wrkmem);
+#include "compress_lzo2_remap.h"
 
 static int lzo2_remap_symbols(knet_handle_t knet_h)
 {
-	int err = 0;
-	char *error = NULL;
+#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_LZO2COMP, lzo2_lib, name)
+#include "compress_lzo2_remap.h"
+	return 0;
 
-	_int_lzo1x_decompress = dlsym(lzo2_lib, "lzo1x_decompress");
-	if (!_int_lzo1x_decompress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_decompress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_lzo1x_1_compress = dlsym(lzo2_lib, "lzo1x_1_compress");
-	if (!_int_lzo1x_1_compress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_compress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_lzo1x_1_11_compress = dlsym(lzo2_lib, "lzo1x_1_11_compress");
-	if (!_int_lzo1x_1_11_compress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_11_compress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_lzo1x_1_12_compress = dlsym(lzo2_lib, "lzo1x_1_12_compress");
-	if (!_int_lzo1x_1_12_compress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_12_compress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_lzo1x_1_15_compress = dlsym(lzo2_lib, "lzo1x_1_15_compress");
-	if (!_int_lzo1x_1_15_compress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_1_15_compress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_lzo1x_999_compress = dlsym(lzo2_lib, "lzo1x_999_compress");
-	if (!_int_lzo1x_999_compress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_LZO2COMP, "unable to map lzo1x_999_compress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-out:
-	if (err) {
-		_int_lzo1x_decompress = NULL;
-		_int_lzo1x_1_compress = NULL;
-		_int_lzo1x_1_11_compress = NULL;
-		_int_lzo1x_1_12_compress = NULL;
-		_int_lzo1x_1_15_compress = NULL;
-		_int_lzo1x_999_compress = NULL;
-		errno = EINVAL;
-	}
-	return err;
+ fail:
+#define REMAP_FAIL
+#include "compress_lzo2_remap.h"
+	errno = EINVAL;
+	return -1;
 }
 
 int lzo2_load_lib(
