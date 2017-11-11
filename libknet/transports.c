@@ -159,7 +159,7 @@ const char *knet_get_transport_name_by_id(uint8_t transport)
 	int savederrno = 0;
 	const char *name = NULL;
 
-	if (transport >= KNET_MAX_TRANSPORTS) {
+	if (transport == KNET_MAX_TRANSPORTS) {
 		errno = EINVAL;
 		return name;
 	}

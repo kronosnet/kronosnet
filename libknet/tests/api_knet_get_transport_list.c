@@ -23,7 +23,7 @@ static void test(void)
 {
 	struct knet_transport_info transport_list[KNET_MAX_TRANSPORTS];
 	size_t transport_list_entries;
-	size_t i, expected_count;
+	size_t i;
 
 	memset(transport_list, 0, sizeof(transport_list));
 
@@ -51,16 +51,6 @@ static void test(void)
 	for (i=0; i<transport_list_entries; i++) {
 		printf("Detected transport: %s id: %d properties: %u\n",
 			transport_list[i].name, transport_list[i].id, transport_list[i].properties);
-	}
-
-	expected_count = KNET_MAX_TRANSPORTS;
-#ifndef HAVE_NETINET_SCTP_H
-	expected_count--;
-#endif
-
-	if (transport_list_entries != expected_count) {
-		printf("Error! expected: %zu transports, got: %zu\n", expected_count, transport_list_entries);
-		exit(FAIL);
 	}
 }
 

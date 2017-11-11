@@ -1183,7 +1183,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 #define KNET_TRANSPORT_LOOPBACK 0
 #define KNET_TRANSPORT_UDP      1
 #define KNET_TRANSPORT_SCTP     2
-#define KNET_MAX_TRANSPORTS     3
+#define KNET_MAX_TRANSPORTS     UINT8_MAX
 
 /*
  * The Loopback transport is only valid for connections to localhost, the host
