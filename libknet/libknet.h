@@ -1202,11 +1202,9 @@ struct knet_transport_info {
 };
 
 /**
- * knet_handle_get_transport_list
+ * knet_get_transport_list
  *
  * @brief Get a list of the transports support by this build of knet
- *
- * knet_h                 - pointer to knet_handle_t
  *
  * transport_list         - an array of struct transport_info that must be
  *                          at least of size struct transport_info * KNET_MAX_TRANSPORTS
@@ -1215,50 +1213,45 @@ struct knet_transport_info {
  *                          are available in this build of libknet.
  *
  * @return
- * knet_handle_get_transport_list returns
+ * knet_get_transport_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-int knet_handle_get_transport_list(knet_handle_t knet_h,
-				   struct knet_transport_info *transport_list,
-				   size_t *transport_list_entries);
+int knet_get_transport_list(struct knet_transport_info *transport_list,
+			    size_t *transport_list_entries);
 
 /**
- * knet_handle_get_transport_name_by_id
+ * knet_get_transport_name_by_id
  *
  * @brief Get a transport name from its ID number
- *
- * knet_h    - pointer to knet_handle_t
  *
  * transport - one of the KNET_TRANSPORT_xxx constants
  *
  * @return
- * knet_handle_get_transport_name_by_id returns:
+ * knet_get_transport_name_by_id returns:
  *
  * @retval pointer to the name on success or
  * @retval NULL on error and errno is set.
  */
 
-const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t transport);
+const char *knet_get_transport_name_by_id(uint8_t transport);
 
 /**
- * knet_handle_get_transport_id_by_name
+ * knet_get_transport_id_by_name
  *
  * @brief Get a transport ID from its name
- *
- * knet_h    - pointer to knet_handle_t
  *
  * name      - transport name (UDP/SCTP/etc)
  *
  * @return
- * knet_handle_get_transport_name_by_id returns:
+ * knet_get_transport_name_by_id returns:
  *
  * @retval KNET_MAX_TRANSPORTS on error and errno is set accordingly
  * @retval KNET_TRANSPORT_xxx on success.
  */
 
-uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name);
+uint8_t knet_get_transport_id_by_name(const char *name);
 
 
 

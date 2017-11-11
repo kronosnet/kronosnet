@@ -26,9 +26,9 @@ dist_man_MANS = \
 		knet_handle_get_crypto_list.3 \
 		knet_handle_get_datafd.3 \
 		knet_handle_get_stats.3 \
-		knet_handle_get_transport_id_by_name.3 \
-		knet_handle_get_transport_list.3 \
-		knet_handle_get_transport_name_by_id.3 \
+		knet_get_transport_id_by_name.3 \
+		knet_get_transport_list.3 \
+		knet_get_transport_name_by_id.3 \
 		knet_handle_get_transport_reconnect_interval.3 \
 		knet_handle_new.3 \
 		knet_handle_pmtud_get.3 \
