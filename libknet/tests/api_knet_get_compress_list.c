@@ -45,6 +45,7 @@ static void test(void)
 	printf("Test knet_get_compress_list with valid data\n");
 
 	if (knet_get_compress_list(compress_list, &compress_list_entries1) < 0) {
+		printf("knet_get_compress_list failed: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
