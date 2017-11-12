@@ -19,7 +19,7 @@ api_checks		= \
 			  api_knet_handle_get_channel_test \
 			  api_knet_handle_get_datafd_test \
 			  api_knet_handle_get_stats_test \
-			  api_knet_handle_get_crypto_list_test \
+			  api_knet_get_crypto_list_test \
 			  api_knet_handle_get_compress_list_test \
 			  api_knet_handle_clear_stats_test \
 			  api_knet_get_transport_list_test \
@@ -105,10 +105,10 @@ api_knet_handle_get_datafd_test_SOURCES = api_knet_handle_get_datafd.c \
 					  test-common.c
 
 api_knet_handle_get_stats_test_SOURCES = api_knet_handle_get_stats.c \
-					  test-common.c
+					 test-common.c
 
-api_knet_handle_get_crypto_list_test_SOURCES = api_knet_handle_get_crypto_list.c \
-					  test-common.c
+api_knet_get_crypto_list_test_SOURCES = api_knet_get_crypto_list.c \
+					test-common.c
 
 api_knet_handle_get_compress_list_test_SOURCES = api_knet_handle_get_compress_list.c \
 					  test-common.c

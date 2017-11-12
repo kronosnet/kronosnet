@@ -791,26 +791,34 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
 
+
+
+struct knet_crypto_info {
+	const char *name; /* openssl,nss,etc.. */
+};
+
 /**
- * knet_handle_get_crypto_list
+ * knet_get_crypto_list
  *
  * @brief Get a list of supported crypto libraries
  *
- * knet_h   - pointer to knet_handle_t
- *
- * crypto_names - array of char *
- *                If NULL then only the number of names is returned in num_names to
- *		  to allow the caller to allocate sufficient space.
+ * crypto_list  - array of strict knet_crypto_info *
+ *                If NULL then only the number of names is returned in crypto_list_entries
+ *                to allow the caller to allocate sufficient space.
+ *		  libknet does not allow more than 256 crypto methods at the moment.
+ *		  it is safe to allocate 256 structs to avoid calling
+ *		  knet_get_crypto_list twice.
  *
  * num_names - returns the number of strings in crypto_names
  *
  * @return
- * knet_host_add returns
+ * knet_get_crypto_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names, size_t *num_names);
+int knet_get_crypto_list(struct knet_crypto_info *crypto_list,
+			 size_t *crypto_list_entries);
 
 /**
  * knet_handle_get_compress_list
