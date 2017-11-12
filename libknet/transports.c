@@ -125,31 +125,26 @@ int knet_get_transport_list(struct knet_transport_info *transport_list,
 			    size_t *transport_list_entries)
 {
 	int err = 0;
-	int i, count;
-
-	if (!transport_list) {
-		errno = EINVAL;
-		return -1;
-	}
+	int idx = 0;
+	int outidx = 0;
 
 	if (!transport_list_entries) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	count = 0;
-	i = 0;
-
-	while (transport_modules_cmd[i].transport_name != NULL) {
-		if (transport_modules_cmd[i].built_in) {
-			transport_list[count].name = transport_modules_cmd[i].transport_name;
-			transport_list[count].id = transport_modules_cmd[i].transport_id;
-			count++;
+	while (transport_modules_cmd[idx].transport_name != NULL) {
+		if (transport_modules_cmd[idx].built_in) {
+			if (transport_list) {
+				transport_list[outidx].name = transport_modules_cmd[idx].transport_name;
+				transport_list[outidx].id = transport_modules_cmd[idx].transport_id;
+			}
+			outidx++;
 		}
-		i++;
+		idx++;
 	}
 
-	*transport_list_entries = count;
+	*transport_list_entries = outidx;
 
 	return err;
 }
