@@ -22,7 +22,7 @@ dist_man_MANS = \
 		knet_handle_enable_sock_notify.3 \
 		knet_handle_free.3 \
 		knet_handle_get_channel.3 \
-		knet_handle_get_compress_list.3 \
+		knet_get_compress_list.3 \
 		knet_get_crypto_list.3 \
 		knet_handle_get_datafd.3 \
 		knet_handle_get_stats.3 \

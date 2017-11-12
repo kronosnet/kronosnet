@@ -441,43 +441,27 @@ out_unlock:
 	return err;
 }
 
-int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_names, size_t *num_names)
+int knet_get_compress_list(struct knet_compress_info *compress_list, size_t *compress_list_entries)
 {
-	int savederrno = 0;
 	int err = 0;
 	int idx = 0;
 	int outidx = 0;
 
-	if (!knet_h) {
+	if (!compress_list_entries) {
 		errno = EINVAL;
-		return -1;
-	}
-
-	if (!num_names) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
 		return -1;
 	}
 
 	while (compress_modules_cmds[idx].model_name != NULL) {
 		if (compress_modules_cmds[idx].built_in) {
-			if (compress_names) {
-				compress_names[outidx] = compress_modules_cmds[idx].model_name;
+			if (compress_list) {
+				compress_list[outidx].name = compress_modules_cmds[idx].model_name;
 			}
 			outidx++;
 		}
 		idx++;
 	}
-	*num_names = outidx;
+	*compress_list_entries = outidx;
 
-	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
 	return err;
 }
