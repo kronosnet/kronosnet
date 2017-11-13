@@ -48,7 +48,6 @@ static void test(const char *model)
 	int savederrno;
 	struct sockaddr_storage lo;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
-	unsigned int cur_mtu;
 
 	if (make_local_sockaddr(&lo, 0) < 0) {
 		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
@@ -148,19 +147,7 @@ static void test(const char *model)
 		sleep(1);
 	}
 
-
-	if (knet_handle_pmtud_get(knet_h, &cur_mtu) < 0) {
-		printf("knet_handle_pmtud_get failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	send_len = knet_send(knet_h, send_buff, cur_mtu - 100, channel);
+	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		printf("knet_send failed: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
@@ -172,7 +159,7 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (send_len != (ssize_t)cur_mtu - 100) {
+	if (send_len != sizeof(send_buff)) {
 		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
@@ -204,7 +191,7 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (memcmp(recv_buff, send_buff, cur_mtu - 100)) {
+	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		printf("recv and send buffers are different!\n");
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
@@ -236,7 +223,7 @@ static void test(const char *model)
 			       stats.rx_crypt_packets);
 		}
 	} else {
-		if (stats.tx_crypt_packets != 1 ||
+		if (stats.tx_crypt_packets >= 1 ||
 		    stats.rx_crypt_packets < 1) {
 			printf("stats look wrong: tx_packets: %" PRIu64 ", rx_packets: %" PRIu64 "\n",
 			       stats.tx_crypt_packets,
