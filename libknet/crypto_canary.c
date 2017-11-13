@@ -6,7 +6,7 @@
 
 #define CANARY
 
-char NSS_NoDB_Init(void);
+#include "crypto_nss_remap.h"
 #include "crypto_openssl_remap.h"
 
 #define CANARY_CALL
@@ -15,7 +15,7 @@ int main (void)
 {
   return
 #ifdef BUILDCRYPTONSS
-    NSS_NoDB_Init() +
+#include "crypto_nss_remap.h"
 #endif
 #ifdef BUILDCRYPTOOPENSSL
 #include "crypto_openssl_remap.h"

@@ -72,6 +72,7 @@ noinst_HEADERS		= \
 			  compress_zlib_remap.h \
 			  crypto.h \
 			  crypto_nss.h \
+			  crypto_nss_remap.h \
 			  crypto_openssl.h \
 			  crypto_openssl_remap.h \
 			  host.h \
