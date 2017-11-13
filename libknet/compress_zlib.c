@@ -20,13 +20,6 @@
 #include "logging.h"
 #include "common.h"
 
-#ifdef KNET_LINUX
-#define LIBZ_1 "libz.so.1"
-#endif
-#ifdef KNET_BSD
-#define LIBZ_1 "libz.so"
-#endif
-
 /*
  * global vars for dlopen
  */

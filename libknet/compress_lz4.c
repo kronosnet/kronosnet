@@ -20,8 +20,6 @@
 #include "logging.h"
 #include "common.h"
 
-#define LIBLZ4_1 "liblz4.so.1"
-
 /*
  * global vars for dlopen
  */
