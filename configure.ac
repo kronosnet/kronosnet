@@ -185,7 +185,11 @@ AC_C_INLINE
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create], [AC_SUBST([pthread_LIBS], [-lpthread])], [AC_MSG_ERROR([kronosnet requires pthread library])])
 AC_CHECK_LIB([m], [ceil], [AC_SUBST([m_LIBS], [-lm])], [AC_MSG_ERROR([kronosnet requires m library])])
-AC_CHECK_LIB([rt], [clock_gettime], [AC_SUBST([rt_LIBS], [-lrt])], [AC_MSG_ERROR([kronosnet requires rt library])])
+saved_LIBS="$LIBS"
+LIBS=
+AC_SEARCH_LIBS([clock_gettime], [rt], , [AC_MSG_ERROR([clock_gettime not found])])
+AC_SUBST([rt_LIBS], [$LIBS])
+LIBS="$saved_LIBS"
 
 AC_SEARCH_LIBS([dlopen], [dl dld], [dllibs=$ac_res], [AC_MSG_ERROR([kronosnet requires dl library])])
 
