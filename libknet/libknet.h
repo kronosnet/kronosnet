@@ -805,13 +805,13 @@ struct knet_crypto_info {
  * @brief Get a list of supported crypto libraries
  *
  * crypto_list  - array of struct knet_crypto_info *
- *                If NULL then only the number of names is returned in crypto_list_entries
+ *                If NULL then only the number of structs is returned in crypto_list_entries
  *                to allow the caller to allocate sufficient space.
  *		  libknet does not allow more than 256 crypto methods at the moment.
  *		  it is safe to allocate 256 structs to avoid calling
  *		  knet_get_crypto_list twice.
  *
- * crypto_list_entries - returns the number of strings in crypto_names
+ * crypto_list_entries - returns the number of structs in crypto_list
  *
  * @return
  * knet_get_crypto_list returns
@@ -836,13 +836,13 @@ struct knet_compress_info {
  * @brief Get a list of support compression types
  *
  * compress_list - array of struct knet_compress_info *
- *		   If NULL then only the number of names is returned in num_names to
+ *		   If NULL then only the number of structs is returned in compress_list_entries
  *		   to allow the caller to allocate sufficient space.
  *		   libknet does not allow more than 256 compress methods at the moment.
  *		   it is safe to allocate 256 structs to avoid calling
  *		   knet_get_compress_list twice.
  *
- * compress_list_entries - returns the number of strings in compres_names
+ * compress_list_entries - returns the number of structs in compress_list
  *
  * @return
  * knet_get_compress_list returns

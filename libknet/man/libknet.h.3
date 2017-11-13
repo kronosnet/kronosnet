@@ -83,6 +83,54 @@ int           knet_strtoaddr(const char *, const char *, struct sockaddr_storage
 .RS
 .nf
 \fB
+struct knet_handle_crypto_cfg {
+  char          \fIcrypto_model\fP;
+  char          \fIcrypto_cipher_type\fP;
+  char          \fIcrypto_hash_type\fP;
+  unsigned char \fIprivate_key\fP;
+  unsigned int  \fIprivate_key_len\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct knet_transport_info {
+  const char  *\fIname\fP;
+  uint8_t      \fIid\fP;
+  uint8_t      \fIproperties\fP;
+  char         \fIpad\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
+struct knet_host_status {
+  uint8_t  \fIreachable\fP;
+  uint8_t  \fIremote\fP;
+  uint8_t  \fIexternal\fP;
+};
+\fP
+.fi
+.RE
+.SS ""
+.PP
+.sp
+.sp
+.RS
+.nf
+\fB
 struct knet_handle_stats {
   size_t   \fIsize\fP;
   uint64_t \fItx_uncompressed_packets\fP;
@@ -143,37 +191,6 @@ struct knet_link_status {
 .RS
 .nf
 \fB
-struct knet_crypto_info {
-  const char  *\fIname\fP;
-  uint8_t      \fIproperties\fP;
-  char         \fIpad\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
-struct knet_transport_info {
-  const char  *\fIname\fP;
-  uint8_t      \fIid\fP;
-  uint8_t      \fIproperties\fP;
-  char         \fIpad\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
 struct knet_handle_compress_cfg {
   char     \fIcompress_model\fP;
   uint32_t \fIcompress_threshold\fP;
@@ -189,7 +206,7 @@ struct knet_handle_compress_cfg {
 .RS
 .nf
 \fB
-struct knet_compress_info {
+struct knet_crypto_info {
   const char  *\fIname\fP;
   uint8_t      \fIproperties\fP;
   char         \fIpad\fP;
@@ -204,27 +221,10 @@ struct knet_compress_info {
 .RS
 .nf
 \fB
-struct knet_host_status {
-  uint8_t  \fIreachable\fP;
-  uint8_t  \fIremote\fP;
-  uint8_t  \fIexternal\fP;
-};
-\fP
-.fi
-.RE
-.SS ""
-.PP
-.sp
-.sp
-.RS
-.nf
-\fB
-struct knet_handle_crypto_cfg {
-  char          \fIcrypto_model\fP;
-  char          \fIcrypto_cipher_type\fP;
-  char          \fIcrypto_hash_type\fP;
-  unsigned char \fIprivate_key\fP;
-  unsigned int  \fIprivate_key_len\fP;
+struct knet_compress_info {
+  const char  *\fIname\fP;
+  uint8_t      \fIproperties\fP;
+  char         \fIpad\fP;
 };
 \fP
 .fi

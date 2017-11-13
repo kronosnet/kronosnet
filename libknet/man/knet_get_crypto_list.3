@@ -16,9 +16,9 @@ knet_get_crypto_list \- Get a list of supported crypto libraries.
 .PP 
 knet_get_crypto_list
 .PP 
-crypto_list - array of struct knet_crypto_info * If NULL then only the number of names is returned in crypto_list_entries to allow the caller to allocate sufficient space. libknet does not allow more than 256 crypto methods at the moment. it is safe to allocate 256 structs to avoid calling knet_get_crypto_list twice.
+crypto_list - array of struct knet_crypto_info * If NULL then only the number of structs is returned in crypto_list_entries to allow the caller to allocate sufficient space. libknet does not allow more than 256 crypto methods at the moment. it is safe to allocate 256 structs to avoid calling knet_get_crypto_list twice.
 .PP 
-crypto_list_entries - returns the number of strings in crypto_names
+crypto_list_entries - returns the number of structs in crypto_list
 .SH STRUCTURES
 .SS ""
 .PP
