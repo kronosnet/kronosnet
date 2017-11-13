@@ -281,21 +281,6 @@ AC_FUNC_ALLOCA
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([memset])
-AC_CHECK_FUNCS([strdup])
-AC_CHECK_FUNCS([strerror])
-AC_CHECK_FUNCS([dup2])
-AC_CHECK_FUNCS([select])
-AC_CHECK_FUNCS([socket])
-AC_CHECK_FUNCS([inet_ntoa])
-AC_CHECK_FUNCS([memmove])
-AC_CHECK_FUNCS([strchr])
-AC_CHECK_FUNCS([atexit])
-AC_CHECK_FUNCS([ftruncate])
-AC_CHECK_FUNCS([strrchr])
-AC_CHECK_FUNCS([strstr])
-AC_CHECK_FUNCS([clock_gettime])
-AC_CHECK_FUNCS([strcasecmp])
 AC_CHECK_FUNCS([kevent])
 # if neither sys/epoll.h nor kevent are present, we should fail.
 
