@@ -172,7 +172,7 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (send_len != cur_mtu - 100) {
+	if (send_len != (ssize_t)cur_mtu - 100) {
 		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
