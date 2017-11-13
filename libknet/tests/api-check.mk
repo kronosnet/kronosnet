@@ -29,6 +29,7 @@ api_checks		= \
 			  api_knet_handle_get_transport_reconnect_interval_test \
 			  api_knet_recv_test \
 			  api_knet_send_test \
+			  api_knet_send_crypto_test \
 			  api_knet_send_compress_test \
 			  api_knet_send_sync_test \
 			  api_knet_send_loopback_test \
@@ -139,6 +140,9 @@ api_knet_send_test_SOURCES = api_knet_send.c \
 
 api_knet_send_compress_test_SOURCES = api_knet_send_compress.c \
 				      test-common.c
+
+api_knet_send_crypto_test_SOURCES = api_knet_send_crypto.c \
+				    test-common.c
 
 api_knet_send_loopback_test_SOURCES = api_knet_send_loopback.c \
 			     test-common.c
