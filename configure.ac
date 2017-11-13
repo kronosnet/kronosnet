@@ -220,9 +220,9 @@ if test "x$enable_crypto_nss" = xyes; then
 fi
 
 if test "x$enable_crypto_openssl" = xyes; then
-	PKG_CHECK_MODULES([openssl],[openssl < 1.1],
+	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
 			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
-			  [PKG_CHECK_MODULES([openssl],[openssl >= 1.1],
+			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
 					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
 fi
