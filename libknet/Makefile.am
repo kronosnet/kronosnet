@@ -45,10 +45,11 @@ sources			= \
 			  threads_pmtud.c \
 			  threads_rx.c \
 			  threads_tx.c \
-			  transport_udp.c \
-			  transport_sctp.c \
+			  transports.c \
+			  transport_common.c \
 			  transport_loopback.c \
-			  transport_common.c
+			  transport_udp.c \
+			  transport_sctp.c
 
 include_HEADERS		= libknet.h
 
@@ -88,7 +89,11 @@ noinst_HEADERS		= \
 			  threads_pmtud.h \
 			  threads_rx.h \
 			  threads_tx.h \
-			  transports.h
+			  transports.h \
+			  transport_common.h \
+			  transport_loopback.h \
+			  transport_udp.h \
+			  transport_sctp.h
 
 lib_LTLIBRARIES		= libknet.la
 

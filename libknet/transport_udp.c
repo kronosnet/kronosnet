@@ -27,10 +27,9 @@
 #include "link.h"
 #include "logging.h"
 #include "common.h"
-#include "transports.h"
+#include "transport_common.h"
+#include "transport_udp.h"
 #include "threads_common.h"
-
-#define KNET_PMTUD_UDP_OVERHEAD 8
 
 typedef struct udp_handle_info {
 	struct knet_list_head links_list;
@@ -43,7 +42,7 @@ typedef struct udp_link_info {
 	int on_epoll;
 } udp_link_info_t;
 
-static int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link)
+int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	int sock = -1;
@@ -167,7 +166,7 @@ exit_error:
 	return err;
 }
 
-static int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link)
+int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	int err = 0, savederrno = 0;
 	int found = 0;
@@ -228,7 +227,7 @@ exit_error:
 	return err;
 }
 
-static int udp_transport_free(knet_handle_t knet_h)
+int udp_transport_free(knet_handle_t knet_h)
 {
 	udp_handle_info_t *handle_info;
 
@@ -254,7 +253,7 @@ static int udp_transport_free(knet_handle_t knet_h)
 	return 0;
 }
 
-static int udp_transport_init(knet_handle_t knet_h)
+int udp_transport_init(knet_handle_t knet_h)
 {
 	udp_handle_info_t *handle_info;
 
@@ -354,7 +353,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 }
 #endif
 
-static int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	if (recv_errno == EAGAIN) {
 		read_errs_from_sock(knet_h, sockfd);
@@ -362,7 +361,7 @@ static int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int rec
 	return 0;
 }
 
-static int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	if (recv_err < 0) {
 		if (recv_errno == EMSGSIZE) {
@@ -382,7 +381,7 @@ static int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int rec
 	return 0;
 }
 
-static int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
+int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	if (msg->msg_len == 0)
 		return 0;
@@ -390,27 +389,8 @@ static int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct kne
 	return 2;
 }
 
-static int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
+int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
 {
 	kn_link->status.dynconnected = 1;
 	return 0;
-}
-
-static knet_transport_ops_t udp_transport_ops = {
-	.transport_name = "UDP",
-	.transport_id = KNET_TRANSPORT_UDP,
-	.transport_mtu_overhead = KNET_PMTUD_UDP_OVERHEAD,
-	.transport_init = udp_transport_init,
-	.transport_free = udp_transport_free,
-	.transport_link_set_config = udp_transport_link_set_config,
-	.transport_link_clear_config = udp_transport_link_clear_config,
-	.transport_link_dyn_connect = udp_transport_link_dyn_connect,
-	.transport_rx_sock_error = udp_transport_rx_sock_error,
-	.transport_tx_sock_error = udp_transport_tx_sock_error,
-	.transport_rx_is_data = udp_transport_rx_is_data,
-};
-
-knet_transport_ops_t *get_udp_transport()
-{
-	return &udp_transport_ops;
 }

@@ -9,20 +9,14 @@
 #ifndef __KNET_TRANSPORTS_H__
 #define __KNET_TRANSPORTS_H__
 
-knet_transport_ops_t *get_udp_transport(void);
-knet_transport_ops_t *get_sctp_transport(void);
-knet_transport_ops_t *get_loopback_transport(void);
+int start_all_transports(knet_handle_t knet_h);
+void stop_all_transports(knet_handle_t knet_h);
 
-int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, const char *type);
-int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_storage *address, uint64_t flags, const char *type);
-
-int _init_socketpair(knet_handle_t knet_h, int *sock);
-void _close_socketpair(knet_handle_t knet_h, int *sock);
-
-int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data);
-int _is_valid_fd(knet_handle_t knet_h, int sockfd);
-
-int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
-int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
+int transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link, uint8_t transport);
+int transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link);
+int transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link);
+int transport_rx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno);
+int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno);
+int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, struct knet_mmsghdr *msg);
 
 #endif

@@ -791,47 +791,67 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
 
+
+
+struct knet_crypto_info {
+	const char *name; /* openssl,nss,etc.. */
+	uint8_t properties; /* currently unused */
+	char pad[256];      /* currently unused */
+};
+
 /**
- * knet_handle_get_crypto_list
+ * knet_get_crypto_list
  *
  * @brief Get a list of supported crypto libraries
  *
- * knet_h   - pointer to knet_handle_t
+ * crypto_list  - array of struct knet_crypto_info *
+ *                If NULL then only the number of structs is returned in crypto_list_entries
+ *                to allow the caller to allocate sufficient space.
+ *		  libknet does not allow more than 256 crypto methods at the moment.
+ *		  it is safe to allocate 256 structs to avoid calling
+ *		  knet_get_crypto_list twice.
  *
- * crypto_names - array of char *
- *                If NULL then only the number of names is returned in num_names to
- *		  to allow the caller to allocate sufficient space.
- *
- * num_names - returns the number of strings in crypto_names
+ * crypto_list_entries - returns the number of structs in crypto_list
  *
  * @return
- * knet_host_add returns
+ * knet_get_crypto_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-int knet_handle_get_crypto_list(knet_handle_t knet_h, const char **crypto_names, size_t *num_names);
+int knet_get_crypto_list(struct knet_crypto_info *crypto_list,
+			 size_t *crypto_list_entries);
+
+
+
+struct knet_compress_info {
+	const char *name; /* bzip2, lz4, etc.. */
+	uint8_t properties; /* currently unused */
+	char pad[256];      /* currently unused */
+};
 
 /**
- * knet_handle_get_compress_list
+ * knet_get_compress_list
  *
  * @brief Get a list of support compression types
  *
- * knet_h   - pointer to knet_handle_t
+ * compress_list - array of struct knet_compress_info *
+ *		   If NULL then only the number of structs is returned in compress_list_entries
+ *		   to allow the caller to allocate sufficient space.
+ *		   libknet does not allow more than 256 compress methods at the moment.
+ *		   it is safe to allocate 256 structs to avoid calling
+ *		   knet_get_compress_list twice.
  *
- * compress_names - array of char *
- *                If NULL then only the number of names is returned in num_names to
- *		  to allow the caller to allocate sufficient space.
- *
- * num_names - returns the number of strings in compres_names
+ * compress_list_entries - returns the number of structs in compress_list
  *
  * @return
- * knet_host_add returns
+ * knet_get_compress_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-int knet_handle_get_compress_list(knet_handle_t knet_h, const char **compress_names, size_t *num_names);
+int knet_get_compress_list(struct knet_compress_info *compress_list,
+			   size_t *compress_list_entries);
 
 /*
  * host structs/API calls
@@ -1183,7 +1203,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 #define KNET_TRANSPORT_LOOPBACK 0
 #define KNET_TRANSPORT_UDP      1
 #define KNET_TRANSPORT_SCTP     2
-#define KNET_MAX_TRANSPORTS     3
+#define KNET_MAX_TRANSPORTS     UINT8_MAX
 
 /*
  * The Loopback transport is only valid for connections to localhost, the host
@@ -1199,14 +1219,13 @@ struct knet_transport_info {
 	const char *name;   /* UDP/SCTP/etc... */
 	uint8_t id;         /* value that can be used for link_set_config */
 	uint8_t properties; /* currently unused */
+	char pad[256];      /* currently unused */
 };
 
 /**
- * knet_handle_get_transport_list
+ * knet_get_transport_list
  *
  * @brief Get a list of the transports support by this build of knet
- *
- * knet_h                 - pointer to knet_handle_t
  *
  * transport_list         - an array of struct transport_info that must be
  *                          at least of size struct transport_info * KNET_MAX_TRANSPORTS
@@ -1215,50 +1234,45 @@ struct knet_transport_info {
  *                          are available in this build of libknet.
  *
  * @return
- * knet_handle_get_transport_list returns
+ * knet_get_transport_list returns
  * 0 on success
  * -1 on error and errno is set.
  */
 
-int knet_handle_get_transport_list(knet_handle_t knet_h,
-				   struct knet_transport_info *transport_list,
-				   size_t *transport_list_entries);
+int knet_get_transport_list(struct knet_transport_info *transport_list,
+			    size_t *transport_list_entries);
 
 /**
- * knet_handle_get_transport_name_by_id
+ * knet_get_transport_name_by_id
  *
  * @brief Get a transport name from its ID number
- *
- * knet_h    - pointer to knet_handle_t
  *
  * transport - one of the KNET_TRANSPORT_xxx constants
  *
  * @return
- * knet_handle_get_transport_name_by_id returns:
+ * knet_get_transport_name_by_id returns:
  *
  * @retval pointer to the name on success or
  * @retval NULL on error and errno is set.
  */
 
-const char *knet_handle_get_transport_name_by_id(knet_handle_t knet_h, uint8_t transport);
+const char *knet_get_transport_name_by_id(uint8_t transport);
 
 /**
- * knet_handle_get_transport_id_by_name
+ * knet_get_transport_id_by_name
  *
  * @brief Get a transport ID from its name
- *
- * knet_h    - pointer to knet_handle_t
  *
  * name      - transport name (UDP/SCTP/etc)
  *
  * @return
- * knet_handle_get_transport_name_by_id returns:
+ * knet_get_transport_name_by_id returns:
  *
  * @retval KNET_MAX_TRANSPORTS on error and errno is set accordingly
  * @retval KNET_TRANSPORT_xxx on success.
  */
 
-uint8_t knet_handle_get_transport_id_by_name(knet_handle_t knet_h, const char *name);
+uint8_t knet_get_transport_id_by_name(const char *name);
 
 
 
@@ -1799,8 +1813,8 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_LZMACOMP      74 /* compress_lzma.c */
 #define KNET_SUB_BZIP2COMP     75 /* compress_bzip2.c */
 
-#define KNET_SUB_UNKNOWN       254
-#define KNET_MAX_SUBSYSTEMS    KNET_SUB_UNKNOWN + 1
+#define KNET_SUB_UNKNOWN       UINT8_MAX - 1
+#define KNET_MAX_SUBSYSTEMS    UINT8_MAX
 
 /*
  * Convert between subsystem IDs and names

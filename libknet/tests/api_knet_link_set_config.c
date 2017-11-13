@@ -74,7 +74,7 @@ static void test(void)
 
 	printf("Test knet_link_set_config with bad transport type\n");
 
-	if ((!knet_link_set_config(knet_h, 1, 0, KNET_MAX_TRANSPORTS+1, &src, &dst, 0)) || (errno != EINVAL)) {
+	if ((!knet_link_set_config(knet_h, 1, 0, KNET_MAX_TRANSPORTS, &src, &dst, 0)) || (errno != EINVAL)) {
 		printf("knet_link_set_config accepted invalid transport or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

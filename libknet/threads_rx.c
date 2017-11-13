@@ -22,6 +22,7 @@
 #include "links.h"
 #include "logging.h"
 #include "transports.h"
+#include "transport_common.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"
 #include "threads_rx.h"
@@ -329,7 +330,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			 * transport has already accepted the connection here
 			 * otherwise we would not be receiving packets
 			 */
-			knet_h->transport_ops[src_link->transport_type]->transport_link_dyn_connect(knet_h, sockfd, src_link);
+			transport_link_dyn_connect(knet_h, sockfd, src_link);
 		}
 	}
 
@@ -570,7 +571,7 @@ retry_pong:
 				sizeof(struct sockaddr_storage));
 		savederrno = errno;
 		if (len != outlen) {
-			err = knet_h->transport_ops[src_link->transport_type]->transport_tx_sock_error(knet_h, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -656,7 +657,7 @@ retry_pmtud:
 				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage));
 		if (len != outlen) {
-			err = knet_h->transport_ops[src_link->transport_type]->transport_tx_sock_error(knet_h, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -751,12 +752,12 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 	 */
 
 	if (msg_recv <= 0) {
-		knet_h->transport_ops[transport]->transport_rx_sock_error(knet_h, sockfd, msg_recv, savederrno);
+		transport_rx_sock_error(knet_h, transport, sockfd, msg_recv, savederrno);
 		goto exit_unlock;
 	}
 
 	for (i = 0; i < msg_recv; i++) {
-		err = knet_h->transport_ops[transport]->transport_rx_is_data(knet_h, sockfd, &msg[i]);
+		err = transport_rx_is_data(knet_h, transport, sockfd, &msg[i]);
 
 		/*
 		 * TODO: make this section silent once we are confident
