@@ -42,6 +42,8 @@ kronosnetd/kronosnetd
 kronosnetd/knet-keygen
 kronosnetd/kronosnetd.logrotate
 kronosnet.spec
+libknet/compress_canary
+libknet/crypto_canary
 *.swp
 *_test
 *_bench

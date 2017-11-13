@@ -60,20 +60,28 @@ noinst_HEADERS		= \
 			  common.h \
 			  compat.h \
 			  compress.h \
-			  compress_zlib.h \
-			  compress_lz4.h \
-			  compress_lzo2.h \
-			  compress_lzma.h \
 			  compress_bzip2.h \
+			  compress_bzip2_remap.h \
+			  compress_lz4.h \
+			  compress_lz4_remap.h \
+			  compress_lzma.h \
+			  compress_lzma_remap.h \
+			  compress_lzo2.h \
+			  compress_lzo2_remap.h \
+			  compress_zlib.h \
+			  compress_zlib_remap.h \
 			  crypto.h \
 			  crypto_nss.h \
+			  crypto_nss_remap.h \
 			  crypto_openssl.h \
+			  crypto_openssl_remap.h \
 			  host.h \
 			  internals.h \
 			  links.h \
 			  logging.h \
 			  netutils.h \
 			  onwire.h \
+			  remap.h \
 			  threads_common.h \
 			  threads_dsthandler.h \
 			  threads_heartbeat.h \

@@ -32,43 +32,19 @@
  */
 static void *zlib_lib;
 
-/*
- * symbols remapping
- */
-int (*_int_uncompress)(Bytef *dest, uLongf *destLen,
-		       const Bytef *source, uLong sourceLen);
-int (*_int_compress2)(Bytef *dest, uLongf *destLen,
-		      const Bytef *source, uLong sourceLen,
-		      int level);
+#include "compress_zlib_remap.h"
 
 static int zlib_remap_symbols(knet_handle_t knet_h)
 {
-	int err = 0;
-	char *error = NULL;
+#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, name)
+#include "compress_zlib_remap.h"
+	return 0;
 
-	_int_uncompress = dlsym(zlib_lib, "uncompress");
-	if (!_int_uncompress) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to map uncompress: %s", error);
-		err = -1;
-		goto out;
-	}
-
-	_int_compress2 = dlsym(zlib_lib, "compress2");
-	if (!_int_compress2) {
-		error = dlerror();
-		log_err(knet_h, KNET_SUB_ZLIBCOMP, "unable to map compress2: %s", error);
-		err = -1;
-		goto out;
-	}
-
-out:
-	if (err) {
-		_int_uncompress = NULL;
-		_int_compress2 = NULL;
-		errno = EINVAL;
-	}
-	return err;
+ fail:
+#define REMAP_FAIL
+#include "compress_zlib_remap.h"
+	errno = EINVAL;
+	return -1;
 }
 
 int zlib_load_lib(

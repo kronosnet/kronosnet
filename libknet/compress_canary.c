@@ -4,29 +4,33 @@
 
 #include "config.h"
 
-char BZ2_bzBuffToBuffCompress(void);
-char LZ4_compress_HC(void);
-char lzma_easy_buffer_encode(void);
-char lzo1x_1_compress(void);
-char compress2(void);
+#define CANARY
+
+#include "compress_bzip2_remap.h"
+#include "compress_lz4_remap.h"
+#include "compress_lzma_remap.h"
+#include "compress_lzo2_remap.h"
+#include "compress_zlib_remap.h"
+
+#define CANARY_CALL
 
 int main (void)
 {
   return
 #ifdef BUILDCOMPBZIP2
-    BZ2_bzBuffToBuffCompress() +
+#include "compress_bzip2_remap.h"
 #endif
 #ifdef BUILDCOMPLZ4
-    LZ4_compress_HC() +
+#include "compress_lz4_remap.h"
 #endif
 #ifdef BUILDCOMPLZMA
-    lzma_easy_buffer_encode() +
+#include "compress_lzma_remap.h"
 #endif
 #ifdef BUILDCOMPLZO2
-    lzo1x_1_compress() +
+#include "compress_lzo2_remap.h"
 #endif
 #ifdef BUILDCOMPZLIB
-    compress2() +
+#include "compress_zlib_remap.h"
 #endif
     0;
 }
