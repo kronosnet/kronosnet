@@ -795,6 +795,8 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
 
 struct knet_crypto_info {
 	const char *name; /* openssl,nss,etc.. */
+	uint8_t properties; /* currently unused */
+	char pad[256];      /* currently unused */
 };
 
 /**
@@ -824,6 +826,8 @@ int knet_get_crypto_list(struct knet_crypto_info *crypto_list,
 
 struct knet_compress_info {
 	const char *name; /* bzip2, lz4, etc.. */
+	uint8_t properties; /* currently unused */
+	char pad[256];      /* currently unused */
 };
 
 /**
@@ -1215,6 +1219,7 @@ struct knet_transport_info {
 	const char *name;   /* UDP/SCTP/etc... */
 	uint8_t id;         /* value that can be used for link_set_config */
 	uint8_t properties; /* currently unused */
+	char pad[256];      /* currently unused */
 };
 
 /**
