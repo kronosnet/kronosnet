@@ -42,7 +42,8 @@ kronosnetd_CFLAGS	= $(libqb_CFLAGS)
 kronosnetd_LDADD	= \
 			  $(top_builddir)/libknet/libknet.la \
 			  $(top_builddir)/libtap/libtap.la \
-			  $(libqb_LIBS)
+			  $(libqb_LIBS) \
+			  $(pam_misc_LIBS) $(pam_LIBS)
 
 knet_keygen_SOURCES	= keygen.c
 

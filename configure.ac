@@ -295,12 +295,14 @@ fi
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
 	AC_CHECK_HEADERS([security/pam_appl.h],
-			 [AC_CHECK_LIB([pam], [pam_start])],
-			 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
+			 [AC_CHECK_LIB([pam], [pam_start],
+				       [AC_SUBST([pam_LIBS], [-lpam])],
+				       [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])])
 
 	AC_CHECK_HEADERS([security/pam_misc.h],
-			 [AC_CHECK_LIB([pam_misc], [misc_conv])],
-			 [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+			 [AC_CHECK_LIB([pam_misc], [misc_conv],
+				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
+				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
 
 	PKG_CHECK_MODULES([libqb], [libqb])
 
