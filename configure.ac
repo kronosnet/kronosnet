@@ -189,13 +189,10 @@ saved_LIBS="$LIBS"
 LIBS=
 AC_SEARCH_LIBS([clock_gettime], [rt], , [AC_MSG_ERROR([clock_gettime not found])])
 AC_SUBST([rt_LIBS], [$LIBS])
+LIBS=
+AC_SEARCH_LIBS([dlopen], [dl dld], , [AC_MSG_ERROR([dlopen not found])])
+AC_SUBST([dl_LIBS], [$LIBS])
 LIBS="$saved_LIBS"
-
-AC_SEARCH_LIBS([dlopen], [dl dld], [dllibs=$ac_res], [AC_MSG_ERROR([kronosnet requires dl library])])
-
-if test "x$dllibs" != "xnone required"; then
-	AC_SUBST([dl_LIBS], [$dllibs])
-fi
 
 # OS detection
 
