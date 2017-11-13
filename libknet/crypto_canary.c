@@ -4,8 +4,12 @@
 
 #include "config.h"
 
+#define CANARY
+
 char NSS_NoDB_Init(void);
-char EVP_EncryptInit_ex(void);
+#include "crypto_openssl_remap.h"
+
+#define CANARY_CALL
 
 int main (void)
 {
@@ -14,7 +18,7 @@ int main (void)
     NSS_NoDB_Init() +
 #endif
 #ifdef BUILDCRYPTOOPENSSL
-    EVP_EncryptInit_ex() +
+#include "crypto_openssl_remap.h"
 #endif
     0;
 }

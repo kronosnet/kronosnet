@@ -73,6 +73,7 @@ noinst_HEADERS		= \
 			  crypto.h \
 			  crypto_nss.h \
 			  crypto_openssl.h \
+			  crypto_openssl_remap.h \
 			  host.h \
 			  internals.h \
 			  links.h \
