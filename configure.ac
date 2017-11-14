@@ -166,19 +166,6 @@ cc_supports_flag() {
 	return $RC
 }
 
-# helper macro to check libs without adding them to LIBS
-check_lib_no_libs() {
-	lib_no_libs_arg1=$1
-	shift
-	lib_no_libs_arg2=$1
-	shift
-	lib_no_libs_args=$@
-	AC_CHECK_LIB([$lib_no_libs_arg1],
-		     [$lib_no_libs_arg2],,,
-		     [$lib_no_libs_args])
-        LIBS=$ac_check_lib_save_LIBS
-}
-
 # Checks for C features
 AC_C_INLINE
 
