@@ -32,6 +32,7 @@ static void test(void)
 	knet_handle_t knet_h;
 	int logfd;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
+	struct knet_handle_stats knet_stats;
 	char *buf1, *buf2, *buf3;
 	const char *input = "Encrypt me!\x0";
 	ssize_t input_len = strlen(input) + 1;
@@ -232,6 +233,8 @@ static void test(void)
 	timespec_diff(clock_start, clock_end, &time_diff);
 
 	printf("Execution of 1000000 loops (iov_in multi api): %llu/ns\n", time_diff);
+
+	knet_handle_get_stats(knet_h, &knet_stats, sizeof(knet_stats));
 
 	printf("Shutdown crypto\n");
 

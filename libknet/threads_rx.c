@@ -563,6 +563,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
+			knet_h->stats_extra.tx_crypt_pong_packets++;
 		}
 
 retry_pong:
@@ -650,6 +651,7 @@ retry_pong:
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
+			knet_h->stats_extra.tx_crypt_pmtu_reply_packets++;
 		}
 
 retry_pmtud:

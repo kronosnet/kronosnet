@@ -132,6 +132,7 @@ restart:
 		}
 
 		outbuf = knet_h->pmtudbuf_crypt;
+		knet_h->stats_extra.tx_crypt_pmtu_packets++;
 
 	} else {
 
