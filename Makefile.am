@@ -9,7 +9,9 @@
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  ltmain.sh compile config.h.in config.h.in~ \
-			  autoscan.log configure.scan test-driver
+			  autoscan.log configure.scan test-driver \
+			  m4/libtool.m4 m4/lt~obsolete.m4 m4/ltoptions.m4 \
+			  m4/ltsugar.m4 m4/ltversion.m4
 
 include $(top_srcdir)/build-aux/check.mk
 
@@ -45,9 +47,6 @@ clean-local:
 
 distclean-local:
 	rm -f $(PACKAGE_NAME)-*.tar.* $(PACKAGE_NAME)-*.sha256* tag-*
-
-maintainer-clean-local:
-	rm -rf m4
 
 ## make rpm/srpm section.
 
