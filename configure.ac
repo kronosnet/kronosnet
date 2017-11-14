@@ -170,7 +170,7 @@ cc_supports_flag() {
 AC_C_INLINE
 
 # Checks for libraries.
-AC_CHECK_LIB([pthread], [pthread_create], [AC_SUBST([pthread_LIBS], [-lpthread])], [AC_MSG_ERROR([kronosnet requires pthread library])])
+AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
 AC_CHECK_LIB([m], [ceil], [AC_SUBST([m_LIBS], [-lm])], [AC_MSG_ERROR([kronosnet requires m library])])
 saved_LIBS="$LIBS"
 LIBS=

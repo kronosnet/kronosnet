@@ -99,7 +99,8 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-libknet_la_CFLAGS	= $(nss_CFLAGS) $(openssl_CFLAGS) \
+libknet_la_CFLAGS	= $(PTHREAD_CFLAGS) \
+			  $(nss_CFLAGS) $(openssl_CFLAGS) \
 			  $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
@@ -108,7 +109,7 @@ libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
 			  -version-number $(libversion)
 
-libknet_la_LIBADD	= $(dl_LIBS) $(pthread_LIBS) $(rt_LIBS) $(m_LIBS)
+libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
 
 noinst_PROGRAMS		= crypto_canary compress_canary
 crypto_canary_SOURCES	= crypto_canary.c
