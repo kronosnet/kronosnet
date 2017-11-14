@@ -166,32 +166,20 @@ cc_supports_flag() {
 	return $RC
 }
 
-# helper macro to check libs without adding them to LIBS
-check_lib_no_libs() {
-	lib_no_libs_arg1=$1
-	shift
-	lib_no_libs_arg2=$1
-	shift
-	lib_no_libs_args=$@
-	AC_CHECK_LIB([$lib_no_libs_arg1],
-		     [$lib_no_libs_arg2],,,
-		     [$lib_no_libs_args])
-        LIBS=$ac_check_lib_save_LIBS
-}
-
 # Checks for C features
 AC_C_INLINE
 
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create], [AC_SUBST([pthread_LIBS], [-lpthread])], [AC_MSG_ERROR([kronosnet requires pthread library])])
 AC_CHECK_LIB([m], [ceil], [AC_SUBST([m_LIBS], [-lm])], [AC_MSG_ERROR([kronosnet requires m library])])
-AC_CHECK_LIB([rt], [clock_gettime], [AC_SUBST([rt_LIBS], [-lrt])], [AC_MSG_ERROR([kronosnet requires rt library])])
-
-AC_SEARCH_LIBS([dlopen], [dl dld], [dllibs=$ac_res], [AC_MSG_ERROR([kronosnet requires dl library])])
-
-if test "x$dllibs" != "xnone required"; then
-	AC_SUBST([dl_LIBS], [$dllibs])
-fi
+saved_LIBS="$LIBS"
+LIBS=
+AC_SEARCH_LIBS([clock_gettime], [rt], , [AC_MSG_ERROR([clock_gettime not found])])
+AC_SUBST([rt_LIBS], [$LIBS])
+LIBS=
+AC_SEARCH_LIBS([dlopen], [dl dld], , [AC_MSG_ERROR([dlopen not found])])
+AC_SUBST([dl_LIBS], [$LIBS])
+LIBS="$saved_LIBS"
 
 # OS detection
 
@@ -220,9 +208,9 @@ if test "x$enable_crypto_nss" = xyes; then
 fi
 
 if test "x$enable_crypto_openssl" = xyes; then
-	PKG_CHECK_MODULES([openssl],[openssl < 1.1],
+	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
 			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
-			  [PKG_CHECK_MODULES([openssl],[openssl >= 1.1],
+			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
 					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
 fi
@@ -293,21 +281,6 @@ AC_FUNC_ALLOCA
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([memset])
-AC_CHECK_FUNCS([strdup])
-AC_CHECK_FUNCS([strerror])
-AC_CHECK_FUNCS([dup2])
-AC_CHECK_FUNCS([select])
-AC_CHECK_FUNCS([socket])
-AC_CHECK_FUNCS([inet_ntoa])
-AC_CHECK_FUNCS([memmove])
-AC_CHECK_FUNCS([strchr])
-AC_CHECK_FUNCS([atexit])
-AC_CHECK_FUNCS([ftruncate])
-AC_CHECK_FUNCS([strrchr])
-AC_CHECK_FUNCS([strstr])
-AC_CHECK_FUNCS([clock_gettime])
-AC_CHECK_FUNCS([strcasecmp])
 AC_CHECK_FUNCS([kevent])
 # if neither sys/epoll.h nor kevent are present, we should fail.
 
@@ -322,12 +295,14 @@ fi
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
 	AC_CHECK_HEADERS([security/pam_appl.h],
-			 [AC_CHECK_LIB([pam], [pam_start])],
-			 [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])
+			 [AC_CHECK_LIB([pam], [pam_start],
+				       [AC_SUBST([pam_LIBS], [-lpam])],
+				       [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])])
 
 	AC_CHECK_HEADERS([security/pam_misc.h],
-			 [AC_CHECK_LIB([pam_misc], [misc_conv])],
-			 [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])
+			 [AC_CHECK_LIB([pam_misc], [misc_conv],
+				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
+				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
 
 	PKG_CHECK_MODULES([libqb], [libqb])
 
@@ -505,7 +480,7 @@ done
 CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
 	$EXTRA_WARNINGS $WERROR_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic -Wl,--as-needed"
+LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic"
 
 AC_CONFIG_FILES([
 		Makefile
