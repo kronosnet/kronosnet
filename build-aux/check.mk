@@ -8,7 +8,7 @@
 
 VALGRIND = $(VALGRIND_EXEC) -q --error-exitcode=127 --gen-suppressions=all
 
-MEMCHECK = $(VALGRIND) --track-fds=yes --leak-check=full --suppressions=$(abs_top_srcdir)/build-aux/knet_valgrind_memcheck.supp
+MEMCHECK = $(VALGRIND) --track-fds=yes --leak-check=full --alignment=16 --suppressions=$(abs_top_srcdir)/build-aux/knet_valgrind_memcheck.supp
 HELGRIND = $(VALGRIND) --tool=helgrind --suppressions=$(abs_top_srcdir)/build-aux/knet_valgrind_helgrind.supp
 
 check-memcheck: $(check_PROGRAMS)
