@@ -1000,27 +1000,40 @@ static int _find_ip(nozzle_t nozzle,
 
 int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string)
 {
-	int err = 0, found;
+	int err = 0, savederrno = 0;
+	int found = 0;
 	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
 	int secondary = 0;
 
-	pthread_mutex_lock(&lib_mutex);
+	if ((!nozzle) || (!ip_addr) || (!prefix) || (!error_string)) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if ((!_check(nozzle)) || (!ip_addr) || (!prefix) || (!error_string)) {
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
 	found = _find_ip(nozzle, ip_addr, prefix, &ip, &ip_prev);
-	if (found)
+	if (found) {
 		goto out_clean;
+	}
 
 	ip = malloc(sizeof(struct _ip));
 	if (!ip) {
+		savederrno = errno;
 		err = -1 ;
 		goto out_clean;
 	}
+
 	memset(ip, 0, sizeof(struct _ip));
 	strncpy(ip->ip_addr, ip_addr, MAX_IP_CHAR);
 	strncpy(ip->prefix, prefix, MAX_PREFIX_CHAR);
@@ -1041,6 +1054,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 			secondary = 1;
 		}
 		err = _set_ip(nozzle, "add", ip_addr, prefix, error_string, secondary);
+		savederrno = errno;
 	}
 
 	if (err) {
@@ -1060,7 +1074,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 

@@ -125,6 +125,29 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
 
 int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
 
+/**
+ * nozzle_add_ip
+ * @brief equivalent of ip addr or ifconfig <ipaddress/prefix>
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * ip_addr - string containing either an IPv4 or an IPv6 address.
+ *           Please note that Linux will automatically remove any IPv6 addresses from an interface
+ *           with MTU < 1280. libnozzle will cache those IPs and re-instate them when MTU is > 1280.
+ *           MTU must be set via nozzle_set_mtu for IPv6 to be re-instated.
+ *
+ * prefix - 24, 64 or any valid network prefix for the requested address.
+ *
+ * error_string - pointers to string to record errors from ipaddr2 (Linux) or ifconfig (BSD).
+ *                The string is malloc'ed, the caller needs to free this buffer.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and error is set.
+ *  error_string is set to NULL on success
+ *  error_string will contain a string recording the execution error.
+ */
+
 int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
 int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
 int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
