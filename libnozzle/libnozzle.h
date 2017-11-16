@@ -149,6 +149,27 @@ int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
  */
 
 int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
+
+/**
+ * nozzle_del_ip
+ * @brief equivalent of ip addr del or ifconfig del <ipaddress/prefix>
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * ip_addr - string containing either an IPv4 or an IPv6 address.
+ *
+ * prefix - 24, 64 or any valid network prefix for the requested address.
+ *
+ * error_string - pointers to string to record errors from ipaddr2 (Linux) or ifconfig (BSD).
+ *                The string is malloc'ed, the caller needs to free this buffer.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and error is set.
+ *  error_string is set to NULL on success
+ *  error_string will contain a string recording the execution error.
+ */
+
 int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
 int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
 
