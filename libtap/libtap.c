@@ -248,11 +248,6 @@ static int _check(const tap_t tap)
 
 static void _close(tap_t tap)
 {
-#ifdef KNET_BSD
-	char command[PATH_MAX];
-	char *error_string = NULL;
-#endif
-
 	if (!tap)
 		return;
 
@@ -260,15 +255,10 @@ static void _close(tap_t tap)
 		close(tap->fd);
 
 #ifdef KNET_BSD
-	memset(command, 0, PATH_MAX);
+	memset(&tap->ifr, 0, sizeof(struct ifreq));
+	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
 
-	snprintf(command, PATH_MAX, "ifconfig %s destroy", tap->tapname);
-
-	_execute_shell(command, &error_string);
-	if (error_string) {
-		free(error_string);
-		error_string = NULL;
-	}
+	ioctl(lib_cfg.sockfd, SIOCIFDESTROY, &tap->ifr);
 #endif
 
 	free(tap);
@@ -465,6 +455,20 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 
 	pthread_mutex_lock(&lib_mutex);
 
+	if (!lib_init) {
+		lib_cfg.head = NULL;
+#ifdef KNET_LINUX
+		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
+#endif
+#ifdef KNET_BSD
+		lib_cfg.sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+#endif
+		if (lib_cfg.sockfd < 0)
+			goto out_error;
+		lib_init = 1;
+	}
+
+
 #ifdef KNET_BSD
 	if (!strlen(dev)) {
 		for (i = 0; i < 256; i++) {
@@ -506,30 +510,6 @@ tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 
 	strncpy(dev, tap->ifname, IFNAMSIZ);
 	strncpy(tap->tapname, tap->ifname, IFNAMSIZ);
-#endif
-
-	if (!lib_init) {
-		lib_cfg.head = NULL;
-#ifdef KNET_LINUX
-		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
-#endif
-#ifdef KNET_BSD
-		lib_cfg.sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
-#endif
-		if (lib_cfg.sockfd < 0)
-			goto out_error;
-		lib_init = 1;
-	}
-
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
-#ifdef KNET_LINUX
-	if (ioctl(lib_cfg.sockfd, SIOGIFINDEX, &tap->ifr) < 0)
-		goto out_error;
-#endif
-#ifdef KNET_BSD
-	if (ioctl(lib_cfg.sockfd, SIOCGIFINDEX, &tap->ifr) < 0)
-		goto out_error;
 #endif
 
 	tap->default_mtu = _get_mtu(tap);
