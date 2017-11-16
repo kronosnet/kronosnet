@@ -35,7 +35,7 @@
 #include <net/if_dl.h>
 #endif
 
-#include "libtap.h"
+#include "libnozzle.h"
 
 #define MAX_IP_CHAR	128
 #define MAX_PREFIX_CHAR	4

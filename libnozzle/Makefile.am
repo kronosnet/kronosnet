@@ -11,32 +11,32 @@ MAINTAINERCLEANFILES	= Makefile.in
 include $(top_srcdir)/build-aux/check.mk
 
 
-SYMFILE			= libtap_exported_syms
+SYMFILE			= libnozzle_exported_syms
 
 EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good api-test-coverage
 
-sources			= libtap.c
+sources			= libnozzle.c
 
 libversion		= 1:0:0
 
 AM_CFLAGS		+= $(PTHREAD_CFLAGS)
 LIBS			= $(PTHREAD_LIBS)
 
-if BUILD_LIBTAP
+if BUILD_LIBNOZZLE
 
-include_HEADERS		= libtap.h
+include_HEADERS		= libnozzle.h
 
 pkgconfigdir		= $(libdir)/pkgconfig
 
-pkgconfig_DATA		= libtap.pc
+pkgconfig_DATA		= libnozzle.pc
 
-lib_LTLIBRARIES		= libtap.la
+lib_LTLIBRARIES		= libnozzle.la
 
-libtap_la_SOURCES	= $(sources)
+libnozzle_la_SOURCES	= $(sources)
 
-EXTRA_libtap_la_DEPENDENCIES	= $(SYMFILE)
+EXTRA_libnozzle_la_DEPENDENCIES	= $(SYMFILE)
 
-libtap_la_LDFLAGS	= $(AM_LDFLAGS) \
+libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
 			  -version-info $(libversion)
 
@@ -44,17 +44,17 @@ TESTS			= $(check_PROGRAMS)
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
 
-check_PROGRAMS		= tap_test
+check_PROGRAMS		= nozzle_test
 
 check-local: check-api-test-coverage
 
 check-api-test-coverage:
-	chmod u+x $(top_srcdir)/libtap/api-test-coverage
-	$(top_srcdir)/libtap/api-test-coverage $(top_srcdir) $(top_builddir)
+	chmod u+x $(top_srcdir)/libnozzle/api-test-coverage
+	$(top_srcdir)/libnozzle/api-test-coverage $(top_srcdir) $(top_builddir)
 
-tap_test_SOURCES	= $(sources)
+nozzle_test_SOURCES	= $(sources)
 
-tap_test_CPPFLAGS	= -DTEST \
+nozzle_test_CPPFLAGS	= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"
 
 endif

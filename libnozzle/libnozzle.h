@@ -6,8 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-#ifndef __LIBTAP_H__
-#define __LIBTAP_H__
+#ifndef __LIBNOZZLE_H__
+#define __LIBNOZZLE_H__
 
 #include <sys/types.h>
 

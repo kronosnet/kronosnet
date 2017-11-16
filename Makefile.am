@@ -27,7 +27,7 @@ EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
 			  $(SPEC).in build-aux
 
-SUBDIRS			= init libtap libknet kronosnetd
+SUBDIRS			= init libnozzle libknet kronosnetd
 
 if BUILD_MAN
 SUBDIRS			+= man
@@ -143,10 +143,10 @@ if BUILD_KRONOSNETD
 else
 	sed -i -e "s#@kronosnetd@#bcond_with#g" $@-t
 endif
-if BUILD_LIBTAP
-	sed -i -e "s#@libtap@#bcond_without#g" $@-t
+if BUILD_LIBNOZZLE
+	sed -i -e "s#@libnozzle@#bcond_without#g" $@-t
 else
-	sed -i -e "s#@libtap@#bcond_with#g" $@-t
+	sed -i -e "s#@libnozzle@#bcond_with#g" $@-t
 endif
 if BUILD_RUNAUTOGEN
 	sed -i -e "s#@runautogen@#bcond_without#g" $@-t
