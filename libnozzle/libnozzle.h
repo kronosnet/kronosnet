@@ -194,6 +194,17 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 
 int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
 
+/**
+ * nozzle_get_mtu
+ * @brief retrive mtu on a given nozzle interface
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * @return
+ * MTU on success
+ * -1 on error and errno is set.
+ */
+
 int nozzle_get_mtu(const nozzle_t nozzle);
 int nozzle_set_mtu(nozzle_t nozzle, const int mtu);
 int nozzle_reset_mtu(nozzle_t nozzle);
