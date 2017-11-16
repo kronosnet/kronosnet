@@ -10,7 +10,7 @@
 srcdir="$1"/libnozzle
 builddir="$2"/libnozzle
 
-headerapicalls="$(grep tap_ "$srcdir"/libnozzle.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+headerapicalls="$(grep nozzle_ "$srcdir"/libnozzle.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
 
 exportedapicalls="$(nm -B -D "$builddir"/.libs/libnozzle.so | grep ' T ' | awk '{print $3}')"
 

@@ -9,7 +9,7 @@
 
 LIBNOZZLE {
 	global:
-		tap_*;
+		nozzle_*;
 	local:
 		*;
 };
