@@ -1335,10 +1335,10 @@ static int check_nozzle_open_close(void)
 	}
 #endif
 #ifdef KNET_BSD
-	printf("Creating nozzle%u nozzle interface:\n", randombyte);
-	snprintf(device_name, IFNAMSIZ, "nozzle%u", randombyte);
+	printf("Creating tap%u nozzle interface:\n", randombyte);
+	snprintf(device_name, IFNAMSIZ, "tap%u", randombyte);
 	if (test_iface(device_name, size, NULL) < 0) {
-		printf("Unable to create nozzle%u interface\n", randombyte);
+		printf("Unable to create tap%u interface\n", randombyte);
 		return -1;
 	}
 
