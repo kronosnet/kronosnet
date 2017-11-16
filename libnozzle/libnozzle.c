@@ -1164,22 +1164,46 @@ out_clean:
 
 int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 {
-	int err = 0;
+	int err = 0, savederrno = 0;
 	int found = 0;
 	char *ip_list = NULL;
 	int size = 0, offset = 0, len;
-	struct _ip *ip = nozzle->ip;
+	struct _ip *ip = NULL;
 
-	pthread_mutex_lock(&lib_mutex);
+	if ((!nozzle) || (!ip_addr_list) || (!entries)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!_check(nozzle)) {
+		errno = EINVAL;
+		goto out_clean;
+	}
+
+	ip = nozzle->ip;
 
 	while (ip) {
 		found++;
 		ip = ip->next;
 	}
 
+	if (!found) {
+		*ip_addr_list = NULL;
+		*entries = 0;
+		goto out_clean;
+	}
+
 	size = found * (MAX_IP_CHAR + MAX_PREFIX_CHAR + 2);
+
 	ip_list = malloc(size);
 	if (!ip_list) {
+		savederrno = errno;
 		err = -1;
 		goto out_clean;
 	}
@@ -1203,7 +1227,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 
