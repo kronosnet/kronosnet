@@ -23,7 +23,36 @@
 
 typedef struct nozzle_iface *nozzle_t;
 
-nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath);
+/**
+ * nozzle_open
+ * @brief create a new tap device on the system.
+ *
+ * devname - pointer to device name of at least size IFNAMSIZ.
+ *           if the dev strlen is 0, then the system will assign a name automatically.
+ *           if a string is specified, the system will try to create a device with
+ *           the specified name.
+ *           NOTE: on FreeBSD the tap device names can only be tapX where X is a
+ *           number from 0 to 255. On Linux such limitation does not apply.
+ *           The name must be unique to the system. If an interface with the same
+ *           name is already configured on the system, an error will be returned.
+ *
+ * devname_size - lenght of the buffer provided in dev (has to be at least IFNAMSIZ).
+ *
+ * updownpath - nozzle supports the typical filesystem structure to execute
+ *              actions for: down.d  post-down.d  pre-up.d  up.d
+ *              in the form of:
+ *              updownpath/<action>/<interface_name>
+ *              updownpath specifies where to find those directories on the
+ *              filesystem and it must be an absolute path.
+ *
+ * @return
+ * nozzle_open returns
+ * a pointer to a nozzle struct on success
+ * NULL on error and errno is set.
+ */
+
+nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath);
+
 int nozzle_close(nozzle_t nozzle);
 
 nozzle_t nozzle_find(char *dev, size_t dev_size);

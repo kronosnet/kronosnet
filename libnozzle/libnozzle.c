@@ -384,9 +384,10 @@ nozzle_t nozzle_find(char *dev, size_t dev_size)
 	return nozzle;
 }
 
-nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
+nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 {
-	nozzle_t nozzle;
+	int savederrno = 0;
+	nozzle_t nozzle = NULL;
 	char *temp_mac = NULL;
 #ifdef KNET_BSD
 	uint16_t i;
@@ -394,17 +395,17 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 	char curnozzle[IFNAMSIZ];
 #endif
 
-	if (dev == NULL) {
+	if (devname == NULL) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	if (dev_size < IFNAMSIZ) {
+	if (devname_size < IFNAMSIZ) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	if (strlen(dev) > IFNAMSIZ) {
+	if (strlen(devname) > IFNAMSIZ) {
 		errno = E2BIG;
 		return NULL;
 	}
@@ -415,13 +416,13 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 	 * but it is possible to force a nozzleX device number
 	 * where X is 0 to 255.
 	 */
-	if (strlen(dev)) {
-		if (strncmp(dev, "tap", 3)) {
+	if (strlen(devname)) {
+		if (strncmp(devname, "tap", 3)) {
 			errno = EINVAL;
 			return NULL;
 		}
 		errno = 0;
-		nozzlenum = strtol(dev+3, NULL, 10);
+		nozzlenum = strtol(devname+3, NULL, 10);
 		if (errno) {
 			errno = EINVAL;
 			return NULL;
@@ -440,20 +441,17 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 			return NULL;
 		}
 		/* 14: 2 for /, 1 for \0 + 11 (post-down.d) */
-		if (strlen(updownpath) >= (PATH_MAX - (strlen(dev) + 14))) {
+		if (strlen(updownpath) >= (PATH_MAX - (strlen(devname) + 14))) {
 			errno = E2BIG;
 			return NULL;
 		}
 	}
 
-	nozzle = malloc(sizeof(struct nozzle_iface));
-	if (!nozzle) {
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
 		return NULL;
 	}
-
-	memset(nozzle, 0, sizeof(struct nozzle_iface));
-
-	pthread_mutex_lock(&lib_mutex);
 
 	if (!lib_init) {
 		lib_cfg.head = NULL;
@@ -463,61 +461,80 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 #ifdef KNET_BSD
 		lib_cfg.sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
 #endif
-		if (lib_cfg.sockfd < 0)
+		if (lib_cfg.sockfd < 0) {
+			savederrno = errno;
 			goto out_error;
+		}
 		lib_init = 1;
 	}
 
+	nozzle = malloc(sizeof(struct nozzle_iface));
+	if (!nozzle) {
+		savederrno = ENOMEM;
+		goto out_error;
+	}
+
+	memset(nozzle, 0, sizeof(struct nozzle_iface));
 
 #ifdef KNET_BSD
-	if (!strlen(dev)) {
+	if (!strlen(devname)) {
 		for (i = 0; i < 256; i++) {
-			snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/nozzle%u", i);
+			snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/tap%u", i);
 			nozzle->fd = open(curnozzle, O_RDWR);
+			savederrno = errno;
 			if (nozzle->fd > 0) {
 				break;
 			}
 		}
-		snprintf(curnozzle, sizeof(curnozzle) -1 , "nozzle%u", i);
+		snprintf(curnozzle, sizeof(curnozzle) -1 , "tap%u", i);
 	} else {
-		snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/%s", dev);
+		snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/%s", devname);
 		nozzle->fd = open(curnozzle, O_RDWR);
-		snprintf(curnozzle, sizeof(curnozzle) - 1, "%s", dev);
+		savederrno = errno;
+		snprintf(curnozzle, sizeof(curnozzle) - 1, "%s", devname);
 	}
 	if (nozzle->fd < 0) {
 		errno = EBUSY;
 		goto out_error;
 	}
-	strncpy(dev, curnozzle, IFNAMSIZ);
+	strncpy(devname, curnozzle, IFNAMSIZ);
 	strncpy(nozzle->nozzlename, curnozzle, IFNAMSIZ);
 #endif
 
 #ifdef KNET_LINUX
-	if ((nozzle->fd = open("/dev/net/tun", O_RDWR)) < 0)
+	if ((nozzle->fd = open("/dev/net/tun", O_RDWR)) < 0) {
+		savederrno = errno;
 		goto out_error;
+	}
 
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, dev, IFNAMSIZ);
+	strncpy(nozzle->ifname, devname, IFNAMSIZ);
 	nozzle->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	if (ioctl(nozzle->fd, TUNSETIFF, &nozzle->ifr) < 0)
+	if (ioctl(nozzle->fd, TUNSETIFF, &nozzle->ifr) < 0) {
+		savederrno = errno;
 		goto out_error;
+	}
 
-	if ((strlen(dev) > 0) && (strcmp(dev, nozzle->ifname) != 0)) {
+	if ((strlen(devname) > 0) && (strcmp(devname, nozzle->ifname) != 0)) {
 		errno = EBUSY;
 		goto out_error;
 	}
 
-	strncpy(dev, nozzle->ifname, IFNAMSIZ);
+	strncpy(devname, nozzle->ifname, IFNAMSIZ);
 	strncpy(nozzle->nozzlename, nozzle->ifname, IFNAMSIZ);
 #endif
 
 	nozzle->default_mtu = _get_mtu(nozzle);
-	if (nozzle->default_mtu < 0)
+	if (nozzle->default_mtu < 0) {
+		savederrno = errno;
 		goto out_error;
+	}
 
-	if (_get_mac(nozzle, &temp_mac) < 0)
+	if (_get_mac(nozzle, &temp_mac) < 0) {
+		savederrno = errno;
 		goto out_error;
+	}
 
 	strncpy(nozzle->default_mac, temp_mac, 18);
 	free(temp_mac);
@@ -536,12 +553,14 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 	lib_cfg.head = nozzle;
 
 	pthread_mutex_unlock(&lib_mutex);
+	errno = savederrno;
 	return nozzle;
 
 out_error:
 	_close(nozzle);
 	_close_cfg();
 	pthread_mutex_unlock(&lib_mutex);
+	errno = savederrno;
 	return NULL;
 }
 
