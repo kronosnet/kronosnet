@@ -51,7 +51,7 @@ struct _ip {
 struct nozzle_iface {
 	struct ifreq ifr;
 	int fd;
-	char tapname[IFNAMSIZ];
+	char nozzlename[IFNAMSIZ];
 	char default_mac[MAX_MAC_CHAR];
 	int default_mtu;
 	int current_mtu;
@@ -74,19 +74,19 @@ static pthread_mutex_t lib_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
 static int _execute_shell(const char *command, char **error_string);
-static int _exec_updown(const nozzle_t tap, const char *action, char **error_string);
+static int _exec_updown(const nozzle_t nozzle, const char *action, char **error_string);
 static int _read_pipe(int fd, char **file, size_t *length);
-static int _check(const nozzle_t tap);
-static void _close(nozzle_t tap);
+static int _check(const nozzle_t nozzle);
+static void _close(nozzle_t nozzle);
 static void _close_cfg(void);
-static int _get_mtu(const nozzle_t tap);
-static int _get_mac(const nozzle_t tap, char **ether_addr);
-static int _set_down(nozzle_t tap, char **error_down, char **error_postdown);
+static int _get_mtu(const nozzle_t nozzle);
+static int _get_mac(const nozzle_t nozzle, char **ether_addr);
+static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
 static char *_get_v4_broadcast(const char *ip_addr, const char *prefix);
-static int _set_ip(nozzle_t tap, const char *command,
+static int _set_ip(nozzle_t nozzle, const char *command,
 		      const char *ip_addr, const char *prefix,
 		      char **error_string, int secondary);
-static int _find_ip(nozzle_t tap,
+static int _find_ip(nozzle_t nozzle,
 			const char *ip_addr, const char *prefix,
 			struct _ip **ip, struct _ip **ip_prev);
 
@@ -202,18 +202,18 @@ out_clean0:
 	return err;
 }
 
-static int _exec_updown(const nozzle_t tap, const char *action, char **error_string)
+static int _exec_updown(const nozzle_t nozzle, const char *action, char **error_string)
 {
 	char command[PATH_MAX];
 	struct stat sb;
 	int err = 0;
 
-	if (!tap->hasupdown)
+	if (!nozzle->hasupdown)
 		return 0;
 
 	memset(command, 0, PATH_MAX);
 
-	snprintf(command, PATH_MAX, "%s%s/%s", tap->updownpath, action, tap->tapname);
+	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action, nozzle->nozzlename);
 
 	err = stat(command, &sb);
 	if ((err < 0) && (errno == ENOENT))
@@ -228,16 +228,16 @@ static int _exec_updown(const nozzle_t tap, const char *action, char **error_str
 	return err;
 }
 
-static int _check(const nozzle_t tap)
+static int _check(const nozzle_t nozzle)
 {
 	nozzle_t temp = lib_cfg.head;
 
-	if (!tap) {
+	if (!nozzle) {
 		return 0;
 	}
 
 	while (temp != NULL) {
-		if (tap == temp)
+		if (nozzle == temp)
 			return 1;
 
 		temp = temp->next;
@@ -246,22 +246,22 @@ static int _check(const nozzle_t tap)
 	return 0;
 }
 
-static void _close(nozzle_t tap)
+static void _close(nozzle_t nozzle)
 {
-	if (!tap)
+	if (!nozzle)
 		return;
 
-	if (tap->fd)
-		close(tap->fd);
+	if (nozzle->fd)
+		close(nozzle->fd);
 
 #ifdef KNET_BSD
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	ioctl(lib_cfg.sockfd, SIOCIFDESTROY, &tap->ifr);
+	ioctl(lib_cfg.sockfd, SIOCIFDESTROY, &nozzle->ifr);
 #endif
 
-	free(tap);
+	free(nozzle);
 
 	return;
 }
@@ -274,24 +274,24 @@ static void _close_cfg(void)
 	}
 }
 
-static int _get_mtu(const nozzle_t tap)
+static int _get_mtu(const nozzle_t nozzle)
 {
 	int err;
 
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &nozzle->ifr);
 	if (err)
 		goto out_clean;
 
-	err = tap->ifr.ifr_mtu;
+	err = nozzle->ifr.ifr_mtu;
 
 out_clean:
 	return err;
 }
 
-static int _get_mac(const nozzle_t tap, char **ether_addr)
+static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 {
 	int err = 0;
 	char mac[MAX_MAC_CHAR];
@@ -302,15 +302,15 @@ static int _get_mac(const nozzle_t tap, char **ether_addr)
 #endif
 
 	memset(&mac, 0, MAX_MAC_CHAR);
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
 #ifdef KNET_LINUX
-	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &nozzle->ifr);
 	if (err)
 		goto out_clean;
 
-	ether_ntoa_r((struct ether_addr *)tap->ifr.ifr_hwaddr.sa_data, mac);
+	ether_ntoa_r((struct ether_addr *)nozzle->ifr.ifr_hwaddr.sa_data, mac);
 #endif
 #ifdef KNET_BSD
 	/*
@@ -325,7 +325,7 @@ static int _get_mac(const nozzle_t tap, char **ether_addr)
 	ifa = ifap;
 
 	while (ifa) {
-		if (!strncmp(tap->tapname, ifa->ifa_name, IFNAMSIZ)) {
+		if (!strncmp(nozzle->nozzlename, ifa->ifa_name, IFNAMSIZ)) {
 			found = 1;
 			break;
 		}
@@ -354,7 +354,7 @@ out_clean:
 
 nozzle_t nozzle_find(char *dev, size_t dev_size)
 {
-	nozzle_t tap;
+	nozzle_t nozzle;
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -373,25 +373,25 @@ nozzle_t nozzle_find(char *dev, size_t dev_size)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	tap = lib_cfg.head;
-	while (tap != NULL) {
-		if (!strcmp(dev, tap->tapname))
+	nozzle = lib_cfg.head;
+	while (nozzle != NULL) {
+		if (!strcmp(dev, nozzle->nozzlename))
 			break;
-		tap = tap->next;
+		nozzle = nozzle->next;
 	}
 
 	pthread_mutex_unlock(&lib_mutex);
-	return tap;
+	return nozzle;
 }
 
 nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 {
-	nozzle_t tap;
+	nozzle_t nozzle;
 	char *temp_mac = NULL;
 #ifdef KNET_BSD
 	uint16_t i;
-	long int tapnum = 0;
-	char curtap[IFNAMSIZ];
+	long int nozzlenum = 0;
+	char curnozzle[IFNAMSIZ];
 #endif
 
 	if (dev == NULL) {
@@ -412,7 +412,7 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 #ifdef KNET_BSD
 	/*
 	 * BSD does not support named devices like Linux
-	 * but it is possible to force a tapX device number
+	 * but it is possible to force a nozzleX device number
 	 * where X is 0 to 255.
 	 */
 	if (strlen(dev)) {
@@ -421,12 +421,12 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 			return NULL;
 		}
 		errno = 0;
-		tapnum = strtol(dev+3, NULL, 10);
+		nozzlenum = strtol(dev+3, NULL, 10);
 		if (errno) {
 			errno = EINVAL;
 			return NULL;
 		}
-		if ((tapnum < 0) || (tapnum > 255)) {
+		if ((nozzlenum < 0) || (nozzlenum > 255)) {
 			errno = EINVAL;
 			return NULL;
 		}
@@ -446,12 +446,12 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 		}
 	}
 
-	tap = malloc(sizeof(struct nozzle_iface));
-	if (!tap) {
+	nozzle = malloc(sizeof(struct nozzle_iface));
+	if (!nozzle) {
 		return NULL;
 	}
 
-	memset(tap, 0, sizeof(struct nozzle_iface));
+	memset(nozzle, 0, sizeof(struct nozzle_iface));
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -472,81 +472,81 @@ nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 #ifdef KNET_BSD
 	if (!strlen(dev)) {
 		for (i = 0; i < 256; i++) {
-			snprintf(curtap, sizeof(curtap) - 1, "/dev/tap%u", i);
-			tap->fd = open(curtap, O_RDWR);
-			if (tap->fd > 0) {
+			snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/nozzle%u", i);
+			nozzle->fd = open(curnozzle, O_RDWR);
+			if (nozzle->fd > 0) {
 				break;
 			}
 		}
-		snprintf(curtap, sizeof(curtap) -1 , "tap%u", i);
+		snprintf(curnozzle, sizeof(curnozzle) -1 , "nozzle%u", i);
 	} else {
-		snprintf(curtap, sizeof(curtap) - 1, "/dev/%s", dev);
-		tap->fd = open(curtap, O_RDWR);
-		snprintf(curtap, sizeof(curtap) - 1, "%s", dev);
+		snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/%s", dev);
+		nozzle->fd = open(curnozzle, O_RDWR);
+		snprintf(curnozzle, sizeof(curnozzle) - 1, "%s", dev);
 	}
-	if (tap->fd < 0) {
+	if (nozzle->fd < 0) {
 		errno = EBUSY;
 		goto out_error;
 	}
-	strncpy(dev, curtap, IFNAMSIZ);
-	strncpy(tap->tapname, curtap, IFNAMSIZ);
+	strncpy(dev, curnozzle, IFNAMSIZ);
+	strncpy(nozzle->nozzlename, curnozzle, IFNAMSIZ);
 #endif
 
 #ifdef KNET_LINUX
-	if ((tap->fd = open("/dev/net/tun", O_RDWR)) < 0)
+	if ((nozzle->fd = open("/dev/net/tun", O_RDWR)) < 0)
 		goto out_error;
 
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, dev, IFNAMSIZ);
-	tap->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, dev, IFNAMSIZ);
+	nozzle->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	if (ioctl(tap->fd, TUNSETIFF, &tap->ifr) < 0)
+	if (ioctl(nozzle->fd, TUNSETIFF, &nozzle->ifr) < 0)
 		goto out_error;
 
-	if ((strlen(dev) > 0) && (strcmp(dev, tap->ifname) != 0)) {
+	if ((strlen(dev) > 0) && (strcmp(dev, nozzle->ifname) != 0)) {
 		errno = EBUSY;
 		goto out_error;
 	}
 
-	strncpy(dev, tap->ifname, IFNAMSIZ);
-	strncpy(tap->tapname, tap->ifname, IFNAMSIZ);
+	strncpy(dev, nozzle->ifname, IFNAMSIZ);
+	strncpy(nozzle->nozzlename, nozzle->ifname, IFNAMSIZ);
 #endif
 
-	tap->default_mtu = _get_mtu(tap);
-	if (tap->default_mtu < 0)
+	nozzle->default_mtu = _get_mtu(nozzle);
+	if (nozzle->default_mtu < 0)
 		goto out_error;
 
-	if (_get_mac(tap, &temp_mac) < 0)
+	if (_get_mac(nozzle, &temp_mac) < 0)
 		goto out_error;
 
-	strncpy(tap->default_mac, temp_mac, 18);
+	strncpy(nozzle->default_mac, temp_mac, 18);
 	free(temp_mac);
 
 	if (updownpath) {
 		int len = strlen(updownpath);
 
-		strcpy(tap->updownpath, updownpath);
-		if (tap->updownpath[len-1] != '/') {
-			tap->updownpath[len] = '/';
+		strcpy(nozzle->updownpath, updownpath);
+		if (nozzle->updownpath[len-1] != '/') {
+			nozzle->updownpath[len] = '/';
 		}
-		tap->hasupdown = 1;
+		nozzle->hasupdown = 1;
 	}
 
-	tap->next = lib_cfg.head;
-	lib_cfg.head = tap;
+	nozzle->next = lib_cfg.head;
+	lib_cfg.head = nozzle;
 
 	pthread_mutex_unlock(&lib_mutex);
-	return tap;
+	return nozzle;
 
 out_error:
-	_close(tap);
+	_close(nozzle);
 	_close_cfg();
 	pthread_mutex_unlock(&lib_mutex);
 	return NULL;
 }
 
 // TODO: consider better error report from here
-int nozzle_close(nozzle_t tap)
+int nozzle_close(nozzle_t nozzle)
 {
 	int err = 0;
 	nozzle_t temp = lib_cfg.head;
@@ -557,33 +557,33 @@ int nozzle_close(nozzle_t tap)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	while ((temp) && (temp != tap)) {
+	while ((temp) && (temp != nozzle)) {
 		prev = temp;
 		temp = temp->next;
 	}
 
-	if (tap == prev) {
-		lib_cfg.head = tap->next;
+	if (nozzle == prev) {
+		lib_cfg.head = nozzle->next;
 	} else {
-		prev->next = tap->next;
+		prev->next = nozzle->next;
 	}
 
-	_set_down(tap, &error_down, &error_postdown);
+	_set_down(nozzle, &error_down, &error_postdown);
 	if (error_down)
 		free(error_down);
 	if (error_postdown)
 		free(error_postdown);
 
-	ip = tap->ip;
+	ip = nozzle->ip;
 	while (ip) {
 		ip_next = ip->next;
-		_set_ip(tap, "del", ip->ip_addr, ip->prefix, &error_string, 0);
+		_set_ip(nozzle, "del", ip->ip_addr, ip->prefix, &error_string, 0);
 		if (error_string) {
 			free(error_string);
 			error_string = NULL;
@@ -592,7 +592,7 @@ int nozzle_close(nozzle_t tap)
 		ip = ip_next;
 	}
 
-	_close(tap);
+	_close(nozzle);
 	_close_cfg();
 
 out_clean:
@@ -601,19 +601,19 @@ out_clean:
 	return err;
 }
 
-int nozzle_get_mtu(const nozzle_t tap)
+int nozzle_get_mtu(const nozzle_t nozzle)
 {
 	int err;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = _get_mtu(tap);
+	err = _get_mtu(nozzle);
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -621,7 +621,7 @@ out_clean:
 	return err;
 }
 
-int nozzle_set_mtu(nozzle_t tap, const int mtu)
+int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
 {
 	struct _ip *tmp_ip;
 	char *error_string = NULL;
@@ -629,25 +629,25 @@ int nozzle_set_mtu(nozzle_t tap, const int mtu)
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = tap->current_mtu = _get_mtu(tap);
+	err = nozzle->current_mtu = _get_mtu(nozzle);
 	if (err < 0)
 		goto out_clean;
 
-	tap->ifr.ifr_mtu = mtu;
+	nozzle->ifr.ifr_mtu = mtu;
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &nozzle->ifr);
 
-	if ((!err) && (tap->current_mtu < 1280) && (mtu >= 1280)) {
-		tmp_ip = tap->ip;
+	if ((!err) && (nozzle->current_mtu < 1280) && (mtu >= 1280)) {
+		tmp_ip = nozzle->ip;
 		while(tmp_ip) {
 			if (tmp_ip->domain == AF_INET6) {
-				err = _set_ip(tap, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string, 0);
+				err = _set_ip(nozzle, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string, 0);
 				if (error_string) {
 					free(error_string);
 					error_string = NULL;
@@ -663,24 +663,24 @@ out_clean:
 	return err;
 }
 
-int nozzle_reset_mtu(nozzle_t tap)
+int nozzle_reset_mtu(nozzle_t nozzle)
 {
-	return nozzle_set_mtu(tap, tap->default_mtu);
+	return nozzle_set_mtu(nozzle, nozzle->default_mtu);
 }
 
-int nozzle_get_mac(const nozzle_t tap, char **ether_addr)
+int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
 {
 	int err;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if ((!_check(tap)) || (!ether_addr)) {
+	if ((!_check(nozzle)) || (!ether_addr)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = _get_mac(tap, ether_addr);
+	err = _get_mac(nozzle, ether_addr);
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -688,38 +688,38 @@ out_clean:
 	return err;
 }
 
-int nozzle_set_mac(nozzle_t tap, const char *ether_addr)
+int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 {
 	int err;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if ((!_check(tap)) || (!ether_addr)) {
+	if ((!_check(nozzle)) || (!ether_addr)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 #ifdef KNET_LINUX
-	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &nozzle->ifr);
 	if (err)
 		goto out_clean;
 
-	memmove(tap->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
+	memmove(nozzle->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &nozzle->ifr);
 #endif
 #ifdef KNET_BSD
-	err = ioctl(lib_cfg.sockfd, SIOCGIFADDR, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCGIFADDR, &nozzle->ifr);
 	if (err)
 		goto out_clean;
 
-	memmove(tap->ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
-	tap->ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
+	memmove(nozzle->ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
+	nozzle->ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFLLADDR, &tap->ifr);
+	err = ioctl(lib_cfg.sockfd, SIOCSIFLLADDR, &nozzle->ifr);
 #endif
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -727,105 +727,105 @@ out_clean:
 	return err;
 }
 
-int nozzle_reset_mac(nozzle_t tap)
+int nozzle_reset_mac(nozzle_t nozzle)
 {
-	return nozzle_set_mac(tap, tap->default_mac);
+	return nozzle_set_mac(nozzle, nozzle->default_mac);
 }
 
-int nozzle_set_up(nozzle_t tap, char **error_preup, char **error_up)
+int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 {
 	int err = 0;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	if ((tap->hasupdown) && ((!error_preup) || (!error_up))) {
+	if ((nozzle->hasupdown) && ((!error_preup) || (!error_up))) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	if (tap->up)
+	if (nozzle->up)
 		goto out_clean;
 
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &tap->ifr);
+	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &nozzle->ifr);
 	if (err)
 		goto out_clean;
 
-	_exec_updown(tap, "pre-up.d", error_preup);
+	_exec_updown(nozzle, "pre-up.d", error_preup);
 
-	tap->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &tap->ifr);
+	nozzle->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &nozzle->ifr);
 
 	if (err)
 		goto out_clean;
 
-	_exec_updown(tap, "up.d", error_up);
+	_exec_updown(nozzle, "up.d", error_up);
 
-	tap->up = 1;
+	nozzle->up = 1;
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
 
 	return err;
 }
 
-static int _set_down(nozzle_t tap, char **error_down, char **error_postdown)
+static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 {
 	int err = 0;
 
-	if (!tap->up)
+	if (!nozzle->up)
 		goto out_clean;
 
-	memset(&tap->ifr, 0, sizeof(struct ifreq));
-	strncpy(tap->ifname, tap->tapname, IFNAMSIZ);
+	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &tap->ifr);
+	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &nozzle->ifr);
 	if (err)
 		goto out_clean;
 
-	_exec_updown(tap, "down.d", error_down);
+	_exec_updown(nozzle, "down.d", error_down);
 
-	tap->ifr.ifr_flags &= ~IFF_UP;
-	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &tap->ifr);
+	nozzle->ifr.ifr_flags &= ~IFF_UP;
+	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &nozzle->ifr);
 
 	if (err)
 		goto out_clean;
 
-	_exec_updown(tap, "post-down.d", error_postdown);
+	_exec_updown(nozzle, "post-down.d", error_postdown);
 
-	tap->up = 0;
+	nozzle->up = 0;
 
 out_clean:
 	return err;
 }
 
-int nozzle_set_down(nozzle_t tap, char **error_down, char **error_postdown)
+int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 {
 	int err = 0;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	if ((tap->hasupdown) && ((!error_down) || (!error_postdown))) {
+	if ((nozzle->hasupdown) && ((!error_down) || (!error_postdown))) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	err = _set_down(tap, error_down, error_postdown);
+	err = _set_down(nozzle, error_down, error_postdown);
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -856,7 +856,7 @@ static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
 	return strdup(inet_ntoa(broadcast));
 }
 
-static int _set_ip(nozzle_t tap, const char *command,
+static int _set_ip(nozzle_t nozzle, const char *command,
 		      const char *ip_addr, const char *prefix,
 		      char **error_string, int secondary)
 {
@@ -890,19 +890,19 @@ static int _set_ip(nozzle_t tap, const char *command,
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ip addr %s %s/%s dev %s broadcast %s",
 			 command, ip_addr, prefix,
-			 tap->tapname, broadcast);
+			 nozzle->nozzlename, broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ip addr %s %s/%s dev %s",
 			command, ip_addr, prefix,
-			tap->tapname);
+			nozzle->nozzlename);
 	}
 #endif
 #ifdef KNET_BSD
 	if (!strcmp(command, "add")) {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ifconfig %s %s %s/%s",
-			 tap->tapname, proto, ip_addr, prefix);
+			 nozzle->nozzlename, proto, ip_addr, prefix);
 		if (broadcast) {
 			snprintf(cmdline + strlen(cmdline),
 				 sizeof(cmdline) - strlen(cmdline) -1,
@@ -916,7 +916,7 @@ static int _set_ip(nozzle_t tap, const char *command,
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 				 "ifconfig %s %s %s/%s delete",
-				 tap->tapname, proto, ip_addr, prefix);
+				 nozzle->nozzlename, proto, ip_addr, prefix);
 	}
 #endif
 	if (broadcast) {
@@ -925,14 +925,14 @@ static int _set_ip(nozzle_t tap, const char *command,
 	return _execute_shell(cmdline, error_string);
 }
 
-static int _find_ip(nozzle_t tap,
+static int _find_ip(nozzle_t nozzle,
 			const char *ip_addr, const char *prefix,
 			struct _ip **ip, struct _ip **ip_prev)
 {
 	struct _ip *local_ip, *local_ip_prev;
 	int found = 0;
 
-	local_ip = local_ip_prev = tap->ip;
+	local_ip = local_ip_prev = nozzle->ip;
 
 	while(local_ip) {
 		if ((!strcmp(local_ip->ip_addr, ip_addr)) && (!strcmp(local_ip->prefix, prefix))) {
@@ -951,7 +951,7 @@ static int _find_ip(nozzle_t tap,
 	return found;
 }
 
-int nozzle_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
+int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
@@ -959,13 +959,13 @@ int nozzle_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if ((!_check(tap)) || (!ip_addr) || (!prefix) || (!error_string)) {
+	if ((!_check(nozzle)) || (!ip_addr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	found = _find_ip(tap, ip_addr, prefix, &ip, &ip_prev);
+	found = _find_ip(nozzle, ip_addr, prefix, &ip, &ip_prev);
 	if (found)
 		goto out_clean;
 
@@ -987,13 +987,13 @@ int nozzle_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **
 	 * if user asks for an IPv6 address, but MTU < 1280
 	 * store the IP and bring it up later if and when MTU > 1280
 	 */
-	if ((ip->domain == AF_INET6) && (_get_mtu(tap) < 1280)) {
+	if ((ip->domain == AF_INET6) && (_get_mtu(nozzle) < 1280)) {
 		err = 0;
 	} else {
-		if (tap->ip) {
+		if (nozzle->ip) {
 			secondary = 1;
 		}
-		err = _set_ip(tap, "add", ip_addr, prefix, error_string, secondary);
+		err = _set_ip(nozzle, "add", ip_addr, prefix, error_string, secondary);
 	}
 
 	if (err) {
@@ -1001,14 +1001,14 @@ int nozzle_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **
 		goto out_clean;
 	}
 
-	if (tap->ip) {
-		ip_last = tap->ip;
+	if (nozzle->ip) {
+		ip_last = nozzle->ip;
 		while (ip_last->next != NULL) {
 			ip_last = ip_last->next;
 		}
 		ip_last->next = ip;
 	} else {
-		tap->ip = ip;
+		nozzle->ip = ip;
 	}
 
 out_clean:
@@ -1017,28 +1017,28 @@ out_clean:
 	return err;
 }
 
-int nozzle_del_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
+int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if ((!_check(tap)) || (!ip_addr) || (!prefix) || (!error_string)) {
+	if ((!_check(nozzle)) || (!ip_addr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	found = _find_ip(tap, ip_addr, prefix, &ip, &ip_prev);
+	found = _find_ip(nozzle, ip_addr, prefix, &ip, &ip_prev);
 	if (!found)
 		goto out_clean;
 
-	err = _set_ip(tap, "del", ip_addr, prefix, error_string, 0);
+	err = _set_ip(nozzle, "del", ip_addr, prefix, error_string, 0);
 
 	if (!err) {
 		if (ip == ip_prev) {
-			tap->ip = ip->next;
+			nozzle->ip = ip->next;
 		} else {
 			ip_prev->next = ip->next;
 		}
@@ -1051,19 +1051,19 @@ out_clean:
 	return err;
 }
 
-int nozzle_get_fd(const nozzle_t tap)
+int nozzle_get_fd(const nozzle_t nozzle)
 {
 	int fd;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		fd = -1;
 		goto out_clean;
 	}
 
-	fd = tap->fd;
+	fd = nozzle->fd;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -1071,18 +1071,18 @@ out_clean:
 	return fd;
 }
 
-const char *nozzle_get_name(const nozzle_t tap)
+const char *nozzle_get_name(const nozzle_t nozzle)
 {
 	char *name = NULL;
 
 	pthread_mutex_lock(&lib_mutex);
 
-	if (!_check(tap)) {
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		goto out_clean;
 	}
 
-	name = tap->tapname;
+	name = nozzle->nozzlename;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -1090,13 +1090,13 @@ out_clean:
 	return name;
 }
 
-int nozzle_get_ips(const nozzle_t tap, char **ip_addr_list, int *entries)
+int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 {
 	int err = 0;
 	int found = 0;
 	char *ip_list = NULL;
 	int size = 0, offset = 0, len;
-	struct _ip *ip = tap->ip;
+	struct _ip *ip = nozzle->ip;
 
 	pthread_mutex_lock(&lib_mutex);
 
@@ -1114,7 +1114,7 @@ int nozzle_get_ips(const nozzle_t tap, char **ip_addr_list, int *entries)
 
 	memset(ip_list, 0, size);
 
-	ip = tap->ip;
+	ip = nozzle->ip;
 
 	while (ip) {
 		len = strlen(ip->ip_addr);
@@ -1174,10 +1174,10 @@ static int is_if_in_system(char *name)
 
 static int test_iface(char *name, size_t size, const char *updownpath)
 {
-	nozzle_t tap;
+	nozzle_t nozzle;
 
-	tap=nozzle_open(name, size, updownpath);
-	if (!tap) {
+	nozzle=nozzle_open(name, size, updownpath);
+	if (!nozzle) {
 		if (lib_cfg.sockfd < 0)
 			printf("Unable to open knet_socket\n");
 		printf("Unable to open knet.\n");
@@ -1192,12 +1192,12 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 	}
 
 	if (!nozzle_find(name, size)) {
-		printf("Unable to find interface %s in tap db\n", name);
+		printf("Unable to find interface %s in nozzle db\n", name);
 	} else {
-		printf("Found interface %s in tap db\n", name);
+		printf("Found interface %s in nozzle db\n", name);
 	}
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	if (is_if_in_system(name) == 0)
 		printf("Successfully removed interface %s from the system\n", name);
@@ -1213,14 +1213,14 @@ static int check_nozzle_open_close(void)
 
 	memset(device_name, 0, sizeof(device_name));
 
-	printf("Creating random tap interface:\n");
+	printf("Creating random nozzle interface:\n");
 	if (test_iface(device_name, size,  NULL) < 0) {
 		printf("Unable to create random interface\n");
 		return -1;
 	}
 
 #ifdef KNET_LINUX
-	printf("Creating kronostest%u tap interface:\n", randombyte);
+	printf("Creating kronostest%u nozzle interface:\n", randombyte);
 	snprintf(device_name, IFNAMSIZ, "kronostest%u", randombyte);
 	if (test_iface(device_name, size, NULL) < 0) {
 		printf("Unable to create kronostest%u interface\n", randombyte);
@@ -1228,14 +1228,14 @@ static int check_nozzle_open_close(void)
 	}
 #endif
 #ifdef KNET_BSD
-	printf("Creating tap%u tap interface:\n", randombyte);
-	snprintf(device_name, IFNAMSIZ, "tap%u", randombyte);
+	printf("Creating nozzle%u nozzle interface:\n", randombyte);
+	snprintf(device_name, IFNAMSIZ, "nozzle%u", randombyte);
 	if (test_iface(device_name, size, NULL) < 0) {
-		printf("Unable to create tap%u interface\n", randombyte);
+		printf("Unable to create nozzle%u interface\n", randombyte);
 		return -1;
 	}
 
-	printf("Creating kronostest%u tap interface:\n", randombyte);
+	printf("Creating kronostest%u nozzle interface:\n", randombyte);
 	snprintf(device_name, IFNAMSIZ, "kronostest%u", randombyte);
 	if (test_iface(device_name, size, NULL) == 0) {
 		printf("BSD should not accept kronostest%u interface\n", randombyte);
@@ -1297,16 +1297,16 @@ static int check_knet_multi_eth(void)
 	char device_name2[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t tap1 = NULL;
-	nozzle_t tap2 = NULL;
+	nozzle_t nozzle1 = NULL;
+	nozzle_t nozzle2 = NULL;
 
 	printf("Testing multiple knet interface instances\n");
 
 	memset(device_name1, 0, size);
 	memset(device_name2, 0, size);
 
-	tap1 = nozzle_open(device_name1, size, NULL);
-	if (!tap1) {
+	nozzle1 = nozzle_open(device_name1, size, NULL);
+	if (!nozzle1) {
 		printf("Unable to init %s\n", device_name1);
 		err = -1;
 		goto out_clean;
@@ -1318,8 +1318,8 @@ static int check_knet_multi_eth(void)
 		printf("Unable to find interface %s on the system\n", device_name1);
 	}
 
-	tap2 = nozzle_open(device_name2, size, NULL);
-	if (!tap2) {
+	nozzle2 = nozzle_open(device_name2, size, NULL);
+	if (!nozzle2) {
 		printf("Unable to init %s\n", device_name2);
 		err = -1;
 		goto out_clean;
@@ -1331,10 +1331,10 @@ static int check_knet_multi_eth(void)
 		printf("Unable to find interface %s on the system\n", device_name2);
 	}
 
-	if (tap1)
-		nozzle_close(tap1);
-	if (tap2)
-		nozzle_close(tap2);
+	if (nozzle1)
+		nozzle_close(nozzle1);
+	if (nozzle2)
+		nozzle_close(nozzle2);
 
 	printf("Testing error conditions\n");
 
@@ -1342,8 +1342,8 @@ static int check_knet_multi_eth(void)
 
 	memset(device_name1, 0, size);
 
-	tap1 = nozzle_open(device_name1, size, NULL);
-	if (!tap1) {
+	nozzle1 = nozzle_open(device_name1, size, NULL);
+	if (!nozzle1) {
 		printf("Unable to init %s\n", device_name1);
 		err = -1;
 		goto out_clean;
@@ -1355,18 +1355,18 @@ static int check_knet_multi_eth(void)
 		printf("Unable to find interface %s on the system\n", device_name1);
 	}
 
-	tap2 = nozzle_open(device_name1, size, NULL);
-	if (tap2) {
+	nozzle2 = nozzle_open(device_name1, size, NULL);
+	if (nozzle2) {
 		printf("We were able to init 2 interfaces with the same name!\n");
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
-	if (tap1)
-		nozzle_close(tap1);
-	if (tap2)
-		nozzle_close(tap2);
+	if (nozzle1)
+		nozzle_close(nozzle1);
+	if (nozzle2)
+		nozzle_close(nozzle2);
 	return err;
 }
 
@@ -1375,7 +1375,7 @@ static int check_knet_mtu(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t tap;
+	nozzle_t nozzle;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -1383,14 +1383,14 @@ static int check_knet_mtu(void)
 	printf("Testing get/set MTU\n");
 
 	memset(device_name, 0, size);
-	tap = nozzle_open(device_name, size, NULL);
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, NULL);
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Comparing default MTU\n");
-	current_mtu = nozzle_get_mtu(tap);
+	current_mtu = nozzle_get_mtu(nozzle);
 	if (current_mtu < 0) {
 		printf("Unable to get MTU\n");
 		err = -1;
@@ -1404,13 +1404,13 @@ static int check_knet_mtu(void)
 
 	printf("Setting MTU to 9000\n");
 	expected_mtu = 9000;
-	if (nozzle_set_mtu(tap, expected_mtu) < 0) {
+	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
 		printf("Unable to set MTU to %d\n", expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
-	current_mtu = nozzle_get_mtu(tap);
+	current_mtu = nozzle_get_mtu(nozzle);
 	if (current_mtu < 0) {
 		printf("Unable to get MTU\n");
 		err = -1;
@@ -1439,7 +1439,7 @@ static int check_knet_mtu(void)
 	}
 
 out_clean:
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -1450,22 +1450,22 @@ static int check_knet_mtu_ipv6(void)
 	size_t size = IFNAMSIZ;
 	char verifycmd[1024];
 	int err=0;
-	nozzle_t tap;
+	nozzle_t nozzle;
 	char *error_string = NULL;
 
 	printf("Testing get/set MTU with IPv6 address\n");
 
 	memset(device_name, 0, size);
 
-	tap = nozzle_open(device_name, size, NULL);
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, NULL);
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = nozzle_add_ip(tap, testipv6_1, "64", &error_string);
+	err = nozzle_add_ip(nozzle, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -1481,10 +1481,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1499,7 +1499,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Setting MTU to 1200\n");
-	if (nozzle_set_mtu(tap, 1200) < 0) {
+	if (nozzle_set_mtu(nozzle, 1200) < 0) {
 		printf("Unable to set MTU to 1200\n");
 		err = -1;
 		goto out_clean;
@@ -1523,7 +1523,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Adding ip: %s/64\n", testipv6_2);
-	err = nozzle_add_ip(tap, testipv6_2, "64", &error_string);
+	err = nozzle_add_ip(nozzle, testipv6_2, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -1538,10 +1538,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_2);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_2);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_2);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_2);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1556,7 +1556,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Restoring MTU to default\n");
-	if (nozzle_reset_mtu(tap) < 0) {
+	if (nozzle_reset_mtu(nozzle) < 0) {
 		printf("Unable to reset mtu\n");
 		err = -1;
 		goto out_clean;
@@ -1565,10 +1565,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1585,10 +1585,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_2);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_2);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_2);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_2);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1603,7 +1603,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 out_clean:
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -1613,22 +1613,22 @@ static int check_knet_mac(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t tap;
+	nozzle_t nozzle;
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
 
 	printf("Testing get/set MAC\n");
 
 	memset(device_name, 0, size);
-	tap = nozzle_open(device_name, size, NULL);
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, NULL);
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Get current MAC\n");
 
-	if (nozzle_get_mac(tap, &current_mac) < 0) {
+	if (nozzle_get_mac(nozzle, &current_mac) < 0) {
 		printf("Unable to get current MAC address.\n");
 		err = -1;
 		goto out_clean;
@@ -1638,13 +1638,13 @@ static int check_knet_mac(void)
 
 	printf("Setting MAC: 00:01:01:01:01:01\n");
 
-	if (nozzle_set_mac(tap, "00:01:01:01:01:01") < 0) {
+	if (nozzle_set_mac(nozzle, "00:01:01:01:01:01") < 0) {
 		printf("Unable to set current MAC address.\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	if (nozzle_get_mac(tap, &temp_mac) < 0) {
+	if (nozzle_get_mac(nozzle, &temp_mac) < 0) {
 		printf("Unable to get current MAC address.\n");
 		err = -1;
 		goto out_clean;
@@ -1675,7 +1675,7 @@ static int check_knet_mac(void)
 
 	printf("Pass NULL to get_mac (pass2)\n");
 	errno = 0;
-	if ((nozzle_get_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_get_mac(nozzle, NULL) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_get_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
@@ -1683,7 +1683,7 @@ static int check_knet_mac(void)
 
 	printf("Pass NULL to set_mac (pass1)\n");
 	errno = 0;
-	if ((nozzle_set_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_mac(nozzle, NULL) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
@@ -1709,7 +1709,7 @@ out_clean:
 	if (temp_mac)
 		free(temp_mac);
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -1814,7 +1814,7 @@ static int check_knet_up_down(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t tap;
+	nozzle_t nozzle;
 	char *error_string = NULL;
 	char *error_preup = NULL, *error_up = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
@@ -1822,15 +1822,15 @@ static int check_knet_up_down(void)
 	printf("Testing interface up/down\n");
 
 	memset(device_name, 0, size);
-	tap = nozzle_open(device_name, size, NULL);
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, NULL);
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(tap, &error_preup, &error_up);
+	err = nozzle_set_up(nozzle, &error_preup, &error_up);
 	if (error_preup) {
 		printf("preup output: %s\n", error_preup);
 		free(error_preup);
@@ -1850,10 +1850,10 @@ static int check_knet_up_down(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q UP", tap->tapname);
+		 "ip addr show dev %s | grep -q UP", nozzle->nozzlename);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q UP", tap->tapname);
+		 "ifconfig %s | grep -q UP", nozzle->nozzlename);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1869,7 +1869,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = nozzle_set_down(tap, &error_down, &error_postdown);
+	err = nozzle_set_down(nozzle, &error_down, &error_postdown);
 	if (error_down) {
 		printf("down output: %s\n", error_down);
 		free(error_down);
@@ -1889,10 +1889,10 @@ static int check_knet_up_down(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q UP", tap->tapname);
+		 "ip addr show dev %s | grep -q UP", nozzle->nozzlename);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q UP", tap->tapname);
+		 "ifconfig %s | grep -q UP", nozzle->nozzlename);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1906,20 +1906,20 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	printf("Testing interface pre-up/up/down/post-down (exec errors)\n");
 
 	memset(device_name, 0, size);
-	tap = nozzle_open(device_name, size, ABSBUILDDIR "/nozzle_updown_bad");
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, ABSBUILDDIR "/nozzle_updown_bad");
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(tap, &error_preup, &error_up);
+	err = nozzle_set_up(nozzle, &error_preup, &error_up);
 	if (error_preup) {
 		printf("preup output: %s\n", error_preup);
 		free(error_preup);
@@ -1938,7 +1938,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = nozzle_set_down(tap, &error_down, &error_postdown);
+	err = nozzle_set_down(nozzle, &error_down, &error_postdown);
 	if (error_down) {
 		printf("down output: %s\n", error_down);
 		free(error_down);
@@ -1955,21 +1955,21 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	printf("Testing interface pre-up/up/down/post-down\n");
 
 	memset(device_name, 0, size);
 
-	tap = nozzle_open(device_name, size, ABSBUILDDIR "/nozzle_updown_good");
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, ABSBUILDDIR "/nozzle_updown_good");
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(tap, &error_preup, &error_up);
+	err = nozzle_set_up(nozzle, &error_preup, &error_up);
 	if (error_preup) {
 		printf("preup output: %s\n", error_preup);
 		free(error_preup);
@@ -1988,7 +1988,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = nozzle_set_down(tap, &error_down, &error_postdown);
+	err = nozzle_set_down(nozzle, &error_down, &error_postdown);
 	if (error_down) {
 		printf("down output: %s\n", error_down);
 		free(error_down);
@@ -2005,11 +2005,11 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	printf("Test ERROR conditions\n");
 
-	printf("Pass NULL to tap set_up\n");
+	printf("Pass NULL to nozzle set_up\n");
 	errno = 0;
 	if ((nozzle_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_up sanity checks\n");
@@ -2019,7 +2019,7 @@ static int check_knet_up_down(void)
 
 	printf("Pass NULL to error_preup set_up\n");
 	errno = 0;
-	if ((nozzle_set_up(tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_up(nozzle, NULL, &error_up) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
@@ -2027,13 +2027,13 @@ static int check_knet_up_down(void)
 
 	printf("Pass NULL to error_up set_up\n");
 	errno = 0;
-	if ((nozzle_set_up(tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_up(nozzle, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	printf("Pass NULL to tap set_down\n");
+	printf("Pass NULL to nozzle set_down\n");
 	errno = 0;
 	if ((nozzle_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_down sanity checks\n");
@@ -2043,7 +2043,7 @@ static int check_knet_up_down(void)
 
 	printf("Pass NULL to error_down set_down\n");
 	errno = 0;
-	if ((nozzle_set_down(tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_down(nozzle, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
@@ -2051,7 +2051,7 @@ static int check_knet_up_down(void)
 
 	printf("Pass NULL to error_postdown set_down\n");
 	errno = 0;
-	if ((nozzle_set_down(tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_down(nozzle, &error_down, NULL) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
@@ -2059,7 +2059,7 @@ static int check_knet_up_down(void)
 
 out_clean:
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -2069,22 +2069,22 @@ static int check_knet_close_leak(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t tap;
+	nozzle_t nozzle;
 	char *error_string = NULL;
 
 	printf("Testing close leak (needs valgrind)\n");
 
 	memset(device_name, 0, size);
 
-	tap = nozzle_open(device_name, size, NULL);
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, NULL);
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = nozzle_add_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_add_ip(nozzle, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2098,7 +2098,7 @@ static int check_knet_close_leak(void)
 
 	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = nozzle_add_ip(tap, testipv4_2, "24", &error_string);
+	err = nozzle_add_ip(nozzle, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2112,7 +2112,7 @@ static int check_knet_close_leak(void)
 
 out_clean:
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -2123,7 +2123,7 @@ static int check_knet_set_del_ip(void)
 	size_t size = IFNAMSIZ;
 	char verifycmd[1024];
 	int err=0;
-	nozzle_t tap;
+	nozzle_t nozzle;
 	char *ip_list = NULL;
 	int ip_list_entries = 0, i, offset = 0;
 	char *error_string = NULL;
@@ -2132,15 +2132,15 @@ static int check_knet_set_del_ip(void)
 
 	memset(device_name, 0, size);
 
-	tap = nozzle_open(device_name, size, NULL);
-	if (!tap) {
+	nozzle = nozzle_open(device_name, size, NULL);
+	if (!nozzle) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = nozzle_add_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_add_ip(nozzle, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2154,7 +2154,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = nozzle_add_ip(tap, testipv4_2, "24", &error_string);
+	err = nozzle_add_ip(nozzle, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2168,14 +2168,14 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding duplicate ip: %s/24\n", testipv4_1);
 
-	err = nozzle_add_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_add_ip(nozzle, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
 	if (err < 0) {
-		printf("Unable to find IP address in libtap db\n");
+		printf("Unable to find IP address in libnozzle db\n");
 		err=-1;
 		goto out_clean;
 	}
@@ -2185,10 +2185,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/24", tap->tapname, testipv4_1);
+		 "ip addr show dev %s | grep -q %s/24", nozzle->nozzlename, testipv4_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv4_1);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv4_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2202,22 +2202,22 @@ static int check_knet_set_del_ip(void)
 		goto out_clean;
 	}
 
-	printf("Get ip list from libtap:\n");
+	printf("Get ip list from libnozzle:\n");
 
-	if (nozzle_get_ips(tap, &ip_list, &ip_list_entries) < 0) {
+	if (nozzle_get_ips(nozzle, &ip_list, &ip_list_entries) < 0) {
 		printf("Not enough mem?\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	if (ip_list_entries != 2) {
-		printf("Didn't get enough ip back from libtap?\n");
+		printf("Didn't get enough ip back from libnozzle?\n");
 		err=-1;
 		goto out_clean;
 	}
 
 	for (i = 1; i <= ip_list_entries; i++) {
-		printf("Found IP %s %s in libtap db\n", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1);
+		printf("Found IP %s %s in libnozzle db\n", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1);
 		offset = offset + strlen(ip_list) + 1;
 		offset = offset + strlen(ip_list + offset) + 1;
 	}
@@ -2226,7 +2226,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
 
-	err = nozzle_del_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_del_ip(nozzle, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2240,7 +2240,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_2);
 
-	err = nozzle_del_ip(tap, testipv4_2, "24", &error_string);
+	err = nozzle_del_ip(nozzle, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2254,7 +2254,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting again ip: %s/24\n", testipv4_1);
 
-	err = nozzle_del_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_del_ip(nozzle, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2269,10 +2269,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/24", tap->tapname, testipv4_1);
+		 "ip addr show dev %s | grep -q %s/24", nozzle->nozzlename, testipv4_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv4_1);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv4_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2288,7 +2288,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = nozzle_add_ip(tap, testipv6_1, "64", &error_string);
+	err = nozzle_add_ip(nozzle, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -2303,10 +2303,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2322,7 +2322,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/64\n", testipv6_1);
 
-	err = nozzle_del_ip(tap, testipv6_1, "64", &error_string);
+	err = nozzle_del_ip(nozzle, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -2337,10 +2337,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", tap->tapname, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", tap->tapname, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2356,7 +2356,7 @@ static int check_knet_set_del_ip(void)
 
 out_clean:
 
-	nozzle_close(tap);
+	nozzle_close(nozzle);
 
 	return err;
 }
