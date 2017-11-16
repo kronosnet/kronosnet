@@ -74,19 +74,19 @@ static pthread_mutex_t lib_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
 static int _execute_shell(const char *command, char **error_string);
-static int _exec_updown(const tap_t tap, const char *action, char **error_string);
+static int _exec_updown(const nozzle_t tap, const char *action, char **error_string);
 static int _read_pipe(int fd, char **file, size_t *length);
-static int _check(const tap_t tap);
-static void _close(tap_t tap);
+static int _check(const nozzle_t tap);
+static void _close(nozzle_t tap);
 static void _close_cfg(void);
-static int _get_mtu(const tap_t tap);
-static int _get_mac(const tap_t tap, char **ether_addr);
-static int _set_down(tap_t tap, char **error_down, char **error_postdown);
+static int _get_mtu(const nozzle_t tap);
+static int _get_mac(const nozzle_t tap, char **ether_addr);
+static int _set_down(nozzle_t tap, char **error_down, char **error_postdown);
 static char *_get_v4_broadcast(const char *ip_addr, const char *prefix);
-static int _set_ip(tap_t tap, const char *command,
+static int _set_ip(nozzle_t tap, const char *command,
 		      const char *ip_addr, const char *prefix,
 		      char **error_string, int secondary);
-static int _find_ip(tap_t tap,
+static int _find_ip(nozzle_t tap,
 			const char *ip_addr, const char *prefix,
 			struct _ip **ip, struct _ip **ip_prev);
 
@@ -202,7 +202,7 @@ out_clean0:
 	return err;
 }
 
-static int _exec_updown(const tap_t tap, const char *action, char **error_string)
+static int _exec_updown(const nozzle_t tap, const char *action, char **error_string)
 {
 	char command[PATH_MAX];
 	struct stat sb;
@@ -228,9 +228,9 @@ static int _exec_updown(const tap_t tap, const char *action, char **error_string
 	return err;
 }
 
-static int _check(const tap_t tap)
+static int _check(const nozzle_t tap)
 {
-	tap_t temp = lib_cfg.head;
+	nozzle_t temp = lib_cfg.head;
 
 	if (!tap) {
 		return 0;
@@ -246,7 +246,7 @@ static int _check(const tap_t tap)
 	return 0;
 }
 
-static void _close(tap_t tap)
+static void _close(nozzle_t tap)
 {
 	if (!tap)
 		return;
@@ -274,7 +274,7 @@ static void _close_cfg(void)
 	}
 }
 
-static int _get_mtu(const tap_t tap)
+static int _get_mtu(const nozzle_t tap)
 {
 	int err;
 
@@ -291,7 +291,7 @@ out_clean:
 	return err;
 }
 
-static int _get_mac(const tap_t tap, char **ether_addr)
+static int _get_mac(const nozzle_t tap, char **ether_addr)
 {
 	int err = 0;
 	char mac[MAX_MAC_CHAR];
@@ -352,9 +352,9 @@ out_clean:
 	return err;
 }
 
-tap_t tap_find(char *dev, size_t dev_size)
+nozzle_t tap_find(char *dev, size_t dev_size)
 {
-	tap_t tap;
+	nozzle_t tap;
 
 	if (dev == NULL) {
 		errno = EINVAL;
@@ -384,9 +384,9 @@ tap_t tap_find(char *dev, size_t dev_size)
 	return tap;
 }
 
-tap_t tap_open(char *dev, size_t dev_size, const char *updownpath)
+nozzle_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 {
-	tap_t tap;
+	nozzle_t tap;
 	char *temp_mac = NULL;
 #ifdef KNET_BSD
 	uint16_t i;
@@ -546,11 +546,11 @@ out_error:
 }
 
 // TODO: consider better error report from here
-int tap_close(tap_t tap)
+int tap_close(nozzle_t tap)
 {
 	int err = 0;
-	tap_t temp = lib_cfg.head;
-	tap_t prev = lib_cfg.head;
+	nozzle_t temp = lib_cfg.head;
+	nozzle_t prev = lib_cfg.head;
 	struct _ip *ip, *ip_next;
 	char *error_string = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
@@ -601,7 +601,7 @@ out_clean:
 	return err;
 }
 
-int tap_get_mtu(const tap_t tap)
+int tap_get_mtu(const nozzle_t tap)
 {
 	int err;
 
@@ -621,7 +621,7 @@ out_clean:
 	return err;
 }
 
-int tap_set_mtu(tap_t tap, const int mtu)
+int tap_set_mtu(nozzle_t tap, const int mtu)
 {
 	struct _ip *tmp_ip;
 	char *error_string = NULL;
@@ -663,12 +663,12 @@ out_clean:
 	return err;
 }
 
-int tap_reset_mtu(tap_t tap)
+int tap_reset_mtu(nozzle_t tap)
 {
 	return tap_set_mtu(tap, tap->default_mtu);
 }
 
-int tap_get_mac(const tap_t tap, char **ether_addr)
+int tap_get_mac(const nozzle_t tap, char **ether_addr)
 {
 	int err;
 
@@ -688,7 +688,7 @@ out_clean:
 	return err;
 }
 
-int tap_set_mac(tap_t tap, const char *ether_addr)
+int tap_set_mac(nozzle_t tap, const char *ether_addr)
 {
 	int err;
 
@@ -727,12 +727,12 @@ out_clean:
 	return err;
 }
 
-int tap_reset_mac(tap_t tap)
+int tap_reset_mac(nozzle_t tap)
 {
 	return tap_set_mac(tap, tap->default_mac);
 }
 
-int tap_set_up(tap_t tap, char **error_preup, char **error_up)
+int tap_set_up(nozzle_t tap, char **error_preup, char **error_up)
 {
 	int err = 0;
 
@@ -777,7 +777,7 @@ out_clean:
 	return err;
 }
 
-static int _set_down(tap_t tap, char **error_down, char **error_postdown)
+static int _set_down(nozzle_t tap, char **error_down, char **error_postdown)
 {
 	int err = 0;
 
@@ -807,7 +807,7 @@ out_clean:
 	return err;
 }
 
-int tap_set_down(tap_t tap, char **error_down, char **error_postdown)
+int tap_set_down(nozzle_t tap, char **error_down, char **error_postdown)
 {
 	int err = 0;
 
@@ -856,7 +856,7 @@ static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
 	return strdup(inet_ntoa(broadcast));
 }
 
-static int _set_ip(tap_t tap, const char *command,
+static int _set_ip(nozzle_t tap, const char *command,
 		      const char *ip_addr, const char *prefix,
 		      char **error_string, int secondary)
 {
@@ -925,7 +925,7 @@ static int _set_ip(tap_t tap, const char *command,
 	return _execute_shell(cmdline, error_string);
 }
 
-static int _find_ip(tap_t tap,
+static int _find_ip(nozzle_t tap,
 			const char *ip_addr, const char *prefix,
 			struct _ip **ip, struct _ip **ip_prev)
 {
@@ -951,7 +951,7 @@ static int _find_ip(tap_t tap,
 	return found;
 }
 
-int tap_add_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
+int tap_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
@@ -1017,7 +1017,7 @@ out_clean:
 	return err;
 }
 
-int tap_del_ip(tap_t tap, const char *ip_addr, const char *prefix, char **error_string)
+int tap_del_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL;
@@ -1051,7 +1051,7 @@ out_clean:
 	return err;
 }
 
-int tap_get_fd(const tap_t tap)
+int tap_get_fd(const nozzle_t tap)
 {
 	int fd;
 
@@ -1071,7 +1071,7 @@ out_clean:
 	return fd;
 }
 
-const char *tap_get_name(const tap_t tap)
+const char *tap_get_name(const nozzle_t tap)
 {
 	char *name = NULL;
 
@@ -1090,7 +1090,7 @@ out_clean:
 	return name;
 }
 
-int tap_get_ips(const tap_t tap, char **ip_addr_list, int *entries)
+int tap_get_ips(const nozzle_t tap, char **ip_addr_list, int *entries)
 {
 	int err = 0;
 	int found = 0;
@@ -1174,7 +1174,7 @@ static int is_if_in_system(char *name)
 
 static int test_iface(char *name, size_t size, const char *updownpath)
 {
-	tap_t tap;
+	nozzle_t tap;
 
 	tap=tap_open(name, size, updownpath);
 	if (!tap) {
@@ -1297,8 +1297,8 @@ static int check_knet_multi_eth(void)
 	char device_name2[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	tap_t tap1 = NULL;
-	tap_t tap2 = NULL;
+	nozzle_t tap1 = NULL;
+	nozzle_t tap2 = NULL;
 
 	printf("Testing multiple knet interface instances\n");
 
@@ -1375,7 +1375,7 @@ static int check_knet_mtu(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	tap_t tap;
+	nozzle_t tap;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -1450,7 +1450,7 @@ static int check_knet_mtu_ipv6(void)
 	size_t size = IFNAMSIZ;
 	char verifycmd[1024];
 	int err=0;
-	tap_t tap;
+	nozzle_t tap;
 	char *error_string = NULL;
 
 	printf("Testing get/set MTU with IPv6 address\n");
@@ -1613,7 +1613,7 @@ static int check_knet_mac(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	tap_t tap;
+	nozzle_t tap;
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
 
@@ -1814,7 +1814,7 @@ static int check_knet_up_down(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	tap_t tap;
+	nozzle_t tap;
 	char *error_string = NULL;
 	char *error_preup = NULL, *error_up = NULL;
 	char *error_down = NULL, *error_postdown = NULL;
@@ -2069,7 +2069,7 @@ static int check_knet_close_leak(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	tap_t tap;
+	nozzle_t tap;
 	char *error_string = NULL;
 
 	printf("Testing close leak (needs valgrind)\n");
@@ -2123,7 +2123,7 @@ static int check_knet_set_del_ip(void)
 	size_t size = IFNAMSIZ;
 	char verifycmd[1024];
 	int err=0;
-	tap_t tap;
+	nozzle_t tap;
 	char *ip_list = NULL;
 	int ip_list_entries = 0, i, offset = 0;
 	char *error_string = NULL;
