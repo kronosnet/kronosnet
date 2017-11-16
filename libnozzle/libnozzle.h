@@ -206,8 +206,46 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
  */
 
 int nozzle_get_mtu(const nozzle_t nozzle);
-int nozzle_set_mtu(nozzle_t nozzle, const int mtu);
-int nozzle_reset_mtu(nozzle_t nozzle);
+
+/**
+ * nozzle_set_mtu
+ * @brief set mtu on a given nozzle interface
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * mtu - new MTU value
+ *
+ * error_string - pointer to string to record errors from ipaddr2 (Linux) or ifconfig (BSD)
+ *                when re-instanting IPv6 address if MTU is becoming again > 1280.
+ *                The string is malloc'ed, the caller needs to free this buffer.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and errno is set.
+ * error_string is set to NULL on success
+ * error_string will contain a string recording the execution error.
+ */
+
+int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string);
+
+/**
+ * nozzle_reset_mtu
+ * @brief reset mtu on a given nozzle interface to the system default
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * error_string - pointer to string to record errors from ipaddr2 (Linux) or ifconfig (BSD)
+ *                when re-instanting IPv6 address if MTU is becoming again > 1280.
+ *                The string is malloc'ed, the caller needs to free this buffer.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and errno is set.
+ * error_string is set to NULL on success
+ * error_string will contain a string recording the execution error.
+ */
+
+int nozzle_reset_mtu(nozzle_t nozzle, char **error_string);
 
 int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr);
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
