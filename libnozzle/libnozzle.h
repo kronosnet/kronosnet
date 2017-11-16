@@ -10,10 +10,7 @@
 #define __LIBNOZZLE_H__
 
 #include <sys/types.h>
-
-#ifndef IFNAMSIZ
-#define IFNAMSIZ 16
-#endif
+#include <net/if.h>
 
 /**
  *
