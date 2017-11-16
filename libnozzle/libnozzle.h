@@ -125,11 +125,9 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
 
 int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
 
-nozzle_t nozzle_find(char *dev, size_t dev_size);
-
-int nozzle_get_fd(const nozzle_t nozzle);
-
-const char *nozzle_get_name(const nozzle_t nozzle);
+int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
+int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
+int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
 
 int nozzle_get_mtu(const nozzle_t nozzle);
 int nozzle_set_mtu(nozzle_t nozzle, const int mtu);
@@ -139,8 +137,8 @@ int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr);
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
 int nozzle_reset_mac(nozzle_t nozzle);
 
-int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
-int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
-int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
+nozzle_t nozzle_find(char *dev, size_t dev_size);
+int nozzle_get_fd(const nozzle_t nozzle);
+const char *nozzle_get_name(const nozzle_t nozzle);
 
 #endif
