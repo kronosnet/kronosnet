@@ -751,46 +751,60 @@ int nozzle_reset_mac(nozzle_t nozzle)
 
 int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 {
-	int err = 0;
+	int err = 0, savederrno = 0;
 
-	pthread_mutex_lock(&lib_mutex);
+	if (!nozzle) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
 
 	if (!_check(nozzle)) {
-		errno = EINVAL;
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
 	if ((nozzle->hasupdown) && ((!error_preup) || (!error_up))) {
-		errno = EINVAL;
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
-	if (nozzle->up)
+	if (nozzle->up) {
 		goto out_clean;
+	}
 
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err=ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &nozzle->ifr);
-	if (err)
+	err = ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &nozzle->ifr);
+	if (err) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	_exec_updown(nozzle, "pre-up.d", error_preup);
 
 	nozzle->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err=ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &nozzle->ifr);
-
-	if (err)
+	err = ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &nozzle->ifr);
+	if (err) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	_exec_updown(nozzle, "up.d", error_up);
 
 	nozzle->up = 1;
+
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 
