@@ -352,7 +352,7 @@ out_clean:
 	return err;
 }
 
-nozzle_t tap_find(char *dev, size_t dev_size)
+nozzle_t nozzle_find(char *dev, size_t dev_size)
 {
 	nozzle_t tap;
 
@@ -384,7 +384,7 @@ nozzle_t tap_find(char *dev, size_t dev_size)
 	return tap;
 }
 
-nozzle_t tap_open(char *dev, size_t dev_size, const char *updownpath)
+nozzle_t nozzle_open(char *dev, size_t dev_size, const char *updownpath)
 {
 	nozzle_t tap;
 	char *temp_mac = NULL;
@@ -546,7 +546,7 @@ out_error:
 }
 
 // TODO: consider better error report from here
-int tap_close(nozzle_t tap)
+int nozzle_close(nozzle_t tap)
 {
 	int err = 0;
 	nozzle_t temp = lib_cfg.head;
@@ -601,7 +601,7 @@ out_clean:
 	return err;
 }
 
-int tap_get_mtu(const nozzle_t tap)
+int nozzle_get_mtu(const nozzle_t tap)
 {
 	int err;
 
@@ -621,7 +621,7 @@ out_clean:
 	return err;
 }
 
-int tap_set_mtu(nozzle_t tap, const int mtu)
+int nozzle_set_mtu(nozzle_t tap, const int mtu)
 {
 	struct _ip *tmp_ip;
 	char *error_string = NULL;
@@ -663,12 +663,12 @@ out_clean:
 	return err;
 }
 
-int tap_reset_mtu(nozzle_t tap)
+int nozzle_reset_mtu(nozzle_t tap)
 {
-	return tap_set_mtu(tap, tap->default_mtu);
+	return nozzle_set_mtu(tap, tap->default_mtu);
 }
 
-int tap_get_mac(const nozzle_t tap, char **ether_addr)
+int nozzle_get_mac(const nozzle_t tap, char **ether_addr)
 {
 	int err;
 
@@ -688,7 +688,7 @@ out_clean:
 	return err;
 }
 
-int tap_set_mac(nozzle_t tap, const char *ether_addr)
+int nozzle_set_mac(nozzle_t tap, const char *ether_addr)
 {
 	int err;
 
@@ -727,12 +727,12 @@ out_clean:
 	return err;
 }
 
-int tap_reset_mac(nozzle_t tap)
+int nozzle_reset_mac(nozzle_t tap)
 {
-	return tap_set_mac(tap, tap->default_mac);
+	return nozzle_set_mac(tap, tap->default_mac);
 }
 
-int tap_set_up(nozzle_t tap, char **error_preup, char **error_up)
+int nozzle_set_up(nozzle_t tap, char **error_preup, char **error_up)
 {
 	int err = 0;
 
@@ -807,7 +807,7 @@ out_clean:
 	return err;
 }
 
-int tap_set_down(nozzle_t tap, char **error_down, char **error_postdown)
+int nozzle_set_down(nozzle_t tap, char **error_down, char **error_postdown)
 {
 	int err = 0;
 
@@ -951,7 +951,7 @@ static int _find_ip(nozzle_t tap,
 	return found;
 }
 
-int tap_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
+int nozzle_add_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
@@ -1017,7 +1017,7 @@ out_clean:
 	return err;
 }
 
-int tap_del_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
+int nozzle_del_ip(nozzle_t tap, const char *ip_addr, const char *prefix, char **error_string)
 {
 	int err = 0, found;
 	struct _ip *ip = NULL, *ip_prev = NULL;
@@ -1051,7 +1051,7 @@ out_clean:
 	return err;
 }
 
-int tap_get_fd(const nozzle_t tap)
+int nozzle_get_fd(const nozzle_t tap)
 {
 	int fd;
 
@@ -1071,7 +1071,7 @@ out_clean:
 	return fd;
 }
 
-const char *tap_get_name(const nozzle_t tap)
+const char *nozzle_get_name(const nozzle_t tap)
 {
 	char *name = NULL;
 
@@ -1090,7 +1090,7 @@ out_clean:
 	return name;
 }
 
-int tap_get_ips(const nozzle_t tap, char **ip_addr_list, int *entries)
+int nozzle_get_ips(const nozzle_t tap, char **ip_addr_list, int *entries)
 {
 	int err = 0;
 	int found = 0;
@@ -1176,7 +1176,7 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 {
 	nozzle_t tap;
 
-	tap=tap_open(name, size, updownpath);
+	tap=nozzle_open(name, size, updownpath);
 	if (!tap) {
 		if (lib_cfg.sockfd < 0)
 			printf("Unable to open knet_socket\n");
@@ -1191,13 +1191,13 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 		printf("Unable to find interface %s on the system\n", name);
 	}
 
-	if (!tap_find(name, size)) {
+	if (!nozzle_find(name, size)) {
 		printf("Unable to find interface %s in tap db\n", name);
 	} else {
 		printf("Found interface %s in tap db\n", name);
 	}
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	if (is_if_in_system(name) == 0)
 		printf("Successfully removed interface %s from the system\n", name);
@@ -1205,7 +1205,7 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 	return 0;
 }
 
-static int check_tap_open_close(void)
+static int check_nozzle_open_close(void)
 {
 	char device_name[2*IFNAMSIZ];
 	char fakepath[PATH_MAX];
@@ -1248,14 +1248,14 @@ static int check_tap_open_close(void)
 	printf("Testing dev == NULL\n");
 	errno=0;
 	if ((test_iface(NULL, size, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_open sanity checks\n");
+		printf("Something is wrong in nozzle_open sanity checks\n");
 		return -1;
 	}
 
 	printf("Testing size < IFNAMSIZ\n");
 	errno=0;
 	if ((test_iface(device_name, 1, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_open sanity checks\n");
+		printf("Something is wrong in nozzle_open sanity checks\n");
 		return -1;
 	}
 
@@ -1263,7 +1263,7 @@ static int check_tap_open_close(void)
 	errno=0;
 	strcpy(device_name, "abcdefghilmnopqrstuvwz");
 	if ((test_iface(device_name, IFNAMSIZ, NULL) >= 0) || (errno != E2BIG)) {
-		printf("Something is wrong in tap_open sanity checks\n");
+		printf("Something is wrong in nozzle_open sanity checks\n");
 		return -1;
 	}
 
@@ -1272,7 +1272,7 @@ static int check_tap_open_close(void)
 
 	memset(device_name, 0, IFNAMSIZ);
 	if ((test_iface(device_name, IFNAMSIZ, "foo")  >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_open sanity checks\n");
+		printf("Something is wrong in nozzle_open sanity checks\n");
 		return -1;
 	}
 
@@ -1284,7 +1284,7 @@ static int check_tap_open_close(void)
 
 	memset(device_name, 0, IFNAMSIZ);
 	if ((test_iface(device_name, IFNAMSIZ, fakepath)  >= 0) || (errno != E2BIG)) {
-		printf("Something is wrong in tap_open sanity checks\n");
+		printf("Something is wrong in nozzle_open sanity checks\n");
 		return -1;
 	}
 
@@ -1305,7 +1305,7 @@ static int check_knet_multi_eth(void)
 	memset(device_name1, 0, size);
 	memset(device_name2, 0, size);
 
-	tap1 = tap_open(device_name1, size, NULL);
+	tap1 = nozzle_open(device_name1, size, NULL);
 	if (!tap1) {
 		printf("Unable to init %s\n", device_name1);
 		err = -1;
@@ -1318,7 +1318,7 @@ static int check_knet_multi_eth(void)
 		printf("Unable to find interface %s on the system\n", device_name1);
 	}
 
-	tap2 = tap_open(device_name2, size, NULL);
+	tap2 = nozzle_open(device_name2, size, NULL);
 	if (!tap2) {
 		printf("Unable to init %s\n", device_name2);
 		err = -1;
@@ -1332,9 +1332,9 @@ static int check_knet_multi_eth(void)
 	}
 
 	if (tap1)
-		tap_close(tap1);
+		nozzle_close(tap1);
 	if (tap2)
-		tap_close(tap2);
+		nozzle_close(tap2);
 
 	printf("Testing error conditions\n");
 
@@ -1342,7 +1342,7 @@ static int check_knet_multi_eth(void)
 
 	memset(device_name1, 0, size);
 
-	tap1 = tap_open(device_name1, size, NULL);
+	tap1 = nozzle_open(device_name1, size, NULL);
 	if (!tap1) {
 		printf("Unable to init %s\n", device_name1);
 		err = -1;
@@ -1355,7 +1355,7 @@ static int check_knet_multi_eth(void)
 		printf("Unable to find interface %s on the system\n", device_name1);
 	}
 
-	tap2 = tap_open(device_name1, size, NULL);
+	tap2 = nozzle_open(device_name1, size, NULL);
 	if (tap2) {
 		printf("We were able to init 2 interfaces with the same name!\n");
 		err = -1;
@@ -1364,9 +1364,9 @@ static int check_knet_multi_eth(void)
 
 out_clean:
 	if (tap1)
-		tap_close(tap1);
+		nozzle_close(tap1);
 	if (tap2)
-		tap_close(tap2);
+		nozzle_close(tap2);
 	return err;
 }
 
@@ -1383,14 +1383,14 @@ static int check_knet_mtu(void)
 	printf("Testing get/set MTU\n");
 
 	memset(device_name, 0, size);
-	tap = tap_open(device_name, size, NULL);
+	tap = nozzle_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
 	}
 
 	printf("Comparing default MTU\n");
-	current_mtu = tap_get_mtu(tap);
+	current_mtu = nozzle_get_mtu(tap);
 	if (current_mtu < 0) {
 		printf("Unable to get MTU\n");
 		err = -1;
@@ -1404,13 +1404,13 @@ static int check_knet_mtu(void)
 
 	printf("Setting MTU to 9000\n");
 	expected_mtu = 9000;
-	if (tap_set_mtu(tap, expected_mtu) < 0) {
+	if (nozzle_set_mtu(tap, expected_mtu) < 0) {
 		printf("Unable to set MTU to %d\n", expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
-	current_mtu = tap_get_mtu(tap);
+	current_mtu = nozzle_get_mtu(tap);
 	if (current_mtu < 0) {
 		printf("Unable to get MTU\n");
 		err = -1;
@@ -1425,21 +1425,21 @@ static int check_knet_mtu(void)
 	printf("Testing ERROR conditions\n");
 
 	printf("Passing empty struct to get_mtu\n");
-	if (tap_get_mtu(NULL) > 0) {
-		printf("Something is wrong in tap_get_mtu sanity checks\n");
+	if (nozzle_get_mtu(NULL) > 0) {
+		printf("Something is wrong in nozzle_get_mtu sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Passing empty struct to set_mtu\n");
-	if (tap_set_mtu(NULL, 1500) == 0) {
-		printf("Something is wrong in tap_set_mtu sanity checks\n"); 
+	if (nozzle_set_mtu(NULL, 1500) == 0) {
+		printf("Something is wrong in nozzle_set_mtu sanity checks\n"); 
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
-	tap_close(tap);
+	nozzle_close(tap);
 
 	return err;
 }
@@ -1457,7 +1457,7 @@ static int check_knet_mtu_ipv6(void)
 
 	memset(device_name, 0, size);
 
-	tap = tap_open(device_name, size, NULL);
+	tap = nozzle_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -1465,7 +1465,7 @@ static int check_knet_mtu_ipv6(void)
 
 	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = tap_add_ip(tap, testipv6_1, "64", &error_string);
+	err = nozzle_add_ip(tap, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -1499,7 +1499,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Setting MTU to 1200\n");
-	if (tap_set_mtu(tap, 1200) < 0) {
+	if (nozzle_set_mtu(tap, 1200) < 0) {
 		printf("Unable to set MTU to 1200\n");
 		err = -1;
 		goto out_clean;
@@ -1523,7 +1523,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Adding ip: %s/64\n", testipv6_2);
-	err = tap_add_ip(tap, testipv6_2, "64", &error_string);
+	err = nozzle_add_ip(tap, testipv6_2, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -1556,7 +1556,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Restoring MTU to default\n");
-	if (tap_reset_mtu(tap) < 0) {
+	if (nozzle_reset_mtu(tap) < 0) {
 		printf("Unable to reset mtu\n");
 		err = -1;
 		goto out_clean;
@@ -1603,7 +1603,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 out_clean:
-	tap_close(tap);
+	nozzle_close(tap);
 
 	return err;
 }
@@ -1620,7 +1620,7 @@ static int check_knet_mac(void)
 	printf("Testing get/set MAC\n");
 
 	memset(device_name, 0, size);
-	tap = tap_open(device_name, size, NULL);
+	tap = nozzle_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -1628,7 +1628,7 @@ static int check_knet_mac(void)
 
 	printf("Get current MAC\n");
 
-	if (tap_get_mac(tap, &current_mac) < 0) {
+	if (nozzle_get_mac(tap, &current_mac) < 0) {
 		printf("Unable to get current MAC address.\n");
 		err = -1;
 		goto out_clean;
@@ -1638,13 +1638,13 @@ static int check_knet_mac(void)
 
 	printf("Setting MAC: 00:01:01:01:01:01\n");
 
-	if (tap_set_mac(tap, "00:01:01:01:01:01") < 0) {
+	if (nozzle_set_mac(tap, "00:01:01:01:01:01") < 0) {
 		printf("Unable to set current MAC address.\n");
 		err = -1;
 		goto out_clean;
 	}
 
-	if (tap_get_mac(tap, &temp_mac) < 0) {
+	if (nozzle_get_mac(tap, &temp_mac) < 0) {
 		printf("Unable to get current MAC address.\n");
 		err = -1;
 		goto out_clean;
@@ -1667,32 +1667,32 @@ static int check_knet_mac(void)
 
 	printf("Pass NULL to get_mac (pass1)\n");
 	errno = 0;
-	if ((tap_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_get_mac sanity checks\n");
+	if ((nozzle_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_get_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to get_mac (pass2)\n");
 	errno = 0;
-	if ((tap_get_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_get_mac sanity checks\n");
+	if ((nozzle_get_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_get_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to set_mac (pass1)\n");
 	errno = 0;
-	if ((tap_set_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_mac sanity checks\n");
+	if ((nozzle_set_mac(tap, NULL) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to set_mac (pass2)\n");
 	errno = 0;
-	if ((tap_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_mac sanity checks\n");
+	if ((nozzle_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
@@ -1709,12 +1709,12 @@ out_clean:
 	if (temp_mac)
 		free(temp_mac);
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	return err;
 }
 
-static int check_tap_execute_shell(void)
+static int check_nozzle_execute_shell(void)
 {
 	int err = 0;
 	char command[4096];
@@ -1822,7 +1822,7 @@ static int check_knet_up_down(void)
 	printf("Testing interface up/down\n");
 
 	memset(device_name, 0, size);
-	tap = tap_open(device_name, size, NULL);
+	tap = nozzle_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -1830,7 +1830,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface up\n");
 
-	err = tap_set_up(tap, &error_preup, &error_up);
+	err = nozzle_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
 		printf("preup output: %s\n", error_preup);
 		free(error_preup);
@@ -1869,7 +1869,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = tap_set_down(tap, &error_down, &error_postdown);
+	err = nozzle_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
 		printf("down output: %s\n", error_down);
 		free(error_down);
@@ -1906,12 +1906,12 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	printf("Testing interface pre-up/up/down/post-down (exec errors)\n");
 
 	memset(device_name, 0, size);
-	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_bad");
+	tap = nozzle_open(device_name, size, ABSBUILDDIR "/nozzle_updown_bad");
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -1919,7 +1919,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface up\n");
 
-	err = tap_set_up(tap, &error_preup, &error_up);
+	err = nozzle_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
 		printf("preup output: %s\n", error_preup);
 		free(error_preup);
@@ -1938,7 +1938,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = tap_set_down(tap, &error_down, &error_postdown);
+	err = nozzle_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
 		printf("down output: %s\n", error_down);
 		free(error_down);
@@ -1955,13 +1955,13 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	printf("Testing interface pre-up/up/down/post-down\n");
 
 	memset(device_name, 0, size);
 
-	tap = tap_open(device_name, size, ABSBUILDDIR "/tap_updown_good");
+	tap = nozzle_open(device_name, size, ABSBUILDDIR "/nozzle_updown_good");
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -1969,7 +1969,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface up\n");
 
-	err = tap_set_up(tap, &error_preup, &error_up);
+	err = nozzle_set_up(tap, &error_preup, &error_up);
 	if (error_preup) {
 		printf("preup output: %s\n", error_preup);
 		free(error_preup);
@@ -1988,7 +1988,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = tap_set_down(tap, &error_down, &error_postdown);
+	err = nozzle_set_down(tap, &error_down, &error_postdown);
 	if (error_down) {
 		printf("down output: %s\n", error_down);
 		free(error_down);
@@ -2005,61 +2005,61 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	printf("Test ERROR conditions\n");
 
 	printf("Pass NULL to tap set_up\n");
 	errno = 0;
-	if ((tap_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_up sanity checks\n");
+	if ((nozzle_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to error_preup set_up\n");
 	errno = 0;
-	if ((tap_set_up(tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_up sanity checks\n");
+	if ((nozzle_set_up(tap, NULL, &error_up) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to error_up set_up\n");
 	errno = 0;
-	if ((tap_set_up(tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_up sanity checks\n");
+	if ((nozzle_set_up(tap, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to tap set_down\n");
 	errno = 0;
-	if ((tap_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_down sanity checks\n");
+	if ((nozzle_set_down(NULL, &error_down, &error_postdown) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to error_down set_down\n");
 	errno = 0;
-	if ((tap_set_down(tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_down sanity checks\n");
+	if ((nozzle_set_down(tap, NULL, &error_postdown) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to error_postdown set_down\n");
 	errno = 0;
-	if ((tap_set_down(tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in tap_set_down sanity checks\n");
+	if ((nozzle_set_down(tap, &error_down, NULL) >= 0) || (errno != EINVAL)) {
+		printf("Something is wrong in nozzle_set_down sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	return err;
 }
@@ -2076,7 +2076,7 @@ static int check_knet_close_leak(void)
 
 	memset(device_name, 0, size);
 
-	tap = tap_open(device_name, size, NULL);
+	tap = nozzle_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -2084,7 +2084,7 @@ static int check_knet_close_leak(void)
 
 	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = tap_add_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_add_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2098,7 +2098,7 @@ static int check_knet_close_leak(void)
 
 	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = tap_add_ip(tap, testipv4_2, "24", &error_string);
+	err = nozzle_add_ip(tap, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2112,7 +2112,7 @@ static int check_knet_close_leak(void)
 
 out_clean:
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	return err;
 }
@@ -2132,7 +2132,7 @@ static int check_knet_set_del_ip(void)
 
 	memset(device_name, 0, size);
 
-	tap = tap_open(device_name, size, NULL);
+	tap = nozzle_open(device_name, size, NULL);
 	if (!tap) {
 		printf("Unable to init %s\n", device_name);
 		return -1;
@@ -2140,7 +2140,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = tap_add_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_add_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2154,7 +2154,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = tap_add_ip(tap, testipv4_2, "24", &error_string);
+	err = nozzle_add_ip(tap, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2168,7 +2168,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding duplicate ip: %s/24\n", testipv4_1);
 
-	err = tap_add_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_add_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("add ip output: %s\n", error_string);
 		free(error_string);
@@ -2204,7 +2204,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Get ip list from libtap:\n");
 
-	if (tap_get_ips(tap, &ip_list, &ip_list_entries) < 0) {
+	if (nozzle_get_ips(tap, &ip_list, &ip_list_entries) < 0) {
 		printf("Not enough mem?\n");
 		err=-1;
 		goto out_clean;
@@ -2226,7 +2226,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
 
-	err = tap_del_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_del_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2240,7 +2240,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_2);
 
-	err = tap_del_ip(tap, testipv4_2, "24", &error_string);
+	err = nozzle_del_ip(tap, testipv4_2, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2254,7 +2254,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting again ip: %s/24\n", testipv4_1);
 
-	err = tap_del_ip(tap, testipv4_1, "24", &error_string);
+	err = nozzle_del_ip(tap, testipv4_1, "24", &error_string);
 	if (error_string) {
 		printf("del ip output: %s\n", error_string);
 		free(error_string);
@@ -2288,7 +2288,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = tap_add_ip(tap, testipv6_1, "64", &error_string);
+	err = nozzle_add_ip(tap, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("add ipv6 output: %s\n", error_string);
 		free(error_string);
@@ -2322,7 +2322,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/64\n", testipv6_1);
 
-	err = tap_del_ip(tap, testipv6_1, "64", &error_string);
+	err = nozzle_del_ip(tap, testipv6_1, "64", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -2356,7 +2356,7 @@ static int check_knet_set_del_ip(void)
 
 out_clean:
 
-	tap_close(tap);
+	nozzle_close(tap);
 
 	return err;
 }
@@ -2426,7 +2426,7 @@ int main(void)
 
 	make_local_ips();
 
-	if (check_tap_open_close() < 0)
+	if (check_nozzle_open_close() < 0)
 		return -1;
 
 	if (check_knet_multi_eth() < 0)
@@ -2441,7 +2441,7 @@ int main(void)
 	if (check_knet_mac() < 0)
 		return -1;
 
-	if (check_tap_execute_shell() < 0)
+	if (check_nozzle_execute_shell() < 0)
 		return -1;
 
 	if (check_knet_up_down() < 0)
