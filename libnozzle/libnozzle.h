@@ -21,7 +21,7 @@
  * nozzle is a commodity library to manage tap (ethernet) interfaces
  */
 
-typedef struct _iface *nozzle_t;
+typedef struct nozzle_iface *nozzle_t;
 
 nozzle_t tap_open(char *dev, size_t dev_size, const char *updownpath);
 int tap_close(nozzle_t tap);

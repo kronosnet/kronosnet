@@ -48,7 +48,7 @@ struct _ip {
 	struct _ip *next;
 };
 
-struct _iface {
+struct nozzle_iface {
 	struct ifreq ifr;
 	int fd;
 	char tapname[IFNAMSIZ];
@@ -59,12 +59,12 @@ struct _iface {
 	int hasupdown;
 	int up;
 	struct _ip *ip;
-	struct _iface *next;
+	struct nozzle_iface *next;
 };
 #define ifname ifr.ifr_name
 
 struct _config {
-	struct _iface *head;
+	struct nozzle_iface *head;
 	int sockfd;
 };
 
@@ -446,12 +446,12 @@ nozzle_t tap_open(char *dev, size_t dev_size, const char *updownpath)
 		}
 	}
 
-	tap = malloc(sizeof(struct _iface));
+	tap = malloc(sizeof(struct nozzle_iface));
 	if (!tap) {
 		return NULL;
 	}
 
-	memset(tap, 0, sizeof(struct _iface));
+	memset(tap, 0, sizeof(struct nozzle_iface));
 
 	pthread_mutex_lock(&lib_mutex);
 
