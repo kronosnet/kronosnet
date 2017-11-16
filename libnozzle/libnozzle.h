@@ -69,7 +69,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
  *
  * @return
  * 0 on success
- * -1 on error and error is set.
+ * -1 on error and errno is set.
  * error_down / error_postdown are set to NULL if execution of external scripts
  * is sucessful
  * error_down / error_postdown will contain strings recording the execution error.
@@ -93,7 +93,7 @@ int nozzle_close(nozzle_t nozzle, char **error_down, char **error_postdown);
  *
  * @return
  * 0 on success
- * -1 on error and error is set.
+ * -1 on error and errno is set.
  * error_preup / error_up are set to NULL if execution of external scripts
  * is sucessful
  * error_preup / error_up will contain strings recording the execution error.
@@ -117,7 +117,7 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
  *
  * @return
  * 0 on success
- * -1 on error and error is set.
+ * -1 on error and errno is set.
  * error_down / error_postdown are set to NULL if execution of external scripts
  * is sucessful
  * error_down / error_postdown will contain strings recording the execution error.
@@ -143,7 +143,7 @@ int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
  *
  * @return
  * 0 on success
- * -1 on error and error is set.
+ * -1 on error and errno is set.
  *  error_string is set to NULL on success
  *  error_string will contain a string recording the execution error.
  */
@@ -165,12 +165,33 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
  *
  * @return
  * 0 on success
- * -1 on error and error is set.
+ * -1 on error and errno is set.
  *  error_string is set to NULL on success
  *  error_string will contain a string recording the execution error.
  */
 
 int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
+
+/**
+ * nozzle_get_ips
+ * @brief retrive the list of all configured ips for a given interface
+ *
+ * TODO: change to use a ip_addr_list struct!
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * ip_addr_list - list of strings containing either an IPv4 or an IPv6 address and their prefixes.
+ *
+ * entries - entries recorded.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and errno is set.
+ * ip_addr_list is a malloc'ed buffer that the user needs to parse and free after use. ip_addr_list can
+ * be NULL if entries is 0.
+ *
+ */
+
 int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
 
 int nozzle_get_mtu(const nozzle_t nozzle);
