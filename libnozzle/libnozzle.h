@@ -77,6 +77,31 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 int nozzle_close(nozzle_t nozzle, char **error_down, char **error_postdown);
 
+/**
+ * nozzle_set_up
+ * @brief equivalent of ifconfig up, executes pre-up.d up.d if configured
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * error_preup - pointers to string to record errors from executing pre-up.d
+ *               when configured. The string is malloc'ed, the caller needs to free those
+ *               buffers.
+ *
+ * error_up - pointers to string to record errors from executing up.d
+ *            when configured. The string is malloc'ed, the caller needs to free those
+ *            buffers.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and error is set.
+ * error_preup / error_up are set to NULL if execution of external scripts
+ * is sucessful
+ * error_preup / error_up will contain strings recording the execution error.
+ */
+
+int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
+int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
+
 nozzle_t nozzle_find(char *dev, size_t dev_size);
 
 int nozzle_get_fd(const nozzle_t nozzle);
@@ -90,9 +115,6 @@ int nozzle_reset_mtu(nozzle_t nozzle);
 int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr);
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
 int nozzle_reset_mac(nozzle_t nozzle);
-
-int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
-int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
 
 int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
 int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
