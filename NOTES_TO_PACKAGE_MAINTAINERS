@@ -8,7 +8,7 @@ DO NOT ship kronosnetd. It's an experimental piece of super
 crappy code. IF you decide to ship it anyway, you get to
 be also the upstream maintainer :-) you have been warned.
 
-libtap is a simple commodity library used only by kronosnetd.
+libnozzle is a simple commodity library used only by kronosnetd.
 I don't mind to support it, but don't ship just for the fun of it.
 It has no users, that I know of, outside of kronosnetd.
 

@@ -11,7 +11,7 @@ exec_prefix=${prefix}
 libdir=@libdir@
 includedir=${prefix}/include
 
-Name: libtap
+Name: libnozzle
 Version: @VERSION@
 Description: library to manage a pool of tap devices
 Requires:

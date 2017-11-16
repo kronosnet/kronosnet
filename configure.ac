@@ -166,14 +166,14 @@ AC_ARG_ENABLE([rpm-debuginfo],
 AM_CONDITIONAL([BUILD_RPM_DEBUGINFO], [test x$enable_rpm_debuginfo = xyes])
 AM_CONDITIONAL([OVERRIDE_RPM_DEBUGINFO], [test x$override_rpm_debuginfo_option = xyes])
 
-AC_ARG_ENABLE([libtap],
-	[AS_HELP_STRING([--enable-libtap],[libtap support])],,
-	[ enable_libtap="no" ])
+AC_ARG_ENABLE([libnozzle],
+	[AS_HELP_STRING([--enable-libnozzle],[libnozzle support])],,
+	[ enable_libnozzle="no" ])
 
 if test "x$enable_kronosnetd" = xyes; then
-	enable_libtap=yes
+	enable_libnozzle=yes
 fi
-AM_CONDITIONAL([BUILD_LIBTAP], [test x$enable_libtap = xyes])
+AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 
 ## local helper functions
 # this function checks if CC support options passed as
@@ -498,8 +498,8 @@ AC_MSG_NOTICE([using source epoch $($UTC_DATE_AT$SOURCE_EPOCH +'%F %T %Z')])
 AC_CONFIG_FILES([
 		Makefile
 		init/Makefile
-		libtap/Makefile
-		libtap/libtap.pc
+		libnozzle/Makefile
+		libnozzle/libnozzle.pc
 		kronosnetd/Makefile
 		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
