@@ -1080,23 +1080,34 @@ out_clean:
 
 int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string)
 {
-	int err = 0, found;
+	int err = 0, savederrno = 0;
+        int found = 0;
 	struct _ip *ip = NULL, *ip_prev = NULL;
 
-	pthread_mutex_lock(&lib_mutex);
+	if ((!nozzle) || (!ip_addr) || (!prefix) || (!error_string)) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if ((!_check(nozzle)) || (!ip_addr) || (!prefix) || (!error_string)) {
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
 
 	found = _find_ip(nozzle, ip_addr, prefix, &ip, &ip_prev);
-	if (!found)
+	if (!found) {
 		goto out_clean;
+	}
 
 	err = _set_ip(nozzle, "del", ip_addr, prefix, error_string, 0);
-
+	savederrno = errno;
 	if (!err) {
 		if (ip == ip_prev) {
 			nozzle->ip = ip->next;
@@ -1108,7 +1119,7 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 
