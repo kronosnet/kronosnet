@@ -651,13 +651,21 @@ out_clean:
 	return err;
 }
 
-int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
+int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 {
+	int err = 0, savederrno = 0;
 	struct _ip *tmp_ip;
-	char *error_string = NULL;
-	int err;
 
-	pthread_mutex_lock(&lib_mutex);
+	if ((!nozzle) || (!mtu) || (!error_string)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
 
 	if (!_check(nozzle)) {
 		errno = EINVAL;
@@ -666,21 +674,28 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
 	}
 
 	err = nozzle->current_mtu = _get_mtu(nozzle);
-	if (err < 0)
+	if (err < 0) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	nozzle->ifr.ifr_mtu = mtu;
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &nozzle->ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
 
-	if ((!err) && (nozzle->current_mtu < 1280) && (mtu >= 1280)) {
+	if ((nozzle->current_mtu < 1280) && (mtu >= 1280)) {
 		tmp_ip = nozzle->ip;
 		while(tmp_ip) {
 			if (tmp_ip->domain == AF_INET6) {
-				err = _set_ip(nozzle, "add", tmp_ip->ip_addr, tmp_ip->prefix, &error_string, 0);
-				if (error_string) {
-					free(error_string);
-					error_string = NULL;
+				err = _set_ip(nozzle, "add", tmp_ip->ip_addr, tmp_ip->prefix, error_string, 0);
+				if (err) {
+					savederrno = errno;
+					err = -1;
+					goto out_clean;
 				}
 			}
 			tmp_ip = tmp_ip->next;
@@ -689,13 +704,13 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 
-int nozzle_reset_mtu(nozzle_t nozzle)
+int nozzle_reset_mtu(nozzle_t nozzle, char **error_string)
 {
-	return nozzle_set_mtu(nozzle, nozzle->default_mtu);
+	return nozzle_set_mtu(nozzle, nozzle->default_mtu, error_string);
 }
 
 int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
@@ -1537,6 +1552,7 @@ static int check_knet_mtu(void)
 	int err=0;
 	nozzle_t nozzle;
 	char *error_down = NULL, *error_postdown = NULL;
+	char *error_string = NULL;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -1565,8 +1581,12 @@ static int check_knet_mtu(void)
 
 	printf("Setting MTU to 9000\n");
 	expected_mtu = 9000;
-	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
+	if (nozzle_set_mtu(nozzle, expected_mtu, &error_string) < 0) {
 		printf("Unable to set MTU to %d\n", expected_mtu);
+		if (error_string) {
+			printf("error: %s\n", error_string);
+			free(error_string);
+		}
 		err = -1;
 		goto out_clean;
 	}
@@ -1593,8 +1613,12 @@ static int check_knet_mtu(void)
 	}
 
 	printf("Passing empty struct to set_mtu\n");
-	if (nozzle_set_mtu(NULL, 1500) == 0) {
+	if (nozzle_set_mtu(NULL, 1500, &error_string) == 0) {
 		printf("Something is wrong in nozzle_set_mtu sanity checks\n"); 
+		if (error_string) {
+			printf("error: %s\n", error_string);
+			free(error_string);
+		}
 		err = -1;
 		goto out_clean;
 	}
@@ -1671,8 +1695,12 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Setting MTU to 1200\n");
-	if (nozzle_set_mtu(nozzle, 1200) < 0) {
+	if (nozzle_set_mtu(nozzle, 1200, &error_string) < 0) {
 		printf("Unable to set MTU to 1200\n");
+		if (error_string) {
+			printf("error: %s\n", error_string);
+			free(error_string);
+		}
 		err = -1;
 		goto out_clean;
 	}
@@ -1728,8 +1756,12 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Restoring MTU to default\n");
-	if (nozzle_reset_mtu(nozzle) < 0) {
+	if (nozzle_reset_mtu(nozzle, &error_string) < 0) {
 		printf("Unable to reset mtu\n");
+		if (error_string) {
+			printf("error: %s\n", error_string);
+			free(error_string);
+		}
 		err = -1;
 		goto out_clean;
 	}
