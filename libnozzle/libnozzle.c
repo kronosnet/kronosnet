@@ -276,18 +276,21 @@ static void _close_cfg(void)
 
 static int _get_mtu(const nozzle_t nozzle)
 {
-	int err;
+	int err = 0, savederrno = 0;
 
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
 	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &nozzle->ifr);
-	if (err)
+	if (err) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	err = nozzle->ifr.ifr_mtu;
 
 out_clean:
+	errno = savederrno;
 	return err;
 }
 
@@ -620,9 +623,18 @@ out_clean:
 
 int nozzle_get_mtu(const nozzle_t nozzle)
 {
-	int err;
+	int err = 0, savederrno = 0;
 
-	pthread_mutex_lock(&lib_mutex);
+	if (!nozzle) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
 
 	if (!_check(nozzle)) {
 		errno = EINVAL;
@@ -631,10 +643,11 @@ int nozzle_get_mtu(const nozzle_t nozzle)
 	}
 
 	err = _get_mtu(nozzle);
+	savederrno = errno;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	savederrno = errno;
 	return err;
 }
 
