@@ -236,6 +236,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
+	int was_decrypted = 0;
+	uint64_t crypt_time = 0;
 	struct timespec recvtime;
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
 	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
@@ -250,7 +252,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	if (knet_h->crypto_instance) {
 		struct timespec start_time;
 		struct timespec end_time;
-		uint64_t crypt_time;
+
 
 		clock_gettime(CLOCK_MONOTONIC, &start_time);
 		if (crypto_authenticate_and_decrypt(knet_h,
@@ -270,13 +272,10 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		if (crypt_time > knet_h->stats.rx_crypt_time_max) {
 			knet_h->stats.rx_crypt_time_max = crypt_time;
 		}
-		knet_h->stats.rx_crypt_time_ave =
-			(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
-			 crypt_time) / (knet_h->stats.rx_crypt_packets+1);
-		knet_h->stats.rx_crypt_packets++;
 
 		len = outlen;
 		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
+		was_decrypted++;
 	}
 
 	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
@@ -419,6 +418,13 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
 			if (knet_h->enabled != 1) /* data forward is disabled */
 				break;
+
+			/* Only update the crypto overhead for data packets. Mainly to be
+			   consistent with TX */
+			knet_h->stats.rx_crypt_time_ave =
+				(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
+				 crypt_time) / (knet_h->stats.rx_crypt_packets+1);
+			knet_h->stats.rx_crypt_packets++;
 
 			if (knet_h->dst_host_filter_fn) {
 				size_t host_idx;
