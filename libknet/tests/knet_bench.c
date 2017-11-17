@@ -36,6 +36,7 @@ static int datafd = 0;
 static int8_t channel = 0;
 static int globallistener = 0;
 static int continous = 0;
+static int show_stats = 0;
 static struct sockaddr_storage allv4;
 static struct sockaddr_storage allv6;
 static int broadcast_test = 1;
@@ -43,6 +44,7 @@ static pthread_t rx_thread = (pthread_t)NULL;
 static char *rx_buf[PCKT_FRAG_MAX];
 static int wait_for_perf_rx = 0;
 static char *compresscfg = NULL;
+static char *cryptocfg = NULL;
 
 static int bench_shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -103,6 +105,9 @@ static void print_help(void)
 	printf(" -S [size|seconds]                         when used in combination with -T perf-by-size it indicates how many GB of traffic to generate for the test. (default: 1GB)\n");
 	printf("                                           when used in combination with -T perf-by-time it indicates how many Seconds of traffic to generate for the test. (default: 10 seconds)\n");
 	printf(" -C                                        repeat the test continously (default: off)\n");
+	printf(" -X[XX]                                    show stats at the end of the run (default: 1)\n");
+	printf("                                           1: show handle stats, 2: show summary link stats\n");
+	printf("                                           3: show detailed link stats\n");
 }
 
 static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct node nodes[MAX_NODES], int *thisidx)
@@ -198,7 +203,7 @@ static void setup_knet(int argc, char *argv[])
 {
 	int logfd;
 	int rv;
-	char *cryptocfg = NULL, *policystr = NULL, *protostr = NULL;
+	char *policystr = NULL, *protostr = NULL;
 	char *othernodeinfo[MAX_NODES];
 	struct node nodes[MAX_NODES];
 	int thisidx = -1;
@@ -220,7 +225,7 @@ static void setup_knet(int argc, char *argv[])
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:P:z:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:X::P:z:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -356,6 +361,13 @@ static void setup_knet(int argc, char *argv[])
 				break;
 			case 'C':
 				continous = 1;
+				break;
+			case 'X':
+				if (optarg) {
+					show_stats = atoi(optarg);
+				} else {
+					show_stats = 1;
+				}
 				break;
 			case 'z':
 				if (compresscfg) {
@@ -873,6 +885,219 @@ static void send_perf_data_by_size(void)
 	}
 }
 
+/* For sorting the node list into order */
+static int node_compare(const void *aptr, const void *bptr)
+{
+	uint16_t a,b;
+
+	a = *(uint16_t *)aptr;
+	b = *(uint16_t *)bptr;
+
+	return a > b;
+}
+
+static void display_stats(int level)
+{
+	struct knet_handle_stats handle_stats;
+	struct knet_link_status link_status;
+	struct knet_link_stats total_link_stats;
+	knet_node_id_t host_list[KNET_MAX_HOST];
+	uint8_t link_list[KNET_MAX_LINK];
+	int res;
+	unsigned int i,j;
+	size_t num_hosts, num_links;
+
+	res = knet_handle_get_stats(knet_h, &handle_stats, sizeof(handle_stats));
+	if (res) {
+		perror("Failed to get knet handle stats");
+		return;
+	}
+	if (compresscfg || cryptocfg) {
+		printf("\n");
+		printf("handle stats\n");
+		printf("------------\n");
+		if (compresscfg) {
+			printf(" tx_uncompressed_packets: %" PRIu64 "\n", handle_stats.tx_uncompressed_packets);
+			printf(" tx_compressed_packets: %" PRIu64 "\n", handle_stats.tx_compressed_packets);
+			printf(" tx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.tx_compressed_original_bytes);
+			printf(" tx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.tx_compressed_size_bytes );
+			printf(" tx_compress_time_ave: %" PRIu64 "\n", handle_stats.tx_compress_time_ave);
+			printf(" tx_compress_time_min: %" PRIu64 "\n", handle_stats.tx_compress_time_min);
+			printf(" tx_compress_time_max: %" PRIu64 "\n", handle_stats.tx_compress_time_max);
+			printf(" rx_compressed_packets: %" PRIu64 "\n", handle_stats.rx_compressed_packets);
+			printf(" rx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_original_bytes);
+			printf(" rx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_size_bytes);
+			printf(" rx_compress_time_ave: %" PRIu64 "\n", handle_stats.rx_compress_time_ave);
+			printf(" rx_compress_time_min: %" PRIu64 "\n", handle_stats.rx_compress_time_min);
+			printf(" rx_compress_time_max: %" PRIu64 "\n", handle_stats.rx_compress_time_max);
+			printf("\n");
+		}
+		if (cryptocfg) {
+			printf(" tx_crypt_packets: %" PRIu64 "\n", handle_stats.tx_crypt_packets);
+			printf(" tx_crypt_byte_overhead: %" PRIu64 "\n", handle_stats.tx_crypt_byte_overhead);
+			printf(" tx_crypt_time_ave: %" PRIu64 "\n", handle_stats.tx_crypt_time_ave);
+			printf(" tx_crypt_time_min: %" PRIu64 "\n", handle_stats.tx_crypt_time_min);
+			printf(" tx_crypt_time_max: %" PRIu64 "\n", handle_stats.tx_crypt_time_max);
+			printf(" rx_crypt_packets: %" PRIu64 "\n", handle_stats.rx_crypt_packets);
+			printf(" rx_crypt_time_ave: %" PRIu64 "\n", handle_stats.rx_crypt_time_ave);
+			printf(" rx_crypt_time_min: %" PRIu64 "\n", handle_stats.rx_crypt_time_min);
+			printf(" rx_crypt_time_max: %" PRIu64 "\n", handle_stats.rx_crypt_time_max);
+			printf("\n");
+		}
+	}
+	if (level < 2) {
+		return;
+	}
+
+	memset(&total_link_stats, 0, sizeof(struct knet_link_stats));
+
+	res = knet_host_get_host_list(knet_h, host_list, &num_hosts);
+	if (res) {
+		perror("Cannot get host list for stats");
+		return;
+	}
+
+	/* Print in host ID order */
+	qsort(host_list, num_hosts, sizeof(uint16_t), node_compare);
+
+	for (j=0; j<num_hosts; j++) {
+		res = knet_link_get_link_list(knet_h, host_list[j], link_list, &num_links);
+		if (res) {
+			perror("Cannot get link list for stats");
+			return;
+		}
+
+		for (i=0; i < num_links; i++) {
+			res = knet_link_get_status(knet_h,
+						   host_list[j],
+						   link_list[i],
+						   &link_status,
+						   sizeof(link_status));
+
+			total_link_stats.tx_data_packets += link_status.stats.tx_data_packets;
+			total_link_stats.rx_data_packets += link_status.stats.rx_data_packets;
+			total_link_stats.tx_data_bytes += link_status.stats.tx_data_bytes;
+			total_link_stats.rx_data_bytes += link_status.stats.rx_data_bytes;
+			total_link_stats.rx_ping_packets += link_status.stats.rx_ping_packets;
+			total_link_stats.tx_ping_packets += link_status.stats.tx_ping_packets;
+			total_link_stats.rx_ping_bytes += link_status.stats.rx_ping_bytes;
+			total_link_stats.tx_ping_bytes += link_status.stats.tx_ping_bytes;
+			total_link_stats.rx_pong_packets += link_status.stats.rx_pong_packets;
+			total_link_stats.tx_pong_packets += link_status.stats.tx_pong_packets;
+			total_link_stats.rx_pong_bytes += link_status.stats.rx_pong_bytes;
+			total_link_stats.tx_pong_bytes += link_status.stats.tx_pong_bytes;
+			total_link_stats.rx_pmtu_packets += link_status.stats.rx_pmtu_packets;
+			total_link_stats.tx_pmtu_packets += link_status.stats.tx_pmtu_packets;
+			total_link_stats.rx_pmtu_bytes += link_status.stats.rx_pmtu_bytes;
+			total_link_stats.tx_pmtu_bytes += link_status.stats.tx_pmtu_bytes;
+
+			total_link_stats.tx_total_packets += link_status.stats.tx_total_packets;
+			total_link_stats.rx_total_packets += link_status.stats.rx_total_packets;
+			total_link_stats.tx_total_bytes += link_status.stats.tx_total_bytes;
+			total_link_stats.rx_total_bytes += link_status.stats.rx_total_bytes;
+			total_link_stats.tx_total_errors += link_status.stats.tx_total_errors;
+			total_link_stats.tx_total_retries += link_status.stats.tx_total_retries;
+
+			total_link_stats.tx_pmtu_errors += link_status.stats.tx_pmtu_errors;
+			total_link_stats.tx_pmtu_retries += link_status.stats.tx_pmtu_retries;
+			total_link_stats.tx_ping_errors += link_status.stats.tx_ping_errors;
+			total_link_stats.tx_ping_retries += link_status.stats.tx_ping_retries;
+			total_link_stats.tx_pong_errors += link_status.stats.tx_pong_errors;
+			total_link_stats.tx_pong_retries += link_status.stats.tx_pong_retries;
+			total_link_stats.tx_data_errors += link_status.stats.tx_data_errors;
+			total_link_stats.tx_data_retries += link_status.stats.tx_data_retries;
+
+			total_link_stats.down_count += link_status.stats.down_count;
+			total_link_stats.up_count += link_status.stats.up_count;
+
+			if (level > 2) {
+				printf("\n");
+				printf("Node %d Link %d\n", host_list[j], link_list[i]);
+
+				printf("  tx_data_packets:  %" PRIu64 "\n", link_status.stats.tx_data_packets);
+				printf("  rx_data_packets:  %" PRIu64 "\n", link_status.stats.rx_data_packets);
+				printf("  tx_data_bytes:    %" PRIu64 "\n", link_status.stats.tx_data_bytes);
+				printf("  rx_data_bytes:    %" PRIu64 "\n", link_status.stats.rx_data_bytes);
+				printf("  rx_ping_packets:  %" PRIu64 "\n", link_status.stats.rx_ping_packets);
+				printf("  tx_ping_packets:  %" PRIu64 "\n", link_status.stats.tx_ping_packets);
+				printf("  rx_ping_bytes:    %" PRIu64 "\n", link_status.stats.rx_ping_bytes);
+				printf("  tx_ping_bytes:    %" PRIu64 "\n", link_status.stats.tx_ping_bytes);
+				printf("  rx_pong_packets:  %" PRIu64 "\n", link_status.stats.rx_pong_packets);
+				printf("  tx_pong_packets:  %" PRIu64 "\n", link_status.stats.tx_pong_packets);
+				printf("  rx_pong_bytes:    %" PRIu64 "\n", link_status.stats.rx_pong_bytes);
+				printf("  tx_pong_bytes:    %" PRIu64 "\n", link_status.stats.tx_pong_bytes);
+				printf("  rx_pmtu_packets:  %" PRIu64 "\n", link_status.stats.rx_pmtu_packets);
+				printf("  tx_pmtu_packets:  %" PRIu64 "\n", link_status.stats.tx_pmtu_packets);
+				printf("  rx_pmtu_bytes:    %" PRIu64 "\n", link_status.stats.rx_pmtu_bytes);
+				printf("  tx_pmtu_bytes:    %" PRIu64 "\n", link_status.stats.tx_pmtu_bytes);
+
+				printf("  tx_total_packets: %" PRIu64 "\n", link_status.stats.tx_total_packets);
+				printf("  rx_total_packets: %" PRIu64 "\n", link_status.stats.rx_total_packets);
+				printf("  tx_total_bytes:   %" PRIu64 "\n", link_status.stats.tx_total_bytes);
+				printf("  rx_total_bytes:   %" PRIu64 "\n", link_status.stats.rx_total_bytes);
+				printf("  tx_total_errors:  %" PRIu64 "\n", link_status.stats.tx_total_errors);
+				printf("  tx_total_retries: %" PRIu64 "\n", link_status.stats.tx_total_retries);
+
+				printf("  tx_pmtu_errors:   %" PRIu32 "\n", link_status.stats.tx_pmtu_errors);
+				printf("  tx_pmtu_retries:  %" PRIu32 "\n", link_status.stats.tx_pmtu_retries);
+				printf("  tx_ping_errors:   %" PRIu32 "\n", link_status.stats.tx_ping_errors);
+				printf("  tx_ping_retries:  %" PRIu32 "\n", link_status.stats.tx_ping_retries);
+				printf("  tx_pong_errors:   %" PRIu32 "\n", link_status.stats.tx_pong_errors);
+				printf("  tx_pong_retries:  %" PRIu32 "\n", link_status.stats.tx_pong_retries);
+				printf("  tx_data_errors:   %" PRIu32 "\n", link_status.stats.tx_data_errors);
+				printf("  tx_data_retries:  %" PRIu32 "\n", link_status.stats.tx_data_retries);
+
+				printf("  latency_min:      %" PRIu32 "\n", link_status.stats.latency_min);
+				printf("  latency_max:      %" PRIu32 "\n", link_status.stats.latency_max);
+				printf("  latency_ave:      %" PRIu32 "\n", link_status.stats.latency_ave);
+				printf("  latency_samples:  %" PRIu32 "\n", link_status.stats.latency_samples);
+
+				printf("  down_count:       %" PRIu32 "\n", link_status.stats.down_count);
+				printf("  up_count:         %" PRIu32 "\n", link_status.stats.up_count);
+			}
+		}
+	}
+	printf("\n");
+	printf("Total link stats\n");
+	printf("----------------\n");
+	printf("tx_data_packets:  %" PRIu64 "\n", total_link_stats.tx_data_packets);
+	printf("rx_data_packets:  %" PRIu64 "\n", total_link_stats.rx_data_packets);
+	printf("tx_data_bytes:    %" PRIu64 "\n", total_link_stats.tx_data_bytes);
+	printf("rx_data_bytes:    %" PRIu64 "\n", total_link_stats.rx_data_bytes);
+	printf("rx_ping_packets:  %" PRIu64 "\n", total_link_stats.rx_ping_packets);
+	printf("tx_ping_packets:  %" PRIu64 "\n", total_link_stats.tx_ping_packets);
+	printf("rx_ping_bytes:    %" PRIu64 "\n", total_link_stats.rx_ping_bytes);
+	printf("tx_ping_bytes:    %" PRIu64 "\n", total_link_stats.tx_ping_bytes);
+	printf("rx_pong_packets:  %" PRIu64 "\n", total_link_stats.rx_pong_packets);
+	printf("tx_pong_packets:  %" PRIu64 "\n", total_link_stats.tx_pong_packets);
+	printf("rx_pong_bytes:    %" PRIu64 "\n", total_link_stats.rx_pong_bytes);
+	printf("tx_pong_bytes:    %" PRIu64 "\n", total_link_stats.tx_pong_bytes);
+	printf("rx_pmtu_packets:  %" PRIu64 "\n", total_link_stats.rx_pmtu_packets);
+	printf("tx_pmtu_packets:  %" PRIu64 "\n", total_link_stats.tx_pmtu_packets);
+	printf("rx_pmtu_bytes:    %" PRIu64 "\n", total_link_stats.rx_pmtu_bytes);
+	printf("tx_pmtu_bytes:    %" PRIu64 "\n", total_link_stats.tx_pmtu_bytes);
+
+	printf("tx_total_packets: %" PRIu64 "\n", total_link_stats.tx_total_packets);
+	printf("rx_total_packets: %" PRIu64 "\n", total_link_stats.rx_total_packets);
+	printf("tx_total_bytes:   %" PRIu64 "\n", total_link_stats.tx_total_bytes);
+	printf("rx_total_bytes:   %" PRIu64 "\n", total_link_stats.rx_total_bytes);
+	printf("tx_total_errors:  %" PRIu64 "\n", total_link_stats.tx_total_errors);
+	printf("tx_total_retries: %" PRIu64 "\n", total_link_stats.tx_total_retries);
+
+	printf("tx_pmtu_errors:   %" PRIu32 "\n", total_link_stats.tx_pmtu_errors);
+	printf("tx_pmtu_retries:  %" PRIu32 "\n", total_link_stats.tx_pmtu_retries);
+	printf("tx_ping_errors:   %" PRIu32 "\n", total_link_stats.tx_ping_errors);
+	printf("tx_ping_retries:  %" PRIu32 "\n", total_link_stats.tx_ping_retries);
+	printf("tx_pong_errors:   %" PRIu32 "\n", total_link_stats.tx_pong_errors);
+	printf("tx_pong_retries:  %" PRIu32 "\n", total_link_stats.tx_pong_retries);
+	printf("tx_data_errors:   %" PRIu32 "\n", total_link_stats.tx_data_errors);
+	printf("tx_data_retries:  %" PRIu32 "\n", total_link_stats.tx_data_retries);
+
+	printf("down_count:       %" PRIu32 "\n", total_link_stats.down_count);
+	printf("up_count:         %" PRIu32 "\n", total_link_stats.up_count);
+
+}
+
 static void send_perf_data_by_time(void)
 {
 	char *tx_buf[PCKT_FRAG_MAX];
@@ -1018,6 +1243,9 @@ restart:
 	}
 	if (continous) {
 		goto restart;
+	}
+	if (show_stats) {
+		display_stats(show_stats);
 	}
 
 	cleanup_all();
