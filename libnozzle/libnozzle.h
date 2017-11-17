@@ -36,7 +36,7 @@ typedef struct nozzle_iface *nozzle_t;
  *           The name must be unique to the system. If an interface with the same
  *           name is already configured on the system, an error will be returned.
  *
- * devname_size - lenght of the buffer provided in dev (has to be at least IFNAMSIZ).
+ * devname_size - length of the buffer provided in dev (has to be at least IFNAMSIZ).
  *
  * updownpath - nozzle supports the typical filesystem structure to execute
  *              actions for: down.d  post-down.d  pre-up.d  up.d
@@ -83,13 +83,13 @@ int nozzle_close(nozzle_t nozzle, char **error_down, char **error_postdown);
  *
  * nozzle - pointer to the nozzle struct
  *
- * error_preup - pointers to string to record errors from executing pre-up.d
- *               when configured. The string is malloc'ed, the caller needs to free those
- *               buffers.
+ * error_preup - pointer to string pointer to record errors from executing pre-up.d
+ *               when configured. The string is malloc'ed, the caller needs to free that
+ *               buffer.
  *
- * error_up - pointers to string to record errors from executing up.d
- *            when configured. The string is malloc'ed, the caller needs to free those
- *            buffers.
+ * error_up - pointer to string pointer to record errors from executing up.d
+ *            when configured. The string is malloc'ed, the caller needs to free that
+ *            buffer.
  *
  * @return
  * 0 on success
@@ -107,13 +107,13 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
  *
  * nozzle - pointer to the nozzle struct
  *
- * error_down - pointers to string to record errors from executing down.d
- *              when configured. The string is malloc'ed, the caller needs to free those
- *              buffers.
+ * error_down - pointer to a string pointer to record errors from executing down.d
+ *              when configured. The string is malloc'ed, the caller needs to free that
+ *              buffer.
  *
- * error_postdown - pointers to string to record errors from executing post-down.d
+ * error_postdown - pointer to a string pointer to record errors from executing post-down.d
  *                  when configured. The string is malloc'ed, the caller needs to free
- *                  those buffers.
+ *                  that buffer.
  *
  * @return
  * 0 on success
