@@ -752,11 +752,20 @@ out_clean:
 
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 {
-	int err;
+	int err = 0, savederrno = 0;
 
-	pthread_mutex_lock(&lib_mutex);
+	if ((!nozzle) || (!ether_addr)) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if ((!_check(nozzle)) || (!ether_addr)) {
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -766,26 +775,32 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 #ifdef KNET_LINUX
 	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &nozzle->ifr);
-	if (err)
+	if (err) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	memmove(nozzle->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &nozzle->ifr);
+	savederrno = errno;
 #endif
 #ifdef KNET_BSD
 	err = ioctl(lib_cfg.sockfd, SIOCGIFADDR, &nozzle->ifr);
-	if (err)
+	if (err) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	memmove(nozzle->ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
 	nozzle->ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
 
 	err = ioctl(lib_cfg.sockfd, SIOCSIFLLADDR, &nozzle->ifr);
+	savederrno = errno;
 #endif
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 
