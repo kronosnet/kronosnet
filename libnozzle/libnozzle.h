@@ -290,7 +290,19 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
 
 int nozzle_reset_mac(nozzle_t nozzle);
 
-nozzle_t nozzle_find(char *dev, size_t dev_size);
+/**
+ * nozzle_get_handle_by_name
+ * @brief fine a nozzle handle by device name
+ *
+ * devname - string containing the name of the interface
+ *
+ * @return
+ * handle on success.
+ * NULL on error and errno is set.
+ */
+
+nozzle_t nozzle_get_handle_by_name(char *devname);
+
 int nozzle_get_fd(const nozzle_t nozzle);
 const char *nozzle_get_name(const nozzle_t nozzle);
 

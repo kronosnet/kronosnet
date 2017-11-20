@@ -363,35 +363,35 @@ out_clean:
 	return err;
 }
 
-nozzle_t nozzle_find(char *dev, size_t dev_size)
+nozzle_t nozzle_get_handle_by_name(char *devname)
 {
+	int savederrno = 0;
 	nozzle_t nozzle;
 
-	if (dev == NULL) {
+	if ((devname == NULL) || (strlen(devname) > IFNAMSIZ)) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	if (dev_size < IFNAMSIZ) {
-		errno = EINVAL;
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
 		return NULL;
 	}
-
-	if (strlen(dev) > IFNAMSIZ) {
-		errno = E2BIG;
-		return NULL;
-	}
-
-	pthread_mutex_lock(&lib_mutex);
 
 	nozzle = lib_cfg.head;
 	while (nozzle != NULL) {
-		if (!strcmp(dev, nozzle->nozzlename))
+		if (!strcmp(devname, nozzle->nozzlename))
 			break;
 		nozzle = nozzle->next;
 	}
 
+	if (!nozzle) {
+		savederrno = ENOENT;
+	}
+
 	pthread_mutex_unlock(&lib_mutex);
+	errno = savederrno;
 	return nozzle;
 }
 
@@ -1348,7 +1348,7 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 		printf("Unable to find interface %s on the system\n", name);
 	}
 
-	if (!nozzle_find(name, size)) {
+	if (!nozzle_get_handle_by_name(name)) {
 		printf("Unable to find interface %s in nozzle db\n", name);
 	} else {
 		printf("Found interface %s in nozzle db\n", name);
