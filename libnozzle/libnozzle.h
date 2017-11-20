@@ -261,7 +261,33 @@ int nozzle_reset_mtu(nozzle_t nozzle, char **error_string);
  */
 
 int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr);
+
+/**
+ * nozzle_set_mac
+ * @brief set mac address on a given nozzle interface
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * ether_addr - pointers to string containing the new mac address.
+ *
+ * @return
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
+
+/**
+ * nozzle_reset_mac
+ * @brief reset mac address on a given nozzle interface to system default
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * @return
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
 int nozzle_reset_mac(nozzle_t nozzle);
 
 nozzle_t nozzle_find(char *dev, size_t dev_size);
