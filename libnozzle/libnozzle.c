@@ -1203,14 +1203,24 @@ out_clean:
 	return fd;
 }
 
-const char *nozzle_get_name(const nozzle_t nozzle)
+const char *nozzle_get_name_by_handle(const nozzle_t nozzle)
 {
+	int savederrno = 0;
 	char *name = NULL;
 
-	pthread_mutex_lock(&lib_mutex);
+	if (!nozzle) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return NULL;
+	}
 
 	if (!_check(nozzle)) {
-		errno = EINVAL;
+		errno = ENOENT;
 		goto out_clean;
 	}
 
@@ -1218,7 +1228,7 @@ const char *nozzle_get_name(const nozzle_t nozzle)
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return name;
 }
 
