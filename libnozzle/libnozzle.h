@@ -292,7 +292,7 @@ int nozzle_reset_mac(nozzle_t nozzle);
 
 /**
  * nozzle_get_handle_by_name
- * @brief fine a nozzle handle by device name
+ * @brief find a nozzle handle by device name
  *
  * devname - string containing the name of the interface
  *
@@ -305,7 +305,7 @@ nozzle_t nozzle_get_handle_by_name(char *devname);
 
 /**
  * nozzle_get_name_by_handle
- * @brief fine a nozzle handle by device name
+ * @brief retrive nozzle interface name by handle
  *
  * nozzle - pointer to the nozzle struct
  *
@@ -315,6 +315,17 @@ nozzle_t nozzle_get_handle_by_name(char *devname);
  */
 
 const char *nozzle_get_name_by_handle(const nozzle_t nozzle);
+
+/**
+ * nozzle_get_fd
+ * @brief 
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * @return
+ * fd associated to a given nozzle on success.
+ * -1 on error and errno is set.
+ */
 
 int nozzle_get_fd(const nozzle_t nozzle);
 

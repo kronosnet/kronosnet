@@ -1185,12 +1185,21 @@ out_clean:
 
 int nozzle_get_fd(const nozzle_t nozzle)
 {
-	int fd;
+	int fd = -1, savederrno = 0;
 
-	pthread_mutex_lock(&lib_mutex);
+	if (!nozzle) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
 
 	if (!_check(nozzle)) {
-		errno = EINVAL;
+		savederrno = ENOENT;
 		fd = -1;
 		goto out_clean;
 	}
@@ -1199,7 +1208,7 @@ int nozzle_get_fd(const nozzle_t nozzle)
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return fd;
 }
 
