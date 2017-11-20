@@ -296,7 +296,7 @@ out_clean:
 
 static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 {
-	int err = 0;
+	int err = 0, savederrno = 0;
 	char mac[MAX_MAC_CHAR];
 #ifdef KNET_BSD
 	struct ifaddrs *ifap = NULL;
@@ -310,8 +310,10 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 
 #ifdef KNET_LINUX
 	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &nozzle->ifr);
-	if (err)
+	if (err) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	ether_ntoa_r((struct ether_addr *)nozzle->ifr.ifr_hwaddr.sa_data, mac);
 #endif
@@ -322,8 +324,10 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 	 * https://lists.freebsd.org/pipermail/freebsd-hackers/2004-June/007394.html
 	 */
 	err = getifaddrs(&ifap);
-	if (err < 0)
+	if (err < 0) {
+		savederrno = errno;
 		goto out_clean;
+	}
 
 	ifa = ifap;
 
@@ -338,20 +342,24 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 	if (found) {
 		ether_ntoa_r((struct ether_addr *)LLADDR((struct sockaddr_dl *)ifa->ifa_addr), mac);
 	} else {
+		errno = EINVAL;
 		err = -1;
 	}
 	freeifaddrs(ifap);
 
-	if (err)
+	if (err) {
 		goto out_clean;
+	}
 
 #endif
 	*ether_addr = strdup(mac);
-	if (!*ether_addr)
+	if (!*ether_addr) {
+		savederrno = errno;
 		err = -1;
+	}
 
 out_clean:
-
+	errno = savederrno;
 	return err;
 }
 
@@ -715,11 +723,20 @@ int nozzle_reset_mtu(nozzle_t nozzle, char **error_string)
 
 int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
 {
-	int err;
+	int err = 0, savederrno = 0;
 
-	pthread_mutex_lock(&lib_mutex);
+	if ((!nozzle) || (!ether_addr)) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if ((!_check(nozzle)) || (!ether_addr)) {
+	savederrno = pthread_mutex_lock(&lib_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!_check(nozzle)) {
 		errno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -729,7 +746,7 @@ int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
-
+	errno = savederrno;
 	return err;
 }
 

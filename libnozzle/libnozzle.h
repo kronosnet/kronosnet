@@ -247,6 +247,19 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string);
 
 int nozzle_reset_mtu(nozzle_t nozzle, char **error_string);
 
+/**
+ * nozzle_get_mac
+ * @brief retrive mac address on a given nozzle interface
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * ether_addr - pointers to string containing the current mac address.
+ *              The string is malloc'ed, the caller needs to free this buffer.
+ * @return
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
 int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr);
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
 int nozzle_reset_mac(nozzle_t nozzle);
