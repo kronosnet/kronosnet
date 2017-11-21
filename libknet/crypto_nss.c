@@ -28,8 +28,6 @@
 #include "crypto_nss.h"
 #include "logging.h"
 
-#define LIBNSS3 "libnss3.so"
-
 /*
  * global vars for dlopen
  */

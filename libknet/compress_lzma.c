@@ -20,8 +20,6 @@
 #include "logging.h"
 #include "common.h"
 
-#define LIBLZMA_5 "liblzma.so.5"
-
 /*
  * global vars for dlopen
  */

@@ -20,8 +20,6 @@
 #include "logging.h"
 #include "common.h"
 
-#define LIBLZO2_2 "liblzo2.so.2"
-
 /*
  * global vars for dlopen
  */

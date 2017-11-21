@@ -30,18 +30,6 @@
 #define SSLERR_BUF_SIZE 512
 
 /*
- * make this more generic.
- * Fedora packages it one way, Debian another
- * and it changes by version
- */
-#ifdef KNET_LINUX
-#define LIBOPENSSL "libcrypto.so"
-#endif
-#ifdef KNET_BSD
-#define LIBOPENSSL "libcrypto.so.10"
-#endif
-
-/*
  * global vars for dlopen
  */
 static void *openssl_lib;
