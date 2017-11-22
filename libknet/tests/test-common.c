@@ -182,7 +182,6 @@ int need_root(void)
 {
 	if (geteuid() != 0) {
 		printf("This test requires root privileges\n");
-		exit(SKIP);
 	}
 
 	return PASS;
