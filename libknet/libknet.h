@@ -1463,10 +1463,10 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * link_id   - see knet_link_set_config(3)
  *
- * interval  - specify the ping interval
+ * interval  - specify the ping interval in milliseconds.
  *
  * timeout   - if no pong is received within this time,
- *             the link is declared dead
+ *             the link is declared dead, in milliseconds.
  *
  * precision - how many values of latency are used to calculate
  *             the average link latency (see also knet_link_get_status(3))
