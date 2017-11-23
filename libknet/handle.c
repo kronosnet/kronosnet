@@ -1527,6 +1527,16 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 
 	memmove(stats, &knet_h->stats, struct_size);
 
+	/*
+	 * TX crypt stats only count the data packets sent, so add in the ping/pong/pmtud figures
+	 * RX is OK as it counts them before they are sorted.
+	 */
+
+	stats->tx_crypt_packets += knet_h->stats_extra.tx_crypt_ping_packets +
+		knet_h->stats_extra.tx_crypt_pong_packets +
+		knet_h->stats_extra.tx_crypt_pmtu_packets +
+		knet_h->stats_extra.tx_crypt_pmtu_reply_packets;
+
 	/* Tell the caller our full size in case they have an old version */
 	stats->size = sizeof(struct knet_handle_stats);
 
@@ -1560,6 +1570,7 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 	}
 
 	memset(&knet_h->stats, 0, sizeof(struct knet_handle_stats));
+	memset(&knet_h->stats_extra, 0, sizeof(struct knet_handle_stats_extra));
 	if (clear_option == KNET_CLEARSTATS_HANDLE_AND_LINK) {
 		_link_clear_stats(knet_h);
 	}

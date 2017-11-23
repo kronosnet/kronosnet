@@ -80,6 +80,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			}
 
 			outbuf = knet_h->pingbuf_crypt;
+			knet_h->stats_extra.tx_crypt_ping_packets++;
 		}
 
 retry:
