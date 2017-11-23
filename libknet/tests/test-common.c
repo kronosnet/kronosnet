@@ -453,3 +453,19 @@ int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset)
 
 	return knet_strtoaddr("127.0.0.1", portstr, lo, sizeof(struct sockaddr_storage));
 }
+
+int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std)
+{
+	int i = 0;
+
+	while (i < seconds) {
+		flush_logs(logfd, std);
+		if (knet_h->host_index[host_id]->status.reachable == 1) {
+			return 0;
+		}
+		printf("waiting host %u to be reachable for %d more seconds\n", host_id, seconds - i);
+		sleep(1);
+		i++;
+	}
+	return -1;
+}
