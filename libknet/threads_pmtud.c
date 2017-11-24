@@ -197,18 +197,21 @@ retry:
 		}
 
 		/*
-		 * Set an artibrary 2 seconds timeout to receive a PMTUd reply
-		 * perhaps this should be configurable but:
-		 * 1) too short timeout can cause instability since MTU value
-		 *    influeces link status
-		 * 2) too high timeout slows down the MTU detection process for
-		 *    small MTU
+		 * set PMTUd reply timeout to match pong_timeout on a given link
 		 *
-		 * Another option is to make the PMTUd process less influent
-		 * in link status detection but that could cause data packet loss
-		 * without link up/down changes
+		 * math: internally  pong_timeout is expressed in microseconds, while
+		 *       the public API exports milliseconds. So careful with the 0's here.
+		 * the loop is necessary because we are grabbing the current time just above
+		 * and add values to it that could overflow into seconds.
 		 */ 
-		ts.tv_sec += 2;
+
+		ts.tv_sec += dst_link->pong_timeout / 1000000;
+		ts.tv_nsec += (((dst_link->pong_timeout) % 1000000) * 1000);
+		while (ts.tv_nsec > 1000000000) {
+			ts.tv_sec += 1;
+			ts.tv_nsec -= 1000000000;
+		}
+
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
 		if (shutdown_in_progress(knet_h)) {

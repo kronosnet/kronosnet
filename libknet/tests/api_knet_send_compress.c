@@ -141,9 +141,15 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	while(knet_h->host_index[1]->status.reachable != 1) {
-		printf("waiting host to be reachable\n");
-		sleep(1);
+	if (wait_for_host(knet_h, 1, 10, logfds[0], stdout) < 0) {
+		printf("timeout waiting for host to be reachable");
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
 	}
 
 	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);

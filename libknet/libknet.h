@@ -1463,10 +1463,16 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * link_id   - see knet_link_set_config(3)
  *
- * interval  - specify the ping interval
+ * interval  - specify the ping interval in milliseconds.
  *
  * timeout   - if no pong is received within this time,
- *             the link is declared dead
+ *             the link is declared dead, in milliseconds.
+ *             NOTE: in future it will be possible to set timeout to 0
+ *             for an autocalculated timeout based on interval, pong_count
+ *             and latency. The API already accept 0 as value and it will
+ *             return ENOSYS / -1. Once the automatic calculation feature
+ *             will be implemented, this call will only return EINVAL
+ *             for incorrect values.
  *
  * precision - how many values of latency are used to calculate
  *             the average link latency (see also knet_link_get_status(3))

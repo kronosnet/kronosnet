@@ -101,9 +101,9 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_link_set_ping_timers with incorrect timeout\n");
+	printf("Test knet_link_set_ping_timers with 0 timeout\n");
 
-	if ((!knet_link_set_ping_timers(knet_h, 1, 0, 1000, 0, 2048)) || (errno != EINVAL)) {
+	if ((!knet_link_set_ping_timers(knet_h, 1, 0, 1000, 0, 2048)) || (errno != ENOSYS)) {
 		printf("knet_link_set_ping_timers accepted invalid timeout or returned incorrect error: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

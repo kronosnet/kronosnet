@@ -678,7 +678,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 	}
 
 	if (!timeout) {
-		errno = EINVAL;
+		errno = ENOSYS;
 		return -1;
 	}
 
