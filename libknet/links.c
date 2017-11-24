@@ -215,6 +215,8 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->has_valid_mtu = 0;
 	link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */
 	link->pong_timeout = KNET_LINK_DEFAULT_PING_TIMEOUT * 1000; /* microseconds */
+	link->pong_timeout_backoff = KNET_LINK_PONG_TIMEOUT_BACKOFF;
+	link->pong_timeout_adj = link->pong_timeout * link->pong_timeout_backoff; /* microseconds */
 	link->latency_fix = KNET_LINK_DEFAULT_PING_PRECISION;
 	link->latency_exp = KNET_LINK_DEFAULT_PING_PRECISION - \
 			    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);

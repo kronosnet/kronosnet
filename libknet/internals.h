@@ -52,6 +52,8 @@ struct knet_link {
 	uint8_t  priority;			/* higher priority == preferred for A/P */
 	unsigned long long ping_interval;	/* interval */
 	unsigned long long pong_timeout;	/* timeout */
+	unsigned long long pong_timeout_adj;	/* timeout adjusted for latency */
+	uint8_t pong_timeout_backoff;		/* see link.h for definition */
 	unsigned int latency_fix;		/* precision */
 	uint8_t pong_count;			/* how many ping/pong to send/receive before link is up */
 	uint64_t flags;
