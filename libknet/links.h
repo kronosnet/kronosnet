@@ -16,7 +16,7 @@
 #define KNET_LINK_DYNIP              1 /* link has dynamic destination ip */
 
 /*
- * number of iteractions to reduce pong_timeout_adj
+ * number of iterations to reduce pong_timeout_adj
  * from configured(pong_timeout * KNET_LINK_PONG_TIMEOUT_BACKOFF
  * to pong_timeout
  */
