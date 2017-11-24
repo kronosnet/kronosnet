@@ -229,22 +229,13 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (strcmp(model, "none") == 0) {
-		if (stats.tx_crypt_packets != 0 ||
-		    stats.rx_crypt_packets != 0) {
-
-			printf("stats look wrong: s/b all 0 for model 'none' tx_packets: %" PRIu64 " rx_packets: %" PRIu64 "\n",
-			       stats.tx_crypt_packets,
-			       stats.rx_crypt_packets);
-		}
-	} else {
-		if (stats.tx_crypt_packets >= 1 ||
-		    stats.rx_crypt_packets < 1) {
-			printf("stats look wrong: tx_packets: %" PRIu64 ", rx_packets: %" PRIu64 "\n",
-			       stats.tx_crypt_packets,
-			       stats.rx_crypt_packets);
-		}
+	if (stats.tx_crypt_packets >= 1 ||
+	    stats.rx_crypt_packets < 1) {
+		printf("stats look wrong: tx_packets: %" PRIu64 ", rx_packets: %" PRIu64 "\n",
+		       stats.tx_crypt_packets,
+		       stats.rx_crypt_packets);
 	}
+
 	flush_logs(logfds[0], stdout);
 
 	knet_link_set_enable(knet_h, 1, 0, 0);
@@ -258,8 +249,6 @@ static void test(const char *model)
 int main(int argc, char *argv[])
 {
 	need_root();
-
-	test("none");
 
 #ifdef BUILDCRYPTONSS
 	test("nss");
