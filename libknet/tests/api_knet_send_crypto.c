@@ -254,6 +254,12 @@ int main(int argc, char *argv[])
 	test("nss");
 #endif
 #ifdef BUILDCRYPTOOPENSSL
+#ifdef KNET_BSD
+	if (is_memcheck() || is_helgrind()) {
+		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
+		return PASS;
+	}
+#endif
 	test("openssl");
 #endif
 
