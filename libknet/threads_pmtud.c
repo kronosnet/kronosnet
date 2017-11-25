@@ -205,8 +205,8 @@ retry:
 		 * and add values to it that could overflow into seconds.
 		 */ 
 
-		ts.tv_sec += dst_link->pong_timeout / 1000000;
-		ts.tv_nsec += (((dst_link->pong_timeout) % 1000000) * 1000);
+		ts.tv_sec += dst_link->pong_timeout_adj / 1000000;
+		ts.tv_nsec += (((dst_link->pong_timeout_adj) % 1000000) * 1000);
 		while (ts.tv_nsec > 1000000000) {
 			ts.tv_sec += 1;
 			ts.tv_nsec -= 1000000000;

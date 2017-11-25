@@ -178,7 +178,16 @@ static void test(const char *model)
 
 	flush_logs(logfds[0], stdout);
 
-	sleep(1);
+	if (wait_for_packet(knet_h, 10, datafd)) {
+		printf("Error waiting for packet: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	recv_len = knet_recv(knet_h, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;
@@ -220,22 +229,13 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (strcmp(model, "none") == 0) {
-		if (stats.tx_crypt_packets != 0 ||
-		    stats.rx_crypt_packets != 0) {
-
-			printf("stats look wrong: s/b all 0 for model 'none' tx_packets: %" PRIu64 " rx_packets: %" PRIu64 "\n",
-			       stats.tx_crypt_packets,
-			       stats.rx_crypt_packets);
-		}
-	} else {
-		if (stats.tx_crypt_packets >= 1 ||
-		    stats.rx_crypt_packets < 1) {
-			printf("stats look wrong: tx_packets: %" PRIu64 ", rx_packets: %" PRIu64 "\n",
-			       stats.tx_crypt_packets,
-			       stats.rx_crypt_packets);
-		}
+	if (stats.tx_crypt_packets >= 1 ||
+	    stats.rx_crypt_packets < 1) {
+		printf("stats look wrong: tx_packets: %" PRIu64 ", rx_packets: %" PRIu64 "\n",
+		       stats.tx_crypt_packets,
+		       stats.rx_crypt_packets);
 	}
+
 	flush_logs(logfds[0], stdout);
 
 	knet_link_set_enable(knet_h, 1, 0, 0);
@@ -250,12 +250,16 @@ int main(int argc, char *argv[])
 {
 	need_root();
 
-	test("none");
-
 #ifdef BUILDCRYPTONSS
 	test("nss");
 #endif
 #ifdef BUILDCRYPTOOPENSSL
+#ifdef KNET_BSD
+	if (is_memcheck() || is_helgrind()) {
+		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
+		return PASS;
+	}
+#endif
 	test("openssl");
 #endif
 

@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <sys/select.h>
 
 #include "libknet.h"
 #include "test-common.h"
@@ -458,6 +459,11 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 {
 	int i = 0;
 
+	if (is_memcheck() || is_helgrind()) {
+		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
+		seconds = seconds * 16;
+	}
+
 	while (i < seconds) {
 		flush_logs(logfd, std);
 		if (knet_h->host_index[host_id]->status.reachable == 1) {
@@ -467,5 +473,30 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 		sleep(1);
 		i++;
 	}
+	return -1;
+}
+
+int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd)
+{
+	fd_set rfds;
+	struct timeval tv;
+	int err = 0;
+
+	if (is_memcheck() || is_helgrind()) {
+		printf("Test suite is running under valgrind, adjusting wait_for_packet timeout\n");
+		seconds = seconds * 16;
+	}
+
+	FD_ZERO(&rfds);
+	FD_SET(datafd, &rfds);
+
+	tv.tv_sec = seconds;
+	tv.tv_usec = 0;
+
+	err = select(datafd+1, &rfds, NULL, NULL, &tv);
+	if ((err > 0) && (FD_ISSET(datafd, &rfds))) {
+		return 0;
+	}
+
 	return -1;
 }

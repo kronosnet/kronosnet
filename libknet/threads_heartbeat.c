@@ -27,6 +27,7 @@ static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct 
 	memset(&dst_link->pmtud_last, 0, sizeof(struct timespec));
 	dst_link->received_pong = 0;
 	dst_link->status.pong_last.tv_nsec = 0;
+	dst_link->pong_timeout_backoff = KNET_LINK_PONG_TIMEOUT_BACKOFF;
 	if (dst_link->status.connected == 1) {
 		log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is down",
 			 dst_host->host_id, dst_link->link_id);
@@ -118,7 +119,7 @@ retry:
 
 	timespec_diff(pong_last, clock_now, &diff_ping);
 	if ((pong_last.tv_nsec) && 
-	    (diff_ping >= (dst_link->pong_timeout * 1000llu))) {
+	    (diff_ping >= (dst_link->pong_timeout_adj * 1000llu))) {
 		_link_down(knet_h, dst_host, dst_link);
 	}
 }
@@ -148,9 +149,42 @@ void _send_pings(knet_handle_t knet_h, int timed)
 	pthread_mutex_unlock(&knet_h->hb_mutex);
 }
 
+static void _adjust_pong_timeouts(knet_handle_t knet_h)
+{
+	struct knet_host *dst_host;
+	struct knet_link *dst_link;
+	int link_idx;
+
+	if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
+		log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get write lock");
+		return;
+	}
+
+	for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+			if ((dst_host->link[link_idx].status.enabled != 1) ||
+			    (dst_host->link[link_idx].transport_type == KNET_TRANSPORT_LOOPBACK ) ||
+			    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
+			     (dst_host->link[link_idx].status.dynconnected != 1)))
+				continue;
+
+			dst_link = &dst_host->link[link_idx];
+
+			if (dst_link->pong_timeout_backoff > 1) {
+				dst_link->pong_timeout_backoff--;
+			}
+
+			dst_link->pong_timeout_adj = (dst_link->pong_timeout * dst_link->pong_timeout_backoff) + (dst_link->status.stats.latency_max * KNET_LINK_PONG_TIMEOUT_LAT_MUL);
+		}
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+}
+
 void *_handle_heartbt_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
+	int i = 1;
 
 	/* preparing ping buffer */
 	knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
@@ -159,6 +193,16 @@ void *_handle_heartbt_thread(void *data)
 
 	while (!shutdown_in_progress(knet_h)) {
 		usleep(KNET_THREADS_TIMERES);
+
+		/*
+		 *  _adjust_pong_timeouts should execute approx once a second.
+		 */
+		if ((i % (1000000 / KNET_THREADS_TIMERES)) == 0) {
+			_adjust_pong_timeouts(knet_h);
+			i = 1;
+		} else {
+			i++;
+		}
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get read lock");

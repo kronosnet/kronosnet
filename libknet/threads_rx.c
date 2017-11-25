@@ -614,7 +614,7 @@ retry_pong:
 				(src_link->latency_fix - src_link->latency_exp))) /
 					src_link->latency_fix;
 
-		if (src_link->status.latency < src_link->pong_timeout) {
+		if (src_link->status.latency < src_link->pong_timeout_adj) {
 			if (!src_link->status.connected) {
 				if (src_link->received_pong >= src_link->pong_count) {
 					log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
