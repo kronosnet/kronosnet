@@ -1203,8 +1203,6 @@ int main(int argc, char *argv[])
 		exit(FAIL);
 	}
 
-	need_root();
-
 	setup_knet(argc, argv);
 
 	setup_data_txrx_common();

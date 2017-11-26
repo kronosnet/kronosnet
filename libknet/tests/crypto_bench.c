@@ -249,8 +249,6 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	need_root();
-
 	printf("Testing with default scheduler\n");
 
 	set_scheduler(SCHED_OTHER);
