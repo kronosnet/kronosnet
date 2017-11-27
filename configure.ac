@@ -261,7 +261,6 @@ if test "x$enable_compress_bzip2" = xyes; then
 				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
 				[AC_MSG_ERROR(["missing required bzlib.h"])])])
 	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
-	KNET_PKG_SONAME([bzip2],[LIBBZ2_1])
 fi
 
 # Checks for header files.

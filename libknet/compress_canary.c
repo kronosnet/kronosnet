@@ -6,7 +6,6 @@
 
 #define CANARY
 
-#include "compress_bzip2_remap.h"
 #include "compress_lz4_remap.h"
 #include "compress_lzma_remap.h"
 #include "compress_lzo2_remap.h"
@@ -17,9 +16,6 @@
 int main (void)
 {
   return
-#ifdef BUILDCOMPBZIP2
-#include "compress_bzip2_remap.h"
-#endif
 #ifdef BUILDCOMPLZ4
 #include "compress_lz4_remap.h"
 #endif
