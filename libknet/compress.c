@@ -16,6 +16,7 @@
 
 #include "internals.h"
 #include "compress.h"
+#include "compress_model.h"
 #include "logging.h"
 #include "threads_common.h"
 

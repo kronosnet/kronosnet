@@ -61,6 +61,7 @@ noinst_HEADERS		= \
 			  common.h \
 			  compat.h \
 			  compress.h \
+			  compress_model.h \
 			  compress_bzip2.h \
 			  compress_bzip2_remap.h \
 			  compress_lz4.h \
