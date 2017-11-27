@@ -77,7 +77,7 @@ int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 #define SO_SNDBUFFORCE 0
 #endif
 
-static int _configure_sockbuf (int sock, int option, int force, int target)
+static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int force, int target)
 {
 	int new_value;
 	socklen_t value_len = sizeof new_value;
@@ -87,11 +87,23 @@ static int _configure_sockbuf (int sock, int option, int force, int target)
 		if (value_len == sizeof new_value && target <= new_value) {
 			return 0;
 		}
-		errno = EINVAL;
+		errno = ERANGE;
 	}
 
+	log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
+		   option, target, strerror(errno));
+
 	if (force) {
-		return setsockopt(sock, SOL_SOCKET, force, &target, sizeof target);
+		if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target)) {
+			int savederrno = errno;
+			log_debug (knet_h, KNET_SUB_TRANSPORT,
+				   "Failed to set socket buffer via fallback option %d as well: %s",
+				   force, strerror(errno));
+			errno = savederrno;
+			return -1;
+		} else {
+			return 0;
+		}
 	} else {
 		return -1;
 	}
@@ -117,7 +129,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-	if (_configure_sockbuf (sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF)) {
+	if (_configure_sockbuf (knet_h, sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s receive buffer: %s",
@@ -125,7 +137,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-	if (_configure_sockbuf (sock, SO_SNDBUF, SO_SNDBUFFORCE, KNET_RING_RCVBUFF)) {
+	if (_configure_sockbuf (knet_h, sock, SO_SNDBUF, SO_SNDBUFFORCE, KNET_RING_RCVBUFF)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s send buffer: %s",
