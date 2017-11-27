@@ -41,7 +41,7 @@ static int lzma_remap_symbols(knet_handle_t knet_h)
 }
 
 int lzma_load_lib(
-	knet_handle_t knet_h)
+	knet_handle_t knet_h, compress_model_t *dummy)
 {
 	int err = 0, savederrno = 0;
 

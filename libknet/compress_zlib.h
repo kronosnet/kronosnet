@@ -10,9 +10,10 @@
 #define __KNET_COMPRESS_ZLIB_H__
 
 #include "internals.h"
+#include "compress_model.h"
 
 int zlib_load_lib(
-	knet_handle_t knet_h);
+	knet_handle_t knet_h, compress_model_t *dummy);
 
 int zlib_val_level(
 	knet_handle_t knet_h,
