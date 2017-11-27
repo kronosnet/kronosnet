@@ -178,16 +178,6 @@ int is_helgrind(void)
 	return 0;
 }
 
-int need_root(void)
-{
-	if (geteuid() != 0) {
-		printf("This test requires root privileges\n");
-		exit(SKIP);
-	}
-
-	return PASS;
-}
-
 void set_scheduler(int policy)
 {
 	struct sched_param sched_param;

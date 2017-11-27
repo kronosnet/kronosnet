@@ -64,8 +64,6 @@ int main(int argc, char *argv[])
 		return SKIP;
 	}
 
-	need_root();
-
 	test();
 
 	return PASS;

@@ -267,8 +267,6 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
-	need_root();
-
 	test("none");
 
 #ifdef BUILDCOMPZLIB

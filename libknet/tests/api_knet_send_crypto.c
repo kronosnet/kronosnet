@@ -248,8 +248,6 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
-	need_root();
-
 #ifdef BUILDCRYPTONSS
 	test("nss");
 #endif

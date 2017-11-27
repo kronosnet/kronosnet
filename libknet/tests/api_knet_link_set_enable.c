@@ -342,8 +342,6 @@ static void test_sctp(void)
 
 int main(int argc, char *argv[])
 {
-	need_root();
-
 	printf("Testing with UDP\n");
 
 	test_udp();

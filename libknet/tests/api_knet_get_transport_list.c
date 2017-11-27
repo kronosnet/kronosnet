@@ -63,8 +63,6 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	need_root();
-
 	test();
 
 	return PASS;
