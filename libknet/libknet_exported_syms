@@ -10,6 +10,7 @@
 LIBKNET {
 	global:
 		knet_*;
+		log_msg;
 	local:
 		*;
 };
