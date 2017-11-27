@@ -30,7 +30,6 @@ sources			= \
 			  compress_lz4.c \
 			  compress_lzo2.c \
 			  compress_lzma.c \
-			  compress_bzip2.c \
 			  crypto.c \
 			  crypto_nss.c \
 			  crypto_openssl.c \
@@ -62,8 +61,6 @@ noinst_HEADERS		= \
 			  compat.h \
 			  compress.h \
 			  compress_model.h \
-			  compress_bzip2.h \
-			  compress_bzip2_remap.h \
 			  compress_lz4.h \
 			  compress_lz4_remap.h \
 			  compress_lzma.h \
@@ -102,23 +99,34 @@ libknet_la_SOURCES	= $(sources)
 
 libknet_la_CFLAGS	= $(PTHREAD_CFLAGS) \
 			  $(nss_CFLAGS) $(openssl_CFLAGS) \
-			  $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
+			  $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
 libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  --export-dynamic \
+			  -Wl,-rpath=$(pkglibdir) \
 			  -version-number $(libversion)
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
+
+# Prepare empty value for appending
+pkglib_LTLIBRARIES	=
+
+if BUILDCOMPBZIP2
+pkglib_LTLIBRARIES	+= compress_bzip2.la
+compress_bzip2_la_LDFLAGS = -module -avoid-version
+compress_bzip2_la_CFLAGS = $(bzip2_CFLAGS)
+compress_bzip2_la_LIBADD = $(bzip2_LIBS)
+endif
 
 noinst_PROGRAMS		= crypto_canary compress_canary
 crypto_canary_SOURCES	= crypto_canary.c
 crypto_canary_CFLAGS	= $(nss_CFLAGS) $(openssl_CFLAGS)
 crypto_canary_LDADD	= $(nss_LIBS)   $(openssl_LIBS)
 compress_canary_SOURCES	= compress_canary.c
-compress_canary_CFLAGS	= $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS) $(bzip2_CFLAGS)
-compress_canary_LDADD	= $(zlib_LIBS)   $(liblz4_LIBS)   $(lzo2_LIBS)   $(liblzma_LIBS)   $(bzip2_LIBS)
+compress_canary_CFLAGS	= $(zlib_CFLAGS) $(liblz4_CFLAGS) $(lzo2_CFLAGS) $(liblzma_CFLAGS)
+compress_canary_LDADD	= $(zlib_LIBS)   $(liblz4_LIBS)   $(lzo2_LIBS)   $(liblzma_LIBS)
 
 dist_man_MANS		= man
 

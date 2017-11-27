@@ -128,3 +128,34 @@ void *remap_symbol(knet_handle_t knet_h, uint8_t subsystem,
 	}
 	return symbol;
 }
+
+int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
+{
+	void *module;
+	compress_model_t *module_cmds;
+	char soname[MAXPATHLEN];
+	const char model_sym[] = "compress_model";
+
+	if (model->loaded) {
+		return 0;
+	}
+	snprintf (soname, sizeof soname, "compress_%s.so", model->model_name);
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return -1;
+	}
+	module_cmds = dlsym (module, model_sym);
+	if (!module_cmds) {
+		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
+			 model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+	model->is_init = module_cmds->is_init;
+	model->init = module_cmds->init;
+	model->fini = module_cmds->fini;
+	model->val_level = module_cmds->val_level;
+	model->compress = module_cmds->compress;
+	model->decompress = module_cmds->decompress;
+	return 0;
+}

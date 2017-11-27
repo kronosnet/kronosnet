@@ -19,6 +19,7 @@
 #include "compress_model.h"
 #include "logging.h"
 #include "threads_common.h"
+#include "common.h"
 
 #ifdef BUILDCOMPZLIB
 #include "compress_zlib.h"
@@ -31,9 +32,6 @@
 #endif
 #ifdef BUILDCOMPLZMA
 #include "compress_lzma.h"
-#endif
-#ifdef BUILDCOMPBZIP2
-#include "compress_bzip2.h"
 #endif
 
 /*
@@ -83,7 +81,7 @@ empty_module
 #endif
 	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-		     1, bzip2_load_lib, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
+		     1, load_compress_lib, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
@@ -204,7 +202,7 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	}
 
 	if (compress_modules_cmds[cmp_model].loaded == 0) {
-		if (compress_modules_cmds[cmp_model].load_lib(knet_h) < 0) {
+		if (compress_modules_cmds[cmp_model].load_lib(knet_h, compress_modules_cmds+cmp_model) < 0) {
 			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			return -1;
 		}
