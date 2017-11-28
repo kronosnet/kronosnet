@@ -89,10 +89,10 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 			return 0;
 		}
 		if (!force) {
-			errno = ERANGE;
+			savederrno = ERANGE;
 			log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
-				   option, target, strerror(errno));
-
+				   option, target, strerror(savederrno));
+			errno = savederrno;
 			return -1;
 		}
 	}
