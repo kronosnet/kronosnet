@@ -79,6 +79,7 @@ int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 
 static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int force, int target)
 {
+	int savederrno = 0;
 	int new_value;
 	socklen_t value_len = sizeof new_value;
 
@@ -87,31 +88,31 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 		if (value_len == sizeof new_value && target <= new_value) {
 			return 0;
 		}
-		errno = ERANGE;
+		if (!force) {
+			errno = ERANGE;
+			log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
+				   option, target, strerror(errno));
+
+			return -1;
+		}
 	}
 
-	log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
-		   option, target, strerror(errno));
-
-	if (force) {
-		if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target)) {
-			int savederrno = errno;
-			log_debug (knet_h, KNET_SUB_TRANSPORT,
-				   "Failed to set socket buffer via fallback option %d as well: %s",
-				   force, strerror(errno));
-			errno = savederrno;
-			return -1;
-		} else {
-			return 0;
-		}
-	} else {
+	if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target) < 0) {
+		savederrno = errno;
+		log_debug (knet_h, KNET_SUB_TRANSPORT,
+			   "Failed to set socket buffer via force option %d: %s",
+			   force, strerror(errno));
+		errno = savederrno;
 		return -1;
 	}
+
+	return 0;
 }
 
 int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, const char *type)
 {
 	int err = 0, savederrno = 0;
+	int value;
 
 	if (_fdset_cloexec(sock)) {
 		savederrno = errno;
@@ -147,7 +148,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 
 #ifdef SO_PRIORITY
 	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
-		int value = 6; /* TC_PRIO_INTERACTIVE */
+		value = 6; /* TC_PRIO_INTERACTIVE */
 		if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
 			savederrno = errno;
 			err = -1;
@@ -159,7 +160,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 #endif
 #if defined(IP_TOS) && defined(IPTOS_LOWDELAY)
 	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
-		int value = IPTOS_LOWDELAY;
+		value = IPTOS_LOWDELAY;
 		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &value, sizeof(value)) < 0) {
 			savederrno = errno;
 			err = -1;
