@@ -11,10 +11,7 @@
 
 #include "internals.h"
 
-/* This separate typedef can be removed again when the load_lib field disappears */
-typedef struct compress_model_t compress_model_t;
-
-struct compress_model_t {
+typedef struct {
 	const char	*model_name;
 	uint8_t		model_id;    /* sequencial unique identifier */
 	uint8_t		built_in;    /* set at configure/build time to 1 if available */
@@ -25,7 +22,7 @@ struct compress_model_t {
 	 * both are called in shlib_rwlock write context and should
 	 * update the loaded status below.
 	 */
-	int (*load_lib)		(knet_handle_t knet_h, compress_model_t *self);
+	int (*load_lib)		(knet_handle_t knet_h);
 
 	/*
 	 * library is loaded
@@ -90,6 +87,6 @@ struct compress_model_t {
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
-};
+} compress_model_t;
 
 #endif

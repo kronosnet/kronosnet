@@ -21,19 +21,6 @@
 #include "threads_common.h"
 #include "common.h"
 
-#ifdef BUILDCOMPZLIB
-#include "compress_zlib.h"
-#endif
-#ifdef BUILDCOMPLZ4
-#include "compress_lz4.h"
-#endif
-#ifdef BUILDCOMPLZO2
-#include "compress_lzo2.h"
-#endif
-#ifdef BUILDCOMPLZMA
-#include "compress_lzma.h"
-#endif
-
 /*
  * internal module switch data
  */
@@ -51,37 +38,37 @@ compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, empty_module
 	{ "zlib", 1,
 #ifdef BUILDCOMPZLIB
-		     1, zlib_load_lib, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
+		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
 	{ "lz4", 2,
 #ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
+		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
 	{ "lz4hc", 3,
 #ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
+		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
 	{ "lzo2", 4,
 #ifdef BUILDCOMPLZO2
-		     1, lzo2_load_lib, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
+		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
 	{ "lzma", 5,
 #ifdef BUILDCOMPLZMA
-		     1, lzma_load_lib, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
+		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
 	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-		     1, load_compress_lib, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 #else
 empty_module
 #endif
@@ -202,7 +189,7 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	}
 
 	if (compress_modules_cmds[cmp_model].loaded == 0) {
-		if (compress_modules_cmds[cmp_model].load_lib(knet_h, compress_modules_cmds+cmp_model) < 0) {
+		if (load_compress_lib(knet_h, compress_modules_cmds+cmp_model) < 0) {
 			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			return -1;
 		}

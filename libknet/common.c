@@ -119,16 +119,7 @@ out:
 	return ret;
 }
 
-void *remap_symbol(knet_handle_t knet_h, uint8_t subsystem,
-		   void *lib_handle, const char *symbol_name)
-{
-	void *symbol = dlsym (lib_handle, symbol_name);
-	if (!symbol) {
-		log_err (knet_h, subsystem, "unable to map %s: %s", symbol_name, dlerror ());
-	}
-	return symbol;
-}
-
+/* Separate these into compress.c and crypto.c or keep them together? */
 int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
 {
 	void *module;
@@ -157,5 +148,38 @@ int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
 	model->val_level = module_cmds->val_level;
 	model->compress = module_cmds->compress;
 	model->decompress = module_cmds->decompress;
+	return 0;
+}
+
+int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
+{
+	void *module;
+	crypto_model_t *module_cmds;
+	char soname[MAXPATHLEN];
+	const char model_sym[] = "crypto_model";
+
+	if (model->loaded) {
+		return 0;
+	}
+	snprintf (soname, sizeof soname, "crypto_%s.so", model->model_name);
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return -1;
+	}
+	module_cmds = dlsym (module, model_sym);
+	if (!module_cmds) {
+		log_err (knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
+			 model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+	if (module_cmds->load_lib && (*module_cmds->load_lib)(knet_h)) {
+		return -1;
+	}
+	model->init = module_cmds->init;
+	model->fini = module_cmds->fini;
+	model->crypt = module_cmds->crypt;
+	model->cryptv = module_cmds->cryptv;
+	model->decrypt = module_cmds->decrypt;
 	return 0;
 }
