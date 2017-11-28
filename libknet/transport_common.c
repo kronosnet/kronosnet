@@ -101,7 +101,7 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 		savederrno = errno;
 		log_debug (knet_h, KNET_SUB_TRANSPORT,
 			   "Failed to set socket buffer via force option %d: %s",
-			   force, strerror(errno));
+			   force, strerror(savederrno));
 		errno = savederrno;
 		return -1;
 	}
