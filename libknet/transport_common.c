@@ -14,6 +14,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 
 #include "libknet.h"
 #include "compat.h"
