@@ -76,7 +76,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 	if (sock < 0) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_LISTENER, "Unable to create listener socket: %s",
+		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to create listener socket: %s",
 			strerror(savederrno));
 		goto exit_error;
 	}
@@ -97,7 +97,10 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 				strerror(savederrno));
 			goto exit_error;
 		}
+		log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_RECVERR enabled on socket: %i", sock);
 	}
+#else
+	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_RECVERR not available in this build/platform");
 #endif
 #ifdef IPV6_RECVERR
 	if (kn_link->src_addr.ss_family == AF_INET6) {
@@ -109,7 +112,10 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 				strerror(savederrno));
 			goto exit_error;
 		}
+		log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IPV6_RECVERR enabled on socket: %i", sock);
 	}
+#else
+	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IPV6_RECVERR not available in this build/platform");
 #endif
 
 	if (bind(sock, (struct sockaddr *)&kn_link->src_addr, sockaddr_len(&kn_link->src_addr))) {

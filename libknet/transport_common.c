@@ -14,6 +14,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
 
 #include "libknet.h"
 #include "compat.h"
@@ -79,6 +81,7 @@ int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 
 static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int force, int target)
 {
+	int savederrno = 0;
 	int new_value;
 	socklen_t value_len = sizeof new_value;
 
@@ -87,31 +90,31 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 		if (value_len == sizeof new_value && target <= new_value) {
 			return 0;
 		}
-		errno = ERANGE;
-	}
-
-	log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
-		   option, target, strerror(errno));
-
-	if (force) {
-		if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target)) {
-			int savederrno = errno;
-			log_debug (knet_h, KNET_SUB_TRANSPORT,
-				   "Failed to set socket buffer via fallback option %d as well: %s",
-				   force, strerror(errno));
+		if (!force) {
+			savederrno = ERANGE;
+			log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
+				   option, target, strerror(savederrno));
 			errno = savederrno;
 			return -1;
-		} else {
-			return 0;
 		}
-	} else {
+	}
+
+	if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target) < 0) {
+		savederrno = errno;
+		log_debug (knet_h, KNET_SUB_TRANSPORT,
+			   "Failed to set socket buffer via force option %d: %s",
+			   force, strerror(savederrno));
+		errno = savederrno;
 		return -1;
 	}
+
+	return 0;
 }
 
 int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, const char *type)
 {
 	int err = 0, savederrno = 0;
+	int value;
 
 	if (_fdset_cloexec(sock)) {
 		savederrno = errno;
@@ -145,9 +148,10 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-#ifdef SO_PRIORITY
 	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
-		int value = 6; /* TC_PRIO_INTERACTIVE */
+#ifdef KNET_LINUX
+#ifdef SO_PRIORITY
+		value = 6; /* TC_PRIO_INTERACTIVE */
 		if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
 			savederrno = errno;
 			err = -1;
@@ -155,11 +159,13 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 				type, strerror(savederrno));
 			goto exit_error;
 		}
-	}
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "TC_PRIO_INTERACTIVE enabled on socket: %i", sock);
+#else
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "TC_PRIO_INTERACTIVE not available in this build/platform");
+#endif
 #endif
 #if defined(IP_TOS) && defined(IPTOS_LOWDELAY)
-	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
-		int value = IPTOS_LOWDELAY;
+		value = IPTOS_LOWDELAY;
 		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &value, sizeof(value)) < 0) {
 			savederrno = errno;
 			err = -1;
@@ -167,8 +173,11 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 				type, strerror(savederrno));
 			goto exit_error;
 		}
-	}
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPTOS_LOWDELAY enabled on socket: %i", sock);
+#else
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPTOS_LOWDELAY not available in this build/platform");
 #endif
+	}
 
 exit_error:
 	errno = savederrno;
@@ -186,6 +195,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		goto exit_error;
 	}
 
+#ifdef KNET_LINUX
 #ifdef IP_FREEBIND
 	value = 1;
 	if (setsockopt(sock, SOL_IP, IP_FREEBIND, &value, sizeof(value)) <0) {
@@ -195,7 +205,12 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 			type, strerror(savederrno));
 		goto exit_error;
 	}
+	log_debug(knet_h, KNET_SUB_TRANSPORT, "FREEBIND enabled on socket: %i", sock);
+#else
+	log_debug(knet_h, KNET_SUB_TRANSPORT, "FREEBIND not available in this build/platform");
 #endif
+#endif
+#ifdef KNET_BSD
 #ifdef IP_BINDANY /* BSD */
 	value = 1;
 	if (setsockopt(sock, IPPROTO_IP, IP_BINDANY, &value, sizeof(value)) <0) {
@@ -205,6 +220,10 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 			type, strerror(savederrno));
 		goto exit_error;
 	}
+	log_debug(knet_h, KNET_SUB_TRANSPORT, "BINDANY enabled on socket: %i", sock);
+#else
+	log_debug(knet_h, KNET_SUB_TRANSPORT, "BINDANY not available in this build/platform");
+#endif
 #endif
 
 	if (address->ss_family == AF_INET6) {
@@ -218,6 +237,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 			goto exit_error;
 
 		}
+#ifdef KNET_LINUX
 #ifdef IPV6_MTU_DISCOVER
 		value = IPV6_PMTUDISC_PROBE;
 		if (setsockopt(sock, SOL_IPV6, IPV6_MTU_DISCOVER, &value, sizeof(value)) <0) {
@@ -227,7 +247,12 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 				type, strerror(savederrno));
 			goto exit_error;
 		}
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPV6_MTU_DISCOVER enabled on socket: %i", sock);
 #else
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPV6_MTU_DISCOVER not available in this build/platform");
+#endif
+#endif
+#ifdef IPV6_DONTFRAG
 		value = 1;
 		if (setsockopt(sock, IPPROTO_IPV6, IPV6_DONTFRAG, &value, sizeof(value)) <0) {
 			savederrno = errno;
@@ -236,8 +261,12 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 				type, strerror(savederrno));
 			goto exit_error;
 		}
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPV6_DONTFRAG enabled on socket: %i", sock);
+#else
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPV6_DONTFRAG not available in this build/platform");
 #endif
 	} else {
+#ifdef KNET_LINUX
 #ifdef IP_MTU_DISCOVER
 		value = IP_PMTUDISC_PROBE;
 		if (setsockopt(sock, SOL_IP, IP_MTU_DISCOVER, &value, sizeof(value)) <0) {
@@ -247,7 +276,13 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 				type, strerror(savederrno));
 			goto exit_error;
 		}
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "PMTUDISC enabled on socket: %i", sock);
 #else
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "PMTUDISC not available in this build/platform");
+#endif
+#endif
+#ifdef KNET_BSD
+#ifdef IP_DONTFRAG
 		value = 1;
 		if (setsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, sizeof(value)) <0) {
 			savederrno = errno;
@@ -256,6 +291,10 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 				type, strerror(savederrno));
 			goto exit_error;
 		}
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "DONTFRAG enabled on socket: %i", sock);
+#else
+		log_debug(knet_h, KNET_SUB_TRANSPORT, "DONTFRAG not available in this build/platform");
+#endif
 #endif
 	}
 
