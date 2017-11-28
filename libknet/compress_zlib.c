@@ -8,62 +8,13 @@
 
 #include "config.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <dlfcn.h>
-#ifdef BUILDCOMPZLIB
 #include <zlib.h>
 
-#include "internals.h"
-#include "compress_zlib.h"
 #include "logging.h"
-#include "common.h"
+#include "compress_model.h"
 
-/*
- * global vars for dlopen
- */
-static void *zlib_lib;
-
-#include "compress_zlib_remap.h"
-
-static int zlib_remap_symbols(knet_handle_t knet_h)
-{
-#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_ZLIBCOMP, zlib_lib, name)
-#include "compress_zlib_remap.h"
-	return 0;
-
- fail:
-#define REMAP_FAIL
-#include "compress_zlib_remap.h"
-	errno = EINVAL;
-	return -1;
-}
-
-int zlib_load_lib(
-	knet_handle_t knet_h)
-{
-	int err = 0, savederrno = 0;
-
-	if (!zlib_lib) {
-		zlib_lib = open_lib(knet_h, LIBZ_1, 0);
-		if (!zlib_lib) {
-			savederrno = EAGAIN;
-			err = -1;
-			goto out;
-		}
-	}
-
-	if (zlib_remap_symbols(knet_h) < 0) {
-		savederrno = errno;
-		err = -1;
-	}
-out:
-	errno = savederrno;
-	return err;
-}
-
-int zlib_val_level(
+static int zlib_val_level(
 	knet_handle_t knet_h,
 	int compress_level)
 {
@@ -82,7 +33,7 @@ int zlib_val_level(
 	return 0;
 }
 
-int zlib_compress(
+static int zlib_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
@@ -93,9 +44,9 @@ int zlib_compress(
 	int savederrno = 0;
 	uLongf destLen = *buf_out_len;
 
-	zerr = (*_int_compress2)(buf_out, &destLen,
-				 buf_in, buf_in_len,
-				 knet_h->compress_level);
+	zerr = compress2(buf_out, &destLen,
+			 buf_in, buf_in_len,
+			 knet_h->compress_level);
 
 	*buf_out_len = destLen;
 
@@ -128,7 +79,7 @@ int zlib_compress(
 	return err;
 }
 
-int zlib_decompress(
+static int zlib_decompress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
@@ -139,8 +90,8 @@ int zlib_decompress(
 	int savederrno = 0;
 	uLongf destLen = *buf_out_len;
 
-	zerr = (*_int_uncompress)(buf_out, &destLen,
-				  buf_in, buf_in_len);
+	zerr = uncompress(buf_out, &destLen,
+			  buf_in, buf_in_len);
 
 	*buf_out_len = destLen;
 
@@ -172,4 +123,5 @@ int zlib_decompress(
 	errno = savederrno;
 	return err;
 }
-#endif
+
+compress_model_t compress_model = { "", 0, 0, NULL, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress };

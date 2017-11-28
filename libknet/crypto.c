@@ -15,10 +15,10 @@
 #include <time.h>
 
 #include "crypto.h"
-#include "crypto_nss.h"
-#include "crypto_openssl.h"
+#include "crypto_model.h"
 #include "internals.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * internal module switch data
@@ -29,13 +29,13 @@
 crypto_model_t crypto_modules_cmds[] = {
 	{ "nss",
 #ifdef BUILDCRYPTONSS
-		 1, nsscrypto_load_lib, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
+		 1, NULL, 0, NULL, NULL, NULL, NULL, NULL },
 #else
 		 0,empty_module
 #endif
 	{ "openssl",
 #ifdef BUILDCRYPTOOPENSSL
-		 1, opensslcrypto_load_lib, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt },
+		 1, NULL, 0, NULL, NULL, NULL, NULL, NULL },
 #else
 		 0,empty_module
 #endif
@@ -114,7 +114,7 @@ int crypto_init(
 	}
 
 	if (!crypto_modules_cmds[model].loaded) {
-		if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
+		if (load_crypto_lib(knet_h, crypto_modules_cmds+model) < 0) {
 			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
 			goto out_err;
 		}

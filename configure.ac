@@ -201,23 +201,10 @@ case "$host_os" in
 		;;
 esac
 
-AC_DEFUN([KNET_PKG_SONAME],[
-AC_MSG_CHECKING([for soname of $1])
-$CC -shared -nostdlib -o dummy.so -Wl,--no-as-needed $$1_LIBS
-# Choosing the first SONAME is a best guess here:
-knet_pkg_soname=`$OBJDUMP -p dummy.so | $SED -n '/^Dynamic Section:$/,/^[^ ]/{s/ *NEEDED *//p;}' | head -n1`
-rm dummy.so
-AC_DEFINE_UNQUOTED([$2],["$knet_pkg_soname"],[SONAME of the $1 library])
-AS_IF([test "x$knet_pkg_soname" = x],
-	[AC_MSG_FAILURE([failed to extract SONAME])],
-	[AC_MSG_RESULT([$knet_pkg_soname])])
-])
-
 # crypto libraries checks
 if test "x$enable_crypto_nss" = xyes; then
 	PKG_CHECK_MODULES([nss],[nss])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTONSS], [1], [Enable nss crypto])
-	KNET_PKG_SONAME([nss],[LIBNSS3])
 fi
 
 if test "x$enable_crypto_openssl" = xyes; then
@@ -226,19 +213,16 @@ if test "x$enable_crypto_openssl" = xyes; then
 			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
 					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
-	KNET_PKG_SONAME([openssl],[LIBOPENSSL])
 fi
 
 # compress libraries checks
 if test "x$enable_compress_zlib" = xyes; then
 	PKG_CHECK_MODULES([zlib], [zlib])
 	AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
-	KNET_PKG_SONAME([zlib],[LIBZ_1])
 fi
 if test "x$enable_compress_lz4" = xyes; then
 	PKG_CHECK_MODULES([liblz4], [liblz4])
 	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
-	KNET_PKG_SONAME([liblz4],[LIBLZ4_1])
 fi
 if test "x$enable_compress_lzo2" = xyes; then
 	PKG_CHECK_MODULES([lzo2], [lzo2],,
@@ -247,12 +231,10 @@ if test "x$enable_compress_lzo2" = xyes; then
 				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
 				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
 	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
-	KNET_PKG_SONAME([lzo2],[LIBLZO2_2])
 fi
 if test "x$enable_compress_lzma" = xyes; then
 	PKG_CHECK_MODULES([liblzma], [liblzma])
 	AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
-	KNET_PKG_SONAME([liblzma],[LIBLZMA_5])
 fi
 if test "x$enable_compress_bzip2" = xyes; then
 	PKG_CHECK_MODULES([bzip2], [bzip2],,
