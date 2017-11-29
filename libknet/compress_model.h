@@ -15,19 +15,7 @@ typedef struct {
 	const char	*model_name;
 	uint8_t		model_id;    /* sequencial unique identifier */
 	uint8_t		built_in;    /* set at configure/build time to 1 if available */
-
-	/*
-	 * shared lib load functions
-	 *
-	 * both are called in shlib_rwlock write context and should
-	 * update the loaded status below.
-	 */
-	int (*load_lib)		(knet_handle_t knet_h);
-
-	/*
-	 * library is loaded
-	 */
-	uint8_t		loaded;
+	uint8_t		loaded;      /* library is loaded */
 
 	/*
 	 * runtime bits

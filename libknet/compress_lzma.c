@@ -126,4 +126,4 @@ static int lzma_decompress(
 	return err;
 }
 
-compress_model_t compress_model = { "", 0, 0, NULL, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress };
+compress_model_t compress_model = { "", 0, 0, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress };

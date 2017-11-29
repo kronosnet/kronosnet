@@ -35,7 +35,7 @@
  * always add before the last NULL/NULL/NULL.
  */
 
-#define empty_module NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, NULL, NULL, NULL, NULL, NULL, NULL },
 
 compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, 0, empty_module
