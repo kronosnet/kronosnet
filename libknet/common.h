@@ -8,8 +8,6 @@
  */
 
 #include "internals.h"
-#include "compress_model.h"
-#include "crypto_model.h"
 
 #ifndef __KNET_COMMON_H__
 #define __KNET_COMMON_H__
