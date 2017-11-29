@@ -13,6 +13,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <sys/param.h>
 
 #include "internals.h"
 #include "compress.h"
@@ -32,51 +35,88 @@
  * always add before the last NULL/NULL/NULL.
  */
 
-#define empty_module 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
 
 compress_model_t compress_modules_cmds[] = {
-	{ "none", 0, empty_module
+	{ "none", 0, 0, empty_module
 	{ "zlib", 1,
 #ifdef BUILDCOMPZLIB
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1,
 #else
-empty_module
+		     0,
 #endif
+empty_module
 	{ "lz4", 2,
 #ifdef BUILDCOMPLZ4
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1,
 #else
-empty_module
+		     0,
 #endif
+empty_module
 	{ "lz4hc", 3,
 #ifdef BUILDCOMPLZ4
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1,
 #else
-empty_module
+		     0,
 #endif
+empty_module
 	{ "lzo2", 4,
 #ifdef BUILDCOMPLZO2
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1,
 #else
-empty_module
+		     0,
 #endif
+empty_module
 	{ "lzma", 5,
 #ifdef BUILDCOMPLZMA
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1,
 #else
-empty_module
+		     0,
 #endif
+empty_module
 	{ "bzip2", 6,
 #ifdef BUILDCOMPBZIP2
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+		     1,
 #else
-empty_module
+		     0,
 #endif
-	{ NULL, 255, empty_module
+empty_module
+	{ NULL, 255, 0, empty_module
 };
 
 static int max_model = 0;
 static struct timespec last_load_failure;
+
+static int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
+{
+	void *module;
+	compress_model_t *module_cmds;
+	char soname[MAXPATHLEN];
+	const char model_sym[] = "compress_model";
+
+	if (model->loaded) {
+		return 0;
+	}
+	snprintf (soname, sizeof soname, "compress_%s.so", model->model_name);
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return -1;
+	}
+	module_cmds = dlsym (module, model_sym);
+	if (!module_cmds) {
+		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
+			 model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+	model->is_init = module_cmds->is_init;
+	model->init = module_cmds->init;
+	model->fini = module_cmds->fini;
+	model->val_level = module_cmds->val_level;
+	model->compress = module_cmds->compress;
+	model->decompress = module_cmds->decompress;
+	return 0;
+}
 
 static int compress_get_model(const char *model)
 {

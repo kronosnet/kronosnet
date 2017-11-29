@@ -13,6 +13,9 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <sys/param.h>
 
 #include "crypto.h"
 #include "crypto_model.h"
@@ -29,18 +32,53 @@
 crypto_model_t crypto_modules_cmds[] = {
 	{ "nss",
 #ifdef BUILDCRYPTONSS
-		 1, NULL, 0, NULL, NULL, NULL, NULL, NULL },
+		 1,
 #else
-		 0,empty_module
+		 0,
 #endif
+		 empty_module
 	{ "openssl",
 #ifdef BUILDCRYPTOOPENSSL
-		 1, NULL, 0, NULL, NULL, NULL, NULL, NULL },
+		 1,
 #else
-		 0,empty_module
+		 0,
 #endif
+		 empty_module
 	{ NULL, 0, empty_module
 };
+
+static int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
+{
+	void *module;
+	crypto_model_t *module_cmds;
+	char soname[MAXPATHLEN];
+	const char model_sym[] = "crypto_model";
+
+	if (model->loaded) {
+		return 0;
+	}
+	snprintf (soname, sizeof soname, "crypto_%s.so", model->model_name);
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return -1;
+	}
+	module_cmds = dlsym (module, model_sym);
+	if (!module_cmds) {
+		log_err (knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
+			 model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+	if (module_cmds->load_lib && (*module_cmds->load_lib)(knet_h)) {
+		return -1;
+	}
+	model->init = module_cmds->init;
+	model->fini = module_cmds->fini;
+	model->crypt = module_cmds->crypt;
+	model->cryptv = module_cmds->cryptv;
+	model->decrypt = module_cmds->decrypt;
+	return 0;
+}
 
 static int crypto_get_model(const char *model)
 {
