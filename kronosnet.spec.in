@@ -333,7 +333,7 @@ Summary: Kronosnet core switching implementation
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
 %{_libdir}/libknet.so.*
-%{_libdir}/kronosnet
+%dir %{_libdir}/kronosnet
 
 %post -n libknet1 -p /sbin/ldconfig
 
