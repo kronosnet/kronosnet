@@ -16,6 +16,8 @@ struct crypto_instance {
 	void	*model_instance;
 };
 
+#define KNET_CRYPTO_MODEL_API	1
+
 typedef struct {
 	/*
 	 * see compress_model.h for explanation of the various lib related functions
@@ -23,6 +25,7 @@ typedef struct {
 	const char	*model_name;
 	uint8_t		built_in;
 	uint8_t		loaded;
+	uint8_t		api_ver;
 
 	int (*init)	(knet_handle_t knet_h,
 			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);

@@ -35,7 +35,7 @@
  * always add before the last NULL/NULL/NULL.
  */
 
-#define empty_module 0, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, KNET_COMPRESS_MODEL_API, NULL, NULL, NULL, NULL, NULL, NULL },
 
 compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, 0, empty_module
@@ -94,17 +94,25 @@ static int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
 	char soname[MAXPATHLEN];
 	const char model_sym[] = "compress_model";
 
-	snprintf (soname, sizeof soname, "compress_%s.so", model->model_name);
+	snprintf(soname, sizeof soname, "compress_%s.so", model->model_name);
 
 	module = open_lib(knet_h, soname, 0);
 	if (!module) {
 		return -1;
 	}
 
-	module_cmds = dlsym (module, model_sym);
+	module_cmds = dlsym(module, model_sym);
 	if (!module_cmds) {
-		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
-			 model_sym, soname, dlerror ());
+		log_err(knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
+			model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (model->api_ver != module_cmds->api_ver) {
+		log_err(knet_h, KNET_SUB_COMPRESS,
+			"API/ABI mismatch detected loading module %s. knet ver: %u module ver: %u",
+			soname, model->api_ver, module_cmds->api_ver);
 		errno = EINVAL;
 		return -1;
 	}

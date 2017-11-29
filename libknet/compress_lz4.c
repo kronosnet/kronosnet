@@ -90,4 +90,4 @@ static int lz4_decompress(
 	return err;
 }
 
-compress_model_t compress_model = { "", 0, 0, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress };
+compress_model_t compress_model = { "", 0, 0, 0, KNET_COMPRESS_MODEL_API, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress };

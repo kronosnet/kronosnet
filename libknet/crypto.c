@@ -27,7 +27,7 @@
  * internal module switch data
  */
 
-#define empty_module 0, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, KNET_CRYPTO_MODEL_API, NULL, NULL, NULL, NULL, NULL },
 
 crypto_model_t crypto_modules_cmds[] = {
 	{ "nss",
@@ -54,16 +54,24 @@ static int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
 	char soname[MAXPATHLEN];
 	const char model_sym[] = "crypto_model";
 
-	snprintf (soname, sizeof soname, "crypto_%s.so", model->model_name);
+	snprintf(soname, sizeof soname, "crypto_%s.so", model->model_name);
 	module = open_lib(knet_h, soname, 0);
 	if (!module) {
 		return -1;
 	}
 
-	module_cmds = dlsym (module, model_sym);
+	module_cmds = dlsym(module, model_sym);
 	if (!module_cmds) {
-		log_err (knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
-			 model_sym, soname, dlerror ());
+		log_err(knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
+			model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (model->api_ver != module_cmds->api_ver) {
+		log_err(knet_h, KNET_SUB_CRYPTO,
+			"API/ABI mismatch detected loading module %s. knet ver: %u module ver: %u",
+			soname, model->api_ver, module_cmds->api_ver);
 		errno = EINVAL;
 		return -1;
 	}

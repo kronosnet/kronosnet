@@ -11,11 +11,14 @@
 
 #include "internals.h"
 
+#define KNET_COMPRESS_MODEL_API	1
+
 typedef struct {
 	const char	*model_name;
 	uint8_t		model_id;    /* sequencial unique identifier */
 	uint8_t		built_in;    /* set at configure/build time to 1 if available */
 	uint8_t		loaded;      /* library is loaded */
+	uint8_t		api_ver;     /* internal API version */
 
 	/*
 	 * runtime bits

@@ -798,4 +798,4 @@ out_err:
 	return -1;
 }
 
-crypto_model_t crypto_model = { "", 0, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt };
+crypto_model_t crypto_model = { "", 0, 0, KNET_CRYPTO_MODEL_API, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt };
