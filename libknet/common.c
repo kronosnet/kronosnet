@@ -123,6 +123,7 @@ out:
 int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
 {
 	void *module;
+	log_msg_t **log_msg_sym;
 	compress_model_t *module_cmds;
 	char soname[MAXPATHLEN];
 	const char model_sym[] = "compress_model";
@@ -135,6 +136,14 @@ int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
 	if (!module) {
 		return -1;
 	}
+	log_msg_sym = dlsym (module, "log_msg");
+	if (!log_msg_sym) {
+		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol log_msg in module %s: %s",
+			 soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+	*log_msg_sym = log_msg;
 	module_cmds = dlsym (module, model_sym);
 	if (!module_cmds) {
 		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
@@ -154,6 +163,7 @@ int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
 int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
 {
 	void *module;
+	log_msg_t **log_msg_sym;
 	crypto_model_t *module_cmds;
 	char soname[MAXPATHLEN];
 	const char model_sym[] = "crypto_model";
@@ -166,6 +176,14 @@ int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
 	if (!module) {
 		return -1;
 	}
+        log_msg_sym = dlsym (module, "log_msg");
+        if (!log_msg_sym) {
+		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol log_msg in module %s: %s",
+			 soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+	*log_msg_sym = log_msg;
 	module_cmds = dlsym (module, model_sym);
 	if (!module_cmds) {
 		log_err (knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",

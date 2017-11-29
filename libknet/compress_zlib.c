@@ -5,6 +5,7 @@
  *
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
+#define KNET_MODULE
 
 #include "config.h"
 
