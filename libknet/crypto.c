@@ -27,7 +27,7 @@
  * internal module switch data
  */
 
-#define empty_module NULL, 0, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, NULL, NULL, NULL, NULL, NULL },
 
 crypto_model_t crypto_modules_cmds[] = {
 	{ "nss",
@@ -54,14 +54,12 @@ static int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
 	char soname[MAXPATHLEN];
 	const char model_sym[] = "crypto_model";
 
-	if (model->loaded) {
-		return 0;
-	}
 	snprintf (soname, sizeof soname, "crypto_%s.so", model->model_name);
 	module = open_lib(knet_h, soname, 0);
 	if (!module) {
 		return -1;
 	}
+
 	module_cmds = dlsym (module, model_sym);
 	if (!module_cmds) {
 		log_err (knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
@@ -69,14 +67,13 @@ static int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
 		errno = EINVAL;
 		return -1;
 	}
-	if (module_cmds->load_lib && (*module_cmds->load_lib)(knet_h)) {
-		return -1;
-	}
+
 	model->init = module_cmds->init;
 	model->fini = module_cmds->fini;
 	model->crypt = module_cmds->crypt;
 	model->cryptv = module_cmds->cryptv;
 	model->decrypt = module_cmds->decrypt;
+
 	return 0;
 }
 

@@ -28,27 +28,6 @@
 
 static int openssl_is_init = 0;
 
-static int opensslcrypto_load_lib(
-	knet_handle_t knet_h)
-{
-	if (!openssl_is_init) {
-#ifdef BUILDCRYPTOOPENSSL10
-		ERR_load_crypto_strings();
-		OPENSSL_add_all_algorithms_noconf();
-#endif
-#ifdef BUILDCRYPTOOPENSSL11
-		if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS \
-					 | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL)) {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
-			errno = EAGAIN;
-			return -1;
-		}
-#endif
-		openssl_is_init = 1;
-	}
-	return 0;
-}
-
 /*
  * crypto definitions and conversion tables
  */
@@ -446,6 +425,22 @@ static int opensslcrypto_init(
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
+	if (!openssl_is_init) {
+#ifdef BUILDCRYPTOOPENSSL10
+		ERR_load_crypto_strings();
+		OPENSSL_add_all_algorithms_noconf();
+#endif
+#ifdef BUILDCRYPTOOPENSSL11
+		if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS \
+					 | OPENSSL_INIT_ADD_ALL_DIGESTS, NULL)) {
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
+			errno = EAGAIN;
+			return -1;
+		}
+#endif
+		openssl_is_init = 1;
+	}
+
 	knet_h->crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
 	if (!knet_h->crypto_instance->model_instance) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl model instance");
@@ -519,4 +514,4 @@ out_err:
 	return -1;
 }
 
-crypto_model_t crypto_model = { "", 0, opensslcrypto_load_lib, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt };
+crypto_model_t crypto_model = { "", 0, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt };
