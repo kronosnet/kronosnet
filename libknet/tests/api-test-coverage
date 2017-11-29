@@ -17,7 +17,6 @@ exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' T ' | awk 
 echo "Checking for exported symbols NOT available in header file"
 
 for i in $exportedapicalls; do
-	[ "$i" = log_msg ] && continue # used by our plugin modules
 	found=0
 	for x in $headerapicalls; do
 		if [ "$x" = "$i" ]; then
