@@ -125,4 +125,11 @@ static int zlib_decompress(
 	return err;
 }
 
-compress_model_t compress_model = { "", 0, 0, NULL, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress };
+compress_ops_t compress_model = {
+	NULL,
+	NULL,
+	NULL,
+	zlib_val_level,
+	zlib_compress,
+	zlib_decompress
+};

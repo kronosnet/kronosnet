@@ -201,49 +201,41 @@ case "$host_os" in
 		;;
 esac
 
-# crypto libraries checks
-if test "x$enable_crypto_nss" = xyes; then
-	PKG_CHECK_MODULES([nss],[nss])
-	AC_DEFINE_UNQUOTED([BUILDCRYPTONSS], [1], [Enable nss crypto])
+AC_DEFUN([KNET_COMP_DEFINES],[
+if test "x$enable_$2_$1" = xyes; then
+	$3
+	AC_DEFINE([BUILD_]m4_toupper([$2_$1]), [1], $1 $2 [enabled])
 fi
+AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
+])
 
-if test "x$enable_crypto_openssl" = xyes; then
+# crypto libraries checks
+KNET_COMP_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
+KNET_COMP_DEFINES([openssl],[crypto],[
 	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
 			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
 			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
 					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
-	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
-fi
+])
 
 # compress libraries checks
-if test "x$enable_compress_zlib" = xyes; then
-	PKG_CHECK_MODULES([zlib], [zlib])
-	AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
-fi
-if test "x$enable_compress_lz4" = xyes; then
-	PKG_CHECK_MODULES([liblz4], [liblz4])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
-fi
-if test "x$enable_compress_lzo2" = xyes; then
+KNET_COMP_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
+KNET_COMP_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
+KNET_COMP_DEFINES([lzo2],[compress],[
 	PKG_CHECK_MODULES([lzo2], [lzo2],,
 		[AC_CHECK_HEADERS([lzo/lzo1x.h],
 			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
 				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
 				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
-fi
-if test "x$enable_compress_lzma" = xyes; then
-	PKG_CHECK_MODULES([liblzma], [liblzma])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
-fi
-if test "x$enable_compress_bzip2" = xyes; then
+])
+KNET_COMP_DEFINES([lzma],[compress],[PKG_CHECK_MODULES([liblzma], [liblzma])])
+KNET_COMP_DEFINES([bzip2],[compress],[
 	PKG_CHECK_MODULES([bzip2], [bzip2],,
 		[AC_CHECK_HEADERS([bzlib.h],
 			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
 				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
 				[AC_MSG_ERROR(["missing required bzlib.h"])])])
-	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
-fi
+])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])

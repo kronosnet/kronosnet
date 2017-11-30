@@ -88,7 +88,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-#ifdef BUILDCOMPZLIB
+#ifdef BUILD_COMPRESS_ZLIB
 	printf("Test knet_handle_compress with zlib compress and negative level\n");
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 {
 	test();
 
-#ifdef BUILDCOMPZLIB
+#ifdef BUILD_COMPRESS_ZLIB
 	return PASS;
 #else
 	printf("WARNING: zlib support not builtin the library. Unable to test/verify internal compress API calls\n");

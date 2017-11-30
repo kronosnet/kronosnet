@@ -248,10 +248,10 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
-#ifdef BUILDCRYPTONSS
+#ifdef BUILD_CRYPTO_NSS
 	test("nss");
 #endif
-#ifdef BUILDCRYPTOOPENSSL
+#ifdef BUILD_CRYPTO_OPENSSL
 #ifdef KNET_BSD
 	if (is_memcheck() || is_helgrind()) {
 		printf("valgrind-freebsd cannot run this test properly. Skipping\n");

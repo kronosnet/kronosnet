@@ -8,16 +8,12 @@
  */
 
 #include "internals.h"
-#include "compress_model.h"
-#include "crypto_model.h"
 
 #ifndef __KNET_COMMON_H__
 #define __KNET_COMMON_H__
 
 int _fdset_cloexec(int fd);
 int _fdset_nonblock(int fd);
-void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags);
-int load_compress_lib(knet_handle_t knet_h, compress_model_t *model);
-int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model);
+void *load_module(knet_handle_t knet_h, const char *type, const char *name);
 
 #endif

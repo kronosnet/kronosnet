@@ -12,27 +12,6 @@
 #include "internals.h"
 
 typedef struct {
-	const char	*model_name;
-	uint8_t		model_id;    /* sequencial unique identifier */
-	uint8_t		built_in;    /* set at configure/build time to 1 if available */
-
-	/*
-	 * shared lib load functions
-	 *
-	 * both are called in shlib_rwlock write context and should
-	 * update the loaded status below.
-	 */
-	int (*load_lib)		(knet_handle_t knet_h);
-
-	/*
-	 * library is loaded
-	 */
-	uint8_t		loaded;
-
-	/*
-	 * runtime bits
-	 */
-
 	/*
 	 * some libs need special init and handling of buffers etc.
 	 * is_init is called in shlib_rwlock read only context to see if
@@ -87,6 +66,22 @@ typedef struct {
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
+} compress_ops_t;
+
+typedef struct {
+	const char	*model_name;
+	uint8_t		model_id;    /* sequential unique identifier */
+	uint8_t		built_in;    /* set at configure/build time to 1 if available */
+
+	/*
+	 * library is loaded
+	 */
+	uint8_t		loaded;
+
+	/*
+	 * runtime bits
+	 */
+	compress_ops_t	*ops;
 } compress_model_t;
 
 #endif

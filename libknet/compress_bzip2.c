@@ -115,4 +115,11 @@ static int bzip2_decompress(
 	return err;
 }
 
-compress_model_t compress_model = { "", 0, 0, NULL, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress };
+compress_ops_t compress_model = {
+	NULL,
+	NULL,
+	NULL,
+	bzip2_val_level,
+	bzip2_compress,
+	bzip2_decompress
+};

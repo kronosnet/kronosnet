@@ -54,7 +54,7 @@ int _fdset_nonblock(int fd)
 	return 0;
 }
 
-void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
+static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
 {
 	void *ret = NULL;
 	char *error = NULL;
@@ -119,82 +119,37 @@ out:
 	return ret;
 }
 
-/* Separate these into compress.c and crypto.c or keep them together? */
-int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
+void *load_module(knet_handle_t knet_h, const char *type, const char *name)
 {
-	void *module;
+	void *module, *ops;
 	log_msg_t **log_msg_sym;
-	compress_model_t *module_cmds;
-	char soname[MAXPATHLEN];
-	const char model_sym[] = "compress_model";
+	char soname[MAXPATHLEN], opsname[MAXPATHLEN];
 
-	if (model->loaded) {
-		return 0;
-	}
-	snprintf (soname, sizeof soname, "compress_%s.so", model->model_name);
+	snprintf (soname, sizeof soname, "%s_%s.so", type, name);
+
 	module = open_lib(knet_h, soname, 0);
 	if (!module) {
-		return -1;
+		return NULL;
 	}
-	log_msg_sym = dlsym (module, "log_msg");
-	if (!log_msg_sym) {
-		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol log_msg in module %s: %s",
-			 soname, dlerror ());
-		errno = EINVAL;
-		return -1;
-	}
-	*log_msg_sym = log_msg;
-	module_cmds = dlsym (module, model_sym);
-	if (!module_cmds) {
-		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
-			 model_sym, soname, dlerror ());
-		errno = EINVAL;
-		return -1;
-	}
-	model->is_init = module_cmds->is_init;
-	model->init = module_cmds->init;
-	model->fini = module_cmds->fini;
-	model->val_level = module_cmds->val_level;
-	model->compress = module_cmds->compress;
-	model->decompress = module_cmds->decompress;
-	return 0;
-}
 
-int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
-{
-	void *module;
-	log_msg_t **log_msg_sym;
-	crypto_model_t *module_cmds;
-	char soname[MAXPATHLEN];
-	const char model_sym[] = "crypto_model";
-
-	if (model->loaded) {
-		return 0;
-	}
-	snprintf (soname, sizeof soname, "crypto_%s.so", model->model_name);
-	module = open_lib(knet_h, soname, 0);
-	if (!module) {
-		return -1;
-	}
         log_msg_sym = dlsym (module, "log_msg");
         if (!log_msg_sym) {
-		log_err (knet_h, KNET_SUB_COMPRESS, "unable to map symbol log_msg in module %s: %s",
+		log_err (knet_h, KNET_SUB_COMMON, "unable to map symbol 'log_msg' in module %s: %s",
 			 soname, dlerror ());
 		errno = EINVAL;
-		return -1;
+		return NULL;
 	}
 	*log_msg_sym = log_msg;
-	module_cmds = dlsym (module, model_sym);
-	if (!module_cmds) {
-		log_err (knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
-			 model_sym, soname, dlerror ());
+
+	snprintf (opsname, sizeof opsname, "%s_model", type);
+
+	ops = dlsym (module, opsname);
+	if (!ops) {
+		log_err (knet_h, KNET_SUB_COMMON, "unable to map symbol 'model' in module %s: %s",
+			 soname, dlerror ());
 		errno = EINVAL;
-		return -1;
+		return NULL;
 	}
-	model->init = module_cmds->init;
-	model->fini = module_cmds->fini;
-	model->crypt = module_cmds->crypt;
-	model->cryptv = module_cmds->cryptv;
-	model->decrypt = module_cmds->decrypt;
-	return 0;
+
+	return ops;
 }

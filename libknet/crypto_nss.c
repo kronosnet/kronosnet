@@ -800,4 +800,10 @@ out_err:
 	return -1;
 }
 
-crypto_model_t crypto_model = { "", 0, NULL, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt };
+crypto_ops_t crypto_model = {
+	nsscrypto_init,
+	nsscrypto_fini,
+	nsscrypto_encrypt_and_sign,
+	nsscrypto_encrypt_and_signv,
+	nsscrypto_authenticate_and_decrypt
+};

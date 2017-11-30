@@ -269,20 +269,20 @@ int main(int argc, char *argv[])
 {
 	test("none");
 
-#ifdef BUILDCOMPZLIB
+#ifdef BUILD_COMPRESS_ZLIB
 	test("zlib");
 #endif
-#ifdef BUILDCOMPLZ4
+#ifdef BUILD_COMPRESS_LZ4
 	test("lz4");
 	test("lz4hc");
 #endif
-#ifdef BUILDCOMPLZO2
+#ifdef BUILD_COMPRESS_LZO2
 	test("lzo2");
 #endif
-#ifdef BUILDCOMPLZMA
+#ifdef BUILD_COMPRESS_LZMA
 	test("lzma");
 #endif
-#ifdef BUILDCOMPBZIP2
+#ifdef BUILD_COMPRESS_BZIP2
 	test("bzip2");
 #endif
 

@@ -16,16 +16,10 @@ struct crypto_instance {
 	void	*model_instance;
 };
 
+/*
+ * see compress_model.h for explanation of the various lib related functions
+ */
 typedef struct {
-	const char	*model_name;
-	uint8_t		built_in;
-
-	/*
-	 * see compress_model.h for explanation of the various lib related functions
-	 */
-	int (*load_lib)	(knet_handle_t knet_h);
-	uint8_t		loaded;
-
 	int (*init)	(knet_handle_t knet_h,
 			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 	void (*fini)	(knet_handle_t knet_h);
@@ -44,6 +38,13 @@ typedef struct {
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
+} crypto_ops_t;
+
+typedef struct {
+	const char	*model_name;
+	uint8_t		built_in;
+	uint8_t		loaded;
+	crypto_ops_t	*ops;
 } crypto_model_t;
 
 #endif

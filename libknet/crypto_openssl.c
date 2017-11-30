@@ -514,4 +514,10 @@ out_err:
 	return -1;
 }
 
-crypto_model_t crypto_model = { "", 0, NULL, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt };
+crypto_ops_t crypto_model = {
+	opensslcrypto_init,
+	opensslcrypto_fini,
+	opensslcrypto_encrypt_and_sign,
+	opensslcrypto_encrypt_and_signv,
+	opensslcrypto_authenticate_and_decrypt
+};

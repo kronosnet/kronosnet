@@ -154,4 +154,11 @@ static int lzo2_decompress(
 	return err;
 }
 
-compress_model_t compress_model = { "", 0, 0, NULL, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress };
+compress_ops_t compress_model = {
+	lzo2_is_init,
+	lzo2_init,
+	lzo2_fini,
+	lzo2_val_level,
+	lzo2_compress,
+	lzo2_decompress
+};

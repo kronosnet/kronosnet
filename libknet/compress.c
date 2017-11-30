@@ -29,50 +29,18 @@
  * DO NOT CHANGE MODEL_ID HERE OR ONWIRE COMPATIBILITY
  * WILL BREAK!
  *
- * always add before the last NULL/NULL/NULL.
+ * Always add new items before the last NULL.
  */
 
-#define empty_module 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-
 compress_model_t compress_modules_cmds[] = {
-	{ "none", 0, empty_module
-	{ "zlib", 1,
-#ifdef BUILDCOMPZLIB
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-empty_module
-#endif
-	{ "lz4", 2,
-#ifdef BUILDCOMPLZ4
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-empty_module
-#endif
-	{ "lz4hc", 3,
-#ifdef BUILDCOMPLZ4
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-empty_module
-#endif
-	{ "lzo2", 4,
-#ifdef BUILDCOMPLZO2
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-empty_module
-#endif
-	{ "lzma", 5,
-#ifdef BUILDCOMPLZMA
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-empty_module
-#endif
-	{ "bzip2", 6,
-#ifdef BUILDCOMPBZIP2
-		     1, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
-#else
-empty_module
-#endif
-	{ NULL, 255, empty_module
+	{ "none" , 0, 0, 0, NULL },
+	{ "zlib" , 1, WITH_COMPRESS_ZLIB , 0, NULL },
+	{ "lz4"  , 2, WITH_COMPRESS_LZ4  , 0, NULL },
+	{ "lz4hc", 3, WITH_COMPRESS_LZ4  , 0, NULL },
+	{ "lzo2" , 4, WITH_COMPRESS_LZO2 , 0, NULL },
+	{ "lzma" , 5, WITH_COMPRESS_LZMA , 0, NULL },
+	{ "bzip2", 6, WITH_COMPRESS_BZIP2, 0, NULL },
+	{ NULL, 255, 0, 0, NULL }
 };
 
 static int max_model = 0;
@@ -119,7 +87,7 @@ static int val_level(
 	int compress_model,
 	int compress_level)
 {
-	return compress_modules_cmds[compress_model].val_level(knet_h, compress_level);
+	return compress_modules_cmds[compress_model].ops->val_level(knet_h, compress_level);
 }
 
 /*
@@ -133,12 +101,12 @@ static int compress_check_lib_is_init(knet_handle_t knet_h, int cmp_model)
 	 * to identify that we already increased the libref for this handle
 	 */
 	if (compress_modules_cmds[cmp_model].loaded == 1) {
-		if (compress_modules_cmds[cmp_model].is_init == NULL) {
+		if (compress_modules_cmds[cmp_model].ops->is_init == NULL) {
 			if (knet_h->compress_int_data[cmp_model] != NULL) {
 				return 1;
 			}
 		} else {
-			if (compress_modules_cmds[cmp_model].is_init(knet_h, cmp_model) == 1) {
+			if (compress_modules_cmds[cmp_model].ops->is_init(knet_h, cmp_model) == 1) {
 				return 1;
 			}
 		}
@@ -189,15 +157,16 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	}
 
 	if (compress_modules_cmds[cmp_model].loaded == 0) {
-		if (load_compress_lib(knet_h, compress_modules_cmds+cmp_model) < 0) {
+		compress_modules_cmds[cmp_model].ops = load_module (knet_h, "compress", compress_modules_cmds[cmp_model].model_name);
+		if (!compress_modules_cmds[cmp_model].ops) {
 			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			return -1;
 		}
 		compress_modules_cmds[cmp_model].loaded = 1;
 	}
 
-	if (compress_modules_cmds[cmp_model].init != NULL) {
-		if (compress_modules_cmds[cmp_model].init(knet_h, cmp_model) < 0) {
+	if (compress_modules_cmds[cmp_model].ops->init != NULL) {
+		if (compress_modules_cmds[cmp_model].ops->init(knet_h, cmp_model) < 0) {
 			return -1;
 		}
 	} else {
@@ -336,8 +305,8 @@ void compress_fini(
 		    (knet_h->compress_int_data[idx] != NULL) &&
 		    (idx < KNET_MAX_COMPRESS_METHODS)) {
 			if ((all) || (compress_modules_cmds[idx].model_id == knet_h->compress_model)) {
-				if (compress_modules_cmds[idx].fini != NULL) {
-					compress_modules_cmds[idx].fini(knet_h, idx);
+				if (compress_modules_cmds[idx].ops->fini != NULL) {
+					compress_modules_cmds[idx].ops->fini(knet_h, idx);
 				} else {
 					knet_h->compress_int_data[idx] = NULL;
 				}
@@ -361,7 +330,7 @@ int compress(
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return compress_modules_cmds[knet_h->compress_model].compress(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+	return compress_modules_cmds[knet_h->compress_model].ops->compress(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
 int decompress(
@@ -417,7 +386,7 @@ int decompress(
 		}
 	}
 
-	err = compress_modules_cmds[compress_model].decompress(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+	err = compress_modules_cmds[compress_model].ops->decompress(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 	savederrno = errno;
 
 out_unlock:
