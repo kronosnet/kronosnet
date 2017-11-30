@@ -26,7 +26,6 @@
 #include "logging.h"
 
 static int nss_db_is_init = 0;
-static int at_exit_registered = 0;
 
 static void nss_atexit_handler(void)
 {
@@ -38,30 +37,6 @@ static void nss_atexit_handler(void)
 		}
 	}
 	return;
-}
-
-static int nsscrypto_load_lib(
-	knet_handle_t knet_h)
-{
-	if (!at_exit_registered) {
-		if (atexit(nss_atexit_handler)) {
-			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to register NSS atexit handler");
-			errno = EAGAIN;
-			return -1;
-		}
-		at_exit_registered = 1;
-	}
-
-	if (!nss_db_is_init) {
-		if (NSS_NoDB_Init(".") != SECSuccess) {
-			log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
-				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-			errno = EAGAIN;
-			return -1;
-		}
-		nss_db_is_init = 1;
-	}
-	return 0;
 }
 
 /*
@@ -597,6 +572,27 @@ out:
 
 static int init_nss(knet_handle_t knet_h)
 {
+	static int at_exit_registered = 0;
+
+	if (!at_exit_registered) {
+		if (atexit(nss_atexit_handler)) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to register NSS atexit handler");
+			errno = EAGAIN;
+			return -1;
+		}
+		at_exit_registered = 1;
+	}
+
+	if (!nss_db_is_init) {
+		if (NSS_NoDB_Init(".") != SECSuccess) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
+				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			errno = EAGAIN;
+			return -1;
+		}
+		nss_db_is_init = 1;
+	}
+
 	if (init_nss_crypto(knet_h) < 0) {
 		return -1;
 	}
@@ -804,4 +800,4 @@ out_err:
 	return -1;
 }
 
-crypto_model_t crypto_model = { "", 0, nsscrypto_load_lib, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt };
+crypto_model_t crypto_model = { "", 0, NULL, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt };

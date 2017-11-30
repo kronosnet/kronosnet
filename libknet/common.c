@@ -191,9 +191,6 @@ int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
 		errno = EINVAL;
 		return -1;
 	}
-	if (module_cmds->load_lib && (*module_cmds->load_lib)(knet_h)) {
-		return -1;
-	}
 	model->init = module_cmds->init;
 	model->fini = module_cmds->fini;
 	model->crypt = module_cmds->crypt;
