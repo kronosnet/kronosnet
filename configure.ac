@@ -205,6 +205,9 @@ esac
 if test "x$enable_crypto_nss" = xyes; then
 	PKG_CHECK_MODULES([nss],[nss])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTONSS], [1], [Enable nss crypto])
+	AC_DEFINE_UNQUOTED([BUILDCRYPTONSSBUILTIN], [1], [nss crypto builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCRYPTONSSBUILTIN], [0], [nss crypto builtin])
 fi
 
 if test "x$enable_crypto_openssl" = xyes; then
@@ -213,16 +216,25 @@ if test "x$enable_crypto_openssl" = xyes; then
 			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
 					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
 	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
+	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSLBUILTIN], [1], [openssl crypto builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSLBUILTIN], [0], [openssl crypto builtin])
 fi
 
 # compress libraries checks
 if test "x$enable_compress_zlib" = xyes; then
 	PKG_CHECK_MODULES([zlib], [zlib])
 	AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
+	AC_DEFINE_UNQUOTED([BUILDCOMPZLIBBUILTIN], [1], [zlib compression builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCOMPZLIBBUILTIN], [0], [zlib compression builtin])
 fi
 if test "x$enable_compress_lz4" = xyes; then
 	PKG_CHECK_MODULES([liblz4], [liblz4])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compression])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4BUILTIN], [1], [lz4 compression builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4BUILTIN], [0], [lz4 compression builtin])
 fi
 if test "x$enable_compress_lzo2" = xyes; then
 	PKG_CHECK_MODULES([lzo2], [lzo2],,
@@ -230,11 +242,17 @@ if test "x$enable_compress_lzo2" = xyes; then
 			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
 				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
 				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compression])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2BUILTIN], [1], [lzo2 compression builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2BUILTIN], [0], [lzo2 compression builtin])
 fi
 if test "x$enable_compress_lzma" = xyes; then
 	PKG_CHECK_MODULES([liblzma], [liblzma])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compression])
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZMABUILTIN], [1], [lzma compression builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCOMPLZMABUILTIN], [0], [lzma compression builtin])
 fi
 if test "x$enable_compress_bzip2" = xyes; then
 	PKG_CHECK_MODULES([bzip2], [bzip2],,
@@ -242,7 +260,10 @@ if test "x$enable_compress_bzip2" = xyes; then
 			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
 				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
 				[AC_MSG_ERROR(["missing required bzlib.h"])])])
-	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
+	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compression])
+	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2BUILTIN], [1], [bzip2 compression builtin])
+else
+	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2BUILTIN], [0], [bzip2 compression builtin])
 fi
 
 # Checks for header files.

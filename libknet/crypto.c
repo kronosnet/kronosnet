@@ -30,20 +30,8 @@
 #define empty_module 0, KNET_CRYPTO_MODEL_API, NULL, NULL, NULL, NULL, NULL },
 
 crypto_model_t crypto_modules_cmds[] = {
-	{ "nss",
-#ifdef BUILDCRYPTONSS
-		 1,
-#else
-		 0,
-#endif
-		 empty_module
-	{ "openssl",
-#ifdef BUILDCRYPTOOPENSSL
-		 1,
-#else
-		 0,
-#endif
-		 empty_module
+	{ "nss", BUILDCRYPTONSSBUILTIN, empty_module
+	{ "openssl", BUILDCRYPTOOPENSSLBUILTIN, empty_module
 	{ NULL, 0, empty_module
 };
 

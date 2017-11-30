@@ -39,48 +39,12 @@
 
 compress_model_t compress_modules_cmds[] = {
 	{ "none", 0, 0, empty_module
-	{ "zlib", 1,
-#ifdef BUILDCOMPZLIB
-		     1,
-#else
-		     0,
-#endif
-empty_module
-	{ "lz4", 2,
-#ifdef BUILDCOMPLZ4
-		     1,
-#else
-		     0,
-#endif
-empty_module
-	{ "lz4hc", 3,
-#ifdef BUILDCOMPLZ4
-		     1,
-#else
-		     0,
-#endif
-empty_module
-	{ "lzo2", 4,
-#ifdef BUILDCOMPLZO2
-		     1,
-#else
-		     0,
-#endif
-empty_module
-	{ "lzma", 5,
-#ifdef BUILDCOMPLZMA
-		     1,
-#else
-		     0,
-#endif
-empty_module
-	{ "bzip2", 6,
-#ifdef BUILDCOMPBZIP2
-		     1,
-#else
-		     0,
-#endif
-empty_module
+	{ "zlib", 1, BUILDCOMPZLIBBUILTIN, empty_module
+	{ "lz4", 2, BUILDCOMPLZ4BUILTIN, empty_module
+	{ "lz4hc", 3,BUILDCOMPLZ4BUILTIN, empty_module
+	{ "lzo2", 4, BUILDCOMPLZO2BUILTIN, empty_module
+	{ "lzma", 5, BUILDCOMPLZMABUILTIN, empty_module
+	{ "bzip2", 6, BUILDCOMPBZIP2BUILTIN, empty_module
 	{ NULL, 255, 0, empty_module
 };
 
