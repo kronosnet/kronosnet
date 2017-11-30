@@ -13,34 +13,65 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <sys/param.h>
 
 #include "crypto.h"
-#include "crypto_nss.h"
-#include "crypto_openssl.h"
+#include "crypto_model.h"
 #include "internals.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * internal module switch data
  */
 
-#define empty_module NULL, 0, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, KNET_CRYPTO_MODEL_API, NULL, NULL, NULL, NULL, NULL },
 
 crypto_model_t crypto_modules_cmds[] = {
-	{ "nss",
-#ifdef BUILDCRYPTONSS
-		 1, nsscrypto_load_lib, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
-#else
-		 0,empty_module
-#endif
-	{ "openssl",
-#ifdef BUILDCRYPTOOPENSSL
-		 1, opensslcrypto_load_lib, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt },
-#else
-		 0,empty_module
-#endif
+	{ "nss", BUILDCRYPTONSSBUILTIN, empty_module
+	{ "openssl", BUILDCRYPTOOPENSSLBUILTIN, empty_module
 	{ NULL, 0, empty_module
 };
+
+static int load_crypto_lib(knet_handle_t knet_h, crypto_model_t *model)
+{
+	void *module;
+	crypto_model_t *module_cmds;
+	char soname[MAXPATHLEN];
+	const char model_sym[] = "crypto_model";
+
+	snprintf(soname, sizeof soname, "crypto_%s.so", model->model_name);
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return -1;
+	}
+
+	module_cmds = dlsym(module, model_sym);
+	if (!module_cmds) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "unable to map symbol %s in module %s: %s",
+			model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (model->api_ver != module_cmds->api_ver) {
+		log_err(knet_h, KNET_SUB_CRYPTO,
+			"API/ABI mismatch detected loading module %s. knet ver: %u module ver: %u",
+			soname, model->api_ver, module_cmds->api_ver);
+		errno = EINVAL;
+		return -1;
+	}
+
+	model->init = module_cmds->init;
+	model->fini = module_cmds->fini;
+	model->crypt = module_cmds->crypt;
+	model->cryptv = module_cmds->cryptv;
+	model->decrypt = module_cmds->decrypt;
+
+	return 0;
+}
 
 static int crypto_get_model(const char *model)
 {
@@ -114,7 +145,7 @@ int crypto_init(
 	}
 
 	if (!crypto_modules_cmds[model].loaded) {
-		if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
+		if (load_crypto_lib(knet_h, crypto_modules_cmds+model) < 0) {
 			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
 			goto out_err;
 		}

@@ -236,6 +236,7 @@ struct knet_handle {
 		int error,
 		int errorno);
 	int fini_in_progress;
+	void (*log_msg_fn)(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel, const char *fmt, ...) __attribute__((format(printf, 4, 5)));
 };
 
 extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */

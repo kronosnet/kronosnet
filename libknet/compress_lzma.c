@@ -8,62 +8,13 @@
 
 #include "config.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <dlfcn.h>
-#ifdef BUILDCOMPLZMA
 #include <lzma.h>
 
-#include "internals.h"
-#include "compress_lzma.h"
 #include "logging.h"
-#include "common.h"
+#include "compress_model.h"
 
-/*
- * global vars for dlopen
- */
-static void *lzma_lib;
-
-#include "compress_lzma_remap.h"
-
-static int lzma_remap_symbols(knet_handle_t knet_h)
-{
-#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_LZMACOMP, lzma_lib, name)
-#include "compress_lzma_remap.h"
-	return 0;
-
- fail:
-#define REMAP_FAIL
-#include "compress_lzma_remap.h"
-	errno = EINVAL;
-	return -1;
-}
-
-int lzma_load_lib(
-	knet_handle_t knet_h)
-{
-	int err = 0, savederrno = 0;
-
-	if (!lzma_lib) {
-		lzma_lib = open_lib(knet_h, LIBLZMA_5, 0);
-		if (!lzma_lib) {
-			savederrno = EAGAIN;
-			err = -1;
-			goto out;
-		}
-	}
-
-	if (lzma_remap_symbols(knet_h) < 0) {
-		savederrno = errno;
-		err = -1;
-	}
-out:
-	errno = savederrno;
-	return err;
-}
-
-int lzma_val_level(
+static int lzma_val_level(
 	knet_handle_t knet_h,
 	int compress_level)
 {
@@ -76,7 +27,7 @@ int lzma_val_level(
 	return 0;
 }
 
-int lzma_compress(
+static int lzma_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
@@ -88,9 +39,9 @@ int lzma_compress(
 	size_t out_pos = 0;
 	lzma_ret ret = 0;
 
-	ret = (*_int_lzma_easy_buffer_encode)(knet_h->compress_level, LZMA_CHECK_NONE, NULL,
-					      (const uint8_t *)buf_in, buf_in_len,
-					      (uint8_t *)buf_out, &out_pos, KNET_DATABUFSIZE_COMPRESS);
+	ret = lzma_easy_buffer_encode(knet_h->compress_level, LZMA_CHECK_NONE, NULL,
+				      (const uint8_t *)buf_in, buf_in_len,
+				      (uint8_t *)buf_out, &out_pos, KNET_DATABUFSIZE_COMPRESS);
 
 	switch(ret) {
 		case LZMA_OK:
@@ -122,7 +73,7 @@ int lzma_compress(
 	return err;
 }
 
-int lzma_decompress(
+static int lzma_decompress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
@@ -135,9 +86,9 @@ int lzma_decompress(
 	size_t out_pos = 0, in_pos = 0;
 	lzma_ret ret = 0;
 
-	ret = (*_int_lzma_stream_buffer_decode)(&memlimit, 0, NULL,
-						(const uint8_t *)buf_in, &in_pos, buf_in_len,
-						(uint8_t *)buf_out, &out_pos, KNET_DATABUFSIZE_COMPRESS);
+	ret = lzma_stream_buffer_decode(&memlimit, 0, NULL,
+					(const uint8_t *)buf_in, &in_pos, buf_in_len,
+					(uint8_t *)buf_out, &out_pos, KNET_DATABUFSIZE_COMPRESS);
 
 	switch(ret) {
 		case LZMA_OK:
@@ -174,4 +125,5 @@ int lzma_decompress(
 	errno = savederrno;
 	return err;
 }
-#endif
+
+compress_model_t compress_model = { "", 0, 0, 0, KNET_COMPRESS_MODEL_API, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress };

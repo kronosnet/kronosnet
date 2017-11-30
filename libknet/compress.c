@@ -13,27 +13,16 @@
 #include <errno.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <sys/param.h>
 
 #include "internals.h"
 #include "compress.h"
+#include "compress_model.h"
 #include "logging.h"
 #include "threads_common.h"
-
-#ifdef BUILDCOMPZLIB
-#include "compress_zlib.h"
-#endif
-#ifdef BUILDCOMPLZ4
-#include "compress_lz4.h"
-#endif
-#ifdef BUILDCOMPLZO2
-#include "compress_lzo2.h"
-#endif
-#ifdef BUILDCOMPLZMA
-#include "compress_lzma.h"
-#endif
-#ifdef BUILDCOMPBZIP2
-#include "compress_bzip2.h"
-#endif
+#include "common.h"
 
 /*
  * internal module switch data
@@ -46,51 +35,61 @@
  * always add before the last NULL/NULL/NULL.
  */
 
-#define empty_module 0, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module 0, KNET_COMPRESS_MODEL_API, NULL, NULL, NULL, NULL, NULL, NULL },
 
 compress_model_t compress_modules_cmds[] = {
-	{ "none", 0, empty_module
-	{ "zlib", 1,
-#ifdef BUILDCOMPZLIB
-		     1, zlib_load_lib, 0, NULL, NULL, NULL, zlib_val_level, zlib_compress, zlib_decompress },
-#else
-empty_module
-#endif
-	{ "lz4", 2,
-#ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, 0, NULL, NULL, NULL, lz4_val_level, lz4_compress, lz4_decompress },
-#else
-empty_module
-#endif
-	{ "lz4hc", 3,
-#ifdef BUILDCOMPLZ4
-		     1, lz4_load_lib, 0, NULL, NULL, NULL, lz4hc_val_level, lz4hc_compress, lz4_decompress },
-#else
-empty_module
-#endif
-	{ "lzo2", 4,
-#ifdef BUILDCOMPLZO2
-		     1, lzo2_load_lib, 0, lzo2_is_init, lzo2_init, lzo2_fini, lzo2_val_level, lzo2_compress, lzo2_decompress },
-#else
-empty_module
-#endif
-	{ "lzma", 5,
-#ifdef BUILDCOMPLZMA
-		     1, lzma_load_lib, 0, NULL, NULL, NULL, lzma_val_level, lzma_compress, lzma_decompress },
-#else
-empty_module
-#endif
-	{ "bzip2", 6,
-#ifdef BUILDCOMPBZIP2
-		     1, bzip2_load_lib, 0, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress },
-#else
-empty_module
-#endif
-	{ NULL, 255, empty_module
+	{ "none", 0, 0, empty_module
+	{ "zlib", 1, BUILDCOMPZLIBBUILTIN, empty_module
+	{ "lz4", 2, BUILDCOMPLZ4BUILTIN, empty_module
+	{ "lz4hc", 3,BUILDCOMPLZ4BUILTIN, empty_module
+	{ "lzo2", 4, BUILDCOMPLZO2BUILTIN, empty_module
+	{ "lzma", 5, BUILDCOMPLZMABUILTIN, empty_module
+	{ "bzip2", 6, BUILDCOMPBZIP2BUILTIN, empty_module
+	{ NULL, 255, 0, empty_module
 };
 
 static int max_model = 0;
 static struct timespec last_load_failure;
+
+static int load_compress_lib(knet_handle_t knet_h, compress_model_t *model)
+{
+	void *module;
+	compress_model_t *module_cmds;
+	char soname[MAXPATHLEN];
+	const char model_sym[] = "compress_model";
+
+	snprintf(soname, sizeof soname, "compress_%s.so", model->model_name);
+
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return -1;
+	}
+
+	module_cmds = dlsym(module, model_sym);
+	if (!module_cmds) {
+		log_err(knet_h, KNET_SUB_COMPRESS, "unable to map symbol %s in module %s: %s",
+			model_sym, soname, dlerror ());
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (model->api_ver != module_cmds->api_ver) {
+		log_err(knet_h, KNET_SUB_COMPRESS,
+			"API/ABI mismatch detected loading module %s. knet ver: %u module ver: %u",
+			soname, model->api_ver, module_cmds->api_ver);
+		errno = EINVAL;
+		return -1;
+	}
+
+	model->is_init = module_cmds->is_init;
+	model->init = module_cmds->init;
+	model->fini = module_cmds->fini;
+	model->val_level = module_cmds->val_level;
+	model->compress = module_cmds->compress;
+	model->decompress = module_cmds->decompress;
+
+	return 0;
+}
 
 static int compress_get_model(const char *model)
 {
@@ -203,7 +202,7 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 	}
 
 	if (compress_modules_cmds[cmp_model].loaded == 0) {
-		if (compress_modules_cmds[cmp_model].load_lib(knet_h) < 0) {
+		if (load_compress_lib(knet_h, compress_modules_cmds+cmp_model) < 0) {
 			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			return -1;
 		}

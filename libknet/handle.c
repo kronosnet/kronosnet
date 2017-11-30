@@ -561,6 +561,8 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
+	knet_h->log_msg_fn = log_msg;
+
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",

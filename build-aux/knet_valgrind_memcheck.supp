@@ -539,5 +539,5 @@
    fun:pthread_once
    fun:CRYPTO_THREAD_run_once
    fun:OPENSSL_init_crypto
-   fun:opensslcrypto_load_lib
+   fun:opensslcrypto_init
 }

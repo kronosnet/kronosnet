@@ -8,62 +8,13 @@
 
 #include "config.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
-#include <dlfcn.h>
-#ifdef BUILDCOMPBZIP2
 #include <bzlib.h>
 
-#include "internals.h"
-#include "compress_bzip2.h"
 #include "logging.h"
-#include "common.h"
+#include "compress_model.h"
 
-/*
- * global vars for dlopen
- */
-static void *bzip2_lib;
-
-#include "compress_bzip2_remap.h"
-
-static int bzip2_remap_symbols(knet_handle_t knet_h)
-{
-#define REMAP_WITH(name) remap_symbol (knet_h, KNET_SUB_BZIP2COMP, bzip2_lib, name)
-#include "compress_bzip2_remap.h"
-	return 0;
-
- fail:
-#define REMAP_FAIL
-#include "compress_bzip2_remap.h"
-        errno = EINVAL;
-        return -1;
-}
-
-int bzip2_load_lib(
-	knet_handle_t knet_h)
-{
-	int err = 0, savederrno = 0;
-
-	if (!bzip2_lib) {
-		bzip2_lib = open_lib(knet_h, LIBBZ2_1, 0);
-		if (!bzip2_lib) {
-			savederrno = errno;
-			err = -1;
-			goto out;
-		}
-	}
-
-	if (bzip2_remap_symbols(knet_h) < 0) {
-		savederrno = errno;
-		err = -1;
-	}
-out:
-	errno = savederrno;
-	return err;
-}
-
-int bzip2_val_level(
+static int bzip2_val_level(
 	knet_handle_t knet_h,
 	int compress_level)
 {
@@ -75,7 +26,7 @@ int bzip2_val_level(
 	return 0;
 }
 
-int bzip2_compress(
+static int bzip2_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
@@ -86,10 +37,10 @@ int bzip2_compress(
 	int savederrno = 0;
 	unsigned int destLen = KNET_DATABUFSIZE_COMPRESS;
 
-	err = (*_int_BZ2_bzBuffToBuffCompress)((char *)buf_out, &destLen,
-					       (char *)buf_in, buf_in_len,
-					       knet_h->compress_level,
-					       0, 0);
+	err = BZ2_bzBuffToBuffCompress((char *)buf_out, &destLen,
+				       (char *)buf_in, buf_in_len,
+				       knet_h->compress_level,
+				       0, 0);
 
 	switch(err) {
 		case BZ_OK:
@@ -116,7 +67,7 @@ int bzip2_compress(
 	return err;
 }
 
-int bzip2_decompress(
+static int bzip2_decompress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
@@ -127,9 +78,9 @@ int bzip2_decompress(
 	int savederrno = 0;
 	unsigned int destLen = KNET_DATABUFSIZE_COMPRESS;
 
-	err = (*_int_BZ2_bzBuffToBuffDecompress)((char *)buf_out, &destLen,
-						 (char *)buf_in, buf_in_len,
-						 0, 0);
+	err = BZ2_bzBuffToBuffDecompress((char *)buf_out, &destLen,
+					 (char *)buf_in, buf_in_len,
+					 0, 0);
 
 	switch(err) {
 		case BZ_OK:
@@ -162,4 +113,5 @@ int bzip2_decompress(
 	errno = savederrno;
 	return err;
 }
-#endif
+
+compress_model_t compress_model = { "", 0, 0, 0, KNET_COMPRESS_MODEL_API, NULL, NULL, NULL, bzip2_val_level, bzip2_compress, bzip2_decompress };

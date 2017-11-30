@@ -333,6 +333,7 @@ Summary: Kronosnet core switching implementation
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
 %{_libdir}/libknet.so.*
+%dir %{_libdir}/kronosnet
 
 %post -n libknet1 -p /sbin/ldconfig
 
@@ -356,6 +357,154 @@ Requires: pkgconfig
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
 %{_mandir}/man3/*.3.gz
+
+%if %{defined buildcryptonss}
+%package -n libknet1-crypto-nss-plugin
+Group: System Environment/Libraries
+Summary: libknet1 nss support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-crypto-nss-plugin
+ NSS crypto support for libknet1.
+
+%files -n libknet1-crypto-nss-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/crypto_nss.so
+%endif
+
+%if %{defined buildcryptoopenssl}
+%package -n libknet1-crypto-openssl-plugin
+Group: System Environment/Libraries
+Summary: libknet1 openssl support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-crypto-openssl-plugin
+ OpenSSL crypto support for libknet1.
+
+%files -n libknet1-crypto-openssl-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/crypto_openssl.so
+%endif
+
+%if %{defined buildcompresszlib}
+%package -n libknet1-compress-zlib-plugin
+Group: System Environment/Libraries
+Summary: libknet1 zlib support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-compress-zlib-plugin
+ zlib compression support for libknet1.
+
+%files -n libknet1-compress-zlib-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/compress_zlib.so
+%endif
+%if %{defined buildcompresslz4}
+%package -n libknet1-compress-lz4-plugin
+Group: System Environment/Libraries
+Summary: libknet1 lz4 and lz4hc support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-compress-lz4-plugin
+ lz4 and lz4hc compression support for libknet1.
+
+%files -n libknet1-compress-lz4-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/compress_lz4.so
+%{_libdir}/kronosnet/compress_lz4hc.so
+%endif
+
+%if %{defined buildcompresslzo2}
+%package -n libknet1-compress-lzo2-plugin
+Group: System Environment/Libraries
+Summary: libknet1 lzo2 support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-compress-lzo2-plugin
+ lzo2 compression support for libknet1.
+
+%files -n libknet1-compress-lzo2-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/compress_lzo2.so
+%endif
+
+%if %{defined buildcompresslzma}
+%package -n libknet1-compress-lzma-plugin
+Group: System Environment/Libraries
+Summary: libknet1 lzma support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-compress-lzma-plugin
+ lzma compression support for libknet1.
+
+%files -n libknet1-compress-lzma-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/compress_lzma.so
+%endif
+
+%if %{defined buildcompressbzip2}
+%package -n libknet1-compress-bzip2-plugin
+Group: System Environment/Libraries
+Summary: libknet1 bzip2 support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-compress-bzip2-plugin
+ bzip2 compression support for libknet1.
+
+%files -n libknet1-compress-bzip2-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/compress_bzip2.so
+%endif
+
+%package -n libknet1-crypto-plugins-all
+Group: System Environment/Libraries
+Summary: libknet1 crypto plugins meta package
+%if %{defined buildcryptonss}
+Requires: libknet1-crypto-nss-plugin
+%endif
+%if %{defined buildcryptoopenssl}
+Requires: libknet1-crypto-openssl-plugin
+%endif
+
+%description -n libknet1-crypto-plugins-all
+ meta package to install all of libknet1 crypto plugins
+
+%files -n libknet1-crypto-plugins-all
+
+%package -n libknet1-compress-plugins-all
+Group: System Environment/Libraries
+Summary: libknet1 compress plugins meta package
+%if %{defined buildcompresszlib}
+Requires: libknet1-compress-zlib-plugin
+%endif
+%if %{defined buildcompresslz4}
+Requires: libknet1-compress-lz4-plugin
+%endif
+%if %{defined buildcompresslzo2}
+Requires: libknet1-compress-lzo2-plugin
+%endif
+%if %{defined buildcompresslzma}
+Requires: libknet1-compress-lzma-plugin
+%endif
+%if %{defined buildcompressbzip2}
+Requires: libknet1-compress-bzip2-plugin
+%endif
+
+%description -n libknet1-compress-plugins-all
+ meta package to install all of libknet1 compress plugins
+
+%files -n libknet1-compress-plugins-all
+
+%package -n libknet1-plugins-all
+Group: System Environment/Libraries
+Summary: libknet1 plugins meta package
+Requires: libknet1-compress-plugins-all
+Requires: libknet1-crypto-plugins-all
+
+%description -n libknet1-plugins-all
+ meta package to install all of libknet1 plugins
+
+%files -n libknet1-plugins-all
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
