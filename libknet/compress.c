@@ -162,6 +162,14 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 			clock_gettime(CLOCK_MONOTONIC, &last_load_failure);
 			return -1;
 		}
+		if (compress_modules_cmds[cmp_model].ops->abi_ver != KNET_COMPRESS_MODEL_ABI) {
+			log_err(knet_h, KNET_SUB_COMPRESS,
+				"ABI mismatch loading module %s. knet ver: %d, module ver: %d",
+				compress_modules_cmds[cmp_model].model_name, KNET_COMPRESS_MODEL_ABI,
+				compress_modules_cmds[cmp_model].ops->abi_ver);
+			errno = EINVAL;
+			return -1;
+		}
 		compress_modules_cmds[cmp_model].loaded = 1;
 	}
 

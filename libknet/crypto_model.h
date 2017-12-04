@@ -16,10 +16,13 @@ struct crypto_instance {
 	void	*model_instance;
 };
 
+#define KNET_CRYPTO_MODEL_ABI 1
+
 /*
  * see compress_model.h for explanation of the various lib related functions
  */
 typedef struct {
+	uint8_t abi_ver;
 	int (*init)	(knet_handle_t knet_h,
 			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 	void (*fini)	(knet_handle_t knet_h);

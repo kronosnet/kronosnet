@@ -801,6 +801,7 @@ out_err:
 }
 
 crypto_ops_t crypto_model = {
+	KNET_CRYPTO_MODEL_ABI,
 	nsscrypto_init,
 	nsscrypto_fini,
 	nsscrypto_encrypt_and_sign,

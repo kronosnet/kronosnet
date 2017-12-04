@@ -155,6 +155,7 @@ static int lzo2_decompress(
 }
 
 compress_ops_t compress_model = {
+	KNET_COMPRESS_MODEL_ABI,
 	lzo2_is_init,
 	lzo2_init,
 	lzo2_fini,

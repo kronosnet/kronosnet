@@ -107,6 +107,14 @@ int crypto_init(
 			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
 			goto out_err;
 		}
+		if (crypto_modules_cmds[model].ops->abi_ver != KNET_CRYPTO_MODEL_ABI) {
+			log_err(knet_h, KNET_SUB_CRYPTO,
+				"ABI mismatch loading module %s. knet ver: %d, module ver: %d",
+				crypto_modules_cmds[model].model_name, KNET_CRYPTO_MODEL_ABI,
+				crypto_modules_cmds[model].ops->abi_ver);
+			errno = EINVAL;
+			goto out_err;
+		}
 		crypto_modules_cmds[model].loaded = 1;
 	}
 

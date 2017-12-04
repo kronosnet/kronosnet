@@ -11,7 +11,11 @@
 
 #include "internals.h"
 
+#define KNET_COMPRESS_MODEL_ABI 1
+
 typedef struct {
+	uint8_t abi_ver;
+
 	/*
 	 * some libs need special init and handling of buffers etc.
 	 * is_init is called in shlib_rwlock read only context to see if

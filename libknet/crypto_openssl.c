@@ -515,6 +515,7 @@ out_err:
 }
 
 crypto_ops_t crypto_model = {
+	KNET_CRYPTO_MODEL_ABI,
 	opensslcrypto_init,
 	opensslcrypto_fini,
 	opensslcrypto_encrypt_and_sign,

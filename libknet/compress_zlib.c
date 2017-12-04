@@ -126,6 +126,7 @@ static int zlib_decompress(
 }
 
 compress_ops_t compress_model = {
+	KNET_COMPRESS_MODEL_ABI,
 	NULL,
 	NULL,
 	NULL,

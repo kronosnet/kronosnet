@@ -92,6 +92,7 @@ static int lz4_decompress(
 }
 
 compress_ops_t compress_model = {
+	KNET_COMPRESS_MODEL_ABI,
 	NULL,
 	NULL,
 	NULL,
