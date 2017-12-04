@@ -77,6 +77,19 @@ AM_CONDITIONAL([MANPAGEUPDATES], [test $manpageupdates -gt 0])
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
+# KNET_OPTION_DEFINES(stem,type,detection code)
+# stem: enters name of option, Automake conditional and preprocessor define
+# type: compress or crypto, determines where the default comes from
+AC_DEFUN([KNET_OPTION_DEFINES],[
+AC_ARG_ENABLE([$2-$1],[AS_HELP_STRING([--disable-$2-$1],[disable libknet $1 support])],,
+	[enable_$2_$1="$enable_$2_all"])
+AM_CONDITIONAL([BUILD_]m4_toupper([$2_$1]),[test "x$enable_$2_$1" = xyes])
+if test "x$enable_$2_$1" = xyes; then
+	$3
+fi
+AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
+])
+
 AC_ARG_ENABLE([libknet-sctp],
 	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
 	[ enable_libknet_sctp="yes" ])
@@ -86,9 +99,35 @@ AC_ARG_ENABLE([crypto-all],
 	[  --disable-crypto-all              : disable libknet all crypto modules support ],,
 	[ enable_crypto_all="yes" ])
 
+KNET_OPTION_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
+KNET_OPTION_DEFINES([openssl],[crypto],[
+	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
+			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
+			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
+					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
+])
+
 AC_ARG_ENABLE([compress-all],
 	[  --disable-compress-all            : disable libknet all compress modules support ],,
 	[ enable_compress_all="yes" ])
+
+KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
+KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
+KNET_OPTION_DEFINES([lzo2],[compress],[
+	PKG_CHECK_MODULES([lzo2], [lzo2],,
+		[AC_CHECK_HEADERS([lzo/lzo1x.h],
+			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
+				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
+				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
+])
+KNET_OPTION_DEFINES([lzma],[compress],[PKG_CHECK_MODULES([liblzma], [liblzma])])
+KNET_OPTION_DEFINES([bzip2],[compress],[
+	PKG_CHECK_MODULES([bzip2], [bzip2],,
+		[AC_CHECK_HEADERS([bzlib.h],
+			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
+				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
+				[AC_MSG_ERROR(["missing required bzlib.h"])])])
+])
 
 AC_ARG_ENABLE([poc],
 	[  --enable-poc                      : enable building poc code ],,
@@ -165,47 +204,6 @@ case "$host_os" in
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
 		;;
 esac
-
-# KNET_OPTION_DEFINES(stem,type,detect)
-# type is compress or crypto
-# -----------------------------------
-AC_DEFUN([KNET_OPTION_DEFINES],[
-AC_ARG_ENABLE([$2-$1],[AS_HELP_STRING([--disable-$2-$1],[disable libknet $1 support])],,
-	[enable_$2_$1="$enable_$2_all"])
-AM_CONDITIONAL([BUILD_]m4_toupper([$2_$1]),[test "x$enable_$2_$1" = xyes])
-if test "x$enable_$2_$1" = xyes; then
-	$3
-fi
-AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
-])
-
-# crypto libraries checks
-KNET_OPTION_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
-KNET_OPTION_DEFINES([openssl],[crypto],[
-	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
-			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
-			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
-					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
-])
-
-# compress libraries checks
-KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
-KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
-KNET_OPTION_DEFINES([lzo2],[compress],[
-	PKG_CHECK_MODULES([lzo2], [lzo2],,
-		[AC_CHECK_HEADERS([lzo/lzo1x.h],
-			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
-				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
-				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
-])
-KNET_OPTION_DEFINES([lzma],[compress],[PKG_CHECK_MODULES([liblzma], [liblzma])])
-KNET_OPTION_DEFINES([bzip2],[compress],[
-	PKG_CHECK_MODULES([bzip2], [bzip2],,
-		[AC_CHECK_HEADERS([bzlib.h],
-			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
-				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
-				[AC_MSG_ERROR(["missing required bzlib.h"])])])
-])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
