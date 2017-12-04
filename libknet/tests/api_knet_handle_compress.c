@@ -88,7 +88,6 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-#ifdef BUILD_COMPRESS_ZLIB
 	printf("Test knet_handle_compress with zlib compress and negative level\n");
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
@@ -152,7 +151,6 @@ static void test(void)
 		close_logpipes(logfds);
 		exit(FAIL);
 	}
-#endif
 	flush_logs(logfds[0], stdout);
 
 	knet_handle_free(knet_h);
@@ -162,12 +160,29 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	test();
+	struct knet_compress_info compress_list[16];
+	size_t compress_list_entries;
+	size_t i;
 
-#ifdef BUILD_COMPRESS_ZLIB
-	return PASS;
-#else
+	memset(compress_list, 0, sizeof(compress_list));
+
+	if (knet_get_compress_list(compress_list, &compress_list_entries) < 0) {
+		printf("knet_get_compress_list failed: %s\n", strerror(errno));
+		return FAIL;
+	}
+
+	if (compress_list_entries == 0) {
+		printf("no compression modules detected. Skipping\n");
+		return SKIP;
+	}
+
+	for (i=0; i < compress_list_entries; i++) {
+		if (!strcmp(compress_list[i].name, "zlib")) {
+			test();
+			return PASS;
+		}
+	}
+
 	printf("WARNING: zlib support not builtin the library. Unable to test/verify internal compress API calls\n");
 	return SKIP;
-#endif
 }

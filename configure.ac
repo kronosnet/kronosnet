@@ -204,7 +204,6 @@ esac
 AC_DEFUN([KNET_COMP_DEFINES],[
 if test "x$enable_$2_$1" = xyes; then
 	$3
-	AC_DEFINE([BUILD_]m4_toupper([$2_$1]), [1], $1 $2 [enabled])
 fi
 AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
 ])

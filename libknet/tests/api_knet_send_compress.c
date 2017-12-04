@@ -267,24 +267,27 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
+	struct knet_compress_info compress_list[16];
+	size_t compress_list_entries;
+	size_t i;
+
+	memset(compress_list, 0, sizeof(compress_list));
+
+	if (knet_get_compress_list(compress_list, &compress_list_entries) < 0) {
+		printf("knet_get_compress_list failed: %s\n", strerror(errno));
+		return FAIL;
+	}
+
+	if (compress_list_entries == 0) {
+		printf("no compression modules detected. Skipping\n");
+		return SKIP;
+	}
+
 	test("none");
 
-#ifdef BUILD_COMPRESS_ZLIB
-	test("zlib");
-#endif
-#ifdef BUILD_COMPRESS_LZ4
-	test("lz4");
-	test("lz4hc");
-#endif
-#ifdef BUILD_COMPRESS_LZO2
-	test("lzo2");
-#endif
-#ifdef BUILD_COMPRESS_LZMA
-	test("lzma");
-#endif
-#ifdef BUILD_COMPRESS_BZIP2
-	test("bzip2");
-#endif
+	for (i=0; i < compress_list_entries; i++) {
+		test(compress_list[i].name);
+	}
 
 	return PASS;
 }

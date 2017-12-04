@@ -248,18 +248,32 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
-#ifdef BUILD_CRYPTO_NSS
-	test("nss");
-#endif
-#ifdef BUILD_CRYPTO_OPENSSL
+	struct knet_crypto_info crypto_list[16];
+	size_t crypto_list_entries;
+	size_t i;
+
 #ifdef KNET_BSD
 	if (is_memcheck() || is_helgrind()) {
 		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
-		return PASS;
+		return SKIP;
 	}
 #endif
-	test("openssl");
-#endif
+
+	memset(crypto_list, 0, sizeof(crypto_list));
+
+	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
+		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
+		return FAIL;
+	}
+
+	if (crypto_list_entries == 0) {
+		printf("no crypto modules detected. Skipping\n");
+		return SKIP;
+	}
+
+	for (i=0; i < crypto_list_entries; i++) {
+		test(crypto_list[i].name);
+	}
 
 	return PASS;
 }
