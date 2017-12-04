@@ -91,12 +91,12 @@ AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; 
 ])
 
 AC_ARG_ENABLE([libknet-sctp],
-	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
+	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
 	[ enable_libknet_sctp="yes" ])
 AM_CONDITIONAL([BUILDSCTP], [test x$enable_libknet_sctp = xyes])
 
 AC_ARG_ENABLE([crypto-all],
-	[  --disable-crypto-all              : disable libknet all crypto modules support ],,
+	[AS_HELP_STRING([--disable-crypto-all],[disable libknet all crypto modules support])],,
 	[ enable_crypto_all="yes" ])
 
 KNET_OPTION_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
@@ -108,7 +108,7 @@ KNET_OPTION_DEFINES([openssl],[crypto],[
 ])
 
 AC_ARG_ENABLE([compress-all],
-	[  --disable-compress-all            : disable libknet all compress modules support ],,
+	[AS_HELP_STRING([--disable-compress-all],[disable libknet all compress modules support])],,
 	[ enable_compress_all="yes" ])
 
 KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
@@ -130,22 +130,22 @@ KNET_OPTION_DEFINES([bzip2],[compress],[
 ])
 
 AC_ARG_ENABLE([poc],
-	[  --enable-poc                      : enable building poc code ],,
+	[AS_HELP_STRING([--enable-poc],[enable building poc code])],,
 	[ enable_poc="no" ])
 AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
 
 AC_ARG_ENABLE([kronosnetd],
-	[  --enable-kronosnetd               : Kronosnetd support ],,
+	[AS_HELP_STRING([--enable-kronosnetd],[Kronosnetd support])],,
 	[ enable_kronosnetd="no" ])
 AM_CONDITIONAL([BUILD_KRONOSNETD], [test x$enable_kronosnetd = xyes])
 
 AC_ARG_ENABLE([runautogen],
-	[  --enable-runautogen               : run autogen.sh ],,
+	[AS_HELP_STRING([--enable-runautogen],[run autogen.sh])],,
 	[ enable_runautogen="no" ])
 AM_CONDITIONAL([BUILD_RUNAUTOGEN], [test x$enable_runautogen = xyes])
 
 AC_ARG_ENABLE([libtap],
-	[  --enable-libtap                   : libtap support ],,
+	[AS_HELP_STRING([--enable-libtap],[libtap support])],,
 	[ enable_libtap="no" ])
 
 if test "x$enable_kronosnetd" = xyes; then
@@ -276,41 +276,38 @@ fi
 
 # local options
 AC_ARG_ENABLE([debug],
-	[  --enable-debug          enable debug build. ],
+	[AS_HELP_STRING([--enable-debug],[enable debug build])],,
 	[ default="no" ])
 
 AC_ARG_WITH([initdefaultdir],
-	[  --with-initdefaultdir   : path to /etc/sysconfig/.. or /etc/default dir. ],
+	[AS_HELP_STRING([--with-initdefaultdir=DIR],[path to /etc/sysconfig or /etc/default dir])],
 	[ INITDEFAULTDIR="$withval" ],
 	[ INITDEFAULTDIR="$sysconfdir/default" ])
 
 AC_ARG_WITH([initddir],
-	[  --with-initddir=DIR     : path to init script directory. ],
+	[AS_HELP_STRING([--with-initddir=DIR],[path to init script directory])],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
 
 AC_ARG_WITH([systemddir],
-	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
+	[AS_HELP_STRING([--with-systemddir=DIR],[path to systemd unit files directory])],
 	[ SYSTEMDDIR="$withval" ],
 	[ SYSTEMDDIR="$systemddir" ])
 
 AC_ARG_WITH([syslogfacility],
-	[  --with-syslogfacility=FACILITY
-			  default syslog facility. ],
+	[AS_HELP_STRING([--with-syslogfacility=FACILITY],[default syslog facility])],
 	[ SYSLOGFACILITY="$withval" ],
 	[ SYSLOGFACILITY="LOG_DAEMON" ])
 
 AC_ARG_WITH([sysloglevel],
-	[  --with-sysloglevel=LEVEL
-			  default syslog level. ],
+	[AS_HELP_STRING([--with-sysloglevel=LEVEL],[default syslog level])],
 	[ SYSLOGLEVEL="$withval" ],
 	[ SYSLOGLEVEL="LOG_INFO" ])
 
 AC_ARG_WITH([defaultadmgroup],
-	[  --with-defaultadmgroup=GROUP
-			  define PAM group. Users part of this group will be
-			  allowed to configure kronosnet. Others will only
-			  receive read-only rights. ],
+	[AS_HELP_STRING([--with-defaultadmgroup=GROUP],
+		[define PAM group. Users part of this group will be allowed to configure
+		 kronosnet. Others will only receive read-only rights.])],
 	[ DEFAULTADMGROUP="$withval" ],
 	[ DEFAULTADMGROUP="kronosnetadm" ])
 
