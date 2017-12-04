@@ -33,13 +33,11 @@ check_PROGRAMS		= \
 			  $(fun_checks)
 
 int_checks		= \
-			  int_crypto_test \
 			  int_timediff_test
 
 fun_checks		=
 
 benchmarks		= \
-			  crypto_bench_test \
 			  knet_bench_test
 
 noinst_PROGRAMS		= \
@@ -61,23 +59,7 @@ check-api-test-coverage:
 
 pckt_test_SOURCES	= pckt_test.c
 
-int_crypto_test_SOURCES = int_crypto.c \
-			  ../common.c \
-			  ../crypto.c \
-			  ../logging.c \
-			  test-common.c
-
-int_crypto_test_CFLAGS	= $(nss_CFLAGS) $(openssl_CFLAGS)
-
 int_timediff_test_SOURCES = int_timediff.c
-
-crypto_bench_test_SOURCES = crypto_bench.c \
-			    ../common.c \
-			    ../crypto.c \
-			    ../logging.c \
-			    test-common.c
-
-crypto_bench_test_CFLAGS  = $(nss_CFLAGS) $(openssl_CFLAGS)
 
 knet_bench_test_SOURCES	= knet_bench.c \
 			  test-common.c \
