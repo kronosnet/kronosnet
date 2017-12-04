@@ -276,8 +276,7 @@ fi
 
 # local options
 AC_ARG_ENABLE([debug],
-	[AS_HELP_STRING([--enable-debug],[enable debug build])],,
-	[ default="no" ])
+	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
 AC_ARG_WITH([initdefaultdir],
 	[AS_HELP_STRING([--with-initdefaultdir=DIR],[path to /etc/sysconfig or /etc/default dir])],
