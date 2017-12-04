@@ -93,37 +93,37 @@ if BUILDSCTP
 else
 	sed -i -e "s#@sctp@#bcond_with#g" $@-t
 endif
-if BUILDCRYPTONSS
+if BUILD_CRYPTO_NSS
 	sed -i -e "s#@nss@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@nss@#bcond_with#g" $@-t
 endif
-if BUILDCRYPTOOPENSSL
+if BUILD_CRYPTO_OPENSSL
 	sed -i -e "s#@openssl@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@openssl@#bcond_with#g" $@-t
 endif
-if BUILDCOMPZLIB
+if BUILD_COMPRESS_ZLIB
 	sed -i -e "s#@zlib@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@zlib@#bcond_with#g" $@-t
 endif
-if BUILDCOMPLZ4
+if BUILD_COMPRESS_LZ4
 	sed -i -e "s#@lz4@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@lz4@#bcond_with#g" $@-t
 endif
-if BUILDCOMPLZO2
+if BUILD_COMPRESS_LZO2
 	sed -i -e "s#@lzo2@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@lzo2@#bcond_with#g" $@-t
 endif
-if BUILDCOMPLZMA
+if BUILD_COMPRESS_LZMA
 	sed -i -e "s#@lzma@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@lzma@#bcond_with#g" $@-t
 endif
-if BUILDCOMPBZIP2
+if BUILD_COMPRESS_BZIP2
 	sed -i -e "s#@bzip2@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@bzip2@#bcond_with#g" $@-t

@@ -86,44 +86,9 @@ AC_ARG_ENABLE([crypto-all],
 	[  --disable-crypto-all              : disable libknet all crypto modules support ],,
 	[ enable_crypto_all="yes" ])
 
-AC_ARG_ENABLE([crypto-nss],
-	[  --disable-crypto-nss              : disable libknet nss support ],,
-	[ enable_crypto_nss="$enable_crypto_all" ])
-AM_CONDITIONAL([BUILDCRYPTONSS], [test x$enable_crypto_nss = xyes])
-
-AC_ARG_ENABLE([crypto-openssl],
-	[  --disable-crypto-openssl          : disable libknet openssl support ],,
-	[ enable_crypto_openssl="$enable_crypto_all" ])
-AM_CONDITIONAL([BUILDCRYPTOOPENSSL], [test x$enable_crypto_openssl = xyes])
-
 AC_ARG_ENABLE([compress-all],
 	[  --disable-compress-all            : disable libknet all compress modules support ],,
 	[ enable_compress_all="yes" ])
-
-AC_ARG_ENABLE([compress-zlib],
-	[  --disable-compress-zlib           : disable libknet zlib support ],,
-	[ enable_compress_zlib="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPZLIB], [test x$enable_compress_zlib = xyes])
-
-AC_ARG_ENABLE([compress-lz4],
-	[  --disable-compress-lz4            : disable libknet lz4 support ],,
-	[ enable_compress_lz4="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPLZ4], [test x$enable_compress_lz4 = xyes])
-
-AC_ARG_ENABLE([compress-lzo2],
-	[  --disable-compress-lzo2           : disable libknet lzo2 support ],,
-	[ enable_compress_lzo2="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPLZO2], [test x$enable_compress_lzo2 = xyes])
-
-AC_ARG_ENABLE([compress-lzma],
-	[  --disable-compress-lzma           : disable libknet lzma support ],,
-	[ enable_compress_lzma="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPLZMA], [test x$enable_compress_lzma = xyes])
-
-AC_ARG_ENABLE([compress-bzip2],
-	[  --disable-compress-bzip2          : disable libknet bzip2 support ],,
-	[ enable_compress_bzip2="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPBZIP2], [test x$enable_compress_bzip2 = xyes])
 
 AC_ARG_ENABLE([poc],
 	[  --enable-poc                      : enable building poc code ],,
@@ -201,7 +166,13 @@ case "$host_os" in
 		;;
 esac
 
-AC_DEFUN([KNET_COMP_DEFINES],[
+# KNET_OPTION_DEFINES(stem,type,detect)
+# type is compress or crypto
+# -----------------------------------
+AC_DEFUN([KNET_OPTION_DEFINES],[
+AC_ARG_ENABLE([$2-$1],[AS_HELP_STRING([--disable-$2-$1],[disable libknet $1 support])],,
+	[enable_$2_$1="$enable_$2_all"])
+AM_CONDITIONAL([BUILD_]m4_toupper([$2_$1]),[test "x$enable_$2_$1" = xyes])
 if test "x$enable_$2_$1" = xyes; then
 	$3
 fi
@@ -209,8 +180,8 @@ AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; 
 ])
 
 # crypto libraries checks
-KNET_COMP_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
-KNET_COMP_DEFINES([openssl],[crypto],[
+KNET_OPTION_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
+KNET_OPTION_DEFINES([openssl],[crypto],[
 	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
 			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
 			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
@@ -218,17 +189,17 @@ KNET_COMP_DEFINES([openssl],[crypto],[
 ])
 
 # compress libraries checks
-KNET_COMP_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
-KNET_COMP_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
-KNET_COMP_DEFINES([lzo2],[compress],[
+KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
+KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
+KNET_OPTION_DEFINES([lzo2],[compress],[
 	PKG_CHECK_MODULES([lzo2], [lzo2],,
 		[AC_CHECK_HEADERS([lzo/lzo1x.h],
 			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
 				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
 				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
 ])
-KNET_COMP_DEFINES([lzma],[compress],[PKG_CHECK_MODULES([liblzma], [liblzma])])
-KNET_COMP_DEFINES([bzip2],[compress],[
+KNET_OPTION_DEFINES([lzma],[compress],[PKG_CHECK_MODULES([liblzma], [liblzma])])
+KNET_OPTION_DEFINES([bzip2],[compress],[
 	PKG_CHECK_MODULES([bzip2], [bzip2],,
 		[AC_CHECK_HEADERS([bzlib.h],
 			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
