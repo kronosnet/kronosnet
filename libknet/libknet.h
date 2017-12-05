@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 /**
  * @file libknet.h

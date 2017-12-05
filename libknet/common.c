@@ -54,7 +54,7 @@ int _fdset_nonblock(int fd)
 	return 0;
 }
 
-void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
+static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
 {
 	void *ret = NULL;
 	char *error = NULL;
@@ -119,12 +119,37 @@ out:
 	return ret;
 }
 
-void *remap_symbol(knet_handle_t knet_h, uint8_t subsystem,
-		   void *lib_handle, const char *symbol_name)
+void *load_module(knet_handle_t knet_h, const char *type, const char *name)
 {
-	void *symbol = dlsym (lib_handle, symbol_name);
-	if (!symbol) {
-		log_err (knet_h, subsystem, "unable to map %s: %s", symbol_name, dlerror ());
+	void *module, *ops;
+	log_msg_t **log_msg_sym;
+	char soname[MAXPATHLEN], opsname[MAXPATHLEN];
+
+	snprintf (soname, sizeof soname, "%s_%s.so", type, name);
+
+	module = open_lib(knet_h, soname, 0);
+	if (!module) {
+		return NULL;
 	}
-	return symbol;
+
+        log_msg_sym = dlsym (module, "log_msg");
+        if (!log_msg_sym) {
+		log_err (knet_h, KNET_SUB_COMMON, "unable to map symbol 'log_msg' in module %s: %s",
+			 soname, dlerror ());
+		errno = EINVAL;
+		return NULL;
+	}
+	*log_msg_sym = log_msg;
+
+	snprintf (opsname, sizeof opsname, "%s_model", type);
+
+	ops = dlsym (module, opsname);
+	if (!ops) {
+		log_err (knet_h, KNET_SUB_COMMON, "unable to map symbol 'model' in module %s: %s",
+			 soname, dlerror ());
+		errno = EINVAL;
+		return NULL;
+	}
+
+	return ops;
 }

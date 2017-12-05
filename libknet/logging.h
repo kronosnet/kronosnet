@@ -12,19 +12,27 @@
 
 #include "internals.h"
 
-void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
-	     const char *fmt, ...) __attribute__((format(printf, 4, 5)));;
+typedef void log_msg_t(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
+		       const char *fmt, ...) __attribute__((format(printf, 4, 5)));
+
+#ifdef KNET_MODULE
+#define LOG_MSG (*log_msg)
+#else
+#define LOG_MSG log_msg
+#endif
+
+log_msg_t LOG_MSG;
 
 #define log_err(knet_h, subsys, fmt, args...) \
-	log_msg(knet_h, subsys, KNET_LOG_ERR, fmt, ##args)
+	LOG_MSG(knet_h, subsys, KNET_LOG_ERR, fmt, ##args)
 
 #define log_warn(knet_h, subsys, fmt, args...) \
-	log_msg(knet_h, subsys, KNET_LOG_WARN, fmt, ##args)
+	LOG_MSG(knet_h, subsys, KNET_LOG_WARN, fmt, ##args)
 
 #define log_info(knet_h, subsys, fmt, args...) \
-	log_msg(knet_h, subsys, KNET_LOG_INFO, fmt, ##args)
+	LOG_MSG(knet_h, subsys, KNET_LOG_INFO, fmt, ##args)
 
 #define log_debug(knet_h, subsys, fmt, args...) \
-	log_msg(knet_h, subsys, KNET_LOG_DEBUG, fmt, ##args)
+	LOG_MSG(knet_h, subsys, KNET_LOG_DEBUG, fmt, ##args)
 
 #endif

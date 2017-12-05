@@ -15,31 +15,19 @@
 #include <time.h>
 
 #include "crypto.h"
-#include "crypto_nss.h"
-#include "crypto_openssl.h"
+#include "crypto_model.h"
 #include "internals.h"
 #include "logging.h"
+#include "common.h"
 
 /*
  * internal module switch data
  */
 
-#define empty_module NULL, 0, NULL, NULL, NULL, NULL, NULL },
-
 crypto_model_t crypto_modules_cmds[] = {
-	{ "nss",
-#ifdef BUILDCRYPTONSS
-		 1, nsscrypto_load_lib, 0, nsscrypto_init, nsscrypto_fini, nsscrypto_encrypt_and_sign, nsscrypto_encrypt_and_signv, nsscrypto_authenticate_and_decrypt },
-#else
-		 0,empty_module
-#endif
-	{ "openssl",
-#ifdef BUILDCRYPTOOPENSSL
-		 1, opensslcrypto_load_lib, 0, opensslcrypto_init, opensslcrypto_fini, opensslcrypto_encrypt_and_sign, opensslcrypto_encrypt_and_signv, opensslcrypto_authenticate_and_decrypt },
-#else
-		 0,empty_module
-#endif
-	{ NULL, 0, empty_module
+	{ "nss", WITH_CRYPTO_NSS, 0, NULL },
+	{ "openssl", WITH_CRYPTO_OPENSSL, 0, NULL },
+	{ NULL, 0, 0, NULL }
 };
 
 static int crypto_get_model(const char *model)
@@ -65,7 +53,7 @@ int crypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return crypto_modules_cmds[knet_h->crypto_instance->model].crypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+	return crypto_modules_cmds[knet_h->crypto_instance->model].ops->crypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
 int crypto_encrypt_and_signv (
@@ -75,7 +63,7 @@ int crypto_encrypt_and_signv (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return crypto_modules_cmds[knet_h->crypto_instance->model].cryptv(knet_h, iov_in, iovcnt_in, buf_out, buf_out_len);
+	return crypto_modules_cmds[knet_h->crypto_instance->model].ops->cryptv(knet_h, iov_in, iovcnt_in, buf_out, buf_out_len);
 }
 
 int crypto_authenticate_and_decrypt (
@@ -85,7 +73,7 @@ int crypto_authenticate_and_decrypt (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	return crypto_modules_cmds[knet_h->crypto_instance->model].decrypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
+	return crypto_modules_cmds[knet_h->crypto_instance->model].ops->decrypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
 int crypto_init(
@@ -114,8 +102,17 @@ int crypto_init(
 	}
 
 	if (!crypto_modules_cmds[model].loaded) {
-		if (crypto_modules_cmds[model].load_lib(knet_h) < 0) {
+		crypto_modules_cmds[model].ops = load_module (knet_h, "crypto", crypto_modules_cmds[model].model_name);
+		if (!crypto_modules_cmds[model].ops) {
 			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
+			goto out_err;
+		}
+		if (crypto_modules_cmds[model].ops->abi_ver != KNET_CRYPTO_MODEL_ABI) {
+			log_err(knet_h, KNET_SUB_CRYPTO,
+				"ABI mismatch loading module %s. knet ver: %d, module ver: %d",
+				crypto_modules_cmds[model].model_name, KNET_CRYPTO_MODEL_ABI,
+				crypto_modules_cmds[model].ops->abi_ver);
+			errno = EINVAL;
 			goto out_err;
 		}
 		crypto_modules_cmds[model].loaded = 1;
@@ -136,12 +133,12 @@ int crypto_init(
 	}
 
 	/*
-	 * if crypto_modules_cmds.init fails, it is expected that
+	 * if crypto_modules_cmds.ops->init fails, it is expected that
 	 * it will clean everything by itself.
-	 * crypto_modules_cmds.fini is not invoked on error.
+	 * crypto_modules_cmds.ops->fini is not invoked on error.
 	 */
 	knet_h->crypto_instance->model = model;
-	if (crypto_modules_cmds[knet_h->crypto_instance->model].init(knet_h, knet_handle_crypto_cfg))
+	if (crypto_modules_cmds[knet_h->crypto_instance->model].ops->init(knet_h, knet_handle_crypto_cfg))
 		goto out_err;
 
 	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
@@ -173,8 +170,8 @@ void crypto_fini(
 
 	if (knet_h->crypto_instance) {
 		model = knet_h->crypto_instance->model;
-		if (crypto_modules_cmds[model].fini != NULL) {
-			crypto_modules_cmds[model].fini(knet_h);
+		if (crypto_modules_cmds[model].ops->fini != NULL) {
+			crypto_modules_cmds[model].ops->fini(knet_h);
 		}
 		free(knet_h->crypto_instance);
 		knet_h->crypto_instance = NULL;

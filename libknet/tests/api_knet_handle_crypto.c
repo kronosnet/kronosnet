@@ -19,7 +19,7 @@
 #include "internals.h"
 #include "test-common.h"
 
-static void test(void)
+static void test(const char *model)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
@@ -91,7 +91,7 @@ static void test(void)
 	printf("Test knet_handle_crypto with none crypto cipher and hash (disable crypto)\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 
@@ -105,10 +105,10 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_handle_crypto with nss/aes128/sha1 and too short key\n");
+	printf("Test knet_handle_crypto with %s/aes128/sha1 and too short key\n", model);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 10;
@@ -123,10 +123,10 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_handle_crypto with nss/aes128/sha1 and too long key\n");
+	printf("Test knet_handle_crypto with %s/aes128/sha1 and too long key\n", model);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 10000;
@@ -141,11 +141,10 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-#ifdef BUILDCRYPTONSS
-	printf("Test knet_handle_crypto with nss/aes128/sha1 and normal key\n");
+	printf("Test knet_handle_crypto with %s/aes128/sha1 and normal key\n", model);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
@@ -160,16 +159,16 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_handle_crypto (nss specific test) with nss/aes128/none and normal key\n");
+	printf("Test knet_handle_crypto with %s/aes128/none and normal key\n", model);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "nss", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
 	if (!knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-		printf("knet_handle_crypto (nss) accepted crypto without hashing\n");
+		printf("knet_handle_crypto accepted crypto without hashing\n");
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
@@ -195,63 +194,7 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
-#endif
 
-#ifdef BUILDCRYPTOOPENSSL
-	printf("Test knet_handle_crypto with openssl/aes128/sha1 and normal key\n");
-
-	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "openssl", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
-	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	printf("Test knet_handle_crypto (nss specific test) with openssl/aes128/none and normal key\n");
-
-	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "openssl", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
-	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (!knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-		printf("knet_handle_crypto (nss) accepted crypto without hashing\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	printf("Shutdown crypto\n");
-
-	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, "none", sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "none", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
-	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg) < 0) {
-		printf("Unable to shutdown crypto: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-#endif
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
@@ -259,12 +202,25 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	test();
+	struct knet_crypto_info crypto_list[16];
+	size_t crypto_list_entries;
+	size_t i;
 
-#if defined(BUILDCRYPTONSS) || defined(BUILDCRYPTOOPENSSL)
+	memset(crypto_list, 0, sizeof(crypto_list));
+
+	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
+		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
+		return FAIL;
+	}
+
+	if (crypto_list_entries == 0) {
+		printf("no crypto modules detected. Skipping\n");
+		return SKIP;
+	}
+
+	for (i=0; i < crypto_list_entries; i++) {
+		test(crypto_list[i].name);
+	}
+
 	return PASS;
-#else
-	printf("WARNING: nss support not builtin the library. Unable to test/verify internal crypto API calls\n");
-	return SKIP;
-#endif
 }

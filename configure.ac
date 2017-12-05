@@ -77,71 +77,75 @@ AM_CONDITIONAL([MANPAGEUPDATES], [test $manpageupdates -gt 0])
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
+# KNET_OPTION_DEFINES(stem,type,detection code)
+# stem: enters name of option, Automake conditional and preprocessor define
+# type: compress or crypto, determines where the default comes from
+AC_DEFUN([KNET_OPTION_DEFINES],[
+AC_ARG_ENABLE([$2-$1],[AS_HELP_STRING([--disable-$2-$1],[disable libknet $1 support])],,
+	[enable_$2_$1="$enable_$2_all"])
+AM_CONDITIONAL([BUILD_]m4_toupper([$2_$1]),[test "x$enable_$2_$1" = xyes])
+if test "x$enable_$2_$1" = xyes; then
+	$3
+fi
+AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
+])
+
 AC_ARG_ENABLE([libknet-sctp],
-	[  --disable-libknet-sctp            : disable libknet SCTP support ],,
+	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
 	[ enable_libknet_sctp="yes" ])
 AM_CONDITIONAL([BUILDSCTP], [test x$enable_libknet_sctp = xyes])
 
 AC_ARG_ENABLE([crypto-all],
-	[  --disable-crypto-all              : disable libknet all crypto modules support ],,
+	[AS_HELP_STRING([--disable-crypto-all],[disable libknet all crypto modules support])],,
 	[ enable_crypto_all="yes" ])
 
-AC_ARG_ENABLE([crypto-nss],
-	[  --disable-crypto-nss              : disable libknet nss support ],,
-	[ enable_crypto_nss="$enable_crypto_all" ])
-AM_CONDITIONAL([BUILDCRYPTONSS], [test x$enable_crypto_nss = xyes])
-
-AC_ARG_ENABLE([crypto-openssl],
-	[  --disable-crypto-openssl          : disable libknet openssl support ],,
-	[ enable_crypto_openssl="$enable_crypto_all" ])
-AM_CONDITIONAL([BUILDCRYPTOOPENSSL], [test x$enable_crypto_openssl = xyes])
+KNET_OPTION_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
+KNET_OPTION_DEFINES([openssl],[crypto],[
+	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
+			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
+			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
+					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
+])
 
 AC_ARG_ENABLE([compress-all],
-	[  --disable-compress-all            : disable libknet all compress modules support ],,
+	[AS_HELP_STRING([--disable-compress-all],[disable libknet all compress modules support])],,
 	[ enable_compress_all="yes" ])
 
-AC_ARG_ENABLE([compress-zlib],
-	[  --disable-compress-zlib           : disable libknet zlib support ],,
-	[ enable_compress_zlib="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPZLIB], [test x$enable_compress_zlib = xyes])
-
-AC_ARG_ENABLE([compress-lz4],
-	[  --disable-compress-lz4            : disable libknet lz4 support ],,
-	[ enable_compress_lz4="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPLZ4], [test x$enable_compress_lz4 = xyes])
-
-AC_ARG_ENABLE([compress-lzo2],
-	[  --disable-compress-lzo2           : disable libknet lzo2 support ],,
-	[ enable_compress_lzo2="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPLZO2], [test x$enable_compress_lzo2 = xyes])
-
-AC_ARG_ENABLE([compress-lzma],
-	[  --disable-compress-lzma           : disable libknet lzma support ],,
-	[ enable_compress_lzma="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPLZMA], [test x$enable_compress_lzma = xyes])
-
-AC_ARG_ENABLE([compress-bzip2],
-	[  --disable-compress-bzip2          : disable libknet bzip2 support ],,
-	[ enable_compress_bzip2="$enable_compress_all" ])
-AM_CONDITIONAL([BUILDCOMPBZIP2], [test x$enable_compress_bzip2 = xyes])
+KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
+KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
+KNET_OPTION_DEFINES([lzo2],[compress],[
+	PKG_CHECK_MODULES([lzo2], [lzo2],,
+		[AC_CHECK_HEADERS([lzo/lzo1x.h],
+			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
+				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
+				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
+])
+KNET_OPTION_DEFINES([lzma],[compress],[PKG_CHECK_MODULES([liblzma], [liblzma])])
+KNET_OPTION_DEFINES([bzip2],[compress],[
+	PKG_CHECK_MODULES([bzip2], [bzip2],,
+		[AC_CHECK_HEADERS([bzlib.h],
+			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
+				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
+				[AC_MSG_ERROR(["missing required bzlib.h"])])])
+])
 
 AC_ARG_ENABLE([poc],
-	[  --enable-poc                      : enable building poc code ],,
+	[AS_HELP_STRING([--enable-poc],[enable building poc code])],,
 	[ enable_poc="no" ])
 AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
 
 AC_ARG_ENABLE([kronosnetd],
-	[  --enable-kronosnetd               : Kronosnetd support ],,
+	[AS_HELP_STRING([--enable-kronosnetd],[Kronosnetd support])],,
 	[ enable_kronosnetd="no" ])
 AM_CONDITIONAL([BUILD_KRONOSNETD], [test x$enable_kronosnetd = xyes])
 
 AC_ARG_ENABLE([runautogen],
-	[  --enable-runautogen               : run autogen.sh ],,
+	[AS_HELP_STRING([--enable-runautogen],[run autogen.sh])],,
 	[ enable_runautogen="no" ])
 AM_CONDITIONAL([BUILD_RUNAUTOGEN], [test x$enable_runautogen = xyes])
 
 AC_ARG_ENABLE([libtap],
-	[  --enable-libtap                   : libtap support ],,
+	[AS_HELP_STRING([--enable-libtap],[libtap support])],,
 	[ enable_libtap="no" ])
 
 if test "x$enable_kronosnetd" = xyes; then
@@ -200,69 +204,6 @@ case "$host_os" in
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
 		;;
 esac
-
-AC_DEFUN([KNET_PKG_SONAME],[
-AC_MSG_CHECKING([for soname of $1])
-$CC -shared -nostdlib -o dummy.so -Wl,--no-as-needed $$1_LIBS
-# Choosing the first SONAME is a best guess here:
-knet_pkg_soname=`$OBJDUMP -p dummy.so | $SED -n '/^Dynamic Section:$/,/^[^ ]/{s/ *NEEDED *//p;}' | head -n1`
-rm dummy.so
-AC_DEFINE_UNQUOTED([$2],["$knet_pkg_soname"],[SONAME of the $1 library])
-AS_IF([test "x$knet_pkg_soname" = x],
-	[AC_MSG_FAILURE([failed to extract SONAME])],
-	[AC_MSG_RESULT([$knet_pkg_soname])])
-])
-
-# crypto libraries checks
-if test "x$enable_crypto_nss" = xyes; then
-	PKG_CHECK_MODULES([nss],[nss])
-	AC_DEFINE_UNQUOTED([BUILDCRYPTONSS], [1], [Enable nss crypto])
-	KNET_PKG_SONAME([nss],[LIBNSS3])
-fi
-
-if test "x$enable_crypto_openssl" = xyes; then
-	PKG_CHECK_MODULES([openssl],[libcrypto < 1.1],
-			  [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL10], [1], [openssl 1.0 crypto])],
-			  [PKG_CHECK_MODULES([openssl],[libcrypto >= 1.1],
-					     [AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL11], [1], [openssl 1.1 crypto])])])
-	AC_DEFINE_UNQUOTED([BUILDCRYPTOOPENSSL], [1], [Enable openssl crypto])
-	KNET_PKG_SONAME([openssl],[LIBOPENSSL])
-fi
-
-# compress libraries checks
-if test "x$enable_compress_zlib" = xyes; then
-	PKG_CHECK_MODULES([zlib], [zlib])
-	AC_DEFINE_UNQUOTED([BUILDCOMPZLIB], [1], [Enable zlib compression])
-	KNET_PKG_SONAME([zlib],[LIBZ_1])
-fi
-if test "x$enable_compress_lz4" = xyes; then
-	PKG_CHECK_MODULES([liblz4], [liblz4])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZ4], [1], [Enable lz4 compress])
-	KNET_PKG_SONAME([liblz4],[LIBLZ4_1])
-fi
-if test "x$enable_compress_lzo2" = xyes; then
-	PKG_CHECK_MODULES([lzo2], [lzo2],,
-		[AC_CHECK_HEADERS([lzo/lzo1x.h],
-			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
-				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
-				[AC_MSG_ERROR(["missing required lzo/lzo1x.h header"])])])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZO2], [1], [Enable lzo2 compress])
-	KNET_PKG_SONAME([lzo2],[LIBLZO2_2])
-fi
-if test "x$enable_compress_lzma" = xyes; then
-	PKG_CHECK_MODULES([liblzma], [liblzma])
-	AC_DEFINE_UNQUOTED([BUILDCOMPLZMA], [1], [Enable lzma compress])
-	KNET_PKG_SONAME([liblzma],[LIBLZMA_5])
-fi
-if test "x$enable_compress_bzip2" = xyes; then
-	PKG_CHECK_MODULES([bzip2], [bzip2],,
-		[AC_CHECK_HEADERS([bzlib.h],
-			[AC_CHECK_LIB([bz2], [BZ2_bzBuffToBuffCompress],
-				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
-				[AC_MSG_ERROR(["missing required bzlib.h"])])])
-	AC_DEFINE_UNQUOTED([BUILDCOMPBZIP2], [1], [Enable bzip2 compress])
-	KNET_PKG_SONAME([bzip2],[LIBBZ2_1])
-fi
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
@@ -335,41 +276,37 @@ fi
 
 # local options
 AC_ARG_ENABLE([debug],
-	[  --enable-debug          enable debug build. ],
-	[ default="no" ])
+	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
 AC_ARG_WITH([initdefaultdir],
-	[  --with-initdefaultdir   : path to /etc/sysconfig/.. or /etc/default dir. ],
+	[AS_HELP_STRING([--with-initdefaultdir=DIR],[path to /etc/sysconfig or /etc/default dir])],
 	[ INITDEFAULTDIR="$withval" ],
 	[ INITDEFAULTDIR="$sysconfdir/default" ])
 
 AC_ARG_WITH([initddir],
-	[  --with-initddir=DIR     : path to init script directory. ],
+	[AS_HELP_STRING([--with-initddir=DIR],[path to init script directory])],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
 
 AC_ARG_WITH([systemddir],
-	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
+	[AS_HELP_STRING([--with-systemddir=DIR],[path to systemd unit files directory])],
 	[ SYSTEMDDIR="$withval" ],
 	[ SYSTEMDDIR="$systemddir" ])
 
 AC_ARG_WITH([syslogfacility],
-	[  --with-syslogfacility=FACILITY
-			  default syslog facility. ],
+	[AS_HELP_STRING([--with-syslogfacility=FACILITY],[default syslog facility])],
 	[ SYSLOGFACILITY="$withval" ],
 	[ SYSLOGFACILITY="LOG_DAEMON" ])
 
 AC_ARG_WITH([sysloglevel],
-	[  --with-sysloglevel=LEVEL
-			  default syslog level. ],
+	[AS_HELP_STRING([--with-sysloglevel=LEVEL],[default syslog level])],
 	[ SYSLOGLEVEL="$withval" ],
 	[ SYSLOGLEVEL="LOG_INFO" ])
 
 AC_ARG_WITH([defaultadmgroup],
-	[  --with-defaultadmgroup=GROUP
-			  define PAM group. Users part of this group will be
-			  allowed to configure kronosnet. Others will only
-			  receive read-only rights. ],
+	[AS_HELP_STRING([--with-defaultadmgroup=GROUP],
+		[define PAM group. Users part of this group will be allowed to configure
+		 kronosnet. Others will only receive read-only rights.])],
 	[ DEFAULTADMGROUP="$withval" ],
 	[ DEFAULTADMGROUP="kronosnetadm" ])
 
