@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <stdlib.h>
 
 #include "libknet.h"
 #include "compat.h"
@@ -24,6 +25,8 @@
 #include "logging.h"
 #include "common.h"
 #include "transport_common.h"
+
+#define SLOPPY_VAR "KNET_SLOPPY"
 
 /*
  * reuse Jan Friesse's compat layer as wrapper to drop usage of sendmmsg
@@ -132,7 +135,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-	if (_configure_sockbuf (knet_h, sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF)) {
+	if (_configure_sockbuf (knet_h, sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF) && !getenv(SLOPPY_VAR)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s receive buffer: %s",
@@ -140,7 +143,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-	if (_configure_sockbuf (knet_h, sock, SO_SNDBUF, SO_SNDBUFFORCE, KNET_RING_RCVBUFF)) {
+	if (_configure_sockbuf (knet_h, sock, SO_SNDBUF, SO_SNDBUFFORCE, KNET_RING_RCVBUFF) && !getenv(SLOPPY_VAR)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s send buffer: %s",
