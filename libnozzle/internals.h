@@ -21,9 +21,9 @@ struct nozzle_lib_config {
 #define PREFIX_CHAR_MAX	    4
 
 struct nozzle_ip {
-	char ip_addr[IPADDR_CHAR_MAX];
+	char ipaddr[IPADDR_CHAR_MAX];
 	char prefix[PREFIX_CHAR_MAX];
-	int  domain;
+	int  domain;			/* AF_INET or AF_INET6 */
 	struct nozzle_ip *next;
 };
 

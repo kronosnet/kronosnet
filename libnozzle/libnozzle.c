@@ -52,12 +52,12 @@ static void _close_cfg(void);
 static int _get_mtu(const nozzle_t nozzle);
 static int _get_mac(const nozzle_t nozzle, char **ether_addr);
 static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
-static char *_get_v4_broadcast(const char *ip_addr, const char *prefix);
+static char *_get_v4_broadcast(const char *ipaddr, const char *prefix);
 static int _set_ip(nozzle_t nozzle, const char *command,
-		      const char *ip_addr, const char *prefix,
+		      const char *ipaddr, const char *prefix,
 		      char **error_string, int secondary);
 static int _find_ip(nozzle_t nozzle,
-			const char *ip_addr, const char *prefix,
+			const char *ipaddr, const char *prefix,
 			struct nozzle_ip **ip, struct nozzle_ip **ip_prev);
 
 static int _read_pipe(int fd, char **file, size_t *length)
@@ -581,7 +581,7 @@ int nozzle_close(nozzle_t nozzle,  char **error_down, char **error_postdown)
 	ip = nozzle->ip;
 	while (ip) {
 		ip_next = ip->next;
-		_set_ip(nozzle, "del", ip->ip_addr, ip->prefix, &error_string, 0);
+		_set_ip(nozzle, "del", ip->ipaddr, ip->prefix, &error_string, 0);
 		if (error_string) {
 			free(error_string);
 			error_string = NULL;
@@ -669,7 +669,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 		tmp_ip = nozzle->ip;
 		while(tmp_ip) {
 			if (tmp_ip->domain == AF_INET6) {
-				err = _set_ip(nozzle, "add", tmp_ip->ip_addr, tmp_ip->prefix, error_string, 0);
+				err = _set_ip(nozzle, "add", tmp_ip->ipaddr, tmp_ip->prefix, error_string, 0);
 				if (err) {
 					savederrno = errno;
 					err = -1;
@@ -910,7 +910,7 @@ out_clean:
 	return err;
 }
 
-static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
+static char *_get_v4_broadcast(const char *ipaddr, const char *prefix)
 {
 	int prefix_len;
 	struct in_addr mask;
@@ -922,7 +922,7 @@ static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
 	if ((prefix_len > 32) || (prefix_len < 0))
 		return NULL;
 
-	if (inet_pton(AF_INET, ip_addr, &address) <= 0)
+	if (inet_pton(AF_INET, ipaddr, &address) <= 0)
 		return NULL;
 
 	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
@@ -934,7 +934,7 @@ static char *_get_v4_broadcast(const char *ip_addr, const char *prefix)
 }
 
 static int _set_ip(nozzle_t nozzle, const char *command,
-		      const char *ip_addr, const char *prefix,
+		      const char *ipaddr, const char *prefix,
 		      char **error_string, int secondary)
 {
 	char *broadcast = NULL;
@@ -946,8 +946,8 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	snprintf(proto, sizeof(proto), "inet");
 #endif
 
-	if (!strchr(ip_addr, ':')) {
-		broadcast = _get_v4_broadcast(ip_addr, prefix);
+	if (!strchr(ipaddr, ':')) {
+		broadcast = _get_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
@@ -966,12 +966,12 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	if (broadcast) {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ip addr %s %s/%s dev %s broadcast %s",
-			 command, ip_addr, prefix,
+			 command, ipaddr, prefix,
 			 nozzle->nozzlename, broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ip addr %s %s/%s dev %s",
-			command, ip_addr, prefix,
+			command, ipaddr, prefix,
 			nozzle->nozzlename);
 	}
 #endif
@@ -979,7 +979,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	if (!strcmp(command, "add")) {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ifconfig %s %s %s/%s",
-			 nozzle->nozzlename, proto, ip_addr, prefix);
+			 nozzle->nozzlename, proto, ipaddr, prefix);
 		if (broadcast) {
 			snprintf(cmdline + strlen(cmdline),
 				 sizeof(cmdline) - strlen(cmdline) -1,
@@ -993,7 +993,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 				 "ifconfig %s %s %s/%s delete",
-				 nozzle->nozzlename, proto, ip_addr, prefix);
+				 nozzle->nozzlename, proto, ipaddr, prefix);
 	}
 #endif
 	if (broadcast) {
@@ -1003,7 +1003,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 }
 
 static int _find_ip(nozzle_t nozzle,
-			const char *ip_addr, const char *prefix,
+			const char *ipaddr, const char *prefix,
 			struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
 {
 	struct nozzle_ip *local_ip, *local_ip_prev;
@@ -1012,7 +1012,7 @@ static int _find_ip(nozzle_t nozzle,
 	local_ip = local_ip_prev = nozzle->ip;
 
 	while(local_ip) {
-		if ((!strcmp(local_ip->ip_addr, ip_addr)) && (!strcmp(local_ip->prefix, prefix))) {
+		if ((!strcmp(local_ip->ipaddr, ipaddr)) && (!strcmp(local_ip->prefix, prefix))) {
 			found = 1;
 			break;
 		}
@@ -1028,14 +1028,14 @@ static int _find_ip(nozzle_t nozzle,
 	return found;
 }
 
-int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string)
+int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string)
 {
 	int err = 0, savederrno = 0;
 	int found = 0;
 	struct nozzle_ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
 	int secondary = 0;
 
-	if ((!nozzle) || (!ip_addr) || (!prefix) || (!error_string)) {
+	if ((!nozzle) || (!ipaddr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1052,7 +1052,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 		goto out_clean;
 	}
 
-	found = _find_ip(nozzle, ip_addr, prefix, &ip, &ip_prev);
+	found = _find_ip(nozzle, ipaddr, prefix, &ip, &ip_prev);
 	if (found) {
 		goto out_clean;
 	}
@@ -1065,9 +1065,9 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 	}
 
 	memset(ip, 0, sizeof(struct nozzle_ip));
-	strncpy(ip->ip_addr, ip_addr, IPADDR_CHAR_MAX);
+	strncpy(ip->ipaddr, ipaddr, IPADDR_CHAR_MAX);
 	strncpy(ip->prefix, prefix, PREFIX_CHAR_MAX);
-	if (!strchr(ip->ip_addr, ':')) {
+	if (!strchr(ip->ipaddr, ':')) {
 		ip->domain = AF_INET;
 	} else {
 		ip->domain = AF_INET6;
@@ -1083,7 +1083,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 		if (nozzle->ip) {
 			secondary = 1;
 		}
-		err = _set_ip(nozzle, "add", ip_addr, prefix, error_string, secondary);
+		err = _set_ip(nozzle, "add", ipaddr, prefix, error_string, secondary);
 		savederrno = errno;
 	}
 
@@ -1108,13 +1108,13 @@ out_clean:
 	return err;
 }
 
-int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string)
+int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string)
 {
 	int err = 0, savederrno = 0;
         int found = 0;
 	struct nozzle_ip *ip = NULL, *ip_prev = NULL;
 
-	if ((!nozzle) || (!ip_addr) || (!prefix) || (!error_string)) {
+	if ((!nozzle) || (!ipaddr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1131,12 +1131,12 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 		goto out_clean;
 	}
 
-	found = _find_ip(nozzle, ip_addr, prefix, &ip, &ip_prev);
+	found = _find_ip(nozzle, ipaddr, prefix, &ip, &ip_prev);
 	if (!found) {
 		goto out_clean;
 	}
 
-	err = _set_ip(nozzle, "del", ip_addr, prefix, error_string, 0);
+	err = _set_ip(nozzle, "del", ipaddr, prefix, error_string, 0);
 	savederrno = errno;
 	if (!err) {
 		if (ip == ip_prev) {
@@ -1211,7 +1211,7 @@ out_clean:
 	return name;
 }
 
-int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
+int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries)
 {
 	int err = 0, savederrno = 0;
 	int found = 0;
@@ -1219,7 +1219,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 	int size = 0, offset = 0, len;
 	struct nozzle_ip *ip = NULL;
 
-	if ((!nozzle) || (!ip_addr_list) || (!entries)) {
+	if ((!nozzle) || (!ipaddr_list) || (!entries)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1243,7 +1243,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 	}
 
 	if (!found) {
-		*ip_addr_list = NULL;
+		*ipaddr_list = NULL;
 		*entries = 0;
 		goto out_clean;
 	}
@@ -1262,8 +1262,8 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 	ip = nozzle->ip;
 
 	while (ip) {
-		len = strlen(ip->ip_addr);
-		memmove(ip_list + offset, ip->ip_addr, len);
+		len = strlen(ip->ipaddr);
+		memmove(ip_list + offset, ip->ipaddr, len);
 		offset = offset + len + 1;
 		len = strlen(ip->prefix);
 		memmove(ip_list + offset, ip->prefix, len);
@@ -1271,7 +1271,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 		ip = ip->next;
 	}
 
-	*ip_addr_list = ip_list;
+	*ipaddr_list = ip_list;
 	*entries = found;
 
 out_clean:

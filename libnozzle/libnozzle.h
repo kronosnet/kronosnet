@@ -131,7 +131,7 @@ int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
  *
  * nozzle - pointer to the nozzle struct
  *
- * ip_addr - string containing either an IPv4 or an IPv6 address.
+ * ipaddr - string containing either an IPv4 or an IPv6 address.
  *           Please note that Linux will automatically remove any IPv6 addresses from an interface
  *           with MTU < 1280. libnozzle will cache those IPs and re-instate them when MTU is > 1280.
  *           MTU must be set via nozzle_set_mtu for IPv6 to be re-instated.
@@ -148,7 +148,7 @@ int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
  *  error_string will contain a string recording the execution error.
  */
 
-int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
+int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string);
 
 /**
  * nozzle_del_ip
@@ -156,7 +156,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
  *
  * nozzle - pointer to the nozzle struct
  *
- * ip_addr - string containing either an IPv4 or an IPv6 address.
+ * ipaddr - string containing either an IPv4 or an IPv6 address.
  *
  * prefix - 24, 64 or any valid network prefix for the requested address.
  *
@@ -170,29 +170,29 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
  *  error_string will contain a string recording the execution error.
  */
 
-int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char **error_string);
+int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string);
 
 /**
  * nozzle_get_ips
  * @brief retrive the list of all configured ips for a given interface
  *
- * TODO: change to use a ip_addr_list struct!
+ * TODO: change to use a ipaddr_list struct!
  *
  * nozzle - pointer to the nozzle struct
  *
- * ip_addr_list - list of strings containing either an IPv4 or an IPv6 address and their prefixes.
+ * ipaddr_list - list of strings containing either an IPv4 or an IPv6 address and their prefixes.
  *
  * entries - entries recorded.
  *
  * @return
  * 0 on success
  * -1 on error and errno is set.
- * ip_addr_list is a malloc'ed buffer that the user needs to parse and free after use. ip_addr_list can
+ * ipaddr_list is a malloc'ed buffer that the user needs to parse and free after use. ipaddr_list can
  * be NULL if entries is 0.
  *
  */
 
-int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries);
+int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries);
 
 /**
  * nozzle_get_mtu
