@@ -230,7 +230,7 @@ static void _close(nozzle_t nozzle)
 
 #ifdef KNET_BSD
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->name, IFNAMSIZ);
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
 
 	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
 #endif
