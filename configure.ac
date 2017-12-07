@@ -144,6 +144,13 @@ AC_ARG_ENABLE([runautogen],
 	[ enable_runautogen="no" ])
 AM_CONDITIONAL([BUILD_RUNAUTOGEN], [test x$enable_runautogen = xyes])
 
+override_rpm_debuginfo_option="yes"
+AC_ARG_ENABLE([rpm-debuginfo],
+	[AS_HELP_STRING([--enable-rpm-debuginfo],[build debuginfo packages])],,
+	[ enable_rpm_debuginfo="no", override_rpm_debuginfo_option="no" ])
+AM_CONDITIONAL([BUILD_RPM_DEBUGINFO], [test x$enable_rpm_debuginfo = xyes])
+AM_CONDITIONAL([OVERRIDE_RPM_DEBUGINFO], [test x$override_rpm_debuginfo_option = xyes])
+
 AC_ARG_ENABLE([libtap],
 	[AS_HELP_STRING([--enable-libtap],[libtap support])],,
 	[ enable_libtap="no" ])

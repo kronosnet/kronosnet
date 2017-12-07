@@ -143,6 +143,18 @@ if BUILD_RUNAUTOGEN
 else
 	sed -i -e "s#@runautogen@#bcond_with#g" $@-t
 endif
+
+if OVERRIDE_RPM_DEBUGINFO
+	sed -i -e "s#@overriderpmdebuginfo@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@overriderpmdebuginfo@#bcond_with#g" $@-t
+endif
+
+if BUILD_RPM_DEBUGINFO
+	sed -i -e "s#@rpmdebuginfo@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@rpmdebuginfo@#bcond_with#g" $@-t
+endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
 	mv $@-t $@

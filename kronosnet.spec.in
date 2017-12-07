@@ -27,6 +27,12 @@
 %@kronosnetd@ kronosnetd
 %@libtap@ libtap
 %@runautogen@ runautogen
+%@rpmdebuginfo@ rpmdebuginfo
+%@overriderpmdebuginfo@ overriderpmdebuginfo
+
+%if %{with overriderpmdebuginfo}
+%undefine _enable_debug_packages
+%endif
 
 %if %{with sctp}
 %global buildsctp 1
@@ -505,6 +511,10 @@ Requires: libknet1-crypto-plugins-all
  meta package to install all of libknet1 plugins
 
 %files -n libknet1-plugins-all
+
+%if %{with rpmdebuginfo}
+%debug_package
+%endif
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
