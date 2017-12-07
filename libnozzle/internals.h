@@ -29,19 +29,35 @@ struct nozzle_ip {
 
 #define MACADDR_CHAR_MAX   18
 
+/*
+ * 11 = post-down.d
+ * 1  = /
+ */
+#define UPDOWN_PATH_MAX    PATH_MAX - 11 - 1 - IFNAMSIZ
+
 struct nozzle_iface {
-	struct ifreq ifr;
-	int fd;
-	char nozzlename[IFNAMSIZ];
+	char name[IFNAMSIZ];		/* interface name */
+	int fd;				/* interface fd */
+	int up;				/* interface status 0 is down, 1 is up */
+	/*
+	 * extra data
+	 */
+	struct nozzle_ip *ip;		/* configured ip addresses */
+
+	/*
+	 * default MAC address assigned by the kernel at creation time
+	 */
 	char default_mac[MACADDR_CHAR_MAX];
-	int default_mtu;
-	int current_mtu;
-	char updownpath[PATH_MAX - 11 - 1 - IFNAMSIZ]; /* 11 = post-down.d 1 = / */
-	int hasupdown;
-	int up;
-	struct nozzle_ip *ip;
+
+	int default_mtu;		/* MTU assigned by the kernel at creation time */
+	int current_mtu;		/* MTU configured by libnozzle user */
+
+	int hasupdown;			/* interface has up/down path to scripts configured */
+	char updownpath[UPDOWN_PATH_MAX]; /* path to up/down scripts if configured */
+
 	struct nozzle_iface *next;
 };
+
 #define ifname ifr.ifr_name
 
 #endif
