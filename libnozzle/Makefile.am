@@ -19,9 +19,6 @@ sources			= libnozzle.c
 
 libversion		= 1:0:0
 
-AM_CFLAGS		+= $(PTHREAD_CFLAGS)
-LIBS			= $(PTHREAD_LIBS)
-
 if BUILD_LIBNOZZLE
 
 include_HEADERS		= libnozzle.h
@@ -30,9 +27,14 @@ pkgconfigdir		= $(libdir)/pkgconfig
 
 pkgconfig_DATA		= libnozzle.pc
 
+noinst_HEADERS		= \
+			  internals.h
+
 lib_LTLIBRARIES		= libnozzle.la
 
 libnozzle_la_SOURCES	= $(sources)
+
+libnozzle_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS)
 
 EXTRA_libnozzle_la_DEPENDENCIES	= $(SYMFILE)
 
@@ -40,11 +42,13 @@ libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
 			  -version-info $(libversion)
 
+libnozzle_la_LIBADD	= $(PTHREAD_LIBS)
+
+check_PROGRAMS		= nozzle_test
+
 TESTS			= $(check_PROGRAMS)
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
-
-check_PROGRAMS		= nozzle_test
 
 check-local: check-api-test-coverage
 
@@ -56,5 +60,9 @@ nozzle_test_SOURCES	= $(sources)
 
 nozzle_test_CPPFLAGS	= -DTEST \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"
+
+nozzle_test_CFLAGS	= $(PTHREAD_CFLAGS)
+
+nozzle_test_LDFLAGS	= $(PTHREAD_LIBS)
 
 endif
