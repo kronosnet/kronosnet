@@ -183,7 +183,7 @@ static int _exec_updown(const nozzle_t nozzle, const char *action, char **error_
 
 	memset(command, 0, PATH_MAX);
 
-	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action, nozzle->nozzlename);
+	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action, nozzle->name);
 
 	err = stat(command, &sb);
 	if ((err < 0) && (errno == ENOENT))
@@ -218,6 +218,10 @@ static int _check(const nozzle_t nozzle)
 
 static void _close(nozzle_t nozzle)
 {
+#ifdef KNET_BSD
+	struct ifreq ifr;
+#endif
+
 	if (!nozzle)
 		return;
 
@@ -225,10 +229,10 @@ static void _close(nozzle_t nozzle)
 		close(nozzle->fd);
 
 #ifdef KNET_BSD
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(nozzle->ifname, nozzle->name, IFNAMSIZ);
 
-	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &nozzle->ifr);
+	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
 #endif
 
 	free(nozzle);
@@ -247,17 +251,18 @@ static void _close_cfg(void)
 static int _get_mtu(const nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
+	struct ifreq ifr;
 
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
 	}
 
-	err = nozzle->ifr.ifr_mtu;
+	err = ifr.ifr_mtu;
 
 out_clean:
 	errno = savederrno;
@@ -267,6 +272,7 @@ out_clean:
 static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 {
 	int err = 0, savederrno = 0;
+	struct ifreq ifr;
 	char mac[MACADDR_CHAR_MAX];
 #ifdef KNET_BSD
 	struct ifaddrs *ifap = NULL;
@@ -275,17 +281,17 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 #endif
 
 	memset(&mac, 0, MACADDR_CHAR_MAX);
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
 
 #ifdef KNET_LINUX
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
 	}
 
-	ether_ntoa_r((struct ether_addr *)nozzle->ifr.ifr_hwaddr.sa_data, mac);
+	ether_ntoa_r((struct ether_addr *)ifr.ifr_hwaddr.sa_data, mac);
 #endif
 #ifdef KNET_BSD
 	/*
@@ -302,7 +308,7 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 	ifa = ifap;
 
 	while (ifa) {
-		if (!strncmp(nozzle->nozzlename, ifa->ifa_name, IFNAMSIZ)) {
+		if (!strncmp(nozzle->name, ifa->ifa_name, IFNAMSIZ)) {
 			found = 1;
 			break;
 		}
@@ -351,7 +357,7 @@ nozzle_t nozzle_get_handle_by_name(char *devname)
 
 	nozzle = lib_cfg.head;
 	while (nozzle != NULL) {
-		if (!strcmp(devname, nozzle->nozzlename))
+		if (!strcmp(devname, nozzle->name))
 			break;
 		nozzle = nozzle->next;
 	}
@@ -370,6 +376,9 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	int savederrno = 0;
 	nozzle_t nozzle = NULL;
 	char *temp_mac = NULL;
+#ifdef KNET_LINUX
+	struct ifreq ifr;
+#endif
 #ifdef KNET_BSD
 	uint16_t i;
 	long int nozzlenum = 0;
@@ -421,8 +430,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 			errno = EINVAL;
 			return NULL;
 		}
-		/* 14: 2 for /, 1 for \0 + 11 (post-down.d) */
-		if (strlen(updownpath) >= (PATH_MAX - (strlen(devname) + 14))) {
+		if (strlen(updownpath) >= UPDOWN_PATH_MAX) {
 			errno = E2BIG;
 			return NULL;
 		}
@@ -479,7 +487,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		goto out_error;
 	}
 	strncpy(devname, curnozzle, IFNAMSIZ);
-	strncpy(nozzle->nozzlename, curnozzle, IFNAMSIZ);
+	strncpy(nozzle->name, curnozzle, IFNAMSIZ);
 #endif
 
 #ifdef KNET_LINUX
@@ -488,22 +496,22 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		goto out_error;
 	}
 
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, devname, IFNAMSIZ);
-	nozzle->ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, devname, IFNAMSIZ);
+	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
-	if (ioctl(nozzle->fd, TUNSETIFF, &nozzle->ifr) < 0) {
+	if (ioctl(nozzle->fd, TUNSETIFF, &ifr) < 0) {
 		savederrno = errno;
 		goto out_error;
 	}
 
-	if ((strlen(devname) > 0) && (strcmp(devname, nozzle->ifname) != 0)) {
+	if ((strlen(devname) > 0) && (strcmp(devname, ifname) != 0)) {
 		errno = EBUSY;
 		goto out_error;
 	}
 
-	strncpy(devname, nozzle->ifname, IFNAMSIZ);
-	strncpy(nozzle->nozzlename, nozzle->ifname, IFNAMSIZ);
+	strncpy(devname, ifname, IFNAMSIZ);
+	strncpy(nozzle->name, ifname, IFNAMSIZ);
 #endif
 
 	nozzle->default_mtu = _get_mtu(nozzle);
@@ -633,6 +641,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 {
 	int err = 0, savederrno = 0;
 	struct nozzle_ip *tmp_ip;
+	struct ifreq ifr;
 
 	if ((!nozzle) || (!mtu) || (!error_string)) {
 		errno = EINVAL;
@@ -657,9 +666,11 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 		goto out_clean;
 	}
 
-	nozzle->ifr.ifr_mtu = mtu;
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	ifr.ifr_mtu = mtu;
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFMTU, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFMTU, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -723,6 +734,7 @@ out_clean:
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 {
 	int err = 0, savederrno = 0;
+	struct ifreq ifr;
 
 	if ((!nozzle) || (!ether_addr)) {
 		errno = EINVAL;
@@ -741,31 +753,31 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 		goto out_clean;
 	}
 
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
 #ifdef KNET_LINUX
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
 	}
 
-	memmove(nozzle->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
+	memmove(ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFHWADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFHWADDR, &ifr);
 	savederrno = errno;
 #endif
 #ifdef KNET_BSD
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFADDR, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
 	}
 
-	memmove(nozzle->ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
-	nozzle->ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
+	memmove(ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
+	ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFLLADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFLLADDR, &ifr);
 	savederrno = errno;
 #endif
 out_clean:
@@ -782,6 +794,7 @@ int nozzle_reset_mac(nozzle_t nozzle)
 int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 {
 	int err = 0, savederrno = 0;
+	struct ifreq ifr;
 
 	if (!nozzle) {
 		errno = EINVAL;
@@ -810,10 +823,10 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 		goto out_clean;
 	}
 
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -821,8 +834,8 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 
 	_exec_updown(nozzle, "pre-up.d", error_preup);
 
-	nozzle->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &nozzle->ifr);
+	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -841,15 +854,16 @@ out_clean:
 static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 {
 	int err = 0, savederrno = 0;
+	struct ifreq ifr;
 
 	if (!nozzle->up) {
 		goto out_clean;
 	}
 
-	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
-	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -857,9 +871,9 @@ static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 
 	_exec_updown(nozzle, "down.d", error_down);
 
-	nozzle->ifr.ifr_flags &= ~IFF_UP;
+	ifr.ifr_flags &= ~IFF_UP;
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -967,19 +981,19 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ip addr %s %s/%s dev %s broadcast %s",
 			 command, ipaddr, prefix,
-			 nozzle->nozzlename, broadcast);
+			 nozzle->name, broadcast);
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ip addr %s %s/%s dev %s",
 			command, ipaddr, prefix,
-			nozzle->nozzlename);
+			nozzle->name);
 	}
 #endif
 #ifdef KNET_BSD
 	if (!strcmp(command, "add")) {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ifconfig %s %s %s/%s",
-			 nozzle->nozzlename, proto, ipaddr, prefix);
+			 nozzle->name, proto, ipaddr, prefix);
 		if (broadcast) {
 			snprintf(cmdline + strlen(cmdline),
 				 sizeof(cmdline) - strlen(cmdline) -1,
@@ -993,7 +1007,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	} else {
 		snprintf(cmdline, sizeof(cmdline)-1,
 				 "ifconfig %s %s %s/%s delete",
-				 nozzle->nozzlename, proto, ipaddr, prefix);
+				 nozzle->name, proto, ipaddr, prefix);
 	}
 #endif
 	if (broadcast) {
@@ -1203,7 +1217,7 @@ const char *nozzle_get_name_by_handle(const nozzle_t nozzle)
 		goto out_clean;
 	}
 
-	name = nozzle->nozzlename;
+	name = nozzle->name;
 
 out_clean:
 	pthread_mutex_unlock(&lib_mutex);
@@ -1698,10 +1712,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1759,10 +1773,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_2);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_2);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_2);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_2);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1790,10 +1804,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -1810,10 +1824,10 @@ static int check_knet_mtu_ipv6(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_2);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_2);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_2);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_2);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2096,10 +2110,10 @@ static int check_knet_up_down(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q UP", nozzle->nozzlename);
+		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q UP", nozzle->nozzlename);
+		 "ifconfig %s | grep -q UP", nozzle->name);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2135,10 +2149,10 @@ static int check_knet_up_down(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q UP", nozzle->nozzlename);
+		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q UP", nozzle->nozzlename);
+		 "ifconfig %s | grep -q UP", nozzle->name);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2481,10 +2495,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/24", nozzle->nozzlename, testipv4_1);
+		 "ip addr show dev %s | grep -q %s/24", nozzle->name, testipv4_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv4_1);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2565,10 +2579,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/24", nozzle->nozzlename, testipv4_1);
+		 "ip addr show dev %s | grep -q %s/24", nozzle->name, testipv4_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv4_1);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2599,10 +2613,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
@@ -2633,10 +2647,10 @@ static int check_knet_set_del_ip(void)
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
-		 "ip addr show dev %s | grep -q %s/64", nozzle->nozzlename, testipv6_1);
+		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q %s", nozzle->nozzlename, testipv6_1);
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = _execute_shell(verifycmd, &error_string);
 	if (error_string) {
