@@ -228,7 +228,7 @@ static void _close(nozzle_t nozzle)
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	ioctl(lib_cfg.sockfd, SIOCIFDESTROY, &nozzle->ifr);
+	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &nozzle->ifr);
 #endif
 
 	free(nozzle);
@@ -239,7 +239,7 @@ static void _close(nozzle_t nozzle)
 static void _close_cfg(void)
 {
 	if (lib_cfg.head == NULL) {
-		close(lib_cfg.sockfd);
+		close(lib_cfg.ioctlfd);
 		lib_init = 0;
 	}
 }
@@ -251,7 +251,7 @@ static int _get_mtu(const nozzle_t nozzle)
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.sockfd, SIOCGIFMTU, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -279,7 +279,7 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
 #ifdef KNET_LINUX
-	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -437,12 +437,12 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	if (!lib_init) {
 		lib_cfg.head = NULL;
 #ifdef KNET_LINUX
-		lib_cfg.sockfd = socket(AF_INET, SOCK_STREAM, 0);
+		lib_cfg.ioctlfd = socket(AF_INET, SOCK_STREAM, 0);
 #endif
 #ifdef KNET_BSD
-		lib_cfg.sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+		lib_cfg.ioctlfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
 #endif
-		if (lib_cfg.sockfd < 0) {
+		if (lib_cfg.ioctlfd < 0) {
 			savederrno = errno;
 			goto out_error;
 		}
@@ -659,7 +659,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 
 	nozzle->ifr.ifr_mtu = mtu;
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFMTU, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFMTU, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -744,7 +744,7 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 #ifdef KNET_LINUX
-	err = ioctl(lib_cfg.sockfd, SIOCGIFHWADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -752,11 +752,11 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 
 	memmove(nozzle->ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFHWADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFHWADDR, &nozzle->ifr);
 	savederrno = errno;
 #endif
 #ifdef KNET_BSD
-	err = ioctl(lib_cfg.sockfd, SIOCGIFADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFADDR, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -765,7 +765,7 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 	memmove(nozzle->ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
 	nozzle->ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFLLADDR, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFLLADDR, &nozzle->ifr);
 	savederrno = errno;
 #endif
 out_clean:
@@ -813,7 +813,7 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -822,7 +822,7 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 	_exec_updown(nozzle, "pre-up.d", error_preup);
 
 	nozzle->ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err = ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -849,7 +849,7 @@ static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.sockfd, SIOCGIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -859,7 +859,7 @@ static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 
 	nozzle->ifr.ifr_flags &= ~IFF_UP;
 
-	err = ioctl(lib_cfg.sockfd, SIOCSIFFLAGS, &nozzle->ifr);
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &nozzle->ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -1324,7 +1324,7 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 
 	nozzle=nozzle_open(name, size, updownpath);
 	if (!nozzle) {
-		if (lib_cfg.sockfd < 0)
+		if (lib_cfg.ioctlfd < 0)
 			printf("Unable to open knet_socket\n");
 		printf("Unable to open knet.\n");
 		return -1;
