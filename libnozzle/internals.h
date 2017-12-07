@@ -12,6 +12,11 @@
 #include "config.h"
 #include <net/if.h>
 
+struct nozzle_lib_config {
+	struct nozzle_iface *head;
+	int sockfd;
+};
+
 #define MAX_IP_CHAR	128
 #define MAX_PREFIX_CHAR	4
 #define MAX_MAC_CHAR	18
@@ -37,10 +42,5 @@ struct nozzle_iface {
 	struct nozzle_iface *next;
 };
 #define ifname ifr.ifr_name
-
-struct _config {
-	struct nozzle_iface *head;
-	int sockfd;
-};
 
 #endif

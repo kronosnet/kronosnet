@@ -39,7 +39,7 @@
 #include "internals.h"
 
 static int lib_init = 0;
-static struct _config lib_cfg;
+static struct nozzle_lib_config lib_cfg;
 static pthread_mutex_t lib_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
