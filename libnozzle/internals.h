@@ -17,28 +17,29 @@ struct nozzle_lib_config {
 	int sockfd;
 };
 
-#define MAX_IP_CHAR	128
-#define MAX_PREFIX_CHAR	4
-#define MAX_MAC_CHAR	18
+#define IPADDR_CHAR_MAX   128
+#define PREFIX_CHAR_MAX	    4
 
-struct _ip {
-	char ip_addr[MAX_IP_CHAR];
-	char prefix[MAX_PREFIX_CHAR];
+struct nozzle_ip {
+	char ip_addr[IPADDR_CHAR_MAX];
+	char prefix[PREFIX_CHAR_MAX];
 	int  domain;
-	struct _ip *next;
+	struct nozzle_ip *next;
 };
+
+#define MACADDR_CHAR_MAX   18
 
 struct nozzle_iface {
 	struct ifreq ifr;
 	int fd;
 	char nozzlename[IFNAMSIZ];
-	char default_mac[MAX_MAC_CHAR];
+	char default_mac[MACADDR_CHAR_MAX];
 	int default_mtu;
 	int current_mtu;
 	char updownpath[PATH_MAX - 11 - 1 - IFNAMSIZ]; /* 11 = post-down.d 1 = / */
 	int hasupdown;
 	int up;
-	struct _ip *ip;
+	struct nozzle_ip *ip;
 	struct nozzle_iface *next;
 };
 #define ifname ifr.ifr_name

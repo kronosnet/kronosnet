@@ -58,7 +58,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 		      char **error_string, int secondary);
 static int _find_ip(nozzle_t nozzle,
 			const char *ip_addr, const char *prefix,
-			struct _ip **ip, struct _ip **ip_prev);
+			struct nozzle_ip **ip, struct nozzle_ip **ip_prev);
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -267,14 +267,14 @@ out_clean:
 static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 {
 	int err = 0, savederrno = 0;
-	char mac[MAX_MAC_CHAR];
+	char mac[MACADDR_CHAR_MAX];
 #ifdef KNET_BSD
 	struct ifaddrs *ifap = NULL;
 	struct ifaddrs *ifa;
 	int found = 0;
 #endif
 
-	memset(&mac, 0, MAX_MAC_CHAR);
+	memset(&mac, 0, MACADDR_CHAR_MAX);
 	memset(&nozzle->ifr, 0, sizeof(struct ifreq));
 	strncpy(nozzle->ifname, nozzle->nozzlename, IFNAMSIZ);
 
@@ -550,7 +550,7 @@ int nozzle_close(nozzle_t nozzle,  char **error_down, char **error_postdown)
 	int err = 0, savederrno = 0;
 	nozzle_t temp = lib_cfg.head;
 	nozzle_t prev = lib_cfg.head;
-	struct _ip *ip, *ip_next;
+	struct nozzle_ip *ip, *ip_next;
 	char *error_string = NULL;
 
 	savederrno = pthread_mutex_lock(&lib_mutex);
@@ -632,7 +632,7 @@ out_clean:
 int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 {
 	int err = 0, savederrno = 0;
-	struct _ip *tmp_ip;
+	struct nozzle_ip *tmp_ip;
 
 	if ((!nozzle) || (!mtu) || (!error_string)) {
 		errno = EINVAL;
@@ -1004,9 +1004,9 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 
 static int _find_ip(nozzle_t nozzle,
 			const char *ip_addr, const char *prefix,
-			struct _ip **ip, struct _ip **ip_prev)
+			struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
 {
-	struct _ip *local_ip, *local_ip_prev;
+	struct nozzle_ip *local_ip, *local_ip_prev;
 	int found = 0;
 
 	local_ip = local_ip_prev = nozzle->ip;
@@ -1032,7 +1032,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 {
 	int err = 0, savederrno = 0;
 	int found = 0;
-	struct _ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
+	struct nozzle_ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
 	int secondary = 0;
 
 	if ((!nozzle) || (!ip_addr) || (!prefix) || (!error_string)) {
@@ -1057,16 +1057,16 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 		goto out_clean;
 	}
 
-	ip = malloc(sizeof(struct _ip));
+	ip = malloc(sizeof(struct nozzle_ip));
 	if (!ip) {
 		savederrno = errno;
 		err = -1 ;
 		goto out_clean;
 	}
 
-	memset(ip, 0, sizeof(struct _ip));
-	strncpy(ip->ip_addr, ip_addr, MAX_IP_CHAR);
-	strncpy(ip->prefix, prefix, MAX_PREFIX_CHAR);
+	memset(ip, 0, sizeof(struct nozzle_ip));
+	strncpy(ip->ip_addr, ip_addr, IPADDR_CHAR_MAX);
+	strncpy(ip->prefix, prefix, PREFIX_CHAR_MAX);
 	if (!strchr(ip->ip_addr, ':')) {
 		ip->domain = AF_INET;
 	} else {
@@ -1112,7 +1112,7 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ip_addr, const char *prefix, char
 {
 	int err = 0, savederrno = 0;
         int found = 0;
-	struct _ip *ip = NULL, *ip_prev = NULL;
+	struct nozzle_ip *ip = NULL, *ip_prev = NULL;
 
 	if ((!nozzle) || (!ip_addr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
@@ -1217,7 +1217,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 	int found = 0;
 	char *ip_list = NULL;
 	int size = 0, offset = 0, len;
-	struct _ip *ip = NULL;
+	struct nozzle_ip *ip = NULL;
 
 	if ((!nozzle) || (!ip_addr_list) || (!entries)) {
 		errno = EINVAL;
@@ -1248,7 +1248,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ip_addr_list, int *entries)
 		goto out_clean;
 	}
 
-	size = found * (MAX_IP_CHAR + MAX_PREFIX_CHAR + 2);
+	size = found * (IPADDR_CHAR_MAX + PREFIX_CHAR_MAX + 2);
 
 	ip_list = malloc(size);
 	if (!ip_list) {
