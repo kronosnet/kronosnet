@@ -14,7 +14,7 @@
 
 struct nozzle_lib_config {
 	struct nozzle_iface *head;
-	int sockfd;
+	int ioctlfd;
 };
 
 #define IPADDR_CHAR_MAX   128
