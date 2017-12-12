@@ -199,7 +199,6 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 	int err = 0;
 	char buf[KNET_VTY_MAX_LINE];
 	int tmp;
-	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -314,7 +313,7 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_LINK_TRANSP:
 			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
-			if (knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, buf) == KNET_MAX_TRANSPORTS) {
+			if (knet_get_transport_id_by_name(buf) == KNET_MAX_TRANSPORTS) {
 				knet_vty_write(vty, "link transport is invalid%s", telnet_newline);
 				err = -1;
 			}
@@ -1002,7 +1001,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	get_param(vty, 4, &param, &paramlen, &paramoffset);
 	param_to_str(transport, sizeof(transport), param, paramlen);
 
-	transport_id = knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, transport);
+	transport_id = knet_get_transport_id_by_name(transport);
 
 	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status, sizeof(status));
 	if (!status.enabled) {
@@ -1787,7 +1786,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 				uint64_t flags;
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
-					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
+					transport_name = knet_get_transport_name_by_id(transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status, sizeof(status));
 					if (status.enabled == 1) {
 						if (dynamic) {
@@ -1902,7 +1901,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 				uint64_t flags;
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
-					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
+					transport_name = knet_get_transport_name_by_id(transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status, sizeof(status));
 					if (status.enabled == 1) {
 						uint8_t priority, pong_count;
