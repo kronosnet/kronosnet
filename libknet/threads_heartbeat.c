@@ -155,8 +155,8 @@ static void _adjust_pong_timeouts(knet_handle_t knet_h)
 	struct knet_link *dst_link;
 	int link_idx;
 
-	if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
-		log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get write lock");
+	if (pthread_mutex_lock(&knet_h->backoff_mutex)) {
+		log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get backoff_mutex");
 		return;
 	}
 
@@ -178,7 +178,7 @@ static void _adjust_pong_timeouts(knet_handle_t knet_h)
 		}
 	}
 
-	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	pthread_mutex_unlock(&knet_h->backoff_mutex);
 }
 
 void *_handle_heartbt_thread(void *data)
@@ -194,6 +194,11 @@ void *_handle_heartbt_thread(void *data)
 	while (!shutdown_in_progress(knet_h)) {
 		usleep(KNET_THREADS_TIMERES);
 
+		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
+			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get read lock");
+			continue;
+		}
+
 		/*
 		 *  _adjust_pong_timeouts should execute approx once a second.
 		 */
@@ -204,11 +209,6 @@ void *_handle_heartbt_thread(void *data)
 			i++;
 		}
 
-		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
-			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get read lock");
-			continue;
-		}
-
 		_send_pings(knet_h, 1);
 
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
@@ -216,4 +216,3 @@ void *_handle_heartbt_thread(void *data)
 
 	return NULL;
 }
-

@@ -110,6 +110,13 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->backoff_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pong timeout backoff mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_mutex_init(&knet_h->tx_seq_num_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize tx_seq_num_mutex mutex: %s",
@@ -132,6 +139,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_cond_destroy(&knet_h->pmtud_cond);
 	pthread_mutex_destroy(&knet_h->hb_mutex);
 	pthread_mutex_destroy(&knet_h->tx_mutex);
+	pthread_mutex_destroy(&knet_h->backoff_mutex);
 	pthread_mutex_destroy(&knet_h->tx_seq_num_mutex);
 }
 

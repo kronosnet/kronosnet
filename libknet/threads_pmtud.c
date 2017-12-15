@@ -36,6 +36,7 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	ssize_t len;	     /* len of what we were able to sendto onwire */
 
 	struct timespec ts;
+	unsigned long long pong_timeout_adj_tmp;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
 
 	mutex_retry_limit = 0;
@@ -156,6 +157,11 @@ restart:
 		return -1;
 	}
 
+	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get TX mutex lock: %s", strerror(savederrno));
+		return -1;
+	}
 retry:
 	len = sendto(dst_link->outsock, outbuf, data_len,
 			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
@@ -166,6 +172,7 @@ retry:
 	switch(err) {
 		case -1: /* unrecoverable error */
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
+			pthread_mutex_unlock(&knet_h->tx_mutex);
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			dst_link->status.stats.tx_pmtu_errors++;
 			return -1;
@@ -176,6 +183,8 @@ retry:
 			goto retry;
 			break;
 	}
+
+	pthread_mutex_unlock(&knet_h->tx_mutex);
 
 	if (len != (ssize_t )data_len) {
 		if (savederrno == EMSGSIZE) {
@@ -205,12 +214,29 @@ retry:
 		 * and add values to it that could overflow into seconds.
 		 */ 
 
-		ts.tv_sec += dst_link->pong_timeout_adj / 1000000;
-		ts.tv_nsec += (((dst_link->pong_timeout_adj) % 1000000) * 1000);
+		if (pthread_mutex_lock(&knet_h->backoff_mutex)) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get backoff_mutex");
+			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+			return -1;
+		}
+
+		if (knet_h->crypto_instance) {
+			/*
+			 * crypto, under pressure, is a royal PITA
+			 */
+			pong_timeout_adj_tmp = dst_link->pong_timeout_adj * 2;
+		} else {
+			pong_timeout_adj_tmp = dst_link->pong_timeout_adj;
+		}
+
+		ts.tv_sec += pong_timeout_adj_tmp / 1000000;
+		ts.tv_nsec += (((pong_timeout_adj_tmp) % 1000000) * 1000);
 		while (ts.tv_nsec > 1000000000) {
 			ts.tv_sec += 1;
 			ts.tv_nsec -= 1000000000;
 		}
+
+		pthread_mutex_unlock(&knet_h->backoff_mutex);
 
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
@@ -242,7 +268,8 @@ retry:
 				}
 			} else {
 				if ((onwire_len == max_mtu_len) ||
-				    ((dst_link->last_bad_mtu) && (dst_link->last_bad_mtu == (onwire_len + 1)))) {
+				    ((dst_link->last_bad_mtu) && (dst_link->last_bad_mtu == (onwire_len + 1))) ||
+				     (dst_link->last_bad_mtu == dst_link->last_good_mtu)) {
 					found_mtu = 1;
 				}
 			}
@@ -263,6 +290,10 @@ retry:
 	onwire_len = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 
+	/*
+	 * give time to the kernel to determine its own version of MTU
+	 */
+	usleep((dst_link->status.stats.latency_ave * 1000) / 4);
 	goto restart;
 }
 
@@ -335,7 +366,15 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 			if (dst_link->status.mtu < *min_mtu) {
 				*min_mtu = dst_link->status.mtu;
 			}
+
+			/*
+			 * set pmtud_last, if we can, after we are done with the PMTUd process
+			 * because it can take a very long time.
+			 */
 			dst_link->pmtud_last = clock_now;
+			if (!clock_gettime(CLOCK_MONOTONIC, &clock_now)) {
+				dst_link->pmtud_last = clock_now;
+			}
 		}
 	}
 

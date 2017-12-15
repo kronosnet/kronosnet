@@ -660,10 +660,16 @@ retry_pong:
 			knet_h->stats_extra.tx_crypt_pmtu_reply_packets++;
 		}
 
+		savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_RX, "Unable to get TX mutex lock: %s", strerror(savederrno));
+			goto out_pmtud;
+		}
 retry_pmtud:
 		len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				(struct sockaddr *) &src_link->dst_addr,
 				sizeof(struct sockaddr_storage));
+		savederrno = errno;
 		if (len != outlen) {
 			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
 			switch(err) {
@@ -685,7 +691,8 @@ retry_pmtud:
 					break;
 			}
 		}
-
+		pthread_mutex_unlock(&knet_h->tx_mutex);
+out_pmtud:
 		break;
 	case KNET_HEADER_TYPE_PMTUD_REPLY:
 		src_link->status.stats.rx_pmtu_packets++;
