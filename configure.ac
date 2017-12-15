@@ -194,19 +194,14 @@ LIBS="$saved_LIBS"
 
 # OS detection
 
-AM_CONDITIONAL([KNET_LINUX], [false])
-AM_CONDITIONAL([KNET_BSD], [false])
-
 AC_MSG_CHECKING([for os in ${host_os}])
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([KNET_LINUX], [1], [Compiling for Linux platform])
-		AM_CONDITIONAL([KNET_LINUX], [true])
 		AC_MSG_RESULT([Linux])
 		;;
 	*bsd*)
 		AC_DEFINE_UNQUOTED([KNET_BSD], [1], [Compiling for BSD platform])
-		AM_CONDITIONAL([KNET_BSD], [true])
 		AC_MSG_RESULT([BSD])
 		if test "x$enable_libtap" = xyes; then
 			AC_MSG_ERROR([libtap is not currently supported on BSD platforms])
@@ -216,6 +211,9 @@ case "$host_os" in
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
 		;;
 esac
+
+AM_CONDITIONAL([KNET_LINUX], [echo $host_os | grep -q linux])
+AM_CONDITIONAL([KNET_BSD], [echo $host_os | grep -q bsd])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
