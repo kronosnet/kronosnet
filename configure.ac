@@ -212,6 +212,9 @@ case "$host_os" in
 		;;
 esac
 
+AM_CONDITIONAL([KNET_LINUX], [echo $host_os | grep -q linux])
+AM_CONDITIONAL([KNET_BSD], [echo $host_os | grep -q bsd])
+
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
 AC_CHECK_HEADERS([stdlib.h])

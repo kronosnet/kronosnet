@@ -230,7 +230,14 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	msg.msglevel = msglevel;
 
 	va_start(ap, fmt);
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
 	vsnprintf(msg.msg, sizeof(msg.msg) - 2, fmt, ap);
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 	va_end(ap);
 
 	len = strlen(msg.msg);
