@@ -91,10 +91,10 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 			return 0;
 		}
 		if (!force) {
-			savederrno = ERANGE;
-			log_debug (knet_h, KNET_SUB_TRANSPORT, "Failed to set socket buffer via option %d to value %d: %s",
-				   option, target, strerror(savederrno));
-			errno = savederrno;
+			log_debug (knet_h, KNET_SUB_TRANSPORT,
+				   "Failed to set socket buffer via option %d to value %d: capped at %d",
+				   option, target, new_value);
+			errno = ENAMETOOLONG;
 			return -1;
 		}
 	}
@@ -104,7 +104,11 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 		log_debug (knet_h, KNET_SUB_TRANSPORT,
 			   "Failed to set socket buffer via force option %d: %s",
 			   force, strerror(savederrno));
-		errno = savederrno;
+		if (savederrno == EPERM) {
+			errno = ENAMETOOLONG;
+		} else {
+			errno = savederrno;
+		}
 		return -1;
 	}
 
