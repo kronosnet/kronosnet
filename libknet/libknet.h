@@ -358,9 +358,9 @@ ssize_t knet_send(knet_handle_t knet_h,
  * to another host.
  * knet_send_sync bypasses the whole TX async layer and delivers
  * data directly to the link layer, and returns errors accordingly.
- * knet_send_sync allows to send only one packet to one host at
- * a time. It does NOT support multiple destinations or multicast
- * packets. Decision is still based on dst_host_filter_fn.
+ * knet_send_sync sends only one packet to one host at a time.
+ * It does NOT support multiple destinations or multicast packets.
+ * Decision is still based on dst_host_filter_fn.
  *
  * @return
  * knet_send_sync returns 0 on success and -1 on error.
