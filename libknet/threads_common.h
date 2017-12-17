@@ -24,5 +24,6 @@ do { \
 } while (0);
 
 int shutdown_in_progress(knet_handle_t knet_h);
+int get_global_wrlock(knet_handle_t knet_h);
 
 #endif

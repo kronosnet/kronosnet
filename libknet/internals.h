@@ -186,6 +186,8 @@ struct knet_handle {
 	pthread_mutex_t tx_mutex;		/* used to protect knet_send_sync and TX thread */
 	pthread_mutex_t hb_mutex;		/* used to protect heartbeat thread and seq_num broadcasting */
 	pthread_mutex_t backoff_mutex;		/* used to protect dst_link->pong_timeout_adj */
+	int pmtud_running;
+	int pmtud_abort;
 	struct crypto_instance *crypto_instance;
 	size_t sec_header_size;
 	size_t sec_block_size;

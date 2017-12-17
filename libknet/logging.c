@@ -18,6 +18,7 @@
 
 #include "internals.h"
 #include "logging.h"
+#include "threads_common.h"
 
 struct pretty_names {
 	const char *name;
@@ -152,7 +153,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, subsystem, "Unable to get write lock: %s",
 			strerror(savederrno));

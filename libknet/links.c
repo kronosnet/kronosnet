@@ -19,6 +19,7 @@
 #include "links.h"
 #include "transports.h"
 #include "host.h"
+#include "threads_common.h"
 
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected)
@@ -103,7 +104,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -351,7 +352,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -434,7 +435,7 @@ int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -561,7 +562,7 @@ int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -689,7 +690,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -819,7 +820,7 @@ int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1010,7 +1011,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
 			strerror(savederrno));
