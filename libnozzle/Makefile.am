@@ -10,16 +10,17 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-
 SYMFILE			= libnozzle_exported_syms
 
-EXTRA_DIST		= $(SYMFILE) tap_updown_bad tap_updown_good api-test-coverage
+EXTRA_DIST		= $(SYMFILE)
 
-sources			= libnozzle.c
+if BUILD_LIBNOZZLE
+
+SUBDIRS			= . tests man
 
 libversion		= 1:0:0
 
-if BUILD_LIBNOZZLE
+sources			= libnozzle.c
 
 include_HEADERS		= libnozzle.h
 
@@ -44,25 +45,6 @@ libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 
 libnozzle_la_LIBADD	= $(PTHREAD_LIBS)
 
-check_PROGRAMS		= nozzle_test
-
-TESTS			= $(check_PROGRAMS)
-
-noinst_PROGRAMS		= $(check_PROGRAMS)
-
-check-local: check-api-test-coverage
-
-check-api-test-coverage:
-	chmod u+x $(top_srcdir)/libnozzle/api-test-coverage
-	$(top_srcdir)/libnozzle/api-test-coverage $(top_srcdir) $(top_builddir)
-
-nozzle_test_SOURCES	= $(sources)
-
-nozzle_test_CPPFLAGS	= -DTEST \
-			  -DABSBUILDDIR=\"$(abs_builddir)\"
-
-nozzle_test_CFLAGS	= $(PTHREAD_CFLAGS)
-
-nozzle_test_LDFLAGS	= $(PTHREAD_LIBS)
+dist_man_MANS		= man
 
 endif
