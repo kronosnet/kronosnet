@@ -315,7 +315,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		log_debug(knet_h, KNET_SUB_TX,
 			  "Received data packet but data MTU is still unknown."
 			  " Packet might not be delivered."
-			  " Assuming mininum IPv4 mtu (%d)",
+			  " Assuming minimum IPv4 MTU (%d)",
 			  KNET_PMTUD_MIN_MTU_V4);
 		temp_data_mtu = KNET_PMTUD_MIN_MTU_V4;
 	} else {
