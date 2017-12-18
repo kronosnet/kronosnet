@@ -39,6 +39,8 @@ int is_helgrind(void);
 
 void set_scheduler(int policy);
 
+knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level);
+
 /*
  * consider moving this one as official API
  */

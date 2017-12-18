@@ -359,6 +359,20 @@ int start_logging(FILE *std)
 	return log_fds[1];
 }
 
+knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
+{
+	knet_handle_t knet_h = knet_handle_new(1, logfds[1], log_level);
+
+	if (knet_h) {
+		return knet_h;
+	} else {
+		printf("knet_handle_new failed: %s\n", strerror(errno));
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+}
+
 int knet_handle_stop(knet_handle_t knet_h)
 {
 	int savederrno;
