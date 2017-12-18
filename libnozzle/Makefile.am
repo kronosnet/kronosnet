@@ -20,7 +20,8 @@ SUBDIRS			= . tests man
 
 libversion		= 1:0:0
 
-sources			= libnozzle.c
+sources			= libnozzle.c \
+			  internals.c
 
 include_HEADERS		= libnozzle.h
 
