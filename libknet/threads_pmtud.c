@@ -157,6 +157,12 @@ restart:
 		return -1;
 	}
 
+	if (knet_h->pmtud_abort) {
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+		errno = EDEADLK;
+		return -1;
+	}
+
 	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get TX mutex lock: %s", strerror(savederrno));
@@ -238,7 +244,17 @@ retry:
 
 		pthread_mutex_unlock(&knet_h->backoff_mutex);
 
+		knet_h->pmtud_running = 1;
+
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
+
+		knet_h->pmtud_running = 0;
+
+		if (knet_h->pmtud_abort) {
+			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+			errno = EDEADLK;
+			return -1;
+		}
 
 		if (shutdown_in_progress(knet_h)) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
@@ -333,6 +349,13 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	log_debug(knet_h, KNET_SUB_PMTUD, "Starting PMTUD for host: %u link: %u", dst_host->host_id, dst_link->link_id);
 
 	if (_handle_check_link_pmtud(knet_h, dst_host, dst_link) < 0) {
+		if (errno == EDEADLK) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD for host: %u link: %u has been rescheduled", dst_host->host_id, dst_link->link_id);
+			dst_link->status.mtu = saved_pmtud;
+			dst_link->has_valid_mtu = saved_valid_pmtud;
+			errno = EDEADLK;
+			return dst_link->has_valid_mtu;
+		}
 		dst_link->has_valid_mtu = 0;
 	} else {
 		dst_link->has_valid_mtu = 1;
@@ -393,6 +416,7 @@ void *_handle_pmtud_link_thread(void *data)
 	int link_idx;
 	unsigned int min_mtu, have_mtu;
 	unsigned int lower_mtu;
+	int link_has_mtu;
 
 	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 
@@ -403,6 +427,13 @@ void *_handle_pmtud_link_thread(void *data)
 
 	while (!shutdown_in_progress(knet_h)) {
 		usleep(KNET_THREADS_TIMERES);
+
+		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
+			continue;
+		}
+		knet_h->pmtud_abort = 0;
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get read lock");
@@ -425,7 +456,11 @@ void *_handle_pmtud_link_thread(void *data)
 				     (dst_link->status.dynconnected != 1)))
 					continue;
 
-				if (_handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu)) {
+				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu);
+				if (errno == EDEADLK) {
+					goto out_unlock;
+				}
+				if (link_has_mtu) {
 					have_mtu = 1;
 					if (min_mtu < lower_mtu) {
 						lower_mtu = min_mtu;
@@ -445,7 +480,7 @@ void *_handle_pmtud_link_thread(void *data)
 				}
 			}
 		}
-
+out_unlock:
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 

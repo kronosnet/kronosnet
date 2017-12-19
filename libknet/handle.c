@@ -520,12 +520,6 @@ static void _stop_threads(knet_handle_t knet_h)
 		pthread_join(knet_h->dst_link_handler_thread, &retval);
 	}
 
-	pthread_mutex_lock(&knet_h->pmtud_mutex);
-	pthread_cond_signal(&knet_h->pmtud_cond);
-	pthread_mutex_unlock(&knet_h->pmtud_mutex);
-
-	sleep(1);
-
 	if (knet_h->pmtud_link_handler_thread) {
 		pthread_cancel(knet_h->pmtud_link_handler_thread);
 		pthread_join(knet_h->pmtud_link_handler_thread, &retval);
@@ -710,7 +704,7 @@ int knet_handle_free(knet_handle_t knet_h)
 		goto exit_nolock;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -774,7 +768,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -817,7 +811,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -949,7 +943,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1107,7 +1101,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1142,7 +1136,7 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1206,7 +1200,7 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1235,7 +1229,7 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1301,7 +1295,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1362,7 +1356,7 @@ int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1521,7 +1515,7 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
@@ -1569,7 +1563,7 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 		return -1;
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));

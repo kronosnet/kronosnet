@@ -641,7 +641,7 @@ static void *_sctp_connect_thread(void *data)
 		/*
 		 * Sort out which FD has a connection
 		 */
-		savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+		savederrno = get_global_wrlock(knet_h);
 		if (savederrno) {
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to get write lock: %s",
 				strerror(savederrno));
@@ -871,7 +871,7 @@ static void *_sctp_listen_thread(void *data)
 			continue;
 		}
 
-		savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+		savederrno = get_global_wrlock(knet_h);
 		if (savederrno) {
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to get write lock: %s",
 				strerror(savederrno));

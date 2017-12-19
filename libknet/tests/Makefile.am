@@ -66,4 +66,5 @@ knet_bench_test_SOURCES	= knet_bench.c \
 			  ../common.c \
 			  ../logging.c \
 			  ../compat.c \
-			  ../transport_common.c
+			  ../transport_common.c \
+			  ../threads_common.c

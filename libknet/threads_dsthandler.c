@@ -17,6 +17,7 @@
 #include "logging.h"
 #include "threads_common.h"
 #include "threads_dsthandler.h"
+#include "threads_pmtud.h"
 
 static void _handle_dst_link_updates(knet_handle_t knet_h)
 {
@@ -28,7 +29,7 @@ static void _handle_dst_link_updates(knet_handle_t knet_h)
 		return;
 	}
 
-	if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
+	if (get_global_wrlock(knet_h) != 0) {
 		log_debug(knet_h, KNET_SUB_DSTCACHE, "Unable to get read lock");
 		return;
 	}

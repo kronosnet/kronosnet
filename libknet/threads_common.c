@@ -36,3 +36,28 @@ int shutdown_in_progress(knet_handle_t knet_h)
 
 	return ret;
 }
+
+static int pmtud_reschedule(knet_handle_t knet_h)
+{
+	if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
+		return -1;
+	}
+
+	knet_h->pmtud_abort = 1;
+
+	if (knet_h->pmtud_running) {
+		pthread_cond_signal(&knet_h->pmtud_cond);
+	}
+
+	pthread_mutex_unlock(&knet_h->pmtud_mutex);
+	return 0;
+}
+
+int get_global_wrlock(knet_handle_t knet_h)
+{
+	if (pmtud_reschedule(knet_h) < 0) {
+		log_info(knet_h, KNET_SUB_PMTUD, "Unable to notify PMTUd to reschedule. Expect delays in executing API calls");
+	}
+	return pthread_rwlock_wrlock(&knet_h->global_rwlock);
+}

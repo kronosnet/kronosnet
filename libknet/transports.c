@@ -25,6 +25,7 @@
 #include "transport_loopback.h"
 #include "transport_udp.h"
 #include "transport_sctp.h"
+#include "threads_common.h"
 
 #define empty_module 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 
@@ -224,7 +225,7 @@ int knet_handle_set_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
 		log_warn(knet_h, KNET_SUB_HANDLE, "reconnect internval above 1 minute (%u msecs) could cause long delays in network convergiance", msecs);
 	}
 
-	savederrno = pthread_rwlock_wrlock(&knet_h->global_rwlock);
+	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
 			strerror(savederrno));
