@@ -35,14 +35,7 @@ static void test(void)
 
 	printf("Test knet_handle_free with one host configured\n");
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
-
-	if (!knet_h) {
-		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
 
 	if (knet_host_add(knet_h, 1) < 0) {
 		printf("Unable to add new knet_host: %s\n", strerror(errno));

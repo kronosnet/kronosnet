@@ -35,14 +35,7 @@ static void test(void)
 
 	printf("Test knet_handle_setfwd with invalid param (2) \n");
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
-
-	if (!knet_h) {
-		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
 
 	if ((!knet_handle_setfwd(knet_h, 2)) || (errno != EINVAL)) {
 		printf("knet_handle_setfwd accepted invalid param for enabled: %s\n", strerror(errno));

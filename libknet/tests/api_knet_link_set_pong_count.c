@@ -46,14 +46,7 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
-
-	if (!knet_h) {
-		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
 
 	printf("Test knet_link_set_pong_count with unconfigured host_id\n");
 

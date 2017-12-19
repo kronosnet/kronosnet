@@ -37,14 +37,7 @@ static void test(void)
 
 	printf("Test knet_log_set_loglevel incorrect subsystem\n");
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_INFO);
-
-	if (!knet_h) {
-		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	knet_h = knet_handle_start(logfds, KNET_LOG_INFO);
 
 	if ((!knet_log_set_loglevel(knet_h, KNET_SUB_UNKNOWN - 1, KNET_LOG_DEBUG)) || (errno != EINVAL)) {
 		printf("knet_log_set_loglevel accepted invalid subsystem or returned incorrect error: %s\n", strerror(errno));

@@ -31,6 +31,11 @@ static void test(void)
 
 	knet_h = knet_handle_new(1, 0, 0);
 	if (!knet_h) {
+		if (errno == ENAMETOOLONG) {
+			printf("Socket buffers too small (at least %d bytes needed)\n",
+			       KNET_RING_RCVBUFF);
+			exit(SKIP);
+		}
 		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -115,14 +120,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid 1, proper log_fd, proper log level (DEBUG)\n");
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
-
-	if (!knet_h) {
-		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
 
 	knet_handle_free(knet_h);
 	flush_logs(logfds[0], stdout);

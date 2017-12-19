@@ -107,6 +107,9 @@ typedef struct knet_handle *knet_handle_t;
  * @return
  * on success, a new knet_handle_t is returned.
  * on failure, NULL is returned and errno is set.
+ * knet-specific errno values:
+ *   ENAMETOOLONG - socket buffers couldn't be set big enough
+ *   ERANGE       - buffer size readback returned unexpected type
  */
 
 knet_handle_t knet_handle_new(knet_node_id_t host_id,
