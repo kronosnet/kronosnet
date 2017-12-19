@@ -79,7 +79,7 @@ int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 #define SO_SNDBUFFORCE 0
 #endif
 
-static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int force, int target)
+static int _configure_sockbuf(knet_handle_t knet_h, int sock, int option, int force, int target)
 {
 	int savederrno = 0;
 	int new_value;
@@ -87,26 +87,26 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 
 	if (setsockopt(sock, SOL_SOCKET, option, &target, sizeof target) != 0) {
 		savederrno = errno;
-		log_err (knet_h, KNET_SUB_TRANSPORT,
-			 "Error setting socket buffer via option %d to value %d: %s\n",
-			 option, target, strerror(savederrno));
+		log_err(knet_h, KNET_SUB_TRANSPORT,
+			"Error setting socket buffer via option %d to value %d: %s\n",
+			option, target, strerror(savederrno));
 		errno = savederrno;
 		return -1;
 	}
 
 	if (getsockopt(sock, SOL_SOCKET, option, &new_value, &value_len) != 0) {
 		savederrno = errno;
-		log_err (knet_h, KNET_SUB_TRANSPORT,
-			 "Error getting socket buffer via option %d: %s\n",
-			 option, strerror(savederrno));
+		log_err(knet_h, KNET_SUB_TRANSPORT,
+			"Error getting socket buffer via option %d: %s\n",
+			option, strerror(savederrno));
 		errno = savederrno;
 		return -1;
 	}
 
 	if (value_len != sizeof new_value) {
-		log_err (knet_h, KNET_SUB_TRANSPORT,
-			 "Socket option %d returned unexpected size %u\n",
-			 option, value_len);
+		log_err(knet_h, KNET_SUB_TRANSPORT,
+			"Socket option %d returned unexpected size %u\n",
+			option, value_len);
 		errno = ERANGE;
 		return -1;
 	}
@@ -160,7 +160,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-	if (_configure_sockbuf (knet_h, sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF)) {
+	if (_configure_sockbuf(knet_h, sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s receive buffer: %s",
@@ -168,7 +168,7 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		goto exit_error;
 	}
 
-	if (_configure_sockbuf (knet_h, sock, SO_SNDBUF, SO_SNDBUFFORCE, KNET_RING_RCVBUFF)) {
+	if (_configure_sockbuf(knet_h, sock, SO_SNDBUF, SO_SNDBUFFORCE, KNET_RING_RCVBUFF)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s send buffer: %s",
