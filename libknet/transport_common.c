@@ -85,18 +85,42 @@ static int _configure_sockbuf (knet_handle_t knet_h, int sock, int option, int f
 	int new_value;
 	socklen_t value_len = sizeof new_value;
 
-	if (setsockopt(sock, SOL_SOCKET, option, &target, sizeof target) == 0 &&
-	    getsockopt(sock, SOL_SOCKET, option, &new_value, &value_len) == 0) {
-		if (value_len == sizeof new_value && target <= new_value) {
-			return 0;
-		}
-		if (!force) {
-			log_debug (knet_h, KNET_SUB_TRANSPORT,
-				   "Failed to set socket buffer via option %d to value %d: capped at %d",
-				   option, target, new_value);
-			errno = ENAMETOOLONG;
-			return -1;
-		}
+	if (setsockopt(sock, SOL_SOCKET, option, &target, sizeof target) != 0) {
+		savederrno = errno;
+		log_err (knet_h, KNET_SUB_TRANSPORT,
+			 "Error setting socket buffer via option %d to value %d: %s\n",
+			 option, target, strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (getsockopt(sock, SOL_SOCKET, option, &new_value, &value_len) != 0) {
+		savederrno = errno;
+		log_err (knet_h, KNET_SUB_TRANSPORT,
+			 "Error getting socket buffer via option %d: %s\n",
+			 option, strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (value_len != sizeof new_value) {
+		log_err (knet_h, KNET_SUB_TRANSPORT,
+			 "Socket option %d returned unexpected size %u\n",
+			 option, value_len);
+		errno = ERANGE;
+		return -1;
+	}
+
+	if (target <= new_value) {
+		return 0;
+	}
+
+	if (!force) {
+		log_debug (knet_h, KNET_SUB_TRANSPORT,
+			   "Failed to set socket buffer via option %d to value %d: capped at %d",
+			   option, target, new_value);
+		errno = ENAMETOOLONG;
+		return -1;
 	}
 
 	if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target) < 0) {
