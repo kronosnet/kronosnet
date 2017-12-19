@@ -22,7 +22,7 @@
 #include "libnozzle.h"
 #include "internals.h"
 
-static int _read_pipe(int fd, char **file, size_t *length)
+static int read_pipe(int fd, char **file, size_t *length)
 {
 	char buf[4096];
 	int n;
@@ -71,7 +71,7 @@ static int _read_pipe(int fd, char **file, size_t *length)
 	return 0;
 }
 
-int _execute_shell(const char *command, char **error_string)
+int execute_shell_command(const char *command, char **error_string)
 {
 	pid_t pid;
 	int status, err = 0;
@@ -98,7 +98,7 @@ int _execute_shell(const char *command, char **error_string)
 	if (pid) { /* parent */
 
 		close(fd[1]);
-		err = _read_pipe(fd[0], error_string, &size);
+		err = read_pipe(fd[0], error_string, &size);
 		if (err)
 			goto out_clean0;
 
@@ -134,7 +134,7 @@ out_clean0:
 	return err;
 }
 
-int _exec_updown(const nozzle_t nozzle, const char *action, char **error_string)
+int run_updown(const nozzle_t nozzle, const char *action, char **error_string)
 {
 	char command[PATH_MAX];
 	struct stat sb;
@@ -151,7 +151,7 @@ int _exec_updown(const nozzle_t nozzle, const char *action, char **error_string)
 	if ((err < 0) && (errno == ENOENT))
 		return 0;
 
-	err = _execute_shell(command, error_string);
+	err = execute_shell_command(command, error_string);
 	if ((!err) && (*error_string)) {
 		free(*error_string);
 		*error_string = NULL;

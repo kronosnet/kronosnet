@@ -60,7 +60,7 @@ struct nozzle_iface {
 
 #define ifname ifr.ifr_name
 
-int _execute_shell(const char *command, char **error_string);
-int _exec_updown(const nozzle_t nozzle, const char *action, char **error_string);
+int execute_shell_command(const char *command, char **error_string);
+int run_updown(const nozzle_t nozzle, const char *action, char **error_string);
 
 #endif

@@ -448,7 +448,7 @@ static int check_knet_mtu_ipv6(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -471,7 +471,7 @@ static int check_knet_mtu_ipv6(void)
 		goto out_clean;
 	}
 
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -509,7 +509,7 @@ static int check_knet_mtu_ipv6(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_2);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -540,7 +540,7 @@ static int check_knet_mtu_ipv6(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -560,7 +560,7 @@ static int check_knet_mtu_ipv6(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_2);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -705,7 +705,7 @@ out_clean:
 	return err;
 }
 
-static int check_nozzle_execute_shell(void)
+static int check_nozzle_execute_shell_command(void)
 {
 	int err = 0;
 	char command[4096];
@@ -713,11 +713,11 @@ static int check_nozzle_execute_shell(void)
 
 	memset(command, 0, sizeof(command));
 
-	printf("Testing _execute_shell\n");
+	printf("Testing execute_shell_command\n");
 
 	printf("command true\n");
 
-	err = _execute_shell("true", &error_string);
+	err = execute_shell_command("true", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -732,7 +732,7 @@ static int check_nozzle_execute_shell(void)
 
 	printf("command false\n");
 
-	err = _execute_shell("false", &error_string);
+	err = execute_shell_command("false", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -746,7 +746,7 @@ static int check_nozzle_execute_shell(void)
 
 	printf("command that outputs to stdout (enforcing redirect)\n");
 
-	err = _execute_shell("grep -h 2>&1", &error_string);
+	err = execute_shell_command("grep -h 2>&1", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -759,7 +759,7 @@ static int check_nozzle_execute_shell(void)
 	} 
 
 	printf("command that outputs to stderr\n");
-	err = _execute_shell("grep -h", &error_string);
+	err = execute_shell_command("grep -h", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -772,7 +772,7 @@ static int check_nozzle_execute_shell(void)
 	} 
 
 	printf("empty command\n");
-	err = _execute_shell(NULL, &error_string);
+	err = execute_shell_command(NULL, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -785,7 +785,7 @@ static int check_nozzle_execute_shell(void)
 	}
 
 	printf("empty error\n");
-	err = _execute_shell("true", NULL);
+	err = execute_shell_command("true", NULL);
 	if (!err) {
 		printf("Check EINVAL filter for no error_string!\n");
 		err = -1;
@@ -846,7 +846,7 @@ static int check_knet_up_down(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q UP", nozzle->name);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -885,7 +885,7 @@ static int check_knet_up_down(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q UP", nozzle->name);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1231,7 +1231,7 @@ static int check_knet_set_del_ip(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1315,7 +1315,7 @@ static int check_knet_set_del_ip(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1349,7 +1349,7 @@ static int check_knet_set_del_ip(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1383,7 +1383,7 @@ static int check_knet_set_del_ip(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = _execute_shell(verifycmd, &error_string);
+	err = execute_shell_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
@@ -1491,7 +1491,7 @@ int main(void)
 	if (check_knet_mac() < 0)
 		return -1;
 
-	if (check_nozzle_execute_shell() < 0)
+	if (check_nozzle_execute_shell_command() < 0)
 		return -1;
 
 	if (check_knet_up_down() < 0)

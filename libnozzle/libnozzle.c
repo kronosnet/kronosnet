@@ -691,7 +691,7 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 		goto out_clean;
 	}
 
-	_exec_updown(nozzle, "pre-up.d", error_preup);
+	run_updown(nozzle, "pre-up.d", error_preup);
 
 	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
 	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
@@ -700,7 +700,7 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 		goto out_clean;
 	}
 
-	_exec_updown(nozzle, "up.d", error_up);
+	run_updown(nozzle, "up.d", error_up);
 
 	nozzle->up = 1;
 
@@ -728,7 +728,7 @@ static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 		goto out_clean;
 	}
 
-	_exec_updown(nozzle, "down.d", error_down);
+	run_updown(nozzle, "down.d", error_down);
 
 	ifr.ifr_flags &= ~IFF_UP;
 
@@ -738,7 +738,7 @@ static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 		goto out_clean;
 	}
 
-	_exec_updown(nozzle, "post-down.d", error_postdown);
+	run_updown(nozzle, "post-down.d", error_postdown);
 
 	nozzle->up = 0;
 
@@ -872,7 +872,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	if (broadcast) {
 		free(broadcast);
 	}
-	return _execute_shell(cmdline, error_string);
+	return execute_shell_command(cmdline, error_string);
 }
 
 static int _find_ip(nozzle_t nozzle,
