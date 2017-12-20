@@ -38,12 +38,15 @@
 #include "libnozzle.h"
 #include "internals.h"
 
+/*
+ * internal functions are all _unlocked_
+ * locking should be handled at external API functions
+ */
 static int lib_init = 0;
 static struct nozzle_lib_config lib_cfg;
 static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* forward declarations */
-static int _check(const nozzle_t nozzle);
 static void _close(nozzle_t nozzle);
 static void _close_cfg(void);
 static int _get_mtu(const nozzle_t nozzle);
@@ -57,13 +60,19 @@ static int _find_ip(nozzle_t nozzle,
 			const char *ipaddr, const char *prefix,
 			struct nozzle_ip **ip, struct nozzle_ip **ip_prev);
 
-static int _check(const nozzle_t nozzle)
+static int is_valid_nozzle(const nozzle_t nozzle)
 {
-	nozzle_t temp = lib_cfg.head;
+	nozzle_t temp;
 
 	if (!nozzle) {
 		return 0;
 	}
+
+	if (!lib_init) {
+		return 0;
+	}
+
+	temp = lib_cfg.head;
 
 	while (temp != NULL) {
 		if (nozzle == temp)
@@ -426,7 +435,7 @@ int nozzle_close(nozzle_t nozzle,  char **error_down, char **error_postdown)
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
+	if (!is_valid_nozzle(nozzle)) {
 		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -470,19 +479,14 @@ int nozzle_get_mtu(const nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
 
-	if (!nozzle) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
 		errno = savederrno;
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
@@ -502,7 +506,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 	struct nozzle_ip *tmp_ip;
 	struct ifreq ifr;
 
-	if ((!nozzle) || (!mtu) || (!error_string)) {
+	if ((!mtu) || (!error_string)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -513,8 +517,8 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
@@ -565,7 +569,7 @@ int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
 {
 	int err = 0, savederrno = 0;
 
-	if ((!nozzle) || (!ether_addr)) {
+	if (!ether_addr) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -576,8 +580,8 @@ int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
@@ -595,7 +599,7 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 	int err = 0, savederrno = 0;
 	struct ifreq ifr;
 
-	if ((!nozzle) || (!ether_addr)) {
+	if (!ether_addr) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -606,8 +610,8 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
@@ -655,18 +659,13 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 	int err = 0, savederrno = 0;
 	struct ifreq ifr;
 
-	if (!nozzle) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
 		errno = savederrno;
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
+	if (!is_valid_nozzle(nozzle)) {
 		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -751,18 +750,13 @@ int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 {
 	int err = 0, savederrno = 0;
 
-	if (!nozzle) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
 		errno = savederrno;
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
+	if (!is_valid_nozzle(nozzle)) {
 		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
@@ -908,7 +902,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 	struct nozzle_ip *ip = NULL, *ip_prev = NULL, *ip_last = NULL;
 	int secondary = 0;
 
-	if ((!nozzle) || (!ipaddr) || (!prefix) || (!error_string)) {
+	if ((!ipaddr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -919,8 +913,8 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
@@ -987,7 +981,7 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
         int found = 0;
 	struct nozzle_ip *ip = NULL, *ip_prev = NULL;
 
-	if ((!nozzle) || (!ipaddr) || (!prefix) || (!error_string)) {
+	if ((!ipaddr) || (!prefix) || (!error_string)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -998,8 +992,8 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
 	}
@@ -1030,18 +1024,13 @@ int nozzle_get_fd(const nozzle_t nozzle)
 {
 	int fd = -1, savederrno = 0;
 
-	if (!nozzle) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
 		errno = savederrno;
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
+	if (!is_valid_nozzle(nozzle)) {
 		savederrno = ENOENT;
 		fd = -1;
 		goto out_clean;
@@ -1060,19 +1049,14 @@ const char *nozzle_get_name_by_handle(const nozzle_t nozzle)
 	int savederrno = 0;
 	char *name = NULL;
 
-	if (!nozzle) {
-		errno = EINVAL;
-		return NULL;
-	}
-
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
 		errno = savederrno;
 		return NULL;
 	}
 
-	if (!_check(nozzle)) {
-		errno = ENOENT;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = ENOENT;
 		goto out_clean;
 	}
 
@@ -1092,7 +1076,7 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries)
 	int size = 0, offset = 0, len;
 	struct nozzle_ip *ip = NULL;
 
-	if ((!nozzle) || (!ipaddr_list) || (!entries)) {
+	if ((!ipaddr_list) || (!entries)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -1103,8 +1087,8 @@ int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries)
 		return -1;
 	}
 
-	if (!_check(nozzle)) {
-		errno = EINVAL;
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
 		goto out_clean;
 	}
 
