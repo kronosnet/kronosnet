@@ -872,7 +872,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	if (broadcast) {
 		free(broadcast);
 	}
-	return execute_shell_command(cmdline, error_string);
+	return execute_bin_sh_command(cmdline, error_string);
 }
 
 static int _find_ip(nozzle_t nozzle,
