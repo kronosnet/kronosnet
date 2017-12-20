@@ -301,7 +301,7 @@ int nozzle_reset_mac(nozzle_t nozzle);
  * NULL on error and errno is set.
  */
 
-nozzle_t nozzle_get_handle_by_name(char *devname);
+nozzle_t nozzle_get_handle_by_name(const char *devname);
 
 /**
  * nozzle_get_name_by_handle

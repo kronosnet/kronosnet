@@ -161,24 +161,6 @@ int run_updown(const nozzle_t nozzle, const char *action, char **error_string)
 }
 
 #if 0
-static int _check(const nozzle_t nozzle)
-{
-	nozzle_t temp = lib_cfg.head;
-
-	if (!nozzle) {
-		return 0;
-	}
-
-	while (temp != NULL) {
-		if (nozzle == temp)
-			return 1;
-
-		temp = temp->next;
-	}
-
-	return 0;
-}
-
 static void _close(nozzle_t nozzle)
 {
 #ifdef KNET_BSD
@@ -300,38 +282,6 @@ static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 out_clean:
 	errno = savederrno;
 	return err;
-}
-
-nozzle_t nozzle_get_handle_by_name(char *devname)
-{
-	int savederrno = 0;
-	nozzle_t nozzle;
-
-	if ((devname == NULL) || (strlen(devname) > IFNAMSIZ)) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return NULL;
-	}
-
-	nozzle = lib_cfg.head;
-	while (nozzle != NULL) {
-		if (!strcmp(devname, nozzle->name))
-			break;
-		nozzle = nozzle->next;
-	}
-
-	if (!nozzle) {
-		savederrno = ENOENT;
-	}
-
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return nozzle;
 }
 
 nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
@@ -1128,64 +1078,6 @@ out_clean:
 	pthread_mutex_unlock(&config_mutex);
 	errno = savederrno;
 	return err;
-}
-
-int nozzle_get_fd(const nozzle_t nozzle)
-{
-	int fd = -1, savederrno = 0;
-
-	if (!nozzle) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!_check(nozzle)) {
-		savederrno = ENOENT;
-		fd = -1;
-		goto out_clean;
-	}
-
-	fd = nozzle->fd;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return fd;
-}
-
-const char *nozzle_get_name_by_handle(const nozzle_t nozzle)
-{
-	int savederrno = 0;
-	char *name = NULL;
-
-	if (!nozzle) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return NULL;
-	}
-
-	if (!_check(nozzle)) {
-		errno = ENOENT;
-		goto out_clean;
-	}
-
-	name = nozzle->name;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return name;
 }
 
 int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries)
