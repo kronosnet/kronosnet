@@ -207,38 +207,6 @@ out_clean:
 	return err;
 }
 
-nozzle_t nozzle_get_handle_by_name(char *devname)
-{
-	int savederrno = 0;
-	nozzle_t nozzle;
-
-	if ((devname == NULL) || (strlen(devname) > IFNAMSIZ)) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return NULL;
-	}
-
-	nozzle = lib_cfg.head;
-	while (nozzle != NULL) {
-		if (!strcmp(devname, nozzle->name))
-			break;
-		nozzle = nozzle->next;
-	}
-
-	if (!nozzle) {
-		savederrno = ENOENT;
-	}
-
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return nozzle;
-}
-
 nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 {
 	int savederrno = 0;
@@ -1020,54 +988,6 @@ out_clean:
 	return err;
 }
 
-int nozzle_get_fd(const nozzle_t nozzle)
-{
-	int fd = -1, savederrno = 0;
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = ENOENT;
-		fd = -1;
-		goto out_clean;
-	}
-
-	fd = nozzle->fd;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return fd;
-}
-
-const char *nozzle_get_name_by_handle(const nozzle_t nozzle)
-{
-	int savederrno = 0;
-	char *name = NULL;
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return NULL;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = ENOENT;
-		goto out_clean;
-	}
-
-	name = nozzle->name;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return name;
-}
-
 int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries)
 {
 	int err = 0, savederrno = 0;
@@ -1135,4 +1055,88 @@ out_clean:
 	pthread_mutex_unlock(&config_mutex);
 	errno = savederrno;
 	return err;
+}
+
+/*
+ * functions below should be completed
+ */
+
+nozzle_t nozzle_get_handle_by_name(const char *devname)
+{
+	int savederrno = 0;
+	nozzle_t nozzle;
+
+	if ((devname == NULL) || (strlen(devname) > IFNAMSIZ)) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return NULL;
+	}
+
+	nozzle = lib_cfg.head;
+	while (nozzle != NULL) {
+		if (!strcmp(devname, nozzle->name))
+			break;
+		nozzle = nozzle->next;
+	}
+
+	if (!nozzle) {
+		savederrno = ENOENT;
+	}
+
+	pthread_mutex_unlock(&config_mutex);
+	errno = savederrno;
+	return nozzle;
+}
+
+const char *nozzle_get_name_by_handle(const nozzle_t nozzle)
+{
+	int savederrno = 0;
+	char *name = NULL;
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return NULL;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = ENOENT;
+		goto out_clean;
+	}
+
+	name = nozzle->name;
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	errno = savederrno;
+	return name;
+}
+
+int nozzle_get_fd(const nozzle_t nozzle)
+{
+	int fd = -1, savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = ENOENT;
+		fd = -1;
+		goto out_clean;
+	}
+
+	fd = nozzle->fd;
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	errno = savederrno;
+	return fd;
 }
