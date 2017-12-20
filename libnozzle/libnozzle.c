@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <net/ethernet.h>
-#include <arpa/inet.h>
 #include <pthread.h>
 #include <limits.h>
 #include <stdio.h>
@@ -119,29 +118,6 @@ out_clean:
 	return err;
 }
 
-static char *_get_v4_broadcast(const char *ipaddr, const char *prefix)
-{
-	int prefix_len;
-	struct in_addr mask;
-	struct in_addr broadcast;
-	struct in_addr address;
-
-	prefix_len = atoi(prefix);
-
-	if ((prefix_len > 32) || (prefix_len < 0))
-		return NULL;
-
-	if (inet_pton(AF_INET, ipaddr, &address) <= 0)
-		return NULL;
-
-	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
-
-	memset(&broadcast, 0, sizeof(broadcast));
-	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
-
-	return strdup(inet_ntoa(broadcast));
-}
-
 static int _set_ip(nozzle_t nozzle, const char *command,
 		      const char *ipaddr, const char *prefix,
 		      char **error_string, int secondary)
@@ -156,7 +132,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 #endif
 
 	if (!strchr(ipaddr, ':')) {
-		broadcast = _get_v4_broadcast(ipaddr, prefix);
+		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
@@ -239,6 +215,8 @@ static int _find_ip(nozzle_t nozzle,
 
 /*
  * internal helpers below should be completed
+ *
+ * keep all ioctl work within this file
  */
 
 static int is_valid_nozzle(const nozzle_t nozzle)

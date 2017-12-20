@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <arpa/inet.h>
 
 #include "libnozzle.h"
 #include "internals.h"
@@ -158,6 +159,29 @@ int run_updown(const nozzle_t nozzle, const char *action, char **error_string)
 	}
 
 	return err;
+}
+
+char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
+{
+	int prefix_len;
+	struct in_addr mask;
+	struct in_addr broadcast;
+	struct in_addr address;
+
+	prefix_len = atoi(prefix);
+
+	if ((prefix_len > 32) || (prefix_len < 0))
+		return NULL;
+
+	if (inet_pton(AF_INET, ipaddr, &address) <= 0)
+		return NULL;
+
+	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
+
+	memset(&broadcast, 0, sizeof(broadcast));
+	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
+
+	return strdup(inet_ntoa(broadcast));
 }
 
 #if 0
@@ -625,29 +649,6 @@ out_clean:
 	pthread_mutex_unlock(&config_mutex);
 	errno = savederrno;
 	return err;
-}
-
-static char *_get_v4_broadcast(const char *ipaddr, const char *prefix)
-{
-	int prefix_len;
-	struct in_addr mask;
-	struct in_addr broadcast;
-	struct in_addr address;
-
-	prefix_len = atoi(prefix);
-
-	if ((prefix_len > 32) || (prefix_len < 0))
-		return NULL;
-
-	if (inet_pton(AF_INET, ipaddr, &address) <= 0)
-		return NULL;
-
-	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
-
-	memset(&broadcast, 0, sizeof(broadcast));
-	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
-
-	return strdup(inet_ntoa(broadcast));
 }
 
 static int _set_ip(nozzle_t nozzle, const char *command,
