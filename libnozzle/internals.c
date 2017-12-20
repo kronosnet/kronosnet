@@ -193,27 +193,6 @@ static void _close_cfg(void)
 	}
 }
 
-static int _get_mtu(const nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	err = ifr.ifr_mtu;
-
-out_clean:
-	errno = savederrno;
-	return err;
-}
-
 static int _get_mac(const nozzle_t nozzle, char **ether_addr)
 {
 	int err = 0, savederrno = 0;

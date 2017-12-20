@@ -46,43 +46,9 @@ static int lib_init = 0;
 static struct nozzle_lib_config lib_cfg;
 static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* forward declarations */
-static void _close(nozzle_t nozzle);
-static void _close_cfg(void);
-static int _get_mtu(const nozzle_t nozzle);
-static int _get_mac(const nozzle_t nozzle, char **ether_addr);
-static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
-static char *_get_v4_broadcast(const char *ipaddr, const char *prefix);
-static int _set_ip(nozzle_t nozzle, const char *command,
-		      const char *ipaddr, const char *prefix,
-		      char **error_string, int secondary);
-static int _find_ip(nozzle_t nozzle,
-			const char *ipaddr, const char *prefix,
-			struct nozzle_ip **ip, struct nozzle_ip **ip_prev);
-
-static int is_valid_nozzle(const nozzle_t nozzle)
-{
-	nozzle_t temp;
-
-	if (!nozzle) {
-		return 0;
-	}
-
-	if (!lib_init) {
-		return 0;
-	}
-
-	temp = lib_cfg.head;
-
-	while (temp != NULL) {
-		if (nozzle == temp)
-			return 1;
-
-		temp = temp->next;
-	}
-
-	return 0;
-}
+/*
+ * internal helpers
+ */
 
 static void _close(nozzle_t nozzle)
 {
@@ -114,27 +80,6 @@ static void _close_cfg(void)
 		close(lib_cfg.ioctlfd);
 		lib_init = 0;
 	}
-}
-
-static int _get_mtu(const nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	err = ifr.ifr_mtu;
-
-out_clean:
-	errno = savederrno;
-	return err;
 }
 
 static int _get_mac(const nozzle_t nozzle, char **ether_addr)
@@ -206,6 +151,214 @@ out_clean:
 	errno = savederrno;
 	return err;
 }
+
+static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
+{
+	int err = 0, savederrno = 0;
+	struct ifreq ifr;
+
+	if (!nozzle->up) {
+		goto out_clean;
+	}
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
+
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	run_updown(nozzle, "down.d", error_down);
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	run_updown(nozzle, "post-down.d", error_postdown);
+
+	nozzle->up = 0;
+
+out_clean:
+	errno = savederrno;
+	return err;
+}
+
+static char *_get_v4_broadcast(const char *ipaddr, const char *prefix)
+{
+	int prefix_len;
+	struct in_addr mask;
+	struct in_addr broadcast;
+	struct in_addr address;
+
+	prefix_len = atoi(prefix);
+
+	if ((prefix_len > 32) || (prefix_len < 0))
+		return NULL;
+
+	if (inet_pton(AF_INET, ipaddr, &address) <= 0)
+		return NULL;
+
+	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
+
+	memset(&broadcast, 0, sizeof(broadcast));
+	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
+
+	return strdup(inet_ntoa(broadcast));
+}
+
+static int _set_ip(nozzle_t nozzle, const char *command,
+		      const char *ipaddr, const char *prefix,
+		      char **error_string, int secondary)
+{
+	char *broadcast = NULL;
+	char cmdline[4096];
+#ifdef KNET_BSD
+	char proto[6];
+	int v4 = 1;
+
+	snprintf(proto, sizeof(proto), "inet");
+#endif
+
+	if (!strchr(ipaddr, ':')) {
+		broadcast = _get_v4_broadcast(ipaddr, prefix);
+		if (!broadcast) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+#ifdef KNET_BSD
+	  else {
+		v4 = 0;
+		snprintf(proto, sizeof(proto), "inet6");
+	}
+#endif
+
+	memset(cmdline, 0, sizeof(cmdline));
+
+#ifdef KNET_LINUX
+	if (broadcast) {
+		snprintf(cmdline, sizeof(cmdline)-1,
+			 "ip addr %s %s/%s dev %s broadcast %s",
+			 command, ipaddr, prefix,
+			 nozzle->name, broadcast);
+	} else {
+		snprintf(cmdline, sizeof(cmdline)-1,
+			 "ip addr %s %s/%s dev %s",
+			command, ipaddr, prefix,
+			nozzle->name);
+	}
+#endif
+#ifdef KNET_BSD
+	if (!strcmp(command, "add")) {
+		snprintf(cmdline, sizeof(cmdline)-1,
+			 "ifconfig %s %s %s/%s",
+			 nozzle->name, proto, ipaddr, prefix);
+		if (broadcast) {
+			snprintf(cmdline + strlen(cmdline),
+				 sizeof(cmdline) - strlen(cmdline) -1,
+				 " broadcast %s", broadcast);
+		}
+		if ((secondary) && (v4)) {
+			snprintf(cmdline + strlen(cmdline),
+				 sizeof(cmdline) - strlen(cmdline) -1,
+				 " alias");
+		}
+	} else {
+		snprintf(cmdline, sizeof(cmdline)-1,
+				 "ifconfig %s %s %s/%s delete",
+				 nozzle->name, proto, ipaddr, prefix);
+	}
+#endif
+	if (broadcast) {
+		free(broadcast);
+	}
+	return execute_bin_sh_command(cmdline, error_string);
+}
+
+static int _find_ip(nozzle_t nozzle,
+			const char *ipaddr, const char *prefix,
+			struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
+{
+	struct nozzle_ip *local_ip, *local_ip_prev;
+	int found = 0;
+
+	local_ip = local_ip_prev = nozzle->ip;
+
+	while(local_ip) {
+		if ((!strcmp(local_ip->ipaddr, ipaddr)) && (!strcmp(local_ip->prefix, prefix))) {
+			found = 1;
+			break;
+		}
+		local_ip_prev = local_ip;
+		local_ip = local_ip->next;
+	}
+
+	if (found) {
+		*ip = local_ip;
+		*ip_prev = local_ip_prev;
+	}
+
+	return found;
+}
+
+/*
+ * internal helpers below should be completed
+ */
+
+static int is_valid_nozzle(const nozzle_t nozzle)
+{
+	nozzle_t temp;
+
+	if (!nozzle) {
+		return 0;
+	}
+
+	if (!lib_init) {
+		return 0;
+	}
+
+	temp = lib_cfg.head;
+
+	while (temp != NULL) {
+		if (nozzle == temp)
+			return 1;
+
+		temp = temp->next;
+	}
+
+	return 0;
+}
+
+static int get_iface_mtu(const nozzle_t nozzle)
+{
+	int err = 0, savederrno = 0;
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
+
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	err = ifr.ifr_mtu;
+
+out_clean:
+	errno = savederrno;
+	return err;
+}
+
+/*
+ * public API
+ */
 
 nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 {
@@ -350,7 +503,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	strncpy(nozzle->name, ifname, IFNAMSIZ);
 #endif
 
-	nozzle->default_mtu = _get_mtu(nozzle);
+	nozzle->default_mtu = get_iface_mtu(nozzle);
 	if (nozzle->default_mtu < 0) {
 		savederrno = errno;
 		goto out_error;
@@ -443,31 +596,6 @@ out_clean:
 	return err;
 }
 
-int nozzle_get_mtu(const nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	err = _get_mtu(nozzle);
-	savederrno = errno;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	savederrno = errno;
-	return err;
-}
-
 int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 {
 	int err = 0, savederrno = 0;
@@ -491,7 +619,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 		goto out_clean;
 	}
 
-	err = nozzle->current_mtu = _get_mtu(nozzle);
+	err = nozzle->current_mtu = get_iface_mtu(nozzle);
 	if (err < 0) {
 		savederrno = errno;
 		goto out_clean;
@@ -677,43 +805,6 @@ out_clean:
 	return err;
 }
 
-static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-
-	if (!nozzle->up) {
-		goto out_clean;
-	}
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	run_updown(nozzle, "down.d", error_down);
-
-	ifr.ifr_flags &= ~IFF_UP;
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	run_updown(nozzle, "post-down.d", error_postdown);
-
-	nozzle->up = 0;
-
-out_clean:
-	errno = savederrno;
-	return err;
-}
-
 int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 {
 	int err = 0, savederrno = 0;
@@ -743,124 +834,6 @@ out_clean:
 	pthread_mutex_unlock(&config_mutex);
 	errno = savederrno;
 	return err;
-}
-
-static char *_get_v4_broadcast(const char *ipaddr, const char *prefix)
-{
-	int prefix_len;
-	struct in_addr mask;
-	struct in_addr broadcast;
-	struct in_addr address;
-
-	prefix_len = atoi(prefix);
-
-	if ((prefix_len > 32) || (prefix_len < 0))
-		return NULL;
-
-	if (inet_pton(AF_INET, ipaddr, &address) <= 0)
-		return NULL;
-
-	mask.s_addr = htonl(~((1 << (32 - prefix_len)) - 1));
-
-	memset(&broadcast, 0, sizeof(broadcast));
-	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
-
-	return strdup(inet_ntoa(broadcast));
-}
-
-static int _set_ip(nozzle_t nozzle, const char *command,
-		      const char *ipaddr, const char *prefix,
-		      char **error_string, int secondary)
-{
-	char *broadcast = NULL;
-	char cmdline[4096];
-#ifdef KNET_BSD
-	char proto[6];
-	int v4 = 1;
-
-	snprintf(proto, sizeof(proto), "inet");
-#endif
-
-	if (!strchr(ipaddr, ':')) {
-		broadcast = _get_v4_broadcast(ipaddr, prefix);
-		if (!broadcast) {
-			errno = EINVAL;
-			return -1;
-		}
-	}
-#ifdef KNET_BSD
-	  else {
-		v4 = 0;
-		snprintf(proto, sizeof(proto), "inet6");
-	}
-#endif
-
-	memset(cmdline, 0, sizeof(cmdline));
-
-#ifdef KNET_LINUX
-	if (broadcast) {
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ip addr %s %s/%s dev %s broadcast %s",
-			 command, ipaddr, prefix,
-			 nozzle->name, broadcast);
-	} else {
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ip addr %s %s/%s dev %s",
-			command, ipaddr, prefix,
-			nozzle->name);
-	}
-#endif
-#ifdef KNET_BSD
-	if (!strcmp(command, "add")) {
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ifconfig %s %s %s/%s",
-			 nozzle->name, proto, ipaddr, prefix);
-		if (broadcast) {
-			snprintf(cmdline + strlen(cmdline),
-				 sizeof(cmdline) - strlen(cmdline) -1,
-				 " broadcast %s", broadcast);
-		}
-		if ((secondary) && (v4)) {
-			snprintf(cmdline + strlen(cmdline),
-				 sizeof(cmdline) - strlen(cmdline) -1,
-				 " alias");
-		}
-	} else {
-		snprintf(cmdline, sizeof(cmdline)-1,
-				 "ifconfig %s %s %s/%s delete",
-				 nozzle->name, proto, ipaddr, prefix);
-	}
-#endif
-	if (broadcast) {
-		free(broadcast);
-	}
-	return execute_bin_sh_command(cmdline, error_string);
-}
-
-static int _find_ip(nozzle_t nozzle,
-			const char *ipaddr, const char *prefix,
-			struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
-{
-	struct nozzle_ip *local_ip, *local_ip_prev;
-	int found = 0;
-
-	local_ip = local_ip_prev = nozzle->ip;
-
-	while(local_ip) {
-		if ((!strcmp(local_ip->ipaddr, ipaddr)) && (!strcmp(local_ip->prefix, prefix))) {
-			found = 1;
-			break;
-		}
-		local_ip_prev = local_ip;
-		local_ip = local_ip->next;
-	}
-
-	if (found) {
-		*ip = local_ip;
-		*ip_prev = local_ip_prev;
-	}
-
-	return found;
 }
 
 int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string)
@@ -912,7 +885,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 	 * if user asks for an IPv6 address, but MTU < 1280
 	 * store the IP and bring it up later if and when MTU > 1280
 	 */
-	if ((ip->domain == AF_INET6) && (_get_mtu(nozzle) < 1280)) {
+	if ((ip->domain == AF_INET6) && (get_iface_mtu(nozzle) < 1280)) {
 		err = 0;
 	} else {
 		if (nozzle->ip) {
@@ -1060,6 +1033,32 @@ out_clean:
 /*
  * functions below should be completed
  */
+
+int nozzle_get_mtu(const nozzle_t nozzle)
+{
+	int err = 0, savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	err = get_iface_mtu(nozzle);
+	savederrno = errno;
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	savederrno = errno;
+	return err;
+}
+
 
 nozzle_t nozzle_get_handle_by_name(const char *devname)
 {
