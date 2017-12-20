@@ -63,4 +63,6 @@ struct nozzle_iface {
 int execute_bin_sh_command(const char *command, char **error_string);
 int run_updown(const nozzle_t nozzle, const char *action, char **error_string);
 
+char *generate_v4_broadcast(const char *ipaddr, const char *prefix);
+
 #endif
