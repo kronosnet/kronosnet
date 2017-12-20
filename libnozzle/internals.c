@@ -184,6 +184,32 @@ char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
 	return strdup(inet_ntoa(broadcast));
 }
 
+int find_ip(nozzle_t nozzle,
+	    const char *ipaddr, const char *prefix,
+	    struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
+{
+	struct nozzle_ip *local_ip, *local_ip_prev;
+	int found = 0;
+
+	local_ip = local_ip_prev = nozzle->ip;
+
+	while(local_ip) {
+		if ((!strcmp(local_ip->ipaddr, ipaddr)) && (!strcmp(local_ip->prefix, prefix))) {
+			found = 1;
+			break;
+		}
+		local_ip_prev = local_ip;
+		local_ip = local_ip->next;
+	}
+
+	if (found) {
+		*ip = local_ip;
+		*ip_prev = local_ip_prev;
+	}
+
+	return found;
+}
+
 #if 0
 static void _close(nozzle_t nozzle)
 {
@@ -718,32 +744,6 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 		free(broadcast);
 	}
 	return _execute_bin_sh(cmdline, error_string);
-}
-
-static int _find_ip(nozzle_t nozzle,
-			const char *ipaddr, const char *prefix,
-			struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
-{
-	struct nozzle_ip *local_ip, *local_ip_prev;
-	int found = 0;
-
-	local_ip = local_ip_prev = nozzle->ip;
-
-	while(local_ip) {
-		if ((!strcmp(local_ip->ipaddr, ipaddr)) && (!strcmp(local_ip->prefix, prefix))) {
-			found = 1;
-			break;
-		}
-		local_ip_prev = local_ip;
-		local_ip = local_ip->next;
-	}
-
-	if (found) {
-		*ip = local_ip;
-		*ip_prev = local_ip_prev;
-	}
-
-	return found;
 }
 
 int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string)

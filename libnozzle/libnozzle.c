@@ -187,32 +187,6 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	return execute_bin_sh_command(cmdline, error_string);
 }
 
-static int _find_ip(nozzle_t nozzle,
-			const char *ipaddr, const char *prefix,
-			struct nozzle_ip **ip, struct nozzle_ip **ip_prev)
-{
-	struct nozzle_ip *local_ip, *local_ip_prev;
-	int found = 0;
-
-	local_ip = local_ip_prev = nozzle->ip;
-
-	while(local_ip) {
-		if ((!strcmp(local_ip->ipaddr, ipaddr)) && (!strcmp(local_ip->prefix, prefix))) {
-			found = 1;
-			break;
-		}
-		local_ip_prev = local_ip;
-		local_ip = local_ip->next;
-	}
-
-	if (found) {
-		*ip = local_ip;
-		*ip_prev = local_ip_prev;
-	}
-
-	return found;
-}
-
 /*
  * internal helpers below should be completed
  *
@@ -750,7 +724,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 		goto out_clean;
 	}
 
-	found = _find_ip(nozzle, ipaddr, prefix, &ip, &ip_prev);
+	found = find_ip(nozzle, ipaddr, prefix, &ip, &ip_prev);
 	if (found) {
 		goto out_clean;
 	}
@@ -829,7 +803,7 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 		goto out_clean;
 	}
 
-	found = _find_ip(nozzle, ipaddr, prefix, &ip, &ip_prev);
+	found = find_ip(nozzle, ipaddr, prefix, &ip, &ip_prev);
 	if (!found) {
 		goto out_clean;
 	}
