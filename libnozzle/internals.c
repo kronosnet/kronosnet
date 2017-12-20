@@ -71,7 +71,7 @@ static int read_pipe(int fd, char **file, size_t *length)
 	return 0;
 }
 
-int execute_shell_command(const char *command, char **error_string)
+int execute_bin_sh_command(const char *command, char **error_string)
 {
 	pid_t pid;
 	int status, err = 0;
@@ -151,7 +151,7 @@ int run_updown(const nozzle_t nozzle, const char *action, char **error_string)
 	if ((err < 0) && (errno == ENOENT))
 		return 0;
 
-	err = execute_shell_command(command, error_string);
+	err = execute_bin_sh_command(command, error_string);
 	if ((!err) && (*error_string)) {
 		free(*error_string);
 		*error_string = NULL;
@@ -976,7 +976,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 	if (broadcast) {
 		free(broadcast);
 	}
-	return _execute_shell(cmdline, error_string);
+	return _execute_bin_sh(cmdline, error_string);
 }
 
 static int _find_ip(nozzle_t nozzle,
