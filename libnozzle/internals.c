@@ -193,76 +193,6 @@ static void _close_cfg(void)
 	}
 }
 
-static int _get_mac(const nozzle_t nozzle, char **ether_addr)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-	char mac[MACADDR_CHAR_MAX];
-#ifdef KNET_BSD
-	struct ifaddrs *ifap = NULL;
-	struct ifaddrs *ifa;
-	int found = 0;
-#endif
-
-	memset(&mac, 0, MACADDR_CHAR_MAX);
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-
-#ifdef KNET_LINUX
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	ether_ntoa_r((struct ether_addr *)ifr.ifr_hwaddr.sa_data, mac);
-#endif
-#ifdef KNET_BSD
-	/*
-	 * there is no ioctl to get the ether address of an interface on FreeBSD
-	 * (not to be confused with hwaddr). Use workaround described here:
-	 * https://lists.freebsd.org/pipermail/freebsd-hackers/2004-June/007394.html
-	 */
-	err = getifaddrs(&ifap);
-	if (err < 0) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	ifa = ifap;
-
-	while (ifa) {
-		if (!strncmp(nozzle->name, ifa->ifa_name, IFNAMSIZ)) {
-			found = 1;
-			break;
-		}
-		ifa=ifa->ifa_next;
-	}
-
-	if (found) {
-		ether_ntoa_r((struct ether_addr *)LLADDR((struct sockaddr_dl *)ifa->ifa_addr), mac);
-	} else {
-		errno = EINVAL;
-		err = -1;
-	}
-	freeifaddrs(ifap);
-
-	if (err) {
-		goto out_clean;
-	}
-
-#endif
-	*ether_addr = strdup(mac);
-	if (!*ether_addr) {
-		savederrno = errno;
-		err = -1;
-	}
-
-out_clean:
-	errno = savederrno;
-	return err;
-}
-
 nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 {
 	int savederrno = 0;
@@ -499,36 +429,6 @@ out_clean:
 	return err;
 }
 
-int nozzle_get_mtu(const nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-
-	if (!nozzle) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!_check(nozzle)) {
-		errno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	err = _get_mtu(nozzle);
-	savederrno = errno;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	savederrno = errno;
-	return err;
-}
-
 int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 {
 	int err = 0, savederrno = 0;
@@ -592,95 +492,6 @@ out_clean:
 int nozzle_reset_mtu(nozzle_t nozzle, char **error_string)
 {
 	return nozzle_set_mtu(nozzle, nozzle->default_mtu, error_string);
-}
-
-int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr)
-{
-	int err = 0, savederrno = 0;
-
-	if ((!nozzle) || (!ether_addr)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!_check(nozzle)) {
-		errno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	err = _get_mac(nozzle, ether_addr);
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return err;
-}
-
-int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-
-	if ((!nozzle) || (!ether_addr)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!_check(nozzle)) {
-		errno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-#ifdef KNET_LINUX
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	memmove(ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFHWADDR, &ifr);
-	savederrno = errno;
-#endif
-#ifdef KNET_BSD
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFADDR, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	memmove(ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
-	ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFLLADDR, &ifr);
-	savederrno = errno;
-#endif
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return err;
-}
-
-int nozzle_reset_mac(nozzle_t nozzle)
-{
-	return nozzle_set_mac(nozzle, nozzle->default_mac);
 }
 
 int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
