@@ -81,7 +81,7 @@ static void _close_cfg(void)
 	}
 }
 
-static int _set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
+static int _set_down(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
 	struct ifreq ifr;
@@ -522,7 +522,7 @@ int nozzle_close(nozzle_t nozzle,  char **error_down, char **error_postdown)
 		prev->next = nozzle->next;
 	}
 
-	_set_down(nozzle, error_down, error_postdown);
+	_set_down(nozzle);
 
 	ip = nozzle->ip;
 	while (ip) {
@@ -661,7 +661,7 @@ out_clean:
 	return err;
 }
 
-int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
+int nozzle_set_down(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
 
@@ -677,13 +677,7 @@ int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown)
 		goto out_clean;
 	}
 
-	if ((nozzle->hasupdown) && ((!error_down) || (!error_postdown))) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	err = _set_down(nozzle, error_down, error_postdown);
+	err = _set_down(nozzle);
 	savederrno = errno;
 
 out_clean:
@@ -947,6 +941,7 @@ int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
 	}
 
 	err = execute_bin_sh_command(command, exec_string);
+	savederrno = errno;
 
 out_clean:
 	pthread_mutex_unlock(&config_mutex);

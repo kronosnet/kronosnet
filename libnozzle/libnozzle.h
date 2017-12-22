@@ -128,27 +128,16 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
 
 /**
  * nozzle_set_down
- * @brief equivalent of ifconfig down, executes down.d post-down.d
+ * @brief equivalent of ifconfig down
  *
  * nozzle - pointer to the nozzle struct
- *
- * error_down - pointer to a string pointer to record errors from executing down.d
- *              when configured. The string is malloc'ed, the caller needs to free that
- *              buffer.
- *
- * error_postdown - pointer to a string pointer to record errors from executing post-down.d
- *                  when configured. The string is malloc'ed, the caller needs to free
- *                  that buffer.
  *
  * @return
  * 0 on success
  * -1 on error and errno is set.
- * error_down / error_postdown are set to NULL if execution of external scripts
- * is sucessful
- * error_down / error_postdown will contain strings recording the execution error.
  */
 
-int nozzle_set_down(nozzle_t nozzle, char **error_down, char **error_postdown);
+int nozzle_set_down(nozzle_t nozzle);
 
 /**
  * nozzle_add_ip
