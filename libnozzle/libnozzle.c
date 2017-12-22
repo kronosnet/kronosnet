@@ -610,7 +610,7 @@ int nozzle_reset_mtu(nozzle_t nozzle, char **error_string)
 	return nozzle_set_mtu(nozzle, nozzle->default_mtu, error_string);
 }
 
-int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
+int nozzle_set_up(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
 	struct ifreq ifr;
@@ -622,12 +622,6 @@ int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up)
 	}
 
 	if (!is_valid_nozzle(nozzle)) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	if ((nozzle->hasupdown) && ((!error_preup) || (!error_up))) {
 		savederrno = EINVAL;
 		err = -1;
 		goto out_clean;
