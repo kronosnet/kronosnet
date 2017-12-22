@@ -17,6 +17,8 @@
 #include <ifaddrs.h>
 #include <stdint.h>
 #include <limits.h>
+#include <sys/socket.h>
+#include <net/ethernet.h>
 
 #ifdef KNET_LINUX
 #include <linux/if_tun.h>
