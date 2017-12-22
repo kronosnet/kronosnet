@@ -81,39 +81,6 @@ static void _close_cfg(void)
 	}
 }
 
-static int _set_down(nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-
-	if (!nozzle->up) {
-		goto out_clean;
-	}
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	ifr.ifr_flags &= ~IFF_UP;
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	nozzle->up = 0;
-
-out_clean:
-	errno = savederrno;
-	return err;
-}
-
 static int _set_ip(nozzle_t nozzle, const char *command,
 		      const char *ipaddr, const char *prefix,
 		      char **error_string, int secondary)
@@ -299,6 +266,39 @@ static int get_iface_mac(const nozzle_t nozzle, char **ether_addr)
 		savederrno = errno;
 		err = -1;
 	}
+
+out_clean:
+	errno = savederrno;
+	return err;
+}
+
+static int set_iface_down(nozzle_t nozzle)
+{
+	int err = 0, savederrno = 0;
+	struct ifreq ifr;
+
+	if (!nozzle->up) {
+		goto out_clean;
+	}
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
+
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	nozzle->up = 0;
 
 out_clean:
 	errno = savederrno;
@@ -522,7 +522,7 @@ int nozzle_close(nozzle_t nozzle)
 		prev->next = nozzle->next;
 	}
 
-	_set_down(nozzle);
+	set_iface_down(nozzle);
 
 	ip = nozzle->ip;
 	while (ip) {
@@ -608,76 +608,6 @@ out_clean:
 int nozzle_reset_mtu(nozzle_t nozzle, char **error_string)
 {
 	return nozzle_set_mtu(nozzle, nozzle->default_mtu, error_string);
-}
-
-int nozzle_set_up(nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-	struct ifreq ifr;
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	if (nozzle->up) {
-		goto out_clean;
-	}
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	nozzle->up = 1;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return err;
-}
-
-int nozzle_set_down(nozzle_t nozzle)
-{
-	int err = 0, savederrno = 0;
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	err = _set_down(nozzle);
-	savederrno = errno;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return err;
 }
 
 int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char **error_string)
@@ -946,6 +876,76 @@ out_clean:
 /*
  * functions below should be completed
  */
+
+int nozzle_set_up(nozzle_t nozzle)
+{
+	int err = 0, savederrno = 0;
+	struct ifreq ifr;
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	if (nozzle->up) {
+		goto out_clean;
+	}
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	strncpy(ifname, nozzle->name, IFNAMSIZ);
+
+	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	nozzle->up = 1;
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	errno = savederrno;
+	return err;
+}
+
+int nozzle_set_down(nozzle_t nozzle)
+{
+	int err = 0, savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	err = set_iface_down(nozzle);
+	savederrno = errno;
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	errno = savederrno;
+	return err;
+}
 
 int nozzle_get_mtu(const nozzle_t nozzle)
 {
