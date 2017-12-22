@@ -67,7 +67,6 @@ static int is_if_in_system(char *name)
 static int test_iface(char *name, size_t size, const char *updownpath)
 {
 	nozzle_t nozzle;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	nozzle=nozzle_open(name, size, updownpath);
 	if (!nozzle) {
@@ -88,17 +87,7 @@ static int test_iface(char *name, size_t size, const char *updownpath)
 		printf("Found interface %s in nozzle db\n", name);
 	}
 
-	nozzle_close(nozzle, &error_down, &error_postdown);
-
-	if (error_down) {
-		printf("Error from error_down: %s\n", error_down);
-		free(error_down);
-	}
-
-	if (error_postdown) {
-		printf("Error from error_down: %s\n", error_postdown);
-		free(error_postdown);
-	}
+	nozzle_close(nozzle);
 
 	if (is_if_in_system(name) == 0)
 		printf("Successfully removed interface %s from the system\n", name);
@@ -200,7 +189,6 @@ static int check_knet_multi_eth(void)
 	int err=0;
 	nozzle_t nozzle1 = NULL;
 	nozzle_t nozzle2 = NULL;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	printf("Testing multiple knet interface instances\n");
 
@@ -234,27 +222,11 @@ static int check_knet_multi_eth(void)
 	}
 
 	if (nozzle1) {
-		nozzle_close(nozzle1, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle1);
 	}
 
 	if (nozzle2) {
-		nozzle_close(nozzle2, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle2);
 	}
 
 	printf("Testing error conditions\n");
@@ -285,27 +257,11 @@ static int check_knet_multi_eth(void)
 
 out_clean:
 	if (nozzle1) {
-		nozzle_close(nozzle1, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle1);
 	}
 
 	if (nozzle2) {
-		nozzle_close(nozzle2, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle2);
 	}
 
 	return err;
@@ -317,7 +273,6 @@ static int check_knet_mtu(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	nozzle_t nozzle;
-	char *error_down = NULL, *error_postdown = NULL;
 	char *error_string = NULL;
 
 	int current_mtu = 0;
@@ -391,15 +346,7 @@ static int check_knet_mtu(void)
 
 out_clean:
 	if (nozzle) {
-		nozzle_close(nozzle, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle);
 	}
 
 	return err;
@@ -413,7 +360,6 @@ static int check_knet_mtu_ipv6(void)
 	int err=0;
 	nozzle_t nozzle;
 	char *error_string = NULL;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	printf("Testing get/set MTU with IPv6 address\n");
 
@@ -574,15 +520,7 @@ static int check_knet_mtu_ipv6(void)
 
 out_clean:
 	if (nozzle) {
-		nozzle_close(nozzle, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle);
 	}
 
 	return err;
@@ -596,7 +534,6 @@ static int check_knet_mac(void)
 	nozzle_t nozzle;
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	printf("Testing get/set MAC\n");
 
@@ -691,15 +628,7 @@ out_clean:
 		free(temp_mac);
 
 	if (nozzle) {
-		nozzle_close(nozzle, &error_down, &error_postdown);
-		if (error_down) {
-			printf("Error from error_down: %s\n", error_down);
-			free(error_down);
-		}
-		if (error_postdown) {
-			printf("Error from error_down: %s\n", error_postdown);
-			free(error_postdown);
-		}
+		nozzle_close(nozzle);
 	}
 
 	return err;
@@ -905,17 +834,7 @@ static int check_knet_up_down(void)
 		goto out_clean;
 	}
 
-	nozzle_close(nozzle, &error_down, &error_postdown);
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
+	nozzle_close(nozzle);
 
 	printf("Testing interface pre-up/up/down/post-down (exec errors)\n");
 
@@ -972,17 +891,7 @@ static int check_knet_up_down(void)
 		error_down = NULL;
 	}
 
-	nozzle_close(nozzle, &error_down, &error_postdown);
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
+	nozzle_close(nozzle);
 
 	printf("Testing interface pre-up/up/down/post-down\n");
 
@@ -1040,17 +949,7 @@ static int check_knet_up_down(void)
 		error_down = NULL;
 	}
 
-	nozzle_close(nozzle, &error_down, &error_postdown);
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
+	nozzle_close(nozzle);
 
 	printf("Test ERROR conditions\n");
 
@@ -1088,17 +987,7 @@ static int check_knet_up_down(void)
 	}
 
 out_clean:
-	nozzle_close(nozzle, &error_down, &error_postdown);
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -1110,7 +999,6 @@ static int check_knet_close_leak(void)
 	int err=0;
 	nozzle_t nozzle;
 	char *error_string = NULL;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	printf("Testing close leak (needs valgrind)\n");
 
@@ -1151,17 +1039,7 @@ static int check_knet_close_leak(void)
 	}
 
 out_clean:
-	nozzle_close(nozzle, &error_down, &error_postdown);
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
+	nozzle_close(nozzle);
 
 	return err;
 }
@@ -1176,7 +1054,6 @@ static int check_knet_set_del_ip(void)
 	char *ip_list = NULL;
 	int ip_list_entries = 0, i, offset = 0;
 	char *error_string = NULL;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	printf("Testing interface add/remove ip\n");
 
@@ -1405,17 +1282,7 @@ static int check_knet_set_del_ip(void)
 	}
 
 out_clean:
-	nozzle_close(nozzle, &error_down, &error_postdown);
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
+	nozzle_close(nozzle);
 
 	return err;
 }
