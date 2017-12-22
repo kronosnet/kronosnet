@@ -491,7 +491,7 @@ out_error:
 	return NULL;
 }
 
-int nozzle_close(nozzle_t nozzle,  char **error_down, char **error_postdown)
+int nozzle_close(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
 	nozzle_t temp = lib_cfg.head;

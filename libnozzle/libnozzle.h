@@ -59,23 +59,12 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
  *
  * nozzle - pointer to the nozzle struct to destroy
  *
- * error_down - pointers to string to record errors from executing down.d
- *              when configured. The string is malloc'ed, the caller needs to free those
- *              buffers.
- *
- * error_postdown - pointers to string to record errors from executing post-down.d
- *                  when configured. The string is malloc'ed, the caller needs to free
- *                  those buffers.
- *
  * @return
  * 0 on success
  * -1 on error and errno is set.
- * error_down / error_postdown are set to NULL if execution of external scripts
- * is sucessful
- * error_down / error_postdown will contain strings recording the execution error.
  */
 
-int nozzle_close(nozzle_t nozzle, char **error_down, char **error_postdown);
+int nozzle_close(nozzle_t nozzle);
 
 
 #define NOZZLE_PREUP    0
