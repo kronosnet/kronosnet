@@ -135,32 +135,6 @@ out_clean0:
 	return err;
 }
 
-int run_updown(const nozzle_t nozzle, const char *action, char **error_string)
-{
-	char command[PATH_MAX];
-	struct stat sb;
-	int err = 0;
-
-	if (!nozzle->hasupdown)
-		return 0;
-
-	memset(command, 0, PATH_MAX);
-
-	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action, nozzle->name);
-
-	err = stat(command, &sb);
-	if ((err < 0) && (errno == ENOENT))
-		return 0;
-
-	err = execute_bin_sh_command(command, error_string);
-	if ((!err) && (*error_string)) {
-		free(*error_string);
-		*error_string = NULL;
-	}
-
-	return err;
-}
-
 char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
 {
 	int prefix_len;

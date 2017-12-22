@@ -77,6 +77,31 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 int nozzle_close(nozzle_t nozzle, char **error_down, char **error_postdown);
 
+
+#define NOZZLE_PREUP    0
+#define NOZZLE_UP       1
+#define NOZZLE_DOWN     2
+#define NOZZLE_POSTDOWN 3
+
+/**
+ * nozzle_run_updown
+ * @brief execute updown commands associated with a nozzle device
+ *
+ * nozzle - pointer to the nozzle struct
+ *
+ * action - pre-up.d / up.d / down.d / post-down.d (see defines above)
+ *
+ * exec_string - pointers to string to record executing action stdout/stderr.
+ *               The string is malloc'ed, the caller needs to free the buffer.
+ *               If the script generates no output this string might be NULL.
+ *
+ * @return
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string);
+
 /**
  * nozzle_set_up
  * @brief equivalent of ifconfig up, executes pre-up.d up.d if configured
