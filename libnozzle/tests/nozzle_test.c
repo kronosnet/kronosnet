@@ -736,8 +736,6 @@ static int check_knet_up_down(void)
 	int err=0;
 	nozzle_t nozzle;
 	char *error_string = NULL;
-	char *error_preup = NULL, *error_up = NULL;
-	char *error_down = NULL, *error_postdown = NULL;
 
 	printf("Testing interface up/down\n");
 
@@ -750,17 +748,7 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(nozzle, &error_preup, &error_up);
-	if (error_preup) {
-		printf("preup output: %s\n", error_preup);
-		free(error_preup);
-		error_preup = NULL;
-	}
-	if (error_up) {
-		printf("up output: %s\n", error_up);
-		free(error_up);
-		error_up = NULL;
-	}
+	err = nozzle_set_up(nozzle);
 	if (err < 0) {
 		printf("Unable to set interface up\n");
 		err = -1;
@@ -789,29 +777,11 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface down\n");
 
-	err = nozzle_run_updown(nozzle, NOZZLE_DOWN, &error_down);
-	if (err) {
-		printf("nozzle_run_updown NOZZLE_DOWN error: %s\n", strerror(errno));
-	}
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
-	}
 	err = nozzle_set_down(nozzle);
 	if (err < 0) {
 		printf("Unable to put the interface down\n");
 		err = -1;
 		goto out_clean;
-	}
-	err = nozzle_run_updown(nozzle, NOZZLE_POSTDOWN, &error_postdown);
-	if (err) {
-		printf("nozzle_run_updown NOZZLE_POSTDOWN error: %s\n", strerror(errno));
-	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
 	}
 
 	memset(verifycmd, 0, sizeof(verifycmd));
@@ -847,33 +817,41 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(nozzle, &error_preup, &error_up);
-	if (error_preup) {
-		printf("preup output: %s\n", error_preup);
-		free(error_preup);
-		error_preup = NULL;
+	err = nozzle_run_updown(nozzle, NOZZLE_PREUP, &error_string);
+	if (err) {
+		printf("nozzle_run_updown NOZZLE_PREUP error: %s\n", strerror(errno));
 	}
-	if (error_up) {
-		printf("up output: %s\n", error_up);
-		free(error_up);
-		error_up = NULL;
+	if (error_string) {
+		printf("preup output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
+	err = nozzle_set_up(nozzle);
 	if (err < 0) {
-		printf("Unable to set interface up\n");
+		printf("Unable to put the interface up\n");
 		err = -1;
 		goto out_clean;
+	}
+	err = nozzle_run_updown(nozzle, NOZZLE_UP, &error_string);
+	if (err) {
+		printf("nozzle_run_updown NOZZLE_UP error: %s\n", strerror(errno));
+	}
+	if (error_string) {
+		printf("up output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
 
 	printf("Put the interface down\n");
 
-	err = nozzle_run_updown(nozzle, NOZZLE_DOWN, &error_down);
+	err = nozzle_run_updown(nozzle, NOZZLE_DOWN, &error_string);
 	if (err) {
 		printf("nozzle_run_updown NOZZLE_DOWN error: %s\n", strerror(errno));
 	}
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
+	if (error_string) {
+		printf("down output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
 	err = nozzle_set_down(nozzle);
 	if (err < 0) {
@@ -881,14 +859,14 @@ static int check_knet_up_down(void)
 		err = -1;
 		goto out_clean;
 	}
-	err = nozzle_run_updown(nozzle, NOZZLE_POSTDOWN, &error_postdown);
+	err = nozzle_run_updown(nozzle, NOZZLE_POSTDOWN, &error_string);
 	if (err) {
 		printf("nozzle_run_updown NOZZLE_POSTDOWN error: %s\n", strerror(errno));
 	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
+	if (error_string) {
+		printf("postdown output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
 
 	nozzle_close(nozzle);
@@ -905,33 +883,41 @@ static int check_knet_up_down(void)
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(nozzle, &error_preup, &error_up);
-	if (error_preup) {
-		printf("preup output: %s\n", error_preup);
-		free(error_preup);
-		error_preup = NULL;
+	err = nozzle_run_updown(nozzle, NOZZLE_PREUP, &error_string);
+	if (err) {
+		printf("nozzle_run_updown NOZZLE_PREUP error: %s\n", strerror(errno));
 	}
-	if (error_up) {
-		printf("up output: %s\n", error_up);
-		free(error_up);
-		error_up = NULL;
+	if (error_string) {
+		printf("preup output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
+	err = nozzle_set_up(nozzle);
 	if (err < 0) {
-		printf("Unable to set interface up\n");
+		printf("Unable to put the interface up\n");
 		err = -1;
 		goto out_clean;
+	}
+	err = nozzle_run_updown(nozzle, NOZZLE_UP, &error_string);
+	if (err) {
+		printf("nozzle_run_updown NOZZLE_UP error: %s\n", strerror(errno));
+	}
+	if (error_string) {
+		printf("up output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
 
 	printf("Put the interface down\n");
 
-	err = nozzle_run_updown(nozzle, NOZZLE_DOWN, &error_down);
+	err = nozzle_run_updown(nozzle, NOZZLE_DOWN, &error_string);
 	if (err) {
 		printf("nozzle_run_updown NOZZLE_DOWN error: %s\n", strerror(errno));
 	}
-	if (error_down) {
-		printf("down output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
+	if (error_string) {
+		printf("down output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
 	err = nozzle_set_down(nozzle);
 	if (err < 0) {
@@ -939,14 +925,14 @@ static int check_knet_up_down(void)
 		err = -1;
 		goto out_clean;
 	}
-	err = nozzle_run_updown(nozzle, NOZZLE_POSTDOWN, &error_postdown);
+	err = nozzle_run_updown(nozzle, NOZZLE_POSTDOWN, &error_string);
 	if (err) {
 		printf("nozzle_run_updown NOZZLE_POSTDOWN error: %s\n", strerror(errno));
 	}
-	if (error_postdown) {
-		printf("postdown output: %s\n", error_down);
-		free(error_down);
-		error_down = NULL;
+	if (error_string) {
+		printf("postdown output: %s\n", error_string);
+		free(error_string);
+		error_string = NULL;
 	}
 
 	nozzle_close(nozzle);
@@ -956,23 +942,7 @@ static int check_knet_up_down(void)
 	printf("Pass NULL to nozzle set_up\n");
 	err = 0;
 	errno = 0;
-	if ((nozzle_set_up(NULL, &error_preup, &error_up) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_set_up sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Pass NULL to error_preup set_up\n");
-	errno = 0;
-	if ((nozzle_set_up(nozzle, NULL, &error_up) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_set_up sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Pass NULL to error_up set_up\n");
-	errno = 0;
-	if ((nozzle_set_up(nozzle, &error_preup, NULL) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_up(NULL) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_up sanity checks\n");
 		err = -1;
 		goto out_clean;

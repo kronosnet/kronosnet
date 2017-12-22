@@ -93,27 +93,16 @@ int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
 
 /**
  * nozzle_set_up
- * @brief equivalent of ifconfig up, executes pre-up.d up.d if configured
+ * @brief equivalent of ifconfig up
  *
  * nozzle - pointer to the nozzle struct
- *
- * error_preup - pointer to string pointer to record errors from executing pre-up.d
- *               when configured. The string is malloc'ed, the caller needs to free that
- *               buffer.
- *
- * error_up - pointer to string pointer to record errors from executing up.d
- *            when configured. The string is malloc'ed, the caller needs to free that
- *            buffer.
  *
  * @return
  * 0 on success
  * -1 on error and errno is set.
- * error_preup / error_up are set to NULL if execution of external scripts
- * is sucessful
- * error_preup / error_up will contain strings recording the execution error.
  */
 
-int nozzle_set_up(nozzle_t nozzle, char **error_preup, char **error_up);
+int nozzle_set_up(nozzle_t nozzle);
 
 /**
  * nozzle_set_down
