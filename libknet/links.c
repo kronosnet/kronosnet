@@ -236,6 +236,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		knet_h->has_loop_link = 1;
 		knet_h->loop_link = link_id;
 		host->status.reachable = 1;
+		link->status.mtu = KNET_PMTUD_SIZE_V6;
 	}
 
 exit_unlock:
