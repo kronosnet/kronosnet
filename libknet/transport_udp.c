@@ -328,6 +328,14 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 					switch (sock_err->ee_origin) {
 						case 0: /* no origin */
 						case 1: /* local source (EMSGSIZE) */
+							if (sock_err->ee_errno == EMSGSIZE) {
+								if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
+									knet_h->kernel_mtu = 0;
+								} else {
+									knet_h->kernel_mtu = sock_err->ee_info;
+									pthread_mutex_unlock(&knet_h->kmtu_mutex);
+								}
+							}
 							/*
 							 * those errors are way too noisy
 							 */
@@ -371,6 +379,7 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 {
 	if (recv_err < 0) {
 		if (recv_errno == EMSGSIZE) {
+			read_errs_from_sock(knet_h, sockfd);
 			return 0;
 		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {

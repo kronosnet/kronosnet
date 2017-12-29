@@ -24,7 +24,8 @@
 
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
-	int err, ret, savederrno, mutex_retry_limit, failsafe;
+	int err, ret, savederrno, mutex_retry_limit, failsafe, has_kernel_mtu;
+	uint32_t kernel_mtu; /* record kernel_mtu from EMSGSIZE */
 	size_t onwire_len;   /* current packet onwire size */
 	size_t overhead_len; /* onwire packet overhead (protocol based) */
 	size_t max_mtu_len;  /* max mtu for protocol */
@@ -174,6 +175,15 @@ retry:
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;
 
+	if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
+		has_kernel_mtu = 0;
+	} else {
+		has_kernel_mtu = 1;
+		knet_h->kernel_mtu = 0;
+		pthread_mutex_unlock(&knet_h->kmtu_mutex);
+	}
+	kernel_mtu = 0;
+
 	err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
 	switch(err) {
 		case -1: /* unrecoverable error */
@@ -194,7 +204,19 @@ retry:
 
 	if (len != (ssize_t )data_len) {
 		if (savederrno == EMSGSIZE) {
-			dst_link->last_bad_mtu = onwire_len;
+			if (has_kernel_mtu) {
+				if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
+					has_kernel_mtu = 0;
+				} else {
+					kernel_mtu = knet_h->kernel_mtu;
+					pthread_mutex_unlock(&knet_h->kmtu_mutex);
+				}
+			}
+			if (kernel_mtu > 0) {
+				dst_link->last_bad_mtu = kernel_mtu + 1;
+			} else {
+				dst_link->last_bad_mtu = onwire_len;
+			}
 		} else {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
 		}
@@ -214,7 +236,7 @@ retry:
 		/*
 		 * set PMTUd reply timeout to match pong_timeout on a given link
 		 *
-		 * math: internally  pong_timeout is expressed in microseconds, while
+		 * math: internally pong_timeout is expressed in microseconds, while
 		 *       the public API exports milliseconds. So careful with the 0's here.
 		 * the loop is necessary because we are grabbing the current time just above
 		 * and add values to it that could overflow into seconds.
@@ -303,7 +325,12 @@ retry:
 		}
 	}
 
-	onwire_len = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
+	if (kernel_mtu) {
+		onwire_len = kernel_mtu;
+	} else {
+		onwire_len = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
+	}
+
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 
 	/*
