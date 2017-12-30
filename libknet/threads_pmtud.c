@@ -266,11 +266,11 @@ retry:
 
 		pthread_mutex_unlock(&knet_h->backoff_mutex);
 
-		knet_h->pmtud_running = 1;
+		knet_h->pmtud_waiting = 1;
 
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
-		knet_h->pmtud_running = 0;
+		knet_h->pmtud_waiting = 0;
 
 		if (knet_h->pmtud_abort) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);

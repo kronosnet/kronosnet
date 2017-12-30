@@ -188,7 +188,7 @@ struct knet_handle {
 	pthread_mutex_t backoff_mutex;		/* used to protect dst_link->pong_timeout_adj */
 	pthread_mutex_t kmtu_mutex;		/* used to protect kernel_mtu */
 	uint32_t kernel_mtu;			/* contains the MTU detected by the kernel on a given link */
-	int pmtud_running;
+	int pmtud_waiting;
 	int pmtud_abort;
 	struct crypto_instance *crypto_instance;
 	size_t sec_header_size;
