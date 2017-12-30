@@ -340,25 +340,27 @@ retry:
 	goto restart;
 }
 
-static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, unsigned int *min_mtu)
+static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, unsigned int *min_mtu, int force_run)
 {
 	uint8_t saved_valid_pmtud;
 	unsigned int saved_pmtud;
 	struct timespec clock_now;
 	unsigned long long diff_pmtud, interval;
 
-	interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
+	if (!force_run) {
+		interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
 
-	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
-		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
-		return 0;
-	}
+		if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
+			return 0;
+		}
 
-	timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
+		timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
 
-	if (diff_pmtud < interval) {
-		*min_mtu = dst_link->status.mtu;
-		return dst_link->has_valid_mtu;
+		if (diff_pmtud < interval) {
+			*min_mtu = dst_link->status.mtu;
+			return dst_link->has_valid_mtu;
+		}
 	}
 
 	switch (dst_link->dst_addr.ss_family) {
@@ -444,6 +446,7 @@ void *_handle_pmtud_link_thread(void *data)
 	unsigned int min_mtu, have_mtu;
 	unsigned int lower_mtu;
 	int link_has_mtu;
+	int force_run = 0;
 
 	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 
@@ -460,7 +463,14 @@ void *_handle_pmtud_link_thread(void *data)
 			continue;
 		}
 		knet_h->pmtud_abort = 0;
+		knet_h->pmtud_running = 1;
+		force_run = knet_h->pmtud_forcerun;
+		knet_h->pmtud_forcerun = 0;
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+
+		if (force_run) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUd request to rerun has been received");
+		}
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get read lock");
@@ -483,7 +493,7 @@ void *_handle_pmtud_link_thread(void *data)
 				     (dst_link->status.dynconnected != 1)))
 					continue;
 
-				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu);
+				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu, force_run);
 				if (errno == EDEADLK) {
 					goto out_unlock;
 				}
@@ -509,6 +519,12 @@ void *_handle_pmtud_link_thread(void *data)
 		}
 out_unlock:
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
+		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
+		} else {
+			knet_h->pmtud_running = 0;
+			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+		}
 	}
 
 	return NULL;
