@@ -347,8 +347,10 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 								 */
 								if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
 									if (!knet_h->pmtud_running) {
-										log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Notifying PMTUd to rerun");
-										knet_h->pmtud_forcerun = 1;
+										if (!knet_h->pmtud_forcerun) {
+											log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Notifying PMTUd to rerun");
+											knet_h->pmtud_forcerun = 1;
+										}
 									}
 									pthread_mutex_unlock(&knet_h->pmtud_mutex);
 								}
