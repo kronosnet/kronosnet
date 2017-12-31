@@ -301,8 +301,8 @@ retry:
 							"This can be caused by this node interface MTU "
 							"too big or a network device that does not "
 							"support or has been misconfigured to manage MTU "
-							"of this size. knet will continue to run but "
-							"performances might be affected.");
+							"of this size, or packet loss. knet will continue "
+							"to run but performances might be affected.");
 					warn_once = 1;
 				}
 			} else {
