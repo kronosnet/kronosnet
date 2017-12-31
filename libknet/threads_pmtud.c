@@ -24,7 +24,7 @@
 
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
-	int err, ret, savederrno, mutex_retry_limit, failsafe, has_kernel_mtu;
+	int err, ret, savederrno, mutex_retry_limit, failsafe, has_kernel_mtu, warn_once;
 	uint32_t kernel_mtu; /* record kernel_mtu from EMSGSIZE */
 	size_t onwire_len;   /* current packet onwire size */
 	size_t overhead_len; /* onwire packet overhead (protocol based) */
@@ -39,6 +39,8 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	struct timespec ts;
 	unsigned long long pong_timeout_adj_tmp;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
+
+	warn_once = 0;
 
 	mutex_retry_limit = 0;
 	failsafe = 0;
@@ -284,14 +286,34 @@ retry:
 			return -1;
 		}
 
-		if ((ret != 0) && (ret != ETIMEDOUT)) {
-			pthread_mutex_unlock(&knet_h->pmtud_mutex);
-			if (mutex_retry_limit == 3) {
-				log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unable to get mutex lock");
-				return -1;
+		if (ret) {
+			if (ret == ETIMEDOUT) {
+				if (!warn_once) {
+					log_warn(knet_h, KNET_SUB_PMTUD,
+							"possible MTU misconfiguration detected. "
+							"kernel is reporting MTU: %u bytes for "
+							"host %u link %u but the other node is "
+							"not acknowledging packets of this size. ",
+							dst_link->last_sent_mtu,
+							dst_host->host_id,
+							dst_link->link_id);
+					log_warn(knet_h, KNET_SUB_PMTUD,
+							"This can be caused by this node interface MTU "
+							"too big or a network device that does not "
+							"support or has been misconfigured to manage MTU "
+							"of this size. knet will continue to run but "
+							"performances might be affected.");
+					warn_once = 1;
+				}
+			} else {
+				pthread_mutex_unlock(&knet_h->pmtud_mutex);
+				if (mutex_retry_limit == 3) {
+					log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unable to get mutex lock");
+					return -1;
+				}
+				mutex_retry_limit++;
+				goto restart;
 			}
-			mutex_retry_limit++;
-			goto restart;
 		}
 
 		if ((dst_link->last_recv_mtu != onwire_len) || (ret)) {
