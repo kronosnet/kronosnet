@@ -248,12 +248,13 @@ static void test_sctp(void)
 	printf("Test knet_link_set_enable with incorrect values\n");
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_SCTP, &src, &dst, 0) < 0) {
+		int exit_status = errno == EPROTONOSUPPORT ? SKIP : FAIL;
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
-		exit(FAIL);
+		exit(exit_status);
 	}
 
 	if ((!knet_link_set_enable(knet_h, 1, 0, 2)) || (errno != EINVAL)) {
