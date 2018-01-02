@@ -395,12 +395,96 @@ static int opensslcrypto_authenticate_and_decrypt (
 	return 0;
 }
 
+#ifdef BUILDCRYPTOOPENSSL10
+static pthread_mutex_t *openssl_internal_lock;
+static long *openssl_internal_lock_count;
+
+static void openssl_internal_locking_callback(int mode, int type, char *file, int line)
+{
+	if (mode & CRYPTO_LOCK) {
+		pthread_mutex_lock(&(openssl_internal_lock[type]));
+		openssl_internal_lock_count[type]++;
+	} else {
+		pthread_mutex_unlock(&(openssl_internal_lock[type]));
+	}
+}
+
+static unsigned long openssl_internal_thread_id(void)
+{
+	return (unsigned long)pthread_self();
+}
+
+static void openssl_internal_lock_cleanup(void)
+{
+	int i;
+
+	CRYPTO_set_locking_callback(NULL);
+	CRYPTO_set_id_callback(NULL);
+
+	for (i = 0; i < CRYPTO_num_locks(); i++) {
+		pthread_mutex_destroy(&(openssl_internal_lock[i]));
+	}
+
+	if (openssl_internal_lock_count) {
+		free(openssl_internal_lock_count);
+	}
+
+	if (openssl_internal_lock) {
+		free(openssl_internal_lock);
+	}
+
+	return;
+}
+
+static int openssl_internal_lock_setup(void)
+{
+	int savederrno = 0, err = 0;
+	int i;
+
+	openssl_internal_lock = malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
+	if (!openssl_internal_lock) {
+		savederrno = errno;
+		err = -1;
+		goto out;
+	}
+
+	openssl_internal_lock_count = malloc(CRYPTO_num_locks() * sizeof(long));
+	if (!openssl_internal_lock_count) {
+		savederrno = errno;
+		err = -1;
+		goto out;
+	}
+
+	for (i = 0; i < CRYPTO_num_locks(); i++) {
+		openssl_internal_lock_count[i] = 0;
+		savederrno = pthread_mutex_init(&(openssl_internal_lock[i]), NULL);
+		if (savederrno) {
+			err = -1;
+			goto out;
+		}
+	}
+
+	CRYPTO_set_id_callback((unsigned long (*)(void))openssl_internal_thread_id);
+	CRYPTO_set_locking_callback((void *)&openssl_internal_locking_callback);
+
+out:
+	if (err) {
+		openssl_internal_lock_cleanup();
+	}
+	errno = savederrno;
+	return err;
+}
+#endif
+
 static void opensslcrypto_fini(
 	knet_handle_t knet_h)
 {
 	struct opensslcrypto_instance *opensslcrypto_instance = knet_h->crypto_instance->model_instance;
 
 	if (opensslcrypto_instance) {
+#ifdef BUILDCRYPTOOPENSSL10
+		openssl_internal_lock_cleanup();
+#endif
 		if (opensslcrypto_instance->private_key) {
 			free(opensslcrypto_instance->private_key);
 			opensslcrypto_instance->private_key = NULL;
@@ -440,6 +524,14 @@ static int opensslcrypto_init(
 #endif
 		openssl_is_init = 1;
 	}
+
+#ifdef BUILDCRYPTOOPENSSL10
+	if (openssl_internal_lock_setup() < 0) {
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
+		errno = EAGAIN;
+		return -1;
+	}
+#endif
 
 	knet_h->crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
 	if (!knet_h->crypto_instance->model_instance) {
