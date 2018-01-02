@@ -114,7 +114,9 @@ AC_ARG_ENABLE([compress-all],
 KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
 KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
 KNET_OPTION_DEFINES([lzo2],[compress],[
-	PKG_CHECK_MODULES([lzo2], [lzo2],,
+	PKG_CHECK_MODULES([lzo2], [lzo2],
+		[# work around broken pkg-config file in v2.10
+		 AC_SUBST([lzo2_CFLAGS],[`echo $lzo2_CFLAGS | sed 's,/lzo *, ,'`])],
 		[AC_CHECK_HEADERS([lzo/lzo1x.h],
 			[AC_CHECK_LIB([lzo2], [lzo1x_decompress_safe],
 				[AC_SUBST([lzo2_LIBS], [-llzo2])])],
@@ -211,9 +213,6 @@ case "$host_os" in
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
 		;;
 esac
-
-AM_CONDITIONAL([KNET_LINUX], [echo $host_os | grep -q linux])
-AM_CONDITIONAL([KNET_BSD], [echo $host_os | grep -q bsd])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h])
