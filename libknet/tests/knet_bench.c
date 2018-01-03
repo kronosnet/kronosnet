@@ -352,6 +352,7 @@ static void setup_knet(int argc, char *argv[])
 					printf("Error: pmtud interval %d out of range (> 0)\n", pmtud_interval);
 					exit(FAIL);
 				}
+				break;
 			case 'l':
 				if (portoffset) {
 					printf("Error: -o cannot be used with -l\n");
