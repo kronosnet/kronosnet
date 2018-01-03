@@ -113,12 +113,7 @@ endif
 if BUILD_COMPRESS_LZO2
 pkglib_LTLIBRARIES	+= compress_lzo2.la
 compress_lzo2_la_LDFLAGS = -module -avoid-version
-if KNET_LINUX
 compress_lzo2_la_CFLAGS	= $(lzo2_CFLAGS)
-endif
-if KNET_BSD
-compress_lzo2_la_CFLAGS = $(lzo2_CFLAGS) -I/usr/local/include
-endif
 compress_lzo2_la_LIBADD	= $(lzo2_LIBS)
 endif
 
