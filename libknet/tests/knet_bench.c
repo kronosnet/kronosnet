@@ -69,6 +69,7 @@ static uint64_t perf_by_time_secs = 10;
 struct node {
 	int nodeid;
 	int links;
+	uint8_t transport[KNET_MAX_LINK];
 	struct sockaddr_storage address[KNET_MAX_LINK];
 };
 
@@ -82,10 +83,10 @@ static void print_help(void)
 	printf(" -z [implementation]:[level]:[threshold]   compress configuration. (default disabled)\n");
 	printf("                                           Example: -z zlib:5:100\n");
 	printf(" -p [active|passive|rr]                    (default: passive)\n");
-	printf(" -P [udp|sctp]                             (default: udp) protocol (transport) to use\n");
+	printf(" -P [UDP|SCTP]                             (default: UDP) protocol (transport) to use for all links\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
-	printf(" -n [nodeid],[link1_ip_addr],[link2_..]    Other nodes information (at least one required)\n");
-	printf("                                           Example: -t 1,192.168.8.1,3ffe::8:1,..\n");
+	printf(" -n [nodeid],[proto]/[link1_ip],[link2_..] Other nodes information (at least one required)\n");
+	printf("                                           Example: -t 1,192.168.8.1,SCTP/3ffe::8:1,UDP/172...\n");
 	printf("                                           can be repeated up to %d and should contain also the localnode info\n", MAX_NODES);
 	printf(" -b [port]                                 baseport (default: 50000)\n");
 	printf(" -l                                        enable global listener on 0.0.0.0/:: (default: off, incompatible with -o)\n");
@@ -132,10 +133,28 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 			*thisidx = i;
 		}
 		while((temp = strtok(NULL, ","))) {
+			char *slash = NULL;
+			uint8_t transport;
+
 			if (nodes[i].links == KNET_MAX_LINK) {
 				printf("Too many links configured. Max %d\n", KNET_MAX_LINK);
 				exit(FAIL);
 			}
+
+			slash = strstr(temp, "/");
+			if (slash) {
+				memset(slash, 0, 1);
+				transport = knet_get_transport_id_by_name(temp);
+				if (transport == KNET_MAX_TRANSPORTS) {
+					printf("Unknown transport: %s\n", temp);
+					exit(FAIL);
+				}
+				nodes[i].transport[nodes[i].links] = transport;
+				temp = slash + 1;
+			} else {
+				nodes[i].transport[nodes[i].links] = KNET_TRANSPORT_UDP;
+			}
+
 			if (knet_strtoaddr(temp, port_str,
 					   &nodes[i].address[nodes[i].links],
 					   sizeof(struct sockaddr_storage)) < 0) {
@@ -281,11 +300,11 @@ static void setup_knet(int argc, char *argv[])
 					exit(FAIL);
 				}
 				protostr = optarg;
-				if (!strcmp(protostr, "udp")) {
+				if (!strcmp(protostr, "UDP")) {
 					protocol = KNET_TRANSPORT_UDP;
 					protofound = 1;
 				}
-				if (!strcmp(protostr, "sctp")) {
+				if (!strcmp(protostr, "SCTP")) {
 					protocol = KNET_TRANSPORT_SCTP;
 					protofound = 1;
 				}
@@ -535,8 +554,14 @@ static void setup_knet(int argc, char *argv[])
 					src = &allv6;
 				}
 			}
+			/*
+			 * -P overrides per link protocol configuration
+			 */
+			if (protofound) {
+				nodes[i].transport[link_idx] = protocol;
+			}
 			if (knet_link_set_config(knet_h, nodes[i].nodeid, link_idx,
-						 protocol, src,
+						 nodes[i].transport[link_idx], src,
 						 &nodes[i].address[link_idx], 0) < 0) {
 				printf("Unable to configure link: %s\n", strerror(errno));
 				exit(FAIL);
