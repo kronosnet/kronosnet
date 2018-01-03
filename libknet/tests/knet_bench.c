@@ -1106,7 +1106,7 @@ static void send_perf_data_by_time(void)
 	char ctrl_message[16];
 	int sent_msgs;
 	int i;
-	uint32_t packetsize = 65536;
+	uint32_t packetsize = 64;
 	struct timespec clock_start, clock_end;
 	unsigned long long time_diff = 0;
 
