@@ -397,13 +397,11 @@ static int opensslcrypto_authenticate_and_decrypt (
 
 #ifdef BUILDCRYPTOOPENSSL10
 static pthread_mutex_t *openssl_internal_lock;
-static long *openssl_internal_lock_count;
 
 static void openssl_internal_locking_callback(int mode, int type, char *file, int line)
 {
 	if (mode & CRYPTO_LOCK) {
 		pthread_mutex_lock(&(openssl_internal_lock[type]));
-		openssl_internal_lock_count[type]++;
 	} else {
 		pthread_mutex_unlock(&(openssl_internal_lock[type]));
 	}
@@ -425,10 +423,6 @@ static void openssl_internal_lock_cleanup(void)
 		pthread_mutex_destroy(&(openssl_internal_lock[i]));
 	}
 
-	if (openssl_internal_lock_count) {
-		free(openssl_internal_lock_count);
-	}
-
 	if (openssl_internal_lock) {
 		free(openssl_internal_lock);
 	}
@@ -448,15 +442,7 @@ static int openssl_internal_lock_setup(void)
 		goto out;
 	}
 
-	openssl_internal_lock_count = malloc(CRYPTO_num_locks() * sizeof(long));
-	if (!openssl_internal_lock_count) {
-		savederrno = errno;
-		err = -1;
-		goto out;
-	}
-
 	for (i = 0; i < CRYPTO_num_locks(); i++) {
-		openssl_internal_lock_count[i] = 0;
 		savederrno = pthread_mutex_init(&(openssl_internal_lock[i]), NULL);
 		if (savederrno) {
 			err = -1;
