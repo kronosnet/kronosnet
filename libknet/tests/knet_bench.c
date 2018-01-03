@@ -89,6 +89,7 @@ static void print_help(void)
 	printf(" -b [port]                                 baseport (default: 50000)\n");
 	printf(" -l                                        enable global listener on 0.0.0.0/:: (default: off, incompatible with -o)\n");
 	printf(" -o                                        enable baseport offset per nodeid\n");
+	printf(" -m                                        change PMTUd interval in seconds (default: 60)\n");
 	printf(" -w                                        dont wait for all nodes to be up before starting the test (default: wait)\n");
 	printf(" -T [ping|ping_data|perf-by-size|perf-by-time]\n");
 	printf("                                           test type (default: ping)\n");
@@ -219,13 +220,14 @@ static void setup_knet(int argc, char *argv[])
 	int policy = KNET_LINK_POLICY_PASSIVE, policyfound = 0;
 	int protocol = KNET_TRANSPORT_UDP, protofound = 0;
 	int wait = 1;
+	int pmtud_interval = 60;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	char *cryptomodel = NULL, *cryptotype = NULL, *cryptohash = NULL;
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:X::P:z:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "CT:S:s:ldom:wb:t:n:c:p:X::P:z:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -320,6 +322,12 @@ static void setup_knet(int argc, char *argv[])
 				}
 				portoffset = 1;
 				break;
+			case 'm':
+				pmtud_interval = atoi(optarg);
+				if (pmtud_interval < 1) {
+					printf("Error: pmtud interval %d out of range (> 0)\n", pmtud_interval);
+					exit(FAIL);
+				}
 			case 'l':
 				if (portoffset) {
 					printf("Error: -o cannot be used with -l\n");
@@ -470,7 +478,7 @@ static void setup_knet(int argc, char *argv[])
 		exit(FAIL);
 	}
 
-	if (knet_handle_pmtud_setfreq(knet_h, 60) < 0) {
+	if (knet_handle_pmtud_setfreq(knet_h, pmtud_interval) < 0) {
 		printf("knet_handle_pmtud_setfreq failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		exit(FAIL);
