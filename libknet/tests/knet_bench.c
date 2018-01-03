@@ -45,6 +45,7 @@ static char *rx_buf[PCKT_FRAG_MAX];
 static int wait_for_perf_rx = 0;
 static char *compresscfg = NULL;
 static char *cryptocfg = NULL;
+static int machine_output = 0;
 
 static int bench_shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -68,6 +69,7 @@ static uint64_t perf_by_time_secs = 10;
 struct node {
 	int nodeid;
 	int links;
+	uint8_t transport[KNET_MAX_LINK];
 	struct sockaddr_storage address[KNET_MAX_LINK];
 };
 
@@ -81,14 +83,15 @@ static void print_help(void)
 	printf(" -z [implementation]:[level]:[threshold]   compress configuration. (default disabled)\n");
 	printf("                                           Example: -z zlib:5:100\n");
 	printf(" -p [active|passive|rr]                    (default: passive)\n");
-	printf(" -P [udp|sctp]                             (default: udp) protocol (transport) to use\n");
+	printf(" -P [UDP|SCTP]                             (default: UDP) protocol (transport) to use for all links\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
-	printf(" -n [nodeid],[link1_ip_addr],[link2_..]    Other nodes information (at least one required)\n");
-	printf("                                           Example: -t 1,192.168.8.1,3ffe::8:1,..\n");
+	printf(" -n [nodeid],[proto]/[link1_ip],[link2_..] Other nodes information (at least one required)\n");
+	printf("                                           Example: -t 1,192.168.8.1,SCTP/3ffe::8:1,UDP/172...\n");
 	printf("                                           can be repeated up to %d and should contain also the localnode info\n", MAX_NODES);
 	printf(" -b [port]                                 baseport (default: 50000)\n");
 	printf(" -l                                        enable global listener on 0.0.0.0/:: (default: off, incompatible with -o)\n");
 	printf(" -o                                        enable baseport offset per nodeid\n");
+	printf(" -m                                        change PMTUd interval in seconds (default: 60)\n");
 	printf(" -w                                        dont wait for all nodes to be up before starting the test (default: wait)\n");
 	printf(" -T [ping|ping_data|perf-by-size|perf-by-time]\n");
 	printf("                                           test type (default: ping)\n");
@@ -108,6 +111,7 @@ static void print_help(void)
 	printf(" -X[XX]                                    show stats at the end of the run (default: 1)\n");
 	printf("                                           1: show handle stats, 2: show summary link stats\n");
 	printf("                                           3: show detailed link stats\n");
+	printf(" -a                                        enable machine parsable output (default: off).\n");
 }
 
 static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct node nodes[MAX_NODES], int *thisidx)
@@ -129,10 +133,28 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 			*thisidx = i;
 		}
 		while((temp = strtok(NULL, ","))) {
+			char *slash = NULL;
+			uint8_t transport;
+
 			if (nodes[i].links == KNET_MAX_LINK) {
 				printf("Too many links configured. Max %d\n", KNET_MAX_LINK);
 				exit(FAIL);
 			}
+
+			slash = strstr(temp, "/");
+			if (slash) {
+				memset(slash, 0, 1);
+				transport = knet_get_transport_id_by_name(temp);
+				if (transport == KNET_MAX_TRANSPORTS) {
+					printf("Unknown transport: %s\n", temp);
+					exit(FAIL);
+				}
+				nodes[i].transport[nodes[i].links] = transport;
+				temp = slash + 1;
+			} else {
+				nodes[i].transport[nodes[i].links] = KNET_TRANSPORT_UDP;
+			}
+
 			if (knet_strtoaddr(temp, port_str,
 					   &nodes[i].address[nodes[i].links],
 					   sizeof(struct sockaddr_storage)) < 0) {
@@ -172,7 +194,7 @@ static void sock_notify(void *pvt_data,
 			int error,
 			int errorno)
 {
-	printf("Error (%d - %d - %s) from socket: %d\n", error, errorno, strerror(errno), local_datafd);
+	printf("[info]: error (%d - %d - %s) from socket: %d\n", error, errorno, strerror(errno), local_datafd);
 	return;
 }
 
@@ -201,7 +223,7 @@ static int ping_dst_host_filter(void *pvt_data,
 
 static void setup_knet(int argc, char *argv[])
 {
-	int logfd;
+	int logfd = 0;
 	int rv;
 	char *policystr = NULL, *protostr = NULL;
 	char *othernodeinfo[MAX_NODES];
@@ -219,17 +241,21 @@ static void setup_knet(int argc, char *argv[])
 	int policy = KNET_LINK_POLICY_PASSIVE, policyfound = 0;
 	int protocol = KNET_TRANSPORT_UDP, protofound = 0;
 	int wait = 1;
+	int pmtud_interval = 60;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	char *cryptomodel = NULL, *cryptotype = NULL, *cryptohash = NULL;
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "CT:S:s:ldowb:t:n:c:p:X::P:z:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "aCT:S:s:ldom:wb:t:n:c:p:X::P:z:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
 				exit(PASS);
+				break;
+			case 'a':
+				machine_output = 1;
 				break;
 			case 'd':
 				debug = KNET_LOG_DEBUG;
@@ -274,11 +300,11 @@ static void setup_knet(int argc, char *argv[])
 					exit(FAIL);
 				}
 				protostr = optarg;
-				if (!strcmp(protostr, "udp")) {
+				if (!strcmp(protostr, "UDP")) {
 					protocol = KNET_TRANSPORT_UDP;
 					protofound = 1;
 				}
-				if (!strcmp(protostr, "sctp")) {
+				if (!strcmp(protostr, "SCTP")) {
 					protocol = KNET_TRANSPORT_SCTP;
 					protofound = 1;
 				}
@@ -319,6 +345,13 @@ static void setup_knet(int argc, char *argv[])
 					exit(FAIL);
 				}
 				portoffset = 1;
+				break;
+			case 'm':
+				pmtud_interval = atoi(optarg);
+				if (pmtud_interval < 1) {
+					printf("Error: pmtud interval %d out of range (> 0)\n", pmtud_interval);
+					exit(FAIL);
+				}
 				break;
 			case 'l':
 				if (portoffset) {
@@ -470,7 +503,7 @@ static void setup_knet(int argc, char *argv[])
 		exit(FAIL);
 	}
 
-	if (knet_handle_pmtud_setfreq(knet_h, 60) < 0) {
+	if (knet_handle_pmtud_setfreq(knet_h, pmtud_interval) < 0) {
 		printf("knet_handle_pmtud_setfreq failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		exit(FAIL);
@@ -522,8 +555,14 @@ static void setup_knet(int argc, char *argv[])
 					src = &allv6;
 				}
 			}
+			/*
+			 * -P overrides per link protocol configuration
+			 */
+			if (protofound) {
+				nodes[i].transport[link_idx] = protocol;
+			}
 			if (knet_link_set_config(knet_h, nodes[i].nodeid, link_idx,
-						 protocol, src,
+						 nodes[i].transport[link_idx], src,
 						 &nodes[i].address[link_idx], 0) < 0) {
 				printf("Unable to configure link: %s\n", strerror(errno));
 				exit(FAIL);
@@ -573,8 +612,8 @@ static void setup_knet(int argc, char *argv[])
 				if (i == thisidx) {
 					continue;
 				}
-				if(knet_h->host_index[nodes[i].nodeid]->status.reachable != 1) {
-					printf("waiting host %d to be reachable\n", nodes[i].nodeid);
+				if (knet_h->host_index[nodes[i].nodeid]->status.reachable != 1) {
+					printf("[info]: waiting host %d to be reachable\n", nodes[i].nodeid);
 					allnodesup = 0;
 				}
 			}
@@ -605,7 +644,7 @@ static void *_rx_thread(void *args)
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		rx_buf[i] = malloc(KNET_MAX_PACKET_SIZE);
 		if (!rx_buf[i]) {
-			printf("RXT: Unable to malloc!\n");
+			printf("RXT: Unable to malloc!\nHALTING RX THREAD!\n");
 			return NULL;
 		}
 		memset(rx_buf[i], 0, KNET_MAX_PACKET_SIZE);
@@ -640,15 +679,15 @@ static void *_rx_thread(void *args)
 		if (epoll_wait(rx_epoll, events, KNET_EPOLL_MAX_EVENTS, 1) >= 1) {
 			msg_recv = _recvmmsg(datafd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);
 			if (msg_recv < 0) {
-				printf("RXT: error from recvmmsg: %s\n", strerror(errno));
+				printf("[info]: RXT: error from recvmmsg: %s\n", strerror(errno));
 			}
 			switch(test_type) {
 				case TEST_PING_AND_DATA:
 					for (i = 0; i < msg_recv; i++) {
 						if (msg[i].msg_len == 0) {
-							printf("RXT: received 0 bytes message?\n");
+							printf("[info]: RXT: received 0 bytes message?\n");
 						}
-						printf("received %u bytes message: %s\n", msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
+						printf("[info]: received %u bytes message: %s\n", msg[i].msg_len, (char *)msg[i].msg_hdr.msg_iov->iov_base);
 					}
 					break;
 				case TEST_PERF_BY_TIME:
@@ -656,11 +695,11 @@ static void *_rx_thread(void *args)
 					for (i = 0; i < msg_recv; i++) {
 						if (msg[i].msg_len < 64) {
 							if (msg[i].msg_len == 0) {
-								printf("RXT: received 0 bytes message?\n");
+								printf("[info]: RXT: received 0 bytes message?\n");
 							}
 							if (msg[i].msg_len == TEST_START) {
 								if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
-									printf("Unable to get start time!\n");
+									printf("[info]: unable to get start time!\n");
 								}
 							}
 							if (msg[i].msg_len == TEST_STOP) {
@@ -668,7 +707,7 @@ static void *_rx_thread(void *args)
 								double average_rx_pkts;
 								double time_diff_sec;
 								if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
-									printf("Unable to get end time!\n");
+									printf("[info]: unable to get end time!\n");
 								}
 								timespec_diff(clock_start, clock_end, &time_diff);
 								/*
@@ -683,7 +722,12 @@ static void *_rx_thread(void *args)
 
 								average_rx_mbytes = (double)((rx_bytes / time_diff_sec) / (1024 * 1024));
 								average_rx_pkts = (double)(rx_pkts / time_diff_sec);
-								printf("Execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %" PRIu64 ")\n", time_diff_sec, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
+								if (!machine_output) {
+									printf("[perf] execution time: %8.4f secs Average speed: %8.4f MB/sec %8.4f pckts/sec (size: %u total: %" PRIu64 ")\n",
+									       time_diff_sec, average_rx_mbytes, average_rx_pkts, current_pckt_size, rx_pkts);
+								} else {
+									printf("[perf],%.4f,%u,%" PRIu64 ",%.4f,%.4f\n", time_diff_sec, current_pckt_size, rx_pkts, average_rx_mbytes, average_rx_pkts);
+								}
 								rx_pkts = 0;
 								rx_bytes = 0;
 								current_pckt_size = 0;
@@ -715,7 +759,7 @@ static void setup_data_txrx_common(void)
 			printf("Unable to enable dst_host_filter: %s\n", strerror(errno));
 			exit(FAIL);
 		}
-		printf("Setting up rx thread\n");
+		printf("[info]: setting up rx thread\n");
 		if (pthread_create(&rx_thread, 0, _rx_thread, NULL)) {
 			printf("Unable to start rx thread\n");
 			exit(FAIL);
@@ -729,7 +773,7 @@ static void stop_rx_thread(void)
 	int i;
 
 	if (rx_thread) {
-		printf("Shutting down rx thread\n");
+		printf("[info]: shutting down rx thread\n");
 		sleep(2);
 		pthread_cancel(rx_thread);
 		pthread_join(rx_thread, &retval);
@@ -754,7 +798,7 @@ static void send_ping_data(void)
 	}
 
 	if (knet_send(knet_h, buf, len, channel) != len) {
-		printf("Error sending hello world: %s\n", strerror(errno));
+		printf("[info]: Error sending hello world: %s\n", strerror(errno));
 	}
 	sleep(1);
 }
@@ -777,7 +821,7 @@ retry:
 			usleep(KNET_THREADS_TIMERES / 16);
 			goto retry;
 		}
-		printf("Unable to send messages: %s\n", strerror(errno));
+		printf("[info]: Unable to send messages: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -795,7 +839,7 @@ retry:
 			goto retry;
 		}
 		if (!progress) {
-			printf("Unable to send more messages after retry\n");
+			printf("[info]: Unable to send more messages after retry\n");
 		}
 	}
 	return total_sent;
@@ -840,7 +884,7 @@ static void send_perf_data_by_size(void)
 		}
 
 		total_pkts_to_tx = perf_by_size_size / packetsize;
-		printf("Testing with %u packet size. Total bytes to transfer: %" PRIu64 " (%" PRIu64 " packets)\n", packetsize, perf_by_size_size, total_pkts_to_tx);
+		printf("[info]: testing with %u packet size. total bytes to transfer: %" PRIu64 " (%" PRIu64 " packets)\n", packetsize, perf_by_size_size, total_pkts_to_tx);
 
 		memset(ctrl_message, 0, sizeof(ctrl_message));
 		knet_send(knet_h, ctrl_message, TEST_START, channel);
@@ -909,39 +953,39 @@ static void display_stats(int level)
 
 	res = knet_handle_get_stats(knet_h, &handle_stats, sizeof(handle_stats));
 	if (res) {
-		perror("Failed to get knet handle stats");
+		perror("[info]: failed to get knet handle stats");
 		return;
 	}
 	if (compresscfg || cryptocfg) {
 		printf("\n");
-		printf("handle stats\n");
-		printf("------------\n");
+		printf("[stat]: handle stats\n");
+		printf("[stat]: ------------\n");
 		if (compresscfg) {
-			printf(" tx_uncompressed_packets: %" PRIu64 "\n", handle_stats.tx_uncompressed_packets);
-			printf(" tx_compressed_packets: %" PRIu64 "\n", handle_stats.tx_compressed_packets);
-			printf(" tx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.tx_compressed_original_bytes);
-			printf(" tx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.tx_compressed_size_bytes );
-			printf(" tx_compress_time_ave: %" PRIu64 "\n", handle_stats.tx_compress_time_ave);
-			printf(" tx_compress_time_min: %" PRIu64 "\n", handle_stats.tx_compress_time_min);
-			printf(" tx_compress_time_max: %" PRIu64 "\n", handle_stats.tx_compress_time_max);
-			printf(" rx_compressed_packets: %" PRIu64 "\n", handle_stats.rx_compressed_packets);
-			printf(" rx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_original_bytes);
-			printf(" rx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_size_bytes);
-			printf(" rx_compress_time_ave: %" PRIu64 "\n", handle_stats.rx_compress_time_ave);
-			printf(" rx_compress_time_min: %" PRIu64 "\n", handle_stats.rx_compress_time_min);
-			printf(" rx_compress_time_max: %" PRIu64 "\n", handle_stats.rx_compress_time_max);
+			printf("[stat]:  tx_uncompressed_packets: %" PRIu64 "\n", handle_stats.tx_uncompressed_packets);
+			printf("[stat]:  tx_compressed_packets: %" PRIu64 "\n", handle_stats.tx_compressed_packets);
+			printf("[stat]:  tx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.tx_compressed_original_bytes);
+			printf("[stat]:  tx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.tx_compressed_size_bytes );
+			printf("[stat]:  tx_compress_time_ave: %" PRIu64 "\n", handle_stats.tx_compress_time_ave);
+			printf("[stat]:  tx_compress_time_min: %" PRIu64 "\n", handle_stats.tx_compress_time_min);
+			printf("[stat]:  tx_compress_time_max: %" PRIu64 "\n", handle_stats.tx_compress_time_max);
+			printf("[stat]:  rx_compressed_packets: %" PRIu64 "\n", handle_stats.rx_compressed_packets);
+			printf("[stat]:  rx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_original_bytes);
+			printf("[stat]:  rx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_size_bytes);
+			printf("[stat]:  rx_compress_time_ave: %" PRIu64 "\n", handle_stats.rx_compress_time_ave);
+			printf("[stat]:  rx_compress_time_min: %" PRIu64 "\n", handle_stats.rx_compress_time_min);
+			printf("[stat]:  rx_compress_time_max: %" PRIu64 "\n", handle_stats.rx_compress_time_max);
 			printf("\n");
 		}
 		if (cryptocfg) {
-			printf(" tx_crypt_packets: %" PRIu64 "\n", handle_stats.tx_crypt_packets);
-			printf(" tx_crypt_byte_overhead: %" PRIu64 "\n", handle_stats.tx_crypt_byte_overhead);
-			printf(" tx_crypt_time_ave: %" PRIu64 "\n", handle_stats.tx_crypt_time_ave);
-			printf(" tx_crypt_time_min: %" PRIu64 "\n", handle_stats.tx_crypt_time_min);
-			printf(" tx_crypt_time_max: %" PRIu64 "\n", handle_stats.tx_crypt_time_max);
-			printf(" rx_crypt_packets: %" PRIu64 "\n", handle_stats.rx_crypt_packets);
-			printf(" rx_crypt_time_ave: %" PRIu64 "\n", handle_stats.rx_crypt_time_ave);
-			printf(" rx_crypt_time_min: %" PRIu64 "\n", handle_stats.rx_crypt_time_min);
-			printf(" rx_crypt_time_max: %" PRIu64 "\n", handle_stats.rx_crypt_time_max);
+			printf("[stat]:  tx_crypt_packets: %" PRIu64 "\n", handle_stats.tx_crypt_packets);
+			printf("[stat]:  tx_crypt_byte_overhead: %" PRIu64 "\n", handle_stats.tx_crypt_byte_overhead);
+			printf("[stat]:  tx_crypt_time_ave: %" PRIu64 "\n", handle_stats.tx_crypt_time_ave);
+			printf("[stat]:  tx_crypt_time_min: %" PRIu64 "\n", handle_stats.tx_crypt_time_min);
+			printf("[stat]:  tx_crypt_time_max: %" PRIu64 "\n", handle_stats.tx_crypt_time_max);
+			printf("[stat]:  rx_crypt_packets: %" PRIu64 "\n", handle_stats.rx_crypt_packets);
+			printf("[stat]:  rx_crypt_time_ave: %" PRIu64 "\n", handle_stats.rx_crypt_time_ave);
+			printf("[stat]:  rx_crypt_time_min: %" PRIu64 "\n", handle_stats.rx_crypt_time_min);
+			printf("[stat]:  rx_crypt_time_max: %" PRIu64 "\n", handle_stats.rx_crypt_time_max);
 			printf("\n");
 		}
 	}
@@ -953,7 +997,7 @@ static void display_stats(int level)
 
 	res = knet_host_get_host_list(knet_h, host_list, &num_hosts);
 	if (res) {
-		perror("Cannot get host list for stats");
+		perror("[info]: cannot get host list for stats");
 		return;
 	}
 
@@ -963,7 +1007,7 @@ static void display_stats(int level)
 	for (j=0; j<num_hosts; j++) {
 		res = knet_link_get_link_list(knet_h, host_list[j], link_list, &num_links);
 		if (res) {
-			perror("Cannot get link list for stats");
+			perror("[info]: cannot get link list for stats");
 			return;
 		}
 
@@ -1012,89 +1056,89 @@ static void display_stats(int level)
 
 			if (level > 2) {
 				printf("\n");
-				printf("Node %d Link %d\n", host_list[j], link_list[i]);
+				printf("[stat]: Node %d Link %d\n", host_list[j], link_list[i]);
 
-				printf("  tx_data_packets:  %" PRIu64 "\n", link_status.stats.tx_data_packets);
-				printf("  rx_data_packets:  %" PRIu64 "\n", link_status.stats.rx_data_packets);
-				printf("  tx_data_bytes:    %" PRIu64 "\n", link_status.stats.tx_data_bytes);
-				printf("  rx_data_bytes:    %" PRIu64 "\n", link_status.stats.rx_data_bytes);
-				printf("  rx_ping_packets:  %" PRIu64 "\n", link_status.stats.rx_ping_packets);
-				printf("  tx_ping_packets:  %" PRIu64 "\n", link_status.stats.tx_ping_packets);
-				printf("  rx_ping_bytes:    %" PRIu64 "\n", link_status.stats.rx_ping_bytes);
-				printf("  tx_ping_bytes:    %" PRIu64 "\n", link_status.stats.tx_ping_bytes);
-				printf("  rx_pong_packets:  %" PRIu64 "\n", link_status.stats.rx_pong_packets);
-				printf("  tx_pong_packets:  %" PRIu64 "\n", link_status.stats.tx_pong_packets);
-				printf("  rx_pong_bytes:    %" PRIu64 "\n", link_status.stats.rx_pong_bytes);
-				printf("  tx_pong_bytes:    %" PRIu64 "\n", link_status.stats.tx_pong_bytes);
-				printf("  rx_pmtu_packets:  %" PRIu64 "\n", link_status.stats.rx_pmtu_packets);
-				printf("  tx_pmtu_packets:  %" PRIu64 "\n", link_status.stats.tx_pmtu_packets);
-				printf("  rx_pmtu_bytes:    %" PRIu64 "\n", link_status.stats.rx_pmtu_bytes);
-				printf("  tx_pmtu_bytes:    %" PRIu64 "\n", link_status.stats.tx_pmtu_bytes);
+				printf("[stat]:   tx_data_packets:  %" PRIu64 "\n", link_status.stats.tx_data_packets);
+				printf("[stat]:   rx_data_packets:  %" PRIu64 "\n", link_status.stats.rx_data_packets);
+				printf("[stat]:   tx_data_bytes:    %" PRIu64 "\n", link_status.stats.tx_data_bytes);
+				printf("[stat]:   rx_data_bytes:    %" PRIu64 "\n", link_status.stats.rx_data_bytes);
+				printf("[stat]:   rx_ping_packets:  %" PRIu64 "\n", link_status.stats.rx_ping_packets);
+				printf("[stat]:   tx_ping_packets:  %" PRIu64 "\n", link_status.stats.tx_ping_packets);
+				printf("[stat]:   rx_ping_bytes:    %" PRIu64 "\n", link_status.stats.rx_ping_bytes);
+				printf("[stat]:   tx_ping_bytes:    %" PRIu64 "\n", link_status.stats.tx_ping_bytes);
+				printf("[stat]:   rx_pong_packets:  %" PRIu64 "\n", link_status.stats.rx_pong_packets);
+				printf("[stat]:   tx_pong_packets:  %" PRIu64 "\n", link_status.stats.tx_pong_packets);
+				printf("[stat]:   rx_pong_bytes:    %" PRIu64 "\n", link_status.stats.rx_pong_bytes);
+				printf("[stat]:   tx_pong_bytes:    %" PRIu64 "\n", link_status.stats.tx_pong_bytes);
+				printf("[stat]:   rx_pmtu_packets:  %" PRIu64 "\n", link_status.stats.rx_pmtu_packets);
+				printf("[stat]:   tx_pmtu_packets:  %" PRIu64 "\n", link_status.stats.tx_pmtu_packets);
+				printf("[stat]:   rx_pmtu_bytes:    %" PRIu64 "\n", link_status.stats.rx_pmtu_bytes);
+				printf("[stat]:   tx_pmtu_bytes:    %" PRIu64 "\n", link_status.stats.tx_pmtu_bytes);
 
-				printf("  tx_total_packets: %" PRIu64 "\n", link_status.stats.tx_total_packets);
-				printf("  rx_total_packets: %" PRIu64 "\n", link_status.stats.rx_total_packets);
-				printf("  tx_total_bytes:   %" PRIu64 "\n", link_status.stats.tx_total_bytes);
-				printf("  rx_total_bytes:   %" PRIu64 "\n", link_status.stats.rx_total_bytes);
-				printf("  tx_total_errors:  %" PRIu64 "\n", link_status.stats.tx_total_errors);
-				printf("  tx_total_retries: %" PRIu64 "\n", link_status.stats.tx_total_retries);
+				printf("[stat]:   tx_total_packets: %" PRIu64 "\n", link_status.stats.tx_total_packets);
+				printf("[stat]:   rx_total_packets: %" PRIu64 "\n", link_status.stats.rx_total_packets);
+				printf("[stat]:   tx_total_bytes:   %" PRIu64 "\n", link_status.stats.tx_total_bytes);
+				printf("[stat]:   rx_total_bytes:   %" PRIu64 "\n", link_status.stats.rx_total_bytes);
+				printf("[stat]:   tx_total_errors:  %" PRIu64 "\n", link_status.stats.tx_total_errors);
+				printf("[stat]:   tx_total_retries: %" PRIu64 "\n", link_status.stats.tx_total_retries);
 
-				printf("  tx_pmtu_errors:   %" PRIu32 "\n", link_status.stats.tx_pmtu_errors);
-				printf("  tx_pmtu_retries:  %" PRIu32 "\n", link_status.stats.tx_pmtu_retries);
-				printf("  tx_ping_errors:   %" PRIu32 "\n", link_status.stats.tx_ping_errors);
-				printf("  tx_ping_retries:  %" PRIu32 "\n", link_status.stats.tx_ping_retries);
-				printf("  tx_pong_errors:   %" PRIu32 "\n", link_status.stats.tx_pong_errors);
-				printf("  tx_pong_retries:  %" PRIu32 "\n", link_status.stats.tx_pong_retries);
-				printf("  tx_data_errors:   %" PRIu32 "\n", link_status.stats.tx_data_errors);
-				printf("  tx_data_retries:  %" PRIu32 "\n", link_status.stats.tx_data_retries);
+				printf("[stat]:   tx_pmtu_errors:   %" PRIu32 "\n", link_status.stats.tx_pmtu_errors);
+				printf("[stat]:   tx_pmtu_retries:  %" PRIu32 "\n", link_status.stats.tx_pmtu_retries);
+				printf("[stat]:   tx_ping_errors:   %" PRIu32 "\n", link_status.stats.tx_ping_errors);
+				printf("[stat]:   tx_ping_retries:  %" PRIu32 "\n", link_status.stats.tx_ping_retries);
+				printf("[stat]:   tx_pong_errors:   %" PRIu32 "\n", link_status.stats.tx_pong_errors);
+				printf("[stat]:   tx_pong_retries:  %" PRIu32 "\n", link_status.stats.tx_pong_retries);
+				printf("[stat]:   tx_data_errors:   %" PRIu32 "\n", link_status.stats.tx_data_errors);
+				printf("[stat]:   tx_data_retries:  %" PRIu32 "\n", link_status.stats.tx_data_retries);
 
-				printf("  latency_min:      %" PRIu32 "\n", link_status.stats.latency_min);
-				printf("  latency_max:      %" PRIu32 "\n", link_status.stats.latency_max);
-				printf("  latency_ave:      %" PRIu32 "\n", link_status.stats.latency_ave);
-				printf("  latency_samples:  %" PRIu32 "\n", link_status.stats.latency_samples);
+				printf("[stat]:   latency_min:      %" PRIu32 "\n", link_status.stats.latency_min);
+				printf("[stat]:   latency_max:      %" PRIu32 "\n", link_status.stats.latency_max);
+				printf("[stat]:   latency_ave:      %" PRIu32 "\n", link_status.stats.latency_ave);
+				printf("[stat]:   latency_samples:  %" PRIu32 "\n", link_status.stats.latency_samples);
 
-				printf("  down_count:       %" PRIu32 "\n", link_status.stats.down_count);
-				printf("  up_count:         %" PRIu32 "\n", link_status.stats.up_count);
+				printf("[stat]:   down_count:       %" PRIu32 "\n", link_status.stats.down_count);
+				printf("[stat]:   up_count:         %" PRIu32 "\n", link_status.stats.up_count);
 			}
 		}
 	}
 	printf("\n");
-	printf("Total link stats\n");
-	printf("----------------\n");
-	printf("tx_data_packets:  %" PRIu64 "\n", total_link_stats.tx_data_packets);
-	printf("rx_data_packets:  %" PRIu64 "\n", total_link_stats.rx_data_packets);
-	printf("tx_data_bytes:    %" PRIu64 "\n", total_link_stats.tx_data_bytes);
-	printf("rx_data_bytes:    %" PRIu64 "\n", total_link_stats.rx_data_bytes);
-	printf("rx_ping_packets:  %" PRIu64 "\n", total_link_stats.rx_ping_packets);
-	printf("tx_ping_packets:  %" PRIu64 "\n", total_link_stats.tx_ping_packets);
-	printf("rx_ping_bytes:    %" PRIu64 "\n", total_link_stats.rx_ping_bytes);
-	printf("tx_ping_bytes:    %" PRIu64 "\n", total_link_stats.tx_ping_bytes);
-	printf("rx_pong_packets:  %" PRIu64 "\n", total_link_stats.rx_pong_packets);
-	printf("tx_pong_packets:  %" PRIu64 "\n", total_link_stats.tx_pong_packets);
-	printf("rx_pong_bytes:    %" PRIu64 "\n", total_link_stats.rx_pong_bytes);
-	printf("tx_pong_bytes:    %" PRIu64 "\n", total_link_stats.tx_pong_bytes);
-	printf("rx_pmtu_packets:  %" PRIu64 "\n", total_link_stats.rx_pmtu_packets);
-	printf("tx_pmtu_packets:  %" PRIu64 "\n", total_link_stats.tx_pmtu_packets);
-	printf("rx_pmtu_bytes:    %" PRIu64 "\n", total_link_stats.rx_pmtu_bytes);
-	printf("tx_pmtu_bytes:    %" PRIu64 "\n", total_link_stats.tx_pmtu_bytes);
+	printf("[stat]: Total link stats\n");
+	printf("[stat]: ----------------\n");
+	printf("[stat]: tx_data_packets:  %" PRIu64 "\n", total_link_stats.tx_data_packets);
+	printf("[stat]: rx_data_packets:  %" PRIu64 "\n", total_link_stats.rx_data_packets);
+	printf("[stat]: tx_data_bytes:    %" PRIu64 "\n", total_link_stats.tx_data_bytes);
+	printf("[stat]: rx_data_bytes:    %" PRIu64 "\n", total_link_stats.rx_data_bytes);
+	printf("[stat]: rx_ping_packets:  %" PRIu64 "\n", total_link_stats.rx_ping_packets);
+	printf("[stat]: tx_ping_packets:  %" PRIu64 "\n", total_link_stats.tx_ping_packets);
+	printf("[stat]: rx_ping_bytes:    %" PRIu64 "\n", total_link_stats.rx_ping_bytes);
+	printf("[stat]: tx_ping_bytes:    %" PRIu64 "\n", total_link_stats.tx_ping_bytes);
+	printf("[stat]: rx_pong_packets:  %" PRIu64 "\n", total_link_stats.rx_pong_packets);
+	printf("[stat]: tx_pong_packets:  %" PRIu64 "\n", total_link_stats.tx_pong_packets);
+	printf("[stat]: rx_pong_bytes:    %" PRIu64 "\n", total_link_stats.rx_pong_bytes);
+	printf("[stat]: tx_pong_bytes:    %" PRIu64 "\n", total_link_stats.tx_pong_bytes);
+	printf("[stat]: rx_pmtu_packets:  %" PRIu64 "\n", total_link_stats.rx_pmtu_packets);
+	printf("[stat]: tx_pmtu_packets:  %" PRIu64 "\n", total_link_stats.tx_pmtu_packets);
+	printf("[stat]: rx_pmtu_bytes:    %" PRIu64 "\n", total_link_stats.rx_pmtu_bytes);
+	printf("[stat]: tx_pmtu_bytes:    %" PRIu64 "\n", total_link_stats.tx_pmtu_bytes);
 
-	printf("tx_total_packets: %" PRIu64 "\n", total_link_stats.tx_total_packets);
-	printf("rx_total_packets: %" PRIu64 "\n", total_link_stats.rx_total_packets);
-	printf("tx_total_bytes:   %" PRIu64 "\n", total_link_stats.tx_total_bytes);
-	printf("rx_total_bytes:   %" PRIu64 "\n", total_link_stats.rx_total_bytes);
-	printf("tx_total_errors:  %" PRIu64 "\n", total_link_stats.tx_total_errors);
-	printf("tx_total_retries: %" PRIu64 "\n", total_link_stats.tx_total_retries);
+	printf("[stat]: tx_total_packets: %" PRIu64 "\n", total_link_stats.tx_total_packets);
+	printf("[stat]: rx_total_packets: %" PRIu64 "\n", total_link_stats.rx_total_packets);
+	printf("[stat]: tx_total_bytes:   %" PRIu64 "\n", total_link_stats.tx_total_bytes);
+	printf("[stat]: rx_total_bytes:   %" PRIu64 "\n", total_link_stats.rx_total_bytes);
+	printf("[stat]: tx_total_errors:  %" PRIu64 "\n", total_link_stats.tx_total_errors);
+	printf("[stat]: tx_total_retries: %" PRIu64 "\n", total_link_stats.tx_total_retries);
 
-	printf("tx_pmtu_errors:   %" PRIu32 "\n", total_link_stats.tx_pmtu_errors);
-	printf("tx_pmtu_retries:  %" PRIu32 "\n", total_link_stats.tx_pmtu_retries);
-	printf("tx_ping_errors:   %" PRIu32 "\n", total_link_stats.tx_ping_errors);
-	printf("tx_ping_retries:  %" PRIu32 "\n", total_link_stats.tx_ping_retries);
-	printf("tx_pong_errors:   %" PRIu32 "\n", total_link_stats.tx_pong_errors);
-	printf("tx_pong_retries:  %" PRIu32 "\n", total_link_stats.tx_pong_retries);
-	printf("tx_data_errors:   %" PRIu32 "\n", total_link_stats.tx_data_errors);
-	printf("tx_data_retries:  %" PRIu32 "\n", total_link_stats.tx_data_retries);
+	printf("[stat]: tx_pmtu_errors:   %" PRIu32 "\n", total_link_stats.tx_pmtu_errors);
+	printf("[stat]: tx_pmtu_retries:  %" PRIu32 "\n", total_link_stats.tx_pmtu_retries);
+	printf("[stat]: tx_ping_errors:   %" PRIu32 "\n", total_link_stats.tx_ping_errors);
+	printf("[stat]: tx_ping_retries:  %" PRIu32 "\n", total_link_stats.tx_ping_retries);
+	printf("[stat]: tx_pong_errors:   %" PRIu32 "\n", total_link_stats.tx_pong_errors);
+	printf("[stat]: tx_pong_retries:  %" PRIu32 "\n", total_link_stats.tx_pong_retries);
+	printf("[stat]: tx_data_errors:   %" PRIu32 "\n", total_link_stats.tx_data_errors);
+	printf("[stat]: tx_data_retries:  %" PRIu32 "\n", total_link_stats.tx_data_retries);
 
-	printf("down_count:       %" PRIu32 "\n", total_link_stats.down_count);
-	printf("up_count:         %" PRIu32 "\n", total_link_stats.up_count);
+	printf("[stat]: down_count:       %" PRIu32 "\n", total_link_stats.down_count);
+	printf("[stat]: up_count:         %" PRIu32 "\n", total_link_stats.up_count);
 
 }
 
@@ -1106,7 +1150,7 @@ static void send_perf_data_by_time(void)
 	char ctrl_message[16];
 	int sent_msgs;
 	int i;
-	uint32_t packetsize = 65536;
+	uint32_t packetsize = 64;
 	struct timespec clock_start, clock_end;
 	unsigned long long time_diff = 0;
 
@@ -1119,13 +1163,13 @@ static void send_perf_data_by_time(void)
 		for (i = 0; i < PCKT_FRAG_MAX; i++) {
 			iov_out[i].iov_len = packetsize;
 		}
-		printf("Testing with %u bytes packet size for %" PRIu64 " seconds.\n", packetsize, perf_by_time_secs);
+		printf("[info]: testing with %u bytes packet size for %" PRIu64 " seconds.\n", packetsize, perf_by_time_secs);
 
 		memset(ctrl_message, 0, sizeof(ctrl_message));
 		knet_send(knet_h, ctrl_message, TEST_START, channel);
 
 		if (clock_gettime(CLOCK_MONOTONIC, &clock_start) != 0) {
-			printf("Unable to get start time!\n");
+			printf("[info]: unable to get start time!\n");
 		}
 
 		time_diff = 0;
@@ -1137,7 +1181,7 @@ static void send_perf_data_by_time(void)
 				exit(FAIL);
 			}
 			if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
-				printf("Unable to get end time!\n");
+				printf("[info]: unable to get end time!\n");
 			}
 			timespec_diff(clock_start, clock_end, &time_diff);
 		}
@@ -1191,7 +1235,7 @@ static void cleanup_all(void)
 
 static void sigint_handler(int signum)
 {
-	printf("Cleaning up... got signal: %d\n", signum);
+	printf("[info]: cleaning up... got signal: %d\n", signum);
 	cleanup_all();
 	exit(PASS);
 }
@@ -1222,7 +1266,7 @@ restart:
 			if (senderid == thisnodeid) {
 				send_perf_data_by_size();
 			} else {
-				printf("Waiting for perf rx thread to finish\n");
+				printf("[info]: waiting for perf rx thread to finish\n");
 				while(!wait_for_perf_rx) {
 					sleep(1);
 				}
@@ -1232,7 +1276,7 @@ restart:
 			if (senderid == thisnodeid) {
 				send_perf_data_by_time();
 			} else {
-				printf("Waiting for perf rx thread to finish\n");
+				printf("[info]: waiting for perf rx thread to finish\n");
 				while(!wait_for_perf_rx) {
 					sleep(1);
 				}

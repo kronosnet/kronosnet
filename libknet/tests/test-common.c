@@ -236,7 +236,7 @@ next:
 	}
 
 	if (len > 0) {
-		fprintf(std, "knet logs: [%s] %s: %s\n",
+		fprintf(std, "[knet]: [%s] %s: %s\n",
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
 			msg.msg);
@@ -263,7 +263,7 @@ select_loop:
 		return NULL;
 	}
 	if (!len) {
-		fprintf(data.std, "knet logs: No logs in the last 60 seconds\n");
+		fprintf(data.std, "[knet]: No logs in the last 60 seconds\n");
 	}
 	if (FD_ISSET(data.logfd, &rfds)) {
 		flush_logs(data.logfd, data.std);
