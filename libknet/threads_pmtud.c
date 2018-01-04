@@ -181,7 +181,7 @@ retry:
 	 * we cannot hold a lock on kmtu_mutex between resetting
 	 * knet_h->kernel_mtu here and below where it's used.
 	 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
-	 * set to 0 and we can trust it's value later.
+	 * set to 0 and we can trust its value later.
 	 */
 	use_kernel_mtu = 0;
 
@@ -217,7 +217,7 @@ retry:
 			 * we cannot hold a lock on kmtu_mutex between resetting
 			 * knet_h->kernel_mtu and here.
 			 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
-			 * set to 0 previously and we can trust it's value now.
+			 * set to 0 previously and we can trust its value now.
 			 */
 			if (use_kernel_mtu) {
 				use_kernel_mtu = 0;
