@@ -214,7 +214,7 @@ retry:
 	if (len != (ssize_t )data_len) {
 		if (savederrno == EMSGSIZE) {
 			/*
-			 * we cannot hold a lonk on kmtu_mutex between resetting
+			 * we cannot hold a lock on kmtu_mutex between resetting
 			 * knet_h->kernel_mtu and here.
 			 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
 			 * set to 0 previously and we can trust it's value now.
