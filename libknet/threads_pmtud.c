@@ -24,7 +24,7 @@
 
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
-	int err, ret, savederrno, mutex_retry_limit, failsafe, has_kernel_mtu, warn_once;
+	int err, ret, savederrno, mutex_retry_limit, failsafe, use_kernel_mtu, warn_once;
 	uint32_t kernel_mtu; /* record kernel_mtu from EMSGSIZE */
 	size_t onwire_len;   /* current packet onwire size */
 	size_t overhead_len; /* onwire packet overhead (protocol based) */
@@ -177,13 +177,20 @@ retry:
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;
 
-	if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
-		has_kernel_mtu = 0;
-	} else {
-		has_kernel_mtu = 1;
+	/*
+	 * we cannot hold a lock on kmtu_mutex between resetting
+	 * knet_h->kernel_mtu here and below where it's used.
+	 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
+	 * set to 0 and we can trust it's value later.
+	 */
+	use_kernel_mtu = 0;
+
+	if (pthread_mutex_lock(&knet_h->kmtu_mutex) == 0) {
+		use_kernel_mtu = 1;
 		knet_h->kernel_mtu = 0;
 		pthread_mutex_unlock(&knet_h->kmtu_mutex);
 	}
+
 	kernel_mtu = 0;
 
 	err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
@@ -206,10 +213,15 @@ retry:
 
 	if (len != (ssize_t )data_len) {
 		if (savederrno == EMSGSIZE) {
-			if (has_kernel_mtu) {
-				if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
-					has_kernel_mtu = 0;
-				} else {
+			/*
+			 * we cannot hold a lonk on kmtu_mutex between resetting
+			 * knet_h->kernel_mtu and here.
+			 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
+			 * set to 0 previously and we can trust it's value now.
+			 */
+			if (use_kernel_mtu) {
+				use_kernel_mtu = 0;
+				if (pthread_mutex_lock(&knet_h->kmtu_mutex) == 0) {
 					kernel_mtu = knet_h->kernel_mtu;
 					pthread_mutex_unlock(&knet_h->kmtu_mutex);
 				}
