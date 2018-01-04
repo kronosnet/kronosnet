@@ -342,7 +342,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 								 * we can only try to take a lock here. This part of the code
 								 * can be invoked by any thread, including PMTUd that is already
 								 * holding a lock at that stage.
-								 * If PMTUd is holding the lock, mostlikely it is already running
+								 * If PMTUd is holding the lock, most likely it is already running
 								 * and we don't need to notify it back.
 								 */
 								if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
