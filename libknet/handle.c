@@ -89,6 +89,13 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->kmtu_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize kernel_mtu mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_cond_init(&knet_h->pmtud_cond, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud conditional mutex: %s",
@@ -136,6 +143,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
+	pthread_mutex_destroy(&knet_h->kmtu_mutex);
 	pthread_cond_destroy(&knet_h->pmtud_cond);
 	pthread_mutex_destroy(&knet_h->hb_mutex);
 	pthread_mutex_destroy(&knet_h->tx_mutex);

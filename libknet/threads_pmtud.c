@@ -24,7 +24,8 @@
 
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
-	int err, ret, savederrno, mutex_retry_limit, failsafe;
+	int err, ret, savederrno, mutex_retry_limit, failsafe, use_kernel_mtu, warn_once;
+	uint32_t kernel_mtu; /* record kernel_mtu from EMSGSIZE */
 	size_t onwire_len;   /* current packet onwire size */
 	size_t overhead_len; /* onwire packet overhead (protocol based) */
 	size_t max_mtu_len;  /* max mtu for protocol */
@@ -38,6 +39,8 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	struct timespec ts;
 	unsigned long long pong_timeout_adj_tmp;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
+
+	warn_once = 0;
 
 	mutex_retry_limit = 0;
 	failsafe = 0;
@@ -174,6 +177,22 @@ retry:
 			sizeof(struct sockaddr_storage));
 	savederrno = errno;
 
+	/*
+	 * we cannot hold a lock on kmtu_mutex between resetting
+	 * knet_h->kernel_mtu here and below where it's used.
+	 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
+	 * set to 0 and we can trust its value later.
+	 */
+	use_kernel_mtu = 0;
+
+	if (pthread_mutex_lock(&knet_h->kmtu_mutex) == 0) {
+		use_kernel_mtu = 1;
+		knet_h->kernel_mtu = 0;
+		pthread_mutex_unlock(&knet_h->kmtu_mutex);
+	}
+
+	kernel_mtu = 0;
+
 	err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
 	switch(err) {
 		case -1: /* unrecoverable error */
@@ -194,7 +213,24 @@ retry:
 
 	if (len != (ssize_t )data_len) {
 		if (savederrno == EMSGSIZE) {
-			dst_link->last_bad_mtu = onwire_len;
+			/*
+			 * we cannot hold a lock on kmtu_mutex between resetting
+			 * knet_h->kernel_mtu and here.
+			 * use_kernel_mtu tells us if the knet_h->kernel_mtu was
+			 * set to 0 previously and we can trust its value now.
+			 */
+			if (use_kernel_mtu) {
+				use_kernel_mtu = 0;
+				if (pthread_mutex_lock(&knet_h->kmtu_mutex) == 0) {
+					kernel_mtu = knet_h->kernel_mtu;
+					pthread_mutex_unlock(&knet_h->kmtu_mutex);
+				}
+			}
+			if (kernel_mtu > 0) {
+				dst_link->last_bad_mtu = kernel_mtu + 1;
+			} else {
+				dst_link->last_bad_mtu = onwire_len;
+			}
 		} else {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet len: %zu err: %s", onwire_len, strerror(savederrno));
 		}
@@ -214,7 +250,7 @@ retry:
 		/*
 		 * set PMTUd reply timeout to match pong_timeout on a given link
 		 *
-		 * math: internally  pong_timeout is expressed in microseconds, while
+		 * math: internally pong_timeout is expressed in microseconds, while
 		 *       the public API exports milliseconds. So careful with the 0's here.
 		 * the loop is necessary because we are grabbing the current time just above
 		 * and add values to it that could overflow into seconds.
@@ -244,11 +280,11 @@ retry:
 
 		pthread_mutex_unlock(&knet_h->backoff_mutex);
 
-		knet_h->pmtud_running = 1;
+		knet_h->pmtud_waiting = 1;
 
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
-		knet_h->pmtud_running = 0;
+		knet_h->pmtud_waiting = 0;
 
 		if (knet_h->pmtud_abort) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
@@ -262,14 +298,34 @@ retry:
 			return -1;
 		}
 
-		if ((ret != 0) && (ret != ETIMEDOUT)) {
-			pthread_mutex_unlock(&knet_h->pmtud_mutex);
-			if (mutex_retry_limit == 3) {
-				log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unable to get mutex lock");
-				return -1;
+		if (ret) {
+			if (ret == ETIMEDOUT) {
+				if (!warn_once) {
+					log_warn(knet_h, KNET_SUB_PMTUD,
+							"possible MTU misconfiguration detected. "
+							"kernel is reporting MTU: %u bytes for "
+							"host %u link %u but the other node is "
+							"not acknowledging packets of this size. ",
+							dst_link->last_sent_mtu,
+							dst_host->host_id,
+							dst_link->link_id);
+					log_warn(knet_h, KNET_SUB_PMTUD,
+							"This can be caused by this node interface MTU "
+							"too big or a network device that does not "
+							"support or has been misconfigured to manage MTU "
+							"of this size, or packet loss. knet will continue "
+							"to run but performances might be affected.");
+					warn_once = 1;
+				}
+			} else {
+				pthread_mutex_unlock(&knet_h->pmtud_mutex);
+				if (mutex_retry_limit == 3) {
+					log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unable to get mutex lock");
+					return -1;
+				}
+				mutex_retry_limit++;
+				goto restart;
 			}
-			mutex_retry_limit++;
-			goto restart;
 		}
 
 		if ((dst_link->last_recv_mtu != onwire_len) || (ret)) {
@@ -303,7 +359,12 @@ retry:
 		}
 	}
 
-	onwire_len = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
+	if (kernel_mtu) {
+		onwire_len = kernel_mtu;
+	} else {
+		onwire_len = (dst_link->last_good_mtu + dst_link->last_bad_mtu) / 2;
+	}
+
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 
 	/*
@@ -313,25 +374,27 @@ retry:
 	goto restart;
 }
 
-static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, unsigned int *min_mtu)
+static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, unsigned int *min_mtu, int force_run)
 {
 	uint8_t saved_valid_pmtud;
 	unsigned int saved_pmtud;
 	struct timespec clock_now;
 	unsigned long long diff_pmtud, interval;
 
-	interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
+	if (!force_run) {
+		interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
 
-	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
-		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
-		return 0;
-	}
+		if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
+			return 0;
+		}
 
-	timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
+		timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
 
-	if (diff_pmtud < interval) {
-		*min_mtu = dst_link->status.mtu;
-		return dst_link->has_valid_mtu;
+		if (diff_pmtud < interval) {
+			*min_mtu = dst_link->status.mtu;
+			return dst_link->has_valid_mtu;
+		}
 	}
 
 	switch (dst_link->dst_addr.ss_family) {
@@ -417,6 +480,7 @@ void *_handle_pmtud_link_thread(void *data)
 	unsigned int min_mtu, have_mtu;
 	unsigned int lower_mtu;
 	int link_has_mtu;
+	int force_run = 0;
 
 	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 
@@ -433,7 +497,14 @@ void *_handle_pmtud_link_thread(void *data)
 			continue;
 		}
 		knet_h->pmtud_abort = 0;
+		knet_h->pmtud_running = 1;
+		force_run = knet_h->pmtud_forcerun;
+		knet_h->pmtud_forcerun = 0;
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+
+		if (force_run) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUd request to rerun has been received");
+		}
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get read lock");
@@ -456,7 +527,7 @@ void *_handle_pmtud_link_thread(void *data)
 				     (dst_link->status.dynconnected != 1)))
 					continue;
 
-				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu);
+				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu, force_run);
 				if (errno == EDEADLK) {
 					goto out_unlock;
 				}
@@ -482,6 +553,12 @@ void *_handle_pmtud_link_thread(void *data)
 		}
 out_unlock:
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
+		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
+		} else {
+			knet_h->pmtud_running = 0;
+			pthread_mutex_unlock(&knet_h->pmtud_mutex);
+		}
 	}
 
 	return NULL;

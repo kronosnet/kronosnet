@@ -328,6 +328,33 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 					switch (sock_err->ee_origin) {
 						case 0: /* no origin */
 						case 1: /* local source (EMSGSIZE) */
+							if (sock_err->ee_errno == EMSGSIZE) {
+								if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
+									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Unable to get mutex lock");
+									knet_h->kernel_mtu = 0;
+									break;
+								} else {
+									knet_h->kernel_mtu = sock_err->ee_info;
+									pthread_mutex_unlock(&knet_h->kmtu_mutex);
+								}
+
+								/*
+								 * we can only try to take a lock here. This part of the code
+								 * can be invoked by any thread, including PMTUd that is already
+								 * holding a lock at that stage.
+								 * If PMTUd is holding the lock, most likely it is already running
+								 * and we don't need to notify it back.
+								 */
+								if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
+									if (!knet_h->pmtud_running) {
+										if (!knet_h->pmtud_forcerun) {
+											log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Notifying PMTUd to rerun");
+											knet_h->pmtud_forcerun = 1;
+										}
+									}
+									pthread_mutex_unlock(&knet_h->pmtud_mutex);
+								}
+							}
 							/*
 							 * those errors are way too noisy
 							 */
@@ -371,6 +398,7 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 {
 	if (recv_err < 0) {
 		if (recv_errno == EMSGSIZE) {
+			read_errs_from_sock(knet_h, sockfd);
 			return 0;
 		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
