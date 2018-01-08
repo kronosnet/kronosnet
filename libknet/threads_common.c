@@ -44,11 +44,12 @@ static int pmtud_reschedule(knet_handle_t knet_h)
 		return -1;
 	}
 
-	knet_h->pmtud_abort = 1;
-	knet_h->pmtud_forcerun = 1;
+	if (knet_h->pmtud_running) {
+		knet_h->pmtud_abort = 1;
 
-	if (knet_h->pmtud_waiting) {
-		pthread_cond_signal(&knet_h->pmtud_cond);
+		if (knet_h->pmtud_waiting) {
+			pthread_cond_signal(&knet_h->pmtud_cond);
+		}
 	}
 
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
