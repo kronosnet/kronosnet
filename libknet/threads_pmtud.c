@@ -411,6 +411,7 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 
 	log_debug(knet_h, KNET_SUB_PMTUD, "Starting PMTUD for host: %u link: %u", dst_host->host_id, dst_link->link_id);
 
+	errno = 0;
 	if (_handle_check_link_pmtud(knet_h, dst_host, dst_link) < 0) {
 		if (errno == EDEADLK) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD for host: %u link: %u has been rescheduled", dst_host->host_id, dst_link->link_id);
