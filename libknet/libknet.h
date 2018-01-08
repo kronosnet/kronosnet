@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2018 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -18,7 +18,7 @@
 /**
  * @file libknet.h
  * @brief kronosnet API include file
- * @copyright Copyright (C) 2010-2017 Red Hat, Inc.  All rights reserved.
+ * @copyright Copyright (C) 2010-2018 Red Hat, Inc.  All rights reserved.
  *
  * Kronosnet is an advanced VPN system for High Availability applications.
  */
