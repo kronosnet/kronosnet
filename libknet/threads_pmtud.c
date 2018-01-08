@@ -367,10 +367,6 @@ retry:
 
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 
-	/*
-	 * give time to the kernel to determine its own version of MTU
-	 */
-	usleep((dst_link->status.stats.latency_ave * 1000) / 4);
 	goto restart;
 }
 
