@@ -34,6 +34,8 @@
 
 int loopback_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
+	kn_link->transport_connected = 1;
+	kn_link->status.connected = 1;
 	return 0;
 }
 
