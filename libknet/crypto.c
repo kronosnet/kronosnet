@@ -141,7 +141,7 @@ int crypto_init(
 	 */
 	knet_h->crypto_instance->model = model;
 	if (crypto_modules_cmds[knet_h->crypto_instance->model].ops->init(knet_h, knet_handle_crypto_cfg)) {
-		savederrno = EPIPE;
+		savederrno = errno;
 		goto out_err;
 	}
 
