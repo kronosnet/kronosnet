@@ -489,6 +489,7 @@ static int opensslcrypto_init(
 {
 	static int openssl_is_init = 0;
 	struct opensslcrypto_instance *opensslcrypto_instance = NULL;
+	int savederrno;
 
 	log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO,
 		  "Initizializing openssl crypto module [%s/%s]",
@@ -522,6 +523,7 @@ static int opensslcrypto_init(
 	knet_h->crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
 	if (!knet_h->crypto_instance->model_instance) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl model instance");
+		errno = ENOMEM;
 		return -1;
 	}
 
@@ -535,6 +537,7 @@ static int opensslcrypto_init(
 		opensslcrypto_instance->crypto_cipher_type = EVP_get_cipherbyname(knet_handle_crypto_cfg->crypto_cipher_type);
 		if (!opensslcrypto_instance->crypto_cipher_type) {
 			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto cipher type requested");
+			savederrno = ENXIO;
 			goto out_err;
 		}
 	}
@@ -545,6 +548,7 @@ static int opensslcrypto_init(
 		opensslcrypto_instance->crypto_hash_type = EVP_get_digestbyname(knet_handle_crypto_cfg->crypto_hash_type);
 		if (!opensslcrypto_instance->crypto_hash_type) {
 			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto hash type requested");
+			savederrno = ENXIO;
 			goto out_err;
 		}
 	}
@@ -552,12 +556,14 @@ static int opensslcrypto_init(
 	if ((opensslcrypto_instance->crypto_cipher_type) &&
 	    (!opensslcrypto_instance->crypto_hash_type)) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "crypto communication requires hash specified");
+		savederrno = EINVAL;
 		goto out_err;
 	}
 
 	opensslcrypto_instance->private_key = malloc(knet_handle_crypto_cfg->private_key_len);
 	if (!opensslcrypto_instance->private_key) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl private key");
+		savederrno = ENOMEM;
 		goto out_err;
 	}
 	memmove(opensslcrypto_instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
@@ -589,6 +595,7 @@ static int opensslcrypto_init(
 out_err:
 	opensslcrypto_fini(knet_h);
 
+	errno = savederrno;
 	return -1;
 }
 
