@@ -44,3 +44,4 @@ kronosnet.spec
 test-driver
 *.trs
 *.log
+*.html.bak
