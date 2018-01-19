@@ -17,6 +17,12 @@ AC_INIT([kronosnet],
 	[devel@lists.kronosnet.org])
 AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.13 dist-bzip2 dist-xz color-tests -Wno-portability subdir-objects])
+
+# Switch to RUNPATH by default and disable RPATH
+# it is necessary to have this done very early in ./configure
+# before libtool does linker detection.
+# see also: https://github.com/kronosnet/kronosnet/issues/107
+LDFLAGS="$LDFLAGS -Wl,--enable-new-dtags"
 LT_PREREQ([2.2.6])
 LT_INIT
 
