@@ -577,12 +577,9 @@ static int opensslcrypto_init(
 	}
 
 	if (opensslcrypto_instance->crypto_cipher_type) {
-		int block_size;
+		size_t block_size;
 
 		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
-		if (block_size < 0) {
-			goto out_err;
-		}
 
 		knet_h->sec_header_size += (block_size * 2);
 		knet_h->sec_header_size += SALT_SIZE;
