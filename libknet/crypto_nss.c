@@ -315,6 +315,7 @@ static int init_nss_crypto(knet_handle_t knet_h)
 
 	instance->nss_sym_key = nssimport_symmetric_key(knet_h, SYM_KEY_TYPE_CRYPT);
 	if (instance->nss_sym_key == NULL) {
+		errno = ENXIO; /* NSS reported error */
 		return -1;
 	}
 
@@ -499,6 +500,7 @@ static int init_nss_hash(knet_handle_t knet_h)
 
 	instance->nss_sym_key_sign = nssimport_symmetric_key(knet_h, SYM_KEY_TYPE_HASH);
 	if (instance->nss_sym_key_sign == NULL) {
+		errno = ENXIO; /* NSS reported error */
 		return -1;
 	}
 
@@ -727,6 +729,7 @@ static int nsscrypto_init(
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
 	struct nsscrypto_instance *nsscrypto_instance = NULL;
+	int savederrno;
 
 	log_debug(knet_h, KNET_SUB_NSSCRYPTO,
 		  "Initizializing nss crypto module [%s/%s]",
@@ -736,6 +739,7 @@ static int nsscrypto_init(
 	knet_h->crypto_instance->model_instance = malloc(sizeof(struct nsscrypto_instance));
 	if (!knet_h->crypto_instance->model_instance) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to allocate memory for nss model instance");
+		savederrno = ENOMEM;
 		return -1;
 	}
 
@@ -746,18 +750,21 @@ static int nsscrypto_init(
 	nsscrypto_instance->crypto_cipher_type = nssstring_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (nsscrypto_instance->crypto_cipher_type < 0) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto cipher type requested");
+		savederrno = ENXIO;
 		goto out_err;
 	}
 
 	nsscrypto_instance->crypto_hash_type = nssstring_to_crypto_hash_type(knet_handle_crypto_cfg->crypto_hash_type);
 	if (nsscrypto_instance->crypto_hash_type < 0) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto hash type requested");
+		savederrno = ENXIO;
 		goto out_err;
 	}
 
 	if ((nsscrypto_instance->crypto_cipher_type > 0) &&
 	    (nsscrypto_instance->crypto_hash_type == 0)) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "crypto communication requires hash specified");
+		savederrno = EINVAL;
 		goto out_err;
 	}
 
@@ -765,6 +772,7 @@ static int nsscrypto_init(
 	nsscrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
 	if (init_nss(knet_h) < 0) {
+		savederrno = errno;
 		goto out_err;
 	}
 
@@ -783,6 +791,7 @@ static int nsscrypto_init(
 		} else {
 			block_size = PK11_GetBlockSize(nsscrypto_instance->crypto_cipher_type, NULL);
 			if (block_size < 0) {
+				savederrno = ENXIO;
 				goto out_err;
 			}
 		}
@@ -797,6 +806,7 @@ static int nsscrypto_init(
 
 out_err:
 	nsscrypto_fini(knet_h);
+	errno = savederrno;
 	return -1;
 }
 
