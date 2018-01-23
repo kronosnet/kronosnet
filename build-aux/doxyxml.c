@@ -700,7 +700,7 @@ static void usage(char *name)
 	printf("      <XML file> defaults to %s\n", XML_FILE);
 	printf("\n");
 	printf("       -a            Print ASCII dump of man pages to stdout\n");
-	printf("       -n            Write man page files to <output dir>\n");
+	printf("       -m            Write man page files to <output dir>\n");
 	printf("       -P            Print PARAMS section\n");
 	printf("       -s <s>        Write man pages into section <s> <default 3)\n");
 	printf("       -p <package>  Use <package> name. default <Kronosnet>\n");
@@ -718,7 +718,7 @@ int main(int argc, char *argv[])
 	int opt;
 	char xml_filename[PATH_MAX];
 
-	while ( (opt = getopt_long(argc, argv, "amPs:d:o:p:f:h?", NULL, NULL)) != EOF)
+	while ( (opt = getopt_long(argc, argv, "H:amPs:d:o:p:f:h?", NULL, NULL)) != EOF)
 	{
 		switch(opt)
 		{
