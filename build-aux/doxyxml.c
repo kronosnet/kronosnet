@@ -36,12 +36,12 @@ static int print_ascii = 1;
 static int print_man = 0;
 static int print_params = 0;
 static int num_functions = 0;
-static char *man_section="3";
-static char *package_name="Kronosnet";
-static char *header="Kronosnet Programmer's Manual";
-static char *output_dir="./";
-static char *xml_dir = XML_DIR;
-static char *xml_file = XML_FILE;
+static const char *man_section="3";
+static const char *package_name="Kronosnet";
+static const char *header="Kronosnet Programmer's Manual";
+static const char *output_dir="./";
+static const char *xml_dir = XML_DIR;
+static const char *xml_file = XML_FILE;
 static qb_map_t *params_map;
 static qb_map_t *retval_map;
 static qb_map_t *function_map;
@@ -61,7 +61,7 @@ struct struct_info {
 };
 
 static char *get_texttree(int *type, xmlNode *cur_node, char **returntext);
-static void traverse_node(xmlNode *parentnode, char *leafname, void (do_members(xmlNode*, void*)), void *arg);
+static void traverse_node(xmlNode *parentnode, const char *leafname, void (do_members(xmlNode*, void*)), void *arg);
 
 static void free_paraminfo(struct param_info *pi)
 {
@@ -88,7 +88,7 @@ static char *get_child(xmlNode *node, const char *tag)
 	xmlNode *this_node;
 	xmlNode *child;
 	char buffer[1024] = {'\0'};
-	char *refid;
+	char *refid = NULL;
 	char *declname = NULL;
 
 	for (this_node = node->children; this_node; this_node = this_node->next) {
@@ -118,9 +118,9 @@ static char *get_child(xmlNode *node, const char *tag)
 	return strdup(buffer);
 }
 
-int not_all_whitespace(char *string)
+static int not_all_whitespace(char *string)
 {
-	int i;
+	unsigned int i;
 
 	for (i=0; i<strlen(string); i++) {
 		if (string[i] != ' ' &&
@@ -132,7 +132,7 @@ int not_all_whitespace(char *string)
 	return 0;
 }
 
-void get_param_info(xmlNode *cur_node, qb_map_t *map)
+static void get_param_info(xmlNode *cur_node, qb_map_t *map)
 {
 	xmlNode *this_tag;
 	xmlNode *sub_tag;
@@ -168,7 +168,7 @@ void get_param_info(xmlNode *cur_node, qb_map_t *map)
 	}
 }
 
-char *get_text(xmlNode *cur_node, char **returntext)
+static char *get_text(xmlNode *cur_node, char **returntext)
 {
 	xmlNode *this_tag;
 	xmlNode *sub_tag;
@@ -233,8 +233,8 @@ static void read_struct(xmlNode *cur_node, void *arg)
 	struct param_info *pi;
 	char fullname[1024];
 	char *type;
-	char *name;
-	char *args="";
+	char *name = NULL;
+	const char *args="";
 
 	for (this_tag = cur_node->children; this_tag; this_tag = this_tag->next) {
 		if (strcmp((char*)this_tag->name, "type") == 0) {
@@ -248,13 +248,15 @@ static void read_struct(xmlNode *cur_node, void *arg)
 		}
 	}
 
-	pi = malloc(sizeof(struct param_info));
-	if (pi) {
-		snprintf(fullname, sizeof(fullname), "%s%s", name, args);
-		pi->paramtype = strdup(type);
-		pi->paramname = strdup(fullname);
-		pi->paramdesc = NULL;
-		qb_map_put(si->params_map, name, pi);
+	if (name) {
+		pi = malloc(sizeof(struct param_info));
+		if (pi) {
+			snprintf(fullname, sizeof(fullname), "%s%s", name, args);
+			pi->paramtype = strdup(type);
+			pi->paramname = strdup(fullname);
+			pi->paramdesc = NULL;
+			qb_map_put(si->params_map, name, pi);
+		}
 	}
 }
 
@@ -300,7 +302,7 @@ static void print_structure(FILE *manfile, char *refid, char *name)
 	qb_map_iter_t *iter;
 	const char *p;
 	void *data;
-	int max_param_length=0;
+	unsigned int max_param_length=0;
 
 	/* If it's not been read in - go and look for it */
 	si = qb_map_get(structures_map, refid);
@@ -335,7 +337,7 @@ static void print_structure(FILE *manfile, char *refid, char *name)
 char *get_texttree(int *type, xmlNode *cur_node, char **returntext)
 {
 	xmlNode *this_tag;
-	char *tmp;
+	char *tmp = NULL;
 	char buffer[4096] = {'\0'};
 
 	for (this_tag = cur_node->children; this_tag; this_tag = this_tag->next) {
@@ -399,11 +401,11 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	qb_map_iter_t *iter;
 	const char *p;
 	void *data;
-	int max_param_type_len;
-	int max_param_name_len;
-	int num_param_descs;
-	int param_count;
-	int param_num;
+	unsigned int max_param_type_len;
+	unsigned int max_param_name_len;
+	unsigned int num_param_descs;
+	int param_count = 0;
+	int param_num = 0;
 	struct param_info *pi;
 
 	t = time(NULL);
@@ -573,11 +575,11 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 }
 
 /* Same as traverse_members, but to collect function names */
-void collect_functions(xmlNode *cur_node, void *arg)
+static void collect_functions(xmlNode *cur_node, void *arg)
 {
 	xmlNode *this_tag;
 	char *kind;
-	char *name;
+	char *name = NULL;
 
 	if (cur_node->name && strcmp((char *)cur_node->name, "memberdef") == 0) {
 
@@ -590,25 +592,27 @@ void collect_functions(xmlNode *cur_node, void *arg)
 				}
 			}
 
-			qb_map_put(function_map, name, name);
-			num_functions++;
+			if (name) {
+				qb_map_put(function_map, name, name);
+				num_functions++;
+			}
 		}
 	}
 }
 
 
-void traverse_members(xmlNode *cur_node, void *arg)
+static void traverse_members(xmlNode *cur_node, void *arg)
 {
 	xmlNode *this_tag;
 
 	if (cur_node->name && strcmp((char *)cur_node->name, "memberdef") == 0) {
-		char *kind;
-		char *def;
-		char *args;
-		char *name;
-		char *brief;
-		char *detailed;
-		char *returntext;
+		char *kind = NULL;
+		char *def = NULL;
+		char *args = NULL;
+		char *name = NULL;
+		char *brief = NULL;
+		char *detailed = NULL;
+		char *returntext = NULL;
 		int type;
 
 		kind=def=args=name=NULL;
@@ -669,7 +673,7 @@ void traverse_members(xmlNode *cur_node, void *arg)
 }
 
 
-static void traverse_node(xmlNode *parentnode, char *leafname, void (do_members(xmlNode*, void*)), void *arg)
+static void traverse_node(xmlNode *parentnode, const char *leafname, void (do_members(xmlNode*, void*)), void *arg)
 {
 	xmlNode *cur_node;
 
