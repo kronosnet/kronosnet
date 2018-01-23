@@ -164,7 +164,7 @@ AM_CONDITIONAL([BUILD_LIBTAP], [test x$enable_libtap = xyes])
 
 ## local helper functions
 # this function checks if CC support options passed as
-# args. Global CFLAGS are ignored during this test.
+# args. Global CPPFLAGS are ignored during this test.
 cc_supports_flag() {
 	saveCPPFLAGS="$CPPFLAGS"
 	CPPFLAGS="$@"
@@ -369,7 +369,6 @@ AC_DEFINE_UNQUOTED([DEFAULTADMGROUP],
 
 ## *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
-ENV_CPPFLAGS="$CPPFLAGS"
 
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
@@ -443,7 +442,6 @@ done
 
 CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
 	$EXTRA_WARNINGS $WERROR_CFLAGS"
-CPPFLAGS="$ENV_CPPFLAGS"
 
 AC_CONFIG_FILES([
 		Makefile
