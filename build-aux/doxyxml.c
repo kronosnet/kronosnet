@@ -328,7 +328,7 @@ static void print_structure(FILE *manfile, char *refid, char *name)
 		iter = qb_map_iter_create(si->params_map);
 		for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
 			pi = data;
-			fprintf(manfile, "   %-*s \\fI%s\\fP;\n", max_param_length, pi->paramtype, pi->paramname);
+			fprintf(manfile, "   %-*s \\fI%s\\fP;\n", (int)max_param_length, pi->paramtype, pi->paramname);
 		}
 		qb_map_iter_free(iter);
 		fprintf(manfile, "};\n");
@@ -464,7 +464,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
 		pi = data;
 
-		fprintf(manfile, "    \\fB%-*s \\fP\\fI%s\\fP%s\n", max_param_type_len, pi->paramtype, p,
+		fprintf(manfile, "    \\fB%-*s \\fP\\fI%s\\fP%s\n", (int)max_param_type_len, pi->paramtype, p,
 			param_num++ < param_count?",":"");
 	}
 	qb_map_iter_free(iter);
@@ -478,7 +478,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 		for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
 			pi = data;
 
-			fprintf(manfile, "\\fB%-*s \\fP\\fI%s\\fP\n", max_param_name_len, pi->paramname,
+			fprintf(manfile, "\\fB%-*s \\fP\\fI%s\\fP\n", (int)max_param_name_len, pi->paramname,
 				pi->paramdesc);
 			fprintf(manfile, ".PP\n");
 		}
