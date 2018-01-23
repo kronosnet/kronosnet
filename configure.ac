@@ -326,8 +326,6 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 
 ## do subst
 
-AM_CONDITIONAL([DEBUG], [test "x${enable_debug}" = xyes])
-
 AC_SUBST([DEFAULT_CONFIG_DIR])
 AC_SUBST([INITDEFAULTDIR])
 AC_SUBST([INITDDIR])
