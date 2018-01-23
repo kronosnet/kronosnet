@@ -15,8 +15,9 @@
  * In its favour, it *does* generate man pages and should only be run very ocasionally
  */
 
-#define _XOPEN_SOURCE
+#define _DEFAULT_SOURCE
 #define _BSD_SOURCE
+#define _XOPEN_SOURCE
 #define _XOPEN_SOURCE_EXTENDED
 #include <stdlib.h>
 #include <sys/time.h>
