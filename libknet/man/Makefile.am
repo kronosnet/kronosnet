@@ -76,7 +76,7 @@ update-man-pages: doxyfile.stamp
 
 doxyfile.stamp: Doxyfile
 	$(DOXYGEN) Doxyfile
-	$(DOXY2MAN) -o $(abs_srcdir) -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
+	$(top_builddir)/build-aux/doxyxml -m -P -o $(abs_builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(abs_builddir)/xml/ libknet_8h.xml
 	touch doxyfile.stamp
 
 clean-local:
