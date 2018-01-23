@@ -233,7 +233,7 @@ static void read_struct(xmlNode *cur_node, void *arg)
 	struct struct_info *si=arg;
 	struct param_info *pi;
 	char fullname[1024];
-	char *type;
+	char *type = NULL;
 	char *name = NULL;
 	const char *args="";
 
