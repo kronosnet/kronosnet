@@ -75,12 +75,8 @@ dist_man_MANS = \
 update-man-pages: doxyfile.stamp
 
 doxyfile.stamp: Doxyfile
-if MANPAGEUPDATES
 	$(DOXYGEN) Doxyfile
 	$(DOXY2MAN) -o $(abs_srcdir) -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
-else
-	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
-endif
 	touch doxyfile.stamp
 
 clean-local:

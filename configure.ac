@@ -71,14 +71,6 @@ AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
-AC_CHECK_PROGS([DOXY2MAN], [doxy2man])
-
-manpageupdates=1
-if test "x$DOXYGEN" = "x" || test "x$DOXY2MAN" = "x"; then
-	manpageupdates=0;
-fi
-
-AM_CONDITIONAL([MANPAGEUPDATES], [test $manpageupdates -gt 0])
 
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
@@ -267,6 +259,10 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
 fi
 
+# required by doxyman to build man pages dynamically
+PKG_CHECK_MODULES([libqb], [libqb])
+PKG_CHECK_MODULES([libxml], [libxml-2.0])
+
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
 	AC_CHECK_HEADERS([security/pam_appl.h],
@@ -278,8 +274,6 @@ if test "x$enable_kronosnetd" = xyes; then
 			 [AC_CHECK_LIB([pam_misc], [misc_conv],
 				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
 				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
-
-	PKG_CHECK_MODULES([libqb], [libqb])
 
 	AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
 		     [have_qb_log_thread_priority_set="yes"],
@@ -465,6 +459,7 @@ AC_CONFIG_FILES([
 		libknet/tests/Makefile
 		libknet/man/Doxyfile
 		libknet/man/Makefile
+		build-aux/Makefile
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile
