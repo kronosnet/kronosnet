@@ -19,7 +19,7 @@ sources			= libtap.c
 
 libversion		= 1:0:0
 
-AM_CFLAGS		= $(PTHREAD_CFLAGS)
+AM_CFLAGS		+= $(PTHREAD_CFLAGS)
 LIBS			= $(PTHREAD_LIBS)
 
 if BUILD_LIBTAP

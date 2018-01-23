@@ -15,6 +15,9 @@ AC_PREREQ([2.63])
 AC_INIT([kronosnet],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
 	[devel@lists.kronosnet.org])
+# Don't let AC_PROC_CC (invoked by AC_USE_SYSTEM_EXTENSIONS) replace
+# undefined CFLAGS with -g -O2, overriding our special OPT_CFLAGS.
+: ${CFLAGS=""}
 AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.13 dist-bzip2 dist-xz color-tests -Wno-portability subdir-objects])
 
@@ -367,9 +370,6 @@ AC_DEFINE_UNQUOTED([DEFAULTADMGROUP],
 		   ["$(eval echo ${DEFAULTADMGROUP})"],
 		   [Default admin group])
 
-## *FLAGS handling
-ENV_CFLAGS="$CFLAGS"
-
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
@@ -440,8 +440,7 @@ for j in $WARNLIST; do
 	fi
 done
 
-CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
-	$EXTRA_WARNINGS $WERROR_CFLAGS"
+AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS"])
 
 AC_CONFIG_FILES([
 		Makefile
