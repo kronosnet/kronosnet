@@ -531,14 +531,16 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	fprintf(manfile, ".nh\n");
 	fprintf(manfile, ".ad l\n");
 
+	param_num = 0;
 	iter = qb_map_iter_create(function_map);
 	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
 
 		/* Exclude us! */
 		if (strcmp(data, name)) {
 			fprintf(manfile, "\\fI%s(%s)%s", (char *)data, man_section,
-				param_num++ <= (num_functions)?", ":"");
+				param_num < (num_functions - 1)?", ":"");
 		}
+		param_num++;
 	}
 	qb_map_iter_free(iter);
 
