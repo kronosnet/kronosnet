@@ -384,7 +384,9 @@ static void man_print_long_string(FILE *manfile, char *text)
 	next_nl = strchr(text, '\n');
 	while (next_nl && *next_nl != '\0') {
 		*next_nl = '\0';
-		fprintf(manfile, "%s\n.PP\n", current);
+		if (strlen(current)) {
+			fprintf(manfile, ".PP\n%s\n", current);
+		}
 
 		*next_nl = '\n';
 		current = next_nl+1;
@@ -514,7 +516,6 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 
 	fprintf(manfile, ".SH \"RETURN VALUE\"\n");
 	man_print_long_string(manfile, returntext);
-	fprintf(manfile, ".PP\n");
 
 	iter = qb_map_iter_create(retval_map);
 	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
