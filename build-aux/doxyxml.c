@@ -363,7 +363,7 @@ static void print_text(char *name, char *def, char *brief, char *args, char *det
 {
 	printf(" ------------------ %s --------------------\n", name);
 	printf("NAME\n");
-	printf("        %s - %s", name, brief);
+	printf("        %s - %s\n", name, brief);
 
 	printf("SYNOPSIS\n");
 	printf("        %s %s\n\n", name, args);
@@ -547,7 +547,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	fprintf(manfile, ".hy\n");
 	fprintf(manfile, ".SH \"COPYRIGHT\"\n");
 	fprintf(manfile, ".PP\n");
-	fprintf(manfile, "Copyright (C) 2010-%4d Red Hat, Inc. All rights reserved\n", tm->tm_year+1900);
+	fprintf(manfile, "Copyright (C) 2010-%4d Red Hat, Inc. All rights reserved.\n", tm->tm_year+1900);
 	fclose(manfile);
 
 	/* Free the params info */
@@ -633,7 +633,14 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 				name = strdup((char *)this_tag->children->content);
 
 			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "briefdescription") == 0) {
-	                       brief = get_texttree(&type, this_tag, &returntext);
+				brief = get_texttree(&type, this_tag, &returntext);
+				if (brief) {
+					/*
+					 * apparently brief text contains extra trailing space and 2 \n.
+					 * remove them.
+					 */
+					brief[strlen(brief) - 3] = '\0';
+				}
 			}
 			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "detaileddescription") == 0) {
 				detailed = get_texttree(&type, this_tag, &returntext);
