@@ -25,7 +25,10 @@ LT_PREREQ([2.2.6])
 # --enable-new-dtags: Use RUNPATH instead of RPATH.
 # It is necessary to have this done before libtool does linker detection.
 # See also: https://github.com/kronosnet/kronosnet/issues/107
+# --as-needed: Modern systems have builtin ceil() making -lm superfluous but
+# AC_SEARCH_LIBS can't detect this because it tests with a false prototype
 AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],[AM_LDFLAGS=-Wl,--enable-new-dtags])
+AX_CHECK_LINK_FLAG([-Wl,--as-needed],[AM_LDFLAGS="$AM_LDFLAGS -Wl,--as-needed"])
 AC_SUBST([AM_LDFLAGS])
 saved_LDFLAGS="$LDFLAGS"
 LDFLAGS="$AM_LDFLAGS $LDFLAGS"
