@@ -56,3 +56,4 @@ Doxyfile
 doxyfile.stamp
 xml/
 doxyxml
+*.3
