@@ -28,6 +28,7 @@
 #include <getopt.h>
 #include <errno.h>
 #include <libxml/tree.h>
+#include <qb/qblist.h>
 #include <qb/qbmap.h>
 
 #define XML_DIR "../../libknet/man/xml"
@@ -43,8 +44,8 @@ static const char *header="Kronosnet Programmer's Manual";
 static const char *output_dir="./";
 static const char *xml_dir = XML_DIR;
 static const char *xml_file = XML_FILE;
-static qb_map_t *params_map;
-static qb_map_t *retval_map;
+static struct qb_list_head params_list;
+static struct qb_list_head retval_list;
 static qb_map_t *function_map;
 static qb_map_t *structures_map;
 static qb_map_t *used_structures_map;
@@ -54,11 +55,13 @@ struct param_info {
 	char *paramtype;
 	char *paramdesc;
 	struct param_info *next;
+	struct qb_list_head list;
 };
 
 struct struct_info {
 	char *structname;
-	qb_map_t *params_map;
+	struct qb_list_head params_list; /* our params */
+	struct qb_list_head list;
 };
 
 static char *get_texttree(int *type, xmlNode *cur_node, char **returntext);
@@ -119,6 +122,20 @@ static char *get_child(xmlNode *node, const char *tag)
 	return strdup(buffer);
 }
 
+static struct param_info *find_param_by_name(struct qb_list_head *list, const char *name)
+{
+	struct qb_list_head *iter;
+	struct param_info *pi;
+
+	qb_list_for_each(iter, list) {
+		pi = qb_list_entry(iter, struct param_info, list);
+		if (strcmp(pi->paramname, name) == 0) {
+			return pi;
+		}
+	}
+	return NULL;
+}
+
 static int not_all_whitespace(char *string)
 {
 	unsigned int i;
@@ -133,7 +150,7 @@ static int not_all_whitespace(char *string)
 	return 0;
 }
 
-static void get_param_info(xmlNode *cur_node, qb_map_t *map)
+static void get_param_info(xmlNode *cur_node, struct qb_list_head *list)
 {
 	xmlNode *this_tag;
 	xmlNode *sub_tag;
@@ -151,7 +168,7 @@ static void get_param_info(xmlNode *cur_node, qb_map_t *map)
 				paramdesc = (char*)sub_tag->children->next->children->content;
 
 				/* Add text to the param_map */
-				pi = qb_map_get(map, paramname);
+				pi = find_param_by_name(list, paramname);
 				if (pi) {
 					pi->paramdesc = paramdesc;
 				}
@@ -160,8 +177,8 @@ static void get_param_info(xmlNode *cur_node, qb_map_t *map)
 					if (pi) {
 						pi->paramname = paramname;
 						pi->paramdesc = paramdesc;
-						pi->paramtype = NULL; /* probably retval */
-						qb_map_put(map, paramname, pi);
+						pi->paramtype = NULL; /* retval */
+						qb_list_add_tail(&pi->list, list);
 					}
 				}
 			}
@@ -216,10 +233,10 @@ static char *get_text(xmlNode *cur_node, char **returntext)
 		if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "parameterlist") == 0) {
 			kind = get_attr(this_tag, "kind");
 			if (strcmp(kind, "param") == 0) {
-				get_param_info(this_tag, params_map);
+				get_param_info(this_tag, &params_list);
 			}
 			if (strcmp(kind, "retval") == 0) {
-				get_param_info(this_tag, retval_map);
+				get_param_info(this_tag, &retval_list);
 			}
 		}
 	}
@@ -256,7 +273,7 @@ static void read_struct(xmlNode *cur_node, void *arg)
 			pi->paramtype = strdup(type);
 			pi->paramname = strdup(fullname);
 			pi->paramdesc = NULL;
-			qb_map_put(si->params_map, name, pi);
+			qb_list_add_tail(&pi->list, &si->params_list);
 		}
 	}
 }
@@ -285,7 +302,7 @@ static int read_structure_from_xml(char *refid, char *name)
 
 	si = malloc(sizeof(struct struct_info));
 	if (si) {
-		si->params_map = qb_hashtable_create(10);
+		qb_list_init(&si->params_list);
 		si->structname = strdup(name);
 		traverse_node(rootdoc, "memberdef", read_struct, si);
 		ret = 0;
@@ -296,13 +313,32 @@ static int read_structure_from_xml(char *refid, char *name)
 	return ret;
 }
 
+/* Reformat pointer params so they look nicer */
+static void print_param(FILE *manfile, struct param_info *pi, int field_width, int bold, const char *delimiter)
+{
+	char asterisk = ' ';
+	char *type = pi->paramtype;
+
+	if (pi->paramtype[strlen(pi->paramtype)-1] == '*') {
+		asterisk='*';
+		type = strdup(pi->paramtype);
+		type[strlen(type)-1] = '\0';
+	}
+
+	fprintf(manfile, "    %s%-*s%c%s\\fI%s\\fP%s\n",
+		bold?"\\fB":"", field_width, type,
+		asterisk, bold?"\\fP":"", pi->paramname, delimiter);
+
+	if (type != pi->paramtype) {
+		free(type);
+	}
+}
+
 static void print_structure(FILE *manfile, char *refid, char *name)
 {
 	struct struct_info *si;
 	struct param_info *pi;
-	qb_map_iter_t *iter;
-	const char *p;
-	void *data;
+	struct qb_list_head *iter;
 	unsigned int max_param_length=0;
 
 	/* If it's not been read in - go and look for it */
@@ -314,23 +350,19 @@ static void print_structure(FILE *manfile, char *refid, char *name)
 	}
 
 	if (si) {
-		iter = qb_map_iter_create(si->params_map);
-		for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-			pi = data;
+		qb_list_for_each(iter, &si->params_list) {
+			pi = qb_list_entry(iter, struct param_info, list);
 			if (strlen(pi->paramtype) > max_param_length) {
 				max_param_length = strlen(pi->paramtype);
 			}
 		}
-		qb_map_iter_free(iter);
 
 		fprintf(manfile, "struct %s {\n", si->structname);
 
-		iter = qb_map_iter_create(si->params_map);
-		for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-			pi = data;
-			fprintf(manfile, "   %-*s \\fI%s\\fP;\n", (int)max_param_length, pi->paramtype, pi->paramname);
+		qb_list_for_each(iter, &si->params_list) {
+			pi = qb_list_entry(iter, struct param_info, list);
+			print_param(manfile, pi, max_param_length, 0,";");
 		}
-		qb_map_iter_free(iter);
 		fprintf(manfile, "};\n");
 	}
 }
@@ -359,7 +391,7 @@ char *get_texttree(int *type, xmlNode *cur_node, char **returntext)
 }
 
 /* The text output is VERY basic and just a check that it's working really */
-static void print_text(char *name, char *def, char *brief, char *args, char *detailed, qb_map_t *param_map, char *returntext)
+static void print_text(char *name, char *def, char *brief, char *args, char *detailed, struct qb_list_head *param_list, char *returntext)
 {
 	printf(" ------------------ %s --------------------\n", name);
 	printf("NAME\n");
@@ -394,14 +426,16 @@ static void man_print_long_string(FILE *manfile, char *text)
 	}
 }
 
-static void print_manpage(char *name, char *def, char *brief, char *args, char *detailed, qb_map_t *param_map, char *returntext)
+static void print_manpage(char *name, char *def, char *brief, char *args, char *detailed, struct qb_list_head *param_map, char *returntext)
 {
 	char manfilename[PATH_MAX];
 	char gendate[64];
 	FILE *manfile;
 	time_t t;
 	struct tm *tm;
-	qb_map_iter_t *iter;
+	qb_map_iter_t *map_iter;
+	struct qb_list_head *iter;
+	struct qb_list_head *tmp;
 	const char *p;
 	void *data;
 	unsigned int max_param_type_len;
@@ -431,9 +465,9 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	max_param_type_len = 0;
 	max_param_name_len = 0;
 	num_param_descs = 0;
-	iter = qb_map_iter_create(param_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-		pi = data;
+
+	qb_list_for_each(iter, &params_list) {
+		pi = qb_list_entry(iter, struct param_info, list);
 
 		if (strlen(pi->paramtype) > max_param_type_len) {
 			max_param_type_len = strlen(pi->paramtype);
@@ -446,56 +480,50 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 		}
 		param_count++;
 	}
-	qb_map_iter_free(iter);
 
 	/* Off we go */
 
 	fprintf(manfile, ".\\\"  Automatically generated man page, do not edit\n");
 	fprintf(manfile, ".TH %s %s %s \"%s\" \"%s\"\n", name, man_section, gendate, package_name, header);
 
-	fprintf(manfile, ".SH \"NAME\"\n");
+	fprintf(manfile, ".SH NAME\n");
 	fprintf(manfile, "%s \\- %s\n", name, brief);
 
-	fprintf(manfile, ".SH \"SYNOPSIS\"\n");
+	fprintf(manfile, ".SH SYNOPSIS\n");
 	fprintf(manfile, ".nf\n");
 	fprintf(manfile, ".B #include <libknet.h>\n");
 	fprintf(manfile, ".sp\n");
 	fprintf(manfile, "\\fB%s\\fP(\n", def);
 
-	iter = qb_map_iter_create(param_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-		pi = data;
 
-		fprintf(manfile, "    \\fB%-*s \\fP\\fI%s\\fP%s\n", (int)max_param_type_len, pi->paramtype, p,
-			param_num++ < param_count?",":"");
+	qb_list_for_each(iter, &params_list) {
+		pi = qb_list_entry(iter, struct param_info, list);
+
+		print_param(manfile, pi, max_param_type_len, 1, ++param_num < param_count?",":"");
 	}
-	qb_map_iter_free(iter);
 
 	fprintf(manfile, ");\n");
 	fprintf(manfile, ".fi\n");
 
 	if (print_params && num_param_descs) {
-		fprintf(manfile, ".SH \"PARAMS\"\n");
-		iter = qb_map_iter_create(param_map);
-		for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-			pi = data;
+		fprintf(manfile, ".SH PARAMS\n");
 
+		qb_list_for_each(iter, &params_list) {
+		pi = qb_list_entry(iter, struct param_info, list);
 			fprintf(manfile, "\\fB%-*s \\fP\\fI%s\\fP\n", (int)max_param_name_len, pi->paramname,
 				pi->paramdesc);
 			fprintf(manfile, ".PP\n");
 		}
-		qb_map_iter_free(iter);
 	}
 
-	fprintf(manfile, ".SH \"DESCRIPTION\"\n");
+	fprintf(manfile, ".SH DESCRIPTION\n");
 	man_print_long_string(manfile, detailed);
 
 	if (qb_map_count_get(used_structures_map)) {
-		fprintf(manfile, ".SH \"STRUCTURES\"\n");
+		fprintf(manfile, ".SH STRUCTURES\n");
 
-
-		iter = qb_map_iter_create(used_structures_map);
-		for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
+		map_iter = qb_map_iter_create(used_structures_map);
+		for (p = qb_map_iter_next(map_iter, &data); p; p = qb_map_iter_next(map_iter, &data)) {
 			fprintf(manfile, ".SS \"\"\n");
 			fprintf(manfile, ".PP\n");
 			fprintf(manfile, ".sp\n");
@@ -509,32 +537,30 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 			fprintf(manfile, "\\fP\n");
 			fprintf(manfile, ".fi\n");
 		}
-		qb_map_iter_free(iter);
+		qb_map_iter_free(map_iter);
 
 		fprintf(manfile, ".RE\n");
 	}
 
-	fprintf(manfile, ".SH \"RETURN VALUE\"\n");
+	fprintf(manfile, ".SH RETURN VALUE\n");
 	man_print_long_string(manfile, returntext);
 
-	iter = qb_map_iter_create(retval_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-		pi = data;
+	qb_list_for_each(iter, &retval_list) {
+		pi = qb_list_entry(iter, struct param_info, list);
 
 		fprintf(manfile, "\\fB%-*s \\fP\\fI%s\\fP\n", 10, pi->paramname,
 			pi->paramdesc);
 		fprintf(manfile, ".PP\n");
 	}
-	qb_map_iter_free(iter);
 
-	fprintf(manfile, ".SH \"SEE ALSO\"\n");
+	fprintf(manfile, ".SH SEE ALSO\n");
 	fprintf(manfile, ".PP\n");
 	fprintf(manfile, ".nh\n");
 	fprintf(manfile, ".ad l\n");
 
 	param_num = 0;
-	iter = qb_map_iter_create(function_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
+	map_iter = qb_map_iter_create(function_map);
+	for (p = qb_map_iter_next(map_iter, &data); p; p = qb_map_iter_next(map_iter, &data)) {
 
 		/* Exclude us! */
 		if (strcmp(data, name)) {
@@ -543,7 +569,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 		}
 		param_num++;
 	}
-	qb_map_iter_free(iter);
+	qb_map_iter_free(map_iter);
 
 	fprintf(manfile, "\n");
 	fprintf(manfile, ".ad\n");
@@ -553,26 +579,22 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	fprintf(manfile, "Copyright (C) 2010-%4d Red Hat, Inc. All rights reserved.\n", tm->tm_year+1900);
 	fclose(manfile);
 
-	/* Free the params info */
-	iter = qb_map_iter_create(param_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-		pi = data;
-		qb_map_rm(param_map, p);
+	/* Free the params & retval info */
+	qb_list_for_each_safe(iter, tmp, &params_list) {
+		pi = qb_list_entry(iter, struct param_info, list);
+		qb_list_del(&pi->list);
 		free_paraminfo(pi);
 	}
-	qb_map_iter_free(iter);
 
-	iter = qb_map_iter_create(retval_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
-		pi = data;
-		qb_map_rm(retval_map, p);
+	qb_list_for_each_safe(iter, tmp, &retval_list) {
+		pi = qb_list_entry(iter, struct param_info, list);
+		qb_list_del(&pi->list);
 		free_paraminfo(pi);
 	}
-	qb_map_iter_free(iter);
 
 	/* Free used-structures map */
-	iter = qb_map_iter_create(used_structures_map);
-	for (p = qb_map_iter_next(iter, &data); p; p = qb_map_iter_next(iter, &data)) {
+	map_iter = qb_map_iter_create(used_structures_map);
+	for (p = qb_map_iter_next(map_iter, &data); p; p = qb_map_iter_next(map_iter, &data)) {
 		qb_map_rm(used_structures_map, p);
 		free(data);
 	}
@@ -657,7 +679,7 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 					pi->paramname = param_name;
 					pi->paramtype = param_type;
 					pi->paramdesc = NULL;
-					qb_map_put(params_map, param_name, pi);
+					qb_list_add_tail(&pi->list, &params_list);
 				}
 			}
 		}
@@ -668,10 +690,10 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 
 		if (kind && strcmp(kind, "function") == 0) {
 			if (print_man) {
-				print_manpage(name, def, brief, args, detailed, params_map, returntext);
+				print_manpage(name, def, brief, args, detailed, &params_list, returntext);
 			}
 			else {
-				print_text(name, def, brief, args, detailed, params_map, returntext);
+				print_text(name, def, brief, args, detailed, &params_list, returntext);
 			}
 
 		}
@@ -787,11 +809,11 @@ int main(int argc, char *argv[])
 	if (!quiet)
 		fprintf(stderr, "done.\n");
 
-	params_map = qb_hashtable_create(10);
-	retval_map = qb_hashtable_create(10);
+	qb_list_init(&params_list);
+	qb_list_init(&retval_list);
+	structures_map = qb_hashtable_create(10);
+	function_map = qb_hashtable_create(10);
 	used_structures_map = qb_hashtable_create(10);
-	structures_map = qb_hashtable_create(50);
-	function_map = qb_hashtable_create(100);
 
 	/* Collect functions */
 	traverse_node(rootdoc, "memberdef", collect_functions, NULL);
