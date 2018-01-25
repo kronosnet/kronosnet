@@ -69,15 +69,14 @@ dist_man_MANS = \
 		knet_recv.3 \
 		knet_send.3 \
 		knet_send_sync.3 \
-		knet_strtoaddr.3 \
-		libknet.h.3
+		knet_strtoaddr.3
 
-update-man-pages: doxyfile.stamp
+$(MANS): doxyfile.stamp
 
-doxyfile.stamp: Doxyfile
+doxyfile.stamp: Doxyfile $(abs_srcdir)/../libknet.h $(top_builddir)/build-aux/doxyxml
 	$(DOXYGEN) Doxyfile
 	$(top_builddir)/build-aux/doxyxml -m -P -o $(abs_builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(abs_builddir)/xml/ libknet_8h.xml
 	touch doxyfile.stamp
 
 clean-local:
-	rm -rf doxyfile.stamp xml
+	rm -rf doxyfile.stamp xml *.3
