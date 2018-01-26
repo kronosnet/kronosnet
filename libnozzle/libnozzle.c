@@ -755,7 +755,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		snprintf(curnozzle, sizeof(curnozzle) - 1, "%s", devname);
 	}
 	if (nozzle->fd < 0) {
-		errno = EBUSY;
+		savederrno = EBUSY;
 		goto out_error;
 	}
 	strncpy(devname, curnozzle, IFNAMSIZ);
@@ -778,7 +778,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	}
 
 	if ((strlen(devname) > 0) && (strcmp(devname, ifname) != 0)) {
-		errno = EBUSY;
+		savederrno = EBUSY;
 		goto out_error;
 	}
 
