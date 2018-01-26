@@ -88,7 +88,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 # Build dependencies
 BuildRequires: gcc
 # required to build man pages
-BuildRequires: libqb-devel libxml2-devel
+BuildRequires: libqb-devel libxml2-devel doxygen
 %if %{defined buildsctp}
 BuildRequires: lksctp-tools-devel
 %endif
