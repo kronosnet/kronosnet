@@ -18,13 +18,15 @@ AC_INIT([kronosnet],
 AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.13 dist-bzip2 dist-xz color-tests -Wno-portability subdir-objects])
 
-# Switch to RUNPATH by default and disable RPATH
-# it is necessary to have this done very early in ./configure
-# before libtool does linker detection.
-# see also: https://github.com/kronosnet/kronosnet/issues/107
-LDFLAGS="$LDFLAGS -Wl,--enable-new-dtags"
 LT_PREREQ([2.2.6])
+# --enable-new-dtags: Use RUNPATH instead of RPATH.
+# It is necessary to have this done before libtool does linker detection.
+# See also: https://github.com/kronosnet/kronosnet/issues/107
+AC_SUBST([AM_LDFLAGS],["-Wl,--enable-new-dtags"])
+saved_LDFLAGS="$LDFLAGS"
+LDFLAGS="$AM_LDFLAGS $LDFLAGS"
 LT_INIT
+LDFLAGS="$saved_LDFLAGS"
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([kronosnetd/main.c])
@@ -368,7 +370,6 @@ AC_DEFINE_UNQUOTED([DEFAULTADMGROUP],
 ## *FLAGS handling
 ENV_CFLAGS="$CFLAGS"
 ENV_CPPFLAGS="$CPPFLAGS"
-ENV_LDFLAGS="$LDFLAGS"
 
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
@@ -443,7 +444,6 @@ done
 CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $OPT_CFLAGS $GDB_FLAGS \
 	$EXTRA_WARNINGS $WERROR_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic"
 
 AC_CONFIG_FILES([
 		Makefile
