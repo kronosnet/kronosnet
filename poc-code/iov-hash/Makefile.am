@@ -19,4 +19,4 @@ nss_hash_SOURCES	= main.c
 
 nss_hash_CFLAGS		= $(nss_CFLAGS)
 
-nss_hash_LDFLAGS	= $(nss_LIBS)
+nss_hash_LDADD		= $(nss_LIBS)
