@@ -191,8 +191,10 @@ AC_C_INLINE
 
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
-AC_CHECK_LIB([m], [ceil], [AC_SUBST([m_LIBS], [-lm])], [AC_MSG_ERROR([kronosnet requires m library])])
 saved_LIBS="$LIBS"
+LIBS=
+AC_SEARCH_LIBS([ceil], [m], , [AC_MSG_ERROR([ceil not found])])
+AC_SUBST([m_LIBS], [$LIBS])
 LIBS=
 AC_SEARCH_LIBS([clock_gettime], [rt], , [AC_MSG_ERROR([clock_gettime not found])])
 AC_SUBST([rt_LIBS], [$LIBS])
