@@ -10,6 +10,10 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+EXTRA_DIST	= check.mk gitlog-to-changelog git-version-gen \
+		  knet_valgrind_helgrind.supp knet_valgrind_memcheck.supp \
+		  release.mk update-copyright.sh
+
 noinst_PROGRAMS	= doxyxml
 
 doxyxml_SOURCES = doxyxml.c

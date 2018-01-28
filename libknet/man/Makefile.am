@@ -73,10 +73,12 @@ man3_MANS = \
 
 $(MANS): doxyfile.stamp
 
-doxyfile.stamp: Doxyfile $(abs_srcdir)/../libknet.h $(abs_top_builddir)/build-aux/doxyxml $(abs_top_srcdir)/build-aux/doxyxml.c
-	$(MAKE) -C $(abs_top_builddir)/build-aux doxyxml
+$(top_builddir)/build-aux/doxyxml: $(top_srcdir)/build-aux/doxyxml.c
+	$(MAKE) -C $(top_builddir)/build-aux doxyxml
+
+doxyfile.stamp: Doxyfile $(top_srcdir)/libknet/libknet.h $(top_builddir)/build-aux/doxyxml $(top_srcdir)/build-aux/doxyxml.c
 	$(DOXYGEN) Doxyfile
-	$(abs_top_builddir)/build-aux/doxyxml -m -P -o $(abs_builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(abs_builddir)/xml/ libknet_8h.xml
+	$(top_builddir)/build-aux/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml/ libknet_8h.xml
 	touch doxyfile.stamp
 
 clean-local:
