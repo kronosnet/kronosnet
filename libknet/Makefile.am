@@ -85,7 +85,6 @@ EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
 libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
-			  --export-dynamic \
 			  -Wl,-rpath=$(pkglibdir) \
 			  -version-number $(libversion)
 
@@ -95,7 +94,7 @@ libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
 pkglib_LTLIBRARIES	=
 
 # MODULE_LDFLAGS would mean a target-specific variable for Automake
-MODULELDFLAGS		= $(AM_LDFLAGS) -module -avoid-version
+MODULELDFLAGS		= $(AM_LDFLAGS) -module -avoid-version -export-dynamic
 
 if BUILD_COMPRESS_ZLIB
 pkglib_LTLIBRARIES	+= compress_zlib.la
