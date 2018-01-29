@@ -23,11 +23,11 @@ SPEC			= $(PACKAGE_NAME).spec
 
 TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
-EXTRA_DIST		= build-aux autogen.sh .version \
+EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
 			  $(SPEC).in
 
-SUBDIRS			= init libtap libknet kronosnetd
+SUBDIRS			= build-aux init libtap libknet kronosnetd
 
 if BUILD_POC
 SUBDIRS			+= poc-code

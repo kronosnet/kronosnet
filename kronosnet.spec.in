@@ -87,6 +87,8 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
 BuildRequires: gcc
+# required to build man pages
+BuildRequires: libqb-devel libxml2-devel doxygen
 %if %{defined buildsctp}
 BuildRequires: lksctp-tools-devel
 %endif
@@ -112,12 +114,12 @@ BuildRequires: xz-devel
 BuildRequires: /usr/include/bzlib.h
 %endif
 %if %{defined buildkronosnetd}
-BuildRequires: libqb-devel pam-devel
+BuildRequires: pam-devel
 %endif
 %if %{defined buildautogen}
-BuildRequires:  autoconf
-BuildRequires:  automake
-BuildRequires:  libtool
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: libtool
 %endif
 
 %prep

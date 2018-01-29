@@ -146,17 +146,3 @@ crypto_openssl_la_LIBADD = $(openssl_LIBS)
 endif
 
 dist_man_MANS		= man
-
-update-man-pages: doxyfile.stamp
-
-doxyfile.stamp: Doxyfile
-if MANPAGEUPDATES
-	$(DOXYGEN) Doxyfile
-	$(DOXY2MAN) -o $(abs_srcdir)/man -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
-else
-	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
-endif
-	touch doxyfile.stamp
-
-clean-local:
-	rm -rf doxyfile.stamp xml
