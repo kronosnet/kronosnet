@@ -1341,6 +1341,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 
 	if (err) {
 		err = -2;
+		savederrno = errno;
 	}
 
 exit_unlock:
