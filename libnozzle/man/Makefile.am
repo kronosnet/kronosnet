@@ -12,16 +12,15 @@ include $(top_srcdir)/build-aux/check.mk
 
 dist_man_MANS =
 
-update-man-pages: doxyfile.stamp
+$(MANS): doxyfile.stamp
 
-doxyfile.stamp: Doxyfile
-if MANPAGEUPDATES
+$(top_builddir)/build-aux/doxyxml: $(top_srcdir)/build-aux/doxyxml.c
+	$(MAKE) -C $(top_builddir)/build-aux doxyxml
+
+doxyfile.stamp: Doxyfile $(top_srcdir)/libnozzle/libnozzle.h $(top_builddir)/build-aux/doxyxml $(top_srcdir)/build-aux/doxyxml.c
 	$(DOXYGEN) Doxyfile
-	$(DOXY2MAN) -o $(abs_srcdir) -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libnozzle_8h.xml
-else
-	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
-endif
+	$(top_builddir)/build-aux/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml/ libnozzle_8h.xml
 	touch doxyfile.stamp
 
 clean-local:
-	rm -rf doxyfile.stamp xml
+	rm -rf doxyfile.stamp xml *.3
