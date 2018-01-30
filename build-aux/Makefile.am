@@ -17,5 +17,5 @@ EXTRA_DIST	= check.mk gitlog-to-changelog git-version-gen \
 noinst_PROGRAMS	= doxyxml
 
 doxyxml_SOURCES = doxyxml.c
-doxyxml_CFLAGS = $(libqb_CFLAGS) $(libxml_CFLAGS)
+doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_CFLAGS) $(libxml_CFLAGS)
 doxyxml_LDADD = $(libqb_LIBS) $(libxml_LIBS)
