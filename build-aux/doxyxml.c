@@ -403,8 +403,10 @@ static void print_text(char *name, char *def, char *brief, char *args, char *det
 	printf("DESCRIPTION\n");
 	printf("        %s\n", detailed);
 
-	printf("RETURN VALUE\n");
-	printf("        %s\n", returntext);
+	if (returntext) {
+		printf("RETURN VALUE\n");
+		printf("        %s\n", returntext);
+	}
 }
 
 /* Print a long string with para marks in it. */
@@ -542,8 +544,10 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 		fprintf(manfile, ".RE\n");
 	}
 
-	fprintf(manfile, ".SH RETURN VALUE\n");
-	man_print_long_string(manfile, returntext);
+	if (returntext) {
+		fprintf(manfile, ".SH RETURN VALUE\n");
+		man_print_long_string(manfile, returntext);
+	}
 
 	qb_list_for_each(iter, &retval_list) {
 		pi = qb_list_entry(iter, struct param_info, list);
