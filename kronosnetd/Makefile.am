@@ -37,7 +37,7 @@ kronosnetd_CPPFLAGS	= \
 			  -I$(top_srcdir)/libtap \
 			  -I$(top_srcdir)/libknet
 
-kronosnetd_CFLAGS	= $(libqb_CFLAGS)
+kronosnetd_CFLAGS	= $(AM_CFLAGS) $(libqb_CFLAGS)
 
 kronosnetd_LDADD	= \
 			  $(top_builddir)/libknet/libknet.la \

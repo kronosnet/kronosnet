@@ -19,7 +19,7 @@ sources			= libtap.c
 
 libversion		= 1:0:0
 
-AM_CFLAGS		= $(PTHREAD_CFLAGS)
+AM_CFLAGS		+= $(PTHREAD_CFLAGS)
 LIBS			= $(PTHREAD_LIBS)
 
 if BUILD_LIBTAP
@@ -36,8 +36,8 @@ libtap_la_SOURCES	= $(sources)
 
 EXTRA_libtap_la_DEPENDENCIES	= $(SYMFILE)
 
-libtap_la_LDFLAGS	= -Wl,-version-script,$(srcdir)/$(SYMFILE) \
-			  --export-dynamic \
+libtap_la_LDFLAGS	= $(AM_LDFLAGS) \
+			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
 			  -version-number $(libversion)
 
 TESTS			= $(check_PROGRAMS)
