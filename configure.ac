@@ -82,7 +82,10 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
-AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AC_CHECK_PROGS([DOXYGEN], [doxygen], [no])
+if test "x$DOXYGEN" = xno; then
+	AC_MSG_ERROR(["Doxygen command not found"])
+fi
 
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
