@@ -58,7 +58,7 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 {
 	void *ret = NULL;
 	char *error = NULL;
-	char dir[MAXPATHLEN], path[MAXPATHLEN], link[MAXPATHLEN];
+	char dir[MAXPATHLEN], path[MAXPATHLEN * 2], link[MAXPATHLEN];
 	struct stat sb;
 
 	/*
