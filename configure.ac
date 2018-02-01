@@ -230,20 +230,17 @@ case "$host_os" in
 esac
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h])
-AC_CHECK_HEADERS([stdlib.h])
-AC_CHECK_HEADERS([string.h])
-AC_CHECK_HEADERS([strings.h])
-AC_CHECK_HEADERS([sys/ioctl.h])
-AC_CHECK_HEADERS([syslog.h])
-AC_CHECK_HEADERS([unistd.h])
-AC_CHECK_HEADERS([netinet/in.h])
-AC_CHECK_HEADERS([sys/socket.h])
-AC_CHECK_HEADERS([arpa/inet.h])
-AC_CHECK_HEADERS([netdb.h])
-AC_CHECK_HEADERS([limits.h])
-AC_CHECK_HEADERS([stdint.h])
 AC_CHECK_HEADERS([sys/epoll.h])
+AC_CHECK_FUNCS([kevent])
+# if neither sys/epoll.h nor kevent are present, we should fail.
+
+if test "x$ac_cv_header_sys_epoll_h" = xno && test "x$ac_cv_func_kevent" = xno; then
+	AC_MSG_ERROR([Both epoll and kevent unavailable on this OS])
+fi
+
+if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes; then
+	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
+fi
 
 if test "x$enable_libknet_sctp" = xyes; then
 	AC_CHECK_HEADERS([netinet/sctp.h],, [AC_MSG_ERROR(["missing required SCTP headers"])])
@@ -265,16 +262,6 @@ AC_FUNC_ALLOCA
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([kevent])
-# if neither sys/epoll.h nor kevent are present, we should fail.
-
-if test "x$ac_cv_header_sys_epoll_h" = xno && test "x$ac_cv_func_kevent" = xno; then
-	AC_MSG_ERROR([Both epoll and kevent unavailable on this OS])
-fi
-
-if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes; then
-	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
-fi
 
 # required by doxyman to build man pages dynamically
 PKG_CHECK_MODULES([libqb], [libqb])
