@@ -244,14 +244,17 @@ fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
-AC_TYPE_SIZE_T
 AC_TYPE_PID_T
+AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
+AC_TYPE_INT8_T
+AC_TYPE_INT16_T
 AC_TYPE_INT32_T
+AC_TYPE_INT64_T
 
 # required by doxyxml to build man pages dynamically
 # Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
