@@ -44,7 +44,6 @@ AC_CONFIG_SRCDIR([kronosnetd/main.c])
 AC_CONFIG_HEADERS([config.h])
 
 AC_CANONICAL_HOST
-AC_PROG_LIBTOOL
 
 AC_LANG([C])
 
