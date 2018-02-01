@@ -191,9 +191,6 @@ cc_supports_flag() {
 	return $RC
 }
 
-# Checks for C features
-AC_C_INLINE
-
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
 saved_LIBS="$LIBS"
