@@ -256,12 +256,6 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_INT32_T
 
-# Checks for library functions.
-AC_FUNC_ALLOCA
-AC_FUNC_FORK
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
-
 # required by doxyxml to build man pages dynamically
 # Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
 # undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
