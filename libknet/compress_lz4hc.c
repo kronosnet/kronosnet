@@ -10,6 +10,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <lz4.h>
 #include <lz4hc.h>
 
 #include "logging.h"
