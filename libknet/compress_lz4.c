@@ -10,7 +10,7 @@
 #include "config.h"
 
 #include <errno.h>
-#include <lz4hc.h>
+#include <lz4.h>
 
 #include "logging.h"
 #include "compress_model.h"
