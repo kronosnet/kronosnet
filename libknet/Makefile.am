@@ -147,5 +147,3 @@ crypto_openssl_la_LDFLAGS = $(MODULELDFLAGS)
 crypto_openssl_la_CFLAGS = $(AM_CFLAGS) $(openssl_CFLAGS)
 crypto_openssl_la_LIBADD = $(openssl_LIBS)
 endif
-
-dist_man_MANS		= man
