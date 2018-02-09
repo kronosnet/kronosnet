@@ -657,7 +657,7 @@ struct knet_handle_compress_cfg {
  *            pointer to a knet_handle_compress_cfg structure
  *
  *            compress_model should contain the mode name.
- *                           Currently only "zlib" and "lz4" are supported.
+ *                           See "compress_level" for the list of possible values.
  *                           Setting to "none" will disable compression.
  *
  *            compress_threshold
