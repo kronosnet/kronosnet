@@ -14,8 +14,15 @@ EXTRA_DIST	= check.mk gitlog-to-changelog git-version-gen \
 		  knet_valgrind_helgrind.supp knet_valgrind_memcheck.supp \
 		  release.mk update-copyright.sh
 
+EXEEXT=$(BUILD_EXEEXT)
+
 noinst_PROGRAMS	= doxyxml
+
+$(doxyxml_OBJECTS) : CC=$(CC_FOR_BUILD)
+$(doxyxml_OBJECTS) : CFLAGS=$(CFLAGS_FOR_BUILD)
+$(doxyxml_OBJECTS) : CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
 
 doxyxml_SOURCES = doxyxml.c
 doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_CFLAGS) $(libxml_CFLAGS)
 doxyxml_LDADD = $(libqb_LIBS) $(libxml_LIBS)
+doxyxml_LINK = $(CC_FOR_BUILD) $(doxyxml_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
