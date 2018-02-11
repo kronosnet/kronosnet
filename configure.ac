@@ -270,9 +270,15 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
 fi
 
-# required by doxyman to build man pages dynamically
+# required by doxyxml to build man pages dynamically
+saved_PKG_CONFIG="$PKG_CONFIG"
+saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+unset PKG_CONFIG ac_cv_path_PKG_CONFIG
+AC_PATH_PROG([PKG_CONFIG], [pkg-config])
 PKG_CHECK_MODULES([libqb], [libqb])
 PKG_CHECK_MODULES([libxml], [libxml-2.0])
+PKG_CONFIG="$saved_PKG_CONFIG"
+ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
