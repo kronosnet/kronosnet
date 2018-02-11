@@ -271,6 +271,7 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 fi
 
 # required by doxyxml to build man pages dynamically
+AX_PROG_CC_FOR_BUILD
 saved_PKG_CONFIG="$PKG_CONFIG"
 saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
 unset PKG_CONFIG ac_cv_path_PKG_CONFIG
