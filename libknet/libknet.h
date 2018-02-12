@@ -658,7 +658,7 @@ struct knet_handle_compress_cfg {
  *
  *            compress_model contains the model name.
  *                           See "compress_level" for the list of accepted values.
- *                           The "none" value disables compression.
+ *                           Setting the value to "none" disables compression.
  *
  *            compress_threshold
  *                           tells the transmission thread to NOT compress
