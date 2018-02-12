@@ -271,6 +271,9 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 fi
 
 # required by doxyxml to build man pages dynamically
+# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
+# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
+: ${CFLAGS_FOR_BUILD=""}
 AX_PROG_CC_FOR_BUILD
 saved_PKG_CONFIG="$PKG_CONFIG"
 saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
