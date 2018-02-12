@@ -23,6 +23,6 @@ $(doxyxml_OBJECTS) : CFLAGS=$(CFLAGS_FOR_BUILD)
 $(doxyxml_OBJECTS) : CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
 
 doxyxml_SOURCES = doxyxml.c
-doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_CFLAGS) $(libxml_CFLAGS)
-doxyxml_LDADD = $(libqb_LIBS) $(libxml_LIBS)
+doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
+doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
 doxyxml_LINK = $(CC_FOR_BUILD) $(doxyxml_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@

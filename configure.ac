@@ -276,8 +276,8 @@ saved_PKG_CONFIG="$PKG_CONFIG"
 saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
 unset PKG_CONFIG ac_cv_path_PKG_CONFIG
 AC_PATH_PROG([PKG_CONFIG], [pkg-config])
-PKG_CHECK_MODULES([libqb], [libqb])
-PKG_CHECK_MODULES([libxml], [libxml-2.0])
+PKG_CHECK_MODULES([libqb_BUILD], [libqb])
+PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
 PKG_CONFIG="$saved_PKG_CONFIG"
 ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 
@@ -292,6 +292,8 @@ if test "x$enable_kronosnetd" = xyes; then
 			 [AC_CHECK_LIB([pam_misc], [misc_conv],
 				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
 				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
+
+	PKG_CHECK_MODULES([libqb], [libqb])
 
 	AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
 		     [have_qb_log_thread_priority_set="yes"],
