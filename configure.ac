@@ -270,9 +270,19 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
 fi
 
-# required by doxyman to build man pages dynamically
-PKG_CHECK_MODULES([libqb], [libqb])
-PKG_CHECK_MODULES([libxml], [libxml-2.0])
+# required by doxyxml to build man pages dynamically
+# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
+# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
+: ${CFLAGS_FOR_BUILD=""}
+AX_PROG_CC_FOR_BUILD
+saved_PKG_CONFIG="$PKG_CONFIG"
+saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+unset PKG_CONFIG ac_cv_path_PKG_CONFIG
+AC_PATH_PROG([PKG_CONFIG], [pkg-config])
+PKG_CHECK_MODULES([libqb_BUILD], [libqb])
+PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
+PKG_CONFIG="$saved_PKG_CONFIG"
+ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then
@@ -285,6 +295,8 @@ if test "x$enable_kronosnetd" = xyes; then
 			 [AC_CHECK_LIB([pam_misc], [misc_conv],
 				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
 				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
+
+	PKG_CHECK_MODULES([libqb], [libqb])
 
 	AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
 		     [have_qb_log_thread_priority_set="yes"],
