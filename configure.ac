@@ -106,7 +106,7 @@ AM_CONDITIONAL([BUILD_MAN], [test x$enable_man = xyes])
 AC_ARG_ENABLE([libknet-sctp],
 	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
 	[ enable_libknet_sctp="yes" ])
-AM_CONDITIONAL([BUILDSCTP], [test x$enable_libknet_sctp = xyes])
+AM_CONDITIONAL([BUILD_SCTP], [test x$enable_libknet_sctp = xyes])
 
 AC_ARG_ENABLE([crypto-all],
 	[AS_HELP_STRING([--disable-crypto-all],[disable libknet all crypto modules support])],,
