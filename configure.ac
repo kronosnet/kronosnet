@@ -81,10 +81,6 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
-AC_CHECK_PROGS([DOXYGEN], [doxygen], [no])
-if test "x$DOXYGEN" = xno; then
-	AC_MSG_ERROR(["Doxygen command not found"])
-fi
 
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
@@ -101,6 +97,11 @@ if test "x$enable_$2_$1" = xyes; then
 fi
 AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
 ])
+
+AC_ARG_ENABLE([man],
+	[AS_HELP_STRING([--disable-man],[disable man page creation])],,
+	[ enable_man="yes" ])
+AM_CONDITIONAL([BUILD_MAN], [test x$enable_man = xyes])
 
 AC_ARG_ENABLE([libknet-sctp],
 	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
@@ -256,19 +257,29 @@ AC_TYPE_INT16_T
 AC_TYPE_INT32_T
 AC_TYPE_INT64_T
 
-# required by doxyxml to build man pages dynamically
-# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
-# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
-: ${CFLAGS_FOR_BUILD=""}
-AX_PROG_CC_FOR_BUILD
-saved_PKG_CONFIG="$PKG_CONFIG"
-saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
-unset PKG_CONFIG ac_cv_path_PKG_CONFIG
-AC_PATH_PROG([PKG_CONFIG], [pkg-config])
-PKG_CHECK_MODULES([libqb_BUILD], [libqb])
-PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
-PKG_CONFIG="$saved_PKG_CONFIG"
-ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
+if test "x$enable_man" = "xyes"; then
+	AC_ARG_VAR([DOXYGEN_PATH], [override doxygen executable])
+	if test "x$DOXYGEN_PATH" = "x"; then
+		DOXYGEN_PATH=doxygen
+	fi
+	AC_CHECK_PROGS([DOXYGEN], [$DOXYGEN_PATH], [no])
+	if test "x$DOXYGEN" = xno; then
+		AC_MSG_ERROR(["Doxygen command not found"])
+	fi
+	# required by doxyxml to build man pages dynamically
+	# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
+	# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
+	: ${CFLAGS_FOR_BUILD=""}
+	AX_PROG_CC_FOR_BUILD
+	saved_PKG_CONFIG="$PKG_CONFIG"
+	saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+	unset PKG_CONFIG ac_cv_path_PKG_CONFIG
+	AC_PATH_PROG([PKG_CONFIG], [pkg-config])
+	PKG_CHECK_MODULES([libqb_BUILD], [libqb])
+	PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
+	PKG_CONFIG="$saved_PKG_CONFIG"
+	ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
+fi
 
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then

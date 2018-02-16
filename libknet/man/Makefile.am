@@ -11,6 +11,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+if BUILD_MAN
+
 man3_MANS = \
 		knet_addrtostr.3 \
 		knet_handle_add_datafd.3 \
@@ -80,6 +82,8 @@ doxyfile.stamp: Doxyfile $(top_srcdir)/libknet/libknet.h $(top_builddir)/build-a
 	$(DOXYGEN) Doxyfile
 	$(top_builddir)/build-aux/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml/ libknet_8h.xml
 	touch doxyfile.stamp
+
+endif
 
 clean-local:
 	rm -rf doxyfile.stamp xml *.3
