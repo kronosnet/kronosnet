@@ -23,8 +23,12 @@ CFLAGS=$(CFLAGS_FOR_BUILD)
 CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
 LDFLAGS=$(LDFLAGS_FOR_BUILD)
 
+if BUILD_MAN
+
 noinst_PROGRAMS	= doxyxml
 
 doxyxml_SOURCES = doxyxml.c
 doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
 doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
+
+endif
