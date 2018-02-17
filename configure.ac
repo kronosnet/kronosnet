@@ -258,11 +258,8 @@ AC_TYPE_INT32_T
 AC_TYPE_INT64_T
 
 if test "x$enable_man" = "xyes"; then
-	AC_ARG_VAR([DOXYGEN_PATH], [override doxygen executable])
-	if test "x$DOXYGEN_PATH" = "x"; then
-		DOXYGEN_PATH=doxygen
-	fi
-	AC_CHECK_PROGS([DOXYGEN], [$DOXYGEN_PATH], [no])
+	AC_ARG_VAR([DOXYGEN], [override doxygen executable])
+	AC_CHECK_PROGS([DOXYGEN], [doxygen], [no])
 	if test "x$DOXYGEN" = xno; then
 		AC_MSG_ERROR(["Doxygen command not found"])
 	fi
