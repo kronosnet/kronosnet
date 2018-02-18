@@ -29,6 +29,7 @@
 %@runautogen@ runautogen
 %@rpmdebuginfo@ rpmdebuginfo
 %@overriderpmdebuginfo@ overriderpmdebuginfo
+%@buildman@ buildman
 
 %if %{with overriderpmdebuginfo}
 %undefine _enable_debug_packages
@@ -68,6 +69,9 @@
 %if %{with runautogen}
 %global buildautogen 1
 %endif
+%if %{with buildman}
+%global buildmanpages 1
+%endif
 
 # main (empty) package
 # http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html
@@ -88,7 +92,9 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 # Build dependencies
 BuildRequires: gcc
 # required to build man pages
+%if %{defined buildmanpages}
 BuildRequires: libqb-devel libxml2-devel doxygen
+%endif
 %if %{defined buildsctp}
 BuildRequires: lksctp-tools-devel
 %endif
@@ -131,6 +137,11 @@ BuildRequires: libtool
 %endif
 
 %{configure} \
+%if %{defined buildmanpages}
+	--enable-man \
+%else
+	--disable-man \
+%endif
 %if %{defined buildsctp}
 	--enable-libknet-sctp \
 %else
@@ -364,7 +375,9 @@ Requires: pkgconfig
 %{_libdir}/libknet.so
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
+%if %{defined buildmanpages}
 %{_mandir}/man3/*.3.gz
+%endif
 
 %if %{defined buildcryptonss}
 %package -n libknet1-crypto-nss-plugin

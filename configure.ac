@@ -27,8 +27,11 @@ LT_PREREQ([2.2.6])
 # See also: https://github.com/kronosnet/kronosnet/issues/107
 # --as-needed: Modern systems have builtin ceil() making -lm superfluous but
 # AC_SEARCH_LIBS can't detect this because it tests with a false prototype
-AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],[AM_LDFLAGS=-Wl,--enable-new-dtags])
-AX_CHECK_LINK_FLAG([-Wl,--as-needed],[AM_LDFLAGS="$AM_LDFLAGS -Wl,--as-needed"])
+AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],
+		   [AM_LDFLAGS=-Wl,--enable-new-dtags],
+		   [AC_MSG_ERROR(["Linker support for --enable-new-dtags is required"])])
+AX_CHECK_LINK_FLAG([-Wl,--as-needed], [AM_LDFLAGS="$AM_LDFLAGS -Wl,--as-needed"])
+
 AC_SUBST([AM_LDFLAGS])
 saved_LDFLAGS="$LDFLAGS"
 LDFLAGS="$AM_LDFLAGS $LDFLAGS"
@@ -40,7 +43,6 @@ AC_CONFIG_SRCDIR([kronosnetd/main.c])
 AC_CONFIG_HEADERS([config.h])
 
 AC_CANONICAL_HOST
-AC_PROG_LIBTOOL
 
 AC_LANG([C])
 
@@ -79,7 +81,6 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
-AC_CHECK_PROGS([DOXYGEN], [doxygen])
 
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
@@ -97,10 +98,15 @@ fi
 AC_DEFINE_UNQUOTED([WITH_]m4_toupper([$2_$1]), [`test "x$enable_$2_$1" != xyes; echo $?`], $1 $2 [built in])
 ])
 
+AC_ARG_ENABLE([man],
+	[AS_HELP_STRING([--disable-man],[disable man page creation])],,
+	[ enable_man="yes" ])
+AM_CONDITIONAL([BUILD_MAN], [test x$enable_man = xyes])
+
 AC_ARG_ENABLE([libknet-sctp],
 	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
 	[ enable_libknet_sctp="yes" ])
-AM_CONDITIONAL([BUILDSCTP], [test x$enable_libknet_sctp = xyes])
+AM_CONDITIONAL([BUILD_SCTP], [test x$enable_libknet_sctp = xyes])
 
 AC_ARG_ENABLE([crypto-all],
 	[AS_HELP_STRING([--disable-crypto-all],[disable libknet all crypto modules support])],,
@@ -186,9 +192,6 @@ cc_supports_flag() {
 	return $RC
 }
 
-# Checks for C features
-AC_C_INLINE
-
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
 saved_LIBS="$LIBS"
@@ -224,41 +227,7 @@ case "$host_os" in
 esac
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h])
-AC_CHECK_HEADERS([stdlib.h])
-AC_CHECK_HEADERS([string.h])
-AC_CHECK_HEADERS([strings.h])
-AC_CHECK_HEADERS([sys/ioctl.h])
-AC_CHECK_HEADERS([syslog.h])
-AC_CHECK_HEADERS([unistd.h])
-AC_CHECK_HEADERS([netinet/in.h])
-AC_CHECK_HEADERS([sys/socket.h])
-AC_CHECK_HEADERS([arpa/inet.h])
-AC_CHECK_HEADERS([netdb.h])
-AC_CHECK_HEADERS([limits.h])
-AC_CHECK_HEADERS([stdint.h])
 AC_CHECK_HEADERS([sys/epoll.h])
-
-if test "x$enable_libknet_sctp" = xyes; then
-	AC_CHECK_HEADERS([netinet/sctp.h],, [AC_MSG_ERROR(["missing required SCTP headers"])])
-fi
-
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_INLINE
-AC_TYPE_SIZE_T
-AC_TYPE_PID_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UINT8_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_INT32_T
-
-# Checks for library functions.
-AC_FUNC_ALLOCA
-AC_FUNC_FORK
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
 AC_CHECK_FUNCS([kevent])
 # if neither sys/epoll.h nor kevent are present, we should fail.
 
@@ -270,19 +239,44 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
 fi
 
-# required by doxyxml to build man pages dynamically
-# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
-# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
-: ${CFLAGS_FOR_BUILD=""}
-AX_PROG_CC_FOR_BUILD
-saved_PKG_CONFIG="$PKG_CONFIG"
-saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
-unset PKG_CONFIG ac_cv_path_PKG_CONFIG
-AC_PATH_PROG([PKG_CONFIG], [pkg-config])
-PKG_CHECK_MODULES([libqb_BUILD], [libqb])
-PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
-PKG_CONFIG="$saved_PKG_CONFIG"
-ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
+if test "x$enable_libknet_sctp" = xyes; then
+	AC_CHECK_HEADERS([netinet/sctp.h],, [AC_MSG_ERROR(["missing required SCTP headers"])])
+fi
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UINT8_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_INT8_T
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+
+if test "x$enable_man" = "xyes"; then
+	AC_ARG_VAR([DOXYGEN], [override doxygen executable])
+	AC_CHECK_PROGS([DOXYGEN], [doxygen], [no])
+	if test "x$DOXYGEN" = xno; then
+		AC_MSG_ERROR(["Doxygen command not found"])
+	fi
+	# required by doxyxml to build man pages dynamically
+	# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
+	# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
+	: ${CFLAGS_FOR_BUILD=""}
+	AX_PROG_CC_FOR_BUILD
+	saved_PKG_CONFIG="$PKG_CONFIG"
+	saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+	unset PKG_CONFIG ac_cv_path_PKG_CONFIG
+	AC_PATH_PROG([PKG_CONFIG], [pkg-config])
+	PKG_CHECK_MODULES([libqb_BUILD], [libqb])
+	PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
+	PKG_CONFIG="$saved_PKG_CONFIG"
+	ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
+fi
 
 # checks (for kronosnetd)
 if test "x$enable_kronosnetd" = xyes; then

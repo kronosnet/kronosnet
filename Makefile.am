@@ -88,7 +88,7 @@ $(SPEC): $(SPEC).in .version config.status
 		$(abs_srcdir)/$@.in > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
-if BUILDSCTP
+if BUILD_SCTP
 	sed -i -e "s#@sctp@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@sctp@#bcond_with#g" $@-t
@@ -143,17 +143,20 @@ if BUILD_RUNAUTOGEN
 else
 	sed -i -e "s#@runautogen@#bcond_with#g" $@-t
 endif
-
 if OVERRIDE_RPM_DEBUGINFO
 	sed -i -e "s#@overriderpmdebuginfo@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@overriderpmdebuginfo@#bcond_with#g" $@-t
 endif
-
 if BUILD_RPM_DEBUGINFO
 	sed -i -e "s#@rpmdebuginfo@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@rpmdebuginfo@#bcond_with#g" $@-t
+endif
+if BUILD_MAN
+	sed -i -e "s#@buildman@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@buildman@#bcond_with#g" $@-t
 endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
