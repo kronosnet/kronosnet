@@ -115,12 +115,19 @@ static int _configure_sockbuf(knet_handle_t knet_h, int sock, int option, int fo
 		return 0;
 	}
 
-	if (!force) {
+	if (!force || !(knet_h->flags & KNET_HANDLE_FLAG_PRIVILEGED)) {
 		log_err(knet_h, KNET_SUB_TRANSPORT,
 			"Failed to set socket buffer via option %d to value %d: capped at %d",
 			option, target, new_value);
-		errno = ENAMETOOLONG;
-		return -1;
+		if (!(knet_h->flags & KNET_HANDLE_FLAG_PRIVILEGED)) {
+			log_err(knet_h, KNET_SUB_TRANSPORT,
+				"Continuing regardless, as the handle is not privileged."
+				" Expect poor performance!");
+			return 0;
+		} else {
+			errno = ENAMETOOLONG;
+			return -1;
+		}
 	}
 
 	if (setsockopt(sock, SOL_SOCKET, force, &target, sizeof target) < 0) {
