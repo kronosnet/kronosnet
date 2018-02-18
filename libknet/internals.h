@@ -243,6 +243,7 @@ struct knet_handle {
 		int error,
 		int errorno);
 	int fini_in_progress;
+	uint64_t flags;
 };
 
 extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */

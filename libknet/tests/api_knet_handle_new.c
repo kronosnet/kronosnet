@@ -29,13 +29,8 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid 1, no logging\n");
 
-	knet_h = knet_handle_new(1, 0, 0);
+	knet_h = knet_handle_new_ex(1, 0, 0, 0);
 	if (!knet_h) {
-		if (errno == ENAMETOOLONG) {
-			printf("Socket buffers too small (at least %d bytes needed)\n",
-			       KNET_RING_RCVBUFF);
-			exit(SKIP);
-		}
 		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -47,7 +42,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid -1, no logging\n");
 
-	knet_h = knet_handle_new(-1, 0, 0);
+	knet_h = knet_handle_new_ex(-1, 0, 0, 0);
 	if (!knet_h) {
 		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
 		exit(FAIL);

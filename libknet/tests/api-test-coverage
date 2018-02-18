@@ -68,6 +68,7 @@ found=0
 missing=0
 
 for i in $headerapicalls; do
+	[ "$i" = knet_handle_new_ex ] && i=knet_handle_new # tested together
 	numapicalls=$((numapicalls + 1))
 	if [ -f $srcdir/api_${i}.c ]; then
 		found=$((found + 1))
