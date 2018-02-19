@@ -11,9 +11,24 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+# Avoid Automake warnings about overriding these user variables.
+# Programs in this directory are used during the build only.
+AUTOMAKE_OPTIONS = -Wno-gnu
+EXEEXT=$(BUILD_EXEEXT)
+CC=$(CC_FOR_BUILD)
+CFLAGS=$(CFLAGS_FOR_BUILD)
+CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
+LDFLAGS=$(LDFLAGS_FOR_BUILD)
+
 if BUILD_MAN
 
-man3_MANS = \
+noinst_PROGRAMS	= doxyxml
+
+doxyxml_SOURCES = doxyxml.c
+doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
+doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
+
+knet_man3_MANS = \
 		knet_addrtostr.3 \
 		knet_handle_add_datafd.3 \
 		knet_handle_clear_stats.3 \
@@ -73,17 +88,16 @@ man3_MANS = \
 		knet_send_sync.3 \
 		knet_strtoaddr.3
 
-$(MANS): doxyfile.stamp
+man3_MANS = $(knet_man3_MANS)
 
-$(top_builddir)/build-aux/doxyxml: $(top_srcdir)/build-aux/doxyxml.c
-	$(MAKE) -C $(top_builddir)/build-aux doxyxml
+$(MANS): doxyfile-knet.stamp
 
-doxyfile.stamp: Doxyfile $(top_srcdir)/libknet/libknet.h $(top_builddir)/build-aux/doxyxml $(top_srcdir)/build-aux/doxyxml.c
-	$(DOXYGEN) Doxyfile
-	$(top_builddir)/build-aux/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml/ libknet_8h.xml
+doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/libknet.h
+	$(DOXYGEN) Doxyfile-knet
+	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile.stamp
 
 endif
 
 clean-local:
-	rm -rf doxyfile.stamp xml *.3
+	rm -rf doxyfile*.stamp xml* *.3
