@@ -38,7 +38,7 @@ EXTRA_libtap_la_DEPENDENCIES	= $(SYMFILE)
 
 libtap_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
-			  -version-number $(libversion)
+			  -version-info $(libversion)
 
 TESTS			= $(check_PROGRAMS)
 
