@@ -464,9 +464,8 @@ AC_CONFIG_FILES([
 		libknet/Makefile
 		libknet/libknet.pc
 		libknet/tests/Makefile
-		libknet/man/Doxyfile
-		libknet/man/Makefile
-		build-aux/Makefile
+		man/Makefile
+		man/Doxyfile-knet
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile

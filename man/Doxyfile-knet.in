@@ -8,8 +8,8 @@
 #
 PROJECT_NAME	       = @PACKAGE_NAME@
 PROJECT_NUMBER         = @PACKAGE_VERSION@
-INPUT                  = @srcdir@/../libknet.h
-XML_OUTPUT             = @abs_builddir@/xml
+INPUT                  = @abs_top_srcdir@/libknet/libknet.h
+XML_OUTPUT             = @abs_builddir@/xml-knet
 GENERATE_XML           = YES
 XML_PROGRAMLISTING     = NO
 AUTOLINK_SUPPORT       = NO
