@@ -25,9 +25,13 @@ TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
 EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
-			  $(SPEC).in
+			  $(SPEC).in build-aux
 
-SUBDIRS			= build-aux init libtap libknet kronosnetd
+SUBDIRS			= init libtap libknet kronosnetd
+
+if BUILD_MAN
+SUBDIRS			+= man
+endif
 
 if BUILD_POC
 SUBDIRS			+= poc-code

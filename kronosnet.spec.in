@@ -376,7 +376,7 @@ Requires: pkgconfig
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
 %if %{defined buildmanpages}
-%{_mandir}/man3/*.3.gz
+%{_mandir}/man3/knet*.3.gz
 %endif
 
 %if %{defined buildcryptonss}

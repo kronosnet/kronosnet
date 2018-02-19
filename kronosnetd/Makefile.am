@@ -10,7 +10,7 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 include $(top_srcdir)/build-aux/check.mk
 
-EXTRA_DIST		= kronosnetd.logrotate.in kronosnetd.8 knet-keygen.8
+EXTRA_DIST		= kronosnetd.logrotate.in
 
 noinst_HEADERS		= \
 			  cfg.h \
@@ -53,8 +53,6 @@ if BUILD_KRONOSNETD
 
 sbin_PROGRAMS		= kronosnetd \
 			  knet-keygen
-
-dist_man_MANS		= kronosnetd.8 knet-keygen.8
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)

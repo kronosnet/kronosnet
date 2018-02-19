@@ -286,7 +286,7 @@ static int read_structure_from_xml(char *refid, char *name)
 	struct struct_info *si;
 	int ret = -1;
 
-	snprintf(fname, sizeof(fname), XML_DIR "/%s.xml", refid);
+	snprintf(fname, sizeof(fname),  "%s/%s.xml", xml_dir, refid);
 
 	doc = xmlParseFile(fname);
 	if (doc == NULL) {
