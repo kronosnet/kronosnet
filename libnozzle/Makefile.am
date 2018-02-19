@@ -16,7 +16,7 @@ EXTRA_DIST		= $(SYMFILE)
 
 if BUILD_LIBNOZZLE
 
-SUBDIRS			= . tests man
+SUBDIRS			= . tests
 
 libversion		= 1:0:0
 
@@ -45,7 +45,5 @@ libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -version-info $(libversion)
 
 libnozzle_la_LIBADD	= $(PTHREAD_LIBS)
-
-dist_man_MANS		= man
 
 endif

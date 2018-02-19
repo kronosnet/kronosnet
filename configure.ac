@@ -501,8 +501,6 @@ AC_CONFIG_FILES([
 		libnozzle/Makefile
 		libnozzle/libnozzle.pc
 		libnozzle/tests/Makefile
-		libnozzle/man/Doxyfile
-		libnozzle/man/Makefile
 		kronosnetd/Makefile
 		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
@@ -510,6 +508,7 @@ AC_CONFIG_FILES([
 		libknet/tests/Makefile
 		man/Makefile
 		man/Doxyfile-knet
+		man/Doxyfile-nozzle
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile
