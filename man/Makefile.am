@@ -11,6 +11,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+EXTRA_DIST	= kronosnetd.8 knet-keygen.8
+
 # Avoid Automake warnings about overriding these user variables.
 # Programs in this directory are used during the build only.
 AUTOMAKE_OPTIONS = -Wno-gnu
@@ -21,6 +23,10 @@ CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
 LDFLAGS=$(LDFLAGS_FOR_BUILD)
 
 if BUILD_MAN
+
+if BUILD_KRONOSNETD
+man8_MANS	= kronosnetd.8 knet-keygen.8
+endif
 
 noinst_PROGRAMS	= doxyxml
 
