@@ -472,6 +472,9 @@ transport_sock_error_t udp_transport_tx_sock_error(knet_handle_t knet_h, int soc
 		if (recv_errno == EINVAL) {
 			return -1;
 		}
+		if (recv_errno == EINVAL) {
+			return -1;
+		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
 			log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 			usleep(knet_h->threads_timer_res / 16);
