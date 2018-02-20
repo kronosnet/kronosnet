@@ -75,6 +75,16 @@ typedef uint16_t knet_node_id_t;
 
 #define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
 
+/*
+ * Handle flags
+ */
+
+/*
+ * Use privileged operations during socket setup.
+ */
+
+#define KNET_HANDLE_FLAG_PRIVILEGED (1ULL << 0)
+
 typedef struct knet_handle *knet_handle_t;
 
 /*
@@ -82,7 +92,7 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 /**
- * knet_handle_new
+ * knet_handle_new_ex
  *
  * @brief create a new instance of a knet handle
  *
@@ -104,12 +114,29 @@ typedef struct knet_handle *knet_handle_t;
  *            If logfd is specified, it will initialize all subsystems to log
  *            at default_log_level value. (see logging API)
  *
+ * flags    - bitwise OR of some of the following flags:
+ *   KNET_HANDLE_FLAG_PRIVILEGED: use privileged operations setting up the
+ *            communication sockets.  If disabled, failure to acquire large
+ *            enough socket buffers is ignored but logged.  Inadequate buffers
+ *            lead to poor performance.
+ *
  * @return
  * on success, a new knet_handle_t is returned.
  * on failure, NULL is returned and errno is set.
  * knet-specific errno values:
- *   ENAMETOOLONG - socket buffers couldn't be set big enough
+ *   ENAMETOOLONG - socket buffers couldn't be set big enough and KNET_HANDLE_FLAG_PRIVILEGED was specified
  *   ERANGE       - buffer size readback returned unexpected type
+ */
+
+knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
+				 int            log_fd,
+				 uint8_t        default_log_level,
+				 uint64_t	flags);
+
+/**
+ * knet_handle_new
+ *
+ * @brief knet_handle_new_ex with flags = KNET_HANDLE_FLAG_PRIVILEGED.
  */
 
 knet_handle_t knet_handle_new(knet_node_id_t host_id,

@@ -534,9 +534,10 @@ static void _stop_threads(knet_handle_t knet_h)
 	}
 }
 
-knet_handle_t knet_handle_new(knet_node_id_t host_id,
-			      int	     log_fd,
-			      uint8_t	     default_log_level)
+knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
+				 int            log_fd,
+				 uint8_t        default_log_level,
+				 uint64_t       flags)
 {
 	knet_handle_t knet_h;
 	int savederrno = 0;
@@ -560,6 +561,11 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		return NULL;
 	}
 
+	if (flags > KNET_HANDLE_FLAG_PRIVILEGED * 2 - 1) {
+		errno = EINVAL;
+		return NULL;
+	}
+
 	/*
 	 * allocate handle
 	 */
@@ -570,6 +576,8 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		return NULL;
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
+
+	knet_h->flags = flags;
 
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
 	if (savederrno) {
@@ -688,6 +696,13 @@ exit_fail:
 	knet_handle_free(knet_h);
 	errno = savederrno;
 	return NULL;
+}
+
+knet_handle_t knet_handle_new(knet_node_id_t host_id,
+			      int            log_fd,
+			      uint8_t        default_log_level)
+{
+	return knet_handle_new_ex(host_id, log_fd, default_log_level, KNET_HANDLE_FLAG_PRIVILEGED);
 }
 
 int knet_handle_free(knet_handle_t knet_h)
