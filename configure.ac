@@ -168,7 +168,7 @@ AM_CONDITIONAL([OVERRIDE_RPM_DEBUGINFO], [test x$override_rpm_debuginfo_option =
 
 AC_ARG_ENABLE([libnozzle],
 	[AS_HELP_STRING([--enable-libnozzle],[libnozzle support])],,
-	[ enable_libnozzle="no" ])
+	[ enable_libnozzle="yes" ])
 
 if test "x$enable_kronosnetd" = xyes; then
 	enable_libnozzle=yes
