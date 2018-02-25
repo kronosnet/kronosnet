@@ -87,7 +87,10 @@ static int val_level(
 	int compress_model,
 	int compress_level)
 {
-	return compress_modules_cmds[compress_model].ops->val_level(knet_h, compress_level);
+	if (compress_modules_cmds[compress_model].ops->val_level != NULL) {
+		return compress_modules_cmds[compress_model].ops->val_level(knet_h, compress_level);
+	}
+	return 0;
 }
 
 /*
@@ -179,6 +182,38 @@ static int compress_load_lib(knet_handle_t knet_h, int cmp_model, int rate_limit
 		}
 	} else {
 		knet_h->compress_int_data[cmp_model] = (void *)&"1";
+	}
+
+	return 0;
+}
+
+static int compress_lib_test(knet_handle_t knet_h)
+{
+	int savederrno = 0;
+	unsigned char src[KNET_DATABUFSIZE];
+	unsigned char dst[KNET_DATABUFSIZE_COMPRESS];
+	ssize_t dst_comp_len = KNET_DATABUFSIZE_COMPRESS, dst_decomp_len = KNET_DATABUFSIZE;
+
+	memset(src, 0, KNET_DATABUFSIZE);
+	memset(dst, 0, KNET_DATABUFSIZE_COMPRESS);
+
+	/*
+	 * NOTE: we cannot use compress and decompress API calls due to locking
+	 * so we need to call directly into the modules
+	 */
+
+	if (compress_modules_cmds[knet_h->compress_model].ops->compress(knet_h, src, KNET_DATABUFSIZE, dst, &dst_comp_len) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to compress test buffer. Please check your compression settings: %s", strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (compress_modules_cmds[knet_h->compress_model].ops->decompress(knet_h, dst, dst_comp_len, src, &dst_decomp_len) < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to decompress test buffer. Please check your compression settings: %s", strerror(savederrno));
+		errno = savederrno;
+		return -1;
 	}
 
 	return 0;
@@ -277,15 +312,22 @@ int compress_cfg(
 			goto out_unlock;
 		}
 
+		knet_h->compress_model = cmp_model;
+		knet_h->compress_level = knet_handle_compress_cfg->compress_level;
+
+		if (compress_lib_test(knet_h) < 0) {
+			savederrno = errno;
+			err = -1;
+			goto out_unlock;
+		}
+
 out_unlock:
 		pthread_rwlock_unlock(&shlib_rwlock);
 	}
 
-	if (!err) {
-		knet_h->compress_model = cmp_model;
-		knet_h->compress_level = knet_handle_compress_cfg->compress_level;
-	} else {
+	if (err) {
 		knet_h->compress_model = 0;
+		knet_h->compress_level = 0;
 	}
 
 	errno = savederrno;

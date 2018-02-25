@@ -15,18 +15,6 @@
 #include "logging.h"
 #include "compress_model.h"
 
-static int bzip2_val_level(
-	knet_handle_t knet_h,
-	int compress_level)
-{
-	if ((compress_level < 1) || (compress_level > 9)) {
-                log_err(knet_h, KNET_SUB_BZIP2COMP, "bzip2 unsupported compression level %d (accepted values from 1 to 9)", compress_level);
-		errno = EINVAL;
-		return -1;
-	}
-	return 0;
-}
-
 static int bzip2_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -120,7 +108,7 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	NULL,
-	bzip2_val_level,
+	NULL,
 	bzip2_compress,
 	bzip2_decompress
 };

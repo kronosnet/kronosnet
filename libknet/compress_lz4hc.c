@@ -32,27 +32,6 @@
 #define KNET_LZ4HC_MAX 16
 #endif
 
-static int lz4hc_val_level(
-	knet_handle_t knet_h,
-	int compress_level)
-{
-	if (compress_level < 1) {
-		log_err(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc supports only 1+ values for compression level");
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (compress_level < 4) {
-		log_info(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc recommends 4+ compression level for better results");
-	}
-
-	if (compress_level > KNET_LZ4HC_MAX) {
-		log_warn(knet_h, KNET_SUB_LZ4HCCOMP, "lz4hc installed on this system supports up to compression level %d. Higher values behaves as %d", KNET_LZ4HC_MAX, KNET_LZ4HC_MAX);
-	}
-
-	return 0;
-}
-
 static int lz4hc_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -117,7 +96,7 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	NULL,
-	lz4hc_val_level,
+	NULL,
 	lz4hc_compress,
 	lz4_decompress
 };
