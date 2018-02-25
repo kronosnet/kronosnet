@@ -363,7 +363,7 @@ Summary: Simple userland wrapper around kernel tap devices
 %package -n libnozzle1-devel
 Group: Development/Libraries
 Summary: Simple userland wrapper around kernel tap devices (developer files)
-Requires: libnozzle1 = %{version}-%{release}
+Requires: libnozzle1%{_isa} = %{version}-%{release}
 Requires: pkgconfig
 
 %description -n libnozzle1-devel
@@ -402,7 +402,7 @@ Summary: Kronosnet core switching implementation
 %package -n libknet1-devel
 Group: Development/Libraries
 Summary: Kronosnet core switching implementation (developer files)
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 Requires: pkgconfig
 
 %description -n libknet1-devel
@@ -424,7 +424,7 @@ Requires: pkgconfig
 %package -n libknet1-crypto-nss-plugin
 Group: System Environment/Libraries
 Summary: libknet1 nss support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-crypto-nss-plugin
  NSS crypto support for libknet1.
@@ -438,7 +438,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-crypto-openssl-plugin
 Group: System Environment/Libraries
 Summary: libknet1 openssl support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-crypto-openssl-plugin
  OpenSSL crypto support for libknet1.
@@ -452,7 +452,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-compress-zlib-plugin
 Group: System Environment/Libraries
 Summary: libknet1 zlib support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-zlib-plugin
  zlib compression support for libknet1.
@@ -465,7 +465,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-compress-lz4-plugin
 Group: System Environment/Libraries
 Summary: libknet1 lz4 and lz4hc support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-lz4-plugin
  lz4 and lz4hc compression support for libknet1.
@@ -480,7 +480,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-compress-lzo2-plugin
 Group: System Environment/Libraries
 Summary: libknet1 lzo2 support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-lzo2-plugin
  lzo2 compression support for libknet1.
@@ -494,7 +494,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-compress-lzma-plugin
 Group: System Environment/Libraries
 Summary: libknet1 lzma support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-lzma-plugin
  lzma compression support for libknet1.
@@ -508,7 +508,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-compress-bzip2-plugin
 Group: System Environment/Libraries
 Summary: libknet1 bzip2 support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-bzip2-plugin
  bzip2 compression support for libknet1.
@@ -522,7 +522,7 @@ Requires: libknet1 = %{version}-%{release}
 %package -n libknet1-compress-zstd-plugin
 Group: System Environment/Libraries
 Summary: libknet1 zstd support
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-zstd-plugin
  zstd compression support for libknet1.
@@ -536,10 +536,10 @@ Requires: libknet1 = %{version}-%{release}
 Group: System Environment/Libraries
 Summary: libknet1 crypto plugins meta package
 %if %{defined buildcryptonss}
-Requires: libknet1-crypto-nss-plugin
+Requires: libknet1-crypto-nss-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{defined buildcryptoopenssl}
-Requires: libknet1-crypto-openssl-plugin
+Requires: libknet1-crypto-openssl-plugin%{_isa} = %{version}-%{release}
 %endif
 
 %description -n libknet1-crypto-plugins-all
@@ -551,22 +551,22 @@ Requires: libknet1-crypto-openssl-plugin
 Group: System Environment/Libraries
 Summary: libknet1 compress plugins meta package
 %if %{defined buildcompresszlib}
-Requires: libknet1-compress-zlib-plugin
+Requires: libknet1-compress-zlib-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{defined buildcompresslz4}
-Requires: libknet1-compress-lz4-plugin
+Requires: libknet1-compress-lz4-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{defined buildcompresslzo2}
-Requires: libknet1-compress-lzo2-plugin
+Requires: libknet1-compress-lzo2-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{defined buildcompresslzma}
-Requires: libknet1-compress-lzma-plugin
+Requires: libknet1-compress-lzma-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{defined buildcompressbzip2}
-Requires: libknet1-compress-bzip2-plugin
+Requires: libknet1-compress-bzip2-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{defined buildcompresszstd}
-Requires: libknet1-compress-zstd-plugin
+Requires: libknet1-compress-zstd-plugin%{_isa} = %{version}-%{release}
 %endif
 
 %description -n libknet1-compress-plugins-all
@@ -577,8 +577,8 @@ Requires: libknet1-compress-zstd-plugin
 %package -n libknet1-plugins-all
 Group: System Environment/Libraries
 Summary: libknet1 plugins meta package
-Requires: libknet1-compress-plugins-all
-Requires: libknet1-crypto-plugins-all
+Requires: libknet1-compress-plugins-all%{_isa} = %{version}-%{release}
+Requires: libknet1-crypto-plugins-all%{_isa} = %{version}-%{release}
 
 %description -n libknet1-plugins-all
  meta package to install all of libknet1 plugins
@@ -589,7 +589,7 @@ Requires: libknet1-crypto-plugins-all
 %package -n kronosnet-tests
 Group: System Environment/Libraries
 Summary: kronosnet test suite
-Requires: libknet1 = %{version}-%{release}
+Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n kronosnet-tests
  this package contains all the libknet and libnozzle test suite
