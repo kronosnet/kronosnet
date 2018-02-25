@@ -10,7 +10,7 @@ MAINTAINERCLEANFILES	= Makefile.in kronostnetd.logrotate
 
 include $(top_srcdir)/build-aux/check.mk
 
-EXTRA_DIST		= kronosnetd.logrotate.in kronosnetd.8 knet-keygen.8
+EXTRA_DIST		= kronosnetd.logrotate.in
 
 noinst_HEADERS		= \
 			  cfg.h \
@@ -37,7 +37,7 @@ kronosnetd_CPPFLAGS	= \
 			  -I$(top_srcdir)/libtap \
 			  -I$(top_srcdir)/libknet
 
-kronosnetd_CFLAGS	= $(libqb_CFLAGS)
+kronosnetd_CFLAGS	= $(AM_CFLAGS) $(libqb_CFLAGS)
 
 kronosnetd_LDADD	= \
 			  $(top_builddir)/libknet/libknet.la \
@@ -53,8 +53,6 @@ if BUILD_KRONOSNETD
 
 sbin_PROGRAMS		= kronosnetd \
 			  knet-keygen
-
-dist_man_MANS		= kronosnetd.8 knet-keygen.8
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(DEFAULT_CONFIG_DIR)

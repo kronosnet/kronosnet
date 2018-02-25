@@ -10,6 +10,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <lz4.h>
 #include <lz4hc.h>
 
 #include "logging.h"
@@ -22,8 +23,13 @@
 #define KNET_LZ4HC_MAX LZ4HC_MAX_CLEVEL
 #endif
 #ifndef KNET_LZ4HC_MAX
-#define KNET_LZ4HC_MAX 0
-#error Please check lz4hc.h for missing LZ4HC_CLEVEL_MAX or LZ4HC_MAX_CLEVEL variants
+/*
+ * older releases of lz4 do not define LZ4HC_CLEVEL range.
+ * According to lz4hc.h, any value between 0 and 16 is valid.
+ * We defalt to 16 based on the comments in the include file
+ * from older versions.
+ */
+#define KNET_LZ4HC_MAX 16
 #endif
 
 static int lz4hc_val_level(

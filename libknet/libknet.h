@@ -75,6 +75,16 @@ typedef uint16_t knet_node_id_t;
 
 #define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
 
+/*
+ * Handle flags
+ */
+
+/*
+ * Use privileged operations during socket setup.
+ */
+
+#define KNET_HANDLE_FLAG_PRIVILEGED (1ULL << 0)
+
 typedef struct knet_handle *knet_handle_t;
 
 /*
@@ -82,7 +92,7 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 /**
- * knet_handle_new
+ * knet_handle_new_ex
  *
  * @brief create a new instance of a knet handle
  *
@@ -104,12 +114,29 @@ typedef struct knet_handle *knet_handle_t;
  *            If logfd is specified, it will initialize all subsystems to log
  *            at default_log_level value. (see logging API)
  *
+ * flags    - bitwise OR of some of the following flags:
+ *   KNET_HANDLE_FLAG_PRIVILEGED: use privileged operations setting up the
+ *            communication sockets.  If disabled, failure to acquire large
+ *            enough socket buffers is ignored but logged.  Inadequate buffers
+ *            lead to poor performance.
+ *
  * @return
  * on success, a new knet_handle_t is returned.
  * on failure, NULL is returned and errno is set.
  * knet-specific errno values:
- *   ENAMETOOLONG - socket buffers couldn't be set big enough
+ *   ENAMETOOLONG - socket buffers couldn't be set big enough and KNET_HANDLE_FLAG_PRIVILEGED was specified
  *   ERANGE       - buffer size readback returned unexpected type
+ */
+
+knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
+				 int            log_fd,
+				 uint8_t        default_log_level,
+				 uint64_t	flags);
+
+/**
+ * knet_handle_new
+ *
+ * @brief knet_handle_new_ex with flags = KNET_HANDLE_FLAG_PRIVILEGED.
  */
 
 knet_handle_t knet_handle_new(knet_node_id_t host_id,
@@ -656,9 +683,9 @@ struct knet_handle_compress_cfg {
  * knet_handle_compress_cfg -
  *            pointer to a knet_handle_compress_cfg structure
  *
- *            compress_model should contain the mode name.
- *                           Currently only "zlib" and "lz4" are supported.
- *                           Setting to "none" will disable compression.
+ *            compress_model contains the model name.
+ *                           See "compress_level" for the list of accepted values.
+ *                           Setting the value to "none" disables compression.
  *
  *            compress_threshold
  *                           tells the transmission thread to NOT compress
@@ -668,29 +695,23 @@ struct knet_handle_compress_cfg {
  *                           Set to 1 to compress everything.
  *                           Max accepted value is KNET_MAX_PACKET_SIZE.
  *
- *            compress_level some compression libraries allow tuning of compression
- *                           parameters.
- *                           For example zlib value ranges from 0 to 9 where 0 is no
- *                           compression and 9 is max compression.
- *                           This value is passed pristine to the compression library.
+ *            compress_level is the "level" parameter for most models:
  *                           zlib: 0 (no compression), 1 (minimal) .. 9 (max compression).
  *                           lz4: 1 (max compression)... 9 (fastest compression).
  *                           lz4hc: 1 (min compression) ... LZ4HC_MAX_CLEVEL (16) or LZ4HC_CLEVEL_MAX (12)
- *                                  depends on the installed version of lz4hc. libknet can detects the max
- *                                  value and will print an appropriate warning.
- *                           lzo2: accepts only some specific values depending on the
- *                                 requested algorithm:
+ *                                  depending on the version of lz4hc libknet was built with.
+ *                           lzma: 0 (minimal) .. 9 (max compression)
+ *                           bzip2: 1 (minimal) .. 9 (max compression)
+ *                           For lzo2 it selects the algorithm to use:
  *                                 1  : lzo1x_1_compress (default)
  *                                 11 : lzo1x_1_11_compress
  *                                 12 : lzo1x_1_12_compress
  *                                 15 : lzo1x_1_15_compress
  *                                 999: lzo1x_999_compress
- *                                 every other values will use default
- *                           lzma: 0 (minimal) .. 9 (max compression)
- *                           bzip2: 1 (minimal) .. 9 (max compression)
- *                           Please refer to the library man pages
- *                           on how to be set this value, as it is passed
- *                           unmodified to the compression algorithm where supported.
+ *                                 Other values select the default algorithm.
+ *                           Please refer to the documentation of the respective
+ *                           compression library for guidance about setting this
+ *                           value.
  *
  * Implementation notes:
  * - it is possible to enable/disable compression at any time.

@@ -29,6 +29,7 @@
 %@runautogen@ runautogen
 %@rpmdebuginfo@ rpmdebuginfo
 %@overriderpmdebuginfo@ overriderpmdebuginfo
+%@buildman@ buildman
 
 %if %{with overriderpmdebuginfo}
 %undefine _enable_debug_packages
@@ -68,6 +69,9 @@
 %if %{with runautogen}
 %global buildautogen 1
 %endif
+%if %{with buildman}
+%global buildmanpages 1
+%endif
 
 # main (empty) package
 # http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html
@@ -78,8 +82,8 @@ Version: @version@
 Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Base
-URL: https://github.com/fabbione/kronosnet/
-Source0: https://github.com/fabbione/kronosnet/archive/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
+URL: https://github.com/kronosnet/kronosnet/
+Source0: https://github.com/kronosnet/kronosnet/archive/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
 
 ## Setup/build bits
 
@@ -87,6 +91,10 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
 BuildRequires: gcc
+# required to build man pages
+%if %{defined buildmanpages}
+BuildRequires: libqb-devel libxml2-devel doxygen
+%endif
 %if %{defined buildsctp}
 BuildRequires: lksctp-tools-devel
 %endif
@@ -112,12 +120,12 @@ BuildRequires: xz-devel
 BuildRequires: /usr/include/bzlib.h
 %endif
 %if %{defined buildkronosnetd}
-BuildRequires: libqb-devel pam-devel
+BuildRequires: pam-devel
 %endif
 %if %{defined buildautogen}
-BuildRequires:  autoconf
-BuildRequires:  automake
-BuildRequires:  libtool
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: libtool
 %endif
 
 %prep
@@ -129,6 +137,11 @@ BuildRequires:  libtool
 %endif
 
 %{configure} \
+%if %{defined buildmanpages}
+	--enable-man \
+%else
+	--disable-man \
+%endif
 %if %{defined buildsctp}
 	--enable-libknet-sctp \
 %else
@@ -362,7 +375,9 @@ Requires: pkgconfig
 %{_libdir}/libknet.so
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
-%{_mandir}/man3/*.3.gz
+%if %{defined buildmanpages}
+%{_mandir}/man3/knet*.3.gz
+%endif
 
 %if %{defined buildcryptonss}
 %package -n libknet1-crypto-nss-plugin

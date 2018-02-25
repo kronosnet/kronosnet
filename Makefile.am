@@ -23,11 +23,15 @@ SPEC			= $(PACKAGE_NAME).spec
 
 TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
-EXTRA_DIST		= build-aux autogen.sh .version \
+EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
-			  $(SPEC).in
+			  $(SPEC).in build-aux
 
 SUBDIRS			= init libtap libknet kronosnetd
+
+if BUILD_MAN
+SUBDIRS			+= man
+endif
 
 if BUILD_POC
 SUBDIRS			+= poc-code
@@ -88,7 +92,7 @@ $(SPEC): $(SPEC).in .version config.status
 		$(abs_srcdir)/$@.in > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
-if BUILDSCTP
+if BUILD_SCTP
 	sed -i -e "s#@sctp@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@sctp@#bcond_with#g" $@-t
@@ -143,17 +147,20 @@ if BUILD_RUNAUTOGEN
 else
 	sed -i -e "s#@runautogen@#bcond_with#g" $@-t
 endif
-
 if OVERRIDE_RPM_DEBUGINFO
 	sed -i -e "s#@overriderpmdebuginfo@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@overriderpmdebuginfo@#bcond_with#g" $@-t
 endif
-
 if BUILD_RPM_DEBUGINFO
 	sed -i -e "s#@rpmdebuginfo@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@rpmdebuginfo@#bcond_with#g" $@-t
+endif
+if BUILD_MAN
+	sed -i -e "s#@buildman@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@buildman@#bcond_with#g" $@-t
 endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t
@@ -188,7 +195,7 @@ dist-hook: gen-ChangeLog
 gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog
 gen-ChangeLog:
-	if test -d $(abs_sourcedir)/.git; then				\
+	if test -d $(abs_srcdir)/.git; then				\
 		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog	\
 			--since=$(gen_start_date) > $(distdir)/cl-t;	\
 		rm -f $(distdir)/ChangeLog;				\

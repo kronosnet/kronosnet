@@ -11,7 +11,30 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-dist_man_MANS = \
+EXTRA_DIST	= kronosnetd.8 knet-keygen.8
+
+# Avoid Automake warnings about overriding these user variables.
+# Programs in this directory are used during the build only.
+AUTOMAKE_OPTIONS = -Wno-gnu
+EXEEXT=$(BUILD_EXEEXT)
+CC=$(CC_FOR_BUILD)
+CFLAGS=$(CFLAGS_FOR_BUILD)
+CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
+LDFLAGS=$(LDFLAGS_FOR_BUILD)
+
+if BUILD_MAN
+
+if BUILD_KRONOSNETD
+man8_MANS	= kronosnetd.8 knet-keygen.8
+endif
+
+noinst_PROGRAMS	= doxyxml
+
+doxyxml_SOURCES = doxyxml.c
+doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
+doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
+
+knet_man3_MANS = \
 		knet_addrtostr.3 \
 		knet_handle_add_datafd.3 \
 		knet_handle_clear_stats.3 \
@@ -31,6 +54,7 @@ dist_man_MANS = \
 		knet_get_transport_name_by_id.3 \
 		knet_handle_get_transport_reconnect_interval.3 \
 		knet_handle_new.3 \
+		knet_handle_new_ex.3 \
 		knet_handle_pmtud_get.3 \
 		knet_handle_pmtud_getfreq.3 \
 		knet_handle_pmtud_setfreq.3 \
@@ -69,19 +93,18 @@ dist_man_MANS = \
 		knet_recv.3 \
 		knet_send.3 \
 		knet_send_sync.3 \
-		knet_strtoaddr.3 \
-		libknet.h.3
+		knet_strtoaddr.3
 
-update-man-pages: doxyfile.stamp
+man3_MANS = $(knet_man3_MANS)
 
-doxyfile.stamp: Doxyfile
-if MANPAGEUPDATES
-	$(DOXYGEN) Doxyfile
-	$(DOXY2MAN) -o $(abs_srcdir) -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
-else
-	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
+$(MANS): doxyfile-knet.stamp
+
+doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/libknet.h
+	$(DOXYGEN) Doxyfile-knet
+	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-knet/ libknet_8h.xml
+	touch doxyfile-knet.stamp
+
 endif
-	touch doxyfile.stamp
 
 clean-local:
-	rm -rf doxyfile.stamp xml
+	rm -rf doxyfile*.stamp xml* *.3

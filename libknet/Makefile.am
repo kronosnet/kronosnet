@@ -15,9 +15,10 @@ SYMFILE			= libknet_exported_syms
 
 EXTRA_DIST		= $(SYMFILE)
 
-SUBDIRS			= . tests man
+SUBDIRS			= . tests
 
-libversion		= 1:0:0
+# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+libversion		= 2:0:1
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
@@ -79,84 +80,71 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-libknet_la_CFLAGS	= $(PTHREAD_CFLAGS)
+libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
-libknet_la_LDFLAGS	= -Wl,--version-script=$(srcdir)/$(SYMFILE) \
-			  --export-dynamic \
+libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
+			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  -Wl,-rpath=$(pkglibdir) \
-			  -version-number $(libversion)
+			  -version-info $(libversion)
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
 
 # Prepare empty value for appending
 pkglib_LTLIBRARIES	=
 
+# MODULE_LDFLAGS would mean a target-specific variable for Automake
+MODULELDFLAGS		= $(AM_LDFLAGS) -module -avoid-version -export-dynamic
+
 if BUILD_COMPRESS_ZLIB
 pkglib_LTLIBRARIES	+= compress_zlib.la
-compress_zlib_la_LDFLAGS = -module -avoid-version
-compress_zlib_la_CFLAGS	= $(zlib_CFLAGS)
+compress_zlib_la_LDFLAGS = $(MODULELDFLAGS)
+compress_zlib_la_CFLAGS	= $(AM_CFLAGS) $(zlib_CFLAGS)
 compress_zlib_la_LIBADD	= $(zlib_LIBS)
 endif
 
 if BUILD_COMPRESS_LZ4
 pkglib_LTLIBRARIES	+= compress_lz4.la compress_lz4hc.la
-compress_lz4_la_LDFLAGS	= -module -avoid-version
-compress_lz4_la_CFLAGS	= $(liblz4_CFLAGS)
+compress_lz4_la_LDFLAGS	= $(MODULELDFLAGS)
+compress_lz4_la_CFLAGS	= $(AM_CFLAGS) $(liblz4_CFLAGS)
 compress_lz4_la_LIBADD	= $(liblz4_LIBS)
-compress_lz4hc_la_LDFLAGS = -module -avoid-version
-compress_lz4hc_la_CFLAGS = $(liblz4_CFLAGS)
+compress_lz4hc_la_LDFLAGS = $(MODULELDFLAGS)
+compress_lz4hc_la_CFLAGS = $(AM_CFLAGS) $(liblz4_CFLAGS)
 compress_lz4hc_la_LIBADD = $(liblz4_LIBS)
 endif
 
 if BUILD_COMPRESS_LZO2
 pkglib_LTLIBRARIES	+= compress_lzo2.la
-compress_lzo2_la_LDFLAGS = -module -avoid-version
-compress_lzo2_la_CFLAGS	= $(lzo2_CFLAGS)
+compress_lzo2_la_LDFLAGS = $(MODULELDFLAGS)
+compress_lzo2_la_CFLAGS	= $(AM_CFLAGS) $(lzo2_CFLAGS)
 compress_lzo2_la_LIBADD	= $(lzo2_LIBS)
 endif
 
 if BUILD_COMPRESS_LZMA
 pkglib_LTLIBRARIES	+= compress_lzma.la
-compress_lzma_la_LDFLAGS = -module -avoid-version
-compress_lzma_la_CFLAGS	= $(liblzma_CFLAGS)
+compress_lzma_la_LDFLAGS = $(MODULELDFLAGS)
+compress_lzma_la_CFLAGS	= $(AM_CFLAGS) $(liblzma_CFLAGS)
 compress_lzma_la_LIBADD	= $(liblzma_LIBS)
 endif
 
 if BUILD_COMPRESS_BZIP2
 pkglib_LTLIBRARIES	+= compress_bzip2.la
-compress_bzip2_la_LDFLAGS = -module -avoid-version
-compress_bzip2_la_CFLAGS = $(bzip2_CFLAGS)
+compress_bzip2_la_LDFLAGS = $(MODULELDFLAGS)
+compress_bzip2_la_CFLAGS = $(AM_CFLAGS) $(bzip2_CFLAGS)
 compress_bzip2_la_LIBADD = $(bzip2_LIBS)
 endif
 
 if BUILD_CRYPTO_NSS
 pkglib_LTLIBRARIES	+= crypto_nss.la
-crypto_nss_la_LDFLAGS	= -module -avoid-version
-crypto_nss_la_CFLAGS	= $(nss_CFLAGS)
+crypto_nss_la_LDFLAGS	= $(MODULELDFLAGS)
+crypto_nss_la_CFLAGS	= $(AM_CFLAGS) $(nss_CFLAGS)
 crypto_nss_la_LIBADD	= $(nss_LIBS)
 endif
 
 if BUILD_CRYPTO_OPENSSL
 pkglib_LTLIBRARIES	+= crypto_openssl.la
-crypto_openssl_la_LDFLAGS = -module -avoid-version
-crypto_openssl_la_CFLAGS = $(openssl_CFLAGS)
+crypto_openssl_la_LDFLAGS = $(MODULELDFLAGS)
+crypto_openssl_la_CFLAGS = $(AM_CFLAGS) $(openssl_CFLAGS)
 crypto_openssl_la_LIBADD = $(openssl_LIBS)
 endif
-
-dist_man_MANS		= man
-
-update-man-pages: doxyfile.stamp
-
-doxyfile.stamp: Doxyfile
-if MANPAGEUPDATES
-	$(DOXYGEN) Doxyfile
-	$(DOXY2MAN) -o $(abs_srcdir)/man -s 3 --short-pkg @PACKAGE_NAME@ --pkg "Kronosnet Programmer's Manual" $(builddir)/xml/libknet_8h.xml
-else
-	@echo this system does not have doxy2man or doxygen installed. Unable to update man pages automatically.
-endif
-	touch doxyfile.stamp
-
-clean-local:
-	rm -rf doxyfile.stamp xml

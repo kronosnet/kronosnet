@@ -104,6 +104,7 @@ int crypto_init(
 	if (!crypto_modules_cmds[model].loaded) {
 		crypto_modules_cmds[model].ops = load_module (knet_h, "crypto", crypto_modules_cmds[model].model_name);
 		if (!crypto_modules_cmds[model].ops) {
+			savederrno = errno;
 			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
 			goto out_err;
 		}
@@ -112,7 +113,7 @@ int crypto_init(
 				"ABI mismatch loading module %s. knet ver: %d, module ver: %d",
 				crypto_modules_cmds[model].model_name, KNET_CRYPTO_MODEL_ABI,
 				crypto_modules_cmds[model].ops->abi_ver);
-			errno = EINVAL;
+			savederrno = EINVAL;
 			goto out_err;
 		}
 		crypto_modules_cmds[model].loaded = 1;
@@ -129,6 +130,7 @@ int crypto_init(
 	if (!knet_h->crypto_instance) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
 		pthread_rwlock_unlock(&shlib_rwlock);
+		savederrno = ENOMEM;
 		goto out_err;
 	}
 
@@ -138,8 +140,10 @@ int crypto_init(
 	 * crypto_modules_cmds.ops->fini is not invoked on error.
 	 */
 	knet_h->crypto_instance->model = model;
-	if (crypto_modules_cmds[knet_h->crypto_instance->model].ops->init(knet_h, knet_handle_crypto_cfg))
+	if (crypto_modules_cmds[knet_h->crypto_instance->model].ops->init(knet_h, knet_handle_crypto_cfg)) {
+		savederrno = errno;
 		goto out_err;
+	}
 
 	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
 	pthread_rwlock_unlock(&shlib_rwlock);
@@ -152,6 +156,7 @@ out_err:
 	}
 
 	pthread_rwlock_unlock(&shlib_rwlock);
+	errno = savederrno;
 	return -1;
 }
 

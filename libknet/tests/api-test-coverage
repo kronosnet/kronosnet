@@ -12,7 +12,10 @@ builddir="$2"/libknet/tests
 
 headerapicalls="$(grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
 
-exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' T ' | awk '{print $3}')"
+# The PowerPC64 ELFv1 ABI defines the address of a function as that of a
+# function descriptor defined in .opd, a data (D) section.  Other ABIs
+# use the entry address of the function itself in the text (T) section.
+exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' [DT] ' | awk '{print $3}')"
 
 echo "Checking for exported symbols NOT available in header file"
 
@@ -65,6 +68,7 @@ found=0
 missing=0
 
 for i in $headerapicalls; do
+	[ "$i" = knet_handle_new_ex ] && i=knet_handle_new # tested together
 	numapicalls=$((numapicalls + 1))
 	if [ -f $srcdir/api_${i}.c ]; then
 		found=$((found + 1))
