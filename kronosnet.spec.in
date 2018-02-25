@@ -107,16 +107,28 @@ BuildRequires: libqb-devel libxml2-devel doxygen
 BuildRequires: lksctp-tools-devel
 %endif
 %if %{defined buildcryptonss}
-BuildRequires: /usr/include/nss3/nss.h /usr/include/nspr4/nspr.h
+%if 0%{?suse_version}
+BuildRequires: mozilla-nss-devel
+%else
+BuildRequires: nss-devel
+%endif
 %endif
 %if %{defined buildcryptoopenssl}
-BuildRequires: /usr/include/openssl/conf.h
+%if 0%{?suse_version}
+BuildRequires: libopenssl-devel
+%else
+BuildRequires: openssl-devel
+%endif
 %endif
 %if %{defined buildcompresszlib}
 BuildRequires: zlib-devel
 %endif
 %if %{defined buildcompresslz4}
-BuildRequires: /usr/include/lz4hc.h
+%if 0%{?suse_version}
+BuildRequires: liblz4-devel
+%else
+BuildRequires: lz4-devel
+%endif
 %endif
 %if %{defined buildcompresslzo2}
 BuildRequires: lzo-devel
@@ -125,7 +137,11 @@ BuildRequires: lzo-devel
 BuildRequires: xz-devel
 %endif
 %if %{defined buildcompressbzip2}
-BuildRequires: /usr/include/bzlib.h
+%if 0%{?suse_version}
+BuildRequires: libbz2-devel
+%else
+BuildRequires: bzip2-devel
+%endif
 %endif
 %if %{defined buildcompresszstd}
 BuildRequires: libzstd-devel
