@@ -15,19 +15,6 @@
 #include "logging.h"
 #include "compress_model.h"
 
-static int lzma_val_level(
-	knet_handle_t knet_h,
-	int compress_level)
-{
-	if ((compress_level < 0) || (compress_level > 9)) {
-                log_err(knet_h, KNET_SUB_LZMACOMP, "lzma unsupported compression preset %d (accepted values from 0 to 9)", compress_level);
-		errno = EINVAL;
-		return -1;
-	}
-
-	return 0;
-}
-
 static int lzma_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -132,7 +119,7 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	NULL,
-	lzma_val_level,
+	NULL,
 	lzma_compress,
 	lzma_decompress
 };

@@ -15,25 +15,6 @@
 #include "logging.h"
 #include "compress_model.h"
 
-static int zlib_val_level(
-	knet_handle_t knet_h,
-	int compress_level)
-{
-	if (compress_level < 0) {
-		log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib does not support negative compression level %d",
-			 compress_level);
-		return -1;
-	}
-	if (compress_level > 9) {
-		log_err(knet_h, KNET_SUB_ZLIBCOMP, "zlib does not support compression level higher than 9");
-		return -1;
-	}
-	if (compress_level == 0) {
-		log_warn(knet_h, KNET_SUB_ZLIBCOMP, "zlib compress level 0 does NOT perform any compression");
-	}
-	return 0;
-}
-
 static int zlib_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -130,7 +111,7 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	NULL,
-	zlib_val_level,
+	NULL,
 	zlib_compress,
 	zlib_decompress
 };
