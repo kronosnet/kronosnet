@@ -452,6 +452,10 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 				/* check if we are dst for this packet */
 				if (!bcast) {
+					if (dst_host_ids_entries > KNET_MAX_HOST) {
+						log_debug(knet_h, KNET_SUB_RX, "dst_host_filter_fn returned too many destinations");
+						return;
+					}
 					for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 						if (dst_host_ids[host_idx] == knet_h->host_id) {
 							found = 1;

@@ -195,6 +195,14 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 					err = -1;
 					goto out_unlock;
 				}
+
+				if ((!bcast) &&
+				    (dst_host_ids_entries_temp > KNET_MAX_HOST)) {
+					log_debug(knet_h, KNET_SUB_TX, "dst_host_filter_fn returned too many destinations");
+					savederrno = EINVAL;
+					err = -1;
+					goto out_unlock;
+				}
 			}
 
 			/* Send to localhost if appropriate and enabled */
