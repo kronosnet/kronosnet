@@ -193,6 +193,7 @@ static int compress_lib_test(knet_handle_t knet_h)
 	unsigned char src[KNET_DATABUFSIZE];
 	unsigned char dst[KNET_DATABUFSIZE_COMPRESS];
 	ssize_t dst_comp_len = KNET_DATABUFSIZE_COMPRESS, dst_decomp_len = KNET_DATABUFSIZE;
+	unsigned int i;
 
 	memset(src, 0, KNET_DATABUFSIZE);
 	memset(dst, 0, KNET_DATABUFSIZE_COMPRESS);
@@ -214,6 +215,14 @@ static int compress_lib_test(knet_handle_t knet_h)
 		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to decompress test buffer. Please check your compression settings: %s", strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	}
+
+	for (i = 0; i < KNET_DATABUFSIZE; i++) {
+		if (src[i] != 0) {
+			log_err(knet_h, KNET_SUB_COMPRESS, "Decompressed buffer contains incorrect data");
+			errno = EINVAL;
+			return -1;
+		}
 	}
 
 	return 0;
