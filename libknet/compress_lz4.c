@@ -15,17 +15,6 @@
 #include "logging.h"
 #include "compress_model.h"
 
-static int lz4_val_level(
-	knet_handle_t knet_h,
-	int compress_level)
-{
-	if (compress_level <= 0) {
-		log_info(knet_h, KNET_SUB_LZ4COMP, "lz4 acceleration level 0 (or negatives) are automatically remapped to 1");
-	}
-
-	return 0;
-}
-
 static int lz4_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -96,7 +85,7 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	NULL,
-	lz4_val_level,
+	NULL,
 	lz4_compress,
 	lz4_decompress
 };
