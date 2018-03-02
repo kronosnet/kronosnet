@@ -769,7 +769,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	}
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, devname, IFNAMSIZ);
+	memmove(ifname, devname, IFNAMSIZ);
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
 	if (ioctl(nozzle->fd, TUNSETIFF, &ifr) < 0) {

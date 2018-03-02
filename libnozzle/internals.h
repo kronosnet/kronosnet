@@ -21,8 +21,8 @@ struct nozzle_lib_config {
 #define PREFIX_CHAR_MAX	    4
 
 struct nozzle_ip {
-	char ipaddr[IPADDR_CHAR_MAX];
-	char prefix[PREFIX_CHAR_MAX];
+	char ipaddr[IPADDR_CHAR_MAX + 1];
+	char prefix[PREFIX_CHAR_MAX + 1];
 	int  domain;			/* AF_INET or AF_INET6 */
 	struct nozzle_ip *next;
 };
@@ -47,7 +47,7 @@ struct nozzle_iface {
 	/*
 	 * default MAC address assigned by the kernel at creation time
 	 */
-	char default_mac[MACADDR_CHAR_MAX];
+	char default_mac[MACADDR_CHAR_MAX + 1];
 
 	int default_mtu;		/* MTU assigned by the kernel at creation time */
 	int current_mtu;		/* MTU configured by libnozzle user */
