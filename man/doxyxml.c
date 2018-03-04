@@ -432,6 +432,8 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 {
 	char manfilename[PATH_MAX];
 	char gendate[64];
+	char *endptr;
+	char *source_date_epoch;
 	FILE *manfile;
 	time_t t;
 	struct tm *tm;
@@ -443,12 +445,38 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	unsigned int max_param_type_len;
 	unsigned int max_param_name_len;
 	unsigned int num_param_descs;
+	unsigned long long epoch;
 	int param_count = 0;
 	int param_num = 0;
 	struct param_info *pi;
 
-	t = time(NULL);
-	tm = localtime(&t);
+	source_date_epoch = getenv("SOURCE_DATE_EPOCH");
+	if (source_date_epoch) {
+		errno = 0;
+		epoch = strtoull(source_date_epoch, &endptr, 10);
+		if ((errno == ERANGE && (epoch == ULLONG_MAX || epoch == 0))
+				|| (errno != 0 && epoch == 0)) {
+			fprintf(stderr, "Environment variable $SOURCE_DATE_EPOCH: strtoull: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		if (endptr == source_date_epoch) {
+			fprintf(stderr, "Environment variable $SOURCE_DATE_EPOCH: No digits were found: %s\n", endptr);
+			exit(EXIT_FAILURE);
+		}
+		if (*endptr != '\0') {
+			fprintf(stderr, "Environment variable $SOURCE_DATE_EPOCH: Trailing garbage: %s\n", endptr);
+			exit(EXIT_FAILURE);
+		}
+		if (epoch > ULONG_MAX) {
+			fprintf(stderr, "Environment variable $SOURCE_DATE_EPOCH: value must be smaller than or equal to %lu but was found to be: %llu \n", ULONG_MAX, epoch);
+			exit(EXIT_FAILURE);
+		}
+		t = epoch;
+	} else {
+		t = time(NULL);
+	}
+	tm = gmtime(&t);
+
 	if (!tm) {
 		perror("unable to get localtime");
 		exit(1);
