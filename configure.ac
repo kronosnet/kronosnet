@@ -6,6 +6,9 @@
 #
 # This software licensed under GPL-2.0+, LGPL-2.0+
 #
+# do not change the following line. It is required for man page generation
+# Last update: $Format:%ai$
+#
 
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.

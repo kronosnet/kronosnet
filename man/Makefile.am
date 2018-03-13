@@ -101,6 +101,22 @@ $(MANS): doxyfile-knet.stamp
 
 doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/libknet.h
 	$(DOXYGEN) Doxyfile-knet
+	if test -d $(top_srcdir)/.git; then \
+		echo "getting git version" && \
+		mandate=`git log -1 --pretty=format:%ci | $(AWK) '{print $$1}'`; \
+	else \
+		if test -f $(top_srcdir)/.tree_last_update; then \
+			echo "getting date from tree_last_update" && \
+			mandate=`cat $(top_srcdir)/.tree_last_update | $(AWK) '{print $$1}'`; \
+		else \
+			echo "getting date from configure.ac" && \
+			mandate=`cat $(top_srcdir)/configure.ac | grep "Last update" | $(AWK) '{print $$4}'`; \
+			if echo $$mandate | grep -q Format; then \
+				echo "unable to determine origin date. Using system today's date" && \
+				mandate=`date +%Y-%M-%d`; \
+			fi; \
+		fi; \
+	fi; \
 	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
