@@ -507,4 +507,17 @@ AC_CONFIG_FILES([
 		poc-code/access-list/Makefile
 		])
 
+if test "x$VERSION" = "xUNKNOWN"; then
+	AC_MSG_ERROR([m4_text_wrap([
+  configure was unable to determine the source tree's current version. This
+  generally happens when using git archive (or the github download button)
+  generated tarball/zip file. In order to workaround this issue, either use git
+  clone https://github.com/kronosnet/kronosnet.git or use an official release
+  tarball, available at https://kronosnet.org/releases/.  Alternatively you
+  can add a compatible version in a .tarball-version file at the top of the
+  source tree, wipe your autom4te.cache dir and generated configure, and rerun
+  autogen.sh.
+  ], [  ], [   ], [76])])
+fi
+
 AC_OUTPUT
