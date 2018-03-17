@@ -117,7 +117,8 @@ doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/lib
 			fi; \
 		fi; \
 	fi; \
-	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-knet/ libknet_8h.xml
+	yeardate=`echo $$mandate | sed -e "s#-.*##g"` && \
+	$(builddir)/doxyxml -D $$mandate -Y $$yeardate -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
 endif
