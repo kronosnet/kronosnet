@@ -113,7 +113,7 @@ doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/lib
 			mandate=`cat $(top_srcdir)/configure.ac | grep "Last update" | $(AWK) '{print $$4}'`; \
 			if echo $$mandate | grep -q Format; then \
 				echo "unable to determine origin date. Using system today's date" && \
-				mandate=`date +%Y-%M-%d`; \
+				mandate=`date +%Y-%m-%d`; \
 			fi; \
 		fi; \
 	fi; \
