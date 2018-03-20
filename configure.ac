@@ -6,6 +6,9 @@
 #
 # This software licensed under GPL-2.0+, LGPL-2.0+
 #
+# do not change the following line. It is required for man page generation
+# Last update: $Format:%ai$
+#
 
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
@@ -470,5 +473,9 @@ AC_CONFIG_FILES([
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile
 		])
+
+if test "x$VERSION" = "xUNKNOWN"; then
+	AC_MSG_ERROR(["configure was unable to determine the source tree's current version. This generally happens when using git archive (or the github download button) generated tarball/zip file. In order to workaround this issue, either use git clone https://github.com/kronosnet/kronosnet.git or use an official release tarball, available here https://kronosnet.org/releases/. Alternatively you can add a compatible version in a .tarball-version file at the top of the source tree, wipe your autom4te.cache dir and generated configure, and rerun autogen.sh"])
+fi
 
 AC_OUTPUT

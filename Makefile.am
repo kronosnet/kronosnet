@@ -191,6 +191,9 @@ BUILT_SOURCES	= .version
 
 dist-hook: gen-ChangeLog
 	echo $(VERSION) > $(distdir)/.tarball-version
+	if test -d $(abs_srcdir)/.git; then				\
+		LC_ALL=C git log -1 --pretty=format:%ci%n > $(distdir)/.tree_last_update; \
+	fi
 
 gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog
