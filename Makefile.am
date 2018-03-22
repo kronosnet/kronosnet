@@ -191,6 +191,7 @@ BUILT_SOURCES	= .version
 
 dist-hook: gen-ChangeLog
 	echo $(VERSION) > $(distdir)/.tarball-version
+	echo $(SOURCE_EPOCH) > $(distdir)/source_epoch
 
 gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog
