@@ -56,7 +56,7 @@ distclean-local:
 
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
-	date="`LC_ALL=C date "+%a %b %d %Y"`" && \
+	date="`LC_ALL=C date -d "@$(SOURCE_EPOCH)" "+%a %b %d %Y"`" && \
 	if [ -f $(abs_srcdir)/.tarball-version ]; then \
 		gitver="`cat $(abs_srcdir)/.tarball-version`" && \
 		rpmver=$$gitver && \
