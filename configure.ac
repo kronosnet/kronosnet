@@ -454,6 +454,34 @@ done
 
 AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS"])
 
+AC_ARG_VAR([SOURCE_EPOCH],[last modification date of the source])
+AC_MSG_NOTICE([trying to determine source epoch])
+AC_MSG_CHECKING([for source epoch in \$SOURCE_EPOCH])
+AS_IF([test -n "$SOURCE_EPOCH"],
+	[AC_MSG_RESULT([yes])],
+	[AC_MSG_RESULT([no])
+	 AC_MSG_CHECKING([for source epoch in source_epoch file])
+	 AS_IF([test -e source_epoch],
+		[read SOURCE_EPOCH <source_epoch
+		 AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no])
+		 AC_MSG_CHECKING([for source epoch baked in by gitattributes export-subst])
+		 SOURCE_EPOCH='$Format:%at$' # template for rewriting by git-archive
+		 AS_CASE([$SOURCE_EPOCH],
+			[?Format:*], # was not rewritten
+				[AC_MSG_RESULT([no])
+				 AC_MSG_CHECKING([whether git log can provide a source epoch])
+				 SOURCE_EPOCH=f${SOURCE_EPOCH#\$F} # convert into git log --pretty format
+				 SOURCE_EPOCH=$(git -C "$srcdir" log -1 --pretty=${SOURCE_EPOCH%$} 2>/dev/null)
+				 AS_IF([test -n "$SOURCE_EPOCH"],
+					[AC_MSG_RESULT([yes])],
+					[AC_MSG_RESULT([no, using current time and breaking reproducibility])
+					 SOURCE_EPOCH=$(date +%s)])],
+			[AC_MSG_RESULT([yes])]
+		 )])
+	])
+AC_MSG_NOTICE([using source epoch $(date --iso-8601=s --utc -d @$SOURCE_EPOCH)])
+
 AC_CONFIG_FILES([
 		Makefile
 		init/Makefile
