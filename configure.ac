@@ -480,7 +480,7 @@ AS_IF([test -n "$SOURCE_EPOCH"],
 				[AC_MSG_RESULT([no])
 				 AC_MSG_CHECKING([whether git log can provide a source epoch])
 				 SOURCE_EPOCH=f${SOURCE_EPOCH#\$F} # convert into git log --pretty format
-				 SOURCE_EPOCH=$(git -C "$srcdir" log -1 --pretty=${SOURCE_EPOCH%$} 2>/dev/null)
+				 SOURCE_EPOCH=$(cd "$srcdir" && git log -1 --pretty=${SOURCE_EPOCH%$} 2>/dev/null)
 				 AS_IF([test -n "$SOURCE_EPOCH"],
 					[AC_MSG_RESULT([yes])],
 					[AC_MSG_RESULT([no, using current time and breaking reproducibility])
