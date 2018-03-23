@@ -454,6 +454,14 @@ done
 
 AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS"])
 
+AX_PROG_DATE
+AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],
+	[UTC_DATE_AT="date -u -d@"],
+	[AS_IF([test "x$ax_cv_prog_date_bsd_date" = xyes],
+		[UTC_DATE_AT="date -u -r"],
+		[AC_MSG_ERROR([date utility unable to convert epoch to UTC])])])
+AC_SUBST([UTC_DATE_AT])
+
 AC_ARG_VAR([SOURCE_EPOCH],[last modification date of the source])
 AC_MSG_NOTICE([trying to determine source epoch])
 AC_MSG_CHECKING([for source epoch in \$SOURCE_EPOCH])
@@ -480,7 +488,7 @@ AS_IF([test -n "$SOURCE_EPOCH"],
 			[AC_MSG_RESULT([yes])]
 		 )])
 	])
-AC_MSG_NOTICE([using source epoch $(date --iso-8601=s --utc -d @$SOURCE_EPOCH)])
+AC_MSG_NOTICE([using source epoch $($UTC_DATE_AT$SOURCE_EPOCH +'%F %T %Z')])
 
 AC_CONFIG_FILES([
 		Makefile
