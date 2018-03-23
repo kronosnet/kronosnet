@@ -102,7 +102,7 @@ $(MANS): doxyfile-knet.stamp
 doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/libknet.h
 	$(DOXYGEN) Doxyfile-knet
 	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
-		$$(date --utc -d "@$(SOURCE_EPOCH)" +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
+		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
 endif
