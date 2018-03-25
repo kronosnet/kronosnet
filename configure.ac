@@ -478,13 +478,18 @@ AS_IF([test -n "$SOURCE_EPOCH"],
 		 AS_CASE([$SOURCE_EPOCH],
 			[?Format:*], # was not rewritten
 				[AC_MSG_RESULT([no])
-				 AC_MSG_CHECKING([whether git log can provide a source epoch])
-				 SOURCE_EPOCH=f${SOURCE_EPOCH#\$F} # convert into git log --pretty format
-				 SOURCE_EPOCH=$(cd "$srcdir" && git log -1 --pretty=${SOURCE_EPOCH%$} 2>/dev/null)
-				 AS_IF([test -n "$SOURCE_EPOCH"],
-					[AC_MSG_RESULT([yes])],
-					[AC_MSG_RESULT([no, using current time and breaking reproducibility])
-					 SOURCE_EPOCH=$(date +%s)])],
+				 AC_MSG_CHECKING([for source epoch in \$SOURCE_DATE_EPOCH])
+				 AS_IF([test "x$SOURCE_DATE_EPOCH" != x],
+					[SOURCE_EPOCH="$SOURCE_DATE_EPOCH"
+					 AC_MSG_RESULT([yes])],
+					[AC_MSG_RESULT([no])
+					 AC_MSG_CHECKING([whether git log can provide a source epoch])
+					 SOURCE_EPOCH=f${SOURCE_EPOCH#\$F} # convert into git log --pretty format
+					 SOURCE_EPOCH=$(cd "$srcdir" && git log -1 --pretty=${SOURCE_EPOCH%$} 2>/dev/null)
+					 AS_IF([test -n "$SOURCE_EPOCH"],
+						[AC_MSG_RESULT([yes])],
+						[AC_MSG_RESULT([no, using current time and breaking reproducibility])
+						 SOURCE_EPOCH=$(date +%s)])])],
 			[AC_MSG_RESULT([yes])]
 		 )])
 	])
