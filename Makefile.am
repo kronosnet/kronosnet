@@ -56,7 +56,7 @@ distclean-local:
 
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
-	date="`LC_ALL=C date "+%a %b %d %Y"`" && \
+	date="`LC_ALL=C $(UTC_DATE_AT)$(SOURCE_EPOCH) "+%a %b %d %Y"`" && \
 	if [ -f $(abs_srcdir)/.tarball-version ]; then \
 		gitver="`cat $(abs_srcdir)/.tarball-version`" && \
 		rpmver=$$gitver && \
@@ -191,6 +191,7 @@ BUILT_SOURCES	= .version
 
 dist-hook: gen-ChangeLog
 	echo $(VERSION) > $(distdir)/.tarball-version
+	echo $(SOURCE_EPOCH) > $(distdir)/source_epoch
 
 gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog

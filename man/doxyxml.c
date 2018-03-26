@@ -44,6 +44,8 @@ static const char *header="Kronosnet Programmer's Manual";
 static const char *output_dir="./";
 static const char *xml_dir = XML_DIR;
 static const char *xml_file = XML_FILE;
+static const char *manpage_date = NULL;
+static long manpage_year = LONG_MIN;
 static struct qb_list_head params_list;
 static struct qb_list_head retval_list;
 static qb_map_t *function_map;
@@ -432,6 +434,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 {
 	char manfilename[PATH_MAX];
 	char gendate[64];
+	const char *dateptr = gendate;
 	FILE *manfile;
 	time_t t;
 	struct tm *tm;
@@ -454,6 +457,13 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 		exit(1);
 	}
 	strftime(gendate, sizeof(gendate), "%Y-%m-%d", tm);
+
+	if (manpage_date) {
+		dateptr = manpage_date;
+	}
+	if (manpage_year == LONG_MIN) {
+		manpage_year = tm->tm_year+1900;
+	}
 
 	snprintf(manfilename, sizeof(manfilename), "%s/%s.%s", output_dir, name, man_section);
 	manfile = fopen(manfilename, "w+");
@@ -486,7 +496,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	/* Off we go */
 
 	fprintf(manfile, ".\\\"  Automatically generated man page, do not edit\n");
-	fprintf(manfile, ".TH %s %s %s \"%s\" \"%s\"\n", name, man_section, gendate, package_name, header);
+	fprintf(manfile, ".TH %s %s %s \"%s\" \"%s\"\n", name, man_section, dateptr, package_name, header);
 
 	fprintf(manfile, ".SH NAME\n");
 	fprintf(manfile, "%s \\- %s\n", name, brief);
@@ -580,7 +590,7 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	fprintf(manfile, ".hy\n");
 	fprintf(manfile, ".SH \"COPYRIGHT\"\n");
 	fprintf(manfile, ".PP\n");
-	fprintf(manfile, "Copyright (C) 2010-%4d Red Hat, Inc. All rights reserved.\n", tm->tm_year+1900);
+	fprintf(manfile, "Copyright (C) 2010-%4ld Red Hat, Inc. All rights reserved.\n", manpage_year);
 	fclose(manfile);
 
 	/* Free the params & retval info */
@@ -731,7 +741,7 @@ static void traverse_node(xmlNode *parentnode, const char *leafname, void (do_me
 static void usage(char *name)
 {
 	printf("Usage:\n");
-	printf("      %s -[am] [-s <section>] [-p<packagename>] [-H <header>] [-o <output dir>] [<XML file>]\n", name);
+	printf("      %s [OPTIONS] [<XML file>]\n", name);
 	printf("\n");
 	printf("      <XML file> defaults to %s\n", XML_FILE);
 	printf("\n");
@@ -741,6 +751,8 @@ static void usage(char *name)
 	printf("       -s <s>        Write man pages into section <s> <default 3)\n");
 	printf("       -p <package>  Use <package> name. default <Kronosnet>\n");
 	printf("       -H <header>   Set header (default \"Kronosnet Programmer's Manual\"\n");
+	printf("       -D <date>     Date to print at top of man pages (format not checked, default: today)\n");
+	printf("       -Y <year>     Year to print at end of copyright line (default: today's year)\n");
 	printf("       -o <dir>      Write all man pages to <dir> (default .)\n");
 	printf("       -d <dir>      Directory for XML files (default %s)\n", XML_DIR);
 	printf("       -h            Print this usage text\n");
@@ -754,7 +766,7 @@ int main(int argc, char *argv[])
 	int opt;
 	char xml_filename[PATH_MAX];
 
-	while ( (opt = getopt_long(argc, argv, "H:amPs:d:o:p:f:h?", NULL, NULL)) != EOF)
+	while ( (opt = getopt_long(argc, argv, "H:amPD:Y:s:d:o:p:f:h?", NULL, NULL)) != EOF)
 	{
 		switch(opt)
 		{
@@ -774,6 +786,21 @@ int main(int argc, char *argv[])
 				break;
 			case 'd':
 				xml_dir = optarg;
+				break;
+			case 'D':
+				manpage_date = optarg;
+				break;
+			case 'Y':
+				manpage_year = strtol(optarg, NULL, 10);
+				/*
+				 * Don't make too many assumptions about the year. I was on call at the
+				 * 2000 rollover. #experience
+				 */
+				if (manpage_year == LONG_MIN || manpage_year == LONG_MAX ||
+				    manpage_year < 1900) {
+					fprintf(stderr, "Value passed to -Y is not a valid year number\n");
+					return 1;
+				}
 				break;
 			case 'p':
 				package_name = optarg;
