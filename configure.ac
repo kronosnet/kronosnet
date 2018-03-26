@@ -469,8 +469,8 @@ AS_IF([test -n "$SOURCE_EPOCH"],
 	[AC_MSG_RESULT([yes])],
 	[AC_MSG_RESULT([no])
 	 AC_MSG_CHECKING([for source epoch in source_epoch file])
-	 AS_IF([test -e source_epoch],
-		[read SOURCE_EPOCH <source_epoch
+	 AS_IF([test -e "$srcdir/source_epoch"],
+		[read SOURCE_EPOCH <"$srcdir/source_epoch"
 		 AC_MSG_RESULT([yes])],
 		[AC_MSG_RESULT([no])
 		 AC_MSG_CHECKING([for source epoch baked in by gitattributes export-subst])
