@@ -454,6 +454,47 @@ done
 
 AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS"])
 
+AX_PROG_DATE
+AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],
+	[UTC_DATE_AT="date -u -d@"],
+	[AS_IF([test "x$ax_cv_prog_date_bsd_date" = xyes],
+		[UTC_DATE_AT="date -u -r"],
+		[AC_MSG_ERROR([date utility unable to convert epoch to UTC])])])
+AC_SUBST([UTC_DATE_AT])
+
+AC_ARG_VAR([SOURCE_EPOCH],[last modification date of the source])
+AC_MSG_NOTICE([trying to determine source epoch])
+AC_MSG_CHECKING([for source epoch in \$SOURCE_EPOCH])
+AS_IF([test -n "$SOURCE_EPOCH"],
+	[AC_MSG_RESULT([yes])],
+	[AC_MSG_RESULT([no])
+	 AC_MSG_CHECKING([for source epoch in source_epoch file])
+	 AS_IF([test -e "$srcdir/source_epoch"],
+		[read SOURCE_EPOCH <"$srcdir/source_epoch"
+		 AC_MSG_RESULT([yes])],
+		[AC_MSG_RESULT([no])
+		 AC_MSG_CHECKING([for source epoch baked in by gitattributes export-subst])
+		 SOURCE_EPOCH='$Format:%at$' # template for rewriting by git-archive
+		 AS_CASE([$SOURCE_EPOCH],
+			[?Format:*], # was not rewritten
+				[AC_MSG_RESULT([no])
+				 AC_MSG_CHECKING([for source epoch in \$SOURCE_DATE_EPOCH])
+				 AS_IF([test "x$SOURCE_DATE_EPOCH" != x],
+					[SOURCE_EPOCH="$SOURCE_DATE_EPOCH"
+					 AC_MSG_RESULT([yes])],
+					[AC_MSG_RESULT([no])
+					 AC_MSG_CHECKING([whether git log can provide a source epoch])
+					 SOURCE_EPOCH=f${SOURCE_EPOCH#\$F} # convert into git log --pretty format
+					 SOURCE_EPOCH=$(cd "$srcdir" && git log -1 --pretty=${SOURCE_EPOCH%$} 2>/dev/null)
+					 AS_IF([test -n "$SOURCE_EPOCH"],
+						[AC_MSG_RESULT([yes])],
+						[AC_MSG_RESULT([no, using current time and breaking reproducibility])
+						 SOURCE_EPOCH=$(date +%s)])])],
+			[AC_MSG_RESULT([yes])]
+		 )])
+	])
+AC_MSG_NOTICE([using source epoch $($UTC_DATE_AT$SOURCE_EPOCH +'%F %T %Z')])
+
 AC_CONFIG_FILES([
 		Makefile
 		init/Makefile
@@ -470,5 +511,18 @@ AC_CONFIG_FILES([
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile
 		])
+
+if test "x$VERSION" = "xUNKNOWN"; then
+	AC_MSG_ERROR([m4_text_wrap([
+  configure was unable to determine the source tree's current version. This
+  generally happens when using git archive (or the github download button)
+  generated tarball/zip file. In order to workaround this issue, either use git
+  clone https://github.com/kronosnet/kronosnet.git or use an official release
+  tarball, available at https://kronosnet.org/releases/.  Alternatively you
+  can add a compatible version in a .tarball-version file at the top of the
+  source tree, wipe your autom4te.cache dir and generated configure, and rerun
+  autogen.sh.
+  ], [  ], [   ], [76])])
+fi
 
 AC_OUTPUT

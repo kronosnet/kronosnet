@@ -48,8 +48,6 @@ typedef struct {
 	 */
 
 	/*
-	 * required functions
-	 *
 	 * val_level is called upon compress configuration changes
 	 * to make sure that the requested compress_level is valid
 	 * within the context of a given module.
@@ -58,6 +56,8 @@ typedef struct {
 			 int compress_level);
 
 	/*
+	 * required functions
+	 *
 	 * hopefully those 2 don't require any explanation....
 	 */
 	int (*compress)	(knet_handle_t knet_h,
