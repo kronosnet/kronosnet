@@ -229,13 +229,19 @@ static int decrypt_openssl (
 	ssize_t *buf_out_len)
 {
 	struct opensslcrypto_instance *instance = knet_h->crypto_instance->model_instance;
-	EVP_CIPHER_CTX	*ctx;
+	EVP_CIPHER_CTX	*ctx = NULL;
 	int		tmplen1 = 0, tmplen2 = 0;
 	unsigned char	*salt = (unsigned char *)buf_in;
 	unsigned char	*data = salt + SALT_SIZE;
 	int		datalen = buf_in_len - SALT_SIZE;
 	int		err = 0;
 	char		sslerr[SSLERR_BUF_SIZE];
+
+	if (datalen <= 0) {
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Packet is too short");
+		err = -1;
+		goto out;
+	}
 
 	ctx = EVP_CIPHER_CTX_new();
 
@@ -266,7 +272,9 @@ static int decrypt_openssl (
 	*buf_out_len = tmplen1 + tmplen2;
 
 out:
-	EVP_CIPHER_CTX_free(ctx);
+	if (ctx) {
+		EVP_CIPHER_CTX_free(ctx);
+	}
 	return err;
 }
 #endif
@@ -366,7 +374,7 @@ static int opensslcrypto_authenticate_and_decrypt (
 		unsigned char tmp_hash[knet_h->sec_hash_size];
 		ssize_t temp_buf_len = buf_in_len - knet_h->sec_hash_size;
 
-		if ((temp_buf_len < 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
+		if ((temp_buf_len <= 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
 			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Incorrect packet size.");
 			return -1;
 		}
