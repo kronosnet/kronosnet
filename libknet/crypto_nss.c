@@ -590,7 +590,7 @@ static int init_nss(knet_handle_t knet_h)
 	}
 
 	if (!nss_db_is_init) {
-		if (NSS_NoDB_Init(".") != SECSuccess) {
+		if (NSS_NoDB_Init(NULL) != SECSuccess) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
 				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 			errno = EAGAIN;
