@@ -238,31 +238,27 @@ void flush_logs(int logfd, FILE *std)
 
 static void *_logthread(void *args)
 {
-	fd_set rfds;
-	int num;
-	struct timeval tv;
+	while (1) {
+		int num;
+		struct timeval tv = { 60, 0 };
+		fd_set rfds;
 
-select_loop:
-	tv.tv_sec = 60;
-	tv.tv_usec = 0;
+		FD_ZERO(&rfds);
+		FD_SET(data.logfd, &rfds);
 
-	FD_ZERO(&rfds);
-	FD_SET(data.logfd, &rfds);
-
-	num = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
-	if (num < 0) {
-		fprintf(data.std, "Unable select over logfd!\nHALTING LOGTHREAD!\n");
-		return NULL;
+		num = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+		if (num < 0) {
+			fprintf(data.std, "Unable select over logfd!\nHALTING LOGTHREAD!\n");
+			return NULL;
+		}
+		if (num == 0) {
+			fprintf(data.std, "[knet]: No logs in the last 60 seconds\n");
+			continue;
+		}
+		if (FD_ISSET(data.logfd, &rfds)) {
+			flush_logs(data.logfd, data.std);
+		}
 	}
-	if (num == 0) {
-		fprintf(data.std, "[knet]: No logs in the last 60 seconds\n");
-	}
-	if (FD_ISSET(data.logfd, &rfds)) {
-		flush_logs(data.logfd, data.std);
-	}
-	goto select_loop;
-
-	return NULL;
 }
 
 int start_logthread(int logfd, FILE *std)
