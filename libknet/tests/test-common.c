@@ -218,13 +218,10 @@ void close_logpipes(int *logfds)
 void flush_logs(int logfd, FILE *std)
 {
 	struct knet_log_msg msg;
-	size_t bytes_read;
 	int len;
 
 next:
-	bytes_read = 0;
-
-	while (bytes_read < sizeof msg) {
+	for (size_t bytes_read = 0; bytes_read < sizeof msg; ) {
 		len = read(logfd, &msg + bytes_read,
 			   sizeof msg - bytes_read);
 		if (len <= 0) {
