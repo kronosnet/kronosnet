@@ -1915,10 +1915,10 @@ uint8_t knet_log_get_loglevel_id(const char *name);
  * straight to stdout/stderr (see knet_bench.c stdout option).
  */
 
-#define KNET_MAX_LOG_MSG_SIZE    256
+#define KNET_MAX_LOG_MSG_SIZE    254
 
 struct knet_log_msg {
-	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
+	char	msg[KNET_MAX_LOG_MSG_SIZE];
 	uint8_t	subsystem;	/* KNET_SUB_* */
 	uint8_t msglevel;	/* KNET_LOG_* */
 };
