@@ -222,7 +222,6 @@ void flush_logs(int logfd, FILE *std)
 	int len;
 
 next:
-	len = 0;
 	bytes_read = 0;
 	memset(&msg, 0, sizeof(struct knet_log_msg));
 
@@ -235,13 +234,11 @@ next:
 		bytes_read += len;
 	}
 
-	if (len > 0) {
 		fprintf(std, "[knet]: [%s] %s: %s\n",
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
 			msg.msg);
 		goto next;
-	}
 }
 
 static void *_logthread(void *args)
