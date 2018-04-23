@@ -229,10 +229,10 @@ void flush_logs(int logfd, FILE *std)
 			bytes_read += len;
 		}
 
-		fprintf(std, "[knet]: [%s] %s: %s\n",
+		fprintf(std, "[knet]: [%s] %s: %.*s\n",
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
-			msg.msg);
+			KNET_MAX_LOG_MSG_SIZE, msg.msg);
 	}
 }
 
