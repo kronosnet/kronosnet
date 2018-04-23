@@ -223,7 +223,6 @@ void flush_logs(int logfd, FILE *std)
 
 next:
 	bytes_read = 0;
-	memset(&msg, 0, sizeof(struct knet_log_msg));
 
 	while (bytes_read < sizeof(struct knet_log_msg)) {
 		len = read(logfd, &msg + bytes_read,
