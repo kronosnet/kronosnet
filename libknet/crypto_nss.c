@@ -426,6 +426,11 @@ static int decrypt_nss (
 	int		datalen = buf_in_len - SALT_SIZE;
 	int		err = -1;
 
+	if (datalen <= 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Packet is too short");
+		goto out;
+	}
+
 	/* Create cipher context for decryption */
 	decrypt_param.type = siBuffer;
 	decrypt_param.data = salt;
@@ -465,7 +470,6 @@ out:
 
 	return err;
 }
-
 
 /*
  * hash/hmac/digest functions
@@ -586,7 +590,7 @@ static int init_nss(knet_handle_t knet_h)
 	}
 
 	if (!nss_db_is_init) {
-		if (NSS_NoDB_Init(".") != SECSuccess) {
+		if (NSS_NoDB_Init(NULL) != SECSuccess) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "NSS DB initialization failed (err %d): %s",
 				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 			errno = EAGAIN;
@@ -672,7 +676,7 @@ static int nsscrypto_authenticate_and_decrypt (
 		unsigned char tmp_hash[nsshash_len[instance->crypto_hash_type]];
 		ssize_t temp_buf_len = buf_in_len - nsshash_len[instance->crypto_hash_type];
 
-		if ((temp_buf_len < 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
+		if ((temp_buf_len <= 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Incorrect packet size.");
 			return -1;
 		}
