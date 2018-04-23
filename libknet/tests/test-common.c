@@ -239,7 +239,7 @@ void flush_logs(int logfd, FILE *std)
 static void *_logthread(void *args)
 {
 	fd_set rfds;
-	ssize_t len;
+	int num;
 	struct timeval tv;
 
 select_loop:
@@ -249,12 +249,12 @@ select_loop:
 	FD_ZERO(&rfds);
 	FD_SET(data.logfd, &rfds);
 
-	len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
-	if (len < 0) {
+	num = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+	if (num < 0) {
 		fprintf(data.std, "Unable select over logfd!\nHALTING LOGTHREAD!\n");
 		return NULL;
 	}
-	if (!len) {
+	if (num == 0) {
 		fprintf(data.std, "[knet]: No logs in the last 60 seconds\n");
 	}
 	if (FD_ISSET(data.logfd, &rfds)) {
