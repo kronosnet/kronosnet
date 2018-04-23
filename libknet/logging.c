@@ -235,14 +235,11 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #endif
-	vsnprintf(msg.msg, sizeof(msg.msg) - 2, fmt, ap);
+	vsnprintf(msg.msg, sizeof msg.msg, fmt, ap);
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
 	va_end(ap);
-
-	len = strlen(msg.msg);
-	msg.msg[len+1] = '\n';
 
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
