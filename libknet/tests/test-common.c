@@ -224,9 +224,9 @@ void flush_logs(int logfd, FILE *std)
 next:
 	bytes_read = 0;
 
-	while (bytes_read < sizeof(struct knet_log_msg)) {
+	while (bytes_read < sizeof msg) {
 		len = read(logfd, &msg + bytes_read,
-			   sizeof(struct knet_log_msg) - bytes_read);
+			   sizeof msg - bytes_read);
 		if (len <= 0) {
 			return;
 		}
