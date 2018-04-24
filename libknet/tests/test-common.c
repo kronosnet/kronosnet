@@ -220,9 +220,9 @@ void flush_logs(int logfd, FILE *std)
 	while (1) {
 		struct knet_log_msg msg;
 
-		for (size_t bytes_read = 0; bytes_read < sizeof msg; ) {
+		for (size_t bytes_read = 0; bytes_read < sizeof(msg); ) {
 			int len = read(logfd, &msg + bytes_read,
-				       sizeof msg - bytes_read);
+				       sizeof(msg) - bytes_read);
 			if (len <= 0) {
 				return;
 			}
