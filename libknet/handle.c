@@ -534,6 +534,16 @@ static void _stop_threads(knet_handle_t knet_h)
 	}
 }
 
+/*
+ * It is safe to call log_* macros before _init_locks is completed and
+ * before threads are started, as long as the calls do not contain
+ * information about host_id or link_id or any other dynamic data structures
+ * that can change at runtime.
+ *
+ * This "issue" really exists only inside knet_handle_new_ex, and the current
+ * calls are all safe.
+ */
+
 knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 				 int            log_fd,
 				 uint8_t        default_log_level,
