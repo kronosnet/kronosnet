@@ -235,7 +235,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #endif
-	vsnprintf(msg.msg, sizeof msg.msg, fmt, ap);
+	vsnprintf(msg.msg, sizeof(msg.msg), fmt, ap);
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
