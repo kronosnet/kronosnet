@@ -1909,16 +1909,16 @@ const char *knet_log_get_loglevel_name(uint8_t level);
 uint8_t knet_log_get_loglevel_id(const char *name);
 
 /*
- * every log message is composed by a text message (including a trailing \n)
+ * every log message is composed by a text message
  * and message level/subsystem IDs.
  * In order to make debugging easier it is possible to send those packets
  * straight to stdout/stderr (see knet_bench.c stdout option).
  */
 
-#define KNET_MAX_LOG_MSG_SIZE    256
+#define KNET_MAX_LOG_MSG_SIZE    254
 
 struct knet_log_msg {
-	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
+	char	msg[KNET_MAX_LOG_MSG_SIZE];
 	uint8_t	subsystem;	/* KNET_SUB_* */
 	uint8_t msglevel;	/* KNET_LOG_* */
 };
