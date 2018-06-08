@@ -460,6 +460,19 @@
    fun:start_thread
 }
 {
+   lzma internal stuff (Debian Experimental)
+   Memcheck:Cond
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   obj:*/libknet/.libs/compress_lzma.so
+   obj:*
+}
+{
    lzma internal stuff (Debian / Ubuntu)
    Memcheck:Cond
    obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
