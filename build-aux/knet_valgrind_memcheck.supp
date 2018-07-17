@@ -571,6 +571,40 @@
    obj:/usr/local/lib/nss/libnss3.so
 }
 {
+   nss internal leak (3.38+) non recurring
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:init_nss
+   fun:nsscrypto_init
+   fun:crypto_init
+   fun:knet_handle_crypto
+   fun:test
+   fun:main
+}
+{
+   nss internal leak (3.38+) non recurring
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:init_nss
+   fun:nsscrypto_init
+   fun:crypto_init
+   fun:knet_handle_crypto
+   fun:test
+   fun:main
+}
+{
    openssl internal stuff (FreeBSD 11.1)
    Memcheck:Addr8
    obj:/libexec/ld-elf.so.1
