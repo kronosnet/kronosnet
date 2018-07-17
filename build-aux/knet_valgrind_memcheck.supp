@@ -571,7 +571,7 @@
    obj:/usr/local/lib/nss/libnss3.so
 }
 {
-   nss internal stuff (FreeBSD 11.1)
+   openssl internal stuff (FreeBSD 11.1)
    Memcheck:Addr8
    obj:/libexec/ld-elf.so.1
    obj:/libexec/ld-elf.so.1
