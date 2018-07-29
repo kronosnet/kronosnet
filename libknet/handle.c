@@ -80,8 +80,6 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	knet_h->lock_init_done = 1;
-
 	savederrno = pthread_mutex_init(&knet_h->pmtud_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud mutex: %s",
@@ -140,7 +138,6 @@ exit_fail:
 
 static void _destroy_locks(knet_handle_t knet_h)
 {
-	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
 	pthread_mutex_destroy(&knet_h->kmtu_mutex);
@@ -721,10 +718,6 @@ int knet_handle_free(knet_handle_t knet_h)
 		return -1;
 	}
 
-	if (!knet_h->lock_init_done) {
-		goto exit_nolock;
-	}
-
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
@@ -758,7 +751,6 @@ int knet_handle_free(knet_handle_t knet_h)
 	compress_fini(knet_h, 1);
 	_destroy_locks(knet_h);
 
-exit_nolock:
 	free(knet_h);
 	knet_h = NULL;
 	knet_ref--;
