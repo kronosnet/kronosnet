@@ -179,7 +179,6 @@ struct knet_handle {
 	pthread_t heartbt_thread;
 	pthread_t dst_link_handler_thread;
 	pthread_t pmtud_link_handler_thread;
-	int lock_init_done;
 	pthread_rwlock_t global_rwlock;		/* global config lock */
 	pthread_mutex_t pmtud_mutex;		/* pmtud mutex to handle conditional send/recv + timeout */
 	pthread_cond_t pmtud_cond;		/* conditional for above */
