@@ -581,8 +581,6 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
-			strerror(savederrno));
 		errno = savederrno;
 		goto exit_fail;
 	}
