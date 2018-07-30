@@ -620,3 +620,17 @@
    fun:OPENSSL_init_crypto
    fun:opensslcrypto_init
 }
+{
+   Internal glibc memory leak (Fedora 28 on arm)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:_dl_map_object_deps
+}
+{
+   Internal glibc memory leak (Fedora 28 on arm)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:dl_open_worker
+}
