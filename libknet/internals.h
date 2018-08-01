@@ -18,6 +18,7 @@
 #include "libknet.h"
 #include "onwire.h"
 #include "compat.h"
+#include "threads_common.h"
 
 #define KNET_DATABUFSIZE KNET_MAX_PACKET_SIZE + KNET_HEADER_ALL_SIZE
 
@@ -174,6 +175,8 @@ struct knet_handle {
 	struct knet_header *recv_from_links_buf[PCKT_RX_BUFS];
 	struct knet_header *pingbuf;
 	struct knet_header *pmtudbuf;
+	uint8_t threads_status[KNET_THREAD_MAX];
+	pthread_mutex_t threads_status_mutex;
 	pthread_t send_to_links_thread;
 	pthread_t recv_from_links_thread;
 	pthread_t heartbt_thread;

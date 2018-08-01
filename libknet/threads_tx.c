@@ -686,6 +686,8 @@ void *_handle_send_to_links_thread(void *data)
 	struct msghdr msg;
 	struct sockaddr_storage address;
 
+	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_RUNNING);
+
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (void *)knet_h->recv_from_sock_buf->khp_data_userdata;
 	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
@@ -707,7 +709,14 @@ void *_handle_send_to_links_thread(void *data)
 	}
 
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, -1);
+		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, KNET_THREADS_TIMERES / 1000);
+
+		/*
+		 * we use timeout to detect if thread is shutting down
+		 */
+		if (nev == 0) {
+			continue;
+		}
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_TX, "Unable to get read lock");
@@ -740,6 +749,8 @@ void *_handle_send_to_links_thread(void *data)
 		}
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
+
+	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STOPPED);
 
 	return NULL;
 }

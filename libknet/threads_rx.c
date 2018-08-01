@@ -814,6 +814,8 @@ void *_handle_recv_from_links_thread(void *data)
 	struct knet_mmsghdr msg[PCKT_RX_BUFS];
 	struct iovec iov_in[PCKT_RX_BUFS];
 
+	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_RUNNING);
+
 	memset(&msg, 0, sizeof(msg));
 
 	for (i = 0; i < PCKT_RX_BUFS; i++) {
@@ -829,12 +831,21 @@ void *_handle_recv_from_links_thread(void *data)
 	}
 
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
+		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
+
+		/*
+		 * we use timeout to detect if thread is shutting down
+		 */
+		if (nev == 0) {
+			continue;
+		}
 
 		for (i = 0; i < nev; i++) {
 			_handle_recv_from_links(knet_h, events[i].data.fd, msg);
 		}
 	}
+
+	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STOPPED);
 
 	return NULL;
 }
