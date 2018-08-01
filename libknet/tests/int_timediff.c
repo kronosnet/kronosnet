@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "threads_common.h"
-
 #include "test-common.h"
 
 #define timespec_set(x, sec, nsec) \

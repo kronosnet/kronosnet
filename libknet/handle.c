@@ -80,6 +80,13 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->threads_status_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize threads status mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_mutex_init(&knet_h->pmtud_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize pmtud mutex: %s",
@@ -146,6 +153,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->tx_mutex);
 	pthread_mutex_destroy(&knet_h->backoff_mutex);
 	pthread_mutex_destroy(&knet_h->tx_seq_num_mutex);
+	pthread_mutex_destroy(&knet_h->threads_status_mutex);
 }
 
 static int _init_socks(knet_handle_t knet_h)
@@ -485,6 +493,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+
 	return 0;
 
 exit_fail:
@@ -496,14 +505,7 @@ static void _stop_threads(knet_handle_t knet_h)
 {
 	void *retval;
 
-	/*
-	 * allow threads to catch on shutdown request
-	 * and release locks before we stop them.
-	 * this isn't the most efficent way to handle it
-	 * but it works good enough for now
-	 */
-
-	sleep(1);
+	wait_all_threads_status(knet_h, KNET_THREAD_STOPPED);
 
 	if (knet_h->heartbt_thread) {
 		pthread_cancel(knet_h->heartbt_thread);
@@ -694,6 +696,8 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 		savederrno = errno;
 		goto exit_fail;
 	}
+
+	wait_all_threads_status(knet_h, KNET_THREAD_RUNNING);
 
 	return knet_h;
 
