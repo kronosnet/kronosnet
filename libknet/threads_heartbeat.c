@@ -186,6 +186,8 @@ void *_handle_heartbt_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	int i = 1;
 
+	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_RUNNING);
+
 	/* preparing ping buffer */
 	knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
 	knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
@@ -213,6 +215,8 @@ void *_handle_heartbt_thread(void *data)
 
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
+
+	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_STOPPED);
 
 	return NULL;
 }

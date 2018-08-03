@@ -34,7 +34,7 @@ struct log_thread_data {
 };
 static struct log_thread_data data;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int shutdown_in_progress = 0;
+static int stop_in_progress = 0;
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -376,13 +376,13 @@ int knet_handle_stop(knet_handle_t knet_h)
 		return -1;
 	}
 
-	if (shutdown_in_progress) {
+	if (stop_in_progress) {
 		pthread_mutex_unlock(&shutdown_mutex);
 		errno = EINVAL;
 		return -1;
 	}
 
-	shutdown_in_progress = 1;
+	stop_in_progress = 1;
 
 	pthread_mutex_unlock(&shutdown_mutex);
 

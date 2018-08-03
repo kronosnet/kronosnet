@@ -63,3 +63,46 @@ int get_global_wrlock(knet_handle_t knet_h)
 	}
 	return pthread_rwlock_wrlock(&knet_h->global_rwlock);
 }
+
+int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status)
+{
+	if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Unable to get mutex lock");
+		return -1;
+	}
+
+	knet_h->threads_status[thread_id] = status;
+
+	log_debug(knet_h, KNET_SUB_HANDLE, "Updated status for thread %u to %u",
+		  thread_id, status);
+
+	pthread_mutex_unlock(&knet_h->threads_status_mutex);
+	return 0;
+}
+
+int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
+{
+	uint8_t i = 0, found = 0;
+
+	while (!found) {
+		usleep(KNET_THREADS_TIMERES);
+
+		if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
+			continue;
+		}
+
+		found = 1;
+
+		for (i = 0; i < KNET_THREAD_MAX; i++) {
+			log_debug(knet_h, KNET_SUB_HANDLE, "Checking thread: %u status: %u req: %u",
+					i, knet_h->threads_status[i], status);
+			if (knet_h->threads_status[i] != status) {
+				found = 0;
+			}
+		}
+
+		pthread_mutex_unlock(&knet_h->threads_status_mutex);
+	}
+
+	return 0;
+}

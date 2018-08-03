@@ -207,24 +207,15 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	va_list ap;
 	struct knet_log_msg msg;
 	size_t byte_cnt = 0;
-	int len, err;
+	int len;
 
 	if ((!knet_h) ||
 	    (subsystem == KNET_MAX_SUBSYSTEMS) ||
 	    (msglevel > knet_h->log_levels[subsystem]))
 			return;
 
-	/*
-	 * most logging calls will take place with locking in place.
-	 * if we get an EINVAL and locking is initialized, then
-	 * we are getting a real error and we need to stop
-	 */
-	err = pthread_rwlock_tryrdlock(&knet_h->global_rwlock);
-	if ((err == EAGAIN) && (knet_h->lock_init_done))
-		return;
-
 	if (knet_h->logfd <= 0)
-		goto out_unlock;
+		goto out;
 
 	memset(&msg, 0, sizeof(struct knet_log_msg));
 	msg.subsystem = subsystem;
@@ -244,18 +235,12 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
 		if (len <= 0) {
-			goto out_unlock;
+			goto out;
 		}
 
 		byte_cnt += len;
 	}
 
-out_unlock:
-	/*
-	 * unlock only if we are holding the lock
-	 */
-	if (!err)
-		pthread_rwlock_unlock(&knet_h->global_rwlock);
-
+out:
 	return;
 }
