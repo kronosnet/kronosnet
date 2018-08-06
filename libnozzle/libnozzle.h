@@ -310,7 +310,7 @@ const char *nozzle_get_name_by_handle(const nozzle_t nozzle);
 
 /**
  * nozzle_get_fd
- * @brief 
+ * @brief
  *
  * nozzle - pointer to the nozzle struct
  *

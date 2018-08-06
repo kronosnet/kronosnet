@@ -337,7 +337,7 @@ static int check_knet_mtu(void)
 
 	printf("Passing empty struct to set_mtu\n");
 	if (nozzle_set_mtu(NULL, 1500, &error_string) == 0) {
-		printf("Something is wrong in nozzle_set_mtu sanity checks\n"); 
+		printf("Something is wrong in nozzle_set_mtu sanity checks\n");
 		if (error_string) {
 			printf("error: %s\n", error_string);
 			free(error_string);
@@ -687,7 +687,7 @@ static int check_nozzle_execute_bin_sh_command(void)
 		printf("Can we really execute grep -h successfully?!?\n");
 		err = -1;
 		goto out_clean;
-	} 
+	}
 
 	printf("command that outputs to stderr\n");
 	err = execute_bin_sh_command("grep -h", &error_string);
@@ -700,7 +700,7 @@ static int check_nozzle_execute_bin_sh_command(void)
 		printf("Can we really execute grep -h successfully?!?\n");
 		err = -1;
 		goto out_clean;
-	} 
+	}
 
 	printf("empty command\n");
 	err = execute_bin_sh_command(NULL, &error_string);
