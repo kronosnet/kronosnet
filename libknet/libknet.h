@@ -14,6 +14,7 @@
 #include <time.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <limits.h>
 
 /**
  * @file libknet.h
@@ -109,6 +110,9 @@ typedef struct knet_handle *knet_handle_t;
  *            Make sure to either read from this filedescriptor properly and/or
  *            mark it O_NONBLOCK, otherwise if the fd becomes full, libknet could
  *            block.
+ *            It is strongly encouraged to use pipes (ex: pipe(2) or pipe2(2)) for
+ *            logging fds due to the atomic nature of writes between fds.
+ *            See also libknet test suite for reference and guidance.
  *
  * default_log_level -
  *            If logfd is specified, it will initialize all subsystems to log
@@ -1909,16 +1913,19 @@ const char *knet_log_get_loglevel_name(uint8_t level);
 uint8_t knet_log_get_loglevel_id(const char *name);
 
 /*
- * every log message is composed by a text message (including a trailing \n)
+ * every log message is composed by a text message
  * and message level/subsystem IDs.
  * In order to make debugging easier it is possible to send those packets
  * straight to stdout/stderr (see knet_bench.c stdout option).
  */
 
-#define KNET_MAX_LOG_MSG_SIZE    256
+#define KNET_MAX_LOG_MSG_SIZE    254
+#if KNET_MAX_LOG_MSG_SIZE > PIPE_BUF
+#error KNET_MAX_LOG_MSG_SIZE cannot be bigger than PIPE_BUF for guaranteed system atomic writes
+#endif
 
 struct knet_log_msg {
-	char	msg[KNET_MAX_LOG_MSG_SIZE - (sizeof(uint8_t)*2)];
+	char	msg[KNET_MAX_LOG_MSG_SIZE];
 	uint8_t	subsystem;	/* KNET_SUB_* */
 	uint8_t msglevel;	/* KNET_LOG_* */
 };

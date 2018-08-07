@@ -460,6 +460,19 @@
    fun:start_thread
 }
 {
+   lzma internal stuff (Debian Experimental)
+   Memcheck:Cond
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+   fun:lzma_block_buffer_encode
+   fun:lzma_stream_buffer_encode
+   fun:lzma_easy_buffer_encode
+   obj:*/libknet/.libs/compress_lzma.so
+   obj:*
+}
+{
    lzma internal stuff (Debian / Ubuntu)
    Memcheck:Cond
    obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
@@ -558,7 +571,41 @@
    obj:/usr/local/lib/nss/libnss3.so
 }
 {
-   nss internal stuff (FreeBSD 11.1)
+   nss internal leak (3.38+) non recurring
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:init_nss
+   fun:nsscrypto_init
+   fun:crypto_init
+   fun:knet_handle_crypto
+   fun:test
+   fun:main
+}
+{
+   nss internal leak (3.38+) non recurring
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:init_nss
+   fun:nsscrypto_init
+   fun:crypto_init
+   fun:knet_handle_crypto
+   fun:test
+   fun:main
+}
+{
+   openssl internal stuff (FreeBSD 11.1)
    Memcheck:Addr8
    obj:/libexec/ld-elf.so.1
    obj:/libexec/ld-elf.so.1
@@ -572,4 +619,18 @@
    fun:CRYPTO_THREAD_run_once
    fun:OPENSSL_init_crypto
    fun:opensslcrypto_init
+}
+{
+   Internal glibc memory leak (Fedora 28 on arm)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:_dl_map_object_deps
+}
+{
+   Internal glibc memory leak (Fedora 28 on arm)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:dl_open_worker
 }

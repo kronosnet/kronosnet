@@ -629,8 +629,17 @@ static void *_sctp_connect_thread(void *data)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
+	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_RUNNING);
+
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(handle_info->connect_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
+		nev = epoll_wait(handle_info->connect_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
+
+		/*
+		 * we use timeout to detect if thread is shutting down
+		 */
+		if (nev == 0) {
+			continue;
+		}
 
 		if (nev < 0) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP connect handler EPOLL ERROR: %s",
@@ -676,6 +685,9 @@ static void *_sctp_connect_thread(void *data)
 		 */
 		usleep(knet_h->reconnect_int * 1000);
 	}
+
+	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STOPPED);
+
 	return NULL;
 }
 
@@ -862,8 +874,17 @@ static void *_sctp_listen_thread(void *data)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
+	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_RUNNING);
+
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(handle_info->listen_epollfd, events, KNET_EPOLL_MAX_EVENTS, -1);
+		nev = epoll_wait(handle_info->listen_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
+
+		/*
+		 * we use timeout to detect if thread is shutting down
+		 */
+		if (nev == 0) {
+			continue;
+		}
 
 		if (nev < 0) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP listen handler EPOLL ERROR: %s",
@@ -895,6 +916,9 @@ static void *_sctp_listen_thread(void *data)
 		}
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
+
+	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_STOPPED);
+
 	return NULL;
 }
 

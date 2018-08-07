@@ -80,7 +80,12 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	knet_h->lock_init_done = 1;
+	savederrno = pthread_mutex_init(&knet_h->threads_status_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize threads status mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
 
 	savederrno = pthread_mutex_init(&knet_h->pmtud_mutex, NULL);
 	if (savederrno) {
@@ -140,7 +145,6 @@ exit_fail:
 
 static void _destroy_locks(knet_handle_t knet_h)
 {
-	knet_h->lock_init_done = 0;
 	pthread_rwlock_destroy(&knet_h->global_rwlock);
 	pthread_mutex_destroy(&knet_h->pmtud_mutex);
 	pthread_mutex_destroy(&knet_h->kmtu_mutex);
@@ -149,6 +153,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->tx_mutex);
 	pthread_mutex_destroy(&knet_h->backoff_mutex);
 	pthread_mutex_destroy(&knet_h->tx_seq_num_mutex);
+	pthread_mutex_destroy(&knet_h->threads_status_mutex);
 }
 
 static int _init_socks(knet_handle_t knet_h)
@@ -488,6 +493,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+
 	return 0;
 
 exit_fail:
@@ -499,14 +505,7 @@ static void _stop_threads(knet_handle_t knet_h)
 {
 	void *retval;
 
-	/*
-	 * allow threads to catch on shutdown request
-	 * and release locks before we stop them.
-	 * this isn't the most efficent way to handle it
-	 * but it works good enough for now
-	 */
-
-	sleep(1);
+	wait_all_threads_status(knet_h, KNET_THREAD_STOPPED);
 
 	if (knet_h->heartbt_thread) {
 		pthread_cancel(knet_h->heartbt_thread);
@@ -577,15 +576,13 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	}
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
-	knet_h->flags = flags;
+	/*
+	 * setting up some handle data so that we can use logging
+	 * also when initializing the library global locks
+	 * and trackers
+	 */
 
-	savederrno = pthread_mutex_lock(&handle_config_mutex);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
-		goto exit_fail;
-	}
+	knet_h->flags = flags;
 
 	/*
 	 * copy config in place
@@ -619,6 +616,18 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	/*
 	 * init global shlib tracker
 	 */
+	savederrno = pthread_mutex_lock(&handle_config_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
+			strerror(savederrno));
+		free(knet_h);
+		knet_h = NULL;
+		errno = savederrno;
+		return NULL;
+	}
+
+	knet_ref++;
+
 	if (_init_shlib_tracker(knet_h) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init handles traceker: %s",
@@ -626,6 +635,8 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 		errno = savederrno;
 		goto exit_fail;
 	}
+
+	pthread_mutex_unlock(&handle_config_mutex);
 
 	/*
 	 * init main locking structures
@@ -686,13 +697,11 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 		goto exit_fail;
 	}
 
-	knet_ref++;
+	wait_all_threads_status(knet_h, KNET_THREAD_RUNNING);
 
-	pthread_mutex_unlock(&handle_config_mutex);
 	return knet_h;
 
 exit_fail:
-	pthread_mutex_unlock(&handle_config_mutex);
 	knet_handle_free(knet_h);
 	errno = savederrno;
 	return NULL;
@@ -709,29 +718,15 @@ int knet_handle_free(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	savederrno = pthread_mutex_lock(&handle_config_mutex);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
-		return -1;
-	}
-
 	if (!knet_h) {
-		pthread_mutex_unlock(&handle_config_mutex);
 		errno = EINVAL;
 		return -1;
-	}
-
-	if (!knet_h->lock_init_done) {
-		goto exit_nolock;
 	}
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
 			strerror(savederrno));
-		pthread_mutex_unlock(&handle_config_mutex);
 		errno = savederrno;
 		return -1;
 	}
@@ -742,7 +737,6 @@ int knet_handle_free(knet_handle_t knet_h)
 			"Unable to free handle: host(s) or listener(s) are still active: %s",
 			strerror(savederrno));
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
-		pthread_mutex_unlock(&handle_config_mutex);
 		errno = savederrno;
 		return -1;
 	}
@@ -760,12 +754,14 @@ int knet_handle_free(knet_handle_t knet_h)
 	compress_fini(knet_h, 1);
 	_destroy_locks(knet_h);
 
-exit_nolock:
 	free(knet_h);
 	knet_h = NULL;
+
+	pthread_mutex_lock(&handle_config_mutex);
 	knet_ref--;
 	_fini_shlib_tracker();
 	pthread_mutex_unlock(&handle_config_mutex);
+
 	return 0;
 }
 

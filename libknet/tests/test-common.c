@@ -34,7 +34,7 @@ struct log_thread_data {
 };
 static struct log_thread_data data;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int shutdown_in_progress = 0;
+static int stop_in_progress = 0;
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -217,60 +217,48 @@ void close_logpipes(int *logfds)
 
 void flush_logs(int logfd, FILE *std)
 {
-	struct knet_log_msg msg;
-	size_t bytes_read;
-	int len;
+	while (1) {
+		struct knet_log_msg msg;
 
-next:
-	len = 0;
-	bytes_read = 0;
-	memset(&msg, 0, sizeof(struct knet_log_msg));
-
-	while (bytes_read < sizeof(struct knet_log_msg)) {
-		len = read(logfd, &msg + bytes_read,
-			   sizeof(struct knet_log_msg) - bytes_read);
-		if (len <= 0) {
-			return;
+		for (size_t bytes_read = 0; bytes_read < sizeof(msg); ) {
+			int len = read(logfd, &msg + bytes_read,
+				       sizeof(msg) - bytes_read);
+			if (len <= 0) {
+				return;
+			}
+			bytes_read += len;
 		}
-		bytes_read += len;
-	}
 
-	if (len > 0) {
-		fprintf(std, "[knet]: [%s] %s: %s\n",
+		fprintf(std, "[knet]: [%s] %s: %.*s\n",
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
-			msg.msg);
-		goto next;
+			KNET_MAX_LOG_MSG_SIZE, msg.msg);
 	}
 }
 
 static void *_logthread(void *args)
 {
-	fd_set rfds;
-	ssize_t len;
-	struct timeval tv;
+	while (1) {
+		int num;
+		struct timeval tv = { 60, 0 };
+		fd_set rfds;
 
-select_loop:
-	tv.tv_sec = 60;
-	tv.tv_usec = 0;
+		FD_ZERO(&rfds);
+		FD_SET(data.logfd, &rfds);
 
-	FD_ZERO(&rfds);
-	FD_SET(data.logfd, &rfds);
-
-	len = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
-	if (len < 0) {
-		fprintf(data.std, "Unable select over logfd!\nHALTING LOGTHREAD!\n");
-		return NULL;
+		num = select(FD_SETSIZE, &rfds, NULL, NULL, &tv);
+		if (num < 0) {
+			fprintf(data.std, "Unable select over logfd!\nHALTING LOGTHREAD!\n");
+			return NULL;
+		}
+		if (num == 0) {
+			fprintf(data.std, "[knet]: No logs in the last 60 seconds\n");
+			continue;
+		}
+		if (FD_ISSET(data.logfd, &rfds)) {
+			flush_logs(data.logfd, data.std);
+		}
 	}
-	if (!len) {
-		fprintf(data.std, "[knet]: No logs in the last 60 seconds\n");
-	}
-	if (FD_ISSET(data.logfd, &rfds)) {
-		flush_logs(data.logfd, data.std);
-	}
-	goto select_loop;
-
-	return NULL;
 }
 
 int start_logthread(int logfd, FILE *std)
@@ -388,13 +376,13 @@ int knet_handle_stop(knet_handle_t knet_h)
 		return -1;
 	}
 
-	if (shutdown_in_progress) {
+	if (stop_in_progress) {
 		pthread_mutex_unlock(&shutdown_mutex);
 		errno = EINVAL;
 		return -1;
 	}
 
-	shutdown_in_progress = 1;
+	stop_in_progress = 1;
 
 	pthread_mutex_unlock(&shutdown_mutex);
 
