@@ -275,7 +275,15 @@ if test "x$enable_man" = "xyes"; then
 	ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 fi
 
-# checks (for kronosnetd)
+# checks for libnozzle
+if test "x$enable_libnozzle" = xyes; then
+	if `echo $host_os | grep -q linux`; then
+		PKG_CHECK_MODULES([libnl], [libnl-3.0])
+		PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0])
+	fi
+fi
+
+# checks for kronosnetd
 if test "x$enable_kronosnetd" = xyes; then
 	AC_CHECK_HEADERS([security/pam_appl.h],
 			 [AC_CHECK_LIB([pam], [pam_start],

@@ -122,6 +122,9 @@ BuildRequires: /usr/include/bzlib.h
 %if %{defined buildkronosnetd}
 BuildRequires: pam-devel
 %endif
+%if %{defined buildlibnozzle}
+BuildRequires: libnl3-devel
+%endif
 %if %{defined buildautogen}
 BuildRequires: autoconf
 BuildRequires: automake

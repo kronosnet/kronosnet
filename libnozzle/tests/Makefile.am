@@ -32,9 +32,9 @@ nozzle_test_SOURCES	= nozzle_test.c \
 nozzle_test_CPPFLAGS	= -I$(top_srcdir)/libnozzle \
 			  -DABSBUILDDIR=\"$(abs_builddir)\"
 
-nozzle_test_CFLAGS	= $(PTHREAD_CFLAGS)
+nozzle_test_CFLAGS	= $(PTHREAD_CFLAGS) $(libnl_CFLAGS)
 
 nozzle_test_LDFLAGS	= $(top_builddir)/libnozzle/libnozzle.la \
-			  $(PTHREAD_LIBS)
+			  $(PTHREAD_LIBS) $(libnl_LIBS)
 
 endif

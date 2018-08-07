@@ -10,11 +10,18 @@
 #define __NOZZLE_INTERNALS_H__
 
 #include "config.h"
+
+#ifdef KNET_LINUX
+#include <netlink/netlink.h>
+#endif
 #include <net/if.h>
 
 struct nozzle_lib_config {
 	struct nozzle_iface *head;
 	int ioctlfd;
+#ifdef KNET_LINUX
+	struct nl_sock *nlsock;
+#endif
 };
 
 #define IPADDR_CHAR_MAX   128
