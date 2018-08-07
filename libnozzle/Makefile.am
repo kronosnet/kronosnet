@@ -36,7 +36,7 @@ lib_LTLIBRARIES		= libnozzle.la
 
 libnozzle_la_SOURCES	= $(sources)
 
-libnozzle_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS)
+libnozzle_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) $(libnl_CFLAGS) $(libnlroute_CFLAGS)
 
 EXTRA_libnozzle_la_DEPENDENCIES	= $(SYMFILE)
 
@@ -44,6 +44,6 @@ libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
 			  -version-info $(libversion)
 
-libnozzle_la_LIBADD	= $(PTHREAD_LIBS)
+libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(libnl_LIBS) $(libnlroute_LIBS)
 
 endif

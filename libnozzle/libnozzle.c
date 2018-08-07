@@ -29,6 +29,9 @@
 #ifdef KNET_LINUX
 #include <linux/if_tun.h>
 #include <netinet/ether.h>
+#include <netlink/netlink.h>
+#include <netlink/route/addr.h>
+#include <netlink/route/link.h>
 #endif
 #ifdef KNET_BSD
 #include <net/if_dl.h>
@@ -49,50 +52,130 @@ static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
  * internal helpers
  */
 
-static int _set_ip(nozzle_t nozzle, const char *command,
+#define IP_ADD 1
+#define IP_DEL 2
+
+static int _set_ip(nozzle_t nozzle, int command,
 		      const char *ipaddr, const char *prefix,
 		      char **error_string, int secondary)
 {
+	int fam;
 	char *broadcast = NULL;
-	char cmdline[4096];
+#ifdef KNET_LINUX
+	struct rtnl_addr *addr = NULL;
+	struct nl_addr *local_addr = NULL;
+	struct nl_addr *bcast_addr = NULL;
+	struct nl_cache *cache = NULL;
+	int ifindex;
+	int err = 0;
+#endif
 #ifdef KNET_BSD
+	char cmdline[4096];
 	char proto[6];
-	int v4 = 1;
-
-	snprintf(proto, sizeof(proto), "inet");
 #endif
 
 	if (!strchr(ipaddr, ':')) {
+		fam = AF_INET;
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
+	} else {
+		fam = AF_INET6;
 	}
-#ifdef KNET_BSD
-	  else {
-		v4 = 0;
-		snprintf(proto, sizeof(proto), "inet6");
-	}
-#endif
-
-	memset(cmdline, 0, sizeof(cmdline));
 
 #ifdef KNET_LINUX
-	if (broadcast) {
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ip addr %s %s/%s dev %s broadcast %s",
-			 command, ipaddr, prefix,
-			 nozzle->name, broadcast);
-	} else {
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ip addr %s %s/%s dev %s",
-			command, ipaddr, prefix,
-			nozzle->name);
+	addr = rtnl_addr_alloc();
+	if (!addr) {
+		errno = ENOMEM;
+		return -1;
 	}
+
+	if (rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache) < 0) {
+		errno = ENOMEM;
+		err = -1;
+		goto out;
+	}
+
+	ifindex = rtnl_link_name2i(cache, nozzle->name);
+	if (ifindex == 0) {
+		errno = ENOENT;
+		err = -1;
+		goto out;
+	}
+
+	rtnl_addr_set_ifindex(addr, ifindex);
+
+	if (nl_addr_parse(ipaddr, fam, &local_addr) < 0) {
+		errno = EINVAL;
+		err = -1;
+		goto out;
+	}
+
+	if (rtnl_addr_set_local(addr, local_addr) < 0) {
+		errno = EINVAL;
+		err = -1;
+		goto out;
+	}
+
+	if (broadcast) {
+		if (nl_addr_parse(broadcast, fam, &bcast_addr) < 0) {
+			errno = EINVAL;
+			err = -1;
+			goto out;
+		}
+
+		if (rtnl_addr_set_broadcast(addr, bcast_addr) < 0) {
+			errno = EINVAL;
+			err = -1;
+			goto out;
+		}
+	}
+
+	rtnl_addr_set_prefixlen(addr, atoi(prefix));
+
+	if (command == IP_ADD) {
+		if (rtnl_addr_add(lib_cfg.nlsock, addr, 0) < 0) {
+			errno = EINVAL;
+			err = -1;
+			goto out;
+		}
+	} else {
+		if (rtnl_addr_delete(lib_cfg.nlsock, addr, 0) < 0) {
+			errno = EINVAL;
+			err = -1;
+			goto out;
+		}
+	}
+out:
+	if (addr) {
+		rtnl_addr_put(addr);
+	}
+	if (local_addr) {
+		nl_addr_put(local_addr);
+	}
+	if (bcast_addr) {
+		nl_addr_put(bcast_addr);
+	}
+	if (cache) {
+		nl_cache_put(cache);
+	}
+	if (broadcast) {
+		free(broadcast);
+	}
+	return err;
 #endif
 #ifdef KNET_BSD
-	if (!strcmp(command, "add")) {
+	memset(cmdline, 0, sizeof(cmdline));
+
+	if (fam == AF_INET) {
+		snprintf(proto, sizeof(proto), "inet");
+	} else {
+		snprintf(proto, sizeof(proto), "inet6");
+	}
+
+	if (command == IP_ADD) {
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ifconfig %s %s %s/%s",
 			 nozzle->name, proto, ipaddr, prefix);
@@ -101,7 +184,7 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 				 sizeof(cmdline) - strlen(cmdline) -1,
 				 " broadcast %s", broadcast);
 		}
-		if ((secondary) && (v4)) {
+		if ((secondary) && (fam == AF_INET)) {
 			snprintf(cmdline + strlen(cmdline),
 				 sizeof(cmdline) - strlen(cmdline) -1,
 				 " alias");
@@ -111,11 +194,11 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 				 "ifconfig %s %s %s/%s delete",
 				 nozzle->name, proto, ipaddr, prefix);
 	}
-#endif
 	if (broadcast) {
 		free(broadcast);
 	}
 	return execute_bin_sh_command(cmdline, error_string);
+#endif
 }
 
 /*
@@ -127,6 +210,10 @@ static int _set_ip(nozzle_t nozzle, const char *command,
 static void lib_fini(void)
 {
 	if (lib_cfg.head == NULL) {
+#ifdef KNET_LINUX
+		nl_close(lib_cfg.nlsock);
+		nl_socket_free(lib_cfg.nlsock);
+#endif
 		close(lib_cfg.ioctlfd);
 		lib_init = 0;
 	}
@@ -354,7 +441,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu, char **error_string)
 		tmp_ip = nozzle->ip;
 		while(tmp_ip) {
 			if (tmp_ip->domain == AF_INET6) {
-				err = _set_ip(nozzle, "add", tmp_ip->ipaddr, tmp_ip->prefix, error_string, 0);
+				err = _set_ip(nozzle, IP_ADD, tmp_ip->ipaddr, tmp_ip->prefix, error_string, 0);
 				if (err) {
 					savederrno = errno;
 					err = -1;
@@ -431,7 +518,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 		if (nozzle->ip) {
 			secondary = 1;
 		}
-		err = _set_ip(nozzle, "add", ipaddr, prefix, error_string, secondary);
+		err = _set_ip(nozzle, IP_ADD, ipaddr, prefix, error_string, secondary);
 		savederrno = errno;
 	}
 
@@ -484,7 +571,7 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, char 
 		goto out_clean;
 	}
 
-	err = _set_ip(nozzle, "del", ipaddr, prefix, error_string, 0);
+	err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, error_string, 0);
 	savederrno = errno;
 	if (!err) {
 		if (ip == ip_prev) {
@@ -717,6 +804,15 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	if (!lib_init) {
 		lib_cfg.head = NULL;
 #ifdef KNET_LINUX
+		lib_cfg.nlsock = nl_socket_alloc();
+		if (!lib_cfg.nlsock) {
+			savederrno = errno;
+			goto out_error;
+		}
+		if (nl_connect(lib_cfg.nlsock, NETLINK_ROUTE) < 0) {
+			savederrno = EBUSY;
+			goto out_error;
+		}
 		lib_cfg.ioctlfd = socket(AF_INET, SOCK_STREAM, 0);
 #endif
 #ifdef KNET_BSD
