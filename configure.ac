@@ -279,7 +279,9 @@ fi
 if test "x$enable_libnozzle" = xyes; then
 	if `echo $host_os | grep -q linux`; then
 		PKG_CHECK_MODULES([libnl], [libnl-3.0])
-		PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0])
+		PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 >= 3.3], [],
+			[PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 < 3.3],
+					   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
 	fi
 fi
 
