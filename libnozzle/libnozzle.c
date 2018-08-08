@@ -28,6 +28,13 @@
 
 #ifdef KNET_LINUX
 #include <linux/if_tun.h>
+/*
+ * libnl3 < 3.3 includes kernel headers directly
+ * causing conflicts with net/if.h included above
+ */
+#ifdef LIBNL3_WORKAROUND
+#define _LINUX_IF_H 1
+#endif
 #include <netinet/ether.h>
 #include <netlink/netlink.h>
 #include <netlink/route/addr.h>
