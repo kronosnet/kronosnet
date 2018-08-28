@@ -384,7 +384,6 @@ static int check_knet_mtu_ipv6(void)
 	if (err) {
 		printf("Unable to assign IP address\n");
 		err=-1;
-		sleep(30);
 		goto out_clean;
 	}
 
@@ -579,7 +578,6 @@ static int check_knet_mac(void)
 	if (memcmp(cur_mac, tmp_mac, sizeof(struct ether_addr))) {
 		printf("Mac addresses are not the same?!\n");
 		err = -1;
-		sleep(20);
 		goto out_clean;
 	}
 
