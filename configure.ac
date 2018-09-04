@@ -13,7 +13,7 @@
 
 AC_PREREQ([2.63])
 AC_INIT([kronosnet],
-	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
+	m4_esyscmd([build-aux/git-version-gen .tarball-version .gitarchivever]),
 	[devel@lists.kronosnet.org])
 # Don't let AC_PROC_CC (invoked by AC_USE_SYSTEM_EXTENSIONS) replace
 # undefined CFLAGS with -g -O2, overriding our special OPT_CFLAGS.
