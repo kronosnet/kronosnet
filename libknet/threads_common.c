@@ -64,6 +64,55 @@ int get_global_wrlock(knet_handle_t knet_h)
 	return pthread_rwlock_wrlock(&knet_h->global_rwlock);
 }
 
+static struct pretty_names thread_names[] =
+{
+	{ "TX", KNET_THREAD_TX },
+	{ "RX", KNET_THREAD_RX },
+	{ "HB", KNET_THREAD_HB },
+	{ "PMTUD", KNET_THREAD_PMTUD },
+#ifdef HAVE_NETINET_SCTP_H
+	{ "SCTP_LISTEN", KNET_THREAD_SCTP_LISTEN },
+	{ "SCTP_CONN", KNET_THREAD_SCTP_CONN },
+#endif
+	{ "DST_LINK", KNET_THREAD_DST_LINK }
+};
+
+static struct pretty_names thread_status[] =
+{
+	{ "stopped", KNET_THREAD_STOPPED },
+	{ "running", KNET_THREAD_RUNNING }
+};
+
+/*
+ * this seems overloaded at the moment but
+ * we might want to expand status checks
+ * to include "starting" and "stopping"
+ */
+
+static const char *get_thread_status_name(uint8_t status)
+{
+	unsigned int i;
+
+	for (i = 0; i < KNET_THREAD_STATUS_MAX; i++) {
+		if (thread_status[i].val == status) {
+			return thread_status[i].name;
+		}
+	}
+	return "unknown";
+}
+
+static const char *get_thread_name(uint8_t thread_id)
+{
+	unsigned int i;
+
+	for (i = 0; i < KNET_THREAD_MAX; i++) {
+		if (thread_names[i].val == thread_id) {
+			return thread_names[i].name;
+		}
+	}
+	return "unknown";
+}
+
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status)
 {
 	if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
@@ -73,8 +122,8 @@ int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status)
 
 	knet_h->threads_status[thread_id] = status;
 
-	log_debug(knet_h, KNET_SUB_HANDLE, "Updated status for thread %u to %u",
-		  thread_id, status);
+	log_debug(knet_h, KNET_SUB_HANDLE, "Updated status for thread %s to %s",
+		  get_thread_name(thread_id), get_thread_status_name(status));
 
 	pthread_mutex_unlock(&knet_h->threads_status_mutex);
 	return 0;
@@ -94,8 +143,10 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 		found = 1;
 
 		for (i = 0; i < KNET_THREAD_MAX; i++) {
-			log_debug(knet_h, KNET_SUB_HANDLE, "Checking thread: %u status: %u req: %u",
-					i, knet_h->threads_status[i], status);
+			log_debug(knet_h, KNET_SUB_HANDLE, "Checking thread: %s status: %s req: %s",
+					get_thread_name(i),
+					get_thread_status_name(knet_h->threads_status[i]),
+					get_thread_status_name(status));
 			if (knet_h->threads_status[i] != status) {
 				found = 0;
 			}
