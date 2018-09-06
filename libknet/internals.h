@@ -337,6 +337,11 @@ typedef struct knet_transport_ops {
 
 socklen_t sockaddr_len(const struct sockaddr_storage *ss);
 
+struct pretty_names {
+	const char *name;
+	uint8_t val;
+};
+
 /**
  * This is a kernel style list implementation.
  *
