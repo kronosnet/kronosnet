@@ -224,6 +224,10 @@ void flush_logs(int logfd, FILE *std)
 			int len = read(logfd, &msg + bytes_read,
 				       sizeof(msg) - bytes_read);
 			if (len <= 0) {
+				/*
+				 * clear errno to avoid incorrect propagation
+				 */
+				errno = 0;
 				return;
 			}
 			bytes_read += len;
