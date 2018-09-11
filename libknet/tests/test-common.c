@@ -224,6 +224,10 @@ void flush_logs(int logfd, FILE *std)
 			int len = read(logfd, &msg + bytes_read,
 				       sizeof(msg) - bytes_read);
 			if (len <= 0) {
+				/*
+				 * clear errno to avoid incorrect propagation
+				 */
+				errno = 0;
 				return;
 			}
 			bytes_read += len;
@@ -472,13 +476,14 @@ int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd)
 {
 	fd_set rfds;
 	struct timeval tv;
-	int err = 0;
+	int err = 0, i = 0;
 
 	if (is_memcheck() || is_helgrind()) {
 		printf("Test suite is running under valgrind, adjusting wait_for_packet timeout\n");
 		seconds = seconds * 16;
 	}
 
+try_again:
 	FD_ZERO(&rfds);
 	FD_SET(datafd, &rfds);
 
@@ -486,6 +491,15 @@ int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd)
 	tv.tv_usec = 0;
 
 	err = select(datafd+1, &rfds, NULL, NULL, &tv);
+	/*
+	 * on slow arches the first call to select can return 0.
+	 * pick an arbitrary 10 times loop (multiplied by waiting seconds)
+	 * before failing.
+	 */
+	if ((!err) && (i < 10)) {
+		i++;
+		goto try_again;
+	}
 	if ((err > 0) && (FD_ISSET(datafd, &rfds))) {
 		return 0;
 	}
