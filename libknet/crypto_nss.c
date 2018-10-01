@@ -176,7 +176,9 @@ static PK11SymKey *nssimport_symmetric_key(knet_handle_t knet_h, enum sym_key_ty
 	SECItem tmp_sec_item;
 	SECItem wrapped_key;
 	int wrapped_key_len;
+	int wrap_key_block_size;
 	unsigned char wrapped_key_data[KNET_MAX_KEY_LEN];
+	unsigned char pad_key_data[KNET_MAX_KEY_LEN];
 
 	memset(&key_item, 0, sizeof(key_item));
 	slot = NULL;
@@ -184,8 +186,15 @@ static PK11SymKey *nssimport_symmetric_key(knet_handle_t knet_h, enum sym_key_ty
 	res_key = NULL;
 	wrap_key_crypt_context = NULL;
 
+	if (instance->private_key_len > sizeof(pad_key_data)) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Import symmetric key failed. Private key is too long");
+		goto exit_res_key;
+	}
+	memset(pad_key_data, 0, sizeof(pad_key_data));
+	memcpy(pad_key_data, instance->private_key, instance->private_key_len);
+
 	key_item.type = siBuffer;
-	key_item.data = instance->private_key;
+	key_item.data = pad_key_data;
 
 	switch (key_type) {
 		case SYM_KEY_TYPE_CRYPT:
@@ -238,6 +247,21 @@ static PK11SymKey *nssimport_symmetric_key(knet_handle_t knet_h, enum sym_key_ty
 	 */
 
 	/*
+	 * Key must be padded to a block size
+	 */
+	wrap_key_block_size = PK11_GetBlockSize(wrap_mechanism, 0);
+	if (wrap_key_block_size < 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to get wrap key block size (%d): %s",
+			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_res_key;
+	}
+	if (sizeof(pad_key_data) % wrap_key_block_size != 0) {
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Padded key buffer size (%zu) is not dividable by "
+			"wrap key block size (%u).", sizeof(pad_key_data), (unsigned int)wrap_key_block_size);
+		goto exit_res_key;
+	}
+
+	/*
 	 * Initialization of IV is not needed because PK11_GetBestWrapMechanism should return ECB mode
 	 */
 	memset(&tmp_sec_item, 0, sizeof(tmp_sec_item));
@@ -252,7 +276,7 @@ static PK11SymKey *nssimport_symmetric_key(knet_handle_t knet_h, enum sym_key_ty
 	wrapped_key_len = (int)sizeof(wrapped_key_data);
 
 	if (PK11_CipherOp(wrap_key_crypt_context, wrapped_key_data, &wrapped_key_len,
-			  sizeof(wrapped_key_data), key_item.data, key_item.len) != SECSuccess) {
+			  sizeof(wrapped_key_data), key_item.data, sizeof(pad_key_data)) != SECSuccess) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to encrypt authkey (%d): %s",
 			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 		goto exit_res_key;
