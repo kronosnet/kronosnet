@@ -170,6 +170,27 @@ static void test(const char *model)
 
 	flush_logs(logfds[0], stdout);
 
+	printf("Test knet_handle_crypto with %s/aes128/sha1 and key where (key_len %% wrap_key_block_size != 0)\n", model);
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	/*
+	 * Prime number so chance that (private_key_len % wrap_key_block_size == 0) is minimalized
+	 */
+	knet_handle_crypto_cfg.private_key_len = 2003;
+
+	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg) < 0) {
+		printf("knet_handle_crypto doesn't accept private_ley with len 2003: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
 	printf("Shutdown crypto\n");
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
