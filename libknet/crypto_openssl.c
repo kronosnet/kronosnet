@@ -409,7 +409,7 @@ static pthread_mutex_t *openssl_internal_lock;
 static void openssl_internal_locking_callback(int mode, int type, char *file, int line)
 {
 	if (mode & CRYPTO_LOCK) {
-		pthread_mutex_lock(&(openssl_internal_lock[type]));
+		(void)pthread_mutex_lock(&(openssl_internal_lock[type]));
 	} else {
 		pthread_mutex_unlock(&(openssl_internal_lock[type]));
 	}

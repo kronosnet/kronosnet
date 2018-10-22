@@ -757,7 +757,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	free(knet_h);
 	knet_h = NULL;
 
-	pthread_mutex_lock(&handle_config_mutex);
+	(void)pthread_mutex_lock(&handle_config_mutex);
 	knet_ref--;
 	_fini_shlib_tracker();
 	pthread_mutex_unlock(&handle_config_mutex);
