@@ -20,11 +20,6 @@
 #include "logging.h"
 #include "threads_common.h"
 
-struct pretty_names {
-	const char *name;
-	uint8_t val;
-};
-
 static struct pretty_names subsystem_names[] =
 {
 	{ "common", KNET_SUB_COMMON },

@@ -401,7 +401,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	memset(link, 0, sizeof(struct knet_link));
 	link->link_id = link_id;
 
-	if (knet_h->has_loop_link && link_id == knet_h->loop_link) {
+	if (knet_h->has_loop_link && host_id == knet_h->host_id && link_id == knet_h->loop_link) {
 		knet_h->has_loop_link = 0;
 		if (host->active_link_entries == 0) {
 			host->status.reachable = 0;

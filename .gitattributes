@@ -1,1 +1,2 @@
 configure.ac export-subst
+.gitarchivever export-subst
