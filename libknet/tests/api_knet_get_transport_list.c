@@ -28,7 +28,7 @@ static void test(void)
 
 	memset(transport_list, 0, sizeof(transport_list));
 
-	printf("Test knet_handle_get_transport_list with no entries_list\n");
+	printf("Test knet_get_transport_list with no entries_list\n");
 
 	if ((!knet_get_transport_list(transport_list, NULL)) || (errno != EINVAL)) {
 		printf("knet_get_transport_list accepted invalid list_entries or returned incorrect error: %s\n", strerror(errno));

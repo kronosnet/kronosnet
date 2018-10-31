@@ -41,7 +41,7 @@ static void test(void)
 
 	id = knet_get_transport_id_by_name("UDP");
 	if (id != KNET_TRANSPORT_UDP) {
-		printf("knet_handle_get_transport_id_by_name failed: %s\n", strerror(errno));
+		printf("knet_get_transport_id_by_name failed: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 }
