@@ -99,7 +99,7 @@ typedef struct knet_handle *knet_handle_t;
  *
  * host_id  - Each host in a knet is identified with a unique
  *            ID. when creating a new handle local host_id
- *            must be specified (0 to UINT16T_MAX are all valid).
+ *            must be specified (0 to UINT16_MAX are all valid).
  *            It is the user's responsibility to check that the value
  *            is unique, or bad things might happen.
  *
