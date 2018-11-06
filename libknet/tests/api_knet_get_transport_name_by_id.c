@@ -23,7 +23,7 @@ static void test(void)
 {
 	const char *name = NULL;
 
-	printf("Test knet_handle_get_transport_name_by_id with incorrect transport\n");
+	printf("Test knet_get_transport_name_by_id with incorrect transport\n");
 
 	if ((knet_get_transport_name_by_id(KNET_MAX_TRANSPORTS) != NULL) || (errno != EINVAL)) {
 		printf("knet_get_transport_name_by_id accepted invalid transport or returned incorrect error: %s\n", strerror(errno));
