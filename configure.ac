@@ -185,7 +185,7 @@ cc_supports_flag() {
 		CPPFLAGS="-Werror $CPPFLAGS"
 	fi
 	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
 	CPPFLAGS="$saveCPPFLAGS"
@@ -409,6 +409,7 @@ WARNLIST="
 	missing-declarations
 	suggest-attribute=noreturn
 	suggest-attribute=format
+	property-attribute-mismatch
 	strict-prototypes
 	declaration-after-statement
 	pointer-arith
@@ -432,12 +433,14 @@ WARNLIST="
 	parentheses
 	sequence-point
 	switch
+	shift-overflow
 	shift-overflow=2
 	overlength-strings
 	retundent-decls
 	init-self
 	uninitialized
 	unused-but-set-variable
+	unused-const-variable
 	unused-function
 	unused-result
 	unused-value
