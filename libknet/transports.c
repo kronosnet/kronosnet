@@ -29,7 +29,7 @@
 
 #define empty_module 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 
-knet_transport_ops_t transport_modules_cmd[] = {
+knet_transport_ops_t transport_modules_cmd[KNET_MAX_TRANSPORTS] = {
 	{ "LOOPBACK", KNET_TRANSPORT_LOOPBACK, 1, KNET_PMTUD_LOOPBACK_OVERHEAD, loopback_transport_init, loopback_transport_free, loopback_transport_link_set_config, loopback_transport_link_clear_config, loopback_transport_link_dyn_connect, loopback_transport_rx_sock_error, loopback_transport_tx_sock_error, loopback_transport_rx_is_data },
 	{ "UDP", KNET_TRANSPORT_UDP, 1, KNET_PMTUD_UDP_OVERHEAD, udp_transport_init, udp_transport_free, udp_transport_link_set_config, udp_transport_link_clear_config, udp_transport_link_dyn_connect, udp_transport_rx_sock_error, udp_transport_tx_sock_error, udp_transport_rx_is_data },
 	{ "SCTP", KNET_TRANSPORT_SCTP,
