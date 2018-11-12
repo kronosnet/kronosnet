@@ -24,7 +24,7 @@
  * internal module switch data
  */
 
-crypto_model_t crypto_modules_cmds[] = {
+static crypto_model_t crypto_modules_cmds[] = {
 	{ "nss", WITH_CRYPTO_NSS, 0, NULL },
 	{ "openssl", WITH_CRYPTO_OPENSSL, 0, NULL },
 	{ NULL, 0, 0, NULL }
