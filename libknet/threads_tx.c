@@ -349,7 +349,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			       knet_h->send_to_links_buf_compress, (ssize_t *)&cmp_outlen);
 		if (err < 0) {
 			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
-		} else {
+		} else if (cmp_outlen < inlen) {
 			/* Collect stats */
 			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			timespec_diff(start_time, end_time, &compress_time);
@@ -368,11 +368,9 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			knet_h->stats.tx_compressed_original_bytes += inlen;
 			knet_h->stats.tx_compressed_size_bytes += cmp_outlen;
 
-			if (cmp_outlen < inlen) {
-				memmove(inbuf->khp_data_userdata, knet_h->send_to_links_buf_compress, cmp_outlen);
-				inlen = cmp_outlen;
-				data_compressed = 1;
-			}
+			memmove(inbuf->khp_data_userdata, knet_h->send_to_links_buf_compress, cmp_outlen);
+			inlen = cmp_outlen;
+			data_compressed = 1;
 		}
 	}
 	if (knet_h->compress_model > 0 && !data_compressed) {
