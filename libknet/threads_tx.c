@@ -639,21 +639,11 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 	if (inlen == 0) {
 		savederrno = 0;
 		docallback = 1;
-		goto out;
-	}
-	if (inlen < 0) {
-		savederrno = errno;
-		docallback = 1;
-		goto out;
-	}
-
-	knet_h->recv_from_sock_buf->kh_type = type;
-	_parse_recv_from_sock(knet_h, inlen, channel, 0);
-
-out:
-	if (inlen < 0) {
+	} else if (inlen < 0) {
 		struct epoll_event ev;
 
+		savederrno = errno;
+		docallback = 1;
 		memset(&ev, 0, sizeof(struct epoll_event));
 
 		if (epoll_ctl(knet_h->send_to_links_epollfd,
@@ -663,7 +653,9 @@ out:
 		} else {
 			knet_h->sockfd[channel].has_error = 1;
 		}
-
+	} else {
+		knet_h->recv_from_sock_buf->kh_type = type;
+		_parse_recv_from_sock(knet_h, inlen, channel, 0);
 	}
 
 	if (docallback) {

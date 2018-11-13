@@ -32,7 +32,7 @@
  * Always add new items before the last NULL.
  */
 
-compress_model_t compress_modules_cmds[] = {
+static compress_model_t compress_modules_cmds[] = {
 	{ "none" , 0, 0, 0, NULL },
 	{ "zlib" , 1, WITH_COMPRESS_ZLIB , 0, NULL },
 	{ "lz4"  , 2, WITH_COMPRESS_LZ4  , 0, NULL },
