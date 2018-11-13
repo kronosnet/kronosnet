@@ -566,7 +566,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)inbuf,
-						    len,
+						    outlen,
 						    knet_h->recv_from_links_buf_crypt,
 						    &outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt pong packet");
@@ -654,7 +654,7 @@ retry_pong:
 		if (knet_h->crypto_instance) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)inbuf,
-						    len,
+						    outlen,
 						    knet_h->recv_from_links_buf_crypt,
 						    &outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt PMTUd reply packet");
