@@ -24,6 +24,8 @@
  * Kronosnet is an advanced VPN system for High Availability applications.
  */
 
+typedef uint16_t knet_node_id_t;
+
 /*
  * libknet limits
  */
@@ -31,8 +33,6 @@
 /*
  * Maximum number of hosts
  */
-
-typedef uint16_t knet_node_id_t;
 
 #define KNET_MAX_HOST 65536
 
