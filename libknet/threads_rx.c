@@ -409,6 +409,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				memmove(inbuf->khp_data_userdata, knet_h->recv_from_links_buf_decompress, decmp_outlen);
 				len = decmp_outlen + KNET_HEADER_DATA_SIZE;
 			} else {
+				knet_h->stats.rx_failed_to_decompress++;
 				log_warn(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
 					 err, strerror(errno));
 				return;

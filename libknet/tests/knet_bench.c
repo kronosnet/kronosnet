@@ -968,12 +968,15 @@ static void display_stats(int level)
 			printf("[stat]:  tx_compress_time_ave: %" PRIu64 "\n", handle_stats.tx_compress_time_ave);
 			printf("[stat]:  tx_compress_time_min: %" PRIu64 "\n", handle_stats.tx_compress_time_min);
 			printf("[stat]:  tx_compress_time_max: %" PRIu64 "\n", handle_stats.tx_compress_time_max);
+			printf("[stat]:  tx_failed_to_compress: %" PRIu64 "\n", handle_stats.tx_failed_to_compress);
+			printf("[stat]:  tx_unable_to_compress: %" PRIu64 "\n", handle_stats.tx_unable_to_compress);
 			printf("[stat]:  rx_compressed_packets: %" PRIu64 "\n", handle_stats.rx_compressed_packets);
 			printf("[stat]:  rx_compressed_original_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_original_bytes);
 			printf("[stat]:  rx_compressed_size_bytes: %" PRIu64 "\n", handle_stats.rx_compressed_size_bytes);
 			printf("[stat]:  rx_compress_time_ave: %" PRIu64 "\n", handle_stats.rx_compress_time_ave);
 			printf("[stat]:  rx_compress_time_min: %" PRIu64 "\n", handle_stats.rx_compress_time_min);
 			printf("[stat]:  rx_compress_time_max: %" PRIu64 "\n", handle_stats.rx_compress_time_max);
+			printf("[stat]:  rx_failed_to_decompress: %" PRIu64 "\n", handle_stats.rx_failed_to_decompress);
 			printf("\n");
 		}
 		if (cryptocfg) {

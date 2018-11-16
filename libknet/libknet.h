@@ -747,6 +747,8 @@ struct knet_handle_stats {
 	uint64_t tx_compress_time_ave;
 	uint64_t tx_compress_time_min;
 	uint64_t tx_compress_time_max;
+	uint64_t tx_failed_to_compress;
+	uint64_t tx_unable_to_compress;
 
 	uint64_t rx_compressed_packets;
 	uint64_t rx_compressed_original_bytes;
@@ -754,6 +756,7 @@ struct knet_handle_stats {
 	uint64_t rx_compress_time_ave;
 	uint64_t rx_compress_time_min;
 	uint64_t rx_compress_time_max;
+	uint64_t rx_failed_to_decompress;
 
 	/* Overhead times, measured in usecs */
 	uint64_t tx_crypt_packets;
