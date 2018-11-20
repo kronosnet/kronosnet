@@ -415,9 +415,9 @@ static void openssl_internal_locking_callback(int mode, int type, char *file, in
 	}
 }
 
-static unsigned long openssl_internal_thread_id(void)
+static pthread_t openssl_internal_thread_id(void)
 {
-	return (unsigned long)pthread_self();
+	return pthread_self();
 }
 
 static void openssl_internal_lock_cleanup(void)
