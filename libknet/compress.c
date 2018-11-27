@@ -477,5 +477,7 @@ int knet_get_compress_list(struct knet_compress_info *compress_list, size_t *com
 	}
 	*compress_list_entries = outidx;
 
+	if (!err)
+		errno = 0;
 	return err;
 }
