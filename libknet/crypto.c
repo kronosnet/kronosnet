@@ -208,5 +208,7 @@ int knet_get_crypto_list(struct knet_crypto_info *crypto_list, size_t *crypto_li
 	}
 	*crypto_list_entries = outidx;
 
+	if (!err)
+		errno = 0;
 	return err;
 }

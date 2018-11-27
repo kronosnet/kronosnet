@@ -619,7 +619,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 out:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 

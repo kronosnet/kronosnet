@@ -59,6 +59,7 @@ const char *knet_log_get_subsystem_name(uint8_t subsystem)
 			break;
 		}
 		if (subsystem_names[i].val == subsystem) {
+			errno = 0;
 			return subsystem_names[i].name;
 		}
 	}
@@ -74,6 +75,7 @@ uint8_t knet_log_get_subsystem_id(const char *name)
 			break;
 		}
 		if (strcasecmp(name, subsystem_names[i].name) == 0) {
+			errno = 0;
 			return subsystem_names[i].val;
 		}
 	}
@@ -110,6 +112,7 @@ const char *knet_log_get_loglevel_name(uint8_t level)
 
 	for (i = 0; i <= KNET_LOG_DEBUG; i++) {
 		if (loglevel_names[i].val == level) {
+			errno = 0;
 			return loglevel_names[i].name;
 		}
 	}
@@ -122,6 +125,7 @@ uint8_t knet_log_get_loglevel_id(const char *name)
 
 	for (i = 0; i <= KNET_LOG_DEBUG; i++) {
 		if (strcasecmp(name, loglevel_names[i].name) == 0) {
+			errno = 0;
 			return loglevel_names[i].val;
 		}
 	}
@@ -159,6 +163,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 	knet_h->log_levels[subsystem] = level;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = 0;
 	return 0;
 }
 
@@ -193,6 +198,7 @@ int knet_log_get_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 	*level = knet_h->log_levels[subsystem];
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = 0;
 	return 0;
 }
 
