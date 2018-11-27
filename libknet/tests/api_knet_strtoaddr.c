@@ -34,33 +34,33 @@ static void test(void)
 
 	printf("Checking knet_strtoaddr with invalid host\n");
 
-	if (!knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)) &&
+	if (!knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid host\n");
+		printf("knet_strtoaddr accepted invalid host or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
 	printf("Checking knet_strtoaddr with invalid port\n");
 
-	if (!knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)) &&
+	if (!knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid port\n");
+		printf("knet_strtoaddr accepted invalid port or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
 	printf("Checking knet_strtoaddr with invalid addr\n");
 
-	if (!knet_strtoaddr("127.0.0.1", "50000", NULL, sizeof(struct sockaddr_storage)) &&
+	if (!knet_strtoaddr("127.0.0.1", "50000", NULL, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid addr\n");
+		printf("knet_strtoaddr accepted invalid addr or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
 	printf("Checking knet_strtoaddr with invalid size\n");
 
-	if (!knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0) &&
+	if (!knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid size\n");
+		printf("knet_strtoaddr accepted invalid size or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
