@@ -699,6 +699,7 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 
 	wait_all_threads_status(knet_h, KNET_THREAD_RUNNING);
 
+	errno = 0;
 	return knet_h;
 
 exit_fail:
@@ -762,6 +763,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	_fini_shlib_tracker();
 	pthread_mutex_unlock(&handle_config_mutex);
 
+	errno = 0;
 	return 0;
 }
 
@@ -801,6 +803,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -941,7 +944,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1005,7 +1008,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd)
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1046,7 +1049,7 @@ int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *data
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1096,7 +1099,7 @@ int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *chan
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1138,6 +1141,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 
@@ -1173,6 +1177,7 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 
@@ -1202,6 +1207,7 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 
@@ -1232,6 +1238,7 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 
@@ -1266,6 +1273,7 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 
@@ -1296,6 +1304,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 
@@ -1357,7 +1366,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1389,7 +1398,7 @@ int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *
 	savederrno = errno;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1452,7 +1461,7 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1516,7 +1525,7 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 
 out_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1563,7 +1572,7 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 	stats->size = sizeof(struct knet_handle_stats);
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1598,7 +1607,7 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
