@@ -244,7 +244,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -336,7 +336,7 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -413,7 +413,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -483,7 +483,7 @@ int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -540,7 +540,7 @@ int knet_link_get_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -601,7 +601,7 @@ int knet_link_set_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -658,7 +658,7 @@ int knet_link_get_pong_count(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -733,7 +733,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -802,7 +802,7 @@ int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -876,7 +876,7 @@ int knet_link_set_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -933,7 +933,7 @@ int knet_link_get_priority(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -989,7 +989,7 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -1081,6 +1081,6 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }

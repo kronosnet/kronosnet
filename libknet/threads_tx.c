@@ -348,6 +348,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
 			       knet_h->send_to_links_buf_compress, (ssize_t *)&cmp_outlen);
 		if (err < 0) {
+			knet_h->stats.tx_failed_to_compress++;
 			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
 		} else {
 			/* Collect stats */
@@ -372,6 +373,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 				memmove(inbuf->khp_data_userdata, knet_h->send_to_links_buf_compress, cmp_outlen);
 				inlen = cmp_outlen;
 				data_compressed = 1;
+			} else {
+				knet_h->stats.tx_unable_to_compress++;
 			}
 		}
 	}
@@ -619,7 +622,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 out:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
