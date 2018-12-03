@@ -66,13 +66,11 @@ static int ip6addr_cmp(struct in6_addr *a, struct in6_addr *b)
 	uint64_t a_high, a_low;
 	uint64_t b_high, b_low;
 
-	/* Not sure why '&' doesn't work below, so I used '+' instead which is effectively
-	   the same thing because the bottom 32bits are always zero and the value unsigned */
-	a_high = ((uint64_t)htonl(a->s6_addr32[0]) << 32) + (uint64_t)htonl(a->s6_addr32[1]);
-	a_low  = ((uint64_t)htonl(a->s6_addr32[2]) << 32) + (uint64_t)htonl(a->s6_addr32[3]);
+	a_high = ((uint64_t)htonl(a->s6_addr32[0]) << 32) | (uint64_t)htonl(a->s6_addr32[1]);
+	a_low  = ((uint64_t)htonl(a->s6_addr32[2]) << 32) | (uint64_t)htonl(a->s6_addr32[3]);
 
-	b_high = ((uint64_t)htonl(b->s6_addr32[0]) << 32) + (uint64_t)htonl(b->s6_addr32[1]);
-	b_low  = ((uint64_t)htonl(b->s6_addr32[2]) << 32) + (uint64_t)htonl(b->s6_addr32[3]);
+	b_high = ((uint64_t)htonl(b->s6_addr32[0]) << 32) | (uint64_t)htonl(b->s6_addr32[1]);
+	b_low  = ((uint64_t)htonl(b->s6_addr32[2]) << 32) | (uint64_t)htonl(b->s6_addr32[3]);
 
 	if (a_high > b_high)
 		return 1;

@@ -28,7 +28,7 @@
 /*
  * reuse Jan Friesse's compat layer as wrapper to drop usage of sendmmsg
  *
- * TODO: kill those wrappers once we work on packet delivery guaranteed
+ * TODO: kill those wrappers once we work on packet delivery guarantees
  */
 
 int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
