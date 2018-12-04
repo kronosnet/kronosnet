@@ -275,7 +275,6 @@ static int check_knet_mtu(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	nozzle_t nozzle;
-	char *error_string = NULL;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -304,12 +303,8 @@ static int check_knet_mtu(void)
 
 	printf("Setting MTU to 9000\n");
 	expected_mtu = 9000;
-	if (nozzle_set_mtu(nozzle, expected_mtu, &error_string) < 0) {
+	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
 		printf("Unable to set MTU to %d\n", expected_mtu);
-		if (error_string) {
-			printf("error: %s\n", error_string);
-			free(error_string);
-		}
 		err = -1;
 		goto out_clean;
 	}
@@ -336,12 +331,8 @@ static int check_knet_mtu(void)
 	}
 
 	printf("Passing empty struct to set_mtu\n");
-	if (nozzle_set_mtu(NULL, 1500, &error_string) == 0) {
+	if (nozzle_set_mtu(NULL, 1500) == 0) {
 		printf("Something is wrong in nozzle_set_mtu sanity checks\n");
-		if (error_string) {
-			printf("error: %s\n", error_string);
-			free(error_string);
-		}
 		err = -1;
 		goto out_clean;
 	}
@@ -375,12 +366,7 @@ static int check_knet_mtu_ipv6(void)
 
 	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = nozzle_add_ip(nozzle, testipv6_1, "64", &error_string);
-	if (error_string) {
-		printf("add ipv6 output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv6_1, "64");
 	if (err) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -408,12 +394,8 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Setting MTU to 1200\n");
-	if (nozzle_set_mtu(nozzle, 1200, &error_string) < 0) {
+	if (nozzle_set_mtu(nozzle, 1200) < 0) {
 		printf("Unable to set MTU to 1200\n");
-		if (error_string) {
-			printf("error: %s\n", error_string);
-			free(error_string);
-		}
 		err = -1;
 		goto out_clean;
 	}
@@ -436,12 +418,7 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Adding ip: %s/64\n", testipv6_2);
-	err = nozzle_add_ip(nozzle, testipv6_2, "64", &error_string);
-	if (error_string) {
-		printf("add ipv6 output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv6_2, "64");
 	if (err < 0) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -469,12 +446,8 @@ static int check_knet_mtu_ipv6(void)
 	}
 
 	printf("Restoring MTU to default\n");
-	if (nozzle_reset_mtu(nozzle, &error_string) < 0) {
+	if (nozzle_reset_mtu(nozzle) < 0) {
 		printf("Unable to reset mtu\n");
-		if (error_string) {
-			printf("error: %s\n", error_string);
-			free(error_string);
-		}
 		err = -1;
 		goto out_clean;
 	}
@@ -968,7 +941,6 @@ static int check_knet_close_leak(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	nozzle_t nozzle;
-	char *error_string = NULL;
 
 	printf("Testing close leak (needs valgrind)\n");
 
@@ -982,12 +954,7 @@ static int check_knet_close_leak(void)
 
 	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = nozzle_add_ip(nozzle, testipv4_1, "24", &error_string);
-	if (error_string) {
-		printf("add ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv4_1, "24");
 	if (err < 0) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -996,12 +963,7 @@ static int check_knet_close_leak(void)
 
 	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = nozzle_add_ip(nozzle, testipv4_2, "24", &error_string);
-	if (error_string) {
-		printf("add ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv4_2, "24");
 	if (err < 0) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -1037,12 +999,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/24\n", testipv4_1);
 
-	err = nozzle_add_ip(nozzle, testipv4_1, "24", &error_string);
-	if (error_string) {
-		printf("add ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv4_1, "24");
 	if (err < 0) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -1051,12 +1008,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/24\n", testipv4_2);
 
-	err = nozzle_add_ip(nozzle, testipv4_2, "24", &error_string);
-	if (error_string) {
-		printf("add ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv4_2, "24");
 	if (err < 0) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -1065,12 +1017,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding duplicate ip: %s/24\n", testipv4_1);
 
-	err = nozzle_add_ip(nozzle, testipv4_1, "24", &error_string);
-	if (error_string) {
-		printf("add ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv4_1, "24");
 	if (err < 0) {
 		printf("Unable to find IP address in libnozzle db\n");
 		err=-1;
@@ -1123,12 +1070,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
 
-	err = nozzle_del_ip(nozzle, testipv4_1, "24", &error_string);
-	if (error_string) {
-		printf("del ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_del_ip(nozzle, testipv4_1, "24");
 	if (err < 0) {
 		printf("Unable to delete IP address\n");
 		err=-1;
@@ -1137,12 +1079,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_2);
 
-	err = nozzle_del_ip(nozzle, testipv4_2, "24", &error_string);
-	if (error_string) {
-		printf("del ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_del_ip(nozzle, testipv4_2, "24");
 	if (err < 0) {
 		printf("Unable to delete IP address\n");
 		err=-1;
@@ -1151,12 +1088,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting again ip: %s/24\n", testipv4_1);
 
-	err = nozzle_del_ip(nozzle, testipv4_1, "24", &error_string);
-	if (error_string) {
-		printf("del ip output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_del_ip(nozzle, testipv4_1, "24");
 	if (err < 0) {
 		printf("Unable to delete IP address\n");
 		err=-1;
@@ -1185,12 +1117,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Adding ip: %s/64\n", testipv6_1);
 
-	err = nozzle_add_ip(nozzle, testipv6_1, "64", &error_string);
-	if (error_string) {
-		printf("add ipv6 output: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_add_ip(nozzle, testipv6_1, "64");
 	if (err < 0) {
 		printf("Unable to assign IP address\n");
 		err=-1;
@@ -1219,12 +1146,7 @@ static int check_knet_set_del_ip(void)
 
 	printf("Deleting ip: %s/64\n", testipv6_1);
 
-	err = nozzle_del_ip(nozzle, testipv6_1, "64", &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
+	err = nozzle_del_ip(nozzle, testipv6_1, "64");
 	if (err) {
 		printf("Unable to delete IP address\n");
 		err=-1;
