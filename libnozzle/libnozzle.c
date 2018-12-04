@@ -664,75 +664,6 @@ out_clean:
 	return err;
 }
 
-int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
-{
-	int err = 0, savederrno = 0;
-	char command[PATH_MAX];
-	const char *action_str = NULL;
-	struct stat sb;
-
-	if (action > NOZZLE_POSTDOWN) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (!exec_string) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	if (!nozzle->hasupdown) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out_clean;
-	}
-
-	switch(action) {
-		case NOZZLE_PREUP:
-			action_str = "pre-up.d";
-			break;
-		case NOZZLE_UP:
-			action_str = "up.d";
-			break;
-		case NOZZLE_DOWN:
-			action_str = "down.d";
-			break;
-		case NOZZLE_POSTDOWN:
-			action_str = "post-down.d";
-			break;
-	}
-
-	memset(command, 0, PATH_MAX);
-
-	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action_str, nozzle->name);
-
-	err = stat(command, &sb);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	err = execute_bin_sh_command(command, exec_string);
-	savederrno = errno;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno =  savederrno;
-	return err;
-}
-
 /*
  * functions below should be completed
  */
@@ -969,6 +900,75 @@ int nozzle_close(nozzle_t nozzle)
 out_clean:
 	pthread_mutex_unlock(&config_mutex);
 	errno = savederrno;
+	return err;
+}
+
+int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
+{
+	int err = 0, savederrno = 0;
+	char command[PATH_MAX];
+	const char *action_str = NULL;
+	struct stat sb;
+
+	if (action > NOZZLE_POSTDOWN) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!exec_string) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	if (!nozzle->hasupdown) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_clean;
+	}
+
+	switch(action) {
+		case NOZZLE_PREUP:
+			action_str = "pre-up.d";
+			break;
+		case NOZZLE_UP:
+			action_str = "up.d";
+			break;
+		case NOZZLE_DOWN:
+			action_str = "down.d";
+			break;
+		case NOZZLE_POSTDOWN:
+			action_str = "post-down.d";
+			break;
+	}
+
+	memset(command, 0, PATH_MAX);
+
+	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action_str, nozzle->name);
+
+	err = stat(command, &sb);
+	if (err) {
+		savederrno = errno;
+		goto out_clean;
+	}
+
+	err = execute_bin_sh_command(command, exec_string);
+	savederrno = errno;
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	errno =  savederrno;
 	return err;
 }
 

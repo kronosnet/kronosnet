@@ -74,7 +74,9 @@ int nozzle_close(nozzle_t nozzle);
 
 /**
  * nozzle_run_updown
- * @brief execute updown commands associated with a nozzle device
+ * @brief execute updown commands associated with a nozzle device. It is
+ *        the application responsibility to call helper scripts
+ *        before or after creating/destroying interfaces or IP addresses.
  *
  * nozzle - pointer to the nozzle struct
  *
