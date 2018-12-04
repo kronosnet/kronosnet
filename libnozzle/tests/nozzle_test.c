@@ -981,10 +981,10 @@ static int check_knet_set_del_ip(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	char verifycmd[1024];
-	int err=0;
+	int err = 0;
 	nozzle_t nozzle;
-	char *ip_list = NULL;
-	int ip_list_entries = 0, i, offset = 0;
+	struct nozzle_ip *ip_list = NULL, *ip_list_tmp = NULL;
+	int ip_list_entries = 0, i;
 	char *error_string = NULL;
 
 	printf("Testing interface add/remove ip\n");
@@ -1048,10 +1048,19 @@ static int check_knet_set_del_ip(void)
 
 	printf("Get ip list from libnozzle:\n");
 
-	if (nozzle_get_ips(nozzle, &ip_list, &ip_list_entries) < 0) {
+	if (nozzle_get_ips(nozzle, &ip_list) < 0) {
 		printf("Not enough mem?\n");
 		err=-1;
 		goto out_clean;
+	}
+
+	ip_list_tmp = ip_list;
+	ip_list_entries = 0;
+
+	while(ip_list_tmp) {
+		ip_list_entries++;
+		printf("Found IP %s %s in libnozzle db\n", ip_list_tmp->ipaddr, ip_list_tmp->prefix);
+		ip_list_tmp = ip_list_tmp->next;
 	}
 
 	if (ip_list_entries != 2) {
@@ -1059,14 +1068,6 @@ static int check_knet_set_del_ip(void)
 		err=-1;
 		goto out_clean;
 	}
-
-	for (i = 1; i <= ip_list_entries; i++) {
-		printf("Found IP %s %s in libnozzle db\n", ip_list + offset, ip_list + offset + strlen(ip_list + offset) + 1);
-		offset = offset + strlen(ip_list) + 1;
-		offset = offset + strlen(ip_list + offset) + 1;
-	}
-
-	free(ip_list);
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
 
