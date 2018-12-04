@@ -363,6 +363,9 @@ out:
 	return err;
 #endif
 #ifdef KNET_BSD
+	/*
+	 * TODO: port to use ioctl and such, drop shell forking here
+	 */
 	memset(cmdline, 0, sizeof(cmdline));
 
 	if (fam == AF_INET) {
