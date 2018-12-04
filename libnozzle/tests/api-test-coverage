@@ -49,4 +49,43 @@ for i in $headerapicalls; do
 	fi
 done
 
+echo "Checking for tests with memcheck exceptions"
+
+for i in $(grep -l is_memcheck "$srcdir"/*.c | grep -v test-common); do
+	echo "WARNING: $(basename $i) - has memcheck exception enabled"
+done
+
+echo "Checking for tests with helgrind exceptions"
+
+for i in $(grep -l is_helgrind "$srcdir"/*.c | grep -v test-common); do
+	echo "WARNING: $(basename $i) has helgrind exception enabled"
+done
+
+echo "Checking for api test coverage"
+
+numapicalls=0
+found=0
+missing=0
+
+for i in $headerapicalls; do
+	numapicalls=$((numapicalls + 1))
+	if [ -f $srcdir/api_${i}.c ]; then
+		found=$((found + 1))
+	else
+		missing=$((missing + 1))
+		echo "MISSING: $i"
+	fi
+done
+
+echo "Summary"
+echo "-------"
+echo "Found   : $found"
+echo "Missing : $missing"
+echo "Total   : $numapicalls"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
+exit 0
+
 exit 0
