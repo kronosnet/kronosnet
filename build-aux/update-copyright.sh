@@ -11,7 +11,7 @@
 
 enddate=$(date +%Y)
 
-input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp |grep -v update-copyright)
+input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp |grep -v update-copyright |grep -v doxyxml.c)
 for i in $input; do
 	startdate=$(git log --follow "$i" | grep ^Date: | tail -n 1 | awk '{print $6}')
 	if [ "$startdate" != "$enddate" ]; then
