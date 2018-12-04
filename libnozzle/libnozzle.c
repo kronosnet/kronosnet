@@ -1176,6 +1176,11 @@ int nozzle_get_ips(const nozzle_t nozzle, struct nozzle_ip **nozzle_ip)
 {
 	int err = 0, savederrno = 0;
 
+	if (!nozzle_ip) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
 		errno = savederrno;
