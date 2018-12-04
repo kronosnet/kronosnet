@@ -398,7 +398,7 @@ out:
 	 * temporary workaround as we port libnozzle to BSD ioctl
 	 * for IP address management
 	 */
-	err = execute_bin_sh_command(cmdline, error_string);
+	err = execute_bin_sh_command(cmdline, &error_string);
 	if (error_string) {
 		free(error_string);
 		error_string = NULL;
