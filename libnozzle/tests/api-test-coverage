@@ -7,15 +7,15 @@
 # This software licensed under GPL-2.0+, LGPL-2.0+
 #
 
-srcdir="$1"/libnozzle
-builddir="$2"/libnozzle
+srcdir="$1"/libnozzle/tests
+builddir="$2"/libnozzle/tests
 
-headerapicalls="$(grep nozzle_ "$srcdir"/libnozzle.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+headerapicalls="$(grep nozzle_ "$srcdir"/../libnozzle.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
 
 # The PowerPC64 ELFv1 ABI defines the address of a function as that of a
 # function descriptor defined in .opd, a data (D) section.  Other ABIs
 # use the entry address of the function itself in the text (T) section.
-exportedapicalls="$(nm -B -D "$builddir"/.libs/libnozzle.so | grep ' [DT] ' | awk '{print $3}')"
+exportedapicalls="$(nm -B -D "$builddir"/../.libs/libnozzle.so | grep ' [DT] ' | awk '{print $3}')"
 
 echo "Checking for exported symbols NOT available in header file"
 
