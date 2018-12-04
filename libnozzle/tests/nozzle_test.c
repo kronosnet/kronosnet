@@ -349,7 +349,7 @@ static int check_knet_mtu_ipv6(void)
 {
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
-	char verifycmd[1024];
+	char verifycmd[2048];
 	int err=0;
 	nozzle_t nozzle;
 	char *error_string = NULL;
@@ -980,11 +980,11 @@ static int check_knet_set_del_ip(void)
 {
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
-	char verifycmd[1024];
+	char verifycmd[2048];
 	int err = 0;
 	nozzle_t nozzle;
 	struct nozzle_ip *ip_list = NULL, *ip_list_tmp = NULL;
-	int ip_list_entries = 0, i;
+	int ip_list_entries = 0;
 	char *error_string = NULL;
 
 	printf("Testing interface add/remove ip\n");
