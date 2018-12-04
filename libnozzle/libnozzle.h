@@ -126,9 +126,9 @@ int nozzle_set_down(nozzle_t nozzle);
  * nozzle - pointer to the nozzle struct
  *
  * ipaddr - string containing either an IPv4 or an IPv6 address.
- *           Please note that Linux will automatically remove any IPv6 addresses from an interface
- *           with MTU < 1280. libnozzle will cache those IPs and re-instate them when MTU is > 1280.
- *           MTU must be set via nozzle_set_mtu for IPv6 to be re-instated.
+ *          Please note that Linux will automatically remove any IPv6 addresses from an interface
+ *          with MTU < 1280. libnozzle will cache those IPs and re-instate them when MTU is > 1280.
+ *          MTU must be set via nozzle_set_mtu for IPv6 to be re-instated.
  *
  * prefix - 24, 64 or any valid network prefix for the requested address.
  *
