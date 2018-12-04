@@ -408,80 +408,7 @@ out:
 }
 
 /*
- * public API
- */
-
-int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries)
-{
-	int err = 0, savederrno = 0;
-	int found = 0;
-	char *ip_list = NULL;
-	int size = 0, offset = 0, len;
-	struct nozzle_ip *ip = NULL;
-
-	if ((!ipaddr_list) || (!entries)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_mutex_lock(&config_mutex);
-	if (savederrno) {
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!is_valid_nozzle(nozzle)) {
-		savederrno = EINVAL;
-		goto out_clean;
-	}
-
-	ip = nozzle->ip;
-
-	while (ip) {
-		found++;
-		ip = ip->next;
-	}
-
-	if (!found) {
-		*ipaddr_list = NULL;
-		*entries = 0;
-		goto out_clean;
-	}
-
-	size = found * (IPADDR_CHAR_MAX + PREFIX_CHAR_MAX + 2);
-
-	ip_list = malloc(size);
-	if (!ip_list) {
-		savederrno = errno;
-		err = -1;
-		goto out_clean;
-	}
-
-	memset(ip_list, 0, size);
-
-	ip = nozzle->ip;
-
-	while (ip) {
-		len = strlen(ip->ipaddr);
-		memmove(ip_list + offset, ip->ipaddr, len);
-		offset = offset + len + 1;
-		len = strlen(ip->prefix);
-		memmove(ip_list + offset, ip->prefix, len);
-		offset = offset + len + 1;
-		ip = ip->next;
-	}
-
-	*ipaddr_list = ip_list;
-	*entries = found;
-
-out_clean:
-	pthread_mutex_unlock(&config_mutex);
-	errno = savederrno;
-	return err;
-}
-
-/*
- * functions below should be completed
+ * Exported public API
  */
 
 nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
@@ -1235,6 +1162,30 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix)
 		}
 		free(ip);
 	}
+
+out_clean:
+	pthread_mutex_unlock(&config_mutex);
+	errno = savederrno;
+	return err;
+}
+
+int nozzle_get_ips(const nozzle_t nozzle, struct nozzle_ip **nozzle_ip)
+{
+	int err = 0, savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&config_mutex);
+	if (savederrno) {
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!is_valid_nozzle(nozzle)) {
+		err = -1;
+		savederrno = EINVAL;
+		goto out_clean;
+	}
+
+	*nozzle_ip = nozzle->ip;
 
 out_clean:
 	pthread_mutex_unlock(&config_mutex);

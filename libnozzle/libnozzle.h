@@ -156,27 +156,37 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix);
 
 int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix);
 
+
+#define IPADDR_CHAR_MAX	128
+#define PREFIX_CHAR_MAX	  4
+
+struct nozzle_ip {
+	char ipaddr[IPADDR_CHAR_MAX + 1];
+	char prefix[PREFIX_CHAR_MAX + 1];
+	int  domain;	/* AF_INET or AF_INET6 */
+	struct nozzle_ip *next;
+};
+
 /**
  * nozzle_get_ips
  * @brief retrive the list of all configured ips for a given interface
  *
- * TODO: change to use a ipaddr_list struct!
- *
  * nozzle - pointer to the nozzle struct
  *
- * ipaddr_list - list of strings containing either an IPv4 or an IPv6 address and their prefixes.
- *
- * entries - entries recorded.
+ * nozzle_ip - pointer to the head of a list of nozzle_ip structs.
+ *             The last IP will have next = NULL.
+ *             nozzle_ip can be NULL if there are no IP addresses
+ *             associated with this nozzle device.
+ *             *DO NOT* free those structs as they are used internally
+ *             for IP address tracking.
  *
  * @return
  * 0 on success
  * -1 on error and errno is set.
- * ipaddr_list is a malloc'ed buffer that the user needs to parse and free after use. ipaddr_list can
- * be NULL if entries is 0.
  *
  */
 
-int nozzle_get_ips(const nozzle_t nozzle, char **ipaddr_list, int *entries);
+int nozzle_get_ips(const nozzle_t nozzle, struct nozzle_ip **nozzle_ip);
 
 /**
  * nozzle_get_mtu

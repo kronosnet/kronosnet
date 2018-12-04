@@ -15,6 +15,7 @@
 #include <netlink/netlink.h>
 #endif
 #include <net/if.h>
+#include "libnozzle.h"
 
 struct nozzle_lib_config {
 	struct nozzle_iface *head;
@@ -22,16 +23,6 @@ struct nozzle_lib_config {
 #ifdef KNET_LINUX
 	struct nl_sock *nlsock;
 #endif
-};
-
-#define IPADDR_CHAR_MAX   128
-#define PREFIX_CHAR_MAX	    4
-
-struct nozzle_ip {
-	char ipaddr[IPADDR_CHAR_MAX + 1];
-	char prefix[PREFIX_CHAR_MAX + 1];
-	int  domain;			/* AF_INET or AF_INET6 */
-	struct nozzle_ip *next;
 };
 
 #define MACADDR_CHAR_MAX   18
