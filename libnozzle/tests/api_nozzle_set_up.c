@@ -39,8 +39,7 @@ static int test(void)
 
 	printf("Put the interface up\n");
 
-	err = nozzle_set_up(nozzle);
-	if (err < 0) {
+	if (nozzle_set_up(nozzle) < 0) {
 		printf("Unable to set interface up\n");
 		err = -1;
 		goto out_clean;
@@ -69,15 +68,13 @@ static int test(void)
 	printf("Test ERROR conditions\n");
 
 	printf("Try to UP the same interface twice\n");
-	err = nozzle_set_up(nozzle);
-	if (err < 0) {
-		printf("Interface was already UP, spurious error received from nozzle_set_up");
+	if (nozzle_set_up(nozzle) < 0) {
+		printf("Interface was already UP, spurious error received from nozzle_set_up\n");
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Pass NULL to nozzle set_up\n");
-	err = 0;
 	errno = 0;
 	if ((nozzle_set_up(NULL) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_up sanity checks\n");
