@@ -785,47 +785,6 @@ out_clean:
 	return err;
 }
 
-static int check_knet_close_leak(void)
-{
-	char device_name[IFNAMSIZ];
-	size_t size = IFNAMSIZ;
-	int err=0;
-	nozzle_t nozzle;
-
-	printf("Testing close leak (needs valgrind)\n");
-
-	memset(device_name, 0, size);
-
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
-
-	printf("Adding ip: %s/24\n", testipv4_1);
-
-	err = nozzle_add_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err=-1;
-		goto out_clean;
-	}
-
-	printf("Adding ip: %s/24\n", testipv4_2);
-
-	err = nozzle_add_ip(nozzle, testipv4_2, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err=-1;
-		goto out_clean;
-	}
-
-out_clean:
-	nozzle_close(nozzle);
-
-	return err;
-}
-
 static int check_knet_set_del_ip(void)
 {
 	char device_name[IFNAMSIZ];
@@ -1055,9 +1014,6 @@ int main(void)
 		return -1;
 
 	if (check_knet_set_del_ip() < 0)
-		return -1;
-
-	if (check_knet_close_leak() < 0)
 		return -1;
 
 	return 0;
