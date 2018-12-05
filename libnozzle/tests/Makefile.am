@@ -23,6 +23,8 @@ if BUILD_LIBNOZZLE
 check_PROGRAMS		= \
 			  api_nozzle_open_test \
 			  api_nozzle_close_test \
+			  api_nozzle_set_up_test \
+			  api_nozzle_set_down_test \
 			  nozzle_test
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
@@ -46,7 +48,15 @@ api_nozzle_open_test_SOURCES = api_nozzle_open.c \
 			       test-common.c
 
 api_nozzle_close_test_SOURCES = api_nozzle_close.c \
-			        test-common.c
+				test-common.c
+
+api_nozzle_set_up_test_SOURCES = api_nozzle_set_up.c \
+				 test-common.c \
+				 ../internals.c
+
+api_nozzle_set_down_test_SOURCES = api_nozzle_set_down.c \
+				   test-common.c \
+				   ../internals.c
 
 nozzle_test_SOURCES	= nozzle_test.c \
 			  test-common.c \
