@@ -15,14 +15,21 @@ EXTRA_DIST		= \
 			  tap_updown_good \
 			  api-test-coverage
 
+noinst_HEADERS		= \
+			  test-common.h
+
 if BUILD_LIBNOZZLE
 
 check_PROGRAMS		= \
+			  api_nozzle_open_test \
 			  nozzle_test
 
-TESTS			= $(check_PROGRAMS)
-
 noinst_PROGRAMS		= $(check_PROGRAMS)
+
+noinst_SCRIPTS		= \
+			  api-test-coverage
+
+TESTS			= $(check_PROGRAMS)
 
 check-local: check-api-test-coverage
 
@@ -34,7 +41,12 @@ AM_CPPFLAGS		= -I$(top_srcdir)/libnozzle -DABSBUILDDIR=\"$(abs_builddir)\"
 AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libnl_CFLAGS)
 LIBS			+= $(top_builddir)/libnozzle/libnozzle.la $(PTHREAD_LIBS) $(libnl_LIBS)
 
+api_nozzle_open_test_SOURCES = api_nozzle_open.c \
+			       test-common.c \
+			       ../internals.c
+
 nozzle_test_SOURCES	= nozzle_test.c \
+			  test-common.c \
 			  ../internals.c
 
 endif
