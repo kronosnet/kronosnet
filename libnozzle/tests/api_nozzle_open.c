@@ -15,48 +15,12 @@
 
 #include "test-common.h"
 
-/*
- * use this one to randomize nozzle interface name
- * for named creation test
- */
-uint8_t randombyte = 0;
-
-static int test_iface(char *name, size_t size, const char *updownpath)
-{
-	nozzle_t nozzle;
-
-	nozzle=nozzle_open(name, size, updownpath);
-	if (!nozzle) {
-		printf("Unable to open nozzle.\n");
-		return -1;
-	}
-	printf("Created interface: %s\n", name);
-
-	if (is_if_in_system(name) > 0) {
-		printf("Found interface %s on the system\n", name);
-	} else {
-		printf("Unable to find interface %s on the system\n", name);
-	}
-
-	if (!nozzle_get_handle_by_name(name)) {
-		printf("Unable to find interface %s in nozzle db\n", name);
-	} else {
-		printf("Found interface %s in nozzle db\n", name);
-	}
-
-	nozzle_close(nozzle);
-
-	if (is_if_in_system(name) == 0)
-		printf("Successfully removed interface %s from the system\n", name);
-
-	return 0;
-}
-
 static int test(void)
 {
 	char device_name[2*IFNAMSIZ];
 	char fakepath[PATH_MAX];
 	size_t size = IFNAMSIZ;
+	uint8_t randombyte = get_random_byte();
 
 	memset(device_name, 0, sizeof(device_name));
 
