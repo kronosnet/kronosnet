@@ -22,6 +22,7 @@ if BUILD_LIBNOZZLE
 
 check_PROGRAMS		= \
 			  api_nozzle_open_test \
+			  api_nozzle_close_test \
 			  nozzle_test
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
@@ -42,8 +43,10 @@ AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libnl_CFLAGS)
 LIBS			+= $(top_builddir)/libnozzle/libnozzle.la $(PTHREAD_LIBS) $(libnl_LIBS)
 
 api_nozzle_open_test_SOURCES = api_nozzle_open.c \
-			       test-common.c \
-			       ../internals.c
+			       test-common.c
+
+api_nozzle_close_test_SOURCES = api_nozzle_close.c \
+			        test-common.c
 
 nozzle_test_SOURCES	= nozzle_test.c \
 			  test-common.c \

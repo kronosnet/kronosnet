@@ -25,7 +25,12 @@
  * common facilities
  */
 
+#define IPBUFSIZE 1024
+
 void need_root(void);
+int test_iface(char *name, size_t size, const char *updownpath);
 int is_if_in_system(char *name);
+int get_random_byte(void);
+void make_local_ips(char *testipv4_1, char *testipv4_2, char *testipv6_1, char *testipv6_2);
 
 #endif

@@ -28,15 +28,10 @@
 
 #include "test-common.h"
 
-char testipv4_1[1024];
-char testipv4_2[1024];
-char testipv6_1[1024];
-char testipv6_2[1024];
-/*
- * use this one to randomize knet interface name
- * for named creation test
- */
-uint8_t randombyte = 0;
+char testipv4_1[IPBUFSIZE];
+char testipv4_2[IPBUFSIZE];
+char testipv6_1[IPBUFSIZE];
+char testipv6_2[IPBUFSIZE];
 
 static int check_knet_multi_eth(void)
 {
@@ -1035,67 +1030,11 @@ out_clean:
 	return err;
 }
 
-static void make_local_ips(void)
-{
-	pid_t mypid;
-	uint8_t *pid;
-	uint8_t i;
-
-	if (sizeof(pid_t) < 4) {
-		printf("pid_t is smaller than 4 bytes?\n");
-		exit(77);
-	}
-
-	memset(testipv4_1, 0, sizeof(testipv4_1));
-	memset(testipv4_2, 0, sizeof(testipv4_2));
-	memset(testipv6_1, 0, sizeof(testipv6_1));
-	memset(testipv6_2, 0, sizeof(testipv6_2));
-
-	mypid = getpid();
-	pid = (uint8_t *)&mypid;
-
-	for (i = 0; i < sizeof(pid_t); i++) {
-		if (pid[i] == 0) {
-			pid[i] = 128;
-		}
-	}
-
-	randombyte = pid[1];
-
-	snprintf(testipv4_1,
-		 sizeof(testipv4_1) - 1,
-		 "127.%u.%u.%u",
-		 pid[1],
-		 pid[2],
-		 pid[0]);
-
-	snprintf(testipv4_2,
-		 sizeof(testipv4_2) - 1,
-		 "127.%u.%d.%u",
-		 pid[1],
-		 pid[2]+1,
-		 pid[0]);
-
-	snprintf(testipv6_1,
-		 sizeof(testipv6_1) - 1,
-		 "fd%x:%x%x::1",
-		 pid[1],
-		 pid[2],
-		 pid[0]);
-
-	snprintf(testipv6_2,
-		 sizeof(testipv6_2) - 1,
-		 "fd%x:%x%x:1::1",
-		 pid[1],
-		 pid[2],
-		 pid[0]);
-}
-
 int main(void)
 {
 	need_root();
 
-	make_local_ips();
+	make_local_ips(testipv4_1, testipv4_2, testipv6_1, testipv6_2);
 
 	if (check_knet_multi_eth() < 0)
 		return -1;
