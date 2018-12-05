@@ -94,6 +94,13 @@ static int test(void)
 		goto out_clean;
 	}
 
+	printf("Try to DOWN the same interface twice\n");
+	if (nozzle_set_down(nozzle) < 0) {
+		printf("Interface was already DOWN, spurious error received from nozzle_set_down\n");
+		err = -1;
+		goto out_clean;
+	}
+
 	printf("Pass NULL to nozzle set_down\n");
 	errno = 0;
 	if ((nozzle_set_down(NULL) >= 0) || (errno != EINVAL)) {
