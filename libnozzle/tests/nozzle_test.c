@@ -33,92 +33,6 @@ char testipv4_2[IPBUFSIZE];
 char testipv6_1[IPBUFSIZE];
 char testipv6_2[IPBUFSIZE];
 
-static int check_knet_multi_eth(void)
-{
-	char device_name1[IFNAMSIZ];
-	char device_name2[IFNAMSIZ];
-	size_t size = IFNAMSIZ;
-	int err=0;
-	nozzle_t nozzle1 = NULL;
-	nozzle_t nozzle2 = NULL;
-
-	printf("Testing multiple knet interface instances\n");
-
-	memset(device_name1, 0, size);
-	memset(device_name2, 0, size);
-
-	nozzle1 = nozzle_open(device_name1, size, NULL);
-	if (!nozzle1) {
-		printf("Unable to init %s\n", device_name1);
-		err = -1;
-		goto out_clean;
-	}
-
-	if (is_if_in_system(device_name1) > 0) {
-		printf("Found interface %s on the system\n", device_name1);
-	} else {
-		printf("Unable to find interface %s on the system\n", device_name1);
-	}
-
-	nozzle2 = nozzle_open(device_name2, size, NULL);
-	if (!nozzle2) {
-		printf("Unable to init %s\n", device_name2);
-		err = -1;
-		goto out_clean;
-	}
-
-	if (is_if_in_system(device_name2) > 0) {
-		printf("Found interface %s on the system\n", device_name2);
-	} else {
-		printf("Unable to find interface %s on the system\n", device_name2);
-	}
-
-	if (nozzle1) {
-		nozzle_close(nozzle1);
-	}
-
-	if (nozzle2) {
-		nozzle_close(nozzle2);
-	}
-
-	printf("Testing error conditions\n");
-
-	printf("Open same device twice\n");
-
-	memset(device_name1, 0, size);
-
-	nozzle1 = nozzle_open(device_name1, size, NULL);
-	if (!nozzle1) {
-		printf("Unable to init %s\n", device_name1);
-		err = -1;
-		goto out_clean;
-	}
-
-	if (is_if_in_system(device_name1) > 0) {
-		printf("Found interface %s on the system\n", device_name1);
-	} else {
-		printf("Unable to find interface %s on the system\n", device_name1);
-	}
-
-	nozzle2 = nozzle_open(device_name1, size, NULL);
-	if (nozzle2) {
-		printf("We were able to init 2 interfaces with the same name!\n");
-		err = -1;
-		goto out_clean;
-	}
-
-out_clean:
-	if (nozzle1) {
-		nozzle_close(nozzle1);
-	}
-
-	if (nozzle2) {
-		nozzle_close(nozzle2);
-	}
-
-	return err;
-}
-
 static int check_knet_mtu(void)
 {
 	char device_name[IFNAMSIZ];
@@ -994,9 +908,6 @@ int main(void)
 	need_root();
 
 	make_local_ips(testipv4_1, testipv4_2, testipv6_1, testipv6_2);
-
-	if (check_knet_multi_eth() < 0)
-		return -1;
 
 	if (check_knet_mtu() < 0)
 		return -1;
