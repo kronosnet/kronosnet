@@ -16,15 +16,6 @@
 #include <stdint.h>
 #include <limits.h>
 #include <sys/socket.h>
-#include <net/ethernet.h>
-
-#ifdef KNET_LINUX
-#include <linux/if_tun.h>
-#include <netinet/ether.h>
-#endif
-#ifdef KNET_BSD
-#include <net/if_dl.h>
-#endif
 
 #include "test-common.h"
 
@@ -32,113 +23,6 @@ char testipv4_1[IPBUFSIZE];
 char testipv4_2[IPBUFSIZE];
 char testipv6_1[IPBUFSIZE];
 char testipv6_2[IPBUFSIZE];
-
-static int check_knet_mac(void)
-{
-	char device_name[IFNAMSIZ];
-	size_t size = IFNAMSIZ;
-	int err=0;
-	nozzle_t nozzle;
-	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
-	struct ether_addr *cur_mac, *tmp_mac;
-
-	printf("Testing get/set MAC\n");
-
-	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
-
-	printf("Get current MAC\n");
-
-	if (nozzle_get_mac(nozzle, &current_mac) < 0) {
-		printf("Unable to get current MAC address.\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Current MAC: %s\n", current_mac);
-
-	printf("Setting MAC: 00:01:01:01:01:01\n");
-
-	if (nozzle_set_mac(nozzle, "00:01:01:01:01:01") < 0) {
-		printf("Unable to set current MAC address.\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	if (nozzle_get_mac(nozzle, &temp_mac) < 0) {
-		printf("Unable to get current MAC address.\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Current MAC: %s\n", temp_mac);
-
-	cur_mac = ether_aton(current_mac);
-	tmp_mac = ether_aton(temp_mac);
-
-	printf("Comparing MAC addresses\n");
-	if (memcmp(cur_mac, tmp_mac, sizeof(struct ether_addr))) {
-		printf("Mac addresses are not the same?!\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Testing ERROR conditions\n");
-
-	printf("Pass NULL to get_mac (pass1)\n");
-	errno = 0;
-	if ((nozzle_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_get_mac sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Pass NULL to get_mac (pass2)\n");
-	errno = 0;
-	if ((nozzle_get_mac(nozzle, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_get_mac sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Pass NULL to set_mac (pass1)\n");
-	errno = 0;
-	if ((nozzle_set_mac(nozzle, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_set_mac sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Pass NULL to set_mac (pass2)\n");
-	errno = 0;
-	if ((nozzle_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_set_mac sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
-
-out_clean:
-	if (err_mac) {
-		printf("Something managed to set err_mac!\n");
-		err = -1;
-		free(err_mac);
-	}
-
-	if (current_mac)
-		free(current_mac);
-	if (temp_mac)
-		free(temp_mac);
-
-	if (nozzle) {
-		nozzle_close(nozzle);
-	}
-
-	return err;
-}
 
 static int check_nozzle_execute_bin_sh_command(void)
 {
@@ -677,9 +561,6 @@ int main(void)
 	need_root();
 
 	make_local_ips(testipv4_1, testipv4_2, testipv6_1, testipv6_2);
-
-	if (check_knet_mac() < 0)
-		return -1;
 
 	if (check_nozzle_execute_bin_sh_command() < 0)
 		return -1;
