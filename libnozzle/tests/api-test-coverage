@@ -69,6 +69,7 @@ missing=0
 
 for i in $headerapicalls; do
 	[ "$i" = nozzle_reset_mtu ] && i=nozzle_set_mtu # tested together
+	[ "$i" = nozzle_reset_mac ] && i=nozzle_set_mac # tested together
 	numapicalls=$((numapicalls + 1))
 	if [ -f $srcdir/api_${i}.c ]; then
 		found=$((found + 1))
