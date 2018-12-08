@@ -30,6 +30,7 @@ check_PROGRAMS		= \
 			  api_nozzle_get_mac_test \
 			  api_nozzle_set_mac_test \
 			  api_nozzle_get_handle_by_name_test \
+			  api_nozzle_get_name_by_handle_test \
 			  nozzle_test
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
@@ -77,6 +78,9 @@ api_nozzle_set_mac_test_SOURCES = api_nozzle_set_mac.c \
 				  test-common.c
 
 api_nozzle_get_handle_by_name_test_SOURCES = api_nozzle_get_handle_by_name.c \
+					     test-common.c
+
+api_nozzle_get_name_by_handle_test_SOURCES = api_nozzle_get_name_by_handle.c \
 					     test-common.c
 
 nozzle_test_SOURCES	= nozzle_test.c \
