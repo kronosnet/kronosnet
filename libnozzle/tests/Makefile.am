@@ -29,6 +29,7 @@ check_PROGRAMS		= \
 			  api_nozzle_set_mtu_test \
 			  api_nozzle_get_mac_test \
 			  api_nozzle_set_mac_test \
+			  api_nozzle_get_handle_by_name_test \
 			  nozzle_test
 
 noinst_PROGRAMS		= $(check_PROGRAMS)
@@ -74,6 +75,9 @@ api_nozzle_get_mac_test_SOURCES = api_nozzle_get_mac.c \
 
 api_nozzle_set_mac_test_SOURCES = api_nozzle_set_mac.c \
 				  test-common.c
+
+api_nozzle_get_handle_by_name_test_SOURCES = api_nozzle_get_handle_by_name.c \
+					     test-common.c
 
 nozzle_test_SOURCES	= nozzle_test.c \
 			  test-common.c \
