@@ -20,7 +20,7 @@ noinst_HEADERS		= \
 
 if BUILD_LIBNOZZLE
 
-check_PROGRAMS		= \
+api_checks		= \
 			  api_nozzle_open_test \
 			  api_nozzle_close_test \
 			  api_nozzle_set_up_test \
@@ -31,10 +31,23 @@ check_PROGRAMS		= \
 			  api_nozzle_set_mac_test \
 			  api_nozzle_get_handle_by_name_test \
 			  api_nozzle_get_name_by_handle_test \
-			  api_nozzle_get_fd_test \
+			  api_nozzle_get_fd_test
+
+int_checks		= \
 			  nozzle_test
 
-noinst_PROGRAMS		= $(check_PROGRAMS)
+fun_checks		=
+
+benchmarks		=
+
+check_PROGRAMS		= \
+			  $(api_checks) \
+			  $(int_checks) \
+			  $(fun_checks)
+
+noinst_PROGRAMS		= \
+			  $(benchmarks) \
+			  $(check_PROGRAMS)
 
 noinst_SCRIPTS		= \
 			  api-test-coverage
