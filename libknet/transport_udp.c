@@ -401,7 +401,7 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 			read_errs_from_sock(knet_h, sockfd);
 			return 0;
 		}
-		if (recv_errno == EINVAL) {
+		if (recv_errno == EINVAL || recv_errno == EPERM) {
 			return -1;
 		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
