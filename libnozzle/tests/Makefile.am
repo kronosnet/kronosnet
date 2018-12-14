@@ -33,7 +33,8 @@ api_checks		= \
 			  api_nozzle_get_name_by_handle_test \
 			  api_nozzle_get_fd_test \
 			  api_nozzle_run_updown_test \
-			  api_nozzle_add_ip_test
+			  api_nozzle_add_ip_test \
+			  api_nozzle_del_ip_test
 
 int_checks		= \
 			  int_execute_bin_sh_command_test \
@@ -108,6 +109,10 @@ api_nozzle_run_updown_test_SOURCES = api_nozzle_run_updown.c \
 				     ../internals.c
 
 api_nozzle_add_ip_test_SOURCES = api_nozzle_add_ip.c \
+				 test-common.c \
+				 ../internals.c
+
+api_nozzle_del_ip_test_SOURCES = api_nozzle_del_ip.c \
 				 test-common.c \
 				 ../internals.c
 
