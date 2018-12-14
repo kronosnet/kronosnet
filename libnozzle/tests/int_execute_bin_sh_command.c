@@ -22,10 +22,7 @@
 static int test(void)
 {
 	int err = 0;
-	char command[4096];
 	char *error_string = NULL;
-
-	memset(command, 0, sizeof(command));
 
 	printf("Testing execute_bin_sh_command\n");
 

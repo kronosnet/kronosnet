@@ -88,7 +88,8 @@ int nozzle_close(nozzle_t nozzle);
  *
  * @return
  * 0 on success
- * -1 on error and errno is set.
+ * -1 on error and errno is set (sanity checks and internal calls.
+ * -2 on error from executing the shell scripts, and no errno is set.
  */
 
 int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string);
