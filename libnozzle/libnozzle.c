@@ -1150,8 +1150,18 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix)
 		goto out_clean;
 	}
 
-	err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, 0);
-	savederrno = errno;
+	/*
+	 * if user asks for an IPv6 address, but MTU < 1280
+	 * the IP might not be configured on the interface and we only need to
+	 * remove it from our internal database
+	 */
+	if ((ip->domain == AF_INET6) && (get_iface_mtu(nozzle) < 1280)) {
+		err = 0;
+	} else {
+		err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, 0);
+		savederrno = errno;
+	}
+
 	if (!err) {
 		if (ip == ip_prev) {
 			nozzle->ip = ip->next;
