@@ -11,8 +11,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 include $(top_srcdir)/build-aux/check.mk
 
 EXTRA_DIST		= \
-			  tap_updown_bad \
-			  tap_updown_good \
+			  nozzle_run_updown_exit_true \
+			  nozzle_run_updown_exit_false \
 			  api-test-coverage
 
 noinst_HEADERS		= \
@@ -31,7 +31,8 @@ api_checks		= \
 			  api_nozzle_set_mac_test \
 			  api_nozzle_get_handle_by_name_test \
 			  api_nozzle_get_name_by_handle_test \
-			  api_nozzle_get_fd_test
+			  api_nozzle_get_fd_test \
+			  api_nozzle_run_updown_test
 
 int_checks		= \
 			  int_execute_bin_sh_command_test \
@@ -61,7 +62,7 @@ check-api-test-coverage:
 	chmod u+x $(top_srcdir)/libnozzle/tests/api-test-coverage
 	$(top_srcdir)/libnozzle/tests/api-test-coverage $(top_srcdir) $(top_builddir)
 
-AM_CPPFLAGS		= -I$(top_srcdir)/libnozzle -DABSBUILDDIR=\"$(abs_builddir)\"
+AM_CPPFLAGS		= -I$(top_srcdir)/libnozzle -DABSBUILDDIR=\"$(abs_builddir)\" -DABSSRCDIR=\"$(abs_srcdir)\"
 AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libnl_CFLAGS)
 LIBS			+= $(top_builddir)/libnozzle/libnozzle.la $(PTHREAD_LIBS) $(libnl_LIBS)
 
@@ -100,6 +101,10 @@ api_nozzle_get_name_by_handle_test_SOURCES = api_nozzle_get_name_by_handle.c \
 
 api_nozzle_get_fd_test_SOURCES = api_nozzle_get_fd.c \
 				 test-common.c
+
+api_nozzle_run_updown_test_SOURCES = api_nozzle_run_updown.c \
+				     test-common.c \
+				     ../internals.c
 
 int_execute_bin_sh_command_test_SOURCES = int_execute_bin_sh_command.c \
 					  test-common.c \

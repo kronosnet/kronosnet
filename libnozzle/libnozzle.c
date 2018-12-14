@@ -668,7 +668,7 @@ int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
 
 	memset(command, 0, PATH_MAX);
 
-	snprintf(command, PATH_MAX, "%s%s/%s", nozzle->updownpath, action_str, nozzle->name);
+	snprintf(command, PATH_MAX, "%s/%s/%s", nozzle->updownpath, action_str, nozzle->name);
 
 	err = stat(command, &sb);
 	if (err) {
@@ -676,8 +676,15 @@ int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
 		goto out_clean;
 	}
 
+	/*
+	 * clear errno from previous calls as there is no errno
+	 * returned from execute_bin_sh_command
+	 */
+	savederrno = 0;
 	err = execute_bin_sh_command(command, exec_string);
-	savederrno = errno;
+	if (err) {
+		err = -2;
+	}
 
 out_clean:
 	pthread_mutex_unlock(&config_mutex);
