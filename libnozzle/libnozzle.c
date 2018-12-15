@@ -804,7 +804,7 @@ int nozzle_get_mtu(const nozzle_t nozzle)
 
 out_clean:
 	pthread_mutex_unlock(&config_mutex);
-	savederrno = errno;
+	errno = savederrno;
 	return err;
 }
 
