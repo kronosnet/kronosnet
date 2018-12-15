@@ -34,11 +34,11 @@ api_checks		= \
 			  api_nozzle_get_fd_test \
 			  api_nozzle_run_updown_test \
 			  api_nozzle_add_ip_test \
-			  api_nozzle_del_ip_test
+			  api_nozzle_del_ip_test \
+			  api_nozzle_get_ips_test
 
 int_checks		= \
-			  int_execute_bin_sh_command_test \
-			  nozzle_test
+			  int_execute_bin_sh_command_test
 
 fun_checks		=
 
@@ -116,12 +116,10 @@ api_nozzle_del_ip_test_SOURCES = api_nozzle_del_ip.c \
 				 test-common.c \
 				 ../internals.c
 
+api_nozzle_get_ips_test_SOURCES = api_nozzle_get_ips.c \
+				  test-common.c
+
 int_execute_bin_sh_command_test_SOURCES = int_execute_bin_sh_command.c \
 					  test-common.c \
 					  ../internals.c
-
-nozzle_test_SOURCES	= nozzle_test.c \
-			  test-common.c \
-			  ../internals.c
-
 endif
