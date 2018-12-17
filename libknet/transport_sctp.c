@@ -1394,12 +1394,12 @@ int sctp_transport_init(knet_handle_t knet_h)
 	knet_list_init(&handle_info->connect_links_list);
 
 	handle_info->listen_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
-        if (handle_info->listen_epollfd < 0) {
-                savederrno = errno;
+	if (handle_info->listen_epollfd < 0) {
+		savederrno = errno;
 		err = -1;
-                log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to create epoll listen fd: %s",
-                        strerror(savederrno));
-                goto exit_fail;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to create epoll listen fd: %s",
+			strerror(savederrno));
+		goto exit_fail;
         }
 
 	if (_fdset_cloexec(handle_info->listen_epollfd)) {
