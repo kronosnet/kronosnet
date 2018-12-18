@@ -20,6 +20,8 @@
 #include "vty_cli_cmds.h"
 #include "vty_utils.h"
 
+static const char telnet_backward_char[] = { 0x08, 0x0 };
+
 /* if this code looks like quagga lib/vty.c it is because we stole it in good part */
 
 #define CONTROL(X)	((X) - '@')

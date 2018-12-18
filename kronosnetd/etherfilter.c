@@ -9,7 +9,8 @@
 #include "config.h"
 
 #include <arpa/inet.h>
-#include <netinet/ether.h>
+#include <sys/types.h>
+#include <net/ethernet.h>
 #include <string.h>
 
 #include "etherfilter.h"

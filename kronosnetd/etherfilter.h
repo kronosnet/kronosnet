@@ -10,6 +10,7 @@
 #define __KNETD_ETHERFILTER_H__
 
 #include <stdint.h>
+#include <sys/types.h>
 #include "libknet.h"
 
 int ether_host_filter_fn (void *private_data,

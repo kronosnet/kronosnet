@@ -55,6 +55,8 @@
 #define CMDS_PARAM_PMTU_FREQ    20
 #define CMDS_PARAM_LINK_TRANSP  21
 
+static const char file_newline[] = { '\n', 0x0 };
+
 /*
  * CLI helper functions - menu/node stuff starts below
  */
@@ -199,7 +201,6 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 	int err = 0;
 	char buf[KNET_VTY_MAX_LINE];
 	int tmp;
-	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
 
 	memset(buf, 0, sizeof(buf));
 
@@ -314,7 +315,7 @@ static int check_param(struct knet_vty *vty, const int paramtype, char *param, i
 			break;
 		case CMDS_PARAM_LINK_TRANSP:
 			param_to_str(buf, KNET_VTY_MAX_LINE, param, paramlen);
-			if (knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, buf) == KNET_MAX_TRANSPORTS) {
+			if (knet_get_transport_id_by_name(buf) == KNET_MAX_TRANSPORTS) {
 				knet_vty_write(vty, "link transport is invalid%s", telnet_newline);
 				err = -1;
 			}
@@ -1002,7 +1003,7 @@ static int knet_cmd_link(struct knet_vty *vty)
 	get_param(vty, 4, &param, &paramlen, &paramoffset);
 	param_to_str(transport, sizeof(transport), param, paramlen);
 
-	transport_id = knet_handle_get_transport_id_by_name(knet_iface->cfg_ring.knet_h, transport);
+	transport_id = knet_get_transport_id_by_name(transport);
 
 	knet_link_get_status(knet_iface->cfg_ring.knet_h, vty->host_id, vty->link_id, &status, sizeof(status));
 	if (!status.enabled) {
@@ -1194,7 +1195,6 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 	char *param = NULL;
 	char ipaddr[KNET_MAX_HOST_LEN], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	char *error_string = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
@@ -1202,13 +1202,9 @@ static int knet_cmd_no_ip(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	param_to_str(prefix, sizeof(prefix), param, paramlen);
 
-	if (tap_del_ip(knet_iface->cfg_eth.tap, ipaddr, prefix, &error_string) < 0) {
+	if (nozzle_del_ip(knet_iface->cfg_eth.nozzle, ipaddr, prefix) < 0) {
 		knet_vty_write(vty, "Error: Unable to del ip addr %s/%s on device %s%s",
-				ipaddr, prefix, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
-		if (error_string) {
-			knet_vty_write(vty, "(%s)%s", error_string, telnet_newline);
-			free(error_string);
-		}
+				ipaddr, prefix, nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 		return -1;
 	}
 
@@ -1221,7 +1217,6 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	char *param = NULL;
 	char ipaddr[512], prefix[4];
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	char *error_string = NULL;
 
 	get_param(vty, 1, &param, &paramlen, &paramoffset);
 	param_to_str(ipaddr, sizeof(ipaddr), param, paramlen);
@@ -1229,13 +1224,9 @@ static int knet_cmd_ip(struct knet_vty *vty)
 	get_param(vty, 2, &param, &paramlen, &paramoffset);
 	param_to_str(prefix, sizeof(prefix), param, paramlen);
 
-	if (tap_add_ip(knet_iface->cfg_eth.tap, ipaddr, prefix, &error_string) < 0) {
+	if (nozzle_add_ip(knet_iface->cfg_eth.nozzle, ipaddr, prefix) < 0) {
 		knet_vty_write(vty, "Error: Unable to set ip addr %s/%s on device %s%s",
-				ipaddr, prefix, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
-		if (error_string) {
-			knet_vty_write(vty, "(%s)%s", error_string, telnet_newline);
-			free(error_string);
-		}
+				ipaddr, prefix, nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 		return -1;
 	}
 
@@ -1255,7 +1246,7 @@ static void knet_cmd_auto_mtu_notify(void *private_data,
 	if (!knet_iface->cfg_eth.auto_mtu) {
 		int mtu = 0;
 
-		mtu = tap_get_mtu(knet_iface->cfg_eth.tap);
+		mtu = nozzle_get_mtu(knet_iface->cfg_eth.nozzle);
 		if (mtu < 0) {
 			log_debug("Unable to get current MTU?");
 		} else {
@@ -1268,12 +1259,12 @@ static void knet_cmd_auto_mtu_notify(void *private_data,
 		return;
 	}
 
-	if (tap_set_mtu(knet_iface->cfg_eth.tap, knet_iface->cfg_ring.data_mtu) < 0) {
+	if (nozzle_set_mtu(knet_iface->cfg_eth.nozzle, knet_iface->cfg_ring.data_mtu) < 0) {
 		log_warn("Error: Unable to set requested mtu %d on device %s via mtu notify",
-			 knet_iface->cfg_ring.data_mtu, tap_get_name(knet_iface->cfg_eth.tap));
+			 knet_iface->cfg_ring.data_mtu, nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle));
 	} else {
 		log_info("Device %s new mtu: %d (via mtu notify)",
-			 tap_get_name(knet_iface->cfg_eth.tap), knet_iface->cfg_ring.data_mtu);
+			 nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), knet_iface->cfg_ring.data_mtu);
 	}
 }
 
@@ -1283,7 +1274,7 @@ static int knet_cmd_no_pmtufreq(struct knet_vty *vty)
 
 	if (knet_handle_pmtud_setfreq(knet_iface->cfg_ring.knet_h, 5) < 0) {
 		knet_vty_write(vty, "Error: Unable to reset PMTUd frequency to 5 seconds on device %s%s",
-				tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+				nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 		return -1;
 	}
 
@@ -1301,7 +1292,7 @@ static int knet_cmd_pmtufreq(struct knet_vty *vty)
 
 	if (knet_handle_pmtud_setfreq(knet_iface->cfg_ring.knet_h, pmtufreq) < 0) {
 		knet_vty_write(vty, "Error: Unable to set PMTUd frequency to %d seconds on device %s%s",
-				pmtufreq, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+				pmtufreq, nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 		return -1;
 	}
 
@@ -1316,17 +1307,17 @@ static int knet_cmd_no_mtu(struct knet_vty *vty)
 	knet_iface->cfg_eth.auto_mtu = 1;
 
 	if (knet_iface->cfg_ring.data_mtu > 0) {
-		if (tap_set_mtu(knet_iface->cfg_eth.tap, knet_iface->cfg_ring.data_mtu) < 0) {
+		if (nozzle_set_mtu(knet_iface->cfg_eth.nozzle, knet_iface->cfg_ring.data_mtu) < 0) {
 			knet_iface->cfg_eth.auto_mtu = 0;
 			knet_vty_write(vty, "Error: Unable to set auto detected mtu on device %s%s",
-					tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+					nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 			return -1;
 		}
 	} else {
-		if (tap_reset_mtu(knet_iface->cfg_eth.tap) < 0) {
+		if (nozzle_reset_mtu(knet_iface->cfg_eth.nozzle) < 0) {
 			knet_iface->cfg_eth.auto_mtu = 0;
 			knet_vty_write(vty, "Error: Unable to reset mtu on device %s%s",
-					tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+					nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 			return -1;
 		}
 	}
@@ -1352,10 +1343,10 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 			       expected_mtu, knet_iface->cfg_ring.data_mtu, telnet_newline);
 	}
 
-	if (tap_set_mtu(knet_iface->cfg_eth.tap, expected_mtu) < 0) {
+	if (nozzle_set_mtu(knet_iface->cfg_eth.nozzle, expected_mtu) < 0) {
 		knet_iface->cfg_eth.auto_mtu = 1;
 		knet_vty_write(vty, "Error: Unable to set requested mtu %d on device %s%s",
-				expected_mtu, tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+				expected_mtu, nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 		return -1;
 	}
 
@@ -1365,24 +1356,34 @@ static int knet_cmd_mtu(struct knet_vty *vty)
 static int knet_cmd_stop(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	char *error_down = NULL, *error_postdown = NULL;
+	char *exec_str = NULL;
 	int err = 0;
 
-	err = tap_set_down(knet_iface->cfg_eth.tap, &error_down, &error_postdown);
+	err = nozzle_run_updown(knet_iface->cfg_eth.nozzle, NOZZLE_DOWN, &exec_str);
+	if (err) {
+		knet_vty_write(vty, "Non-fatal Error: Unable to execute down.d script for interface %s: %s!%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), exec_str, telnet_newline);
+		if (exec_str) {
+			free(exec_str);
+			exec_str = NULL;
+		}
+	}
+
+	err = nozzle_set_down(knet_iface->cfg_eth.nozzle);
 	if (err < 0) {
-		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+		knet_vty_write(vty, "Error: Unable to set interface %s down!%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 	} else {
 		if (knet_iface->cfg_ring.knet_h)
 			knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 		knet_iface->active = 0;
 	}
-	if (error_down) {
-		knet_vty_write(vty, "down script output:%s(%s)%s", telnet_newline, error_down, telnet_newline);
-		free(error_down);
-	}
-	if (error_postdown) {
-		knet_vty_write(vty, "post-down script output:%s(%s)%s", telnet_newline, error_postdown, telnet_newline);
-		free(error_postdown);
+
+	err = nozzle_run_updown(knet_iface->cfg_eth.nozzle, NOZZLE_POSTDOWN, &exec_str);
+	if (err) {
+		knet_vty_write(vty, "Non-fatal Error: Unable to execute post-down.d script for interface %s: %s!%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), exec_str, telnet_newline);
+		if (exec_str) {
+			free(exec_str);
+			exec_str = NULL;
+		}
 	}
 
 	return err;
@@ -1424,7 +1425,7 @@ static int knet_cmd_crypto(struct knet_vty *vty)
 		goto no_key;
 
 	memset(keyfile, 0, PATH_MAX);
-	snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", tap_get_name(knet_iface->cfg_eth.tap));
+	snprintf(keyfile, PATH_MAX - 1, DEFAULT_CONFIG_DIR "/cryptokeys.d/%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle));
 
 	fd = open(keyfile, O_RDONLY);
 	if (fd < 0) {
@@ -1463,7 +1464,7 @@ static int knet_cmd_crypto(struct knet_vty *vty)
 
 	if (read(fd,
 		 &knet_handle_crypto_cfg_new.private_key,
-		 knet_handle_crypto_cfg_new.private_key_len) != knet_handle_crypto_cfg_new.private_key_len) {
+		 knet_handle_crypto_cfg_new.private_key_len) != (ssize_t)knet_handle_crypto_cfg_new.private_key_len) {
 		knet_vty_write(vty, "Error: Unable to read key %s%s", keyfile, telnet_newline);
 		goto key_error;
 	}
@@ -1490,24 +1491,34 @@ key_error:
 static int knet_cmd_start(struct knet_vty *vty)
 {
 	struct knet_cfg *knet_iface = (struct knet_cfg *)vty->iface;
-	char *error_preup = NULL, *error_up = NULL;
+	char *exec_str = NULL;
 	int err = 0;
 
-	err = tap_set_up(knet_iface->cfg_eth.tap, &error_preup, &error_up);
+	err = nozzle_run_updown(knet_iface->cfg_eth.nozzle, NOZZLE_PREUP, &exec_str);
+	if (err) {
+		knet_vty_write(vty, "Non-fatal Error: Unable to execute pre-up.d script for interface %s: %s!%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), exec_str, telnet_newline);
+		if (exec_str) {
+			free(exec_str);
+			exec_str = NULL;
+		}
+	}
+
+	err = nozzle_set_up(knet_iface->cfg_eth.nozzle);
 	if (err < 0) {
-		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", tap_get_name(knet_iface->cfg_eth.tap), telnet_newline);
+		knet_vty_write(vty, "Error: Unable to set interface %s up!%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), telnet_newline);
 		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 0);
 	} else {
 		knet_handle_setfwd(knet_iface->cfg_ring.knet_h, 1);
 		knet_iface->active = 1;
 	}
-	if (error_preup) {
-		knet_vty_write(vty, "pre-up script output:%s(%s)%s", telnet_newline, error_preup, telnet_newline);
-		free(error_preup);
-	}
-	if (error_up) {
-		knet_vty_write(vty, "up script output:%s(%s)%s", telnet_newline, error_up, telnet_newline);
-		free(error_up);
+
+	err = nozzle_run_updown(knet_iface->cfg_eth.nozzle, NOZZLE_UP, &exec_str);
+	if (err) {
+		knet_vty_write(vty, "Non-fatal Error: Unable to execute up.d script for interface %s: %s!%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), exec_str, telnet_newline);
+		if (exec_str) {
+			free(exec_str);
+			exec_str = NULL;
+		}
 	}
 
 	return err;
@@ -1519,10 +1530,7 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	char *param = NULL;
 	char device[IFNAMSIZ];
 	struct knet_cfg *knet_iface = NULL;
-	char *ip_list = NULL;
-	int ip_list_entries = 0, offset = 0;
 	size_t j, i;
-	char *error_string = NULL;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
@@ -1543,24 +1551,6 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 	 */
 	knet_handle_enable_pmtud_notify(knet_iface->cfg_ring.knet_h, NULL, NULL);
 
-	tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
-	if ((ip_list) && (ip_list_entries > 0)) {
-		for (i = 1; i <= (size_t)ip_list_entries; i++) {
-			tap_del_ip(knet_iface->cfg_eth.tap,
-					ip_list + offset,
-					ip_list + offset + strlen(ip_list + offset) + 1, &error_string);
-			if (error_string) {
-				free(error_string);
-				error_string = NULL;
-			}
-			offset = offset + strlen(ip_list) + 1;
-			offset = offset + strlen(ip_list + offset) + 1;
-		}
-		free(ip_list);
-		ip_list = NULL;
-		ip_list_entries = 0;
-	}
-
 	knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 	for (j = 0; j < host_ids_entries; j++) {
 		knet_link_get_link_list(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids, &link_ids_entries);
@@ -1578,8 +1568,8 @@ static int knet_cmd_no_interface(struct knet_vty *vty)
 		knet_iface->cfg_ring.knet_h = NULL;
 	}
 
-	if (knet_iface->cfg_eth.tap)
-		tap_close(knet_iface->cfg_eth.tap);
+	if (knet_iface->cfg_eth.nozzle)
+		nozzle_close(knet_iface->cfg_eth.nozzle);
 
 	if (knet_iface)
 		knet_destroy_iface(knet_iface);
@@ -1602,7 +1592,7 @@ static int knet_cmd_interface(struct knet_vty *vty)
 	uint8_t *bport = (uint8_t *)&baseport;
 	char *param = NULL;
 	char device[IFNAMSIZ];
-	char mac[18];
+	char mac[30];
 	struct knet_cfg *knet_iface = NULL;
 	int8_t channel = 0;
 
@@ -1622,22 +1612,22 @@ static int knet_cmd_interface(struct knet_vty *vty)
 		return -1;
 	}
 
-	if (knet_iface->cfg_eth.tap) {
+	if (knet_iface->cfg_eth.nozzle) {
 		found = 1;
 		goto tap_found;
 	}
 
-	if (!knet_iface->cfg_eth.tap)
-		knet_iface->cfg_eth.tap = tap_open(device, IFNAMSIZ, DEFAULT_CONFIG_DIR);
+	if (!knet_iface->cfg_eth.nozzle)
+		knet_iface->cfg_eth.nozzle = nozzle_open(device, IFNAMSIZ, DEFAULT_CONFIG_DIR);
 
-	if ((!knet_iface->cfg_eth.tap) && (errno == EBUSY)) {
+	if ((!knet_iface->cfg_eth.nozzle) && (errno == EBUSY)) {
 		knet_vty_write(vty, "Error: interface %s seems to exist in the system%s",
 				device, telnet_newline);
 		err = -1;
 		goto out_clean;
 	}
 
-	if (!knet_iface->cfg_eth.tap) {
+	if (!knet_iface->cfg_eth.nozzle) {
 		knet_vty_write(vty, "Error: Unable to create %s system tap device%s",
 				device, telnet_newline);
 		err = -1;
@@ -1650,7 +1640,7 @@ tap_found:
 
 	knet_iface->cfg_ring.base_port = baseport;
 
-	tapfd = tap_get_fd(knet_iface->cfg_eth.tap);
+	tapfd = nozzle_get_fd(knet_iface->cfg_eth.nozzle);
 
 	knet_iface->cfg_ring.knet_h = knet_handle_new(requested_id, vty->logfd, vty->loglevel);
 	if (!knet_iface->cfg_ring.knet_h) {
@@ -1707,7 +1697,7 @@ knet_found:
 	baseport = htons(baseport);
 	memset(&mac, 0, sizeof(mac));
 	snprintf(mac, sizeof(mac) - 1, "54:54:%x:%x:0:%x", bport[0], bport[1], knet_iface->cfg_eth.node_id);
-	if (tap_set_mac(knet_iface->cfg_eth.tap, mac) < 0) {
+	if (nozzle_set_mac(knet_iface->cfg_eth.nozzle, mac) < 0) {
 		knet_vty_write(vty, "Error: Unable to set mac address %s on device %s%s",
 				mac, device, telnet_newline); 
 		err = -1;
@@ -1724,8 +1714,8 @@ out_clean:
 		if (knet_iface->cfg_ring.knet_h)
 			knet_handle_free(knet_iface->cfg_ring.knet_h);
 
-		if (knet_iface->cfg_eth.tap)
-			tap_close(knet_iface->cfg_eth.tap);
+		if (knet_iface->cfg_eth.nozzle)
+			nozzle_close(knet_iface->cfg_eth.nozzle);
  
 		knet_destroy_iface(knet_iface);
 	}
@@ -1757,7 +1747,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 	knet_vty_write(vty, "-------------------%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, "interface %s (active: %d)%s", tap_get_name(knet_iface->cfg_eth.tap), knet_iface->active, nl);
+		knet_vty_write(vty, "interface %s (active: %d)%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle), knet_iface->active, nl);
 
 		knet_host_get_host_list(knet_iface->cfg_ring.knet_h, host_ids, &host_ids_entries);
 
@@ -1787,7 +1777,7 @@ static int knet_cmd_status(struct knet_vty *vty)
 				uint64_t flags;
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
-					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
+					transport_name = knet_get_transport_name_by_id(transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status, sizeof(status));
 					if (status.enabled == 1) {
 						if (dynamic) {
@@ -1826,8 +1816,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	struct knet_cfg *knet_iface = knet_cfg_head.knet_cfg;
 	struct knet_link_status status;
 	const char *nl = telnet_newline;
-	char *ip_list = NULL;
-	int ip_list_entries = 0;
+	struct nozzle_ip *ip_list = NULL;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
@@ -1845,29 +1834,21 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 	knet_vty_write(vty, "  exit%s", nl);
 
 	while (knet_iface != NULL) {
-		knet_vty_write(vty, " interface %s %d %d%s", tap_get_name(knet_iface->cfg_eth.tap),
+		knet_vty_write(vty, " interface %s %d %d%s", nozzle_get_name_by_handle(knet_iface->cfg_eth.nozzle),
 							     knet_iface->cfg_eth.node_id,
 							     knet_iface->cfg_ring.base_port, nl);
 
 		if (!knet_iface->cfg_eth.auto_mtu)
-			knet_vty_write(vty, "  mtu %d%s", tap_get_mtu(knet_iface->cfg_eth.tap), nl);
+			knet_vty_write(vty, "  mtu %d%s", nozzle_get_mtu(knet_iface->cfg_eth.nozzle), nl);
 
 		knet_handle_pmtud_getfreq(knet_iface->cfg_ring.knet_h, &pmtudfreq);
 		if ((pmtudfreq > 0) && (pmtudfreq != 5))
 			knet_vty_write(vty, "  pmtudfreq %u%s", pmtudfreq, nl);
 
-		tap_get_ips(knet_iface->cfg_eth.tap, &ip_list, &ip_list_entries);
-		if ((ip_list) && (ip_list_entries > 0)) {
-			char *ipaddr = NULL, *prefix = NULL, *next = ip_list;
-			for (i = 1; i <= (size_t)ip_list_entries; i++) {
-				ipaddr = next;
-				prefix = ipaddr + strlen(ipaddr) + 1;
-				next = prefix + strlen(prefix) + 1;
-				knet_vty_write(vty, "  ip %s %s%s", ipaddr, prefix, nl);
-			}
-			free(ip_list);
-			ip_list = NULL;
-			ip_list_entries = 0;
+		nozzle_get_ips(knet_iface->cfg_eth.nozzle, &ip_list);
+		while (ip_list) {
+			knet_vty_write(vty, "  ip %s %s%s", ip_list->ipaddr, ip_list->prefix, nl);
+			ip_list = ip_list->next;
 		}
 
 		knet_vty_write(vty, "  crypto %s %s %s%s",
@@ -1902,7 +1883,7 @@ static int knet_cmd_print_conf(struct knet_vty *vty)
 				uint64_t flags;
 
 				if (!knet_link_get_config(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &transport, &src_addr, &dst_addr, &dynamic, &flags)) {
-					transport_name = knet_handle_get_transport_name_by_id(knet_iface->cfg_ring.knet_h, transport);
+					transport_name = knet_get_transport_name_by_id(transport);
 					knet_link_get_status(knet_iface->cfg_ring.knet_h, host_ids[j], link_ids[i], &status, sizeof(status));
 					if (status.enabled == 1) {
 						uint8_t priority, pong_count;
@@ -2082,7 +2063,7 @@ void knet_close_down(void)
 
 	while ((knet_cfg_head.knet_cfg) && (loop < 10)) {
 		memset(vty->line, 0, sizeof(vty->line));
-		snprintf(vty->line, sizeof(vty->line) - 1, "no interface %s", tap_get_name(knet_cfg_head.knet_cfg->cfg_eth.tap));
+		snprintf(vty->line, sizeof(vty->line) - 1, "no interface %s", nozzle_get_name_by_handle(knet_cfg_head.knet_cfg->cfg_eth.nozzle));
 		vty->line_idx = strlen(vty->line);
 		err = knet_vty_execute_cmd(vty);
 		if (err != 0)  {
