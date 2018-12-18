@@ -8,15 +8,18 @@ DO NOT ship kronosnetd. It's an experimental piece of super
 crappy code. IF you decide to ship it anyway, you get to
 be also the upstream maintainer :-) you have been warned.
 
-libnozzle is a simple commodity library used only by kronosnetd.
-I don't mind to support it, but don't ship just for the fun of it.
-It has no users, that I know of, outside of kronosnetd.
+libnozzle is a simple commodity library used only by kronosnetd
+and a future release of corosync. This is the first GA release
+for libnozzle, please allow space for minor screw ups.
 
-libknet is still under heavy development. There might be more
-onwire network changes that could make current version
-incompatible with newer versions. Make sure to warn your users
-about it. Plan is to release a stable version (1.0) when
-we are confident that the current implementation is stable enough.
+libknet is the core of this project. It is considered stable
+and supported in the stable* branches and still under
+heavy development in master branch. Upstream does guarantee
+onwire and update compatibility between releases in the same
+major versions (aka 1.x will always be able to talk to 1.x+n).
+There is NO guarantee of onwire compatibility
+between major versions of knet (aka: 1.x might not be able to talk
+to 2.x).
 
 libknet has a lot of build dependencies due to its modular
 implementation. It does not, however, link with all those libraries
