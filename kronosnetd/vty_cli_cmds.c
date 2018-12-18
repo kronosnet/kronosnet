@@ -20,7 +20,7 @@
 #include "cfg.h"
 #include "etherfilter.h"
 #include "logging.h"
-#include "libtap.h"
+#include "libnozzle.h"
 #include "netutils.h"
 #include "vty.h"
 #include "vty_cli.h"

@@ -1,0 +1,93 @@
+#!/bin/sh
+#
+# Copyright (C) 2016-2018 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
+
+srcdir="$1"/libnozzle/tests
+builddir="$2"/libnozzle/tests
+
+headerapicalls="$(grep nozzle_ "$srcdir"/../libnozzle.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+
+# The PowerPC64 ELFv1 ABI defines the address of a function as that of a
+# function descriptor defined in .opd, a data (D) section.  Other ABIs
+# use the entry address of the function itself in the text (T) section.
+exportedapicalls="$(nm -B -D "$builddir"/../.libs/libnozzle.so | grep ' [DT] ' | awk '{print $3}')"
+
+echo "Checking for exported symbols NOT available in header file"
+
+for i in $exportedapicalls; do
+	found=0
+	for x in $headerapicalls; do
+		if [ "$x" = "$i" ]; then
+			found=1
+			break;
+		fi
+	done
+	if [ "$found" = 0 ]; then
+		echo "Symbol $i not found in header file"
+		exit 1
+	fi
+done
+
+echo "Checking for symbols in header file NOT exported by binary lib"
+
+for i in $headerapicalls; do
+	found=0
+	for x in $exportedapicalls; do
+		if [ "$x" = "$i" ]; then
+			found=1
+			break;
+		fi
+	done
+	if [ "$found" = 0 ]; then
+		echo "Symbol $i not found in binary lib"
+		exit 1
+	fi
+done
+
+echo "Checking for tests with memcheck exceptions"
+
+for i in $(grep -l is_memcheck "$srcdir"/*.c | grep -v test-common); do
+	echo "WARNING: $(basename $i) - has memcheck exception enabled"
+done
+
+echo "Checking for tests with helgrind exceptions"
+
+for i in $(grep -l is_helgrind "$srcdir"/*.c | grep -v test-common); do
+	echo "WARNING: $(basename $i) has helgrind exception enabled"
+done
+
+echo "Checking for api test coverage"
+
+numapicalls=0
+found=0
+missing=0
+
+for i in $headerapicalls; do
+	[ "$i" = nozzle_reset_mtu ] && i=nozzle_set_mtu # tested together
+	[ "$i" = nozzle_reset_mac ] && i=nozzle_set_mac # tested together
+	numapicalls=$((numapicalls + 1))
+	if [ -f $srcdir/api_${i}.c ]; then
+		found=$((found + 1))
+	else
+		missing=$((missing + 1))
+		echo "MISSING: $i"
+	fi
+done
+
+echo "Summary"
+echo "-------"
+echo "Found   : $found"
+echo "Missing : $missing"
+echo "Total   : $numapicalls"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
+exit 0
+
+exit 0

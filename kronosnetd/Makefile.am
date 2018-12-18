@@ -34,14 +34,14 @@ kronosnetd_SOURCES	= \
 			  vty_utils.c
 
 kronosnetd_CPPFLAGS	= \
-			  -I$(top_srcdir)/libtap \
+			  -I$(top_srcdir)/libnozzle \
 			  -I$(top_srcdir)/libknet
 
 kronosnetd_CFLAGS	= $(AM_CFLAGS) $(libqb_CFLAGS)
 
 kronosnetd_LDADD	= \
 			  $(top_builddir)/libknet/libknet.la \
-			  $(top_builddir)/libtap/libtap.la \
+			  $(top_builddir)/libnozzle/libnozzle.la \
 			  $(libqb_LIBS) \
 			  $(pam_misc_LIBS) $(pam_LIBS)
 

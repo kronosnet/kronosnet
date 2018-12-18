@@ -33,3 +33,4 @@ knet requires big socket buffers and you need to set:
 kern.ipc.maxsockbuf=18388608
 in /etc/sysctl.conf or knet will fail to run.
 
+libnozzle requires if_tap.ko loaded in the kernel.

@@ -166,14 +166,14 @@ AC_ARG_ENABLE([rpm-debuginfo],
 AM_CONDITIONAL([BUILD_RPM_DEBUGINFO], [test x$enable_rpm_debuginfo = xyes])
 AM_CONDITIONAL([OVERRIDE_RPM_DEBUGINFO], [test x$override_rpm_debuginfo_option = xyes])
 
-AC_ARG_ENABLE([libtap],
-	[AS_HELP_STRING([--enable-libtap],[libtap support])],,
-	[ enable_libtap="no" ])
+AC_ARG_ENABLE([libnozzle],
+	[AS_HELP_STRING([--enable-libnozzle],[libnozzle support])],,
+	[ enable_libnozzle="yes" ])
 
 if test "x$enable_kronosnetd" = xyes; then
-	enable_libtap=yes
+	enable_libnozzle=yes
 fi
-AM_CONDITIONAL([BUILD_LIBTAP], [test x$enable_libtap = xyes])
+AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 
 ## local helper functions
 # this function checks if CC support options passed as
@@ -217,9 +217,6 @@ case "$host_os" in
 	*bsd*)
 		AC_DEFINE_UNQUOTED([KNET_BSD], [1], [Compiling for BSD platform])
 		AC_MSG_RESULT([BSD])
-		if test "x$enable_libtap" = xyes; then
-			AC_MSG_ERROR([libtap is not currently supported on BSD platforms])
-		fi
 		;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
@@ -278,7 +275,17 @@ if test "x$enable_man" = "xyes"; then
 	ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 fi
 
-# checks (for kronosnetd)
+# checks for libnozzle
+if test "x$enable_libnozzle" = xyes; then
+	if `echo $host_os | grep -q linux`; then
+		PKG_CHECK_MODULES([libnl], [libnl-3.0])
+		PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 >= 3.3], [],
+			[PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 < 3.3],
+					   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
+	fi
+fi
+
+# checks for kronosnetd
 if test "x$enable_kronosnetd" = xyes; then
 	AC_CHECK_HEADERS([security/pam_appl.h],
 			 [AC_CHECK_LIB([pam], [pam_start],
@@ -501,8 +508,9 @@ AC_MSG_NOTICE([using source epoch $($UTC_DATE_AT$SOURCE_EPOCH +'%F %T %Z')])
 AC_CONFIG_FILES([
 		Makefile
 		init/Makefile
-		libtap/Makefile
-		libtap/libtap.pc
+		libnozzle/Makefile
+		libnozzle/libnozzle.pc
+		libnozzle/tests/Makefile
 		kronosnetd/Makefile
 		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
@@ -510,6 +518,7 @@ AC_CONFIG_FILES([
 		libknet/tests/Makefile
 		man/Makefile
 		man/Doxyfile-knet
+		man/Doxyfile-nozzle
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
 		poc-code/access-list/Makefile
