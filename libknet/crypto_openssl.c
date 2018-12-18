@@ -458,7 +458,7 @@ static int openssl_internal_lock_setup(void)
 		}
 	}
 
-	CRYPTO_set_id_callback((unsigned long (*)(void))openssl_internal_thread_id);
+	CRYPTO_set_id_callback((void *)openssl_internal_thread_id);
 	CRYPTO_set_locking_callback((void *)&openssl_internal_locking_callback);
 
 out:

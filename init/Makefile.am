@@ -21,9 +21,19 @@ systemdconf_DATA	= kronosnetd.service
 initscriptdir		= $(INITDDIR)
 initscript_SCRIPTS	= kronosnetd
 
-%: %.in Makefile
+kronosnetd: kronosnetd.in Makefile
 	rm -f $@-t $@
-	cat $< | sed \
+	cat $@.in | sed \
+		-e 's#@''SBINDIR@#$(sbindir)#g' \
+		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
+		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
+		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
+	    > $@-t
+	mv $@-t $@
+
+kronosnetd.service: kronosnetd.service.in Makefile
+	rm -f $@-t $@
+	cat $@.in | sed \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
