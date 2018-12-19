@@ -340,6 +340,7 @@ Requires: pkgconfig
 %{_libdir}/libnozzle.so
 %{_includedir}/libnozzle.h
 %{_libdir}/pkgconfig/libnozzle.pc
+%{_mandir}/man3/nozzle*.3.gz
 %endif
 
 %package -n libknet1
