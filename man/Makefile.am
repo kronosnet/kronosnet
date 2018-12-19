@@ -96,7 +96,24 @@ knet_man3_MANS = \
 		knet_strtoaddr.3
 
 if BUILD_LIBNOZZLE
-nozzle_man3_MANS =
+nozzle_man3_MANS = \
+		nozzle_add_ip.3 \
+		nozzle_close.3 \
+		nozzle_del_ip.3 \
+		nozzle_get_fd.3 \
+		nozzle_get_handle_by_name.3 \
+		nozzle_get_ips.3 \
+		nozzle_get_mac.3 \
+		nozzle_get_mtu.3 \
+		nozzle_get_name_by_handle.3 \
+		nozzle_open.3 \
+		nozzle_reset_mac.3 \
+		nozzle_reset_mtu.3 \
+		nozzle_run_updown.3 \
+		nozzle_set_down.3 \
+		nozzle_set_mac.3 \
+		nozzle_set_mtu.3 \
+		nozzle_set_up.3
 endif
 
 man3_MANS = $(knet_man3_MANS) $(nozzle_man3_MANS)
