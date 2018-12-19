@@ -37,6 +37,8 @@ typedef struct sctp_handle_info {
 	int listensockfd[2];
 	pthread_t connect_thread;
 	pthread_t listen_thread;
+	socklen_t event_subscribe_kernel_size;
+	char *event_subscribe_buffer;
 } sctp_handle_info_t;
 
 /*
@@ -130,16 +132,11 @@ exit_error:
 static int _enable_sctp_notifications(knet_handle_t knet_h, int sock, const char *type)
 {
 	int err = 0, savederrno = 0;
-	struct sctp_event_subscribe events;
+	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 
-	memset(&events, 0, sizeof (events));
-	events.sctp_data_io_event = 1;
-	events.sctp_association_event = 1;
-	events.sctp_send_failure_event = 1;
-	events.sctp_address_event = 1;
-	events.sctp_peer_error_event = 1;
-	events.sctp_shutdown_event = 1;
-	if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof (events)) < 0) {
+	if (setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS,
+		       handle_info->event_subscribe_buffer,
+		       handle_info->event_subscribe_kernel_size) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to enable %s events: %s",
@@ -1303,9 +1300,67 @@ int sctp_transport_free(knet_handle_t knet_h)
 		close(handle_info->connect_epollfd);
 	}
 
+	free(handle_info->event_subscribe_buffer);
 	free(handle_info);
 	knet_h->transports[KNET_TRANSPORT_SCTP] = NULL;
 
+	return 0;
+}
+
+static int _sctp_subscribe_init(knet_handle_t knet_h)
+{
+	int test_socket, savederrno;
+	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
+	char dummy_events[100];
+	struct sctp_event_subscribe *events;
+	/* Below we set the first 6 fields of this expanding struct.
+	 * SCTP_EVENTS is deprecated, but SCTP_EVENT is not available
+	 * on Linux; on the other hand, FreeBSD and old Linux does not
+	 * accept small transfers, so we can't simply use this minimum
+	 * everywhere.  Thus we query and store the native size. */
+	const unsigned int subscribe_min = 6;
+
+	test_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_SCTP);
+	if (test_socket < 0) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to create test socket: %s",
+			strerror(savederrno));
+		return savederrno;
+	}
+	handle_info->event_subscribe_kernel_size = sizeof dummy_events;
+	if (getsockopt(test_socket, IPPROTO_SCTP, SCTP_EVENTS, &dummy_events,
+		       &handle_info->event_subscribe_kernel_size)) {
+		close(test_socket);
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to query kernel size of struct sctp_event_subscribe: %s",
+			strerror(savederrno));
+		return savederrno;
+	}
+	close(test_socket);
+	if (handle_info->event_subscribe_kernel_size < subscribe_min) {
+		savederrno = ERANGE;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP,
+			"No kernel support for the necessary notifications: struct sctp_event_subscribe is %u bytes, %u needed",
+			handle_info->event_subscribe_kernel_size, subscribe_min);
+		return savederrno;
+	}
+	events = malloc(handle_info->event_subscribe_kernel_size);
+	if (!events) {
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP,
+			"Failed to allocate event subscribe buffer: %s", strerror(savederrno));
+		return savederrno;
+	}
+	memset(events, 0, handle_info->event_subscribe_kernel_size);
+	events->sctp_data_io_event = 1;
+	events->sctp_association_event = 1;
+	events->sctp_address_event = 1;
+	events->sctp_send_failure_event = 1;
+	events->sctp_peer_error_event = 1;
+	events->sctp_shutdown_event = 1;
+	handle_info->event_subscribe_buffer = (char *)events;
+	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Size of struct sctp_event_subscribe is %u in kernel, %zu in user space",
+		  handle_info->event_subscribe_kernel_size, sizeof(struct sctp_event_subscribe));
 	return 0;
 }
 
@@ -1329,16 +1384,22 @@ int sctp_transport_init(knet_handle_t knet_h)
 
 	knet_h->transports[KNET_TRANSPORT_SCTP] = handle_info;
 
+	savederrno = _sctp_subscribe_init(knet_h);
+	if (savederrno) {
+		err = -1;
+		goto exit_fail;
+	}
+
 	knet_list_init(&handle_info->listen_links_list);
 	knet_list_init(&handle_info->connect_links_list);
 
 	handle_info->listen_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
-        if (handle_info->listen_epollfd < 0) {
-                savederrno = errno;
+	if (handle_info->listen_epollfd < 0) {
+		savederrno = errno;
 		err = -1;
-                log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to create epoll listen fd: %s",
-                        strerror(savederrno));
-                goto exit_fail;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to create epoll listen fd: %s",
+			strerror(savederrno));
+		goto exit_fail;
         }
 
 	if (_fdset_cloexec(handle_info->listen_epollfd)) {

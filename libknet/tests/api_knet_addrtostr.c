@@ -34,8 +34,8 @@ static void test(void)
 
 	if (!knet_addrtostr(NULL, sizeof(struct sockaddr_storage),
 			    addr_str, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) && (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid ss\n");
+			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
+		printf("knet_addrtostr accepted invalid ss or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
@@ -43,8 +43,8 @@ static void test(void)
 
 	if (!knet_addrtostr(&addr, 0,
 			    addr_str, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) && (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid sslen\n");
+			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
+		printf("knet_addrtostr accepted invalid sslen or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
@@ -52,8 +52,8 @@ static void test(void)
 
 	if (!knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
 			    NULL, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) && (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid addr_str\n");
+			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
+		printf("knet_addrtostr accepted invalid addr_str or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
@@ -61,8 +61,8 @@ static void test(void)
 
 	if (!knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
 			    addr_str, KNET_MAX_HOST_LEN,
-			    NULL, KNET_MAX_PORT_LEN) && (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid addr_str\n");
+			    NULL, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
+		printf("knet_addrtostr accepted invalid addr_str or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 

@@ -32,7 +32,7 @@
  * Always add new items before the last NULL.
  */
 
-compress_model_t compress_modules_cmds[] = {
+static compress_model_t compress_modules_cmds[] = {
 	{ "none" , 0, 0, 0, NULL },
 	{ "zlib" , 1, WITH_COMPRESS_ZLIB , 0, NULL },
 	{ "lz4"  , 2, WITH_COMPRESS_LZ4  , 0, NULL },
@@ -477,5 +477,7 @@ int knet_get_compress_list(struct knet_compress_info *compress_list, size_t *com
 	}
 	*compress_list_entries = outidx;
 
+	if (!err)
+		errno = 0;
 	return err;
 }

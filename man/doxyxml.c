@@ -31,7 +31,7 @@
 #include <qb/qblist.h>
 #include <qb/qbmap.h>
 
-#define XML_DIR "../../libknet/man/xml"
+#define XML_DIR "../man/xml-knet"
 #define XML_FILE "libknet_8h.xml"
 
 static int print_ascii = 1;

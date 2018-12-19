@@ -409,15 +409,15 @@ static pthread_mutex_t *openssl_internal_lock;
 static void openssl_internal_locking_callback(int mode, int type, char *file, int line)
 {
 	if (mode & CRYPTO_LOCK) {
-		pthread_mutex_lock(&(openssl_internal_lock[type]));
+		(void)pthread_mutex_lock(&(openssl_internal_lock[type]));
 	} else {
 		pthread_mutex_unlock(&(openssl_internal_lock[type]));
 	}
 }
 
-static unsigned long openssl_internal_thread_id(void)
+static pthread_t openssl_internal_thread_id(void)
 {
-	return (unsigned long)pthread_self();
+	return pthread_self();
 }
 
 static void openssl_internal_lock_cleanup(void)
@@ -458,7 +458,7 @@ static int openssl_internal_lock_setup(void)
 		}
 	}
 
-	CRYPTO_set_id_callback((unsigned long (*)(void))openssl_internal_thread_id);
+	CRYPTO_set_id_callback((void *)openssl_internal_thread_id);
 	CRYPTO_set_locking_callback((void *)&openssl_internal_locking_callback);
 
 out:

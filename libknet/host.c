@@ -107,7 +107,7 @@ exit_unlock:
 	if (err < 0) {
 		free(host);
 	}
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -179,7 +179,7 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id)
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -239,7 +239,7 @@ int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id, const char 
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -277,7 +277,7 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -324,7 +324,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -355,7 +355,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 	*host_ids_entries = knet_h->host_ids_entries;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -406,7 +406,7 @@ int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -445,7 +445,7 @@ int knet_host_get_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -486,7 +486,7 @@ int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = savederrno;
+	errno = err ? savederrno : 0;
 	return err;
 }
 
@@ -524,6 +524,7 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+	errno = 0;
 	return 0;
 }
 

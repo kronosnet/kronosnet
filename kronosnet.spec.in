@@ -25,7 +25,7 @@
 %@lzma@ lzma
 %@bzip2@ bzip2
 %@kronosnetd@ kronosnetd
-%@libtap@ libtap
+%@libnozzle@ libnozzle
 %@runautogen@ runautogen
 %@rpmdebuginfo@ rpmdebuginfo
 %@overriderpmdebuginfo@ overriderpmdebuginfo
@@ -59,11 +59,11 @@
 %if %{with bzip2}
 %global buildcompressbzip2 1
 %endif
-%if %{with libtap}
-%global buildlibtap 1
+%if %{with libnozzle}
+%global buildlibnozzle 1
 %endif
 %if %{with kronosnetd}
-%global buildlibtap 1
+%global buildlibnozzle 1
 %global buildkronosnetd 1
 %endif
 %if %{with runautogen}
@@ -121,6 +121,9 @@ BuildRequires: /usr/include/bzlib.h
 %endif
 %if %{defined buildkronosnetd}
 BuildRequires: pam-devel
+%endif
+%if %{defined buildlibnozzle}
+BuildRequires: libnl3-devel
 %endif
 %if %{defined buildautogen}
 BuildRequires: autoconf
@@ -185,8 +188,8 @@ BuildRequires: libtool
 %if %{defined buildkronosnetd}
 	--enable-kronosnetd \
 %endif
-%if %{defined buildlibtap}
-	--enable-libtap \
+%if %{defined buildlibnozzle}
+	--enable-libnozzle \
 %endif
 	--with-initdefaultdir=%{_sysconfdir}/sysconfig/ \
 %if %{defined _unitdir}
@@ -301,42 +304,42 @@ fi
 %{_mandir}/man8/*
 %endif
 
-%if %{defined buildlibtap}
-%package -n libtap1
+%if %{defined buildlibnozzle}
+%package -n libnozzle1
 Group: System Environment/Libraries
 Summary: Simple userland wrapper around kernel tap devices
 
-%description -n libtap1
+%description -n libnozzle1
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
  pre-up.d/up.d/down.d/post-down.d infrastructure.
 
-%files -n libtap1
+%files -n libnozzle1
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
-%{_libdir}/libtap.so.*
+%{_libdir}/libnozzle.so.*
 
-%post -n libtap1 -p /sbin/ldconfig
+%post -n libnozzle1 -p /sbin/ldconfig
 
-%postun -n libtap1 -p /sbin/ldconfig
+%postun -n libnozzle1 -p /sbin/ldconfig
 
-%package -n libtap1-devel
+%package -n libnozzle1-devel
 Group: Development/Libraries
 Summary: Simple userland wrapper around kernel tap devices (developer files)
-Requires: libtap1 = %{version}-%{release}
+Requires: libnozzle1 = %{version}-%{release}
 Requires: pkgconfig
 
-%description -n libtap1-devel
+%description -n libnozzle1-devel
  This is an over-engineered commodity library to manage a pool
  of tap devices and provides the basic
  pre-up.d/up.d/down.d/post-down.d infrastructure.
 
-%files -n libtap1-devel
+%files -n libnozzle1-devel
 %defattr(-,root,root,-)
 %doc COPYING.* COPYRIGHT
-%{_libdir}/libtap.so
-%{_includedir}/libtap.h
-%{_libdir}/pkgconfig/libtap.pc
+%{_libdir}/libnozzle.so
+%{_includedir}/libnozzle.h
+%{_libdir}/pkgconfig/libnozzle.pc
 %endif
 
 %package -n libknet1

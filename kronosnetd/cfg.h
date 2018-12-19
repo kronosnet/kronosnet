@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <net/if.h>
 
-#include "libtap.h"
+#include "libnozzle.h"
 #include "libknet.h"
 
 #define KNET_RING_DEFPORT 50000

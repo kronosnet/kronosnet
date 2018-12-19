@@ -29,7 +29,7 @@
 
 #define empty_module 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 
-knet_transport_ops_t transport_modules_cmd[] = {
+static knet_transport_ops_t transport_modules_cmd[KNET_MAX_TRANSPORTS] = {
 	{ "LOOPBACK", KNET_TRANSPORT_LOOPBACK, 1, KNET_PMTUD_LOOPBACK_OVERHEAD, loopback_transport_init, loopback_transport_free, loopback_transport_link_set_config, loopback_transport_link_clear_config, loopback_transport_link_dyn_connect, loopback_transport_rx_sock_error, loopback_transport_tx_sock_error, loopback_transport_rx_is_data },
 	{ "UDP", KNET_TRANSPORT_UDP, 1, KNET_PMTUD_UDP_OVERHEAD, udp_transport_init, udp_transport_free, udp_transport_link_set_config, udp_transport_link_clear_config, udp_transport_link_dyn_connect, udp_transport_rx_sock_error, udp_transport_tx_sock_error, udp_transport_rx_is_data },
 	{ "SCTP", KNET_TRANSPORT_SCTP,
@@ -147,6 +147,8 @@ int knet_get_transport_list(struct knet_transport_info *transport_list,
 
 	*transport_list_entries = outidx;
 
+	if (!err)
+		errno = 0;
 	return err;
 }
 
@@ -167,7 +169,7 @@ const char *knet_get_transport_name_by_id(uint8_t transport)
 		savederrno = ENOENT;
 	}
 
-	errno = savederrno;
+	errno = name ? 0 : savederrno;
 	return name;
 }
 
@@ -199,7 +201,7 @@ uint8_t knet_get_transport_id_by_name(const char *name)
 		savederrno = EINVAL;
 	}
 
-	errno = savederrno;
+	errno = err == KNET_MAX_TRANSPORTS ? savederrno : 0;
 	return err;
 }
 
@@ -236,6 +238,7 @@ int knet_handle_set_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
 	knet_h->reconnect_int = msecs;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = 0;
 	return 0;
 }
 
@@ -264,5 +267,6 @@ int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
 	*msecs = knet_h->reconnect_int;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = 0;
 	return 0;
 }

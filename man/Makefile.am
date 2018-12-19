@@ -95,15 +95,26 @@ knet_man3_MANS = \
 		knet_send_sync.3 \
 		knet_strtoaddr.3
 
-man3_MANS = $(knet_man3_MANS)
+if BUILD_LIBNOZZLE
+nozzle_man3_MANS =
+endif
 
-$(MANS): doxyfile-knet.stamp
+man3_MANS = $(knet_man3_MANS) $(nozzle_man3_MANS)
+
+$(MANS): doxyfile-knet.stamp doxyfile-nozzle.stamp
 
 doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/libknet.h
 	$(DOXYGEN) Doxyfile-knet
 	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
+
+doxyfile-nozzle.stamp: $(builddir)/doxyxml Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
+if BUILD_LIBNOZZLE
+	$(DOXYGEN) Doxyfile-nozzle
+	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
+endif
+	touch doxyfile-nozzle.stamp
 
 endif
 

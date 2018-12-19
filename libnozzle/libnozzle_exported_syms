@@ -1,4 +1,4 @@
-# Version and symbol export for libtap.so
+# Version and symbol export for libnozzle.so
 #
 # Copyright (C) 2011-2018 Red Hat, Inc.  All rights reserved.
 #
@@ -7,9 +7,9 @@
 # This software licensed under GPL-2.0+, LGPL-2.0+
 #
 
-LIBTAP {
+LIBNOZZLE {
 	global:
-		tap_*;
+		nozzle_*;
 	local:
 		*;
 };

@@ -14,7 +14,7 @@
 #include <string.h>
 
 #include "cfg.h"
-#include "libtap.h"
+#include "libnozzle.h"
 
 struct knet_cfg *knet_get_iface(const char *name, int create)
 {

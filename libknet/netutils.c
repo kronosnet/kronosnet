@@ -134,6 +134,8 @@ int knet_strtoaddr(const char *host, const char *port, struct sockaddr_storage *
 		freeaddrinfo(result);
 	}
 
+	if (!err)
+		errno = 0;
 	return err;
 }
 
@@ -141,6 +143,8 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		   char *addr_buf, size_t addr_buf_size,
 		   char *port_buf, size_t port_buf_size)
 {
+	int err;
+
 	if (!ss) {
 		errno = EINVAL;
 		return -1;
@@ -161,7 +165,12 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 		return -1;
 	}
 
-	return getnameinfo((struct sockaddr *)ss, sockaddr_len(ss), addr_buf, addr_buf_size,
-				port_buf, port_buf_size,
-				NI_NUMERICHOST | NI_NUMERICSERV);
+	err = getnameinfo((struct sockaddr *)ss, sockaddr_len(ss),
+			  addr_buf, addr_buf_size,
+			  port_buf, port_buf_size,
+			  NI_NUMERICHOST | NI_NUMERICSERV);
+
+	if (!err)
+		errno = 0;
+	return err;
 }
