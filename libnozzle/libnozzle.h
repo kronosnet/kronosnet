@@ -170,7 +170,7 @@ struct nozzle_ip {
 
 /**
  * nozzle_get_ips
- * @brief retrive the list of all configured ips for a given interface
+ * @brief retrieve the list of all configured ips for a given interface
  *
  * nozzle - pointer to the nozzle struct
  *
@@ -191,7 +191,7 @@ int nozzle_get_ips(const nozzle_t nozzle, struct nozzle_ip **nozzle_ip);
 
 /**
  * nozzle_get_mtu
- * @brief retrive mtu on a given nozzle interface
+ * @brief retrieve mtu on a given nozzle interface
  *
  * nozzle - pointer to the nozzle struct
  *
@@ -232,7 +232,7 @@ int nozzle_reset_mtu(nozzle_t nozzle);
 
 /**
  * nozzle_get_mac
- * @brief retrive mac address on a given nozzle interface
+ * @brief retrieve mac address on a given nozzle interface
  *
  * nozzle - pointer to the nozzle struct
  *
@@ -288,7 +288,7 @@ nozzle_t nozzle_get_handle_by_name(const char *devname);
 
 /**
  * nozzle_get_name_by_handle
- * @brief retrive nozzle interface name by handle
+ * @brief retrieve nozzle interface name by handle
  *
  * nozzle - pointer to the nozzle struct
  *
