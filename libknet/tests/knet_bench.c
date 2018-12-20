@@ -450,7 +450,7 @@ static void setup_knet(int argc, char *argv[])
 
 	logfd = start_logging(stdout);
 
-	knet_h = knet_handle_new(thisnodeid, logfd, debug);
+	knet_h = knet_handle_new(thisnodeid, logfd, debug, 0);
 	if (!knet_h) {
 		printf("Unable to knet_handle_new: %s\n", strerror(errno));
 		exit(FAIL);

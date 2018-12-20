@@ -353,7 +353,7 @@ int start_logging(FILE *std)
 
 knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 {
-	knet_handle_t knet_h = knet_handle_new_ex(1, logfds[1], log_level, 0);
+	knet_handle_t knet_h = knet_handle_new(1, logfds[1], log_level, 0);
 
 	if (knet_h) {
 		return knet_h;

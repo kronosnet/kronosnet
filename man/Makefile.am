@@ -54,7 +54,6 @@ knet_man3_MANS = \
 		knet_get_transport_name_by_id.3 \
 		knet_handle_get_transport_reconnect_interval.3 \
 		knet_handle_new.3 \
-		knet_handle_new_ex.3 \
 		knet_handle_pmtud_get.3 \
 		knet_handle_pmtud_getfreq.3 \
 		knet_handle_pmtud_setfreq.3 \
