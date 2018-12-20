@@ -29,7 +29,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid 1, no logging\n");
 
-	knet_h = knet_handle_new_ex(1, 0, 0, 0);
+	knet_h = knet_handle_new(1, 0, 0, 0);
 	if (!knet_h) {
 		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
 		exit(FAIL);
@@ -42,7 +42,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid -1, no logging\n");
 
-	knet_h = knet_handle_new_ex(-1, 0, 0, 0);
+	knet_h = knet_handle_new(-1, 0, 0, 0);
 	if (!knet_h) {
 		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
 		exit(FAIL);
@@ -73,7 +73,7 @@ static void test(void)
 	 */
 	printf("Test knet_handle_new hostid 1, incorrect log_fd (-1)\n");
 
-	knet_h = knet_handle_new(1, -1, 0);
+	knet_h = knet_handle_new(1, -1, 0, 0);
 
 	if ((!knet_h) && (errno != EINVAL)) {
 		printf("knet_handle_new returned incorrect errno on incorrect log_fd\n");
@@ -91,7 +91,7 @@ static void test(void)
 	 */
 	printf("Test knet_handle_new hostid 1, incorrect log_fd (max_fd + 1)\n");
 
-	knet_h = knet_handle_new(1, (int) cur.rlim_max, 0);
+	knet_h = knet_handle_new(1, (int) cur.rlim_max, 0, 0);
 
 	if ((knet_h) || (errno != EINVAL)) {
 		printf("knet_handle_new accepted an incorrect (max_fd + 1) log_fd or returned incorrect errno on incorrect log_fd: %s\n", strerror(errno));
@@ -103,7 +103,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid 1, proper log_fd, invalid log level (DEBUG + 1)\n");
 
-	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG + 1);
+	knet_h = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG + 1 ,0);
 
 	if ((knet_h) || (errno != EINVAL)) {
 		printf("knet_handle_new accepted an incorrect log level or returned incorrect errno on incorrect log level: %s\n", strerror(errno));

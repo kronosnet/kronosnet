@@ -93,7 +93,7 @@ typedef struct knet_handle *knet_handle_t;
  */
 
 /**
- * knet_handle_new_ex
+ * knet_handle_new
  *
  * @brief create a new instance of a knet handle
  *
@@ -119,7 +119,7 @@ typedef struct knet_handle *knet_handle_t;
  *            at default_log_level value. (see logging API)
  *
  * flags    - bitwise OR of some of the following flags:
- *   KNET_HANDLE_FLAG_PRIVILEGED: use privileged operations setting up the
+ *            KNET_HANDLE_FLAG_PRIVILEGED: use privileged operations setting up the
  *            communication sockets.  If disabled, failure to acquire large
  *            enough socket buffers is ignored but logged.  Inadequate buffers
  *            lead to poor performance.
@@ -132,20 +132,10 @@ typedef struct knet_handle *knet_handle_t;
  *   ERANGE       - buffer size readback returned unexpected type
  */
 
-knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
-				 int            log_fd,
-				 uint8_t        default_log_level,
-				 uint64_t	flags);
-
-/**
- * knet_handle_new
- *
- * @brief knet_handle_new_ex with flags = KNET_HANDLE_FLAG_PRIVILEGED.
- */
-
 knet_handle_t knet_handle_new(knet_node_id_t host_id,
-			      int      log_fd,
-			      uint8_t  default_log_level);
+			      int log_fd,
+			      uint8_t default_log_level,
+			      uint64_t flags);
 
 /**
  * knet_handle_free

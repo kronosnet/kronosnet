@@ -31,7 +31,7 @@ static void test(void)
 
 	for (idx = 0; idx < UINT8_MAX; idx++) {
 		printf("Allocating %d\n", idx);
-		knet_h[idx] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
+		knet_h[idx] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG, 0);
 		if (!knet_h[idx]) {
 			printf("knet_handle_new[%d] failed: %s\n", idx, strerror(errno));
 			flush_logs(logfds[0], stdout);
@@ -42,7 +42,7 @@ static void test(void)
 	}
 
 	printf("forcing UINT8_T MAX\n");
-	knet_h[UINT8_MAX] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
+	knet_h[UINT8_MAX] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG, 0);
 	if (knet_h[UINT8_MAX]) {
 		printf("off by one somewhere\n");
 		knet_handle_free(knet_h[UINT8_MAX]);
