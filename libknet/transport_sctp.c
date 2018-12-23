@@ -1322,6 +1322,10 @@ static int _sctp_subscribe_init(knet_handle_t knet_h)
 
 	test_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_SCTP);
 	if (test_socket < 0) {
+		if (errno == EPROTONOSUPPORT) {
+			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP not supported, skipping initialization");
+			return 0;
+		}
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to create test socket: %s",
 			strerror(savederrno));
