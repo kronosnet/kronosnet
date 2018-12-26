@@ -129,7 +129,8 @@ doxyfile-knet.stamp: $(builddir)/doxyxml Doxyfile-knet $(top_srcdir)/libknet/lib
 doxyfile-nozzle.stamp: $(builddir)/doxyxml Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
 if BUILD_LIBNOZZLE
 	$(DOXYGEN) Doxyfile-nozzle
-	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
+	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
+		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
 endif
 	touch doxyfile-nozzle.stamp
 
