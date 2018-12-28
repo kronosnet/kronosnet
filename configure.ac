@@ -180,7 +180,7 @@ AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 # args. Global CPPFLAGS are ignored during this test.
 cc_supports_flag() {
 	saveCPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="$@"
+	CPPFLAGS="$EXTRA_WARNINGS $@"
 	if echo $CC | grep -q clang; then
 		CPPFLAGS="-Werror $CPPFLAGS"
 	fi
