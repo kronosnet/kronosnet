@@ -24,6 +24,8 @@
  * Kronosnet is an advanced VPN system for High Availability applications.
  */
 
+#define KNET_API_VER 2
+
 /*
  * libknet limits
  */
