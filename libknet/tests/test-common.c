@@ -233,6 +233,15 @@ void flush_logs(int logfd, FILE *std)
 			bytes_read += len;
 		}
 
+		if (!msg.knet_h) {
+			/*
+			 * this is harsh but this function is void
+			 * and it is used also inside log_thread.
+			 * this is the easiest to get out with an error
+			 */
+			fprintf(std, "NO HANDLE INFO IN LOG MSG!!\n");
+			abort();
+		}
 		fprintf(std, "[knet]: [%s] %s: %.*s\n",
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),

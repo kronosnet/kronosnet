@@ -1921,6 +1921,7 @@ struct knet_log_msg {
 	char	msg[KNET_MAX_LOG_MSG_SIZE];
 	uint8_t	subsystem;	/* KNET_SUB_* */
 	uint8_t msglevel;	/* KNET_LOG_* */
+	knet_handle_t knet_h;	/* pointer to the handle generating the log */
 };
 
 /**

@@ -221,6 +221,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	memset(&msg, 0, sizeof(struct knet_log_msg));
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
+	msg.knet_h = knet_h;
 
 	va_start(ap, fmt);
 #ifdef __clang__
