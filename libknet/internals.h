@@ -236,6 +236,14 @@ struct knet_handle {
 		uint8_t reachable,
 		uint8_t remote,
 		uint8_t external);
+	void *link_status_change_notify_fn_private_data;
+	void (*link_status_change_notify_fn) (
+		void *private_data,
+		knet_node_id_t host_id,
+		uint8_t link_id,
+		uint8_t connected,
+		uint8_t remote,
+		uint8_t external);
 	void *sock_notify_fn_private_data;
 	void (*sock_notify_fn) (
 		void *private_data,

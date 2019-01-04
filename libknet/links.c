@@ -24,16 +24,35 @@
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected)
 {
-	struct knet_link *link = &knet_h->host_index[host_id]->link[link_id];
+	struct knet_host *host = knet_h->host_index[host_id];
+	struct knet_link *link = &host->link[link_id];
+	int notify_status = link->status.connected;
 
 	if ((link->status.enabled == enabled) &&
 	    (link->status.connected == connected))
 		return 0;
 
+	if ((link->status.enabled) &&
+	    (knet_h->link_status_change_notify_fn)) {
+		if (link->status.connected != connected) {
+			notify_status = connected; /* connection state */
+		}
+		if (!enabled) {
+			notify_status = 0; /* disable == disconnected */
+		}
+		knet_h->link_status_change_notify_fn(
+					knet_h->link_status_change_notify_fn_private_data,
+					host_id,
+					link_id,
+					notify_status,
+					host->status.remote,
+					host->status.external);
+	}
+
 	link->status.enabled = enabled;
 	link->status.connected = connected;
 
-	_host_dstcache_update_async(knet_h, knet_h->host_index[host_id]);
+	_host_dstcache_update_async(knet_h, host);
 
 	if ((link->status.dynconnected) &&
 	    (!link->status.connected))
@@ -1083,4 +1102,43 @@ exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
 	return err;
+}
+
+int knet_link_enable_status_change_notify(knet_handle_t knet_h,
+					  void *link_status_change_notify_fn_private_data,
+					  void (*link_status_change_notify_fn) (
+						void *private_data,
+						knet_node_id_t host_id,
+						uint8_t link_id,
+						uint8_t connected,
+						uint8_t remote,
+						uint8_t external))
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->link_status_change_notify_fn_private_data = link_status_change_notify_fn_private_data;
+	knet_h->link_status_change_notify_fn = link_status_change_notify_fn;
+	if (knet_h->link_status_change_notify_fn) {
+		log_debug(knet_h, KNET_SUB_HOST, "link_status_change_notify_fn enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HOST, "link_status_change_notify_fn disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
 }
