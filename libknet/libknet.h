@@ -1796,6 +1796,51 @@ struct knet_link_status {
 int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			 struct knet_link_status *status, size_t struct_size);
 
+/**
+ * knet_link_enable_status_change_notify
+ *
+ * @brief Install a callback to get a link status change events
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * host_status_change_notify_fn_private_data -
+ *            void pointer to data that can be used to identify
+ *            the callback
+ *
+ * host_status_change_notify_fn -
+ *            is a callback function that is invoked every time
+ *            there is a change in a link status.
+ *            host status is identified by:
+ *            - connected, 0 if the link has been disconnected, 1 if the link
+ *                         is connected.
+ *            - remote, 0 if the host_id is connected locally or 1 if
+ *                      the there is one or more knet host(s) in between.
+ *                      NOTE: re-switching is NOT currently implemented,
+ *                            but this is ready for future and can avoid
+ *                            an API/ABI breakage later on.
+ *            - external, 0 if the host_id is configured locally or 1 if
+ *                        it has been added from remote nodes config.
+ *                        NOTE: dynamic topology is NOT currently implemented,
+ *                        but this is ready for future and can avoid
+ *                        an API/ABI breakage later on.
+ *            This function MUST NEVER block or add substantial delays.
+ *
+ * @return
+ * knet_host_status_change_notify returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_link_enable_status_change_notify(knet_handle_t knet_h,
+					  void *link_status_change_notify_fn_private_data,
+					  void (*link_status_change_notify_fn) (
+						void *private_data,
+						knet_node_id_t host_id,
+						uint8_t link_id,
+						uint8_t connected,
+						uint8_t remote,
+						uint8_t external));
+
 /*
  * logging structs/API calls
  */
