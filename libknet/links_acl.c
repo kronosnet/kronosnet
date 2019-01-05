@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <malloc.h>
-#include "ipcheck.h"
+#include "links_acl.h"
 
 struct ip_match_entry {
 	ipcheck_type_t type;
