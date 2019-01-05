@@ -13,7 +13,8 @@ include $(top_srcdir)/libknet/tests/api-check.mk
 
 EXTRA_DIST		= \
 			  api-test-coverage \
-			  api-check.mk
+			  api-check.mk \
+			  int_links_acl.txt
 
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet
 AM_CFLAGS		+= $(PTHREAD_CFLAGS)
@@ -40,9 +41,11 @@ fun_checks		=
 benchmarks		= \
 			  knet_bench_test
 
+# int_links_acl_test can´t run yet standalone
 noinst_PROGRAMS		= \
 			  api_knet_handle_new_limit_test \
 			  pckt_test \
+			  int_links_acl_test \
 			  $(benchmarks) \
 			  $(check_PROGRAMS)
 
@@ -58,6 +61,9 @@ check-api-test-coverage:
 	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir) $(top_builddir)
 
 pckt_test_SOURCES	= pckt_test.c
+
+int_links_acl_test_SOURCES = int_links_acl.c \
+			     ../links_acl.c
 
 int_timediff_test_SOURCES = int_timediff.c
 

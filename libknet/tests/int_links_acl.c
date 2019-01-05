@@ -14,7 +14,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <malloc.h>
-#include "ipcheck.h"
+#include "links_acl.h"
 
 /* This is a test program .. remember! */
 #define BUFLEN 1024
@@ -103,9 +103,9 @@ static int load_file(void)
 
 	ipcheck_clear();
 
-	filterfile = fopen("test_ipcheck.txt", "r");
+	filterfile = fopen("int_links_acl.txt", "r");
 	if (!filterfile) {
-		fprintf(stderr, "Cannot open test_ipcheck.txt\n");
+		fprintf(stderr, "Cannot open int_links_acl.txt\n");
 		return 1;
 	}
 
