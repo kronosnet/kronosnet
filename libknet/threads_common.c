@@ -64,7 +64,7 @@ int get_global_wrlock(knet_handle_t knet_h)
 	return pthread_rwlock_wrlock(&knet_h->global_rwlock);
 }
 
-static struct pretty_names thread_names[] =
+static struct pretty_names thread_names[KNET_THREAD_MAX] =
 {
 	{ "TX", KNET_THREAD_TX },
 	{ "RX", KNET_THREAD_RX },
@@ -79,15 +79,11 @@ static struct pretty_names thread_names[] =
 
 static struct pretty_names thread_status[] =
 {
-	{ "stopped", KNET_THREAD_STOPPED },
-	{ "running", KNET_THREAD_RUNNING }
+	{ "unregistered", KNET_THREAD_UNREGISTERED },
+	{ "registered", KNET_THREAD_REGISTERED },
+	{ "started", KNET_THREAD_STARTED },
+	{ "stopped", KNET_THREAD_STOPPED }
 };
-
-/*
- * this seems overloaded at the moment but
- * we might want to expand status checks
- * to include "starting" and "stopping"
- */
 
 static const char *get_thread_status_name(uint8_t status)
 {
@@ -143,6 +139,9 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 		found = 1;
 
 		for (i = 0; i < KNET_THREAD_MAX; i++) {
+			if (knet_h->threads_status[i] == KNET_THREAD_UNREGISTERED) {
+				continue;
+			}
 			log_debug(knet_h, KNET_SUB_HANDLE, "Checking thread: %s status: %s req: %s",
 					get_thread_name(i),
 					get_thread_status_name(knet_h->threads_status[i]),

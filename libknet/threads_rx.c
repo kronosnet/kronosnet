@@ -815,7 +815,7 @@ void *_handle_recv_from_links_thread(void *data)
 	struct knet_mmsghdr msg[PCKT_RX_BUFS];
 	struct iovec iov_in[PCKT_RX_BUFS];
 
-	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STARTED);
 
 	memset(&msg, 0, sizeof(msg));
 
