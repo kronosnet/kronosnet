@@ -186,7 +186,7 @@ void *_handle_heartbt_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	int i = 1;
 
-	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_STARTED);
 
 	/* preparing ping buffer */
 	knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
