@@ -479,7 +479,7 @@ void *_handle_pmtud_link_thread(void *data)
 	int link_has_mtu;
 	int force_run = 0;
 
-	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_STARTED);
 
 	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 

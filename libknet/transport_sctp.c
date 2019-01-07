@@ -626,7 +626,7 @@ static void *_sctp_connect_thread(void *data)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
-	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(handle_info->connect_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
@@ -871,7 +871,7 @@ static void *_sctp_listen_thread(void *data)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
-	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(handle_info->listen_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
@@ -1472,6 +1472,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 	/*
 	 * Start connect & listener threads
 	 */
+	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&handle_info->listen_thread, 0, _sctp_listen_thread, (void *) knet_h);
 	if (savederrno) {
 		err = -1;
@@ -1480,6 +1481,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&handle_info->connect_thread, 0, _sctp_connect_thread, (void *) knet_h);
 	if (savederrno) {
 		err = -1;
