@@ -82,6 +82,7 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 		/*
 		 * should we dlclose and return error?
 		 */
+		error = dlerror();
 		log_warn(knet_h, KNET_SUB_COMMON, "unable to dlinfo %s: %s",
 			 libname, error);
 	} else {
