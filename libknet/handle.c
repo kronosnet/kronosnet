@@ -1656,3 +1656,34 @@ int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
 	errno = err ? savederrno : 0;
 	return err;
 }
+
+int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
+				      useconds_t *timeres)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!timeres) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*timeres = knet_h->threads_timer_res;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
+}

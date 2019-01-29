@@ -194,6 +194,23 @@ int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
 				      useconds_t timeres);
 
 /**
+ * knet_handle_get_threads_timer_res
+ * @brief Get internal thread timer resolutions
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * timeres  - current timer res value
+ *
+ * @return
+ * knet_handle_set_threads_timer_res returns
+ * 0 on success and timerres will contain the current value
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
+				      useconds_t *timeres);
+
+/**
  * knet_handle_enable_sock_notify
  * @brief Register a callback to receive socket events
  *
