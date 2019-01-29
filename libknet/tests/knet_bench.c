@@ -24,7 +24,6 @@
 #include "internals.h"
 #include "netutils.h"
 #include "transport_common.h"
-#include "threads_common.h"
 #include "test-common.h"
 
 #define MAX_NODES 128
@@ -818,7 +817,7 @@ retry:
 
 	if (sent_msgs < 0) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-			usleep(KNET_THREADS_TIMERES / 16);
+			usleep(KNET_THREADS_TIMER_RES / 16);
 			goto retry;
 		}
 		printf("[info]: Unable to send messages: %s\n", strerror(errno));

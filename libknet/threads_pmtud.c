@@ -489,7 +489,7 @@ void *_handle_pmtud_link_thread(void *data)
 	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 
 	while (!shutdown_in_progress(knet_h)) {
-		usleep(KNET_THREADS_TIMERES);
+		usleep(knet_h->threads_timer_res);
 
 		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");

@@ -176,6 +176,7 @@ struct knet_handle {
 	struct knet_header *pingbuf;
 	struct knet_header *pmtudbuf;
 	uint8_t threads_status[KNET_THREAD_MAX];
+	useconds_t threads_timer_res;
 	pthread_mutex_t threads_status_mutex;
 	pthread_t send_to_links_thread;
 	pthread_t recv_from_links_thread;

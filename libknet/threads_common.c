@@ -130,7 +130,7 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 	uint8_t i = 0, found = 0;
 
 	while (!found) {
-		usleep(KNET_THREADS_TIMERES);
+		usleep(knet_h->threads_timer_res);
 
 		if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
 			continue;

@@ -88,6 +88,12 @@ typedef uint16_t knet_node_id_t;
 
 #define KNET_HANDLE_FLAG_PRIVILEGED (1ULL << 0)
 
+/*
+ * threads timer resolution (see knet_handle_set_threads_timer_res below)
+ */
+
+#define KNET_THREADS_TIMER_RES 200000
+
 typedef struct knet_handle *knet_handle_t;
 
 /*
@@ -152,6 +158,40 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
  */
 
 int knet_handle_free(knet_handle_t knet_h);
+
+/**
+ * knet_handle_set_threads_timer_res
+ * @brief Change internal thread timer resolution
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * timeres  - some threads inside knet will use usleep(timeres)
+ *            to check if any activity has to be performed, or wait
+ *            for the next cycle. 'timeres' (expressed in nano seconds)
+ *            defines this interval, with a default of KNET_THREADS_TIMER_RES
+ *            (200000).
+ *            The lower this value is, the more often knet will perform
+ *            those checks and allows a more (time) precise execution of
+ *            some operations (for example ping/pong), at the cost of higher
+ *            CPU usage.
+ *            Accepted values:
+ *            0 - reset timer res to default
+ *            1 - 999 invalid (as it would cause 100% CPU spinning on some
+ *                    epoll operations)
+ *            1000 or higher - valid
+ *
+ * Unless you know exactly what you are doing, stay away from
+ * changing the default or seek written and notarized approval
+ * from the knet developer team.
+ *
+ * @return
+ * knet_handle_set_threads_timer_res returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
+				      useconds_t timeres);
 
 /**
  * knet_handle_enable_sock_notify

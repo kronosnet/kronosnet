@@ -408,7 +408,7 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 #ifdef DEBUG
 			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 #endif
-			usleep(KNET_THREADS_TIMERES / 16);
+			usleep(knet_h->threads_timer_res / 16);
 		} else {
 			read_errs_from_sock(knet_h, sockfd);
 		}
