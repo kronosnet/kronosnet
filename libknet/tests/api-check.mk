@@ -68,7 +68,9 @@ api_checks		= \
 			  api_knet_link_get_enable_test \
 			  api_knet_link_get_link_list_test \
 			  api_knet_link_get_status_test \
-			  api_knet_link_enable_status_change_notify_test
+			  api_knet_link_enable_status_change_notify_test \
+			  api_knet_handle_set_threads_timer_res_test \
+			  api_knet_handle_get_threads_timer_res_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -256,3 +258,9 @@ api_knet_link_get_status_test_SOURCES = api_knet_link_get_status.c \
 
 api_knet_link_enable_status_change_notify_test_SOURCES = api_knet_link_enable_status_change_notify.c \
 							 test-common.c
+
+api_knet_handle_set_threads_timer_res_test_SOURCES = api_knet_handle_set_threads_timer_res.c \
+						     test-common.c
+
+api_knet_handle_get_threads_timer_res_test_SOURCES = api_knet_handle_get_threads_timer_res.c \
+						     test-common.c

@@ -600,6 +600,12 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	}
 
 	/*
+	 * set internal threads time resolutions
+	 */
+
+	knet_h->threads_timer_res = KNET_THREADS_TIMER_RES;
+
+	/*
 	 * set pmtud default timers
 	 */
 	knet_h->pmtud_interval = KNET_PMTUD_DEFAULT_INTERVAL;
@@ -1609,3 +1615,75 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 	return err;
 }
 
+int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
+				      useconds_t timeres)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * most threads use timeres / 1000 as timeout on epoll.
+	 * anything below 1000 would generate a result of 0, making
+	 * the threads spin at 100% cpu
+	 */
+	if ((timeres > 0) && (timeres < 1000)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (timeres) {
+		knet_h->threads_timer_res = timeres;
+		log_debug(knet_h, KNET_SUB_HANDLE, "Setting new threads timer resolution to %u usecs", knet_h->threads_timer_res);
+	} else {
+		knet_h->threads_timer_res = KNET_THREADS_TIMER_RES;
+		log_debug(knet_h, KNET_SUB_HANDLE, "Setting new threads timer resolution to default %u usecs", knet_h->threads_timer_res);
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
+}
+
+int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
+				      useconds_t *timeres)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!timeres) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*timeres = knet_h->threads_timer_res;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
+}

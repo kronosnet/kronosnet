@@ -194,7 +194,7 @@ void *_handle_heartbt_thread(void *data)
 	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
 	while (!shutdown_in_progress(knet_h)) {
-		usleep(KNET_THREADS_TIMERES);
+		usleep(knet_h->threads_timer_res);
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
 			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get read lock");
@@ -204,7 +204,7 @@ void *_handle_heartbt_thread(void *data)
 		/*
 		 *  _adjust_pong_timeouts should execute approx once a second.
 		 */
-		if ((i % (1000000 / KNET_THREADS_TIMERES)) == 0) {
+		if ((i % (1000000 / knet_h->threads_timer_res)) == 0) {
 			_adjust_pong_timeouts(knet_h);
 			i = 1;
 		} else {

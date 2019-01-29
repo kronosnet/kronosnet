@@ -300,7 +300,7 @@ int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 #endif
 			/* Don't hold onto the lock while sleeping */
 			pthread_rwlock_unlock(&knet_h->global_rwlock);
-			usleep(KNET_THREADS_TIMERES / 16);
+			usleep(knet_h->threads_timer_res / 16);
 			pthread_rwlock_rdlock(&knet_h->global_rwlock);
 			return 1;
 		}
@@ -406,7 +406,7 @@ int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 
 	/* Don't hold onto the lock while sleeping */
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	usleep(KNET_THREADS_TIMERES / 2);
+	usleep(knet_h->threads_timer_res / 2);
 	pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	return 0;
 }
@@ -629,7 +629,7 @@ static void *_sctp_connect_thread(void *data)
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(handle_info->connect_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
+		nev = epoll_wait(handle_info->connect_epollfd, events, KNET_EPOLL_MAX_EVENTS, knet_h->threads_timer_res / 1000);
 
 		/*
 		 * we use timeout to detect if thread is shutting down
@@ -874,7 +874,7 @@ static void *_sctp_listen_thread(void *data)
 	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(handle_info->listen_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
+		nev = epoll_wait(handle_info->listen_epollfd, events, KNET_EPOLL_MAX_EVENTS, knet_h->threads_timer_res / 1000);
 
 		/*
 		 * we use timeout to detect if thread is shutting down

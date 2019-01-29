@@ -12,8 +12,6 @@
 
 #include "internals.h"
 
-#define KNET_THREADS_TIMERES 200000
-
 #define KNET_THREAD_UNREGISTERED	0 /* thread does not exist */
 #define KNET_THREAD_REGISTERED		1 /* thread has been registered before  pthread_create invocation.
 					     make sure threads are registered before calling wait_all_thread_status */

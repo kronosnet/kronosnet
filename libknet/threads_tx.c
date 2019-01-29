@@ -235,7 +235,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 						local_link->status.stats.tx_data_retries++;
 						buf += err;
 						buflen -= err;
-						usleep(KNET_THREADS_TIMERES / 16);
+						usleep(knet_h->threads_timer_res / 16);
 						goto local_retry;
 					}
 					if (err == buflen) {
@@ -704,7 +704,7 @@ void *_handle_send_to_links_thread(void *data)
 	}
 
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, KNET_THREADS_TIMERES / 1000);
+		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, knet_h->threads_timer_res / 1000);
 
 		/*
 		 * we use timeout to detect if thread is shutting down

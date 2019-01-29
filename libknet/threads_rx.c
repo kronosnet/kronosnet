@@ -832,7 +832,7 @@ void *_handle_recv_from_links_thread(void *data)
 	}
 
 	while (!shutdown_in_progress(knet_h)) {
-		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
+		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, knet_h->threads_timer_res / 1000);
 
 		/*
 		 * we use timeout to detect if thread is shutting down
