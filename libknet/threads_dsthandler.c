@@ -53,7 +53,7 @@ void *_handle_dst_link_handler_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
-	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
 		if (epoll_wait(knet_h->dst_link_handler_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000) >= 1)

@@ -678,7 +678,7 @@ void *_handle_send_to_links_thread(void *data)
 	struct msghdr msg;
 	struct sockaddr_storage address;
 
-	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_RUNNING);
+	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STARTED);
 
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (void *)knet_h->recv_from_sock_buf->khp_data_userdata;

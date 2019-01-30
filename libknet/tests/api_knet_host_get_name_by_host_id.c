@@ -73,7 +73,7 @@ static void test(void)
 	}
 
 	if (knet_host_get_name_by_host_id(knet_h, 1, name) < 0) {
-		printf("knet_host_get_name_by_host_id faild to retrive name: %s\n", strerror(errno));
+		printf("knet_host_get_name_by_host_id faild to retrieve name: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

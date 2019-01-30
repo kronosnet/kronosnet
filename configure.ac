@@ -175,23 +175,6 @@ if test "x$enable_kronosnetd" = xyes; then
 fi
 AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 
-## local helper functions
-# this function checks if CC support options passed as
-# args. Global CPPFLAGS are ignored during this test.
-cc_supports_flag() {
-	saveCPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="$@"
-	if echo $CC | grep -q clang; then
-		CPPFLAGS="-Werror $CPPFLAGS"
-	fi
-	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
-			  [RC=0; AC_MSG_RESULT([yes])],
-			  [RC=1; AC_MSG_RESULT([no])])
-	CPPFLAGS="$saveCPPFLAGS"
-	return $RC
-}
-
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
 saved_LIBS="$LIBS"
@@ -404,65 +387,13 @@ else
 	GDB_FLAGS="-g"
 fi
 
-# extra warnings
-EXTRA_WARNINGS=""
+DEFAULT_CFLAGS="-Werror -Wall -Wextra"
 
-WARNLIST="
-	all
-	extra
-	unused
-	shadow
-	missing-prototypes
-	missing-declarations
-	suggest-attribute=noreturn
-	suggest-attribute=format
-	property-attribute-mismatch
-	strict-prototypes
-	declaration-after-statement
-	pointer-arith
-	write-strings
-	cast-align
-	bad-function-cast
-	missing-format-attribute
-	float-equal
-	format=2
-	format-signedness
-	format-security
-	format-nonliteral
-	no-long-long
-	unsigned-char
-	gnu89-inline
-	no-strict-aliasing
-	error
-	address
-	cpp
-	overflow
-	parentheses
-	sequence-point
-	switch
-	shift-overflow
-	shift-overflow=2
-	overlength-strings
-	retundent-decls
-	init-self
-	uninitialized
-	unused-but-set-variable
-	unused-const-variable
-	unused-function
-	unused-result
-	unused-value
-	unused-variable
-	unknown-pragmas
-	no-unused-parameter
-	"
+# manual overrides
+# generates too much noise for stub APIs
+UNWANTED_CFLAGS="-Wno-unused-parameter"
 
-for j in $WARNLIST; do
-	if cc_supports_flag -W$j; then
-		EXTRA_WARNINGS="$EXTRA_WARNINGS -W$j";
-	fi
-done
-
-AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $EXTRA_WARNINGS"])
+AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $DEFAULT_CFLAGS $UNWANTED_CFLAGS"])
 
 AX_PROG_DATE
 AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],

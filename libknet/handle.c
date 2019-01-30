@@ -454,6 +454,7 @@ static int _start_threads(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
+	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->pmtud_link_handler_thread, 0,
 				    _handle_pmtud_link_thread, (void *) knet_h);
 	if (savederrno) {
@@ -462,6 +463,7 @@ static int _start_threads(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->dst_link_handler_thread, 0,
 				    _handle_dst_link_handler_thread, (void *) knet_h);
 	if (savederrno) {
@@ -470,6 +472,7 @@ static int _start_threads(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->send_to_links_thread, 0,
 				    _handle_send_to_links_thread, (void *) knet_h);
 	if (savederrno) {
@@ -478,6 +481,7 @@ static int _start_threads(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->recv_from_links_thread, 0,
 				    _handle_recv_from_links_thread, (void *) knet_h);
 	if (savederrno) {
@@ -486,6 +490,7 @@ static int _start_threads(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->heartbt_thread, 0,
 				    _handle_heartbt_thread, (void *) knet_h);
 	if (savederrno) {
@@ -697,7 +702,7 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 		goto exit_fail;
 	}
 
-	wait_all_threads_status(knet_h, KNET_THREAD_RUNNING);
+	wait_all_threads_status(knet_h, KNET_THREAD_STARTED);
 
 	errno = 0;
 	return knet_h;
