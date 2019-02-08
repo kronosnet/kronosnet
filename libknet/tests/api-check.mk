@@ -12,6 +12,7 @@ api_checks		= \
 			  api_knet_handle_compress_test \
 			  api_knet_handle_crypto_test \
 			  api_knet_handle_setfwd_test \
+			  api_knet_handle_enable_access_lists_test \
 			  api_knet_handle_enable_filter_test \
 			  api_knet_handle_enable_sock_notify_test \
 			  api_knet_handle_add_datafd_test \
@@ -86,6 +87,9 @@ api_knet_handle_crypto_test_SOURCES = api_knet_handle_crypto.c \
 
 api_knet_handle_setfwd_test_SOURCES = api_knet_handle_setfwd.c \
 				      test-common.c
+
+api_knet_handle_enable_access_lists_test_SOURCES = api_knet_handle_enable_access_lists.c \
+						   test-common.c
 
 api_knet_handle_enable_filter_test_SOURCES = api_knet_handle_enable_filter.c \
 					     test-common.c

@@ -1186,6 +1186,42 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 	return 0;
 }
 
+int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (enabled > 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->use_access_lists = enabled;
+
+	if (enabled) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Links access lists are enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Links access lists are disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
 int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 {
 	int savederrno = 0;
