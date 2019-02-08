@@ -542,6 +542,28 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 
 int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 
+/**
+ * knet_handle_enable_access_lists
+ *
+ * @brief Start packet forwarding
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * enable   - set to 1 to use ip access lists, 0 to disable ip access_lists.
+ *
+ * @return
+ * knet_handle_enable_access_lists returns
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ * By default access lists usage is off, but default internal access lists
+ * will be populated regardless, but not enforced. TODO add long explanation
+ * on internal access lists for point to point connections vs global
+ * listeners etc.
+ */
+
+int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled);
+
 #define KNET_PMTUD_DEFAULT_INTERVAL 60
 
 /**
