@@ -27,14 +27,14 @@
 #include "transport_sctp.h"
 #include "threads_common.h"
 
-#define empty_module 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+#define empty_module -1, -1, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 
 static knet_transport_ops_t transport_modules_cmd[KNET_MAX_TRANSPORTS] = {
-	{ "LOOPBACK", KNET_TRANSPORT_LOOPBACK, 1, KNET_PMTUD_LOOPBACK_OVERHEAD, loopback_transport_init, loopback_transport_free, loopback_transport_link_set_config, loopback_transport_link_clear_config, loopback_transport_link_dyn_connect, loopback_transport_rx_sock_error, loopback_transport_tx_sock_error, loopback_transport_rx_is_data },
-	{ "UDP", KNET_TRANSPORT_UDP, 1, KNET_PMTUD_UDP_OVERHEAD, udp_transport_init, udp_transport_free, udp_transport_link_set_config, udp_transport_link_clear_config, udp_transport_link_dyn_connect, udp_transport_rx_sock_error, udp_transport_tx_sock_error, udp_transport_rx_is_data },
+	{ "LOOPBACK", KNET_TRANSPORT_LOOPBACK, 1, LOOPBACK, USE_NO_ACL, KNET_PMTUD_LOOPBACK_OVERHEAD, loopback_transport_init, loopback_transport_free, loopback_transport_link_set_config, loopback_transport_link_clear_config, loopback_transport_link_dyn_connect, loopback_transport_rx_sock_error, loopback_transport_tx_sock_error, loopback_transport_rx_is_data },
+	{ "UDP", KNET_TRANSPORT_UDP, 1, IP_PROTO, USE_GENERIC_ACL, KNET_PMTUD_UDP_OVERHEAD, udp_transport_init, udp_transport_free, udp_transport_link_set_config, udp_transport_link_clear_config, udp_transport_link_dyn_connect, udp_transport_rx_sock_error, udp_transport_tx_sock_error, udp_transport_rx_is_data },
 	{ "SCTP", KNET_TRANSPORT_SCTP,
 #ifdef HAVE_NETINET_SCTP_H
-				       1, KNET_PMTUD_SCTP_OVERHEAD, sctp_transport_init, sctp_transport_free, sctp_transport_link_set_config, sctp_transport_link_clear_config, sctp_transport_link_dyn_connect, sctp_transport_rx_sock_error, sctp_transport_tx_sock_error, sctp_transport_rx_is_data },
+				       1, IP_PROTO, USE_PROTO_ACL, KNET_PMTUD_SCTP_OVERHEAD, sctp_transport_init, sctp_transport_free, sctp_transport_link_set_config, sctp_transport_link_clear_config, sctp_transport_link_dyn_connect, sctp_transport_rx_sock_error, sctp_transport_tx_sock_error, sctp_transport_rx_is_data },
 #else
 empty_module
 #endif
@@ -116,6 +116,16 @@ int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd,
 int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, struct knet_mmsghdr *msg)
 {
 	return transport_modules_cmd[transport].transport_rx_is_data(knet_h, sockfd, msg);
+}
+
+int transport_get_proto(knet_handle_t knet_h, uint8_t transport)
+{
+	return transport_modules_cmd[transport].transport_protocol;
+}
+
+int transport_get_acl_type(knet_handle_t knet_h, uint8_t transport)
+{
+	return transport_modules_cmd[transport].transport_acl_type;
 }
 
 /*

@@ -265,6 +265,34 @@ extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */
  *       for every protocol.
  */
 
+/*
+ * for now knet supports only IP protocols (udp/sctp)
+ * in future there might be others like ARP
+ * or TIPC.
+ * keep this around as transport information
+ * to use for access lists and other operations
+ */
+
+typedef enum {
+	LOOPBACK,
+	IP_PROTO
+} transport_proto;
+
+/*
+ * some transports like SCTP can filter incoming
+ * connections before knet has to process
+ * any packets.
+ * GENERIC_ACL -> packet has to be read and filterted
+ * PROTO_ACL -> transport provides filtering at lower levels
+ *              and packet does not need to be processed
+ */
+
+typedef enum {
+	USE_NO_ACL,
+	USE_GENERIC_ACL,
+	USE_PROTO_ACL
+} transport_acl;
+
 typedef struct knet_transport_ops {
 /*
  * transport generic information
@@ -272,6 +300,9 @@ typedef struct knet_transport_ops {
 	const char *transport_name;
 	const uint8_t transport_id;
 	const uint8_t built_in;
+
+	transport_proto transport_protocol;
+	transport_acl transport_acl_type;
 
 	uint32_t transport_mtu_overhead;
 /*
