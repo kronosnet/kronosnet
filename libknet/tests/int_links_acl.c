@@ -14,7 +14,12 @@
 #include <string.h>
 #include <netdb.h>
 #include <malloc.h>
+
+#include "internals.h"
 #include "links_acl.h"
+
+static struct acl_match_entry *match_entry_v4;
+static struct acl_match_entry *match_entry_v6;
 
 /* This is a test program .. remember! */
 #define BUFLEN 1024
@@ -31,7 +36,7 @@ static int get_ipaddress(char *buf, struct sockaddr_storage *addr)
 	res = getaddrinfo(buf, NULL, &hints, &info);
 	if (!res) {
 		memmove(addr, info->ai_addr, info->ai_addrlen);
-		free(info);
+		freeaddrinfo(info);
 	}
 	return res;
 }
@@ -96,12 +101,13 @@ static int load_file(void)
 	char filebuf[BUFLEN];
 	int line = 0;
 	int ret;
-	ipcheck_type_t type;
-	ipcheck_acceptreject_t acceptreject;
+	check_type_t type;
+	check_acceptreject_t acceptreject;
 	struct sockaddr_storage addr1;
 	struct sockaddr_storage addr2;
 
-	ipcheck_clear();
+	ipcheck_clear(&match_entry_v4);
+	ipcheck_clear(&match_entry_v6);
 
 	filterfile = fopen("int_links_acl.txt", "r");
 	if (!filterfile) {
@@ -118,10 +124,10 @@ static int load_file(void)
 		 */
 		switch(filebuf[0] & 0x5F) {
 		case 'A':
-			acceptreject = IPCHECK_ACCEPT;
+			acceptreject = CHECK_ACCEPT;
 			break;
 		case 'R':
-			acceptreject = IPCHECK_REJECT;
+			acceptreject = CHECK_REJECT;
 			break;
 		default:
 			fprintf(stderr, "Unknown record type on line %d: %s\n", line, filebuf);
@@ -136,15 +142,15 @@ static int load_file(void)
 		 */
 		switch(filebuf[1] & 0x5F) {
 		case 'A':
-			type = IPCHECK_TYPE_ADDRESS;
+			type = CHECK_TYPE_ADDRESS;
 			ret = read_address(filebuf+2, &addr1);
 			break;
 		case 'M':
-			type = IPCHECK_TYPE_MASK;
+			type = CHECK_TYPE_MASK;
 			ret = read_mask(filebuf+2, &addr1, &addr2);
 			break;
 		case 'R':
-			type = IPCHECK_TYPE_RANGE;
+			type = CHECK_TYPE_RANGE;
 			ret = read_range(filebuf+2, &addr1, &addr2);
 			break;
 		default:
@@ -156,7 +162,11 @@ static int load_file(void)
 			fprintf(stderr, "Failed to parse address on line %d: %s\n", line, filebuf);
 		}
 		else {
-			ipcheck_addip(&addr1, &addr2, type, acceptreject);
+			if (addr1.ss_family == AF_INET) {
+				ipcheck_addip(&match_entry_v4, &addr1, &addr2, type, acceptreject);
+			} else {
+				ipcheck_addip(&match_entry_v6, &addr1, &addr2, type, acceptreject);
+			}
 		}
 	next_record: {} /* empty statement to mollify the compiler */
 	}
@@ -168,6 +178,7 @@ static int load_file(void)
 int main(int argc, char *argv[])
 {
 	struct sockaddr_storage saddr;
+	struct acl_match_entry *match_entry;
 	int ret;
 	int i;
 
@@ -178,16 +189,21 @@ int main(int argc, char *argv[])
 		ret = get_ipaddress(argv[i], &saddr);
 		if (ret) {
 			fprintf(stderr, "Cannot parse address %s\n", argv[i]);
-		}
-		else {
-			if (ipcheck_validate(&saddr)) {
-				printf("%s is VALID\n", argv[i]);
+		} else {
+			if (saddr.ss_family == AF_INET) {
+				match_entry = match_entry_v4;
+			} else {
+				match_entry = match_entry_v6;
 			}
-			else {
+			if (ipcheck_validate(&match_entry, &saddr)) {
+				printf("%s is VALID\n", argv[i]);
+			} else {
 				printf("%s is not allowed\n", argv[i]);
 			}
 		}
 	}
 
+	ipcheck_clear(&match_entry_v4);
+	ipcheck_clear(&match_entry_v6);
 	return 0;
 }
