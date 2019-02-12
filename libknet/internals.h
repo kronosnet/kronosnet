@@ -129,11 +129,35 @@ struct knet_sock {
 			  * and socket has been removed from epoll */
 };
 
+/*
+ * access lists
+ */
+
+typedef enum {
+	CHECK_TYPE_ADDRESS,
+	CHECK_TYPE_MASK,
+	CHECK_TYPE_RANGE
+} check_type_t;
+
+typedef	enum {
+	CHECK_ACCEPT,
+	CHECK_REJECT
+} check_acceptreject_t;
+
+struct acl_match_entry {
+	check_type_t type;
+	check_acceptreject_t acceptreject;
+	struct sockaddr_storage addr1; /* Actual IP address, mask top or low IP */
+	struct sockaddr_storage addr2; /* high IP address or address bitmask */
+	struct acl_match_entry *next;
+};
+
 struct knet_fd_trackers {
 	uint8_t transport; /* transport type (UDP/SCTP...) */
 	uint8_t data_type; /* internal use for transport to define what data are associated
 			    * to this fd */
 	void *data;	   /* pointer to the data */
+	struct acl_match_entry *match_entry;
 };
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4

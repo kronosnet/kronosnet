@@ -6,11 +6,17 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
-typedef enum {IPCHECK_TYPE_ADDRESS, IPCHECK_TYPE_MASK, IPCHECK_TYPE_RANGE} ipcheck_type_t;
-typedef	enum {IPCHECK_ACCEPT, IPCHECK_REJECT} ipcheck_acceptreject_t;
+#ifndef __KNET_LINKS_ACL_H__
+#define __KNET_LINKS_ACL_H__
 
-int ipcheck_validate(struct sockaddr_storage *checkip);
+#include "internals.h"
 
-void ipcheck_clear(void);
-int ipcheck_addip(struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
-		  ipcheck_type_t type, ipcheck_acceptreject_t acceptreject);
+int ipcheck_validate(struct acl_match_entry **match_entry_head, struct sockaddr_storage *checkip);
+
+void ipcheck_clear(struct acl_match_entry **match_entry_head);
+
+int ipcheck_addip(struct acl_match_entry **match_entry_head,
+		  struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		  check_type_t type, check_acceptreject_t acceptreject);
+
+#endif
