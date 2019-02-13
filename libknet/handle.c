@@ -309,7 +309,10 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->send_to_links_buf_compress, 0, KNET_DATABUFSIZE_COMPRESS);
 
-	memset(knet_h->knet_transport_fd_tracker, KNET_MAX_TRANSPORTS, sizeof(knet_h->knet_transport_fd_tracker));
+	memset(knet_h->knet_transport_fd_tracker, 0, sizeof(knet_h->knet_transport_fd_tracker));
+	for (i = 0; i < KNET_MAX_FDS; i++) {
+		knet_h->knet_transport_fd_tracker[i].transport = KNET_MAX_TRANSPORTS;
+	}
 
 	return 0;
 
