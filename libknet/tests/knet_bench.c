@@ -86,7 +86,7 @@ static void print_help(void)
 	printf(" -P [UDP|SCTP]                             (default: UDP) protocol (transport) to use for all links\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
 	printf(" -n [nodeid],[proto]/[link1_ip],[link2_..] Other nodes information (at least one required)\n");
-	printf("                                           Example: -t 1,192.168.8.1,SCTP/3ffe::8:1,UDP/172...\n");
+	printf("                                           Example: -n 1,192.168.8.1,SCTP/3ffe::8:1,UDP/172...\n");
 	printf("                                           can be repeated up to %d and should contain also the localnode info\n", MAX_NODES);
 	printf(" -b [port]                                 baseport (default: 50000)\n");
 	printf(" -l                                        enable global listener on 0.0.0.0/:: (default: off, incompatible with -o)\n");
