@@ -46,6 +46,7 @@ static int wait_for_perf_rx = 0;
 static char *compresscfg = NULL;
 static char *cryptocfg = NULL;
 static int machine_output = 0;
+static int use_access_lists = 0;
 
 static int bench_shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -78,6 +79,7 @@ static void print_help(void)
 	printf("knet_bench usage:\n");
 	printf(" -h                                        print this help (no really)\n");
 	printf(" -d                                        enable debug logs (default INFO)\n");
+	printf(" -f                                        enable use of access lists (default: off)\n");
 	printf(" -c [implementation]:[crypto]:[hashing]    crypto configuration. (default disabled)\n");
 	printf("                                           Example: -c nss:aes128:sha1\n");
 	printf(" -z [implementation]:[level]:[threshold]   compress configuration. (default disabled)\n");
@@ -248,7 +250,7 @@ static void setup_knet(int argc, char *argv[])
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "aCT:S:s:ldom:wb:t:n:c:p:X::P:z:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "aCT:S:s:ldfom:wb:t:n:c:p:X::P:z:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -259,6 +261,9 @@ static void setup_knet(int argc, char *argv[])
 				break;
 			case 'd':
 				debug = KNET_LOG_DEBUG;
+				break;
+			case 'f':
+				use_access_lists = 1;
 				break;
 			case 'c':
 				if (cryptocfg) {
@@ -453,6 +458,11 @@ static void setup_knet(int argc, char *argv[])
 	knet_h = knet_handle_new(thisnodeid, logfd, debug);
 	if (!knet_h) {
 		printf("Unable to knet_handle_new: %s\n", strerror(errno));
+		exit(FAIL);
+	}
+
+	if (knet_handle_enable_access_lists(knet_h, use_access_lists) < 0) {
+		printf("Unable to knet_handle_enable_access_lists: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
