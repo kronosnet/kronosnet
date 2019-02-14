@@ -24,6 +24,8 @@
 static void test(void)
 {
 	knet_handle_t knet_h;
+	struct knet_host *host;
+	struct knet_link *link;
 	int logfds[2];
 	char src_portstr[32];
 	char dst_portstr[32];
@@ -115,6 +117,19 @@ static void test(void)
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	host = knet_h->host_index[1];
+	link = &host->link[0];
+
+	if (knet_h->knet_transport_fd_tracker[link->outsock].match_entry) {
+		printf("found access lists for dynamic dst_addr!\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
@@ -214,6 +229,19 @@ static void test(void)
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	host = knet_h->host_index[1];
+	link = &host->link[0];
+
+	if (!knet_h->knet_transport_fd_tracker[link->outsock].match_entry) {
+		printf("Unable to find default access lists for static dst_addr!\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
