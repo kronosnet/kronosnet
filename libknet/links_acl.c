@@ -148,7 +148,7 @@ int ipcheck_validate(struct acl_match_entry **match_entry_head, struct sockaddr_
  * Routines to manuipulate access lists
  */
 
-void ipcheck_clear(struct acl_match_entry **match_entry_head)
+void check_rmall(struct acl_match_entry **match_entry_head)
 {
 	struct acl_match_entry *next_match_entry;
 	struct acl_match_entry *match_entry = *match_entry_head;
@@ -159,6 +159,62 @@ void ipcheck_clear(struct acl_match_entry **match_entry_head)
 		match_entry = next_match_entry;
 	}
 	*match_entry_head = NULL;
+}
+
+static struct acl_match_entry *ipcheck_findmatch(struct acl_match_entry **match_entry_head,
+						 struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+						 check_type_t type, check_acceptreject_t acceptreject)
+{
+	struct acl_match_entry *match_entry = *match_entry_head;
+
+	while (match_entry) {
+		if ((!memcmp(&match_entry->addr1, ip1, sizeof(struct sockaddr_storage))) &&
+		    (!memcmp(&match_entry->addr2, ip2, sizeof(struct sockaddr_storage))) &&
+		    (match_entry->type == type) &&
+		    (match_entry->acceptreject == acceptreject)) {
+			return match_entry;
+		}
+		match_entry = match_entry->next;
+	}
+
+	return NULL;
+}
+
+int ipcheck_rmip(struct acl_match_entry **match_entry_head,
+		 struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		 check_type_t type, check_acceptreject_t acceptreject)
+{
+	struct acl_match_entry *next_match_entry = NULL;
+	struct acl_match_entry *rm_match_entry;
+	struct acl_match_entry *match_entry = *match_entry_head;
+
+	rm_match_entry = ipcheck_findmatch(match_entry_head, ip1, ip2, type, acceptreject);
+	if (!rm_match_entry) {
+		return -1;
+	}
+
+	while (match_entry) {
+		next_match_entry = match_entry->next;
+		/*
+		 * we are removing the list head, be careful
+		 */
+		if (rm_match_entry == match_entry) {
+			*match_entry_head = next_match_entry;
+			free(match_entry);
+			break;
+		}
+		/*
+		 * the next one is the one we need to remove
+		 */
+		if (rm_match_entry == next_match_entry) {
+			match_entry->next = next_match_entry->next;
+			free(next_match_entry);
+			break;
+		}
+		match_entry = next_match_entry;
+	}
+
+	return 0;
 }
 
 int ipcheck_addip(struct acl_match_entry **match_entry_head,
@@ -179,6 +235,10 @@ int ipcheck_addip(struct acl_match_entry **match_entry_head,
 	if (type == CHECK_TYPE_RANGE &&
 	    (ip1->ss_family != ip2->ss_family))
 		return -1;
+
+	if (ipcheck_findmatch(match_entry_head, ip1, ip2, type, acceptreject) != NULL) {
+		return -1;
+	}
 
 	new_match_entry = malloc(sizeof(struct acl_match_entry));
 	if (!new_match_entry)

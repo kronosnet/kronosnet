@@ -20,6 +20,56 @@
 #include "transports.h"
 #include "host.h"
 #include "threads_common.h"
+#include "links_acl.h"
+
+static void _link_del_all_acl(knet_handle_t knet_h, int sock)
+{
+	check_rmall(&knet_h->knet_transport_fd_tracker[sock].match_entry);
+}
+
+static int _link_add_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
+{
+	int err = -1;
+
+	switch(transport_get_proto(knet_h, kh_link->transport_type)) {
+		case LOOPBACK:
+			/*
+			 * loopback does not require access lists
+			 */
+			err = 0;
+			break;
+		case IP_PROTO:
+			err = ipcheck_addip(&knet_h->knet_transport_fd_tracker[kh_link->outsock].match_entry,
+					    &kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
+			break;
+		default:
+			break;
+	}
+
+	return err;
+}
+
+static int _link_rm_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
+{
+	int err = -1;
+
+	switch(transport_get_proto(knet_h, kh_link->transport_type)) {
+		case LOOPBACK:
+			/*
+			 * loopback does not require access lists
+			 */
+			err = 0;
+			break;
+		case IP_PROTO:
+			err = ipcheck_rmip(&knet_h->knet_transport_fd_tracker[kh_link->outsock].match_entry,
+					   &kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
+			break;
+		default:
+			break;
+	}
+
+	return err;
+}
 
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected)
@@ -247,6 +297,21 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		err = -1;
 		goto exit_unlock;
 	}
+
+	/*
+	 * we can only configure default access lists if we know both endpoints
+	 */
+	if (link->dynamic == KNET_LINK_STATIC) {
+		log_debug(knet_h, KNET_SUB_LINK, "Configuring default access lists for host: %u link: %u",
+			  host_id, link_id);
+		if (_link_add_default_acl(knet_h, link) < 0) {
+			log_warn(knet_h, KNET_SUB_LINK, "Failed to configure default access lists for host: %u link: %u", host_id, link_id);
+			savederrno = errno;
+			err = -1;
+			goto exit_unlock;
+		}
+	}
+
 	link->configured = 1;
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is configured",
 		  host_id, link_id);
@@ -364,6 +429,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
 	struct knet_link *link;
+	int sock;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -410,11 +476,41 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		goto exit_unlock;
 	}
 
+	/*
+	 * remove well known access lists here.
+	 * After the transport has done clearing the config,
+	 * then we can remove any leftover access lists if the link
+	 * is no longer in use.
+	 */
+	if (link->dynamic == KNET_LINK_STATIC) {
+		if (_link_rm_default_acl(knet_h, link) < 0) {
+			err = -1;
+			savederrno = EBUSY;
+			log_err(knet_h, KNET_SUB_LINK, "Host %u link %u: unable to remove default access list",
+				host_id, link_id);
+			goto exit_unlock;
+		}
+	}
+
+	/*
+	 * cache it for later as we don't know if the transport
+	 * will clear link info during clear_config.
+	 */
+	sock = link->outsock;
+
 	if ((transport_link_clear_config(knet_h, link) < 0)  &&
 	    (errno != EBUSY)) {
 		savederrno = errno;
 		err = -1;
 		goto exit_unlock;
+	}
+
+	/*
+	 * remove any other access lists when the socket is no
+	 * longer in use by the transport.
+	 */
+	if (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS) {
+		_link_del_all_acl(knet_h, sock);
 	}
 
 	memset(link, 0, sizeof(struct knet_link));
