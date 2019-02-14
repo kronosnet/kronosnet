@@ -106,8 +106,8 @@ static int load_file(void)
 	struct sockaddr_storage addr1;
 	struct sockaddr_storage addr2;
 
-	ipcheck_clear(&match_entry_v4);
-	ipcheck_clear(&match_entry_v6);
+	check_rmall(&match_entry_v4);
+	check_rmall(&match_entry_v6);
 
 	filterfile = fopen("int_links_acl.txt", "r");
 	if (!filterfile) {
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ipcheck_clear(&match_entry_v4);
-	ipcheck_clear(&match_entry_v6);
+	check_rmall(&match_entry_v4);
+	check_rmall(&match_entry_v6);
 	return 0;
 }

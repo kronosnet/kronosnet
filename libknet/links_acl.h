@@ -13,10 +13,13 @@
 
 int ipcheck_validate(struct acl_match_entry **match_entry_head, struct sockaddr_storage *checkip);
 
-void ipcheck_clear(struct acl_match_entry **match_entry_head);
-
 int ipcheck_addip(struct acl_match_entry **match_entry_head,
 		  struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 		  check_type_t type, check_acceptreject_t acceptreject);
 
+int ipcheck_rmip(struct acl_match_entry **match_entry_head,
+		  struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		  check_type_t type, check_acceptreject_t acceptreject);
+
+void check_rmall(struct acl_match_entry **match_entry_head);
 #endif
