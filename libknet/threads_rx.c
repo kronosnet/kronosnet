@@ -20,6 +20,7 @@
 #include "crypto.h"
 #include "host.h"
 #include "links.h"
+#include "links_acl.h"
 #include "logging.h"
 #include "transports.h"
 #include "transport_common.h"
@@ -720,6 +721,27 @@ out_pmtud:
 	}
 }
 
+/*
+ * return 0 to reject and 1 to accept a packet
+ */
+static int _generic_filter_packet_by_acl(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
+{
+	switch(transport_get_proto(knet_h, knet_h->knet_transport_fd_tracker[sockfd].transport)) {
+		case LOOPBACK:
+			return 1;
+			break;
+		case IP_PROTO:
+			return ipcheck_validate(&knet_h->knet_transport_fd_tracker[sockfd].match_entry, msg->msg_hdr.msg_name);
+			break;
+		default:
+			break;
+	}
+	/*
+	 * reject by default
+	 */
+	return 0;
+}
+
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	int err, savederrno;
@@ -802,6 +824,28 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				goto exit_unlock;
 				break;
 			case 2: /* packet is data and should be parsed as such */
+				/*
+				 * processing incoming packets vs access lists
+				 */
+				if ((knet_h->use_access_lists) &&
+				    (transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL)) {
+					if (!_generic_filter_packet_by_acl(knet_h, sockfd, &msg[i])) {
+						char src_ipaddr[KNET_MAX_HOST_LEN];
+						char src_port[KNET_MAX_PORT_LEN];
+
+						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+						memset(src_port, 0, KNET_MAX_PORT_LEN);
+						knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+							       src_ipaddr, KNET_MAX_HOST_LEN,
+							       src_port, KNET_MAX_PORT_LEN);
+
+						log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+						/*
+						 * continue processing the other packets
+						 */
+						continue;
+					}
+				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
 		}
