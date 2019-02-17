@@ -287,10 +287,13 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 	/*
 	 * we can only configure default access lists if we know both endpoints
+	 * and the protocol uses GENERIC_ACL, otherwise the protocol has
+	 * to setup their own access lists above in transport_link_set_config.
 	 */
-	if (link->dynamic == KNET_LINK_STATIC) {
-		log_debug(knet_h, KNET_SUB_LINK, "Configuring default access lists for host: %u link: %u",
-			  host_id, link_id);
+	if ((transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL) &&
+	    (link->dynamic == KNET_LINK_STATIC)) {
+		log_debug(knet_h, KNET_SUB_LINK, "Configuring default access lists for host: %u link: %u socket: %d",
+			  host_id, link_id, link->outsock);
 		if (_link_add_default_acl(knet_h, link) < 0) {
 			log_warn(knet_h, KNET_SUB_LINK, "Failed to configure default access lists for host: %u link: %u", host_id, link_id);
 			savederrno = errno;
@@ -469,7 +472,8 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * then we can remove any leftover access lists if the link
 	 * is no longer in use.
 	 */
-	if (link->dynamic == KNET_LINK_STATIC) {
+	if ((transport_get_acl_type(knet_h, link->transport_type) == USE_GENERIC_ACL) &&
+	    (link->dynamic == KNET_LINK_STATIC)) {
 		if (_link_rm_default_acl(knet_h, link) < 0) {
 			err = -1;
 			savederrno = EBUSY;
@@ -496,7 +500,8 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * remove any other access lists when the socket is no
 	 * longer in use by the transport.
 	 */
-	if (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS) {
+	if ((transport_get_acl_type(knet_h, link->transport_type) == USE_GENERIC_ACL) &&
+	    (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS)) {
 		_link_del_all_acl(knet_h, sock);
 	}
 
