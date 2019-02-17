@@ -10,12 +10,21 @@
 #include <netinet/in.h>
 #include <stdint.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "internals.h"
 #include "logging.h"
 #include "transports.h"
 #include "links_acl.h"
+
+/*
+ * s6_addr32 is not defined in BSD userland, only kernel.
+ * definition is the same as linux and it works fine for
+ * what we need.
+ */
+#ifndef s6_addr32
+#define s6_addr32 __u6_addr.__u6_addr32
+#endif
 
 /*
  * IPv4 See if the address we have matches the current match entry
