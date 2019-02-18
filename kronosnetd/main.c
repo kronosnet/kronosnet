@@ -177,7 +177,7 @@ static int create_lockfile(const char *lockfile)
 
 retry_fcntl:
 
-	if (fcntl(fd, F_SETLK, &lock) < 0) {
+	if (fcntl(fd, F_SETLKW, &lock) < 0) {
 		switch (errno) {
 		case EINTR:
 			goto retry_fcntl;
