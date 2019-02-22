@@ -95,7 +95,7 @@ retry:
 		dst_link->status.stats.tx_ping_bytes += outlen;
 
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
@@ -137,7 +137,7 @@ void _send_pings(knet_handle_t knet_h, int timed)
 	for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 			if ((dst_host->link[link_idx].status.enabled != 1) ||
-			    (dst_host->link[link_idx].transport_type == KNET_TRANSPORT_LOOPBACK ) ||
+			    (dst_host->link[link_idx].transport == KNET_TRANSPORT_LOOPBACK ) ||
 			    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
 			     (dst_host->link[link_idx].status.dynconnected != 1)))
 				continue;
@@ -163,7 +163,7 @@ static void _adjust_pong_timeouts(knet_handle_t knet_h)
 	for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
 		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
 			if ((dst_host->link[link_idx].status.enabled != 1) ||
-			    (dst_host->link[link_idx].transport_type == KNET_TRANSPORT_LOOPBACK ) ||
+			    (dst_host->link[link_idx].transport == KNET_TRANSPORT_LOOPBACK ) ||
 			    ((dst_host->link[link_idx].dynamic == KNET_LINK_DYNIP) &&
 			     (dst_host->link[link_idx].status.dynconnected != 1)))
 				continue;

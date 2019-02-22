@@ -364,7 +364,7 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 	memmove(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
 
-	*transport = link->transport_type;
+	*transport = link->transport;
 	*flags = link->flags;
 
 	if (link->dynamic == KNET_LINK_STATIC) {
@@ -439,9 +439,9 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * then we can remove any leftover access lists if the link
 	 * is no longer in use.
 	 */
-	if ((transport_get_acl_type(knet_h, link->transport_type) == USE_GENERIC_ACL) &&
+	if ((transport_get_acl_type(knet_h, link->transport) == USE_GENERIC_ACL) &&
 	    (link->dynamic == KNET_LINK_STATIC)) {
-		if (check_rm(knet_h, link->outsock, link->transport_type,
+		if (check_rm(knet_h, link->outsock, link->transport,
 			     &link->dst_addr, &link->dst_addr,
 			     CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
 			err = -1;
@@ -457,7 +457,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * will clear link info during clear_config.
 	 */
 	sock = link->outsock;
-	transport = link->transport_type;
+	transport = link->transport;
 
 	if ((transport_link_clear_config(knet_h, link) < 0)  &&
 	    (errno != EBUSY)) {
@@ -470,7 +470,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * remove any other access lists when the socket is no
 	 * longer in use by the transport.
 	 */
-	if ((transport_get_acl_type(knet_h, link->transport_type) == USE_GENERIC_ACL) &&
+	if ((transport_get_acl_type(knet_h, link->transport) == USE_GENERIC_ACL) &&
 	    (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS)) {
 		check_rmall(knet_h, sock, transport);
 	}
