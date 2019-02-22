@@ -91,15 +91,3 @@ int check_validate(knet_handle_t knet_h, int sockfd, struct sockaddr_storage *ch
 	 */
 	return 0;
 }
-
-int _link_add_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
-{
-	return check_add(knet_h, kh_link->outsock, kh_link->transport_type,
-			&kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-}
-
-int _link_rm_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
-{
-	return check_rm(knet_h, kh_link->outsock, kh_link->transport_type,
-			&kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-}

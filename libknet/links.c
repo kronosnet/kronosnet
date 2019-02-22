@@ -245,7 +245,9 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	    (link->dynamic == KNET_LINK_STATIC)) {
 		log_debug(knet_h, KNET_SUB_LINK, "Configuring default access lists for host: %u link: %u socket: %d",
 			  host_id, link_id, link->outsock);
-		if (_link_add_default_acl(knet_h, link) < 0) {
+		if (check_add(knet_h, link->outsock, transport,
+			      &link->dst_addr, &link->dst_addr,
+			      CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
 			log_warn(knet_h, KNET_SUB_LINK, "Failed to configure default access lists for host: %u link: %u", host_id, link_id);
 			savederrno = errno;
 			err = -1;
@@ -426,7 +428,9 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 */
 	if ((transport_get_acl_type(knet_h, link->transport_type) == USE_GENERIC_ACL) &&
 	    (link->dynamic == KNET_LINK_STATIC)) {
-		if (_link_rm_default_acl(knet_h, link) < 0) {
+		if (check_rm(knet_h, link->outsock, link->transport_type,
+			     &link->dst_addr, &link->dst_addr,
+			     CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
 			err = -1;
 			savederrno = EBUSY;
 			log_err(knet_h, KNET_SUB_LINK, "Host %u link %u: unable to remove default access list",
