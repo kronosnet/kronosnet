@@ -69,6 +69,7 @@ pckt_test_SOURCES	= pckt_test.c
 
 int_links_acl_test_SOURCES = int_links_acl.c \
 			     ../common.c \
+			     ../compat.c \
 			     ../logging.c \
 			     ../netutils.c \
 			     ../threads_common.c \

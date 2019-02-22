@@ -6,6 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
+#include "config.h"
+
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>

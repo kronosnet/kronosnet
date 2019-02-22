@@ -6,6 +6,8 @@
  * This software licensed under GPL-2.0+, LGPL-2.0+
  */
 
+#include "config.h"
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>
