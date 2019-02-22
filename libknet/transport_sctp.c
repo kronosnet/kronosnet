@@ -731,7 +731,7 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: received connection from: %s port: %s",
 						addr_str, port_str);
 	if (knet_h->use_access_lists) {
-		if (!_generic_filter_packet_by_acl(knet_h, listen_sock, &ss)) {
+		if (!check_validate(knet_h, listen_sock, &ss)) {
 			savederrno = EINVAL;
 			err = -1;
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Connection rejected from %s/%s", addr_str, port_str);
