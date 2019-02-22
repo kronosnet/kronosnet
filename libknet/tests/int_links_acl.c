@@ -16,6 +16,7 @@
 
 #include "internals.h"
 #include "links_acl.h"
+#include "links_acl_ip.h"
 
 static struct acl_match_entry *match_entry_v4;
 static struct acl_match_entry *match_entry_v6;
@@ -105,8 +106,8 @@ static int load_file(void)
 	struct sockaddr_storage addr1;
 	struct sockaddr_storage addr2;
 
-	check_rmall(&match_entry_v4);
-	check_rmall(&match_entry_v6);
+	ipcheck_rmall(&match_entry_v4);
+	ipcheck_rmall(&match_entry_v6);
 
 	filterfile = fopen("int_links_acl.txt", "r");
 	if (!filterfile) {
@@ -202,7 +203,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	check_rmall(&match_entry_v4);
-	check_rmall(&match_entry_v6);
+	ipcheck_rmall(&match_entry_v4);
+	ipcheck_rmall(&match_entry_v6);
 	return 0;
 }
