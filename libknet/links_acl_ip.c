@@ -15,6 +15,7 @@
 #include "internals.h"
 #include "logging.h"
 #include "transports.h"
+#include "links_acl.h"
 #include "links_acl_ip.h"
 
 /*

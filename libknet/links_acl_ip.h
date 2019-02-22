@@ -10,6 +10,7 @@
 #define __KNET_LINKS_ACL_IP_H__
 
 #include "internals.h"
+#include "links_acl.h"
 
 int ipcheck_validate(struct acl_match_entry **match_entry_head, struct sockaddr_storage *checkip);
 
