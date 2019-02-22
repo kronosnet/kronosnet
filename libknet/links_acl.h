@@ -39,7 +39,4 @@ int check_rm(knet_handle_t knet_h, int sock, uint8_t transport,
 void check_rmall(knet_handle_t knet_h, int sock, uint8_t transport);
 int check_validate(knet_handle_t knet_h, int sockfd, struct sockaddr_storage *checkip);
 
-int _link_add_default_acl(knet_handle_t knet_h, struct knet_link *kh_link);
-int _link_rm_default_acl(knet_handle_t knet_h, struct knet_link *kh_link);
-
 #endif
