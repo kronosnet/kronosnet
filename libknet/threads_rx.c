@@ -586,7 +586,7 @@ retry_pong:
 		}
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -682,7 +682,7 @@ retry_pmtud:
 		}
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,

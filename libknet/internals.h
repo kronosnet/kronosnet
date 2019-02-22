@@ -62,7 +62,7 @@ struct knet_link {
 	struct knet_link_status status;
 	/* internals */
 	uint8_t link_id;
-	uint8_t transport_type;                 /* #defined constant from API */
+	uint8_t transport;                      /* #defined constant from API */
 	knet_transport_link_t transport_link;   /* link_info_t from transport */
 	int outsock;
 	unsigned int configured:1;		/* set to 1 if src/dst have been configured transport initialized on this link*/

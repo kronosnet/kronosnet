@@ -88,19 +88,19 @@ int transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link, u
 		return -1;
 	}
 	kn_link->transport_connected = 0;
-	kn_link->transport_type = transport;
+	kn_link->transport = transport;
 	kn_link->proto_overhead = transport_modules_cmd[transport].transport_mtu_overhead;
 	return transport_modules_cmd[transport].transport_link_set_config(knet_h, kn_link);
 }
 
 int transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link)
 {
-	return transport_modules_cmd[kn_link->transport_type].transport_link_clear_config(knet_h, kn_link);
+	return transport_modules_cmd[kn_link->transport].transport_link_clear_config(knet_h, kn_link);
 }
 
 int transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
 {
-	return transport_modules_cmd[kn_link->transport_type].transport_link_dyn_connect(knet_h, sockfd, kn_link);
+	return transport_modules_cmd[kn_link->transport].transport_link_dyn_connect(knet_h, sockfd, kn_link);
 }
 
 int transport_rx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno)

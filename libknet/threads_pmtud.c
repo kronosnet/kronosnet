@@ -196,7 +196,7 @@ retry:
 
 	kernel_mtu = 0;
 
-	err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
+	err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
 	switch(err) {
 		case -1: /* unrecoverable error */
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
@@ -523,7 +523,7 @@ void *_handle_pmtud_link_thread(void *data)
 
 				if ((dst_link->status.enabled != 1) ||
 				    (dst_link->status.connected != 1) ||
-				    (dst_host->link[link_idx].transport_type == KNET_TRANSPORT_LOOPBACK) ||
+				    (dst_host->link[link_idx].transport == KNET_TRANSPORT_LOOPBACK) ||
 				    (!dst_link->last_ping_size) ||
 				    ((dst_link->dynamic == KNET_LINK_DYNIP) &&
 				     (dst_link->status.dynconnected != 1)))

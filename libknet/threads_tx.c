@@ -48,7 +48,7 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 
 		cur_link = &dst_host->link[dst_host->active_links[link_idx]];
 
-		if (cur_link->transport_type == KNET_TRANSPORT_LOOPBACK) {
+		if (cur_link->transport == KNET_TRANSPORT_LOOPBACK) {
 			continue;
 		}
 
@@ -72,7 +72,7 @@ retry:
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
-		err = transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport_type, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
+		err = transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
 		switch(err) {
 			case -1: /* unrecoverable error */
 				cur_link->status.stats.tx_data_errors++;
