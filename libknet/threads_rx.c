@@ -803,7 +803,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				 */
 				if ((knet_h->use_access_lists) &&
 				    (transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL)) {
-					if (!check_validate(knet_h, sockfd, msg[i].msg_hdr.msg_name)) {
+					if (!check_validate(knet_h, sockfd, transport, msg[i].msg_hdr.msg_name)) {
 						char src_ipaddr[KNET_MAX_HOST_LEN];
 						char src_port[KNET_MAX_PORT_LEN];
 
