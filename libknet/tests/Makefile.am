@@ -63,7 +63,17 @@ check-api-test-coverage:
 pckt_test_SOURCES	= pckt_test.c
 
 int_links_acl_test_SOURCES = int_links_acl.c \
-			     ../links_acl.c
+			     ../common.c \
+			     ../logging.c \
+			     ../netutils.c \
+			     ../threads_common.c \
+			     ../transports.c \
+			     ../transport_common.c \
+			     ../transport_loopback.c \
+			     ../transport_sctp.c \
+			     ../transport_udp.c \
+			     ../links_acl.c \
+			     ../links_acl_ip.c
 
 int_timediff_test_SOURCES = int_timediff.c
 

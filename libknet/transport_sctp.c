@@ -20,6 +20,7 @@
 #include "host.h"
 #include "links.h"
 #include "links_acl.h"
+#include "links_acl_ip.h"
 #include "logging.h"
 #include "common.h"
 #include "transport_common.h"
@@ -730,12 +731,13 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: received connection from: %s port: %s",
 						addr_str, port_str);
 	if (knet_h->use_access_lists) {
-		if (!ipcheck_validate(&knet_h->knet_transport_fd_tracker[listen_sock].match_entry, &ss)) {
+		if (!_generic_filter_packet_by_acl(knet_h, listen_sock, &ss)) {
 			savederrno = EINVAL;
 			err = -1;
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Connection rejected from %s/%s", addr_str, port_str);
 			close(new_fd);
-			goto exit_error;
+			errno = savederrno;
+			return;
 		}
 	}
 
@@ -946,8 +948,8 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	 */
 	knet_list_for_each_entry(info, &handle_info->listen_links_list, list) {
 		if (memcmp(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
-			err = ipcheck_addip(&knet_h->knet_transport_fd_tracker[info->listen_sock].match_entry,
-					    &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
+			err = check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
+					&kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
 			if (err) {
 				return NULL;
 			}
@@ -1005,8 +1007,8 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (ipcheck_addip(&knet_h->knet_transport_fd_tracker[listen_sock].match_entry,
-			  &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) {
+	if (check_add(knet_h, listen_sock, KNET_TRANSPORT_SCTP,
+		      &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to configure default access lists: %s",
@@ -1036,8 +1038,8 @@ exit_error:
 		if (info->on_listener_epoll) {
 			epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, listen_sock, &ev);
 		}
-		ipcheck_rmip(&knet_h->knet_transport_fd_tracker[listen_sock].match_entry,
-			     &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
+		check_rm(knet_h, listen_sock, KNET_TRANSPORT_SCTP,
+			 &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
 		if (listen_sock >= 0) {
 			close(listen_sock);
 		}
@@ -1077,8 +1079,8 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		}
 	}
 
-	if (ipcheck_rmip(&knet_h->knet_transport_fd_tracker[info->listen_sock].match_entry,
-			 &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) {
+	if (check_rm(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
+		     &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) {
 		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to remove default access lists for %d", info->listen_sock);
 	}
 
@@ -1112,7 +1114,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		goto exit_error;
 	}
 
-	check_rmall(&knet_h->knet_transport_fd_tracker[info->listen_sock].match_entry);
+	check_rmall(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP);
 
 	close(info->listen_sock);
 

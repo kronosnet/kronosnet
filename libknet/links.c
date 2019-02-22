@@ -22,55 +22,6 @@
 #include "threads_common.h"
 #include "links_acl.h"
 
-static void _link_del_all_acl(knet_handle_t knet_h, int sock)
-{
-	check_rmall(&knet_h->knet_transport_fd_tracker[sock].match_entry);
-}
-
-static int _link_add_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
-{
-	int err = -1;
-
-	switch(transport_get_proto(knet_h, kh_link->transport_type)) {
-		case LOOPBACK:
-			/*
-			 * loopback does not require access lists
-			 */
-			err = 0;
-			break;
-		case IP_PROTO:
-			err = ipcheck_addip(&knet_h->knet_transport_fd_tracker[kh_link->outsock].match_entry,
-					    &kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-			break;
-		default:
-			break;
-	}
-
-	return err;
-}
-
-static int _link_rm_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
-{
-	int err = -1;
-
-	switch(transport_get_proto(knet_h, kh_link->transport_type)) {
-		case LOOPBACK:
-			/*
-			 * loopback does not require access lists
-			 */
-			err = 0;
-			break;
-		case IP_PROTO:
-			err = ipcheck_rmip(&knet_h->knet_transport_fd_tracker[kh_link->outsock].match_entry,
-					   &kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-			break;
-		default:
-			break;
-	}
-
-	return err;
-}
-
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected)
 {
@@ -433,6 +384,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	struct knet_host *host;
 	struct knet_link *link;
 	int sock;
+	uint8_t transport;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -501,6 +453,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * will clear link info during clear_config.
 	 */
 	sock = link->outsock;
+	transport = link->transport_type;
 
 	if ((transport_link_clear_config(knet_h, link) < 0)  &&
 	    (errno != EBUSY)) {
@@ -515,7 +468,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 */
 	if ((transport_get_acl_type(knet_h, link->transport_type) == USE_GENERIC_ACL) &&
 	    (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS)) {
-		_link_del_all_acl(knet_h, sock);
+		check_rmall(knet_h, sock, transport);
 	}
 
 	memset(link, 0, sizeof(struct knet_link));
