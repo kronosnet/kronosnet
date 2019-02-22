@@ -73,51 +73,19 @@ void check_rmall(knet_handle_t knet_h, int sock, uint8_t transport)
 
 int _link_add_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
 {
-	int err = -1;
-
-	switch(transport_get_proto(knet_h, kh_link->transport_type)) {
-		case LOOPBACK:
-			/*
-			 * loopback does not require access lists
-			 */
-			err = 0;
-			break;
-		case IP_PROTO:
-			err = ipcheck_addip((struct acl_match_entry **)&knet_h->knet_transport_fd_tracker[kh_link->outsock].match_entry,
-					    &kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-			break;
-		default:
-			break;
-	}
-
-	return err;
+	return check_add(knet_h, kh_link->outsock, kh_link->transport_type,
+			&kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
 }
 
 int _link_rm_default_acl(knet_handle_t knet_h, struct knet_link *kh_link)
 {
-	int err = -1;
-
-	switch(transport_get_proto(knet_h, kh_link->transport_type)) {
-		case LOOPBACK:
-			/*
-			 * loopback does not require access lists
-			 */
-			err = 0;
-			break;
-		case IP_PROTO:
-			err = ipcheck_rmip((struct acl_match_entry **)&knet_h->knet_transport_fd_tracker[kh_link->outsock].match_entry,
-					   &kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-			break;
-		default:
-			break;
-	}
-
-	return err;
+	return check_rm(knet_h, kh_link->outsock, kh_link->transport_type,
+			&kh_link->dst_addr, &kh_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
 }
 
 /*
- *  * return 0 to reject and 1 to accept a packet
- *   */
+ * return 0 to reject and 1 to accept a packet
+ */
 int _generic_filter_packet_by_acl(knet_handle_t knet_h, int sockfd, struct sockaddr_storage *checkip)
 {
 	switch(transport_get_proto(knet_h, knet_h->knet_transport_fd_tracker[sockfd].transport)) {
