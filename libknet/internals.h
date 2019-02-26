@@ -274,10 +274,8 @@ extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */
  * to use for access lists and other operations
  */
 
-typedef enum {
-	LOOPBACK,
-	IP_PROTO
-} transport_proto;
+#define TRANSPORT_PROTO_LOOPBACK 0
+#define TRANSPORT_PROTO_IP_PROTO 1
 
 /*
  * some transports like SCTP can filter incoming
@@ -302,7 +300,7 @@ typedef struct knet_transport_ops {
 	const uint8_t transport_id;
 	const uint8_t built_in;
 
-	transport_proto transport_protocol;
+	uint8_t transport_protocol;
 	transport_acl transport_acl_type;
 
 	uint32_t transport_mtu_overhead;

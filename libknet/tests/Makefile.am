@@ -74,7 +74,8 @@ int_links_acl_test_SOURCES = int_links_acl.c \
 			     ../transport_sctp.c \
 			     ../transport_udp.c \
 			     ../links_acl.c \
-			     ../links_acl_ip.c
+			     ../links_acl_ip.c \
+			     ../links_acl_loopback.c
 
 int_timediff_test_SOURCES = int_timediff.c
 
