@@ -22,14 +22,6 @@ typedef enum {
 	CHECK_REJECT
 } check_acceptreject_t;
 
-struct acl_match_entry {
-	check_type_t type;
-	check_acceptreject_t acceptreject;
-	struct sockaddr_storage addr1; /* Actual IP address, mask top or low IP */
-	struct sockaddr_storage addr2; /* high IP address or address bitmask */
-	struct acl_match_entry *next;
-};
-
 int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
 	      struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 	      check_type_t type, check_acceptreject_t acceptreject);

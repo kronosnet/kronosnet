@@ -37,7 +37,7 @@ int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
 			err = 0;
 			break;
 		case IP_PROTO:
-			err = ipcheck_addip((struct acl_match_entry **)&knet_h->knet_transport_fd_tracker[sock].match_entry,
+			err = ipcheck_addip(&knet_h->knet_transport_fd_tracker[sock].match_entry,
 					    ip1, ip2, type, acceptreject);
 			break;
 		default:
@@ -58,7 +58,7 @@ int check_rm(knet_handle_t knet_h, int sock, uint8_t transport,
 			err = 0;
 			break;
 		case IP_PROTO:
-			err = ipcheck_rmip((struct acl_match_entry **)&knet_h->knet_transport_fd_tracker[sock].match_entry,
+			err = ipcheck_rmip(&knet_h->knet_transport_fd_tracker[sock].match_entry,
 					   ip1, ip2, type, acceptreject);
 			break;
 		default:
@@ -74,7 +74,7 @@ void check_rmall(knet_handle_t knet_h, int sock, uint8_t transport)
 			return;
 			break;
 		case IP_PROTO:
-			ipcheck_rmall((struct acl_match_entry **)&knet_h->knet_transport_fd_tracker[sock].match_entry);
+			ipcheck_rmall(&knet_h->knet_transport_fd_tracker[sock].match_entry);
 			break;
 		default:
 			break;
@@ -92,7 +92,7 @@ int check_validate(knet_handle_t knet_h, int sock, uint8_t transport, struct soc
 			return 1;
 			break;
 		case IP_PROTO:
-			return ipcheck_validate((struct acl_match_entry **)&knet_h->knet_transport_fd_tracker[sock].match_entry, checkip);
+			return ipcheck_validate(&knet_h->knet_transport_fd_tracker[sock].match_entry, checkip);
 			break;
 		default:
 			break;
