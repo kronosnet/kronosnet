@@ -8,6 +8,7 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>
@@ -202,6 +203,7 @@ int ipcheck_rmip(struct acl_match_entry **match_entry_head,
 
 	rm_match_entry = ipcheck_findmatch(match_entry_head, ip1, ip2, type, acceptreject);
 	if (!rm_match_entry) {
+		errno = ENOENT;
 		return -1;
 	}
 
@@ -237,24 +239,30 @@ int ipcheck_addip(struct acl_match_entry **match_entry_head,
 	struct acl_match_entry *match_entry = *match_entry_head;
 
 	if (!ip1) {
+		errno = EINVAL;
 		return -1;
 	}
 
 	if ((type != CHECK_TYPE_ADDRESS) && (!ip2)) {
+		errno = EINVAL;
 		return -1;
 	}
 
 	if (type == CHECK_TYPE_RANGE &&
-	    (ip1->ss_family != ip2->ss_family))
+	    (ip1->ss_family != ip2->ss_family)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	if (ipcheck_findmatch(match_entry_head, ip1, ip2, type, acceptreject) != NULL) {
+		errno = EEXIST;
 		return -1;
 	}
 
 	new_match_entry = malloc(sizeof(struct acl_match_entry));
-	if (!new_match_entry)
+	if (!new_match_entry) {
 		return -1;
+	}
 
 	memmove(&new_match_entry->addr1, ip1, sizeof(struct sockaddr_storage));
 	memmove(&new_match_entry->addr2, ip2, sizeof(struct sockaddr_storage));
