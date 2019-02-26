@@ -130,11 +130,11 @@ struct knet_sock {
 };
 
 struct knet_fd_trackers {
-	uint8_t transport; /* transport type (UDP/SCTP...) */
-	uint8_t data_type; /* internal use for transport to define what data are associated
-			    * to this fd */
-	void *data;	   /* pointer to the data */
-	void *match_entry; /* pointer to access list match_entry list head */
+	uint8_t transport;		    /* transport type (UDP/SCTP...) */
+	uint8_t data_type;		    /* internal use for transport to define what data are associated
+					     * to this fd */
+	void *data;			    /* pointer to the data */
+	void *access_list_match_entry_head; /* pointer to access list match_entry list head */
 };
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
