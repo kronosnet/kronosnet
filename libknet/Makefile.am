@@ -33,6 +33,7 @@ sources			= \
 			  links.c \
 			  links_acl.c \
 			  links_acl_ip.c \
+			  links_acl_loopback.c \
 			  logging.c \
 			  netutils.c \
 			  threads_common.c \
@@ -65,6 +66,7 @@ noinst_HEADERS		= \
 			  links.h \
 			  links_acl.h \
 			  links_acl_ip.h \
+			  links_acl_loopback.h \
 			  logging.h \
 			  netutils.h \
 			  onwire.h \
