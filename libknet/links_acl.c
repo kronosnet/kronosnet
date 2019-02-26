@@ -8,6 +8,7 @@
 
 #include "config.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -19,6 +20,11 @@
 #include "links_acl.h"
 #include "links_acl_ip.h"
 
+/*
+ * all those functions will return errno from the
+ * protocol specific functions
+ */
+
 int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
 	      struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
 	      check_type_t type, check_acceptreject_t acceptreject)
@@ -27,6 +33,7 @@ int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
 
 	switch(transport_get_proto(knet_h, transport)) {
 		case LOOPBACK:
+			errno = 0;
 			err = 0;
 			break;
 		case IP_PROTO:
@@ -47,6 +54,7 @@ int check_rm(knet_handle_t knet_h, int sock, uint8_t transport,
 
 	switch(transport_get_proto(knet_h, transport)) {
 		case LOOPBACK:
+			errno = 0;
 			err = 0;
 			break;
 		case IP_PROTO:
@@ -80,6 +88,7 @@ int check_validate(knet_handle_t knet_h, int sock, uint8_t transport, struct soc
 {
 	switch(transport_get_proto(knet_h, transport)) {
 		case LOOPBACK:
+			errno = 0;
 			return 1;
 			break;
 		case IP_PROTO:

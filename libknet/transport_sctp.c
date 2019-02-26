@@ -948,9 +948,8 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	 */
 	knet_list_for_each_entry(info, &handle_info->listen_links_list, list) {
 		if (memcmp(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
-			err = check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
-					&kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
-			if (err) {
+			if ((check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
+				       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 				return NULL;
 			}
 			return info;
@@ -1007,8 +1006,8 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (check_add(knet_h, listen_sock, KNET_TRANSPORT_SCTP,
-		      &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) {
+	if ((check_add(knet_h, listen_sock, KNET_TRANSPORT_SCTP,
+		       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to configure default access lists: %s",
@@ -1038,8 +1037,7 @@ exit_error:
 		if (info->on_listener_epoll) {
 			epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, listen_sock, &ev);
 		}
-		check_rm(knet_h, listen_sock, KNET_TRANSPORT_SCTP,
-			 &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT);
+		check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
 		if (listen_sock >= 0) {
 			close(listen_sock);
 		}
@@ -1078,8 +1076,8 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		}
 	}
 
-	if (check_rm(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
-		     &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) {
+	if ((check_rm(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
+		      &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != ENOENT)) {
 		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to remove default access lists for %d", info->listen_sock);
 	}
 
