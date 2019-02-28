@@ -703,6 +703,13 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 		}
 
 		if (kind && strcmp(kind, "function") == 0) {
+
+			/* Make sure function has a doxygen description */
+			if (!detailed) {
+				fprintf(stderr, "No doxygen description for function '%s' - please fix this\n", name);
+				exit(1);
+			}
+
 			if (print_man) {
 				print_manpage(name, def, brief, args, detailed, &params_list, returntext);
 			}
