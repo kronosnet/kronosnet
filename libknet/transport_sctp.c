@@ -1538,4 +1538,11 @@ int sctp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct kne
 	kn_link->transport_connected = 1;
 	return 0;
 }
+
+int sctp_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	sctp_connect_link_info_t *this_link_info = kn_link->transport_link;
+	sctp_listen_link_info_t *info = this_link_info->listener;
+	return info->listen_sock;
+}
 #endif

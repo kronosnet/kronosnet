@@ -431,3 +431,8 @@ int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet
 	kn_link->status.dynconnected = 1;
 	return 0;
 }
+
+int udp_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	return kn_link->outsock;
+}
