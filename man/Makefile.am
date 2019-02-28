@@ -94,7 +94,10 @@ knet_man3_MANS = \
 		knet_recv.3 \
 		knet_send.3 \
 		knet_send_sync.3 \
-		knet_strtoaddr.3
+		knet_strtoaddr.3 \
+		knet_handle_set_threads_timer_res.3 \
+		knet_handle_get_threads_timer_res.3 \
+		knet_link_enable_status_change_notify.3
 
 if BUILD_LIBNOZZLE
 nozzle_man3_MANS = \
