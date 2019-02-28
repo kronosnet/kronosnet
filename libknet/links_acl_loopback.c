@@ -27,14 +27,14 @@ void loopbackcheck_rmall(void *fd_tracker_match_entry_head)
 }
 
 int loopbackcheck_rm(void *fd_tracker_match_entry_head,
-		     struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		     struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		     check_type_t type, check_acceptreject_t acceptreject)
 {
 	return 0;
 }
 
 int loopbackcheck_add(void *fd_tracker_match_entry_head,
-		      struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		      struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		      check_type_t type, check_acceptreject_t acceptreject)
 {
 	return 0;

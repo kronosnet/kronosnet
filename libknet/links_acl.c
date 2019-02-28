@@ -32,21 +32,21 @@ static check_ops_t proto_check_modules_cmds[] = {
  */
 
 int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
-	      struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+	      struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 	      check_type_t type, check_acceptreject_t acceptreject)
 {
 	return proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_add(
 			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head,
-			ip1, ip2, type, acceptreject);
+			ss1, ss2, type, acceptreject);
 }
 
 int check_rm(knet_handle_t knet_h, int sock, uint8_t transport,
-	     struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+	     struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 	     check_type_t type, check_acceptreject_t acceptreject)
 {
 	return proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_rm(
 			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head,
-			ip1, ip2, type, acceptreject);
+			ss1, ss2, type, acceptreject);
 }
 
 void check_rmall(knet_handle_t knet_h, int sock, uint8_t transport)

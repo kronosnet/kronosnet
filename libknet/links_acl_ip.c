@@ -185,14 +185,14 @@ void ipcheck_rmall(void *fd_tracker_match_entry_head)
 }
 
 static struct ip_acl_match_entry *ipcheck_findmatch(struct ip_acl_match_entry **match_entry_head,
-						 struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+						 struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 						 check_type_t type, check_acceptreject_t acceptreject)
 {
 	struct ip_acl_match_entry *match_entry = *match_entry_head;
 
 	while (match_entry) {
-		if ((!memcmp(&match_entry->addr1, ip1, sizeof(struct sockaddr_storage))) &&
-		    (!memcmp(&match_entry->addr2, ip2, sizeof(struct sockaddr_storage))) &&
+		if ((!memcmp(&match_entry->addr1, ss1, sizeof(struct sockaddr_storage))) &&
+		    (!memcmp(&match_entry->addr2, ss2, sizeof(struct sockaddr_storage))) &&
 		    (match_entry->type == type) &&
 		    (match_entry->acceptreject == acceptreject)) {
 			return match_entry;
@@ -204,7 +204,7 @@ static struct ip_acl_match_entry *ipcheck_findmatch(struct ip_acl_match_entry **
 }
 
 int ipcheck_rmip(void *fd_tracker_match_entry_head,
-		 struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		 struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		 check_type_t type, check_acceptreject_t acceptreject)
 {
 	struct ip_acl_match_entry **match_entry_head = (struct ip_acl_match_entry **)fd_tracker_match_entry_head;
@@ -212,7 +212,7 @@ int ipcheck_rmip(void *fd_tracker_match_entry_head,
 	struct ip_acl_match_entry *rm_match_entry;
 	struct ip_acl_match_entry *match_entry = *match_entry_head;
 
-	rm_match_entry = ipcheck_findmatch(match_entry_head, ip1, ip2, type, acceptreject);
+	rm_match_entry = ipcheck_findmatch(match_entry_head, ss1, ss2, type, acceptreject);
 	if (!rm_match_entry) {
 		errno = ENOENT;
 		return -1;
@@ -243,30 +243,30 @@ int ipcheck_rmip(void *fd_tracker_match_entry_head,
 }
 
 int ipcheck_addip(void *fd_tracker_match_entry_head,
-		  struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		  struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		  check_type_t type, check_acceptreject_t acceptreject)
 {
 	struct ip_acl_match_entry **match_entry_head = (struct ip_acl_match_entry **)fd_tracker_match_entry_head;
 	struct ip_acl_match_entry *new_match_entry;
 	struct ip_acl_match_entry *match_entry = *match_entry_head;
 
-	if (!ip1) {
+	if (!ss1) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if ((type != CHECK_TYPE_ADDRESS) && (!ip2)) {
+	if ((type != CHECK_TYPE_ADDRESS) && (!ss2)) {
 		errno = EINVAL;
 		return -1;
 	}
 
 	if (type == CHECK_TYPE_RANGE &&
-	    (ip1->ss_family != ip2->ss_family)) {
+	    (ss1->ss_family != ss2->ss_family)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (ipcheck_findmatch(match_entry_head, ip1, ip2, type, acceptreject) != NULL) {
+	if (ipcheck_findmatch(match_entry_head, ss1, ss2, type, acceptreject) != NULL) {
 		errno = EEXIST;
 		return -1;
 	}
@@ -276,8 +276,8 @@ int ipcheck_addip(void *fd_tracker_match_entry_head,
 		return -1;
 	}
 
-	memmove(&new_match_entry->addr1, ip1, sizeof(struct sockaddr_storage));
-	memmove(&new_match_entry->addr2, ip2, sizeof(struct sockaddr_storage));
+	memmove(&new_match_entry->addr1, ss1, sizeof(struct sockaddr_storage));
+	memmove(&new_match_entry->addr2, ss2, sizeof(struct sockaddr_storage));
 	new_match_entry->type = type;
 	new_match_entry->acceptreject = acceptreject;
 	new_match_entry->next = NULL;

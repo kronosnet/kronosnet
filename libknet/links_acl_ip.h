@@ -15,11 +15,11 @@
 int ipcheck_validate(void *fd_tracker_match_entry_head, struct sockaddr_storage *checkip);
 
 int ipcheck_addip(void *fd_tracker_match_entry_head,
-		  struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		  struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		  check_type_t type, check_acceptreject_t acceptreject);
 
 int ipcheck_rmip(void *fd_tracker_match_entry_head,
-		 struct sockaddr_storage *ip1, struct sockaddr_storage *ip2,
+		 struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		 check_type_t type, check_acceptreject_t acceptreject);
 
 void ipcheck_rmall(void *fd_tracker_match_entry_head);
