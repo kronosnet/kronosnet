@@ -11,7 +11,9 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
-EXTRA_DIST	= kronosnetd.8 knet-keygen.8
+EXTRA_DIST	= \
+		  kronosnetd.8 knet-keygen.8 \
+		  api-to-man-page-coverage
 
 # Avoid Automake warnings about overriding these user variables.
 # Programs in this directory are used during the build only.
@@ -132,7 +134,18 @@ if BUILD_LIBNOZZLE
 	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
 endif
-	touch doxyfile-nozzle.stamp
+
+noinst_SCRIPTS	= api-to-man-page-coverage
+
+check-local: check-api-to-man-page-coverage-libknet check-api-to-man-page-coverage-libnozzle
+
+check-api-to-man-page-coverage-libnozzle:
+if BUILD_LIBNOZZLE
+	$(srcdir)/api-to-man-page-coverage $(top_srcdir) nozzle
+endif
+
+check-api-to-man-page-coverage-libknet:
+	$(srcdir)/api-to-man-page-coverage $(top_srcdir) knet
 
 endif
 
