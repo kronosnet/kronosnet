@@ -545,21 +545,37 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 /**
  * knet_handle_enable_access_lists
  *
- * @brief Start packet forwarding
+ * @brief Enable or disable usage of access lists (default: off)
  *
  * knet_h   - pointer to knet_handle_t
  *
- * enable   - set to 1 to use ip access lists, 0 to disable ip access_lists.
+ * enable   - set to 1 to use access lists, 0 to disable access_lists.
  *
  * @return
  * knet_handle_enable_access_lists returns
  * 0 on success
  * -1 on error and errno is set.
  *
- * By default access lists usage is off, but default internal access lists
- * will be populated regardless, but not enforced. TODO add long explanation
- * on internal access lists for point to point connections vs global
- * listeners etc.
+ * access lists are bound to links. There are 2 types of links:
+ * 1) point to point, where both source and destinations are well known
+ *    at configuration time.
+ * 2) open links, where only the source is known at configuration time.
+ *
+ * knet will automatically generate access lists for point to point links.
+ *
+ * For open links, knet provides 3 API calls to manipulate access lists:
+ * knet_link_add_acl, knet_link_rm_acl and knet_link_clear_acl.
+ * Those API calls will work only and exclusively on open links as they
+ * provide no use for point to point links.
+ *
+ * knet will not enforce any access list unless specifically enabled by
+ * knet_handle_enable_access_lists.
+ *
+ * From a security / programming perspective we recommend to:
+ * - create the knet handle
+ * - enable access lists
+ * - configure hosts and links
+ * - configure access lists for open links
  */
 
 int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled);
