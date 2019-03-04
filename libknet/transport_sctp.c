@@ -948,7 +948,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	 */
 	knet_list_for_each_entry(info, &handle_info->listen_links_list, list) {
 		if (memcmp(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
-			if ((check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
+			if ((check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP, -1,
 				       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 				return NULL;
 			}
@@ -1006,7 +1006,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if ((check_add(knet_h, listen_sock, KNET_TRANSPORT_SCTP,
+	if ((check_add(knet_h, listen_sock, KNET_TRANSPORT_SCTP, -1,
 		       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 		savederrno = errno;
 		err = -1;

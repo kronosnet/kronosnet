@@ -31,12 +31,12 @@ static check_ops_t proto_check_modules_cmds[] = {
  * protocol specific functions
  */
 
-int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
+int check_add(knet_handle_t knet_h, int sock, uint8_t transport, int index,
 	      struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 	      check_type_t type, check_acceptreject_t acceptreject)
 {
 	return proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_add(
-			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head,
+			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head, index,
 			ss1, ss2, type, acceptreject);
 }
 
