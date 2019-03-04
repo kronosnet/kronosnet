@@ -11,23 +11,12 @@
 
 #include "internals.h"
 
-typedef enum {
-	CHECK_TYPE_ADDRESS,
-	CHECK_TYPE_MASK,
-	CHECK_TYPE_RANGE
-} check_type_t;
-
-typedef enum {
-	CHECK_ACCEPT,
-	CHECK_REJECT
-} check_acceptreject_t;
-
 typedef struct {
 	uint8_t				transport_proto;
 
 	int (*protocheck_validate)	(void *fd_tracker_match_entry_head, struct sockaddr_storage *checkip);
 
-	int (*protocheck_add)		(void *fd_tracker_match_entry_head,
+	int (*protocheck_add)		(void *fd_tracker_match_entry_head, int index,
 					 struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 					 check_type_t type, check_acceptreject_t acceptreject);
 
@@ -38,7 +27,7 @@ typedef struct {
 	void (*protocheck_rmall)	(void *fd_tracker_match_entry_head);
 } check_ops_t;
 
-int check_add(knet_handle_t knet_h, int sock, uint8_t transport,
+int check_add(knet_handle_t knet_h, int sock, uint8_t transport, int index,
 	      struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 	      check_type_t type, check_acceptreject_t acceptreject);
 int check_rm(knet_handle_t knet_h, int sock, uint8_t transport,

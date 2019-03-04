@@ -242,29 +242,14 @@ int ipcheck_rmip(void *fd_tracker_match_entry_head,
 	return 0;
 }
 
-int ipcheck_addip(void *fd_tracker_match_entry_head,
+int ipcheck_addip(void *fd_tracker_match_entry_head, int index,
 		  struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		  check_type_t type, check_acceptreject_t acceptreject)
 {
 	struct ip_acl_match_entry **match_entry_head = (struct ip_acl_match_entry **)fd_tracker_match_entry_head;
 	struct ip_acl_match_entry *new_match_entry;
 	struct ip_acl_match_entry *match_entry = *match_entry_head;
-
-	if (!ss1) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if ((type != CHECK_TYPE_ADDRESS) && (!ss2)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (type == CHECK_TYPE_RANGE &&
-	    (ss1->ss_family != ss2->ss_family)) {
-		errno = EINVAL;
-		return -1;
-	}
+	int i = 0;
 
 	if (ipcheck_findmatch(match_entry_head, ss1, ss2, type, acceptreject) != NULL) {
 		errno = EEXIST;
@@ -283,12 +268,32 @@ int ipcheck_addip(void *fd_tracker_match_entry_head,
 	new_match_entry->next = NULL;
 
 	if (match_entry) {
-		/* Find the end of the list */
-		/* is this OK, or should we use a doubly-linked list or bulk-load API call? */
-		while (match_entry->next) {
-			match_entry = match_entry->next;
+		/*
+		 * special case for index 0, since we need to update
+		 * the head of the list
+		 */
+		if (index == 0) {
+			*match_entry_head = new_match_entry;
+			new_match_entry->next = match_entry;
+		} else {
+			/*
+			 * find the end of the list or stop at "index"
+			 */
+			while ((match_entry->next) || (i < index)) {
+				match_entry = match_entry->next;
+				i++;
+			}
+			/*
+			 * insert if there are more entries in the list
+			 */
+			if (match_entry->next) {
+				new_match_entry->next = match_entry->next;
+			}
+			/*
+			 * add if we are at the end
+			 */
+			match_entry->next = new_match_entry;
 		}
-		match_entry->next = new_match_entry;
 	} else {
 		/*
 		 * first entry in the list

@@ -14,7 +14,7 @@
 
 int loopbackcheck_validate(void *fd_tracker_match_entry_head, struct sockaddr_storage *checkip);
 
-int loopbackcheck_add(void *fd_tracker_match_entry_head,
+int loopbackcheck_add(void *fd_tracker_match_entry_head, int index,
 		      struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 		      check_type_t type, check_acceptreject_t acceptreject);
 

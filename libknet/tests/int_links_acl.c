@@ -165,9 +165,9 @@ static int load_file(void)
 		}
 		else {
 			if (addr1.ss_family == AF_INET) {
-				ipcheck_addip(&match_entry_v4, &addr1, &addr2, type, acceptreject);
+				ipcheck_addip(&match_entry_v4, -1, &addr1, &addr2, type, acceptreject);
 			} else {
-				ipcheck_addip(&match_entry_v6, &addr1, &addr2, type, acceptreject);
+				ipcheck_addip(&match_entry_v6, -1, &addr1, &addr2, type, acceptreject);
 			}
 		}
 	next_record: {} /* empty statement to mollify the compiler */
