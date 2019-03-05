@@ -440,7 +440,7 @@ int knet_handle_stop(knet_handle_t knet_h)
 	return 0;
 }
 
-int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset)
+static int _make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset, int family)
 {
 	uint32_t port;
 	char portstr[32];
@@ -457,7 +457,20 @@ int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset)
 	memset(lo, 0, sizeof(struct sockaddr_storage));
 	printf("Using port %u\n", port);
 
+	if (family == AF_INET6) {
+		return knet_strtoaddr("::1", portstr, lo, sizeof(struct sockaddr_storage));
+	}
 	return knet_strtoaddr("127.0.0.1", portstr, lo, sizeof(struct sockaddr_storage));
+}
+
+int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset)
+{
+	return _make_local_sockaddr(lo, offset, AF_INET);
+}
+
+int make_local_sockaddr6(struct sockaddr_storage *lo, uint16_t offset)
+{
+	return _make_local_sockaddr(lo, offset, AF_INET6);
 }
 
 int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std)
