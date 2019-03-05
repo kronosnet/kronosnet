@@ -33,7 +33,7 @@ static void sock_notify(void *pvt_data,
 	return;
 }
 
-static void test(void)
+static void test(uint8_t transport)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
@@ -145,6 +145,14 @@ static void test(void)
 
 	printf("Test knet_send with valid data\n");
 
+	if (knet_handle_enable_access_lists(knet_h, 1) < 0) {
+		printf("knet_handle_enable_access_lists failed: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
 		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
@@ -172,7 +180,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, transport, &lo, &lo, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -314,7 +322,14 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	test();
+	printf("Testing with UDP\n");
+	test(KNET_TRANSPORT_UDP);
+#ifdef HAVE_NETINET_SCTP_H
+	printf("Testing with SCTP\n");
+	test(KNET_TRANSPORT_SCTP);
+#else
+	printf("Skipping SCTP test. Protocol not supported in this build\n");
+#endif
 
 	return PASS;
 }
