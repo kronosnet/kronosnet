@@ -145,6 +145,14 @@ static void test(uint8_t transport)
 
 	printf("Test knet_send with valid data\n");
 
+	if (knet_handle_enable_access_lists(knet_h, 1) < 0) {
+		printf("knet_handle_enable_access_lists failed: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
 		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
