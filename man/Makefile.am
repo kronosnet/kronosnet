@@ -141,6 +141,7 @@ if BUILD_LIBNOZZLE
 	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
 endif
+	touch doxyfile-nozzle.stamp
 
 noinst_SCRIPTS	= api-to-man-page-coverage
 
