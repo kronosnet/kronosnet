@@ -1168,6 +1168,19 @@ int knet_link_add_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link
 		return -1;
 	}
 
+	if ((type != CHECK_TYPE_ADDRESS) &&
+	    (type != CHECK_TYPE_MASK) &&
+	    (type != CHECK_TYPE_RANGE)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((acceptreject != CHECK_ACCEPT) &&
+	    (acceptreject != CHECK_REJECT)) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	if ((type != CHECK_TYPE_ADDRESS) && (!ss2)) {
 		errno = EINVAL;
 		return -1;
@@ -1250,6 +1263,19 @@ int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
+	if ((type != CHECK_TYPE_ADDRESS) &&
+	    (type != CHECK_TYPE_MASK) &&
+	    (type != CHECK_TYPE_RANGE)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((acceptreject != CHECK_ACCEPT) &&
+	    (acceptreject != CHECK_REJECT)) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	if ((type != CHECK_TYPE_ADDRESS) && (!ss2)) {
 		errno = EINVAL;
 		return -1;
@@ -1327,6 +1353,19 @@ int knet_link_rm_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_
 	}
 
 	if (!ss1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((type != CHECK_TYPE_ADDRESS) &&
+	    (type != CHECK_TYPE_MASK) &&
+	    (type != CHECK_TYPE_RANGE)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((acceptreject != CHECK_ACCEPT) &&
+	    (acceptreject != CHECK_REJECT)) {
 		errno = EINVAL;
 		return -1;
 	}
