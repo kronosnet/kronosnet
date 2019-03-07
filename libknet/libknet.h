@@ -523,15 +523,16 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
  *
  * knet will automatically generate access lists for point to point links.
  *
- * For open links, knet provides 3 API calls to manipulate access lists:
- * knet_link_add_acl(3), knet_link_rm_acl(3) and knet_link_clear_acl(3).
- * Those API calls will work only and exclusively on open links as they
- * provide no use for point to point links.
+ * For open links, knet provides 4 API calls to manipulate access lists:
+ * knet_link_add_acl(3), knet_link_rm_acl(3), knet_link_insert_acl(3)
+ * and knet_link_clear_acl(3).
+ * Those API calls will work exclusively on open links as they
+ * are of no use on point to point links.
  *
  * knet will not enforce any access list unless specifically enabled by
  * knet_handle_enable_access_lists(3).
  *
- * From a security / programming perspective we recommend to:
+ * From a security / programming perspective we recommend:
  * - create the knet handle
  * - enable access lists
  * - configure hosts and links
@@ -1478,13 +1479,13 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id);
 
 /*
- * access lists management for open links
+ * Access lists management for open links
  * see also knet_handle_enable_access_lists(3)
  */
 
 /*
  * CHECK_TYPE_ADDRESS is the equivalent of a single entry / IP address.
- *                    for example: 10.1.9.3/32
+ *                    for example: 10.1.9.3
  *                    and the entry is stored in ss1. ss2 can be NULL.
  *
  * CHECK_TYPE_MASK    is used to configure network/netmask.
@@ -1495,9 +1496,9 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
  *                    for example: 172.16.0.1-172.16.0.10
  *                    the start is stored in ss1 and the end in ss2.
  *
- * Please be aware that the above examples refers only to IP based protocols.
+ * Please be aware that the above examples refer only to IP based protocols.
  * Other protocols might use ss1 and ss2 in slightly different ways.
- * At the moment knet only supports IP based protocol and that might change
+ * At the moment knet only supports IP based protocol, though that might change
  * in the future.
  */
 
@@ -1531,7 +1532,7 @@ typedef enum {
  *
  * IMPORTANT: the order in which access lists are added is critical and it
  *            is left to the user to add them in the right order. knet
- *            will do no attempt to logically sort them.
+ *            will not attempt to logically sort them.
  *
  *            For example:
  *            1 - accept from 10.0.0.0/8
@@ -1568,7 +1569,7 @@ int knet_link_add_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link
  * link_id   - see knet_link_set_config(3)
  *
  * index     - insert at position "index" where 0 is the first entry and -1
- *             append to the current list.
+ *             appends to the current list.
  *
  * ss1 / ss2 / type / acceptreject - see typedef definitions for details
  *
@@ -1597,8 +1598,8 @@ int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *
  * ss1 / ss2 / type / acceptreject - see typedef definitions for details
  *
- * IMPORTANT: the data passed to this API call must match exactly the ones used
- *            in knet_link_add_acl(3).
+ * IMPORTANT: the data passed to this API call must match exactly that passed
+ *            to knet_link_add_acl(3).
  *
  * @return
  * knet_link_rm_acl
