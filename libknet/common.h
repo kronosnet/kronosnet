@@ -12,8 +12,6 @@
 #ifndef __KNET_COMMON_H__
 #define __KNET_COMMON_H__
 
-int _fdset_cloexec(int fd);
-int _fdset_nonblock(int fd);
 void *load_module(knet_handle_t knet_h, const char *type, const char *name);
 
 #endif

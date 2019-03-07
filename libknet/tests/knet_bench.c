@@ -656,7 +656,7 @@ static void *_rx_thread(void *args)
 		msg[i].msg_hdr.msg_iovlen = 1;
 	}
 
-	rx_epoll = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
+	rx_epoll = epoll_create1(EPOLL_CLOEXEC);
 	if (rx_epoll < 0) {
 		printf("RXT: Unable to create epoll!\nHALTING RX THREAD!\n");
 		return NULL;

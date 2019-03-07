@@ -228,7 +228,7 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *kn_lin
 	struct epoll_event ev;
 	int connect_sock;
 
-	connect_sock = socket(kn_link->dst_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
+	connect_sock = socket(kn_link->dst_addr.ss_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_SCTP);
 	if (connect_sock < 0) {
 		savederrno = errno;
 		err = -1;
@@ -951,7 +951,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	memset(info->accepted_socks, -1, sizeof(info->accepted_socks));
 	memmove(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
 
-	listen_sock = socket(kn_link->src_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
+	listen_sock = socket(kn_link->src_addr.ss_family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_SCTP);
 	if (listen_sock < 0) {
 		savederrno = errno;
 		err = -1;
@@ -1320,7 +1320,7 @@ static int _sctp_subscribe_init(knet_handle_t knet_h)
 	 * everywhere.  Thus we query and store the native size. */
 	const unsigned int subscribe_min = 6;
 
-	test_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_SCTP);
+	test_socket = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_SCTP);
 	if (test_socket < 0) {
 		if (errno == EPROTONOSUPPORT) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP not supported, skipping initialization");
@@ -1397,7 +1397,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 	knet_list_init(&handle_info->listen_links_list);
 	knet_list_init(&handle_info->connect_links_list);
 
-	handle_info->listen_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
+	handle_info->listen_epollfd = epoll_create1(EPOLL_CLOEXEC);
 	if (handle_info->listen_epollfd < 0) {
 		savederrno = errno;
 		err = -1;
@@ -1406,15 +1406,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 		goto exit_fail;
         }
 
-	if (_fdset_cloexec(handle_info->listen_epollfd)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set CLOEXEC on listen_epollfd: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	handle_info->connect_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
+	handle_info->connect_epollfd = epoll_create1(EPOLL_CLOEXEC);
         if (handle_info->connect_epollfd < 0) {
                 savederrno = errno;
 		err = -1;
@@ -1422,14 +1414,6 @@ int sctp_transport_init(knet_handle_t knet_h)
                         strerror(savederrno));
                 goto exit_fail;
         }
-
-	if (_fdset_cloexec(handle_info->connect_epollfd)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set CLOEXEC on connect_epollfd: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
 
 	if (_init_socketpair(knet_h, handle_info->connectsockfd) < 0) {
 		savederrno = errno;

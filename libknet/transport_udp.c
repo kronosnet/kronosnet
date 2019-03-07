@@ -72,7 +72,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 		goto exit_error;
 	}
 
-	sock = socket(kn_link->src_addr.ss_family, SOCK_DGRAM, 0);
+	sock = socket(kn_link->src_addr.ss_family, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (sock < 0) {
 		savederrno = errno;
 		err = -1;

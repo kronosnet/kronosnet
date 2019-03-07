@@ -35,7 +35,7 @@ _poll_to_filter_(int32_t event)
 	return out;
 }
 
-int epoll_create(int size)
+int epoll_create1(int flags)
 {
 	return kqueue();
 }

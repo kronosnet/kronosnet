@@ -151,22 +151,6 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 	int err = 0, savederrno = 0;
 	int value;
 
-	if (_fdset_cloexec(sock)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s CLOEXEC socket opts: %s",
-			type, strerror(savederrno));
-		goto exit_error;
-	}
-
-	if (_fdset_nonblock(sock)) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s NONBLOCK socket opts: %s",
-			type, strerror(savederrno));
-		goto exit_error;
-	}
-
 	if (_configure_sockbuf(knet_h, sock, SO_RCVBUF, SO_RCVBUFFORCE, KNET_RING_RCVBUFF)) {
 		savederrno = errno;
 		err = -1;

@@ -39,38 +39,6 @@ struct knet_vty knet_vtys[KNET_VTY_TOTAL_MAX_CONN];
 struct knet_vty_global_conf vty_global_conf;
 pthread_t logging_thread;
 
-static int _fdset_cloexec(int fd)
-{
-	int fdflags;
-
-	fdflags = fcntl(fd, F_GETFD, 0);
-	if (fdflags < 0)
-		return -1;
-
-	fdflags |= FD_CLOEXEC;
-
-	if (fcntl(fd, F_SETFD, fdflags) < 0)
-		return -1;
-
-	return 0;
-}
-
-static int _fdset_nonblock(int fd)
-{
-	int fdflags;
-
-	fdflags = fcntl(fd, F_GETFL, 0);
-	if (fdflags < 0)
-		return -1;
-
-	fdflags |= O_NONBLOCK;
-
-	if (fcntl(fd, F_SETFL, fdflags) < 0)
-		return -1;
-
-	return 0;
-}
-
 static void *_handle_logging_thread(void *data)
 {
 	int logfd;
@@ -136,7 +104,7 @@ out:
 static int knet_vty_init_listener(const char *ip_addr, const char *port)
 {
 	int sockfd = -1, sockopt = 1;
-	int socktype = SOCK_STREAM;
+	int socktype = SOCK_STREAM | SOCK_CLOEXEC;
 	int err = 0;
 	struct sockaddr_storage ss;
 
@@ -166,11 +134,6 @@ static int knet_vty_init_listener(const char *ip_addr, const char *port)
 			 (void *)&sockopt, sizeof(sockopt));
 	if (err)
 		goto out_clean;
-
-	if (_fdset_cloexec(sockfd)) {
-		err = -1;
-		goto out_clean;
-	}
 
 	err = bind(sockfd, (struct sockaddr *)&ss, sizeof(struct sockaddr_storage));
 	if (err)
@@ -303,16 +266,8 @@ int knet_vty_main_loop(int debug)
 	signal(SIGINT, sigterm_handler);
 	signal(SIGPIPE, sigpipe_handler);
 
-	if (pipe(logfd)) {
+	if (pipe2(logfd, O_CLOEXEC | O_NONBLOCK)) {
 		log_error("Unable to create logging pipe");
-		return -1;
-	}
-
-	if ((_fdset_cloexec(logfd[0])) ||
-	    (_fdset_nonblock(logfd[0])) ||
-	    (_fdset_cloexec(logfd[1])) ||
-	    (_fdset_nonblock(logfd[1]))) {
-		log_error("Unable to set FD_CLOEXEX / O_NONBLOCK on logfd pipe");
 		return -1;
 	}
 

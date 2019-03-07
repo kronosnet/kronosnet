@@ -351,7 +351,7 @@ static int _init_epolls(knet_handle_t knet_h)
 	 * even if the kernel does dynamic allocation with epoll_ctl
 	 * we need to reserve one extra for host to host communication
 	 */
-	knet_h->send_to_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
+	knet_h->send_to_links_epollfd = epoll_create1(EPOLL_CLOEXEC);
 	if (knet_h->send_to_links_epollfd < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to create epoll datafd to link fd: %s",
@@ -359,7 +359,7 @@ static int _init_epolls(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	knet_h->recv_from_links_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
+	knet_h->recv_from_links_epollfd = epoll_create1(EPOLL_CLOEXEC);
 	if (knet_h->recv_from_links_epollfd < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to create epoll link to datafd fd: %s",
@@ -367,32 +367,11 @@ static int _init_epolls(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	knet_h->dst_link_handler_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS);
+	knet_h->dst_link_handler_epollfd = epoll_create1(EPOLL_CLOEXEC);
 	if (knet_h->dst_link_handler_epollfd < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to create epoll dst cache fd: %s",
 			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->send_to_links_epollfd)) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on datafd to link epoll fd: %s",
-			strerror(savederrno)); 
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->recv_from_links_epollfd)) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on link to datafd epoll fd: %s",
-			strerror(savederrno)); 
-		goto exit_fail;
-	}
-
-	if (_fdset_cloexec(knet_h->dst_link_handler_epollfd)) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on dst cache epoll fd: %s",
-			strerror(savederrno)); 
 		goto exit_fail;
 	}
 
@@ -893,22 +872,6 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 	if (*datafd > 0) {
 		int sockopt;
 		socklen_t sockoptlen = sizeof(sockopt);
-
-		if (_fdset_cloexec(*datafd)) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on datafd: %s",
-				strerror(savederrno));
-			goto out_unlock;
-		}
-
-		if (_fdset_nonblock(*datafd)) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_HANDLE, "Unable to set NONBLOCK on datafd: %s",
-				strerror(savederrno));
-			goto out_unlock;
-		}
 
 		knet_h->sockfd[*channel].sockfd[0] = *datafd;
 		knet_h->sockfd[*channel].sockfd[1] = 0;
