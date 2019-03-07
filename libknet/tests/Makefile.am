@@ -13,8 +13,7 @@ include $(top_srcdir)/libknet/tests/api-check.mk
 
 EXTRA_DIST		= \
 			  api-test-coverage \
-			  api-check.mk \
-			  int_links_acl.txt
+			  api-check.mk
 
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet
 AM_CFLAGS		+= $(PTHREAD_CFLAGS)
@@ -34,6 +33,7 @@ check_PROGRAMS		= \
 			  $(fun_checks)
 
 int_checks		= \
+			  int_links_acl_ip_test \
 			  int_timediff_test
 
 fun_checks		=
@@ -45,7 +45,6 @@ benchmarks		= \
 noinst_PROGRAMS		= \
 			  api_knet_handle_new_limit_test \
 			  pckt_test \
-			  int_links_acl_test \
 			  $(benchmarks) \
 			  $(check_PROGRAMS)
 
@@ -62,20 +61,20 @@ check-api-test-coverage:
 
 pckt_test_SOURCES	= pckt_test.c
 
-int_links_acl_test_SOURCES = int_links_acl.c \
-			     ../common.c \
-			     ../compat.c \
-			     ../logging.c \
-			     ../netutils.c \
-			     ../threads_common.c \
-			     ../transports.c \
-			     ../transport_common.c \
-			     ../transport_loopback.c \
-			     ../transport_sctp.c \
-			     ../transport_udp.c \
-			     ../links_acl.c \
-			     ../links_acl_ip.c \
-			     ../links_acl_loopback.c
+int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
+				../common.c \
+				../compat.c \
+				../logging.c \
+				../netutils.c \
+				../threads_common.c \
+				../transports.c \
+				../transport_common.c \
+				../transport_loopback.c \
+				../transport_sctp.c \
+				../transport_udp.c \
+				../links_acl.c \
+				../links_acl_ip.c \
+				../links_acl_loopback.c
 
 int_timediff_test_SOURCES = int_timediff.c
 
