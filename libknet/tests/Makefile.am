@@ -52,6 +52,11 @@ noinst_SCRIPTS		= \
 
 TESTS			= $(check_PROGRAMS)
 
+if INSTALL_TESTS
+testsuitedir		= $(TESTDIR)
+testsuite_PROGRAMS	= $(noinst_PROGRAMS)
+endif
+
 check-local: check-api-test-coverage
 
 check-api-test-coverage:

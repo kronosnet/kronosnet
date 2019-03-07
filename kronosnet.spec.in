@@ -30,6 +30,7 @@
 %@rpmdebuginfo@ rpmdebuginfo
 %@overriderpmdebuginfo@ overriderpmdebuginfo
 %@buildman@ buildman
+%@installtests@ installtests
 
 %if %{with overriderpmdebuginfo}
 %undefine _enable_debug_packages
@@ -71,6 +72,9 @@
 %endif
 %if %{with buildman}
 %global buildmanpages 1
+%endif
+%if %{with installtests}
+%global installtestsuite 1
 %endif
 
 # main (empty) package
@@ -140,6 +144,11 @@ BuildRequires: libtool
 %endif
 
 %{configure} \
+%if %{defined installtestsuite}
+	--enable-install-tests \
+%else
+	--disable-install-tests \
+%endif
 %if %{defined buildmanpages}
 	--enable-man \
 %else
@@ -530,6 +539,19 @@ Requires: libknet1-crypto-plugins-all
  meta package to install all of libknet1 plugins
 
 %files -n libknet1-plugins-all
+
+%if %{with installtests}
+%package -n kronosnet-tests
+Group: System Environment/Libraries
+Summary: kronosnet test suite
+
+%description -n kronosnet-tests
+ this package contains all the libknet and libnozzle test suite
+
+%files -n kronosnet-tests
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/tests/*
+%endif
 
 %if %{with rpmdebuginfo}
 %debug_package
