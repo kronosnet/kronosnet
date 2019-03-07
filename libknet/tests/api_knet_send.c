@@ -324,15 +324,10 @@ int main(int argc, char *argv[])
 {
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
-#ifdef HAVE_NETINET_SCTP_H
-#ifdef KNET_BSD
-	printf("SCTP on FreeBSD is currently broken, skipping this test for now\n");
-#else
+
+#if 0
 	printf("Testing with SCTP\n");
 	test(KNET_TRANSPORT_SCTP);
-#endif
-#else
-	printf("Skipping SCTP test. Protocol not supported in this build\n");
 #endif
 
 	return PASS;
