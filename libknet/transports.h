@@ -15,8 +15,11 @@ void stop_all_transports(knet_handle_t knet_h);
 int transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_link, uint8_t transport);
 int transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_link);
 int transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link);
+int transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link);
 int transport_rx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno);
 int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno);
 int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, struct knet_mmsghdr *msg);
+int transport_get_proto(knet_handle_t knet_h, uint8_t transport);
+int transport_get_acl_type(knet_handle_t knet_h, uint8_t transport);
 
 #endif

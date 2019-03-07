@@ -68,6 +68,7 @@ void flush_logs(int logfd, FILE *std);
 int start_logthread(int logfd, FILE *std);
 int stop_logthread(void);
 int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset);
+int make_local_sockaddr6(struct sockaddr_storage *lo, uint16_t offset);
 int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std);
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd);
 

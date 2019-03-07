@@ -20,6 +20,7 @@
 #include "crypto.h"
 #include "host.h"
 #include "links.h"
+#include "links_acl.h"
 #include "logging.h"
 #include "transports.h"
 #include "transport_common.h"
@@ -583,7 +584,7 @@ retry_pong:
 				sizeof(struct sockaddr_storage));
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -676,7 +677,7 @@ retry_pmtud:
 				sizeof(struct sockaddr_storage));
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -797,6 +798,28 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				goto exit_unlock;
 				break;
 			case 2: /* packet is data and should be parsed as such */
+				/*
+				 * processing incoming packets vs access lists
+				 */
+				if ((knet_h->use_access_lists) &&
+				    (transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL)) {
+					if (!check_validate(knet_h, sockfd, transport, msg[i].msg_hdr.msg_name)) {
+						char src_ipaddr[KNET_MAX_HOST_LEN];
+						char src_port[KNET_MAX_PORT_LEN];
+
+						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+						memset(src_port, 0, KNET_MAX_PORT_LEN);
+						knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
+							       src_ipaddr, KNET_MAX_HOST_LEN,
+							       src_port, KNET_MAX_PORT_LEN);
+
+						log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+						/*
+						 * continue processing the other packets
+						 */
+						continue;
+					}
+				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
 		}

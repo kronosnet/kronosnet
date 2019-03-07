@@ -309,7 +309,10 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->send_to_links_buf_compress, 0, KNET_DATABUFSIZE_COMPRESS);
 
-	memset(knet_h->knet_transport_fd_tracker, KNET_MAX_TRANSPORTS, sizeof(knet_h->knet_transport_fd_tracker));
+	memset(knet_h->knet_transport_fd_tracker, 0, sizeof(knet_h->knet_transport_fd_tracker));
+	for (i = 0; i < KNET_MAX_FDS; i++) {
+		knet_h->knet_transport_fd_tracker[i].transport = KNET_MAX_TRANSPORTS;
+	}
 
 	return 0;
 
@@ -1177,6 +1180,42 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is enabled");
 	} else {
 		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
+int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (enabled > 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->use_access_lists = enabled;
+
+	if (enabled) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Links access lists are enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Links access lists are disabled");
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

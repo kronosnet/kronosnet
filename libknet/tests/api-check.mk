@@ -12,6 +12,7 @@ api_checks		= \
 			  api_knet_handle_compress_test \
 			  api_knet_handle_crypto_test \
 			  api_knet_handle_setfwd_test \
+			  api_knet_handle_enable_access_lists_test \
 			  api_knet_handle_enable_filter_test \
 			  api_knet_handle_enable_sock_notify_test \
 			  api_knet_handle_add_datafd_test \
@@ -70,7 +71,11 @@ api_checks		= \
 			  api_knet_link_get_status_test \
 			  api_knet_link_enable_status_change_notify_test \
 			  api_knet_handle_set_threads_timer_res_test \
-			  api_knet_handle_get_threads_timer_res_test
+			  api_knet_handle_get_threads_timer_res_test \
+			  api_knet_link_add_acl_test \
+			  api_knet_link_insert_acl_test \
+			  api_knet_link_rm_acl_test \
+			  api_knet_link_clear_acl_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -89,6 +94,9 @@ api_knet_handle_crypto_test_SOURCES = api_knet_handle_crypto.c \
 
 api_knet_handle_setfwd_test_SOURCES = api_knet_handle_setfwd.c \
 				      test-common.c
+
+api_knet_handle_enable_access_lists_test_SOURCES = api_knet_handle_enable_access_lists.c \
+						   test-common.c
 
 api_knet_handle_enable_filter_test_SOURCES = api_knet_handle_enable_filter.c \
 					     test-common.c
@@ -264,3 +272,15 @@ api_knet_handle_set_threads_timer_res_test_SOURCES = api_knet_handle_set_threads
 
 api_knet_handle_get_threads_timer_res_test_SOURCES = api_knet_handle_get_threads_timer_res.c \
 						     test-common.c
+
+api_knet_link_add_acl_test_SOURCES = api_knet_link_add_acl.c \
+				     test-common.c
+
+api_knet_link_insert_acl_test_SOURCES = api_knet_link_insert_acl.c \
+					test-common.c
+
+api_knet_link_rm_acl_test_SOURCES = api_knet_link_rm_acl.c \
+				    test-common.c
+
+api_knet_link_clear_acl_test_SOURCES = api_knet_link_clear_acl.c \
+				       test-common.c

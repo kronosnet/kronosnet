@@ -452,7 +452,6 @@ AC_CONFIG_FILES([
 		man/Doxyfile-nozzle
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
-		poc-code/access-list/Makefile
 		])
 
 if test "x$VERSION" = "xUNKNOWN"; then
