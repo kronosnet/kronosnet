@@ -1199,7 +1199,7 @@ int knet_link_add_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -1294,7 +1294,7 @@ int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -1388,7 +1388,7 @@ int knet_link_rm_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -1450,7 +1450,7 @@ int knet_link_clear_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t li
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HOST, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
