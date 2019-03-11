@@ -21,5 +21,6 @@ int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd,
 int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, struct knet_mmsghdr *msg);
 int transport_get_proto(knet_handle_t knet_h, uint8_t transport);
 int transport_get_acl_type(knet_handle_t knet_h, uint8_t transport);
+int transport_get_connection_oriented(knet_handle_t knet_h, uint8_t transport);
 
 #endif

@@ -579,9 +579,12 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 
 retry_pong:
-		len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-				(struct sockaddr *) &src_link->dst_addr,
-				sizeof(struct sockaddr_storage));
+		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
+		} else {
+			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+		}
 		savederrno = errno;
 		if (len != outlen) {
 			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
@@ -672,9 +675,12 @@ retry_pong:
 			goto out_pmtud;
 		}
 retry_pmtud:
-		len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-				(struct sockaddr *) &src_link->dst_addr,
-				sizeof(struct sockaddr_storage));
+		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
+		} else {
+			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+		}
 		savederrno = errno;
 		if (len != outlen) {
 			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);

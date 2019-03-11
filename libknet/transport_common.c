@@ -54,12 +54,16 @@ int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 	return ((i > 0) ? (int)i : err);
 }
 
-int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
+int _sendmmsg(int sockfd, int connection_oriented, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags)
 {
 	int savederrno = 0, err = 0;
 	unsigned int i;
 
 	for (i = 0; i < vlen; i++) {
+		if (connection_oriented == TRANSPORT_PROTO_IS_CONNECTION_ORIENTED) {
+			msgvec[i].msg_hdr.msg_name = NULL;
+			msgvec[i].msg_hdr.msg_namelen = 0;
+		}
 		err = sendmsg(sockfd, &msgvec[i].msg_hdr, flags);
 		savederrno = errno;
 		if (err < 0) {
