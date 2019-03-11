@@ -680,12 +680,12 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	}
 
 	if (host->link_handler_policy == KNET_LINK_POLICY_PASSIVE) {
-		log_debug(knet_h, KNET_SUB_HOST, "host: %u (passive) best link: %u (pri: %u)",
-			  host->host_id, host->link[host->active_links[0]].link_id,
-			  host->link[host->active_links[0]].priority);
+		log_info(knet_h, KNET_SUB_HOST, "host: %u (passive) best link: %u (pri: %u)",
+			 host->host_id, host->link[host->active_links[0]].link_id,
+			 host->link[host->active_links[0]].priority);
 	} else {
-		log_debug(knet_h, KNET_SUB_HOST, "host: %u has %u active links",
-			  host->host_id, host->active_link_entries);
+		log_info(knet_h, KNET_SUB_HOST, "host: %u has %u active links",
+			 host->host_id, host->active_link_entries);
 	}
 
 	/* no active links, we can clean the circular buffers and indexes */
