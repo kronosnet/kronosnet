@@ -41,7 +41,6 @@ fun_checks		=
 benchmarks		= \
 			  knet_bench_test
 
-# int_links_acl_test can´t run yet standalone
 noinst_PROGRAMS		= \
 			  api_knet_handle_new_limit_test \
 			  pckt_test \
@@ -52,6 +51,11 @@ noinst_SCRIPTS		= \
 			  api-test-coverage
 
 TESTS			= $(check_PROGRAMS)
+
+if INSTALL_TESTS
+testsuitedir		= $(TESTDIR)
+testsuite_PROGRAMS	= $(noinst_PROGRAMS)
+endif
 
 check-local: check-api-test-coverage
 
