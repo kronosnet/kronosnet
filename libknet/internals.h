@@ -292,6 +292,12 @@ typedef enum {
 	USE_PROTO_ACL
 } transport_acl;
 
+/*
+ * make it easier to map values in transports.c
+ */
+#define TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED 0
+#define TRANSPORT_PROTO_IS_CONNECTION_ORIENTED  1
+
 typedef struct knet_transport_ops {
 /*
  * transport generic information
@@ -302,6 +308,13 @@ typedef struct knet_transport_ops {
 
 	uint8_t transport_protocol;
 	transport_acl transport_acl_type;
+
+/*
+ * connection oriented protocols like SCTP
+ * don´t need dst_addr in sendto calls and
+ * on some OSes are considered EINVAL.
+ */
+	uint8_t transport_is_connection_oriented;
 
 	uint32_t transport_mtu_overhead;
 /*

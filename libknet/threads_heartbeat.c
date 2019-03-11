@@ -85,9 +85,12 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 
 retry:
-		len = sendto(dst_link->outsock, outbuf, outlen,
-			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
-			sizeof(struct sockaddr_storage));
+		if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+			len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL,
+				     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
+		} else {
+			len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+		}
 		savederrno = errno;
 
 		dst_link->ping_last = clock_now;

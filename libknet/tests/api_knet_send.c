@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
 
-#if 0
+#ifdef HAVE_NETINET_SCTP_H
 	printf("Testing with SCTP\n");
 	test(KNET_TRANSPORT_SCTP);
 #endif
