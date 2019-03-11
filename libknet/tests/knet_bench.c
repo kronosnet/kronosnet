@@ -814,7 +814,7 @@ static int send_messages(struct knet_mmsghdr *msg, int msgs_to_send)
 
 retry:
 	errno = 0;
-	sent_msgs = _sendmmsg(datafd, &msg[0], msgs_to_send, MSG_NOSIGNAL);
+	sent_msgs = _sendmmsg(datafd, 0, &msg[0], msgs_to_send, MSG_NOSIGNAL);
 
 	if (sent_msgs < 0) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
