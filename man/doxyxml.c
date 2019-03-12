@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2018-2019 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -61,6 +61,7 @@ struct param_info {
 };
 
 struct struct_info {
+	enum {STRUCTINFO_STRUCT, STRUCTINFO_ENUM} kind;
 	char *structname;
 	struct qb_list_head params_list; /* our params */
 	struct qb_list_head list;
@@ -245,6 +246,18 @@ static char *get_text(xmlNode *cur_node, char **returntext)
 	return strdup(buffer);
 }
 
+static void read_structname(xmlNode *cur_node, void *arg)
+{
+	struct struct_info *si=arg;
+	xmlNode *this_tag;
+
+	for (this_tag = cur_node->children; this_tag; this_tag = this_tag->next) {
+		if (strcmp((char*)this_tag->name, "compoundname") == 0) {
+			si->structname = strdup((char*)this_tag->children->content);
+		}
+	}
+}
+
 /* Called from traverse_node() */
 static void read_struct(xmlNode *cur_node, void *arg)
 {
@@ -272,7 +285,7 @@ static void read_struct(xmlNode *cur_node, void *arg)
 		pi = malloc(sizeof(struct param_info));
 		if (pi) {
 			snprintf(fullname, sizeof(fullname), "%s%s", name, args);
-			pi->paramtype = strdup(type);
+			pi->paramtype = type?strdup(type):strdup("");
 			pi->paramname = strdup(fullname);
 			pi->paramdesc = NULL;
 			qb_list_add_tail(&pi->list, &si->params_list);
@@ -304,9 +317,10 @@ static int read_structure_from_xml(char *refid, char *name)
 
 	si = malloc(sizeof(struct struct_info));
 	if (si) {
+		si->kind = STRUCTINFO_STRUCT;
 		qb_list_init(&si->params_list);
-		si->structname = strdup(name);
 		traverse_node(rootdoc, "memberdef", read_struct, si);
+		traverse_node(rootdoc, "compounddef", read_structname, si);
 		ret = 0;
 		qb_map_put(structures_map, refid, si);
 	}
@@ -315,12 +329,13 @@ static int read_structure_from_xml(char *refid, char *name)
 	return ret;
 }
 
-/* Reformat pointer params so they look nicer */
+
 static void print_param(FILE *manfile, struct param_info *pi, int field_width, int bold, const char *delimiter)
 {
 	char asterisk = ' ';
 	char *type = pi->paramtype;
 
+	/* Reformat pointer params so they look nicer */
 	if (pi->paramtype[strlen(pi->paramtype)-1] == '*') {
 		asterisk='*';
 		type = strdup(pi->paramtype);
@@ -359,7 +374,13 @@ static void print_structure(FILE *manfile, char *refid, char *name)
 			}
 		}
 
-		fprintf(manfile, "struct %s {\n", si->structname);
+		if (si->kind == STRUCTINFO_STRUCT) {
+			fprintf(manfile, "struct %s {\n", si->structname);
+		} else if (si->kind == STRUCTINFO_ENUM) {
+			fprintf(manfile, "enum %s {\n", si->structname);
+		} else {
+			fprintf(manfile, "%s {\n", si->structname);
+		}
 
 		qb_list_for_each(iter, &si->params_list) {
 			pi = qb_list_entry(iter, struct param_info, list);
@@ -393,7 +414,8 @@ char *get_texttree(int *type, xmlNode *cur_node, char **returntext)
 }
 
 /* The text output is VERY basic and just a check that it's working really */
-static void print_text(char *name, char *def, char *brief, char *args, char *detailed, struct qb_list_head *param_list, char *returntext)
+static void print_text(char *name, char *def, char *brief, char *args, char *detailed,
+		       struct qb_list_head *param_list, char *returntext)
 {
 	printf(" ------------------ %s --------------------\n", name);
 	printf("NAME\n");
@@ -430,7 +452,8 @@ static void man_print_long_string(FILE *manfile, char *text)
 	}
 }
 
-static void print_manpage(char *name, char *def, char *brief, char *args, char *detailed, struct qb_list_head *param_map, char *returntext)
+static void print_manpage(char *name, char *def, char *brief, char *args, char *detailed,
+			  struct qb_list_head *param_map, char *returntext)
 {
 	char manfilename[PATH_MAX];
 	char gendate[64];
@@ -640,6 +663,41 @@ static void collect_functions(xmlNode *cur_node, void *arg)
 	}
 }
 
+/* Same as traverse_members, but to collect enums. The behave like structures for,
+   but, for some reason, are in the main XML file rather than their own */
+static void collect_enums(xmlNode *cur_node, void *arg)
+{
+	xmlNode *this_tag;
+	struct struct_info *si;
+	char *kind;
+	char *refid = NULL;
+	char *name = NULL;
+
+	if (cur_node->name && strcmp((char *)cur_node->name, "memberdef") == 0) {
+
+		kind = get_attr(cur_node, "kind");
+		if (kind && strcmp(kind, "enum") == 0) {
+			refid = get_attr(cur_node, "id");
+
+			for (this_tag = cur_node->children; this_tag; this_tag = this_tag->next) {
+				if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "name") == 0) {
+					name = strdup((char *)this_tag->children->content);
+				}
+			}
+
+			si = malloc(sizeof(struct struct_info));
+			if (si) {
+				si->kind = STRUCTINFO_ENUM;
+				qb_list_init(&si->params_list);
+				si->structname = strdup(name);
+				traverse_node(cur_node, "enumvalue", read_struct, si);
+				qb_map_put(structures_map, refid, si);
+			}
+
+		}
+
+	}
+}
 
 static void traverse_members(xmlNode *cur_node, void *arg)
 {
@@ -696,10 +754,6 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 					qb_list_add_tail(&pi->list, &params_list);
 				}
 			}
-		}
-
-		if (kind && strcmp(kind, "typedef") == 0) {
-			/* Collect typedefs? */
 		}
 
 		if (kind && strcmp(kind, "function") == 0) {
@@ -855,6 +909,9 @@ int main(int argc, char *argv[])
 
 	/* Collect functions */
 	traverse_node(rootdoc, "memberdef", collect_functions, NULL);
+
+	/* Collect enums */
+	traverse_node(rootdoc, "memberdef", collect_enums, NULL);
 
 	/* print pages */
 	traverse_node(rootdoc, "memberdef", traverse_members, NULL);
