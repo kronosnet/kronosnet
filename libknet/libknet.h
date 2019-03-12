@@ -1483,7 +1483,10 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
  * see also knet_handle_enable_access_lists(3)
  */
 
-/*
+/**
+ * check_type_t
+ * @brief address type enum for knet access lists
+ *
  * CHECK_TYPE_ADDRESS is the equivalent of a single entry / IP address.
  *                    for example: 10.1.9.3
  *                    and the entry is stored in ss1. ss2 can be NULL.
@@ -1508,7 +1511,10 @@ typedef enum {
 	CHECK_TYPE_RANGE
 } check_type_t;
 
-/*
+/**
+ * check_acceptreject_t
+ * @brief enum for accept/reject in knet access lists
+ *
  * accept or reject incoming packets defined in the access list entry
  */
 
