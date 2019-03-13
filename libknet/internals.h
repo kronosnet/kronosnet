@@ -198,6 +198,7 @@ struct knet_handle {
 	int pmtud_forcerun;
 	int pmtud_abort;
 	struct crypto_instance *crypto_instance;
+	uint8_t crypto_rekey_in_progress;	/* set to 0 for normal operations, 1 when rekey is in progress */
 	size_t sec_header_size;
 	size_t sec_block_size;
 	size_t sec_hash_size;

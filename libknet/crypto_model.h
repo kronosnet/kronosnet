@@ -13,7 +13,8 @@
 
 struct crypto_instance {
 	int	model;
-	void	*model_instance;
+	uint8_t	active_instance;
+	void	*model_instance[2];
 };
 
 #define KNET_CRYPTO_MODEL_ABI 1

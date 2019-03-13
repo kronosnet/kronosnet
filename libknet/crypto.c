@@ -134,6 +134,8 @@ int crypto_init(
 		goto out_err;
 	}
 
+	memset(knet_h->crypto_instance, 0, sizeof(struct crypto_instance));
+
 	/*
 	 * if crypto_modules_cmds.ops->init fails, it is expected that
 	 * it will clean everything by itself.

@@ -1374,6 +1374,15 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		return -1;
 	}
 
+	if (knet_h->crypto_rekey_in_progress) {
+		savederrno = EBUSY;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto rekey in progress, cannot change crypto config: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
 	crypto_fini(knet_h);
 
 	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) || 
