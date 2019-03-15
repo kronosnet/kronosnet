@@ -544,6 +544,7 @@ Requires: libknet1-crypto-plugins-all
 %package -n kronosnet-tests
 Group: System Environment/Libraries
 Summary: kronosnet test suite
+Requires: libknet1 = %{version}-%{release}
 
 %description -n kronosnet-tests
  this package contains all the libknet and libnozzle test suite
