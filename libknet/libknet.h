@@ -730,7 +730,10 @@ struct knet_handle_crypto_cfg {
  *   to processed.
  * - enabling crypto might reduce the overall throughtput
  *   due to crypto data overhead.
- * - re-keying is not implemented yet.
+ * - it is not possible to change crypto config during
+ *   a rekey process. See below knet_handle_crypto_start_rekey(3).
+ * - it is possible to deconfigure crypto while a rekey process is in
+ *   progress.
  * - private/public key encryption/hashing is not currently
  *   planned.
  * - crypto key must be the same for all hosts in the same
@@ -755,6 +758,82 @@ struct knet_handle_crypto_cfg {
 int knet_handle_crypto(knet_handle_t knet_h,
 		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
 
+/**
+ * knet_handle_crypto_start_rekey
+ *
+ * @brief load new key into the crypto layer using current configuration
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * knet_handle_crypto_cfg -
+ *            pointer to a knet_handle_crypto_cfg structure
+ *
+ *            see knet_handle_crypto(3) for details.
+ *
+ *            please be aware that only private_key and private_key_len
+ *            will be used when callling knet_handle_crypto_start_rekey(3).
+ *            Other parameters will be ignored.
+ *
+ * Implementation details:
+ * - the user should call knet_handle_crypto_start_rekey(3) to load
+ *   the new key on all the nodes.
+ * - when the operation is successful on all nodes, knet will be
+ *   able to decrypt incoming packets from both the old and the
+ *   new key. The old key is still used for encryption.
+ * - switch to the new key using knet_handle_crypto_use_newkey(3) on
+ *   all nodes.
+ * - when the operation is successful on all nodes, knet will be
+ *   using the new key to encrypto traffic. The old key is still
+ *   available in the event some nodes are lagging behind
+ *   in switching to the new key.
+ * - Issue a call to knet_handle_crypto_stop_rekey(3) to complete
+ *   the rekey process and drop the old key from the crypto layer.
+ * - Please be aware that it is not possible to change crypto
+ *   configuration during the rekey´ing process.
+ * - In the event of a failure loading the new key around the nodes,
+ *   it is possible to call knet_handle_crypto_stop_rekey(3) at any
+ *   time to interrupt the rekey´ing process (before switching to the
+ *   new key of course).
+ *
+ * @return
+ * knet_handle_crypto_start_rekey returns:
+ * @retval 0 on success
+ * @retval -1 on error and errno is set.
+ * @retval -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
+ */
+
+int knet_handle_crypto_start_rekey(knet_handle_t knet_h,
+				   struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+
+/**
+ * knet_handle_crypto_use_newkey
+ *
+ * @brief switch to the newly loaded crypto key
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * @return
+ * knet_handle_crypto_use_newkey returns:
+ * @retval 0 on success
+ * @retval -1 on error and errno is set.
+ */
+
+int knet_handle_crypto_use_newkey(knet_handle_t knet_h);
+
+/**
+ * knet_handle_crypto_stop_rekey
+ *
+ * @brief ends the rekey´ing process and free resources used bythe old key
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * @return
+ * knet_handle_crypto_stop_rekey returns:
+ * @retval 0 on success
+ * @retval -1 on error and errno is set.
+ */
+
+int knet_handle_crypto_stop_rekey(knet_handle_t knet_h);
 
 
 #define KNET_COMPRESS_THRESHOLD 100

@@ -595,6 +595,19 @@ out:
  * global/glue nss functions
  */
 
+static int init_nss_keys(knet_handle_t knet_h, struct nsscrypto_instance *instance)
+{
+	if (init_nss_crypto(knet_h, instance) < 0) {
+		return -1;
+	}
+
+	if (init_nss_hash(knet_h, instance) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 static int init_nss(knet_handle_t knet_h)
 {
 	static int at_exit_registered = 0;
@@ -618,11 +631,7 @@ static int init_nss(knet_handle_t knet_h)
 		nss_db_is_init = 1;
 	}
 
-	if (init_nss_crypto(knet_h, knet_h->crypto_instance->model_instance[0]) < 0) {
-		return -1;
-	}
-
-	if (init_nss_hash(knet_h, knet_h->crypto_instance->model_instance[0]) < 0) {
+	if (init_nss_keys(knet_h, knet_h->crypto_instance->model_instance[0]) < 0) {
 		return -1;
 	}
 
@@ -883,10 +892,59 @@ out_err:
 	return -1;
 }
 
+static int nsscrypto_start_rekey(
+	knet_handle_t knet_h,
+	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
+{
+	struct nsscrypto_instance *instance = NULL;
+	struct nsscrypto_instance *oldinstance = knet_h->crypto_instance->model_instance[knet_h->crypto_instance->active_instance];
+
+	if (knet_h->crypto_instance->model_instance[1 - knet_h->crypto_instance->active_instance]) {
+		log_debug(knet_h, KNET_SUB_NSSCRYPTO, "SOMETHING IS WRONG!!! instance allocated?");
+		errno = EEXIST;
+		return -1;
+	}
+
+	if (nsscrypto_allocate_instance(knet_h, 1 - knet_h->crypto_instance->active_instance) < 0) {
+		return -1;
+	}
+
+	instance = knet_h->crypto_instance->model_instance[1 - knet_h->crypto_instance->active_instance];
+
+	/*
+	 * copy crypto config from old instance
+	 */
+	instance->crypto_cipher_type = oldinstance->crypto_cipher_type;
+	instance->crypto_hash_type = oldinstance->crypto_hash_type;
+
+	/*
+	 * point to the new key
+	 */
+	instance->private_key = knet_handle_crypto_cfg->private_key;
+	instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
+
+	if (init_nss_keys(knet_h, instance) < 0) {
+		nsscrypto_free_instance(knet_h, 1 - knet_h->crypto_instance->active_instance);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int nsscrypto_stop_rekey(
+	knet_handle_t knet_h)
+{
+	nsscrypto_free_instance(knet_h, 1 - knet_h->crypto_instance->active_instance);
+
+	return 0;
+}
+
 crypto_ops_t crypto_model = {
 	KNET_CRYPTO_MODEL_ABI,
 	nsscrypto_init,
 	nsscrypto_fini,
+	nsscrypto_start_rekey,
+	nsscrypto_stop_rekey,
 	nsscrypto_encrypt_and_sign,
 	nsscrypto_encrypt_and_signv,
 	nsscrypto_authenticate_and_decrypt

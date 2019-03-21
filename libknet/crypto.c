@@ -43,7 +43,7 @@ static int crypto_get_model(const char *model)
 }
 
 /*
- * exported API
+ * exported internal API
  */
 
 int crypto_encrypt_and_sign (
@@ -76,7 +76,37 @@ int crypto_authenticate_and_decrypt (
 	return crypto_modules_cmds[knet_h->crypto_instance->model].ops->decrypt(knet_h, buf_in, buf_in_len, buf_out, buf_out_len);
 }
 
-int crypto_init(
+void crypto_fini(
+	knet_handle_t knet_h)
+{
+	int savederrno = 0;
+	int model = 0;
+
+	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to get write lock: %s",
+			strerror(savederrno));
+		return;
+	}
+
+	if (knet_h->crypto_instance) {
+		model = knet_h->crypto_instance->model;
+		if (crypto_modules_cmds[model].ops->fini != NULL) {
+			crypto_modules_cmds[model].ops->fini(knet_h);
+		}
+		free(knet_h->crypto_instance);
+		knet_h->crypto_instance = NULL;
+	}
+
+	pthread_rwlock_unlock(&shlib_rwlock);
+	return;
+}
+
+/*
+ * internal API
+ */
+
+static int crypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
@@ -162,31 +192,9 @@ out_err:
 	return -1;
 }
 
-void crypto_fini(
-	knet_handle_t knet_h)
-{
-	int savederrno = 0;
-	int model = 0;
-
-	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to get write lock: %s",
-			strerror(savederrno));
-		return;
-	}
-
-	if (knet_h->crypto_instance) {
-		model = knet_h->crypto_instance->model;
-		if (crypto_modules_cmds[model].ops->fini != NULL) {
-			crypto_modules_cmds[model].ops->fini(knet_h);
-		}
-		free(knet_h->crypto_instance);
-		knet_h->crypto_instance = NULL;
-	}
-
-	pthread_rwlock_unlock(&shlib_rwlock);
-	return;
-}
+/*
+ * public API
+ */
 
 int knet_get_crypto_list(struct knet_crypto_info *crypto_list, size_t *crypto_list_entries)
 {
@@ -212,5 +220,257 @@ int knet_get_crypto_list(struct knet_crypto_info *crypto_list, size_t *crypto_li
 
 	if (!err)
 		errno = 0;
+	return err;
+}
+
+
+int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_handle_crypto_cfg) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) ||
+	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
+	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
+		knet_h->crypto_rekey_in_progress = 0;
+		crypto_fini(knet_h);
+		log_debug(knet_h, KNET_SUB_CRYPTO, "crypto is not enabled");
+		err = 0;
+		goto exit_unlock;
+	}
+
+	/*
+	 * Allow to deconfigure crypto even during a rekey process
+	 * to save a call to stop_rekey in case of aborting the rekey
+	 * process or shutdown of the application.
+	 */
+	if (knet_h->crypto_rekey_in_progress) {
+		savederrno = EBUSY;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto rekey in progress, cannot change crypto config: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	/*
+	 * we can only check for those parameters after
+	 * checking the crypto_modes/cipher and hast type
+	 * as they might have invalid values for "none".
+	 */
+	if (knet_handle_crypto_cfg->private_key_len < KNET_MIN_KEY_LEN) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too short (min %d): %u",
+			  KNET_MIN_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
+		savederrno = EINVAL;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	if (knet_handle_crypto_cfg->private_key_len > KNET_MAX_KEY_LEN) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too long (max %d): %u",
+			  KNET_MAX_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
+		savederrno = EINVAL;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	crypto_fini(knet_h);
+	err = crypto_init(knet_h, knet_handle_crypto_cfg);
+
+	if (err) {
+		err = -2;
+		savederrno = errno;
+	}
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
+}
+
+int knet_handle_crypto_start_rekey(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_handle_crypto_cfg) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (knet_handle_crypto_cfg->private_key_len < KNET_MIN_KEY_LEN) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too short (min %d): %u",
+			  KNET_MIN_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (knet_handle_crypto_cfg->private_key_len > KNET_MAX_KEY_LEN) {
+		log_debug(knet_h, KNET_SUB_CRYPTO, "private key len too long (max %d): %u",
+			  KNET_MAX_KEY_LEN, knet_handle_crypto_cfg->private_key_len);
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (knet_h->crypto_rekey_in_progress) {
+		savederrno = EBUSY;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto rekey in progress, cannot change crypto config: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	if (!knet_h->crypto_instance) {
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto is not configured, unable to load new keys: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	/*
+	 * crypto_start_rekey needs to make sure
+	 * that both keys are loaded and that in case
+	 * of failure to load the new key, all new allocated resources
+	 * are cleared and freed.
+	 */
+	err = crypto_modules_cmds[knet_h->crypto_instance->model].ops->start_rekey(knet_h, knet_handle_crypto_cfg);
+	savederrno = errno;
+
+	if (err) {
+		err = -2;
+	} else {
+		knet_h->crypto_rekey_in_progress = 1;
+	}
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
+}
+
+int knet_handle_crypto_use_newkey(knet_handle_t knet_h)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->crypto_instance) {
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto is not configured, unable to load new keys: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	if (!knet_h->crypto_rekey_in_progress) {
+		savederrno = ENOENT;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto rekey not started: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	knet_h->crypto_instance->active_instance = 1 - knet_h->crypto_instance->active_instance;
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
+}
+
+int knet_handle_crypto_stop_rekey(knet_handle_t knet_h)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->crypto_instance) {
+		savederrno = EINVAL;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto is not configured, unable to load new keys: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	if (!knet_h->crypto_rekey_in_progress) {
+		savederrno = ENOENT;
+		log_err(knet_h, KNET_SUB_HANDLE, "Crypto rekey not started: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		err = -1;
+		goto exit_unlock;
+	}
+
+	err = crypto_modules_cmds[knet_h->crypto_instance->model].ops->stop_rekey(knet_h);
+	savederrno = errno;
+
+	if (!err) {
+		knet_h->crypto_rekey_in_progress = 0;
+	}
+
+exit_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
 	return err;
 }

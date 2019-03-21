@@ -17,31 +17,34 @@ struct crypto_instance {
 	void	*model_instance[2];
 };
 
-#define KNET_CRYPTO_MODEL_ABI 1
+#define KNET_CRYPTO_MODEL_ABI 2
 
 /*
  * see compress_model.h for explanation of the various lib related functions
  */
 typedef struct {
 	uint8_t abi_ver;
-	int (*init)	(knet_handle_t knet_h,
-			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
-	void (*fini)	(knet_handle_t knet_h);
-	int (*crypt)	(knet_handle_t knet_h,
-			 const unsigned char *buf_in,
-			 const ssize_t buf_in_len,
-			 unsigned char *buf_out,
-			 ssize_t *buf_out_len);
-	int (*cryptv)	(knet_handle_t knet_h,
-			 const struct iovec *iov_in,
-			 int iovcnt_in,
-			 unsigned char *buf_out,
-			 ssize_t *buf_out_len);
-	int (*decrypt)	(knet_handle_t knet_h,
-			 const unsigned char *buf_in,
-			 const ssize_t buf_in_len,
-			 unsigned char *buf_out,
-			 ssize_t *buf_out_len);
+	int (*init)		(knet_handle_t knet_h,
+				 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+	void (*fini)		(knet_handle_t knet_h);
+	int (*start_rekey)	(knet_handle_t knet_h,
+				 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+	int (*stop_rekey)	(knet_handle_t knet_h);
+	int (*crypt)		(knet_handle_t knet_h,
+				 const unsigned char *buf_in,
+				 const ssize_t buf_in_len,
+				 unsigned char *buf_out,
+				 ssize_t *buf_out_len);
+	int (*cryptv)		(knet_handle_t knet_h,
+				 const struct iovec *iov_in,
+				 int iovcnt_in,
+				 unsigned char *buf_out,
+				 ssize_t *buf_out_len);
+	int (*decrypt)		(knet_handle_t knet_h,
+				 const unsigned char *buf_in,
+				 const ssize_t buf_in_len,
+				 unsigned char *buf_out,
+				 ssize_t *buf_out_len);
 } crypto_ops_t;
 
 typedef struct {

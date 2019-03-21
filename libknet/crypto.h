@@ -32,10 +32,6 @@ int crypto_encrypt_and_signv (
 	unsigned char *buf_out,
 	ssize_t *buf_out_len);
 
-int crypto_init(
-	knet_handle_t knet_h,
-	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
-
 void crypto_fini(
 	knet_handle_t knet_h);
 

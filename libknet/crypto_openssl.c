@@ -659,10 +659,66 @@ out_err:
 	return -1;
 }
 
+static int opensslcrypto_start_rekey(
+	knet_handle_t knet_h,
+	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
+{
+	int savederrno = 0;
+	struct opensslcrypto_instance *instance = NULL;
+	struct opensslcrypto_instance *oldinstance = knet_h->crypto_instance->model_instance[knet_h->crypto_instance->active_instance];
+
+	if (knet_h->crypto_instance->model_instance[1 - knet_h->crypto_instance->active_instance]) {
+		log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "SOMETHING IS WRONG!!! instance allocated?");
+		errno = EEXIST;
+		return -1;
+	}
+
+	if (opensslcrypto_allocate_instance(knet_h, 1 - knet_h->crypto_instance->active_instance) < 0) {
+		return -1;
+	}
+
+	instance = knet_h->crypto_instance->model_instance[1 - knet_h->crypto_instance->active_instance];
+
+	/*
+	 * copy crypto config from old instance
+	 */
+	instance->crypto_cipher_type = oldinstance->crypto_cipher_type;
+	instance->crypto_hash_type = oldinstance->crypto_hash_type;
+
+	/*
+	 * copy the key
+	 */
+	instance->private_key = malloc(knet_handle_crypto_cfg->private_key_len);
+	if (!instance->private_key) {
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl private key");
+		savederrno = ENOMEM;
+		goto out_err;
+	}
+	memmove(instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
+	instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
+
+	return 0;
+
+out_err:
+	opensslcrypto_free_instance(knet_h, 1 - knet_h->crypto_instance->active_instance);
+	errno = savederrno;
+	return -1;
+}
+
+static int opensslcrypto_stop_rekey(
+	knet_handle_t knet_h)
+{
+	opensslcrypto_free_instance(knet_h, 1 - knet_h->crypto_instance->active_instance);
+
+	return 0;
+}
+
 crypto_ops_t crypto_model = {
 	KNET_CRYPTO_MODEL_ABI,
 	opensslcrypto_init,
 	opensslcrypto_fini,
+	opensslcrypto_start_rekey,
+	opensslcrypto_stop_rekey,
 	opensslcrypto_encrypt_and_sign,
 	opensslcrypto_encrypt_and_signv,
 	opensslcrypto_authenticate_and_decrypt
