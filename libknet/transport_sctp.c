@@ -1043,8 +1043,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 
 			link_info = host->link[link_idx].transport_link;
 			if ((link_info) &&
-			    (link_info->listener == info) &&
-			    (host->link[link_idx].status.enabled == 1)) {
+			    (link_info->listener == info)) {
 				found = 1;
 				break;
 			}
