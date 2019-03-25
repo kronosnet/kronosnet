@@ -33,8 +33,6 @@ struct log_thread_data {
 	FILE *std;
 };
 static struct log_thread_data data;
-static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int stop_in_progress = 0;
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -376,28 +374,11 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 
 int knet_handle_stop(knet_handle_t knet_h)
 {
-	int savederrno;
 	size_t i, j;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
 	struct knet_link_status status;
-
-	savederrno = pthread_mutex_lock(&shutdown_mutex);
-	if (savederrno) {
-		printf("Unable to get shutdown mutex lock\n");
-		return -1;
-	}
-
-	if (stop_in_progress) {
-		pthread_mutex_unlock(&shutdown_mutex);
-		errno = EINVAL;
-		return -1;
-	}
-
-	stop_in_progress = 1;
-
-	pthread_mutex_unlock(&shutdown_mutex);
 
 	if (!knet_h) {
 		errno = EINVAL;
