@@ -413,7 +413,7 @@ int knet_handle_stop(knet_handle_t knet_h)
 					return -1;
 				}
 			}
-			printf("clearing config for: %p host: %u link: %lu\n", knet_h, host_ids[i], j);
+			printf("clearing config for: %p host: %u link: %zu\n", knet_h, host_ids[i], j);
 			knet_link_clear_config(knet_h, host_ids[i], j);
 		}
 		if (knet_host_remove(knet_h, host_ids[i]) < 0) {
@@ -578,4 +578,128 @@ try_again:
 
 	errno = ETIMEDOUT;
 	return -1;
+}
+
+/*
+ * functional tests helpers
+ */
+
+void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level)
+{
+	uint8_t i;
+
+	for (i = 1; i <= numnodes; i++) {
+		knet_h[i] = knet_handle_new(i, logfds[1], log_level, 0);
+		if (!knet_h[i]) {
+			printf("failed to create handle: %s\n", strerror(errno));
+			break;
+		} else {
+			printf("knet_h[%u] at %p\n", i, knet_h[i]);
+		}
+	}
+
+	if (i < numnodes) {
+		knet_handle_stop_nodes(knet_h, i);
+		exit(FAIL);
+	}
+
+	return;
+}
+
+void knet_handle_stop_nodes(knet_handle_t knet_h[], uint8_t numnodes)
+{
+	uint8_t i;
+
+	for (i = 1; i <= numnodes; i++) {
+		printf("stopping handle %u at %p\n", i, knet_h[i]);
+		knet_handle_stop(knet_h[i]);
+	}
+
+	return;
+}
+
+void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport)
+{
+	uint8_t i, x, j;
+	struct sockaddr_storage src, dst;
+
+	for (i = 1; i <= numnodes; i++) {
+		for (j = 1; j <= numnodes; j++) {
+			/*
+			 * don´t connect to itself
+			 */
+			if (j == i) {
+				continue;
+			}
+
+			printf("host %u adding host: %u\n", i, j);
+
+			if (knet_host_add(knet_h[i], j) < 0) {
+				printf("Unable to add host: %s\n", strerror(errno));
+				knet_handle_stop_nodes(knet_h, numnodes);
+				exit(FAIL);
+			}
+
+			for (x = 0; x < numlinks; x++) {
+				if (family == AF_INET6) {
+					if (make_local_sockaddr6(&src, i + x) < 0) {
+						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+
+					if (make_local_sockaddr6(&dst, j + x) < 0) {
+						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+				} else {
+					if (make_local_sockaddr(&src, i + x) < 0) {
+						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+
+					if (make_local_sockaddr(&dst, j + x) < 0) {
+						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+				}
+
+				printf("joining node %u with node %u via link %u src offset: %u dst offset: %u\n", i, j, x, i+x, j+x);
+
+				if (knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0) < 0) {
+					printf("unable to configure link: %s\n", strerror(errno));
+					knet_handle_stop_nodes(knet_h, numnodes);
+					exit(FAIL);
+				}
+
+				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
+					printf("unable to enable link: %s\n", strerror(errno));
+					knet_handle_stop_nodes(knet_h, numnodes);
+					exit(FAIL);
+				}
+			}
+		}
+	}
+
+	for (i = 1; i <= numnodes; i++) {
+		for (j = 1; j <= numnodes; j++) {
+			/*
+			 * don´t wait for self
+			 */
+			if (j == i) {
+				continue;
+			}
+
+			if (wait_for_host(knet_h[i], j, (10 * numnodes) , knet_h[i]->logfd, stdout) < 0) {
+					printf("Cannot connect node %u to node %u: %s\n", i, j, strerror(errno));
+					knet_handle_stop_nodes(knet_h, numnodes);
+					exit(FAIL);
+			}
+		}
+	}
+
+	return;
 }
