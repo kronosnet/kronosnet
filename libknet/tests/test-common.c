@@ -240,7 +240,8 @@ void flush_logs(int logfd, FILE *std)
 
 		msg.msg[sizeof(msg.msg) - 1] = 0;
 
-		fprintf(std, "[knet]: [%s] %s: %.*s\n",
+		fprintf(std, "[knet: %p]: [%s] %s: %.*s\n",
+			msg.knet_h,
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
 			KNET_MAX_LOG_MSG_SIZE, msg.msg);
@@ -363,6 +364,7 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 	knet_handle_t knet_h = knet_handle_new(1, logfds[1], log_level, 0);
 
 	if (knet_h) {
+		printf("knet_handle_new at %p\n", knet_h);
 		return knet_h;
 	} else {
 		printf("knet_handle_new failed: %s\n", strerror(errno));
