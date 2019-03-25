@@ -380,7 +380,7 @@ int knet_handle_stop(knet_handle_t knet_h)
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
-	struct knet_link_status status;
+	unsigned int enabled;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -403,16 +403,17 @@ int knet_handle_stop(knet_handle_t knet_h)
 			return -1;
 		}
 		for (j = 0; j < link_ids_entries; j++) {
-			if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status, sizeof(struct knet_link_status))) {
-				printf("knet_link_get_status failed: %s\n", strerror(errno));
+			if (knet_link_get_enable(knet_h, host_ids[i], link_ids[j], &enabled)) {
+				printf("knet_link_get_enable failed: %s\n", strerror(errno));
 				return -1;
 			}
-			if (status.enabled) {
+			if (enabled) {
 				if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
 					printf("knet_link_set_enable failed: %s\n", strerror(errno));
 					return -1;
 				}
 			}
+			printf("clearing config for: %p host: %u link: %lu\n", knet_h, host_ids[i], j);
 			knet_link_clear_config(knet_h, host_ids[i], j);
 		}
 		if (knet_host_remove(knet_h, host_ids[i]) < 0) {
@@ -425,6 +426,7 @@ int knet_handle_stop(knet_handle_t knet_h)
 		printf("knet_handle_free failed: %s\n", strerror(errno));
 		return -1;
 	}
+
 	return 0;
 }
 
