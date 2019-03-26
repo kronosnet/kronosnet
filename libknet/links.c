@@ -99,6 +99,12 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
+	if (dst_addr && (src_addr->ss_family != dst_addr->ss_family)) {
+		log_err(knet_h, KNET_SUB_LINK, "Source address family does not match destination address family");
+		errno = EINVAL;
+		return -1;
+	}
+
 	if (transport >= KNET_MAX_TRANSPORTS) {
 		errno = EINVAL;
 		return -1;

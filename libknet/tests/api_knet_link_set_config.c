@@ -111,6 +111,24 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	printf("Test knet_link_set_config with conflicting address families\n");
+
+	if (make_local_sockaddr6(&dst, 1) < 0) {
+		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+		exit(FAIL);
+	}
+
+	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) == 0) {
+		printf("knet_link_set_config accepted invalid address families: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
 	printf("Test knet_link_set_config with dynamic dst_addr\n");
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 0) < 0) {
@@ -211,6 +229,11 @@ static void test(void)
 	}
 
 	printf("Test knet_link_set_config with static dst_addr\n");
+
+	if (make_local_sockaddr(&dst, 1) < 0) {
+		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+		exit(FAIL);
+	}
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
