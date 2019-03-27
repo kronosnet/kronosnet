@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -68,6 +68,7 @@ retry:
 		cur = &msg[prev_sent];
 
 		sent_msgs = _sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
+				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport_type),
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -95,6 +95,12 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	}
 
 	if (!src_addr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (dst_addr && (src_addr->ss_family != dst_addr->ss_family)) {
+		log_err(knet_h, KNET_SUB_LINK, "Source address family does not match destination address family");
 		errno = EINVAL;
 		return -1;
 	}

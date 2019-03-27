@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -18,7 +18,7 @@ void _close_socketpair(knet_handle_t knet_h, int *sock);
 int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data);
 int _is_valid_fd(knet_handle_t knet_h, int sockfd);
 
-int _sendmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
+int _sendmmsg(int sockfd, int connection_oriented, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
 int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
 
 #endif

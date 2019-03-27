@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -33,7 +33,7 @@ static void sock_notify(void *pvt_data,
 	return;
 }
 
-static void test(void)
+static void test(uint8_t transport)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
@@ -172,7 +172,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0) < 0) {
+	if (knet_link_set_config(knet_h, 1, 0, transport, &lo, &lo, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -314,7 +314,13 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	test();
+	printf("Testing with UDP\n");
+	test(KNET_TRANSPORT_UDP);
+
+#ifdef HAVE_NETINET_SCTP_H
+	printf("Testing with SCTP\n");
+	test(KNET_TRANSPORT_SCTP);
+#endif
 
 	return PASS;
 }

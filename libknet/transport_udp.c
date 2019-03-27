@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -186,8 +186,7 @@ int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_l
 			if (&host->link[link_idx] == kn_link)
 				continue;
 
-			if ((host->link[link_idx].transport_link == info) &&
-			    (host->link[link_idx].status.enabled == 1)) {
+			if (host->link[link_idx].transport_link == info) {
 				found = 1;
 				break;
 			}

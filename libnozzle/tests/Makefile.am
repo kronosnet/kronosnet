@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017-2018 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2017-2019 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -57,6 +57,11 @@ noinst_SCRIPTS		= \
 			  api-test-coverage
 
 TESTS			= $(check_PROGRAMS)
+
+if INSTALL_TESTS
+testsuitedir		= $(TESTDIR)
+testsuite_PROGRAMS	= $(noinst_PROGRAMS)
+endif
 
 check-local: check-api-test-coverage
 

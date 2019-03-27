@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2018 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2019 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -167,6 +167,11 @@ if BUILD_MAN
 	sed -i -e "s#@buildman@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@buildman@#bcond_with#g" $@-t
+endif
+if INSTALL_TESTS
+	sed -i -e "s#@installtests@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@installtests@#bcond_with#g" $@-t
 endif
 	sed -i -e "s#@defaultadmgroup@#$(DEFAULTADMGROUP)#g" $@-t
 	chmod a-w $@-t

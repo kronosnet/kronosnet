@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2015-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -172,9 +172,12 @@ restart:
 		return -1;
 	}
 retry:
-	len = sendto(dst_link->outsock, outbuf, data_len,
-			MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *) &dst_link->dst_addr,
-			sizeof(struct sockaddr_storage));
+	if (transport_get_connection_oriented(knet_h, dst_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+			     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
+	} else {
+		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+	}
 	savederrno = errno;
 
 	/*

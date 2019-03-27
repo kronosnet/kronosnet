@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -86,7 +86,7 @@ static void print_help(void)
 	printf(" -P [UDP|SCTP]                             (default: UDP) protocol (transport) to use for all links\n");
 	printf(" -t [nodeid]                               This nodeid (required)\n");
 	printf(" -n [nodeid],[proto]/[link1_ip],[link2_..] Other nodes information (at least one required)\n");
-	printf("                                           Example: -t 1,192.168.8.1,SCTP/3ffe::8:1,UDP/172...\n");
+	printf("                                           Example: -n 1,192.168.8.1,SCTP/3ffe::8:1,UDP/172...\n");
 	printf("                                           can be repeated up to %d and should contain also the localnode info\n", MAX_NODES);
 	printf(" -b [port]                                 baseport (default: 50000)\n");
 	printf(" -l                                        enable global listener on 0.0.0.0/:: (default: off, incompatible with -o)\n");
@@ -814,7 +814,7 @@ static int send_messages(struct knet_mmsghdr *msg, int msgs_to_send)
 
 retry:
 	errno = 0;
-	sent_msgs = _sendmmsg(datafd, &msg[0], msgs_to_send, MSG_NOSIGNAL);
+	sent_msgs = _sendmmsg(datafd, 0, &msg[0], msgs_to_send, MSG_NOSIGNAL);
 
 	if (sent_msgs < 0) {
 		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {

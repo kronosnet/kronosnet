@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Copyright (C) 2019 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+, LGPL-2.0+
+#
+
+err=0
+srcdir="$1"
+target="$2"
+
+headerapicalls="$(grep ${target}_ "$srcdir"/lib${target}/lib${target}.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+manpages="$(grep ${target}_ "$srcdir"/man/Makefile.am |grep -v man3 |grep -v xml | sed -e 's/\.3.*//g')"
+
+echo "Checking for symbols in header file NOT distributed as manpages"
+
+for i in $headerapicalls; do
+	found=0
+	for x in $manpages; do
+		if [ "$x" = "$i" ]; then
+			found=1
+			break;
+		fi
+	done
+	if [ "$found" = 0 ]; then
+		echo "API man page $i not found not found in $srcdir/man/Makefile.am"
+		err=1
+	fi
+done
+
+exit $err

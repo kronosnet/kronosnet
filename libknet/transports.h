@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -18,5 +18,6 @@ int transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_lin
 int transport_rx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno);
 int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno);
 int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, struct knet_mmsghdr *msg);
+int transport_get_connection_oriented(knet_handle_t knet_h, uint8_t transport);
 
 #endif

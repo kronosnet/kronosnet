@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2018 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2019 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
@@ -143,6 +143,11 @@ KNET_OPTION_DEFINES([bzip2],[compress],[
 				[AC_SUBST([bzip2_LIBS], [-lbz2])])],
 				[AC_MSG_ERROR(["missing required bzlib.h"])])])
 ])
+
+AC_ARG_ENABLE([install-tests],
+	[AS_HELP_STRING([--enable-install-tests],[install tests])],,
+	[ enable_install_tests="no" ])
+AM_CONDITIONAL([INSTALL_TESTS], [test x$enable_install_tests = xyes])
 
 AC_ARG_ENABLE([poc],
 	[AS_HELP_STRING([--enable-poc],[enable building poc code])],,
@@ -294,6 +299,11 @@ fi
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+AC_ARG_WITH([testdir],
+	[AS_HELP_STRING([--with-testdir=DIR],[path to /usr/lib../kronosnet/tests/ dir where to install the test suite])],
+	[ TESTDIR="$withval" ],
+	[ TESTDIR="$libdir/kronosnet/tests" ])
+
 AC_ARG_WITH([initdefaultdir],
 	[AS_HELP_STRING([--with-initdefaultdir=DIR],[path to /etc/sysconfig or /etc/default dir])],
 	[ INITDEFAULTDIR="$withval" ],
@@ -333,6 +343,7 @@ DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
 
 ## do subst
 
+AC_SUBST([TESTDIR])
 AC_SUBST([DEFAULT_CONFIG_DIR])
 AC_SUBST([INITDEFAULTDIR])
 AC_SUBST([INITDDIR])
