@@ -587,8 +587,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 				unsigned int *data_mtu);
 
 
-
-#define KNET_MIN_KEY_LEN  256
+#define KNET_MIN_KEY_LEN  128
 #define KNET_MAX_KEY_LEN 4096
 
 struct knet_handle_crypto_cfg {
