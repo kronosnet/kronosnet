@@ -181,12 +181,13 @@ static void test(uint8_t transport)
 	}
 
 	if (knet_link_set_config(knet_h, 1, 0, transport, &lo, &lo, 0) < 0) {
+		int exit_status = transport == KNET_TRANSPORT_SCTP && errno == EPROTONOSUPPORT ? SKIP : FAIL;
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
-		exit(FAIL);
+		exit(exit_status);
 	}
 
 	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
