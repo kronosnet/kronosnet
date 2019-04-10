@@ -124,6 +124,8 @@ AC_ARG_ENABLE([compress-all],
 	[AS_HELP_STRING([--disable-compress-all],[disable libknet all compress modules support])],,
 	[ enable_compress_all="yes" ])
 
+KNET_OPTION_DEFINES([zstd],[compress],[PKG_CHECK_MODULES([libzstd], [libzstd])])
+
 KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
 KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
 KNET_OPTION_DEFINES([lzo2],[compress],[

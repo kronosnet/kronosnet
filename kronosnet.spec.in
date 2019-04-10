@@ -24,6 +24,7 @@
 %@lzo2@ lzo2
 %@lzma@ lzma
 %@bzip2@ bzip2
+%@zstd@ zstd
 %@kronosnetd@ kronosnetd
 %@libnozzle@ libnozzle
 %@runautogen@ runautogen
@@ -59,6 +60,9 @@
 %endif
 %if %{with bzip2}
 %global buildcompressbzip2 1
+%endif
+%if %{with zstd}
+%global buildcompresszstd 1
 %endif
 %if %{with libnozzle}
 %global buildlibnozzle 1
@@ -122,6 +126,9 @@ BuildRequires: xz-devel
 %endif
 %if %{defined buildcompressbzip2}
 BuildRequires: /usr/include/bzlib.h
+%endif
+%if %{defined buildcompresszstd}
+BuildRequires: libzstd-devel
 %endif
 %if %{defined buildkronosnetd}
 BuildRequires: pam-devel
@@ -193,6 +200,11 @@ BuildRequires: libtool
 	--enable-compress-bzip2 \
 %else
 	--disable-compress-bzip2 \
+%endif
+%if %{defined buildcompresszstd}
+	--enable-compress-zstd \
+%else
+	--disable-compress-zstd \
 %endif
 %if %{defined buildkronosnetd}
 	--enable-kronosnetd \
@@ -490,6 +502,20 @@ Requires: libknet1 = %{version}-%{release}
 %{_libdir}/kronosnet/compress_bzip2.so
 %endif
 
+%if %{defined buildcompresszstd}
+%package -n libknet1-compress-zstd-plugin
+Group: System Environment/Libraries
+Summary: libknet1 zstd support
+Requires: libknet1 = %{version}-%{release}
+
+%description -n libknet1-compress-zstd-plugin
+ zstd compression support for libknet1.
+
+%files -n libknet1-compress-zstd-plugin
+%defattr(-,root,root,-)
+%{_libdir}/kronosnet/compress_zstd.so
+%endif
+
 %package -n libknet1-crypto-plugins-all
 Group: System Environment/Libraries
 Summary: libknet1 crypto plugins meta package
@@ -522,6 +548,9 @@ Requires: libknet1-compress-lzma-plugin
 %endif
 %if %{defined buildcompressbzip2}
 Requires: libknet1-compress-bzip2-plugin
+%endif
+%if %{defined buildcompresszstd}
+Requires: libknet1-compress-zstd-plugin
 %endif
 
 %description -n libknet1-compress-plugins-all
