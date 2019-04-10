@@ -2053,6 +2053,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_LZO2COMP      73 /* compress_lzo.c */
 #define KNET_SUB_LZMACOMP      74 /* compress_lzma.c */
 #define KNET_SUB_BZIP2COMP     75 /* compress_bzip2.c */
+#define KNET_SUB_ZSTDCOMP      76 /* compress_zstd.c */
 
 #define KNET_SUB_UNKNOWN       UINT8_MAX - 1
 #define KNET_MAX_SUBSYSTEMS    UINT8_MAX

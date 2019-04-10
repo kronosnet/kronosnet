@@ -103,6 +103,13 @@ pkglib_LTLIBRARIES	=
 # MODULE_LDFLAGS would mean a target-specific variable for Automake
 MODULELDFLAGS		= $(AM_LDFLAGS) -module -avoid-version -export-dynamic
 
+if BUILD_COMPRESS_ZSTD
+pkglib_LTLIBRARIES	+= compress_zstd.la
+compress_zstd_la_LDFLAGS = $(MODULELDFLAGS)
+compress_zstd_la_CFLAGS	= $(AM_CFLAGS) $(libzstd_CFLAGS)
+compress_zstd_la_LIBADD	= $(libzstd_LIBS)
+endif
+
 if BUILD_COMPRESS_ZLIB
 pkglib_LTLIBRARIES	+= compress_zlib.la
 compress_zlib_la_LDFLAGS = $(MODULELDFLAGS)

@@ -40,6 +40,7 @@ static compress_model_t compress_modules_cmds[] = {
 	{ "lzo2" , 4, WITH_COMPRESS_LZO2 , 0, NULL },
 	{ "lzma" , 5, WITH_COMPRESS_LZMA , 0, NULL },
 	{ "bzip2", 6, WITH_COMPRESS_BZIP2, 0, NULL },
+	{ "zstd" , 7, WITH_COMPRESS_ZSTD, 0, NULL },
 	{ NULL, 255, 0, 0, NULL }
 };
 
