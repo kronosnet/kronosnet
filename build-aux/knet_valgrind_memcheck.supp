@@ -605,3 +605,10 @@
    obj:*
    obj:/usr/lib64/libnss3.so
 }
+{
+   arm internal memory leak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:dl_open_worker
+}
