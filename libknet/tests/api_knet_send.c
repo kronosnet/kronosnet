@@ -246,7 +246,7 @@ static void test(uint8_t transport)
 
 	flush_logs(logfds[0], stdout);
 
-	if (wait_for_packet(knet_h, 10, datafd)) {
+	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
 		printf("Error waiting for packet: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);

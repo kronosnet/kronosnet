@@ -2141,6 +2141,7 @@ int knet_link_enable_status_change_notify(knet_handle_t knet_h,
 #define KNET_SUB_LZO2COMP      73 /* compress_lzo.c */
 #define KNET_SUB_LZMACOMP      74 /* compress_lzma.c */
 #define KNET_SUB_BZIP2COMP     75 /* compress_bzip2.c */
+#define KNET_SUB_ZSTDCOMP      76 /* compress_zstd.c */
 
 #define KNET_SUB_UNKNOWN       UINT8_MAX - 1
 #define KNET_MAX_SUBSYSTEMS    UINT8_MAX
