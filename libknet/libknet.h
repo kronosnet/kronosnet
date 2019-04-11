@@ -703,7 +703,7 @@ struct knet_handle_crypto_cfg {
  *                         It can be set to "none" to disable
  *                         encryption.
  *                         Currently supported by "nss" model:
- *                         "3des", "aes128", "aes192" and "aes256".
+ *                         "aes128", "aes192" and "aes256".
  *                         "openssl" model supports more modes and it strictly
  *                         depends on the openssl build. See: EVP_get_cipherbyname
  *                         openssl API call for details.
