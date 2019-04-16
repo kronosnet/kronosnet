@@ -332,19 +332,25 @@ static int read_structure_from_xml(char *refid, char *name)
 
 static void print_param(FILE *manfile, struct param_info *pi, int field_width, int bold, const char *delimiter)
 {
-	char asterisk = ' ';
+	char *asterisks = "  ";
 	char *type = pi->paramtype;
 
 	/* Reformat pointer params so they look nicer */
 	if (pi->paramtype[strlen(pi->paramtype)-1] == '*') {
-		asterisk='*';
+		asterisks=" *";
 		type = strdup(pi->paramtype);
 		type[strlen(type)-1] = '\0';
+
+		/* Cope with double pointers */
+		if (pi->paramtype[strlen(type)-1] == '*') {
+			asterisks="**";
+			type[strlen(type)-1] = '\0';
+		}
 	}
 
-	fprintf(manfile, "    %s%-*s%c%s\\fI%s\\fP%s\n",
+	fprintf(manfile, "    %s%-*s%s%s\\fI%s\\fP%s\n",
 		bold?"\\fB":"", field_width, type,
-		asterisk, bold?"\\fP":"", pi->paramname, delimiter);
+		asterisks, bold?"\\fP":"", pi->paramname, delimiter);
 
 	if (type != pi->paramtype) {
 		free(type);
@@ -559,11 +565,6 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 
 		map_iter = qb_map_iter_create(used_structures_map);
 		for (p = qb_map_iter_next(map_iter, &data); p; p = qb_map_iter_next(map_iter, &data)) {
-			fprintf(manfile, ".SS \"\"\n");
-			fprintf(manfile, ".PP\n");
-			fprintf(manfile, ".sp\n");
-			fprintf(manfile, ".sp\n");
-			fprintf(manfile, ".RS\n");
 			fprintf(manfile, ".nf\n");
 			fprintf(manfile, "\\fB\n");
 
