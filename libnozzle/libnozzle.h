@@ -25,6 +25,7 @@ typedef struct nozzle_iface *nozzle_t;
 
 /**
  * nozzle_open
+ *
  * @brief create a new tap device on the system.
  *
  * devname - pointer to device name of at least size IFNAMSIZ.
@@ -55,6 +56,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 /**
  * nozzle_close
+ *
  * @brief deconfigure and destroy a nozzle device
  *
  * nozzle - pointer to the nozzle struct to destroy
@@ -74,9 +76,8 @@ int nozzle_close(nozzle_t nozzle);
 
 /**
  * nozzle_run_updown
- * @brief execute updown commands associated with a nozzle device. It is
- *        the application responsibility to call helper scripts
- *        before or after creating/destroying interfaces or IP addresses.
+ *
+ * @brief execute updown commands associated with a nozzle device.
  *
  * nozzle - pointer to the nozzle struct
  *
@@ -85,6 +86,9 @@ int nozzle_close(nozzle_t nozzle);
  * exec_string - pointers to string to record executing action stdout/stderr.
  *               The string is malloc'ed, the caller needs to free the buffer.
  *               If the script generates no output this string might be NULL.
+ *
+ * It is the application responsibility to call helper scripts
+ * before or after creating/destroying interfaces or IP addresses.
  *
  * @return
  * 0 on success
@@ -96,6 +100,7 @@ int nozzle_run_updown(const nozzle_t nozzle, uint8_t action, char **exec_string)
 
 /**
  * nozzle_set_up
+ *
  * @brief equivalent of ifconfig up
  *
  * nozzle - pointer to the nozzle struct
@@ -109,6 +114,7 @@ int nozzle_set_up(nozzle_t nozzle);
 
 /**
  * nozzle_set_down
+ *
  * @brief equivalent of ifconfig down
  *
  * nozzle - pointer to the nozzle struct
@@ -122,6 +128,7 @@ int nozzle_set_down(nozzle_t nozzle);
 
 /**
  * nozzle_add_ip
+ *
  * @brief equivalent of ip addr or ifconfig <ipaddress/prefix>
  *
  * nozzle - pointer to the nozzle struct
@@ -142,6 +149,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix);
 
 /**
  * nozzle_del_ip
+ *
  * @brief equivalent of ip addr del or ifconfig del <ipaddress/prefix>
  *
  * nozzle - pointer to the nozzle struct
@@ -170,6 +178,7 @@ struct nozzle_ip {
 
 /**
  * nozzle_get_ips
+ *
  * @brief retrieve the list of all configured ips for a given interface
  *
  * nozzle - pointer to the nozzle struct
@@ -191,6 +200,7 @@ int nozzle_get_ips(const nozzle_t nozzle, struct nozzle_ip **nozzle_ip);
 
 /**
  * nozzle_get_mtu
+ *
  * @brief retrieve mtu on a given nozzle interface
  *
  * nozzle - pointer to the nozzle struct
@@ -204,6 +214,7 @@ int nozzle_get_mtu(const nozzle_t nozzle);
 
 /**
  * nozzle_set_mtu
+ *
  * @brief set mtu on a given nozzle interface
  *
  * nozzle - pointer to the nozzle struct
@@ -219,6 +230,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu);
 
 /**
  * nozzle_reset_mtu
+ *
  * @brief reset mtu on a given nozzle interface to the system default
  *
  * nozzle - pointer to the nozzle struct
@@ -232,6 +244,7 @@ int nozzle_reset_mtu(nozzle_t nozzle);
 
 /**
  * nozzle_get_mac
+ *
  * @brief retrieve mac address on a given nozzle interface
  *
  * nozzle - pointer to the nozzle struct
@@ -247,6 +260,7 @@ int nozzle_get_mac(const nozzle_t nozzle, char **ether_addr);
 
 /**
  * nozzle_set_mac
+ *
  * @brief set mac address on a given nozzle interface
  *
  * nozzle - pointer to the nozzle struct
@@ -262,6 +276,7 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr);
 
 /**
  * nozzle_reset_mac
+ *
  * @brief reset mac address on a given nozzle interface to system default
  *
  * nozzle - pointer to the nozzle struct
@@ -275,6 +290,7 @@ int nozzle_reset_mac(nozzle_t nozzle);
 
 /**
  * nozzle_get_handle_by_name
+ *
  * @brief find a nozzle handle by device name
  *
  * devname - string containing the name of the interface
@@ -288,6 +304,7 @@ nozzle_t nozzle_get_handle_by_name(const char *devname);
 
 /**
  * nozzle_get_name_by_handle
+ *
  * @brief retrieve nozzle interface name by handle
  *
  * nozzle - pointer to the nozzle struct
@@ -301,6 +318,7 @@ const char *nozzle_get_name_by_handle(const nozzle_t nozzle);
 
 /**
  * nozzle_get_fd
+ *
  * @brief
  *
  * nozzle - pointer to the nozzle struct

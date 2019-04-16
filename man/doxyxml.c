@@ -34,6 +34,14 @@
 #define XML_DIR "../man/xml-knet"
 #define XML_FILE "libknet_8h.xml"
 
+/*
+ * This isn't a maximum size, it just defines how long a parameter
+ * type can get before we decide it's not worth lining everything up to.
+ * it's mainly to stop function pointer types (which can get VERY long because
+ * of all *their* parameters) making everything else 'line-up' over separate lines
+ */
+#define LINE_LENGTH 80
+
 static int print_ascii = 1;
 static int print_man = 0;
 static int print_params = 0;
@@ -332,19 +340,25 @@ static int read_structure_from_xml(char *refid, char *name)
 
 static void print_param(FILE *manfile, struct param_info *pi, int field_width, int bold, const char *delimiter)
 {
-	char asterisk = ' ';
+	char *asterisks = "  ";
 	char *type = pi->paramtype;
 
 	/* Reformat pointer params so they look nicer */
 	if (pi->paramtype[strlen(pi->paramtype)-1] == '*') {
-		asterisk='*';
+		asterisks=" *";
 		type = strdup(pi->paramtype);
 		type[strlen(type)-1] = '\0';
+
+		/* Cope with double pointers */
+		if (pi->paramtype[strlen(type)-1] == '*') {
+			asterisks="**";
+			type[strlen(type)-1] = '\0';
+		}
 	}
 
-	fprintf(manfile, "    %s%-*s%c%s\\fI%s\\fP%s\n",
+	fprintf(manfile, "    %s%-*s%s%s\\fI%s\\fP%s\n",
 		bold?"\\fB":"", field_width, type,
-		asterisk, bold?"\\fP":"", pi->paramname, delimiter);
+		asterisks, bold?"\\fP":"", pi->paramname, delimiter);
 
 	if (type != pi->paramtype) {
 		free(type);
@@ -504,7 +518,8 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	qb_list_for_each(iter, &params_list) {
 		pi = qb_list_entry(iter, struct param_info, list);
 
-		if (strlen(pi->paramtype) > max_param_type_len) {
+		if ((strlen(pi->paramtype) < LINE_LENGTH) &&
+		    (strlen(pi->paramtype) > max_param_type_len)) {
 			max_param_type_len = strlen(pi->paramtype);
 		}
 		if (strlen(pi->paramname) > max_param_name_len) {
@@ -559,11 +574,6 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 
 		map_iter = qb_map_iter_create(used_structures_map);
 		for (p = qb_map_iter_next(map_iter, &data); p; p = qb_map_iter_next(map_iter, &data)) {
-			fprintf(manfile, ".SS \"\"\n");
-			fprintf(manfile, ".PP\n");
-			fprintf(manfile, ".sp\n");
-			fprintf(manfile, ".sp\n");
-			fprintf(manfile, ".RS\n");
 			fprintf(manfile, ".nf\n");
 			fprintf(manfile, "\\fB\n");
 

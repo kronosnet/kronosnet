@@ -275,6 +275,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
 
 /**
  * knet_handle_remove_datafd
+ *
  * @brief Remove a file descriptor from knet
  *
  * knet_h   - pointer to knet_handle_t
@@ -293,6 +294,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
 
 /**
  * knet_handle_get_channel
+ *
  * @brief Get the channel associated with a file descriptor
  *
  * knet_h  - pointer to knet_handle_t
@@ -313,6 +315,7 @@ int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *chan
 
 /**
  * knet_handle_get_datafd
+ *
  * @brief Get the file descriptor associated with a channel
  *
  * knet_h   - pointer to knet_handle_t
