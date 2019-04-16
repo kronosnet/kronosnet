@@ -34,6 +34,14 @@
 #define XML_DIR "../man/xml-knet"
 #define XML_FILE "libknet_8h.xml"
 
+/*
+ * This isn't a maximum size, it just defines how long a parameter
+ * type can get before we decide it's not worth lining everything up to.
+ * it's mainly to stop function pointer types (which can get VERY long because
+ * of all *their* parameters) making everything else 'line-up' over separate lines
+ */
+#define LINE_LENGTH 80
+
 static int print_ascii = 1;
 static int print_man = 0;
 static int print_params = 0;
@@ -510,7 +518,8 @@ static void print_manpage(char *name, char *def, char *brief, char *args, char *
 	qb_list_for_each(iter, &params_list) {
 		pi = qb_list_entry(iter, struct param_info, list);
 
-		if (strlen(pi->paramtype) > max_param_type_len) {
+		if ((strlen(pi->paramtype) < LINE_LENGTH) &&
+		    (strlen(pi->paramtype) > max_param_type_len)) {
 			max_param_type_len = strlen(pi->paramtype);
 		}
 		if (strlen(pi->paramname) > max_param_name_len) {
