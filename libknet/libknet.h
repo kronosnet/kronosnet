@@ -147,6 +147,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 
 /**
  * knet_handle_free
+ *
  * @brief Destroy a knet handle, free all resources
  *
  * knet_h   - pointer to knet_handle_t
@@ -214,6 +215,7 @@ int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
 
 /**
  * knet_handle_enable_sock_notify
+ *
  * @brief Register a callback to receive socket events
  *
  * knet_h   - pointer to knet_handle_t
@@ -385,6 +387,7 @@ int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *data
 
 /**
  * knet_recv
+ *
  * @brief Receive data from knet nodes
  *
  * knet_h   - pointer to knet_handle_t
@@ -407,6 +410,7 @@ ssize_t knet_recv(knet_handle_t knet_h,
 
 /**
  * knet_send
+ *
  * @brief Send data to knet nodes
  *
  * knet_h   - pointer to knet_handle_t
@@ -1561,6 +1565,7 @@ typedef enum {
 
 /**
  * check_acceptreject_t
+ *
  * @brief enum for accept/reject in knet access lists
  *
  * accept or reject incoming packets defined in the access list entry
