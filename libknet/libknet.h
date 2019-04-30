@@ -1144,7 +1144,7 @@ struct knet_host_status {
 };
 
 /**
- * knet_host_status_get
+ * knet_host_get_status
  *
  * @brief Get the status of a host
  *
@@ -1939,7 +1939,7 @@ struct knet_log_msg {
 };
 
 /**
- * knet_log_set_log_level
+ * knet_log_set_loglevel
  *
  * @brief Set the logging level for a subsystem
  *
@@ -1962,7 +1962,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 			  uint8_t level);
 
 /**
- * knet_log_get_log_level
+ * knet_log_get_loglevel
  *
  * @brief Get the logging level for a subsystem
  *
