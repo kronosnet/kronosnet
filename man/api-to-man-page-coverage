@@ -14,6 +14,21 @@ target="$2"
 headerapicalls="$(grep ${target}_ "$srcdir"/lib${target}/lib${target}.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
 manpages="$(grep ${target}_ "$srcdir"/man/Makefile.am |grep -v man3 |grep -v xml | sed -e 's/\.3.*//g')"
 
+echo "Checking for header format errors"
+
+for i in $headerapicalls; do
+	echo "Checking $i"
+	header="$(grep " \* ${i}$" "$srcdir"/lib${target}/lib${target}.h -A2)"
+	brief="$(echo "$header" | tail -n 1 |grep "@brief")"
+	if [ -z "$brief" ]; then
+		echo "Error found in $i doxy header section"
+		echo "$header"
+		echo ""
+		echo "$brief"
+		exit 1
+	fi
+done
+
 echo "Checking for symbols in header file NOT distributed as manpages"
 
 for i in $headerapicalls; do
