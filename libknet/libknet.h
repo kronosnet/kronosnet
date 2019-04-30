@@ -1118,9 +1118,9 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 /**
  * knet_host_set_policy
  *
- * knet_h   - pointer to knet_handle_t
- *
  * @brief Set the switching policy for a host's links
+ *
+ * knet_h   - pointer to knet_handle_t
  *
  * host_id  - see knet_host_add(3)
  *
@@ -1235,7 +1235,7 @@ struct knet_host_status {
 };
 
 /**
- * knet_host_status_get
+ * knet_host_get_status
  *
  * @brief Get the status of a host
  *
@@ -1606,7 +1606,7 @@ typedef enum {
  *            packets from 10.0.0.1 will be accepted by rule number 1.
  *
  * @return
- * knet_link_add_acl
+ * knet_link_add_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1633,7 +1633,7 @@ int knet_link_add_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link
  * ss1 / ss2 / type / acceptreject - see typedef definitions for details
  *
  * @return
- * knet_link_insert_acl
+ * knet_link_insert_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1661,7 +1661,7 @@ int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *            to knet_link_add_acl(3).
  *
  * @return
- * knet_link_rm_acl
+ * knet_link_rm_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1683,7 +1683,7 @@ int knet_link_rm_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_
  * link_id   - see knet_link_set_config(3)
  *
  * @return
- * knet_link_clear_acl
+ * knet_link_clear_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -2237,7 +2237,7 @@ struct knet_log_msg {
 };
 
 /**
- * knet_log_set_log_level
+ * knet_log_set_loglevel
  *
  * @brief Set the logging level for a subsystem
  *
@@ -2260,7 +2260,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 			  uint8_t level);
 
 /**
- * knet_log_get_log_level
+ * knet_log_get_loglevel
  *
  * @brief Get the logging level for a subsystem
  *
