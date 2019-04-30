@@ -1553,7 +1553,7 @@ typedef enum {
  *            packets from 10.0.0.1 will be accepted by rule number 1.
  *
  * @return
- * knet_link_add_acl
+ * knet_link_add_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1580,7 +1580,7 @@ int knet_link_add_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link
  * ss1 / ss2 / type / acceptreject - see typedef definitions for details
  *
  * @return
- * knet_link_insert_acl
+ * knet_link_insert_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1608,7 +1608,7 @@ int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
  *            to knet_link_add_acl(3).
  *
  * @return
- * knet_link_rm_acl
+ * knet_link_rm_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
@@ -1630,7 +1630,7 @@ int knet_link_rm_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_
  * link_id   - see knet_link_set_config(3)
  *
  * @return
- * knet_link_clear_acl
+ * knet_link_clear_acl returns
  * 0 on success.
  * -1 on error and errno is set.
  */
