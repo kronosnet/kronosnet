@@ -1027,9 +1027,9 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 /**
  * knet_host_set_policy
  *
- * knet_h   - pointer to knet_handle_t
- *
  * @brief Set the switching policy for a host's links
+ *
+ * knet_h   - pointer to knet_handle_t
  *
  * host_id  - see knet_host_add(3)
  *
