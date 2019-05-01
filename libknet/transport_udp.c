@@ -325,8 +325,8 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 				sock_err = (struct sock_extended_err*)(void *)CMSG_DATA(cmsg);
 				if (sock_err) {
 					switch (sock_err->ee_origin) {
-						case 0: /* no origin */
-						case 1: /* local source (EMSGSIZE) */
+						case SO_EE_ORIGIN_NONE: /* no origin */
+						case SO_EE_ORIGIN_LOCAL: /* local source (EMSGSIZE) */
 							if (sock_err->ee_errno == EMSGSIZE) {
 								if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
 									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Unable to get mutex lock");
@@ -358,8 +358,8 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 							 * those errors are way too noisy
 							 */
 							break;
-						case 2: /* ICMP */
-						case 3: /* ICMP6 */
+						case SO_EE_ORIGIN_ICMP:  /* ICMP */
+						case SO_EE_ORIGIN_ICMP6: /* ICMP6 */
 							origin = (struct sockaddr_storage *)(void *)SO_EE_OFFENDER(sock_err);
 							if (knet_addrtostr(origin, sizeof(origin),
 									   addr_str, KNET_MAX_HOST_LEN,
