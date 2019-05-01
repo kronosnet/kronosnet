@@ -296,6 +296,8 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 	struct sockaddr_storage *origin;
 	char addr_str[KNET_MAX_HOST_LEN];
 	char port_str[KNET_MAX_PORT_LEN];
+	char addr_remote_str[KNET_MAX_HOST_LEN];
+	char port_remote_str[KNET_MAX_PORT_LEN];
 
 	iov.iov_base = &icmph;
 	iov.iov_len = sizeof(icmph);
@@ -367,7 +369,13 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 								log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from unknown source: %s", strerror(sock_err->ee_errno));
 
 							} else {
-								log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from %s: %s", addr_str, strerror(sock_err->ee_errno));
+								if (knet_addrtostr(&remote, sizeof(remote),
+									       addr_remote_str, KNET_MAX_HOST_LEN,
+									       port_remote_str, KNET_MAX_PORT_LEN) < 0) {
+									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from %s: %s destination unknown", addr_str, strerror(sock_err->ee_errno));
+								} else {
+									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from %s: %s %s", addr_str, strerror(sock_err->ee_errno), addr_remote_str);
+								}
 							}
 							break;
 					}
