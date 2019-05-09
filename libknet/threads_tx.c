@@ -68,7 +68,7 @@ retry:
 		cur = &msg[prev_sent];
 
 		sent_msgs = _sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
-				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport_type),
+				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport),
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 

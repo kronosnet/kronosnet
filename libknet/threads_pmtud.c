@@ -172,7 +172,7 @@ restart:
 		return -1;
 	}
 retry:
-	if (transport_get_connection_oriented(knet_h, dst_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+	if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL,
 			     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
 	} else {

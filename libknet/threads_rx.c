@@ -578,7 +578,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 
 retry_pong:
-		if (transport_get_connection_oriented(knet_h, src_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
 		} else {
@@ -674,7 +674,7 @@ retry_pong:
 			goto out_pmtud;
 		}
 retry_pmtud:
-		if (transport_get_connection_oriented(knet_h, src_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
 		} else {
