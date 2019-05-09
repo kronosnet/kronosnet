@@ -151,6 +151,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 
 /**
  * knet_handle_free
+ *
  * @brief Destroy a knet handle, free all resources
  *
  * knet_h   - pointer to knet_handle_t
@@ -165,6 +166,7 @@ int knet_handle_free(knet_handle_t knet_h);
 
 /**
  * knet_handle_enable_sock_notify
+ *
  * @brief Register a callback to receive socket events
  *
  * knet_h   - pointer to knet_handle_t
@@ -275,6 +277,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
 
 /**
  * knet_handle_remove_datafd
+ *
  * @brief Remove a file descriptor from knet
  *
  * knet_h   - pointer to knet_handle_t
@@ -293,6 +296,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd);
 
 /**
  * knet_handle_get_channel
+ *
  * @brief Get the channel associated with a file descriptor
  *
  * knet_h  - pointer to knet_handle_t
@@ -313,6 +317,7 @@ int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *chan
 
 /**
  * knet_handle_get_datafd
+ *
  * @brief Get the file descriptor associated with a channel
  *
  * knet_h   - pointer to knet_handle_t
@@ -333,6 +338,7 @@ int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *data
 
 /**
  * knet_recv
+ *
  * @brief Receive data from knet nodes
  *
  * knet_h   - pointer to knet_handle_t
@@ -355,6 +361,7 @@ ssize_t knet_recv(knet_handle_t knet_h,
 
 /**
  * knet_send
+ *
  * @brief Send data to knet nodes
  *
  * knet_h   - pointer to knet_handle_t
@@ -587,8 +594,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 				unsigned int *data_mtu);
 
 
-
-#define KNET_MIN_KEY_LEN  256
+#define KNET_MIN_KEY_LEN  128
 #define KNET_MAX_KEY_LEN 4096
 
 struct knet_handle_crypto_cfg {
@@ -618,7 +624,7 @@ struct knet_handle_crypto_cfg {
  *                         It can be set to "none" to disable
  *                         encryption.
  *                         Currently supported by "nss" model:
- *                         "3des", "aes128", "aes192" and "aes256".
+ *                         "aes128", "aes192" and "aes256".
  *                         "openssl" model supports more modes and it strictly
  *                         depends on the openssl build. See: EVP_get_cipherbyname
  *                         openssl API call for details.
@@ -1021,9 +1027,9 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 /**
  * knet_host_set_policy
  *
- * knet_h   - pointer to knet_handle_t
- *
  * @brief Set the switching policy for a host's links
+ *
+ * knet_h   - pointer to knet_handle_t
  *
  * host_id  - see knet_host_add(3)
  *
@@ -1138,7 +1144,7 @@ struct knet_host_status {
 };
 
 /**
- * knet_host_status_get
+ * knet_host_get_status
  *
  * @brief Get the status of a host
  *
@@ -1933,7 +1939,7 @@ struct knet_log_msg {
 };
 
 /**
- * knet_log_set_log_level
+ * knet_log_set_loglevel
  *
  * @brief Set the logging level for a subsystem
  *
@@ -1956,7 +1962,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 			  uint8_t level);
 
 /**
- * knet_log_get_log_level
+ * knet_log_get_loglevel
  *
  * @brief Get the logging level for a subsystem
  *

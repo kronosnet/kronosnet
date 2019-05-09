@@ -588,3 +588,20 @@
    obj:/usr/lib64/libnss3.so
    obj:/usr/lib64/libnss3.so
 }
+{
+   nss internal leak (3.41) non recurring (spotted on f29)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:/usr/lib64/libnss3.so
+}
