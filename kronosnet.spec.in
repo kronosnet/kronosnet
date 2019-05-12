@@ -37,50 +37,6 @@
 %undefine _enable_debug_packages
 %endif
 
-%if %{with sctp}
-%global buildsctp 1
-%endif
-%if %{with nss}
-%global buildcryptonss 1
-%endif
-%if %{with openssl}
-%global buildcryptoopenssl 1
-%endif
-%if %{with zlib}
-%global buildcompresszlib 1
-%endif
-%if %{with lz4}
-%global buildcompresslz4 1
-%endif
-%if %{with lzo2}
-%global buildcompresslzo2 1
-%endif
-%if %{with lzma}
-%global buildcompresslzma 1
-%endif
-%if %{with bzip2}
-%global buildcompressbzip2 1
-%endif
-%if %{with zstd}
-%global buildcompresszstd 1
-%endif
-%if %{with libnozzle}
-%global buildlibnozzle 1
-%endif
-%if %{with kronosnetd}
-%global buildlibnozzle 1
-%global buildkronosnetd 1
-%endif
-%if %{with runautogen}
-%global buildautogen 1
-%endif
-%if %{with buildman}
-%global buildmanpages 1
-%endif
-%if %{with installtests}
-%global installtestsuite 1
-%endif
-
 # main (empty) package
 # http://www.rpm.org/max-rpm/s1-rpm-subpack-spec-file-changes.html
 
@@ -100,62 +56,60 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 # Build dependencies
 BuildRequires: gcc
 # required to build man pages
-%if %{defined buildmanpages}
+%if %{with buildman}
 BuildRequires: libqb-devel libxml2-devel doxygen
 %endif
-%if %{defined buildsctp}
+%if %{with sctp}
 BuildRequires: lksctp-tools-devel
 %endif
-%if %{defined buildcryptonss}
+%if %{with nss}
 %if 0%{?suse_version}
 BuildRequires: mozilla-nss-devel
 %else
 BuildRequires: nss-devel
 %endif
 %endif
-%if %{defined buildcryptoopenssl}
+%if %{with openssl}
 %if 0%{?suse_version}
 BuildRequires: libopenssl-devel
 %else
 BuildRequires: openssl-devel
 %endif
 %endif
-%if %{defined buildcompresszlib}
+%if %{with zlib}
 BuildRequires: zlib-devel
 %endif
-%if %{defined buildcompresslz4}
+%if %{with lz4}
 %if 0%{?suse_version}
 BuildRequires: liblz4-devel
 %else
 BuildRequires: lz4-devel
 %endif
 %endif
-%if %{defined buildcompresslzo2}
+%if %{with lzo2}
 BuildRequires: lzo-devel
 %endif
-%if %{defined buildcompresslzma}
+%if %{with lzma}
 BuildRequires: xz-devel
 %endif
-%if %{defined buildcompressbzip2}
+%if %{with bzip2}
 %if 0%{?suse_version}
 BuildRequires: libbz2-devel
 %else
 BuildRequires: bzip2-devel
 %endif
 %endif
-%if %{defined buildcompresszstd}
+%if %{with zstd}
 BuildRequires: libzstd-devel
 %endif
-%if %{defined buildkronosnetd}
+%if %{with kronosnetd}
 BuildRequires: pam-devel
 %endif
-%if %{defined buildlibnozzle}
+%if %{with libnozzle}
 BuildRequires: libnl3-devel
 %endif
-%if %{defined buildautogen}
-BuildRequires: autoconf
-BuildRequires: automake
-BuildRequires: libtool
+%if %{with runautogen}
+BuildRequires: autoconf automake libtool
 %endif
 
 %prep
@@ -167,66 +121,70 @@ BuildRequires: libtool
 %endif
 
 %{configure} \
-%if %{defined installtestsuite}
+%if %{with installtests}
 	--enable-install-tests \
 %else
 	--disable-install-tests \
 %endif
-%if %{defined buildmanpages}
+%if %{with buildman}
 	--enable-man \
 %else
 	--disable-man \
 %endif
-%if %{defined buildsctp}
+%if %{with sctp}
 	--enable-libknet-sctp \
 %else
 	--disable-libknet-sctp \
 %endif
-%if %{defined buildcryptonss}
+%if %{with nss}
 	--enable-crypto-nss \
 %else
 	--disable-crypto-nss \
 %endif
-%if %{defined buildcryptoopenssl}
+%if %{with openssl}
 	--enable-crypto-openssl \
 %else
 	--disable-crypto-openssl \
 %endif
-%if %{defined buildcompresszlib}
+%if %{with zlib}
 	--enable-compress-zlib \
 %else
 	--disable-compress-zlib \
 %endif
-%if %{defined buildcompresslz4}
+%if %{with lz4}
 	--enable-compress-lz4 \
 %else
 	--disable-compress-lz4 \
 %endif
-%if %{defined buildcompresslzo2}
+%if %{with lzo2}
 	--enable-compress-lzo2 \
 %else
 	--disable-compress-lzo2 \
 %endif
-%if %{defined buildcompresslzma}
+%if %{with lzma}
 	--enable-compress-lzma \
 %else
 	--disable-compress-lzma \
 %endif
-%if %{defined buildcompressbzip2}
+%if %{with bzip2}
 	--enable-compress-bzip2 \
 %else
 	--disable-compress-bzip2 \
 %endif
-%if %{defined buildcompresszstd}
+%if %{with zstd}
 	--enable-compress-zstd \
 %else
 	--disable-compress-zstd \
 %endif
-%if %{defined buildkronosnetd}
+%if %{with kronosnetd}
 	--enable-kronosnetd \
+%else
+	--disable-kronosnetd \
 %endif
-%if %{defined buildlibnozzle}
+%if %{with libnozzle}
 	--enable-libnozzle \
+%else
+	--disable-libnozzle \
 %endif
 	--with-initdefaultdir=%{_sysconfdir}/sysconfig/ \
 %if %{defined _unitdir}
@@ -266,7 +224,7 @@ rm -rf %{buildroot}
 %description
 kronosnet source
 
-%if %{defined buildkronosnetd}
+%if %{with kronosnetd}
 ## Runtime and subpackages section
 %package -n kronosnetd
 Group: System Environment/Base
@@ -341,7 +299,7 @@ fi
 %{_mandir}/man8/*
 %endif
 
-%if %{defined buildlibnozzle}
+%if %{with libnozzle}
 %package -n libnozzle1
 Group: System Environment/Libraries
 Summary: Simple userland wrapper around kernel tap devices
@@ -377,7 +335,9 @@ Requires: pkgconfig
 %{_libdir}/libnozzle.so
 %{_includedir}/libnozzle.h
 %{_libdir}/pkgconfig/libnozzle.pc
+%if %{with buildman}
 %{_mandir}/man3/nozzle*.3.gz
+%endif
 %endif
 
 %package -n libknet1
@@ -416,11 +376,11 @@ Requires: pkgconfig
 %{_libdir}/libknet.so
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
-%if %{defined buildmanpages}
+%if %{with buildman}
 %{_mandir}/man3/knet*.3.gz
 %endif
 
-%if %{defined buildcryptonss}
+%if %{with nss}
 %package -n libknet1-crypto-nss-plugin
 Group: System Environment/Libraries
 Summary: libknet1 nss support
@@ -434,7 +394,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/crypto_nss.so
 %endif
 
-%if %{defined buildcryptoopenssl}
+%if %{with openssl}
 %package -n libknet1-crypto-openssl-plugin
 Group: System Environment/Libraries
 Summary: libknet1 openssl support
@@ -448,7 +408,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/crypto_openssl.so
 %endif
 
-%if %{defined buildcompresszlib}
+%if %{with zlib}
 %package -n libknet1-compress-zlib-plugin
 Group: System Environment/Libraries
 Summary: libknet1 zlib support
@@ -461,7 +421,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_zlib.so
 %endif
-%if %{defined buildcompresslz4}
+%if %{with lz4}
 %package -n libknet1-compress-lz4-plugin
 Group: System Environment/Libraries
 Summary: libknet1 lz4 and lz4hc support
@@ -476,7 +436,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/compress_lz4hc.so
 %endif
 
-%if %{defined buildcompresslzo2}
+%if %{with lzo2}
 %package -n libknet1-compress-lzo2-plugin
 Group: System Environment/Libraries
 Summary: libknet1 lzo2 support
@@ -490,7 +450,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/compress_lzo2.so
 %endif
 
-%if %{defined buildcompresslzma}
+%if %{with lzma}
 %package -n libknet1-compress-lzma-plugin
 Group: System Environment/Libraries
 Summary: libknet1 lzma support
@@ -504,7 +464,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/compress_lzma.so
 %endif
 
-%if %{defined buildcompressbzip2}
+%if %{with bzip2}
 %package -n libknet1-compress-bzip2-plugin
 Group: System Environment/Libraries
 Summary: libknet1 bzip2 support
@@ -518,7 +478,7 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/compress_bzip2.so
 %endif
 
-%if %{defined buildcompresszstd}
+%if %{with zstd}
 %package -n libknet1-compress-zstd-plugin
 Group: System Environment/Libraries
 Summary: libknet1 zstd support
@@ -535,10 +495,10 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %package -n libknet1-crypto-plugins-all
 Group: System Environment/Libraries
 Summary: libknet1 crypto plugins meta package
-%if %{defined buildcryptonss}
+%if %{with nss}
 Requires: libknet1-crypto-nss-plugin%{_isa} = %{version}-%{release}
 %endif
-%if %{defined buildcryptoopenssl}
+%if %{with openssl}
 Requires: libknet1-crypto-openssl-plugin%{_isa} = %{version}-%{release}
 %endif
 
@@ -550,22 +510,22 @@ Requires: libknet1-crypto-openssl-plugin%{_isa} = %{version}-%{release}
 %package -n libknet1-compress-plugins-all
 Group: System Environment/Libraries
 Summary: libknet1 compress plugins meta package
-%if %{defined buildcompresszlib}
+%if %{with zlib}
 Requires: libknet1-compress-zlib-plugin%{_isa} = %{version}-%{release}
 %endif
-%if %{defined buildcompresslz4}
+%if %{with lz4}
 Requires: libknet1-compress-lz4-plugin%{_isa} = %{version}-%{release}
 %endif
-%if %{defined buildcompresslzo2}
+%if %{with lzo2}
 Requires: libknet1-compress-lzo2-plugin%{_isa} = %{version}-%{release}
 %endif
-%if %{defined buildcompresslzma}
+%if %{with lzma}
 Requires: libknet1-compress-lzma-plugin%{_isa} = %{version}-%{release}
 %endif
-%if %{defined buildcompressbzip2}
+%if %{with bzip2}
 Requires: libknet1-compress-bzip2-plugin%{_isa} = %{version}-%{release}
 %endif
-%if %{defined buildcompresszstd}
+%if %{with zstd}
 Requires: libknet1-compress-zstd-plugin%{_isa} = %{version}-%{release}
 %endif
 
