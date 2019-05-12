@@ -90,8 +90,8 @@ Version: @version@
 Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Base
-URL: https://github.com/kronosnet/kronosnet/
-Source0: https://github.com/kronosnet/kronosnet/archive/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
+URL: https://kronosnet.org
+Source0: https://kronosnet.org/releases/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
 
 ## Setup/build bits
 
