@@ -340,6 +340,7 @@ License: LGPLv2+
 %license COPYING.* COPYRIGHT
 %{_libdir}/libknet.so.*
 %dir %{_libdir}/kronosnet
+
 %ldconfig_scriptlets -n libknet1
 
 %package -n libknet1-devel
@@ -505,24 +506,24 @@ Requires: libknet1-compress-zstd-plugin%{_isa} = %{version}-%{release}
 %endif
 
 %description -n libknet1-compress-plugins-all
- Provides meta package to install all of libknet1 compress plugins
+ Meta package to install all of libknet1 compress plugins
 
 %files -n libknet1-compress-plugins-all
 
 %package -n libknet1-plugins-all
-Summary: libknet1 plugins meta package
+Summary: Provides libknet1 plugins meta package
 License: LGPLv2+
 Requires: libknet1-compress-plugins-all%{_isa} = %{version}-%{release}
 Requires: libknet1-crypto-plugins-all%{_isa} = %{version}-%{release}
 
 %description -n libknet1-plugins-all
- Provides meta package to install all of libknet1 plugins
+ Meta package to install all of libknet1 plugins
 
 %files -n libknet1-plugins-all
 
 %if %{with installtests}
 %package -n kronosnet-tests
-Summary: kronosnet test suite
+Summary: Provides kronosnet test suite
 License: GPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
