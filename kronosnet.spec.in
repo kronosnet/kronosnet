@@ -45,13 +45,8 @@ Summary: Multipoint-to-Multipoint VPN daemon
 Version: @version@
 Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License: GPLv2+ and LGPLv2+
-Group: System Environment/Base
 URL: https://kronosnet.org
 Source0: https://kronosnet.org/releases/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
-
-## Setup/build bits
-
-BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Build dependencies
 BuildRequires: gcc
@@ -117,7 +112,7 @@ BuildRequires: autoconf automake libtool
 
 %build
 %if %{with runautogen}
-    ./autogen.sh
+./autogen.sh
 %endif
 
 %{configure} \
@@ -217,18 +212,15 @@ find %{buildroot} -name "*.service" -exec rm {} \;
 # remove docs
 rm -rf %{buildroot}/usr/share/doc/kronosnet
 
-%clean
-rm -rf %{buildroot}
-
 # main empty package
 %description
-kronosnet source
+ The kronosnet source
 
 %if %{with kronosnetd}
 ## Runtime and subpackages section
 %package -n kronosnetd
-Group: System Environment/Base
 Summary: Multipoint-to-Multipoint VPN daemon
+License: GPLv2+
 %if %{defined _unitdir}
 # Needed for systemd unit
 Requires(post):   systemd-sysv
@@ -239,8 +231,8 @@ Requires(postun): systemd-units
 Requires(post): chkconfig
 Requires(preun): chkconfig, initscripts
 %endif
-Requires(post): shadow-utils
-Requires(preun): shadow-utils
+Requires(post):   shadow-utils
+Requires(preun):  shadow-utils
 Requires: pam, /etc/pam.d/passwd
 
 %description -n kronosnetd
@@ -263,7 +255,7 @@ Requires: pam, /etc/pam.d/passwd
 %else
 /sbin/chkconfig --add kronosnetd
 %endif
-/usr/sbin/groupadd --force --system @defaultadmgroup@
+getent group @defaultadmgroup@ >/dev/null || groupadd --force --system @defaultadmgroup@
 
 %preun -n kronosnetd
 %if %{defined _unitdir}
@@ -283,8 +275,7 @@ fi
 %endif
 
 %files -n kronosnetd
-%defattr(-,root,root,-)
-%doc COPYING.* COPYRIGHT 
+%license COPYING.* COPYRIGHT
 %dir %{_sysconfdir}/kronosnet
 %dir %{_sysconfdir}/kronosnet/*
 %config(noreplace) %{_sysconfdir}/sysconfig/kronosnetd
@@ -301,8 +292,8 @@ fi
 
 %if %{with libnozzle}
 %package -n libnozzle1
-Group: System Environment/Libraries
 Summary: Simple userland wrapper around kernel tap devices
+License: LGPLv2+
 
 %description -n libnozzle1
  This is an over-engineered commodity library to manage a pool
@@ -310,17 +301,14 @@ Summary: Simple userland wrapper around kernel tap devices
  pre-up.d/up.d/down.d/post-down.d infrastructure.
 
 %files -n libnozzle1
-%defattr(-,root,root,-)
-%doc COPYING.* COPYRIGHT
+%license COPYING.* COPYRIGHT
 %{_libdir}/libnozzle.so.*
 
-%post -n libnozzle1 -p /sbin/ldconfig
-
-%postun -n libnozzle1 -p /sbin/ldconfig
+%ldconfig_scriptlets -n libnozzle1
 
 %package -n libnozzle1-devel
-Group: Development/Libraries
 Summary: Simple userland wrapper around kernel tap devices (developer files)
+License: LGPLv2+
 Requires: libnozzle1%{_isa} = %{version}-%{release}
 Requires: pkgconfig
 
@@ -330,8 +318,7 @@ Requires: pkgconfig
  pre-up.d/up.d/down.d/post-down.d infrastructure.
 
 %files -n libnozzle1-devel
-%defattr(-,root,root,-)
-%doc COPYING.* COPYRIGHT
+%license COPYING.* COPYRIGHT
 %{_libdir}/libnozzle.so
 %{_includedir}/libnozzle.h
 %{_libdir}/pkgconfig/libnozzle.pc
@@ -341,8 +328,8 @@ Requires: pkgconfig
 %endif
 
 %package -n libknet1
-Group: System Environment/Libraries
 Summary: Kronosnet core switching implementation
+License: LGPLv2+
 
 %description -n libknet1
  The whole kronosnet core is implemented in this library.
@@ -350,18 +337,14 @@ Summary: Kronosnet core switching implementation
  information.
 
 %files -n libknet1
-%defattr(-,root,root,-)
-%doc COPYING.* COPYRIGHT
+%license COPYING.* COPYRIGHT
 %{_libdir}/libknet.so.*
 %dir %{_libdir}/kronosnet
-
-%post -n libknet1 -p /sbin/ldconfig
-
-%postun -n libknet1 -p /sbin/ldconfig
+%ldconfig_scriptlets -n libknet1
 
 %package -n libknet1-devel
-Group: Development/Libraries
 Summary: Kronosnet core switching implementation (developer files)
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 Requires: pkgconfig
 
@@ -371,8 +354,7 @@ Requires: pkgconfig
  information. 
 
 %files -n libknet1-devel
-%defattr(-,root,root,-)
-%doc COPYING.* COPYRIGHT
+%license COPYING.* COPYRIGHT
 %{_libdir}/libknet.so
 %{_includedir}/libknet.h
 %{_libdir}/pkgconfig/libknet.pc
@@ -382,119 +364,112 @@ Requires: pkgconfig
 
 %if %{with nss}
 %package -n libknet1-crypto-nss-plugin
-Group: System Environment/Libraries
-Summary: libknet1 nss support
+Summary: Provides libknet1 nss support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-crypto-nss-plugin
- NSS crypto support for libknet1.
+ Provides NSS crypto support for libknet1.
 
 %files -n libknet1-crypto-nss-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/crypto_nss.so
 %endif
 
 %if %{with openssl}
 %package -n libknet1-crypto-openssl-plugin
-Group: System Environment/Libraries
-Summary: libknet1 openssl support
+Summary: Provides libknet1 openssl support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-crypto-openssl-plugin
- OpenSSL crypto support for libknet1.
+ Provides OpenSSL crypto support for libknet1.
 
 %files -n libknet1-crypto-openssl-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/crypto_openssl.so
 %endif
 
 %if %{with zlib}
 %package -n libknet1-compress-zlib-plugin
-Group: System Environment/Libraries
-Summary: libknet1 zlib support
+Summary: Provides libknet1 zlib support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-zlib-plugin
- zlib compression support for libknet1.
+ Provides zlib compression support for libknet1.
 
 %files -n libknet1-compress-zlib-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_zlib.so
 %endif
+
 %if %{with lz4}
 %package -n libknet1-compress-lz4-plugin
-Group: System Environment/Libraries
-Summary: libknet1 lz4 and lz4hc support
+Summary: Provides libknet1 lz4 and lz4hc support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-lz4-plugin
- lz4 and lz4hc compression support for libknet1.
+ Provides lz4 and lz4hc compression support for libknet1.
 
 %files -n libknet1-compress-lz4-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_lz4.so
 %{_libdir}/kronosnet/compress_lz4hc.so
 %endif
 
 %if %{with lzo2}
 %package -n libknet1-compress-lzo2-plugin
-Group: System Environment/Libraries
-Summary: libknet1 lzo2 support
+Summary: Provides libknet1 lzo2 support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-lzo2-plugin
- lzo2 compression support for libknet1.
+ Provides lzo2 compression support for libknet1.
 
 %files -n libknet1-compress-lzo2-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_lzo2.so
 %endif
 
 %if %{with lzma}
 %package -n libknet1-compress-lzma-plugin
-Group: System Environment/Libraries
-Summary: libknet1 lzma support
+Summary: Provides libknet1 lzma support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-lzma-plugin
- lzma compression support for libknet1.
+ Provides lzma compression support for libknet1.
 
 %files -n libknet1-compress-lzma-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_lzma.so
 %endif
 
 %if %{with bzip2}
 %package -n libknet1-compress-bzip2-plugin
-Group: System Environment/Libraries
-Summary: libknet1 bzip2 support
+Summary: Provides libknet1 bzip2 support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-bzip2-plugin
- bzip2 compression support for libknet1.
+ Provides bzip2 compression support for libknet1.
 
 %files -n libknet1-compress-bzip2-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_bzip2.so
 %endif
 
 %if %{with zstd}
 %package -n libknet1-compress-zstd-plugin
-Group: System Environment/Libraries
-Summary: libknet1 zstd support
+Summary: Provides libknet1 zstd support
+License: LGPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n libknet1-compress-zstd-plugin
- zstd compression support for libknet1.
+ Provides zstd compression support for libknet1.
 
 %files -n libknet1-compress-zstd-plugin
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/compress_zstd.so
 %endif
 
 %package -n libknet1-crypto-plugins-all
-Group: System Environment/Libraries
-Summary: libknet1 crypto plugins meta package
+Summary: Provides libknet1 crypto plugins meta package
+License: LGPLv2+
 %if %{with nss}
 Requires: libknet1-crypto-nss-plugin%{_isa} = %{version}-%{release}
 %endif
@@ -503,13 +478,13 @@ Requires: libknet1-crypto-openssl-plugin%{_isa} = %{version}-%{release}
 %endif
 
 %description -n libknet1-crypto-plugins-all
- meta package to install all of libknet1 crypto plugins
+ Provides meta package to install all of libknet1 crypto plugins
 
 %files -n libknet1-crypto-plugins-all
 
 %package -n libknet1-compress-plugins-all
-Group: System Environment/Libraries
-Summary: libknet1 compress plugins meta package
+Summary: Provides libknet1 compress plugins meta package
+License: LGPLv2+
 %if %{with zlib}
 Requires: libknet1-compress-zlib-plugin%{_isa} = %{version}-%{release}
 %endif
@@ -530,32 +505,31 @@ Requires: libknet1-compress-zstd-plugin%{_isa} = %{version}-%{release}
 %endif
 
 %description -n libknet1-compress-plugins-all
- meta package to install all of libknet1 compress plugins
+ Provides meta package to install all of libknet1 compress plugins
 
 %files -n libknet1-compress-plugins-all
 
 %package -n libknet1-plugins-all
-Group: System Environment/Libraries
 Summary: libknet1 plugins meta package
+License: LGPLv2+
 Requires: libknet1-compress-plugins-all%{_isa} = %{version}-%{release}
 Requires: libknet1-crypto-plugins-all%{_isa} = %{version}-%{release}
 
 %description -n libknet1-plugins-all
- meta package to install all of libknet1 plugins
+ Provides meta package to install all of libknet1 plugins
 
 %files -n libknet1-plugins-all
 
 %if %{with installtests}
 %package -n kronosnet-tests
-Group: System Environment/Libraries
 Summary: kronosnet test suite
+License: GPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
 
 %description -n kronosnet-tests
- this package contains all the libknet and libnozzle test suite
+ This package contains all the libknet and libnozzle test suite.
 
 %files -n kronosnet-tests
-%defattr(-,root,root,-)
 %{_libdir}/kronosnet/tests/*
 %endif
 
