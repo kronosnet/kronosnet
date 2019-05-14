@@ -182,11 +182,7 @@ BuildRequires: autoconf automake libtool
 	--disable-libnozzle \
 %endif
 	--with-initdefaultdir=%{_sysconfdir}/sysconfig/ \
-%if %{defined _unitdir}
 	--with-systemddir=%{_unitdir}
-%else
-	--with-initddir=%{_sysconfdir}/rc.d/init.d/
-%endif
 
 make %{_smp_mflags}
 
@@ -200,14 +196,8 @@ find %{buildroot} -name "*.a" -exec rm {} \;
 # remove libtools leftovers
 find %{buildroot} -name "*.la" -exec rm {} \;
 
-# handle systemd vs init script
-%if %{defined _unitdir}
 # remove init scripts
 rm -rf %{buildroot}/etc/init.d
-%else
-# remove systemd specific bits
-find %{buildroot} -name "*.service" -exec rm {} \;
-%endif
 
 # remove docs
 rm -rf %{buildroot}/usr/share/doc/kronosnet
@@ -221,16 +211,10 @@ rm -rf %{buildroot}/usr/share/doc/kronosnet
 %package -n kronosnetd
 Summary: Multipoint-to-Multipoint VPN daemon
 License: GPLv2+
-%if %{defined _unitdir}
-# Needed for systemd unit
 Requires(post):   systemd-sysv
 Requires(post):   systemd-units
 Requires(preun):  systemd-units
 Requires(postun): systemd-units
-%else
-Requires(post): chkconfig
-Requires(preun): chkconfig, initscripts
-%endif
 Requires(post):   shadow-utils
 Requires(preun):  shadow-utils
 Requires: pam, /etc/pam.d/passwd
@@ -246,33 +230,11 @@ Requires: pam, /etc/pam.d/passwd
  or service disruption.
 
 %post -n kronosnetd
-%if %{defined _unitdir}
- %if 0%{?systemd_post:1}
-  %systemd_post kronosnetd.service
- %else
-  /bin/systemctl daemon-reload >/dev/null 2>&1 || :
- %endif
-%else
-/sbin/chkconfig --add kronosnetd
-%endif
+%systemd_post kronosnetd.service
 getent group @defaultadmgroup@ >/dev/null || groupadd --force --system @defaultadmgroup@
 
 %preun -n kronosnetd
-%if %{defined _unitdir}
- %if 0%{?systemd_preun:1}
-  %systemd_preun kronosnetd.service
- %else
-if [ "$1" -eq 0 ]; then
-	/bin/systemctl --no-reload disable kronosnetd.service
-	/bin/systemctl stop kronosnetd.service >/dev/null 2>&1
-fi
-%endif
-%else
-if [ "$1" = 0 ]; then
-	/sbin/service kronosnetd stop >/dev/null 2>&1
-	/sbin/chkconfig --del kronosnetd
-fi
-%endif
+%systemd_preun kronosnetd.service
 
 %files -n kronosnetd
 %license COPYING.* COPYRIGHT
@@ -281,11 +243,7 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/kronosnetd
 %config(noreplace) %{_sysconfdir}/pam.d/kronosnetd
 %config(noreplace) %{_sysconfdir}/logrotate.d/kronosnetd
-%if %{defined _unitdir}
 %{_unitdir}/kronosnetd.service
-%else
-%config(noreplace) %{_sysconfdir}/rc.d/init.d/kronosnetd
-%endif
 %{_sbindir}/*
 %{_mandir}/man8/*
 %endif
