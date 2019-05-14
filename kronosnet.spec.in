@@ -262,7 +262,12 @@ License: LGPLv2+
 %license COPYING.* COPYRIGHT
 %{_libdir}/libnozzle.so.*
 
+%if 0%{?ldconfig_scriptlets}
 %ldconfig_scriptlets -n libnozzle1
+%else
+%post -n libnozzle1 -p /sbin/ldconfig
+%postun -n libnozzle1 -p /sbin/ldconfig
+%endif
 
 %package -n libnozzle1-devel
 Summary: Simple userland wrapper around kernel tap devices (developer files)
@@ -299,7 +304,12 @@ License: LGPLv2+
 %{_libdir}/libknet.so.*
 %dir %{_libdir}/kronosnet
 
+%if 0%{?ldconfig_scriptlets}
 %ldconfig_scriptlets -n libknet1
+%else
+%post -n libknet1 -p /sbin/ldconfig
+%postun -n libknet1 -p /sbin/ldconfig
+%endif
 
 %package -n libknet1-devel
 Summary: Kronosnet core switching implementation (developer files)
