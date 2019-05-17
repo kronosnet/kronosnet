@@ -380,13 +380,13 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	struct timespec clock_now;
 	unsigned long long diff_pmtud, interval;
 
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
+		return 0;
+	}
+
 	if (!force_run) {
 		interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
-
-		if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
-			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
-			return 0;
-		}
 
 		timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
 
