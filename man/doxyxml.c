@@ -695,17 +695,17 @@ static void collect_enums(xmlNode *cur_node, void *arg)
 				}
 			}
 
-			si = malloc(sizeof(struct struct_info));
-			if (si) {
-				si->kind = STRUCTINFO_ENUM;
-				qb_list_init(&si->params_list);
-				si->structname = strdup(name);
-				traverse_node(cur_node, "enumvalue", read_struct, si);
-				qb_map_put(structures_map, refid, si);
+			if (name) {
+				si = malloc(sizeof(struct struct_info));
+				if (si) {
+					si->kind = STRUCTINFO_ENUM;
+					qb_list_init(&si->params_list);
+					si->structname = strdup(name);
+					traverse_node(cur_node, "enumvalue", read_struct, si);
+					qb_map_put(structures_map, refid, si);
+				}
 			}
-
 		}
-
 	}
 }
 
@@ -786,7 +786,7 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 		free(kind);
 		free(def);
 		free(args);
-//		free(name); /* don't free, it's in the map */
+		free(name);
 	}
 }
 
