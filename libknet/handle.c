@@ -784,7 +784,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 						int error,
 						int errorno))
 {
-	int savederrno = 0, err = 0;
+	int savederrno = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -810,8 +810,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
 
 int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
@@ -1575,7 +1574,6 @@ out_unlock:
 int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size)
 {
 	int savederrno = 0;
-	int err = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -1615,14 +1613,12 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 	stats->size = sizeof(struct knet_handle_stats);
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
 
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 {
 	int savederrno = 0;
-	int err = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -1650,8 +1646,7 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
 
 int knet_handle_set_threads_timer_res(knet_handle_t knet_h,

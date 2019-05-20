@@ -405,7 +405,8 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		return NULL;
 	}
 
-	if (strlen(devname) > IFNAMSIZ) {
+	/* Need to allow space for trailing NUL */
+	if (strlen(devname) >= IFNAMSIZ) {
 		errno = E2BIG;
 		return NULL;
 	}
