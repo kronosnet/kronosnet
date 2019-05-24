@@ -733,7 +733,6 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	if (knet_h->use_access_lists) {
 		if (!check_validate(knet_h, listen_sock, KNET_TRANSPORT_SCTP, &ss)) {
 			savederrno = EINVAL;
-			err = -1;
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Connection rejected from %s/%s", addr_str, port_str);
 			close(new_fd);
 			errno = savederrno;
@@ -871,6 +870,7 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 			info->accepted_socks[i] = -1;
 			free(accept_info);
 			close(sockfd);
+			break; /* Keeps covscan happy */
 		}
 	}
 }

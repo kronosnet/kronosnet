@@ -761,7 +761,7 @@ static int nsscrypto_init(
 	knet_h->crypto_instance->model_instance = malloc(sizeof(struct nsscrypto_instance));
 	if (!knet_h->crypto_instance->model_instance) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to allocate memory for nss model instance");
-		savederrno = ENOMEM;
+		errno = ENOMEM;
 		return -1;
 	}
 
