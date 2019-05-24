@@ -42,7 +42,6 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 	struct knet_link *cur_link;
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-		sent_msgs = 0;
 		prev_sent = 0;
 		progress = 1;
 

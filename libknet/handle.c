@@ -1649,4 +1649,3 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	return 0;
 }
-

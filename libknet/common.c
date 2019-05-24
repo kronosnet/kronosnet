@@ -101,7 +101,7 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 		}
 
 		if (S_ISLNK(sb.st_mode)) {
-			if (readlink(path, link, sizeof(link)) < 0) {
+			if (readlink(path, link, sizeof(link)-1) < 0) {
 				log_debug(knet_h, KNET_SUB_COMMON, "Unable to readlink %s: %s", path, strerror(errno));
 				goto out;
 			}

@@ -359,11 +359,11 @@ void compress_fini(
 	}
 
 	while (compress_modules_cmds[idx].model_name != NULL) {
-		if ((compress_modules_cmds[idx].built_in == 1) &&
+		if ((idx < KNET_MAX_COMPRESS_METHODS) && /* check idx first so we don't read bad data */
+		    (compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (compress_modules_cmds[idx].model_id > 0) &&
-		    (knet_h->compress_int_data[idx] != NULL) &&
-		    (idx < KNET_MAX_COMPRESS_METHODS)) {
+		    (knet_h->compress_int_data[idx] != NULL)) {
 			if ((all) || (compress_modules_cmds[idx].model_id == knet_h->compress_model)) {
 				if (compress_modules_cmds[idx].ops->fini != NULL) {
 					compress_modules_cmds[idx].ops->fini(knet_h, idx);
