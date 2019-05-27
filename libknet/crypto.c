@@ -129,7 +129,6 @@ int crypto_init(
 
 	if (!knet_h->crypto_instance) {
 		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
-		pthread_rwlock_unlock(&shlib_rwlock);
 		savederrno = ENOMEM;
 		goto out_err;
 	}

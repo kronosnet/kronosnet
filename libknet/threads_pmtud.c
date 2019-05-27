@@ -44,7 +44,6 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 
 	mutex_retry_limit = 0;
 	failsafe = 0;
-	pad_len = 0;
 
 	dst_link->last_bad_mtu = 0;
 

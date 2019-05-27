@@ -405,7 +405,7 @@ int _is_valid_fd(knet_handle_t knet_h, int sockfd)
 		return -1;
 	}
 
-	if (sockfd > KNET_MAX_FDS) {
+	if (sockfd >= KNET_MAX_FDS) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -430,7 +430,7 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 		return -1;
 	}
 
-	if (sockfd > KNET_MAX_FDS) {
+	if (sockfd >= KNET_MAX_FDS) {
 		errno = EINVAL;
 		return -1;
 	}
