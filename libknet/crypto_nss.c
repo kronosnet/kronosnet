@@ -740,7 +740,6 @@ static void nsscrypto_fini(
 		}
 		free(nsscrypto_instance);
 		knet_h->crypto_instance->model_instance = NULL;
-		knet_h->sec_header_size = 0;
 	}
 
 	return;
