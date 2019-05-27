@@ -178,6 +178,10 @@ void crypto_fini(
 			crypto_modules_cmds[model].ops->fini(knet_h);
 		}
 		free(knet_h->crypto_instance);
+		knet_h->sec_header_size = 0;
+		knet_h->sec_block_size = 0;
+		knet_h->sec_hash_size = 0;
+		knet_h->sec_salt_size = 0;
 		knet_h->crypto_instance = NULL;
 	}
 
