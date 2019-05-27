@@ -45,5 +45,6 @@ int shutdown_in_progress(knet_handle_t knet_h);
 int get_global_wrlock(knet_handle_t knet_h);
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status);
 int wait_all_threads_status(knet_handle_t knet_h, uint8_t status);
+void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem);
 
 #endif
