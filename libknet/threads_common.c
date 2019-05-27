@@ -156,3 +156,23 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 
 	return 0;
 }
+
+void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem)
+{
+	/*
+	 * we can only try to take a lock here. This part of the code
+	 * can be invoked by any thread, including PMTUd that is already
+	 * holding a lock at that stage.
+	 * If PMTUd is holding the lock, most likely it is already running
+	 * and we don't need to notify it back.
+	 */
+	if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
+		if (!knet_h->pmtud_running) {
+			if (!knet_h->pmtud_forcerun) {
+				log_debug(knet_h, subsystem, "Notifying PMTUd to rerun");
+				knet_h->pmtud_forcerun = 1;
+			}
+		}
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+	}
+}
