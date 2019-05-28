@@ -1407,7 +1407,7 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 
 exit_unlock:
 	if (!err) {
-		force_pmtud_run(knet_h, KNET_SUB_CRYPTO);
+		force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1);
 	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
