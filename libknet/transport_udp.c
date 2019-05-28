@@ -340,7 +340,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 									pthread_mutex_unlock(&knet_h->kmtu_mutex);
 								}
 
-								force_pmtud_run(knet_h, KNET_SUB_TRANSP_UDP);
+								force_pmtud_run(knet_h, KNET_SUB_TRANSP_UDP, 0);
 							}
 							/*
 							 * those errors are way too noisy
