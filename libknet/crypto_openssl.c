@@ -12,6 +12,7 @@
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <stdlib.h>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -42,6 +43,8 @@ struct opensslcrypto_instance {
 
 	const EVP_MD *crypto_hash_type;
 };
+
+static int openssl_is_init = 0;
 
 /*
  * crypt/decrypt functions openssl1.0
@@ -438,6 +441,11 @@ static void openssl_internal_lock_cleanup(void)
 	return;
 }
 
+static void openssl_atexit_handler(void)
+{
+	openssl_internal_lock_cleanup();
+}
+
 static int openssl_internal_lock_setup(void)
 {
 	int savederrno = 0, err = 0;
@@ -461,6 +469,9 @@ static int openssl_internal_lock_setup(void)
 	CRYPTO_set_id_callback((void *)openssl_internal_thread_id);
 	CRYPTO_set_locking_callback((void *)&openssl_internal_locking_callback);
 
+	if (atexit(openssl_atexit_handler)) {
+		err = -1;
+	}
 out:
 	if (err) {
 		openssl_internal_lock_cleanup();
@@ -477,9 +488,6 @@ static void opensslcrypto_fini(
 	struct opensslcrypto_instance *opensslcrypto_instance = crypto_instance->model_instance;
 
 	if (opensslcrypto_instance) {
-#ifdef BUILDCRYPTOOPENSSL10
-		openssl_internal_lock_cleanup();
-#endif
 		if (opensslcrypto_instance->private_key) {
 			free(opensslcrypto_instance->private_key);
 			opensslcrypto_instance->private_key = NULL;
@@ -496,7 +504,6 @@ static int opensslcrypto_init(
 	struct crypto_instance *crypto_instance,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	static int openssl_is_init = 0;
 	struct opensslcrypto_instance *opensslcrypto_instance = NULL;
 	int savederrno;
 
@@ -509,6 +516,11 @@ static int opensslcrypto_init(
 #ifdef BUILDCRYPTOOPENSSL10
 		ERR_load_crypto_strings();
 		OPENSSL_add_all_algorithms_noconf();
+		if (openssl_internal_lock_setup() < 0) {
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
+			errno = EAGAIN;
+			return -1;
+		}
 #endif
 #ifdef BUILDCRYPTOOPENSSL11
 		if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS \
@@ -520,14 +532,6 @@ static int opensslcrypto_init(
 #endif
 		openssl_is_init = 1;
 	}
-
-#ifdef BUILDCRYPTOOPENSSL10
-	if (openssl_internal_lock_setup() < 0) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
-		errno = EAGAIN;
-		return -1;
-	}
-#endif
 
 	crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
 	if (!crypto_instance->model_instance) {
