@@ -749,9 +749,7 @@ struct knet_handle_crypto_cfg {
  *              1) failure to obtain locking
  *              2) errors to initializing the crypto level.
  *   This can happen even in subsequent calls to knet_handle_crypto.
- *   A failure in crypto init, might leave your traffic unencrypted!
- *   It's best to stop data forwarding (see knet_handle_setfwd(3)), change crypto config,
- *   start forward again.
+ *   A failure in crypto init will restore the previous crypto configuration.
  *
  * @return
  * knet_handle_crypto returns:

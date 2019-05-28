@@ -471,9 +471,10 @@ out:
 #endif
 
 static void opensslcrypto_fini(
-	knet_handle_t knet_h)
+	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance)
 {
-	struct opensslcrypto_instance *opensslcrypto_instance = knet_h->crypto_instance->model_instance;
+	struct opensslcrypto_instance *opensslcrypto_instance = crypto_instance->model_instance;
 
 	if (opensslcrypto_instance) {
 #ifdef BUILDCRYPTOOPENSSL10
@@ -484,7 +485,7 @@ static void opensslcrypto_fini(
 			opensslcrypto_instance->private_key = NULL;
 		}
 		free(opensslcrypto_instance);
-		knet_h->crypto_instance->model_instance = NULL;
+		crypto_instance->model_instance = NULL;
 	}
 
 	return;
@@ -492,6 +493,7 @@ static void opensslcrypto_fini(
 
 static int opensslcrypto_init(
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
 	static int openssl_is_init = 0;
@@ -527,14 +529,14 @@ static int opensslcrypto_init(
 	}
 #endif
 
-	knet_h->crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
-	if (!knet_h->crypto_instance->model_instance) {
+	crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
+	if (!crypto_instance->model_instance) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl model instance");
 		errno = ENOMEM;
 		return -1;
 	}
 
-	opensslcrypto_instance = knet_h->crypto_instance->model_instance;
+	opensslcrypto_instance = crypto_instance->model_instance;
 
 	memset(opensslcrypto_instance, 0, sizeof(struct opensslcrypto_instance));
 
@@ -576,11 +578,11 @@ static int opensslcrypto_init(
 	memmove(opensslcrypto_instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
 	opensslcrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
-	knet_h->sec_header_size = 0;
+	crypto_instance->sec_header_size = 0;
 
 	if (opensslcrypto_instance->crypto_hash_type) {
-		knet_h->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
-		knet_h->sec_header_size += knet_h->sec_hash_size;
+		crypto_instance->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
+		crypto_instance->sec_header_size += crypto_instance->sec_hash_size;
 	}
 
 	if (opensslcrypto_instance->crypto_cipher_type) {
@@ -588,16 +590,16 @@ static int opensslcrypto_init(
 
 		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
 
-		knet_h->sec_header_size += (block_size * 2);
-		knet_h->sec_header_size += SALT_SIZE;
-		knet_h->sec_salt_size = SALT_SIZE;
-		knet_h->sec_block_size = block_size;
+		crypto_instance->sec_header_size += (block_size * 2);
+		crypto_instance->sec_header_size += SALT_SIZE;
+		crypto_instance->sec_salt_size = SALT_SIZE;
+		crypto_instance->sec_block_size = block_size;
 	}
 
 	return 0;
 
 out_err:
-	opensslcrypto_fini(knet_h);
+	opensslcrypto_fini(knet_h, crypto_instance);
 
 	errno = savederrno;
 	return -1;
