@@ -340,22 +340,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 									pthread_mutex_unlock(&knet_h->kmtu_mutex);
 								}
 
-								/*
-								 * we can only try to take a lock here. This part of the code
-								 * can be invoked by any thread, including PMTUd that is already
-								 * holding a lock at that stage.
-								 * If PMTUd is holding the lock, most likely it is already running
-								 * and we don't need to notify it back.
-								 */
-								if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
-									if (!knet_h->pmtud_running) {
-										if (!knet_h->pmtud_forcerun) {
-											log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Notifying PMTUd to rerun");
-											knet_h->pmtud_forcerun = 1;
-										}
-									}
-									pthread_mutex_unlock(&knet_h->pmtud_mutex);
-								}
+								force_pmtud_run(knet_h, KNET_SUB_TRANSP_UDP, 0);
 							}
 							/*
 							 * those errors are way too noisy

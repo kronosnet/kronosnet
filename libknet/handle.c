@@ -1373,11 +1373,10 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		return -1;
 	}
 
-	crypto_fini(knet_h);
-
 	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) || 
 	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
 	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
+		crypto_fini(knet_h);
 		log_debug(knet_h, KNET_SUB_CRYPTO, "crypto is not enabled");
 		err = 0;
 		goto exit_unlock;
@@ -1407,6 +1406,9 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	}
 
 exit_unlock:
+	if (!err) {
+		force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1);
+	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
 	return err;
