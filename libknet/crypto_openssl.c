@@ -496,6 +496,10 @@ static void opensslcrypto_fini(
 		crypto_instance->model_instance = NULL;
 	}
 
+#ifdef BUILDCRYPTOOPENSSL10
+	ERR_free_strings();
+#endif
+
 	return;
 }
 
