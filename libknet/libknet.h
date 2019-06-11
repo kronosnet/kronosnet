@@ -1511,6 +1511,7 @@ typedef enum {
 
 /**
  * check_acceptreject_t
+ *
  * @brief enum for accept/reject in knet access lists
  *
  * accept or reject incoming packets defined in the access list entry
