@@ -69,11 +69,6 @@ static int encrypt_openssl(
 
 	EVP_CIPHER_CTX_init(&ctx);
 
-	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
-
 	if (!RAND_bytes(salt, SALT_SIZE)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to get random salt data: %s", sslerr);
@@ -131,11 +126,6 @@ static int decrypt_openssl (
 	EVP_CIPHER_CTX_init(&ctx);
 
 	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed(buf_in, buf_in_len);
-
-	/*
 	 * add warning re keylength
 	 */
 	EVP_DecryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
@@ -180,11 +170,6 @@ static int encrypt_openssl(
 	char		sslerr[SSLERR_BUF_SIZE];
 
 	ctx = EVP_CIPHER_CTX_new();
-
-	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
 
 	if (!RAND_bytes(salt, SALT_SIZE)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
@@ -247,11 +232,6 @@ static int decrypt_openssl (
 	}
 
 	ctx = EVP_CIPHER_CTX_new();
-
-	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed(buf_in, buf_in_len);
 
 	/*
 	 * add warning re keylength
