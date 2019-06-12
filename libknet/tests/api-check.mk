@@ -3,7 +3,7 @@
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 api_checks		= \
@@ -12,6 +12,7 @@ api_checks		= \
 			  api_knet_handle_compress_test \
 			  api_knet_handle_crypto_test \
 			  api_knet_handle_setfwd_test \
+			  api_knet_handle_enable_access_lists_test \
 			  api_knet_handle_enable_filter_test \
 			  api_knet_handle_enable_sock_notify_test \
 			  api_knet_handle_add_datafd_test \
@@ -67,7 +68,11 @@ api_checks		= \
 			  api_knet_link_set_enable_test \
 			  api_knet_link_get_enable_test \
 			  api_knet_link_get_link_list_test \
-			  api_knet_link_get_status_test
+			  api_knet_link_get_status_test \
+			  api_knet_link_add_acl_test \
+			  api_knet_link_insert_acl_test \
+			  api_knet_link_rm_acl_test \
+			  api_knet_link_clear_acl_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -86,6 +91,9 @@ api_knet_handle_crypto_test_SOURCES = api_knet_handle_crypto.c \
 
 api_knet_handle_setfwd_test_SOURCES = api_knet_handle_setfwd.c \
 				      test-common.c
+
+api_knet_handle_enable_access_lists_test_SOURCES = api_knet_handle_enable_access_lists.c \
+						   test-common.c
 
 api_knet_handle_enable_filter_test_SOURCES = api_knet_handle_enable_filter.c \
 					     test-common.c
@@ -252,3 +260,15 @@ api_knet_link_get_link_list_test_SOURCES = api_knet_link_get_link_list.c \
 
 api_knet_link_get_status_test_SOURCES = api_knet_link_get_status.c \
 					test-common.c
+
+api_knet_link_add_acl_test_SOURCES = api_knet_link_add_acl.c \
+				     test-common.c
+
+api_knet_link_insert_acl_test_SOURCES = api_knet_link_insert_acl.c \
+					test-common.c
+
+api_knet_link_rm_acl_test_SOURCES = api_knet_link_rm_acl.c \
+				    test-common.c
+
+api_knet_link_clear_acl_test_SOURCES = api_knet_link_clear_acl.c \
+				       test-common.c

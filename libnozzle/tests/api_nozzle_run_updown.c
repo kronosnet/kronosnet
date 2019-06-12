@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under GPL-2.0+
  */
 
 #include "config.h"
@@ -29,16 +29,21 @@ static int test(void)
 	nozzle_t nozzle = NULL;
 	char *error_string = NULL;
 	char *tmpdir = NULL;
-	char tmpdirsrc[PATH_MAX];
+	char tmpdirsrc[PATH_MAX*2];
 	char tmpstr[PATH_MAX*2];
 	char srcfile[PATH_MAX];
 	char dstfile[PATH_MAX];
+	char current_dir[PATH_MAX];
 
 	/*
 	 * create a tmp dir for storing up/down scripts.
 	 * we cannot create symlinks src dir
 	 */
-	strcpy(tmpdirsrc, ABSBUILDDIR "/nozzle_test_XXXXXX");
+	if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
+		printf("Unable to get current working directory: %s\n", strerror(errno));
+		return -1;
+	}
+	snprintf(tmpdirsrc, sizeof(tmpdirsrc)-1, "%s/nozzle_test_XXXXXX", current_dir);
 
 	tmpdir = mkdtemp(tmpdirsrc);
 	if (!tmpdir) {

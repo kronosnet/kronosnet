@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -42,13 +42,12 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 	struct knet_link *cur_link;
 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
-		sent_msgs = 0;
 		prev_sent = 0;
 		progress = 1;
 
 		cur_link = &dst_host->link[dst_host->active_links[link_idx]];
 
-		if (cur_link->transport_type == KNET_TRANSPORT_LOOPBACK) {
+		if (cur_link->transport == KNET_TRANSPORT_LOOPBACK) {
 			continue;
 		}
 
@@ -68,11 +67,11 @@ retry:
 		cur = &msg[prev_sent];
 
 		sent_msgs = _sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
-				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport_type),
+				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport),
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
 		savederrno = errno;
 
-		err = transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport_type, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
+		err = transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
 		switch(err) {
 			case -1: /* unrecoverable error */
 				cur_link->status.stats.tx_data_errors++;

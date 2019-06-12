@@ -3,7 +3,7 @@
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under GPL-2.0+
  */
 
 #include "config.h"
@@ -17,13 +17,15 @@
 #include "libknet.h"
 
 #include "internals.h"
+#include "crypto_model.h"
 #include "test-common.h"
 
-static void test(const char *model)
+static void test(const char *model, const char *model2)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
+	struct crypto_instance *current = NULL;
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 
@@ -152,6 +154,96 @@ static void test(const char *model)
 
 	flush_logs(logfds[0], stdout);
 
+	printf("Test knet_handle_crypto reconfig with %s/aes128/sha1 and normal key\n", model2);
+
+	current = knet_h->crypto_instance;
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
+	if (current == knet_h->crypto_instance) {
+		printf("knet_handle_crypto failed to install new correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
+	printf("Test knet_handle_crypto reconfig with %s/aes128/sha1 and normal key\n", model);
+
+	current = knet_h->crypto_instance;
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
+	if (current == knet_h->crypto_instance) {
+		printf("knet_handle_crypto failed to install new correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
+	printf("Test knet_handle_crypto reconfig with %s/aes129/sha1 and normal key\n", model);
+
+	current = knet_h->crypto_instance;
+
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes129", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	if (!knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
+		printf("knet_handle_crypto failed to detect incorrect config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
+	if (current != knet_h->crypto_instance) {
+		printf("knet_handle_crypto failed to restore correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
 	printf("Test knet_handle_crypto with %s/aes128/none and normal key\n", model);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
@@ -233,7 +325,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (i=0; i < crypto_list_entries; i++) {
-		test(crypto_list[i].name);
+		test(crypto_list[i].name, crypto_list[0].name);
 	}
 
 	return PASS;

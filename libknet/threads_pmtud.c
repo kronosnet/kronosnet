@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -44,7 +44,6 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 
 	mutex_retry_limit = 0;
 	failsafe = 0;
-	pad_len = 0;
 
 	dst_link->last_bad_mtu = 0;
 
@@ -172,7 +171,7 @@ restart:
 		return -1;
 	}
 retry:
-	if (transport_get_connection_oriented(knet_h, dst_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+	if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL,
 			     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
 	} else {
@@ -196,7 +195,7 @@ retry:
 
 	kernel_mtu = 0;
 
-	err = transport_tx_sock_error(knet_h, dst_link->transport_type, dst_link->outsock, len, savederrno);
+	err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
 	switch(err) {
 		case -1: /* unrecoverable error */
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
@@ -380,13 +379,13 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	struct timespec clock_now;
 	unsigned long long diff_pmtud, interval;
 
+	if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
+		return 0;
+	}
+
 	if (!force_run) {
 		interval = knet_h->pmtud_interval * 1000000000llu; /* nanoseconds */
-
-		if (clock_gettime(CLOCK_MONOTONIC, &clock_now) != 0) {
-			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get monotonic clock");
-			return 0;
-		}
 
 		timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
 
@@ -523,7 +522,7 @@ void *_handle_pmtud_link_thread(void *data)
 
 				if ((dst_link->status.enabled != 1) ||
 				    (dst_link->status.connected != 1) ||
-				    (dst_host->link[link_idx].transport_type == KNET_TRANSPORT_LOOPBACK) ||
+				    (dst_host->link[link_idx].transport == KNET_TRANSPORT_LOOPBACK) ||
 				    (!dst_link->last_ping_size) ||
 				    ((dst_link->dynamic == KNET_LINK_DYNIP) &&
 				     (dst_link->status.dynconnected != 1)))

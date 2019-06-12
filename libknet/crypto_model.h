@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #ifndef __KNET_CRYPTO_MODEL_H__
@@ -14,9 +14,13 @@
 struct crypto_instance {
 	int	model;
 	void	*model_instance;
+	size_t	sec_header_size;
+	size_t	sec_block_size;
+	size_t	sec_hash_size;
+	size_t	sec_salt_size;
 };
 
-#define KNET_CRYPTO_MODEL_ABI 1
+#define KNET_CRYPTO_MODEL_ABI 2
 
 /*
  * see compress_model.h for explanation of the various lib related functions
@@ -24,8 +28,10 @@ struct crypto_instance {
 typedef struct {
 	uint8_t abi_ver;
 	int (*init)	(knet_handle_t knet_h,
+			 struct crypto_instance *crypto_instance,
 			 struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
-	void (*fini)	(knet_handle_t knet_h);
+	void (*fini)	(knet_handle_t knet_h,
+			 struct crypto_instance *crypto_instance);
 	int (*crypt)	(knet_handle_t knet_h,
 			 const unsigned char *buf_in,
 			 const ssize_t buf_in_len,

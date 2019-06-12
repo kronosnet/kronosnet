@@ -4,7 +4,7 @@
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 MAINTAINERCLEANFILES	= Makefile.in
@@ -18,7 +18,7 @@ EXTRA_DIST		= $(SYMFILE)
 SUBDIRS			= . tests
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libversion		= 2:0:1
+libversion		= 3:0:2
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
@@ -31,6 +31,9 @@ sources			= \
 			  handle.c \
 			  host.c \
 			  links.c \
+			  links_acl.c \
+			  links_acl_ip.c \
+			  links_acl_loopback.c \
 			  logging.c \
 			  netutils.c \
 			  threads_common.c \
@@ -61,6 +64,9 @@ noinst_HEADERS		= \
 			  host.h \
 			  internals.h \
 			  links.h \
+			  links_acl.h \
+			  links_acl_ip.h \
+			  links_acl_loopback.h \
 			  logging.h \
 			  netutils.h \
 			  onwire.h \
@@ -96,6 +102,13 @@ pkglib_LTLIBRARIES	=
 
 # MODULE_LDFLAGS would mean a target-specific variable for Automake
 MODULELDFLAGS		= $(AM_LDFLAGS) -module -avoid-version -export-dynamic
+
+if BUILD_COMPRESS_ZSTD
+pkglib_LTLIBRARIES	+= compress_zstd.la
+compress_zstd_la_LDFLAGS = $(MODULELDFLAGS)
+compress_zstd_la_CFLAGS	= $(AM_CFLAGS) $(libzstd_CFLAGS)
+compress_zstd_la_LIBADD	= $(libzstd_LIBS)
+endif
 
 if BUILD_COMPRESS_ZLIB
 pkglib_LTLIBRARIES	+= compress_zlib.la

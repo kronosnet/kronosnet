@@ -3,7 +3,7 @@
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under GPL-2.0+
  */
 
 #include "config.h"
@@ -24,6 +24,8 @@
 static void test(void)
 {
 	knet_handle_t knet_h;
+	struct knet_host *host;
+	struct knet_link *link;
 	int logfds[2];
 	char src_portstr[32];
 	char dst_portstr[32];
@@ -140,6 +142,19 @@ static void test(void)
 		exit(FAIL);
 	}
 
+	host = knet_h->host_index[1];
+	link = &host->link[0];
+
+	if (knet_h->knet_transport_fd_tracker[link->outsock].access_list_match_entry_head) {
+		printf("found access lists for dynamic dst_addr!\n");
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_link_get_status(knet_h, 1, 0, &link_status, sizeof(struct knet_link_status)) < 0) {
 		printf("Unable to get link status: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
@@ -237,6 +252,19 @@ static void test(void)
 
 	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	host = knet_h->host_index[1];
+	link = &host->link[0];
+
+	if (!knet_h->knet_transport_fd_tracker[link->outsock].access_list_match_entry_head) {
+		printf("Unable to find default access lists for static dst_addr!\n");
+		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);

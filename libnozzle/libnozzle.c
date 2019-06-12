@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -405,7 +405,8 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		return NULL;
 	}
 
-	if (strlen(devname) > IFNAMSIZ) {
+	/* Need to allow space for trailing NUL */
+	if (strlen(devname) >= IFNAMSIZ) {
 		errno = E2BIG;
 		return NULL;
 	}

@@ -4,7 +4,7 @@
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 MAINTAINERCLEANFILES	= Makefile.in
@@ -95,7 +95,12 @@ knet_man3_MANS = \
 		knet_recv.3 \
 		knet_send.3 \
 		knet_send_sync.3 \
-		knet_strtoaddr.3
+		knet_strtoaddr.3 \
+		knet_handle_enable_access_lists.3 \
+		knet_link_add_acl.3 \
+		knet_link_insert_acl.3 \
+		knet_link_rm_acl.3 \
+		knet_link_clear_acl.3
 
 if BUILD_LIBNOZZLE
 nozzle_man3_MANS = \

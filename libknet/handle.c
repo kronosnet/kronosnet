@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -309,7 +309,10 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->send_to_links_buf_compress, 0, KNET_DATABUFSIZE_COMPRESS);
 
-	memset(knet_h->knet_transport_fd_tracker, KNET_MAX_TRANSPORTS, sizeof(knet_h->knet_transport_fd_tracker));
+	memset(knet_h->knet_transport_fd_tracker, 0, sizeof(knet_h->knet_transport_fd_tracker));
+	for (i = 0; i < KNET_MAX_FDS; i++) {
+		knet_h->knet_transport_fd_tracker[i].transport = KNET_MAX_TRANSPORTS;
+	}
 
 	return 0;
 
@@ -782,7 +785,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 						int error,
 						int errorno))
 {
-	int savederrno = 0, err = 0;
+	int savederrno = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -808,8 +811,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
 
 int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
@@ -1186,6 +1188,42 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 	return 0;
 }
 
+int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (enabled > 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->use_access_lists = enabled;
+
+	if (enabled) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Links access lists are enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Links access lists are disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
 int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 {
 	int savederrno = 0;
@@ -1336,11 +1374,10 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 		return -1;
 	}
 
-	crypto_fini(knet_h);
-
 	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) || 
 	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
 	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
+		crypto_fini(knet_h);
 		log_debug(knet_h, KNET_SUB_CRYPTO, "crypto is not enabled");
 		err = 0;
 		goto exit_unlock;
@@ -1370,6 +1407,9 @@ int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet
 	}
 
 exit_unlock:
+	if (!err) {
+		force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1);
+	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
 	return err;
@@ -1537,7 +1577,6 @@ out_unlock:
 int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size)
 {
 	int savederrno = 0;
-	int err = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -1577,14 +1616,12 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 	stats->size = sizeof(struct knet_handle_stats);
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
 
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 {
 	int savederrno = 0;
-	int err = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -1612,7 +1649,5 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
-

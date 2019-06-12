@@ -3,7 +3,7 @@
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
@@ -137,6 +137,11 @@ if BUILD_COMPRESS_BZIP2
 	sed -i -e "s#@bzip2@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@bzip2@#bcond_with#g" $@-t
+endif
+if BUILD_COMPRESS_ZSTD
+	sed -i -e "s#@zstd@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@zstd@#bcond_with#g" $@-t
 endif
 if BUILD_KRONOSNETD
 	sed -i -e "s#@kronosnetd@#bcond_without#g" $@-t

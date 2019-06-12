@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #ifndef __KNET_THREADS_COMMON_H__
@@ -45,5 +45,6 @@ int shutdown_in_progress(knet_handle_t knet_h);
 int get_global_wrlock(knet_handle_t knet_h);
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status);
 int wait_all_threads_status(knet_handle_t knet_h, uint8_t status);
+void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu);
 
 #endif

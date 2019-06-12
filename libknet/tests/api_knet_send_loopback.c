@@ -3,7 +3,7 @@
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under GPL-2.0+
  */
 
 #include "config.h"
@@ -168,6 +168,14 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 	printf("Test knet_send with valid data\n");
 
+	if (knet_handle_enable_access_lists(knet_h, 1) < 0) {
+		printf("knet_handle_enable_access_lists failed: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_link_clear_config(knet_h, 1, 0) < 0) {
 		printf("Failed to clear existing UDP link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
@@ -243,7 +251,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	if (wait_for_packet(knet_h, 10, datafd)) {
+	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
 		printf("Error waiting for packet: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
@@ -344,7 +352,7 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	if (wait_for_packet(knet_h, 10, datafd)) {
+	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
 		printf("Error waiting for packet: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);

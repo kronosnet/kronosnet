@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under GPL-2.0+
  */
 
 #include "config.h"
@@ -485,7 +485,7 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	return -1;
 }
 
-int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd)
+int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std)
 {
 	fd_set rfds;
 	struct timeval tv;
@@ -500,7 +500,7 @@ try_again:
 	FD_ZERO(&rfds);
 	FD_SET(datafd, &rfds);
 
-	tv.tv_sec = seconds;
+	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 
 	err = select(datafd+1, &rfds, NULL, NULL, &tv);
@@ -509,7 +509,8 @@ try_again:
 	 * pick an arbitrary 10 times loop (multiplied by waiting seconds)
 	 * before failing.
 	 */
-	if ((!err) && (i < 10)) {
+	if ((!err) && (i < seconds)) {
+		flush_logs(logfd, std);
 		i++;
 		goto try_again;
 	}

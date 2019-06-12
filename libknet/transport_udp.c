@@ -3,7 +3,7 @@
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -71,6 +71,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 		err = -1;
 		goto exit_error;
 	}
+	memset(info, 0, sizeof(udp_link_info_t));
 
 	sock = socket(kn_link->src_addr.ss_family, SOCK_DGRAM, 0);
 	if (sock < 0) {
@@ -339,22 +340,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 									pthread_mutex_unlock(&knet_h->kmtu_mutex);
 								}
 
-								/*
-								 * we can only try to take a lock here. This part of the code
-								 * can be invoked by any thread, including PMTUd that is already
-								 * holding a lock at that stage.
-								 * If PMTUd is holding the lock, most likely it is already running
-								 * and we don't need to notify it back.
-								 */
-								if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
-									if (!knet_h->pmtud_running) {
-										if (!knet_h->pmtud_forcerun) {
-											log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Notifying PMTUd to rerun");
-											knet_h->pmtud_forcerun = 1;
-										}
-									}
-									pthread_mutex_unlock(&knet_h->pmtud_mutex);
-								}
+								force_pmtud_run(knet_h, KNET_SUB_TRANSP_UDP, 0);
 							}
 							/*
 							 * those errors are way too noisy
@@ -363,7 +349,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 						case SO_EE_ORIGIN_ICMP:  /* ICMP */
 						case SO_EE_ORIGIN_ICMP6: /* ICMP6 */
 							origin = (struct sockaddr_storage *)(void *)SO_EE_OFFENDER(sock_err);
-							if (knet_addrtostr(origin, sizeof(origin),
+							if (knet_addrtostr(origin, sizeof(*origin),
 									   addr_str, KNET_MAX_HOST_LEN,
 									   port_str, KNET_MAX_PORT_LEN) < 0) {
 								log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from unknown source: %s", strerror(sock_err->ee_errno));
@@ -437,4 +423,9 @@ int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet
 {
 	kn_link->status.dynconnected = 1;
 	return 0;
+}
+
+int udp_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	return kn_link->outsock;
 }

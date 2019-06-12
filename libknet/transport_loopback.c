@@ -3,7 +3,7 @@
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -70,6 +70,11 @@ int loopback_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_
 }
 
 int loopback_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
+{
+	return 0;
+}
+
+int loopback_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	return 0;
 }

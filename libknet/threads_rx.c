@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -20,6 +20,7 @@
 #include "crypto.h"
 #include "host.h"
 #include "links.h"
+#include "links_acl.h"
 #include "logging.h"
 #include "transports.h"
 #include "transport_common.h"
@@ -498,7 +499,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		} else { /* HOSTINFO */
 			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
 			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
-				bcast = 0;
 				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 			}
 			if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
@@ -577,7 +577,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 
 retry_pong:
-		if (transport_get_connection_oriented(knet_h, src_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
 		} else {
@@ -585,7 +585,7 @@ retry_pong:
 		}
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -673,7 +673,7 @@ retry_pong:
 			goto out_pmtud;
 		}
 retry_pmtud:
-		if (transport_get_connection_oriented(knet_h, src_link->transport_type) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
 				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
 		} else {
@@ -681,7 +681,7 @@ retry_pmtud:
 		}
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport_type, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_RX,
@@ -802,6 +802,28 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				goto exit_unlock;
 				break;
 			case 2: /* packet is data and should be parsed as such */
+				/*
+				 * processing incoming packets vs access lists
+				 */
+				if ((knet_h->use_access_lists) &&
+				    (transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL)) {
+					if (!check_validate(knet_h, sockfd, transport, msg[i].msg_hdr.msg_name)) {
+						char src_ipaddr[KNET_MAX_HOST_LEN];
+						char src_port[KNET_MAX_PORT_LEN];
+
+						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+						memset(src_port, 0, KNET_MAX_PORT_LEN);
+						knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
+							       src_ipaddr, KNET_MAX_HOST_LEN,
+							       src_port, KNET_MAX_PORT_LEN);
+
+						log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+						/*
+						 * continue processing the other packets
+						 */
+						continue;
+					}
+				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
 		}

@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -331,7 +331,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 int knet_host_get_host_list(knet_handle_t knet_h,
 			    knet_node_id_t *host_ids, size_t *host_ids_entries)
 {
-	int savederrno = 0, err = 0;
+	int savederrno = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -355,8 +355,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 	*host_ids_entries = knet_h->host_ids_entries;
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	errno = err ? savederrno : 0;
-	return err;
+	return 0;
 }
 
 int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,

@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #ifndef __KNET_INTERNALS_H__
@@ -62,7 +62,7 @@ struct knet_link {
 	struct knet_link_status status;
 	/* internals */
 	uint8_t link_id;
-	uint8_t transport_type;                 /* #defined constant from API */
+	uint8_t transport;                      /* #defined constant from API */
 	knet_transport_link_t transport_link;   /* link_info_t from transport */
 	int outsock;
 	unsigned int configured:1;		/* set to 1 if src/dst have been configured transport initialized on this link*/
@@ -130,10 +130,11 @@ struct knet_sock {
 };
 
 struct knet_fd_trackers {
-	uint8_t transport; /* transport type (UDP/SCTP...) */
-	uint8_t data_type; /* internal use for transport to define what data are associated
-			    * to this fd */
-	void *data;	   /* pointer to the data */
+	uint8_t transport;		    /* transport type (UDP/SCTP...) */
+	uint8_t data_type;		    /* internal use for transport to define what data are associated
+					     * with this fd */
+	void *data;			    /* pointer to the data */
+	void *access_list_match_entry_head; /* pointer to access list match_entry list head */
 };
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
@@ -158,6 +159,7 @@ struct knet_handle {
 	int send_to_links_epollfd;
 	int recv_from_links_epollfd;
 	int dst_link_handler_epollfd;
+	uint8_t use_access_lists; /* set to 0 for disable, 1 for enable */
 	unsigned int pmtud_interval;
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
@@ -256,6 +258,32 @@ extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */
  */
 
 /*
+ * for now knet supports only IP protocols (udp/sctp)
+ * in future there might be others like ARP
+ * or TIPC.
+ * keep this around as transport information
+ * to use for access lists and other operations
+ */
+
+#define TRANSPORT_PROTO_LOOPBACK 0
+#define TRANSPORT_PROTO_IP_PROTO 1
+
+/*
+ * some transports like SCTP can filter incoming
+ * connections before knet has to process
+ * any packets.
+ * GENERIC_ACL -> packet has to be read and filterted
+ * PROTO_ACL -> transport provides filtering at lower levels
+ *              and packet does not need to be processed
+ */
+
+typedef enum {
+	USE_NO_ACL,
+	USE_GENERIC_ACL,
+	USE_PROTO_ACL
+} transport_acl;
+
+/*
  * make it easier to map values in transports.c
  */
 #define TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED 0
@@ -268,6 +296,9 @@ typedef struct knet_transport_ops {
 	const char *transport_name;
 	const uint8_t transport_id;
 	const uint8_t built_in;
+
+	uint8_t transport_protocol;
+	transport_acl transport_acl_type;
 
 /*
  * connection oriented protocols like SCTP
@@ -306,6 +337,12 @@ typedef struct knet_transport_ops {
  * this is called in global read lock context
  */
 	int (*transport_link_dyn_connect)(knet_handle_t knet_h, int sockfd, struct knet_link *link);
+
+
+/*
+ * return the fd to use for access lists
+ */
+	int (*transport_link_get_acl_fd)(knet_handle_t knet_h, struct knet_link *link);
 
 /*
  * per transport error handling of recvmmsg

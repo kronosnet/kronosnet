@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -80,8 +80,11 @@ int crypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	int savederrno = 0;
+	int err = 0, savederrno = 0;
 	int model = 0;
+	struct crypto_instance *current = NULL, *new = NULL;
+
+	current = knet_h->crypto_instance;
 
 	model = crypto_get_model(knet_handle_crypto_cfg->crypto_model);
 	if (model < 0) {
@@ -105,16 +108,18 @@ int crypto_init(
 		crypto_modules_cmds[model].ops = load_module (knet_h, "crypto", crypto_modules_cmds[model].model_name);
 		if (!crypto_modules_cmds[model].ops) {
 			savederrno = errno;
+			err = -1;
 			log_err(knet_h, KNET_SUB_CRYPTO, "Unable to load %s lib", crypto_modules_cmds[model].model_name);
-			goto out_err;
+			goto out;
 		}
 		if (crypto_modules_cmds[model].ops->abi_ver != KNET_CRYPTO_MODEL_ABI) {
+			savederrno = EINVAL;
+			err = -1;
 			log_err(knet_h, KNET_SUB_CRYPTO,
 				"ABI mismatch loading module %s. knet ver: %d, module ver: %d",
 				crypto_modules_cmds[model].model_name, KNET_CRYPTO_MODEL_ABI,
 				crypto_modules_cmds[model].ops->abi_ver);
-			savederrno = EINVAL;
-			goto out_err;
+			goto out;
 		}
 		crypto_modules_cmds[model].loaded = 1;
 	}
@@ -125,13 +130,13 @@ int crypto_init(
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
-	knet_h->crypto_instance = malloc(sizeof(struct crypto_instance));
+	new = malloc(sizeof(struct crypto_instance));
 
-	if (!knet_h->crypto_instance) {
-		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
-		pthread_rwlock_unlock(&shlib_rwlock);
+	if (!new) {
 		savederrno = ENOMEM;
-		goto out_err;
+		err = -1;
+		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto instance");
+		goto out;
 	}
 
 	/*
@@ -139,32 +144,44 @@ int crypto_init(
 	 * it will clean everything by itself.
 	 * crypto_modules_cmds.ops->fini is not invoked on error.
 	 */
-	knet_h->crypto_instance->model = model;
-	if (crypto_modules_cmds[knet_h->crypto_instance->model].ops->init(knet_h, knet_handle_crypto_cfg)) {
+	new->model = model;
+	if (crypto_modules_cmds[model].ops->init(knet_h, new, knet_handle_crypto_cfg)) {
 		savederrno = errno;
-		goto out_err;
+		err = -1;
+		goto out;
 	}
 
 	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
-	pthread_rwlock_unlock(&shlib_rwlock);
-	return 0;
 
-out_err:
-	if (knet_h->crypto_instance) {
-		free(knet_h->crypto_instance);
-		knet_h->crypto_instance = NULL;
+out:
+	if (!err) {
+		knet_h->crypto_instance = new;
+		knet_h->sec_header_size = new->sec_header_size;
+		knet_h->sec_block_size = new->sec_block_size;
+		knet_h->sec_hash_size = new->sec_hash_size;
+		knet_h->sec_salt_size = new->sec_salt_size;
+
+		if (current) {
+			if (crypto_modules_cmds[current->model].ops->fini != NULL) {
+				crypto_modules_cmds[current->model].ops->fini(knet_h, current);
+			}
+			free(current);
+		}
+	} else {
+		if (new) {
+			free(new);
+		}
 	}
 
 	pthread_rwlock_unlock(&shlib_rwlock);
-	errno = savederrno;
-	return -1;
+	errno = err ? savederrno : 0;
+	return err;
 }
 
 void crypto_fini(
 	knet_handle_t knet_h)
 {
 	int savederrno = 0;
-	int model = 0;
 
 	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
 	if (savederrno) {
@@ -174,11 +191,14 @@ void crypto_fini(
 	}
 
 	if (knet_h->crypto_instance) {
-		model = knet_h->crypto_instance->model;
-		if (crypto_modules_cmds[model].ops->fini != NULL) {
-			crypto_modules_cmds[model].ops->fini(knet_h);
+		if (crypto_modules_cmds[knet_h->crypto_instance->model].ops->fini != NULL) {
+			crypto_modules_cmds[knet_h->crypto_instance->model].ops->fini(knet_h, knet_h->crypto_instance);
 		}
 		free(knet_h->crypto_instance);
+		knet_h->sec_header_size = 0;
+		knet_h->sec_block_size = 0;
+		knet_h->sec_hash_size = 0;
+		knet_h->sec_salt_size = 0;
 		knet_h->crypto_instance = NULL;
 	}
 

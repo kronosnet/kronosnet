@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -155,4 +155,33 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 	}
 
 	return 0;
+}
+
+void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu)
+{
+	if (reset_mtu) {
+		log_debug(knet_h, subsystem, "PMTUd has been reset to default");
+		knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+		if (knet_h->pmtud_notify_fn) {
+			knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,
+						knet_h->data_mtu);
+		}
+	}
+
+	/*
+	 * we can only try to take a lock here. This part of the code
+	 * can be invoked by any thread, including PMTUd that is already
+	 * holding a lock at that stage.
+	 * If PMTUd is holding the lock, most likely it is already running
+	 * and we don't need to notify it back.
+	 */
+	if (!pthread_mutex_trylock(&knet_h->pmtud_mutex)) {
+		if (!knet_h->pmtud_running) {
+			if (!knet_h->pmtud_forcerun) {
+				log_debug(knet_h, subsystem, "Notifying PMTUd to rerun");
+				knet_h->pmtud_forcerun = 1;
+			}
+		}
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+	}
 }

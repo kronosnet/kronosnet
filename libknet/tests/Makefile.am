@@ -3,7 +3,7 @@
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 MAINTAINERCLEANFILES	= Makefile.in
@@ -33,6 +33,7 @@ check_PROGRAMS		= \
 			  $(fun_checks)
 
 int_checks		= \
+			  int_links_acl_ip_test \
 			  int_timediff_test
 
 fun_checks		=
@@ -63,6 +64,21 @@ check-api-test-coverage:
 	$(top_srcdir)/libknet/tests/api-test-coverage $(top_srcdir) $(top_builddir)
 
 pckt_test_SOURCES	= pckt_test.c
+
+int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
+				../common.c \
+				../compat.c \
+				../logging.c \
+				../netutils.c \
+				../threads_common.c \
+				../transports.c \
+				../transport_common.c \
+				../transport_loopback.c \
+				../transport_sctp.c \
+				../transport_udp.c \
+				../links_acl.c \
+				../links_acl_ip.c \
+				../links_acl_loopback.c
 
 int_timediff_test_SOURCES = int_timediff.c
 

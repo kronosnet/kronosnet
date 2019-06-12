@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -144,7 +144,7 @@ char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
 
 	prefix_len = atoi(prefix);
 
-	if ((prefix_len > 32) || (prefix_len < 0))
+	if ((prefix_len > 32) || (prefix_len <= 0))
 		return NULL;
 
 	if (inet_pton(AF_INET, ipaddr, &address) <= 0)

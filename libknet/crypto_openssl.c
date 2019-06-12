@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 #define KNET_MODULE
 
@@ -12,6 +12,7 @@
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <stdlib.h>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -43,6 +44,8 @@ struct opensslcrypto_instance {
 	const EVP_MD *crypto_hash_type;
 };
 
+static int openssl_is_init = 0;
+
 /*
  * crypt/decrypt functions openssl1.0
  */
@@ -65,11 +68,6 @@ static int encrypt_openssl(
 	char		sslerr[SSLERR_BUF_SIZE];
 
 	EVP_CIPHER_CTX_init(&ctx);
-
-	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
 
 	if (!RAND_bytes(salt, SALT_SIZE)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
@@ -128,11 +126,6 @@ static int decrypt_openssl (
 	EVP_CIPHER_CTX_init(&ctx);
 
 	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed(buf_in, buf_in_len);
-
-	/*
 	 * add warning re keylength
 	 */
 	EVP_DecryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
@@ -177,11 +170,6 @@ static int encrypt_openssl(
 	char		sslerr[SSLERR_BUF_SIZE];
 
 	ctx = EVP_CIPHER_CTX_new();
-
-	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed((unsigned char *)iov[iovcnt - 1].iov_base, iov[iovcnt - 1].iov_len);
 
 	if (!RAND_bytes(salt, SALT_SIZE)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
@@ -244,11 +232,6 @@ static int decrypt_openssl (
 	}
 
 	ctx = EVP_CIPHER_CTX_new();
-
-	/*
-	 * contribute to PRNG for each packet we send/receive
-	 */
-	RAND_seed(buf_in, buf_in_len);
 
 	/*
 	 * add warning re keylength
@@ -438,6 +421,11 @@ static void openssl_internal_lock_cleanup(void)
 	return;
 }
 
+static void openssl_atexit_handler(void)
+{
+	openssl_internal_lock_cleanup();
+}
+
 static int openssl_internal_lock_setup(void)
 {
 	int savederrno = 0, err = 0;
@@ -461,6 +449,9 @@ static int openssl_internal_lock_setup(void)
 	CRYPTO_set_id_callback((void *)openssl_internal_thread_id);
 	CRYPTO_set_locking_callback((void *)&openssl_internal_locking_callback);
 
+	if (atexit(openssl_atexit_handler)) {
+		err = -1;
+	}
 out:
 	if (err) {
 		openssl_internal_lock_cleanup();
@@ -471,31 +462,32 @@ out:
 #endif
 
 static void opensslcrypto_fini(
-	knet_handle_t knet_h)
+	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance)
 {
-	struct opensslcrypto_instance *opensslcrypto_instance = knet_h->crypto_instance->model_instance;
+	struct opensslcrypto_instance *opensslcrypto_instance = crypto_instance->model_instance;
 
 	if (opensslcrypto_instance) {
-#ifdef BUILDCRYPTOOPENSSL10
-		openssl_internal_lock_cleanup();
-#endif
 		if (opensslcrypto_instance->private_key) {
 			free(opensslcrypto_instance->private_key);
 			opensslcrypto_instance->private_key = NULL;
 		}
 		free(opensslcrypto_instance);
-		knet_h->crypto_instance->model_instance = NULL;
-		knet_h->sec_header_size = 0;
+		crypto_instance->model_instance = NULL;
 	}
+
+#ifdef BUILDCRYPTOOPENSSL10
+	ERR_free_strings();
+#endif
 
 	return;
 }
 
 static int opensslcrypto_init(
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
 {
-	static int openssl_is_init = 0;
 	struct opensslcrypto_instance *opensslcrypto_instance = NULL;
 	int savederrno;
 
@@ -508,6 +500,11 @@ static int opensslcrypto_init(
 #ifdef BUILDCRYPTOOPENSSL10
 		ERR_load_crypto_strings();
 		OPENSSL_add_all_algorithms_noconf();
+		if (openssl_internal_lock_setup() < 0) {
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
+			errno = EAGAIN;
+			return -1;
+		}
 #endif
 #ifdef BUILDCRYPTOOPENSSL11
 		if (!OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS \
@@ -520,22 +517,14 @@ static int opensslcrypto_init(
 		openssl_is_init = 1;
 	}
 
-#ifdef BUILDCRYPTOOPENSSL10
-	if (openssl_internal_lock_setup() < 0) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to init openssl");
-		errno = EAGAIN;
-		return -1;
-	}
-#endif
-
-	knet_h->crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
-	if (!knet_h->crypto_instance->model_instance) {
+	crypto_instance->model_instance = malloc(sizeof(struct opensslcrypto_instance));
+	if (!crypto_instance->model_instance) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl model instance");
 		errno = ENOMEM;
 		return -1;
 	}
 
-	opensslcrypto_instance = knet_h->crypto_instance->model_instance;
+	opensslcrypto_instance = crypto_instance->model_instance;
 
 	memset(opensslcrypto_instance, 0, sizeof(struct opensslcrypto_instance));
 
@@ -577,11 +566,11 @@ static int opensslcrypto_init(
 	memmove(opensslcrypto_instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
 	opensslcrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
-	knet_h->sec_header_size = 0;
+	crypto_instance->sec_header_size = 0;
 
 	if (opensslcrypto_instance->crypto_hash_type) {
-		knet_h->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
-		knet_h->sec_header_size += knet_h->sec_hash_size;
+		crypto_instance->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
+		crypto_instance->sec_header_size += crypto_instance->sec_hash_size;
 	}
 
 	if (opensslcrypto_instance->crypto_cipher_type) {
@@ -589,16 +578,16 @@ static int opensslcrypto_init(
 
 		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
 
-		knet_h->sec_header_size += (block_size * 2);
-		knet_h->sec_header_size += SALT_SIZE;
-		knet_h->sec_salt_size = SALT_SIZE;
-		knet_h->sec_block_size = block_size;
+		crypto_instance->sec_header_size += (block_size * 2);
+		crypto_instance->sec_header_size += SALT_SIZE;
+		crypto_instance->sec_salt_size = SALT_SIZE;
+		crypto_instance->sec_block_size = block_size;
 	}
 
 	return 0;
 
 out_err:
-	opensslcrypto_fini(knet_h);
+	opensslcrypto_fini(knet_h, crypto_instance);
 
 	errno = savederrno;
 	return -1;

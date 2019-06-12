@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
@@ -40,6 +40,7 @@ static compress_model_t compress_modules_cmds[] = {
 	{ "lzo2" , 4, WITH_COMPRESS_LZO2 , 0, NULL },
 	{ "lzma" , 5, WITH_COMPRESS_LZMA , 0, NULL },
 	{ "bzip2", 6, WITH_COMPRESS_BZIP2, 0, NULL },
+	{ "zstd" , 7, WITH_COMPRESS_ZSTD, 0, NULL },
 	{ NULL, 255, 0, 0, NULL }
 };
 
@@ -358,11 +359,11 @@ void compress_fini(
 	}
 
 	while (compress_modules_cmds[idx].model_name != NULL) {
-		if ((compress_modules_cmds[idx].built_in == 1) &&
+		if ((idx < KNET_MAX_COMPRESS_METHODS) && /* check idx first so we don't read bad data */
+		    (compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (compress_modules_cmds[idx].model_id > 0) &&
-		    (knet_h->compress_int_data[idx] != NULL) &&
-		    (idx < KNET_MAX_COMPRESS_METHODS)) {
+		    (knet_h->compress_int_data[idx] != NULL)) {
 			if ((all) || (compress_modules_cmds[idx].model_id == knet_h->compress_model)) {
 				if (compress_modules_cmds[idx].ops->fini != NULL) {
 					compress_modules_cmds[idx].ops->fini(knet_h, idx);

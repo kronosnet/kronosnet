@@ -4,7 +4,7 @@
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #ifndef __LIBKNET_H__
@@ -502,6 +502,45 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 
 int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
 
+/**
+ * knet_handle_enable_access_lists
+ *
+ * @brief Enable or disable usage of access lists (default: off)
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * enable   - set to 1 to use access lists, 0 to disable access_lists.
+ *
+ * @return
+ * knet_handle_enable_access_lists returns
+ * 0 on success
+ * -1 on error and errno is set.
+ *
+ * access lists are bound to links. There are 2 types of links:
+ * 1) point to point, where both source and destinations are well known
+ *    at configuration time.
+ * 2) open links, where only the source is known at configuration time.
+ *
+ * knet will automatically generate access lists for point to point links.
+ *
+ * For open links, knet provides 4 API calls to manipulate access lists:
+ * knet_link_add_acl(3), knet_link_rm_acl(3), knet_link_insert_acl(3)
+ * and knet_link_clear_acl(3).
+ * Those API calls will work exclusively on open links as they
+ * are of no use on point to point links.
+ *
+ * knet will not enforce any access list unless specifically enabled by
+ * knet_handle_enable_access_lists(3).
+ *
+ * From a security / programming perspective we recommend:
+ * - create the knet handle
+ * - enable access lists
+ * - configure hosts and links
+ * - configure access lists for open links
+ */
+
+int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled);
+
 #define KNET_PMTUD_DEFAULT_INTERVAL 60
 
 /**
@@ -661,9 +700,7 @@ struct knet_handle_crypto_cfg {
  *              1) failure to obtain locking
  *              2) errors to initializing the crypto level.
  *   This can happen even in subsequent calls to knet_handle_crypto.
- *   A failure in crypto init, might leave your traffic unencrypted!
- *   It's best to stop data forwarding (see knet_handle_setfwd(3)), change crypto config,
- *   start forward again.
+ *   A failure in crypto init will restore the previous crypto configuration.
  *
  * @return
  * knet_handle_crypto returns:
@@ -1439,6 +1476,166 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id);
 
+/*
+ * Access lists management for open links
+ * see also knet_handle_enable_access_lists(3)
+ */
+
+/**
+ * check_type_t
+ * @brief address type enum for knet access lists
+ *
+ * CHECK_TYPE_ADDRESS is the equivalent of a single entry / IP address.
+ *                    for example: 10.1.9.3
+ *                    and the entry is stored in ss1. ss2 can be NULL.
+ *
+ * CHECK_TYPE_MASK    is used to configure network/netmask.
+ *                    for example: 192.168.0.0/24
+ *                    the network is stored in ss1 and the netmask in ss2.
+ *
+ * CHECK_TYPE_RANGE   defines a value / range of ip addresses.
+ *                    for example: 172.16.0.1-172.16.0.10
+ *                    the start is stored in ss1 and the end in ss2.
+ *
+ * Please be aware that the above examples refer only to IP based protocols.
+ * Other protocols might use ss1 and ss2 in slightly different ways.
+ * At the moment knet only supports IP based protocol, though that might change
+ * in the future.
+ */
+
+typedef enum {
+	CHECK_TYPE_ADDRESS,
+	CHECK_TYPE_MASK,
+	CHECK_TYPE_RANGE
+} check_type_t;
+
+/**
+ * check_acceptreject_t
+ *
+ * @brief enum for accept/reject in knet access lists
+ *
+ * accept or reject incoming packets defined in the access list entry
+ */
+
+typedef enum {
+	CHECK_ACCEPT,
+	CHECK_REJECT
+} check_acceptreject_t;
+
+/**
+ * knet_link_add_acl
+ *
+ * @brief Add access list entry to an open link
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * host_id   - see knet_host_add(3)
+ *
+ * link_id   - see knet_link_set_config(3)
+ *
+ * ss1 / ss2 / type / acceptreject - see typedef definitions for details
+ *
+ * IMPORTANT: the order in which access lists are added is critical and it
+ *            is left to the user to add them in the right order. knet
+ *            will not attempt to logically sort them.
+ *
+ *            For example:
+ *            1 - accept from 10.0.0.0/8
+ *            2 - reject from 10.0.0.1/32
+ *
+ *            is not the same as:
+ *
+ *            1 - reject from 10.0.0.1/32
+ *            2 - accept from 10.0.0.0/8
+ *
+ *            In the first example, rule number 2 will never match because
+ *            packets from 10.0.0.1 will be accepted by rule number 1.
+ *
+ * @return
+ * knet_link_add_acl returns
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
+int knet_link_add_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
+		      struct sockaddr_storage *ss1,
+		      struct sockaddr_storage *ss2,
+		      check_type_t type, check_acceptreject_t acceptreject);
+
+/**
+ * knet_link_insert_acl
+ *
+ * @brief Insert access list entry to an open link at given index
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * host_id   - see knet_host_add(3)
+ *
+ * link_id   - see knet_link_set_config(3)
+ *
+ * index     - insert at position "index" where 0 is the first entry and -1
+ *             appends to the current list.
+ *
+ * ss1 / ss2 / type / acceptreject - see typedef definitions for details
+ *
+ * @return
+ * knet_link_insert_acl returns
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
+int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
+			 int index,
+			 struct sockaddr_storage *ss1,
+			 struct sockaddr_storage *ss2,
+			 check_type_t type, check_acceptreject_t acceptreject);
+
+/**
+ * knet_link_rm_acl
+ *
+ * @brief Remove access list entry from an open link
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * host_id   - see knet_host_add(3)
+ *
+ * link_id   - see knet_link_set_config(3)
+ *
+ * ss1 / ss2 / type / acceptreject - see typedef definitions for details
+ *
+ * IMPORTANT: the data passed to this API call must match exactly that passed
+ *            to knet_link_add_acl(3).
+ *
+ * @return
+ * knet_link_rm_acl returns
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
+int knet_link_rm_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
+		     struct sockaddr_storage *ss1,
+		     struct sockaddr_storage *ss2,
+		     check_type_t type, check_acceptreject_t acceptreject);
+
+/**
+ * knet_link_clear_acl
+ *
+ * @brief Remove all access list entries from an open link
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * host_id   - see knet_host_add(3)
+ *
+ * link_id   - see knet_link_set_config(3)
+ *
+ * @return
+ * knet_link_clear_acl returns
+ * 0 on success.
+ * -1 on error and errno is set.
+ */
+
+int knet_link_clear_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id);
+
 /**
  * knet_link_set_enable
  *
@@ -1855,6 +2052,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 #define KNET_SUB_LZO2COMP      73 /* compress_lzo.c */
 #define KNET_SUB_LZMACOMP      74 /* compress_lzma.c */
 #define KNET_SUB_BZIP2COMP     75 /* compress_bzip2.c */
+#define KNET_SUB_ZSTDCOMP      76 /* compress_zstd.c */
 
 #define KNET_SUB_UNKNOWN       UINT8_MAX - 1
 #define KNET_MAX_SUBSYSTEMS    UINT8_MAX

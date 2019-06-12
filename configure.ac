@@ -4,7 +4,7 @@
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 #                                               -*- Autoconf -*-
@@ -123,6 +123,8 @@ KNET_OPTION_DEFINES([openssl],[crypto],[
 AC_ARG_ENABLE([compress-all],
 	[AS_HELP_STRING([--disable-compress-all],[disable libknet all compress modules support])],,
 	[ enable_compress_all="yes" ])
+
+KNET_OPTION_DEFINES([zstd],[compress],[PKG_CHECK_MODULES([libzstd], [libzstd])])
 
 KNET_OPTION_DEFINES([zlib],[compress],[PKG_CHECK_MODULES([zlib], [zlib])])
 KNET_OPTION_DEFINES([lz4],[compress],[PKG_CHECK_MODULES([liblz4], [liblz4])])
@@ -463,7 +465,6 @@ AC_CONFIG_FILES([
 		man/Doxyfile-nozzle
 		poc-code/Makefile
 		poc-code/iov-hash/Makefile
-		poc-code/access-list/Makefile
 		])
 
 if test "x$VERSION" = "xUNKNOWN"; then
