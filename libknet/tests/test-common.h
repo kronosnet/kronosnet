@@ -3,7 +3,7 @@
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under GPL-2.0+
  */
 
 #ifndef __KNET_TEST_COMMON_H__

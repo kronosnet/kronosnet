@@ -3,7 +3,7 @@
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 VALGRIND = $(VALGRIND_EXEC) -q --error-exitcode=127 --gen-suppressions=all

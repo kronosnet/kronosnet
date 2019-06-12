@@ -3,7 +3,7 @@
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #include "config.h"
