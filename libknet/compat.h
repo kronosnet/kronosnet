@@ -3,7 +3,7 @@
  *
  * Authors: Jan Friesse <jfriesse@redhat.com>
  *
- * This software licensed under GPL-2.0+, LGPL-2.0+
+ * This software licensed under LGPL-2.0+
  */
 
 #ifndef __KNET_COMPAT_H__

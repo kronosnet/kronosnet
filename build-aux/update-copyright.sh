@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# Copyright (C) 2017 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2017-2019 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 
 # script to update copyright dates across the tree

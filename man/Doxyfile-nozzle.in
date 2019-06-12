@@ -4,7 +4,7 @@
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #         Christine Caulfield <ccaulfie@redhat.com>
 #
-# This software licensed under GPL-2.0+, LGPL-2.0+
+# This software licensed under GPL-2.0+
 #
 PROJECT_NAME	       = @PACKAGE_NAME@
 PROJECT_NUMBER         = @PACKAGE_VERSION@
