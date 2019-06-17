@@ -16,6 +16,11 @@
 #include "logging.h"
 #include "compress_model.h"
 
+#ifdef LZ4HC_CLEVEL_DEFAULT
+#define KNET_COMPRESS_DEFAULT LZ4HC_CLEVEL_DEFAULT /* lz4hc default compression level from lz4hc.h */
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
 #ifdef LZ4HC_CLEVEL_MAX
 #define KNET_LZ4HC_MAX LZ4HC_CLEVEL_MAX
 #endif
@@ -91,6 +96,11 @@ static int lz4_decompress(
 	return err;
 }
 
+static int lz4hc_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	NULL,
@@ -98,5 +108,6 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	lz4hc_compress,
-	lz4_decompress
+	lz4_decompress,
+	lz4hc_get_default_level
 };

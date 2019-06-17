@@ -15,6 +15,12 @@
 #include "logging.h"
 #include "compress_model.h"
 
+#ifdef BZIP2_COMPRESS_LEVEL
+#define KNET_COMPRESS_DEFAULT BZIP2_COMPRESS_LEVEL
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
+
 static int bzip2_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -103,6 +109,11 @@ static int bzip2_decompress(
 	return err;
 }
 
+static int bzip2_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	NULL,
@@ -110,5 +121,6 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	bzip2_compress,
-	bzip2_decompress
+	bzip2_decompress,
+	bzip2_get_default_level
 };

@@ -11,7 +11,8 @@
 
 #include "internals.h"
 
-#define KNET_COMPRESS_MODEL_ABI 1
+#define KNET_COMPRESS_MODEL_ABI            2
+#define KNET_COMPRESS_UNKNOWN_DEFAULT    (-2)
 
 typedef struct {
 	uint8_t abi_ver;
@@ -70,6 +71,11 @@ typedef struct {
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
+
+	/*
+	 * Get default compression level
+	 */
+	int (*get_default_level) (void);
 } compress_ops_t;
 
 typedef struct {
