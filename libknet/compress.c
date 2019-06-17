@@ -195,6 +195,7 @@ static int compress_lib_test(knet_handle_t knet_h)
 	unsigned char dst[KNET_DATABUFSIZE_COMPRESS];
 	ssize_t dst_comp_len = KNET_DATABUFSIZE_COMPRESS, dst_decomp_len = KNET_DATABUFSIZE;
 	unsigned int i;
+	int request_level;
 
 	memset(src, 0, KNET_DATABUFSIZE);
 	memset(dst, 0, KNET_DATABUFSIZE_COMPRESS);
@@ -209,6 +210,32 @@ static int compress_lib_test(knet_handle_t knet_h)
 		log_err(knet_h, KNET_SUB_COMPRESS, "Unable to compress test buffer. Please check your compression settings: %s", strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	} else if ((long unsigned int)dst_comp_len >= KNET_DATABUFSIZE) {
+		/*
+		 * compress not effective, try again using default compression level when available
+		 */
+		request_level = knet_h->compress_level;
+		log_warn(knet_h, KNET_SUB_COMPRESS, "Requested compression level (%d) did not generate any compressed data (source: %zu destination: %zu)",
+				request_level, sizeof(src), dst_comp_len);
+
+		if ((!compress_modules_cmds[knet_h->compress_model].ops->get_default_level()) ||
+				((knet_h->compress_level = compress_modules_cmds[knet_h->compress_model].ops->get_default_level()) == KNET_COMPRESS_UNKNOWN_DEFAULT)) {
+                        log_err(knet_h, KNET_SUB_COMPRESS, "compression %s does not provide a default value",
+					compress_modules_cmds[knet_h->compress_model].model_name);
+			return -1;
+                } else {
+			memset(src, 0, KNET_DATABUFSIZE);
+			memset(dst, 0, KNET_DATABUFSIZE_COMPRESS);
+			dst_comp_len = KNET_DATABUFSIZE_COMPRESS;
+			if (compress_modules_cmds[knet_h->compress_model].ops->compress(knet_h, src, KNET_DATABUFSIZE, dst, &dst_comp_len) < 0) {
+                                savederrno = errno;
+                                log_err(knet_h, KNET_SUB_COMPRESS, "Unable to compress with default compression level: %s", strerror(savederrno));
+				errno = savederrno;
+				return -1;
+			}
+			log_warn(knet_h, KNET_SUB_COMPRESS, "Requested compression level (%d) did not work, switching to default (%d)",
+					request_level, knet_h->compress_level);
+		}
 	}
 
 	if (compress_modules_cmds[knet_h->compress_model].ops->decompress(knet_h, dst, dst_comp_len, src, &dst_decomp_len) < 0) {
