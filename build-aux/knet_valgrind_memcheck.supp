@@ -759,3 +759,83 @@
    fun:_dlerror_run
    fun:dlopen@@GLIBC_2.2.5
 }
+{
+   Opensuse tumbleweed libnss
+   Memcheck:Cond
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_generate
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_instantiate
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_get0_public
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:encrypt_openssl
+   fun:opensslcrypto_encrypt_and_signv
+   fun:opensslcrypto_encrypt_and_sign
+   fun:_handle_check_each
+   fun:_send_pings
+   fun:_handle_heartbt_thread
+   fun:start_thread
+}
+{
+   Opensuse tumbleweed libnss
+   Memcheck:Cond
+   obj:/usr/lib64/libcrypto.so.1.1
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_generate
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_instantiate
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_get0_public
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:encrypt_openssl
+   fun:opensslcrypto_encrypt_and_signv
+   fun:opensslcrypto_encrypt_and_sign
+   fun:_handle_check_each
+   fun:_send_pings
+   fun:_handle_heartbt_thread
+}
+{
+   Opensuse tumbleweed libnss
+   Memcheck:Cond
+   obj:/usr/lib64/libcrypto.so.1.1
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_generate
+   fun:RAND_DRBG_bytes
+   fun:encrypt_openssl
+   fun:opensslcrypto_encrypt_and_signv
+   fun:opensslcrypto_encrypt_and_sign
+   fun:_handle_check_each
+   fun:_send_pings
+   fun:_handle_heartbt_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   Opensuse tumbleweed libnss
+   Memcheck:Cond
+   obj:/usr/lib64/libcrypto.so.1.1
+   fun:RAND_DRBG_generate
+   fun:RAND_DRBG_bytes
+   fun:encrypt_openssl
+   fun:opensslcrypto_encrypt_and_signv
+   fun:opensslcrypto_encrypt_and_sign
+   fun:_handle_check_each
+   fun:_send_pings
+   fun:_handle_heartbt_thread
+   fun:start_thread
+   fun:clone
+}
+{
+   Opensuse tumbleweed libnss
+   Memcheck:Param
+   sendmsg(msg.msg_iov[0])
+   fun:sendmsg
+   fun:_sendmmsg
+   fun:_dispatch_to_links
+   fun:_parse_recv_from_sock
+   fun:_handle_send_to_links
+   fun:_handle_send_to_links_thread
+   fun:start_thread
+   fun:clone
+}
