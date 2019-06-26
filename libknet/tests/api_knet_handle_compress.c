@@ -81,8 +81,8 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+#if WITH_COMPRESS_BZIP2 > 0
 	printf("Test knet_handle_compress with bzip2 (no default) with negative level (-3)\n");
-#ifdef BZIP2_COMPRESS_LEVEL
         memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
         strncpy(knet_handle_compress_cfg.compress_model, "bzip2", sizeof(knet_handle_compress_cfg.compress_model) - 1);
         knet_handle_compress_cfg.compress_level = -3;
@@ -94,8 +94,9 @@ static void test(void)
                 close_logpipes(logfds);
                 exit(FAIL);
         }
-#endif
+
 	flush_logs(logfds[0], stdout);
+#endif
 
 	printf("Test knet_handle_compress with zlib compress and not effective compression level (0)\n");
 
