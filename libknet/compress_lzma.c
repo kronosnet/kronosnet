@@ -15,6 +15,12 @@
 #include "logging.h"
 #include "compress_model.h"
 
+#ifdef LZMA_PRESET_DEFAULT
+#define KNET_COMPRESS_DEFAULT LZMA_PRESET_DEFAULT /* lzma default compression level from lzma.h */
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
+
 static int lzma_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -114,6 +120,11 @@ static int lzma_decompress(
 	return err;
 }
 
+static int lzma_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	NULL,
@@ -121,5 +132,6 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	lzma_compress,
-	lzma_decompress
+	lzma_decompress,
+	lzma_get_default_level
 };

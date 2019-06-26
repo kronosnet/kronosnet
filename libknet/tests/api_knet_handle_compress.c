@@ -81,6 +81,38 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	printf("Test knet_handle_compress with bzip2 (no default) with negative level (-3)\n");
+#ifdef BZIP2_COMPRESS_LEVEL
+        memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
+        strncpy(knet_handle_compress_cfg.compress_model, "bzip2", sizeof(knet_handle_compress_cfg.compress_model) - 1);
+        knet_handle_compress_cfg.compress_level = -3;
+
+        if((!knet_handle_compress(knet_h, &knet_handle_compress_cfg)) || (errno != EINVAL)) {
+                printf("knet_handle_compress accepted invalid (-3) compress level and for bzip2, which is no default defined\n");
+                knet_handle_free(knet_h);
+                flush_logs(logfds[0], stdout);
+                close_logpipes(logfds);
+                exit(FAIL);
+        }
+#endif
+	flush_logs(logfds[0], stdout);
+
+	printf("Test knet_handle_compress with zlib compress and not effective compression level (0)\n");
+
+	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
+	strncpy(knet_handle_compress_cfg.compress_model, "zlib", sizeof(knet_handle_compress_cfg.compress_model) - 1);
+	knet_handle_compress_cfg.compress_level = 0;
+
+	if((knet_handle_compress(knet_h, &knet_handle_compress_cfg)) || (errno == EINVAL)) {
+		printf("knet_handle_compress failed to compress with default compression level\n");
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	flush_logs(logfds[0], stdout);
+
 	printf("Test knet_handle_compress with zlib compress and negative level (-2)\n");
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
