@@ -404,6 +404,11 @@ int knet_handle_stop(knet_handle_t knet_h)
 		return -1;
 	}
 
+	if (knet_handle_setfwd(knet_h, 0) < 0) {
+		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+		return -1;
+	}
+
 	if (knet_host_get_host_list(knet_h, host_ids, &host_ids_entries) < 0) {
 		printf("knet_host_get_host_list failed: %s\n", strerror(errno));
 		return -1;

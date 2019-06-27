@@ -109,6 +109,68 @@ static const char *get_thread_name(uint8_t thread_id)
 	return "unknown";
 }
 
+int get_thread_flush_queue(knet_handle_t knet_h, uint8_t thread_id)
+{
+	uint8_t flush;
+
+	if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Unable to get mutex lock");
+		return -1;
+	}
+
+	flush = knet_h->threads_flush_queue[thread_id];
+
+	pthread_mutex_unlock(&knet_h->threads_status_mutex);
+	return flush;
+}
+
+int set_thread_flush_queue(knet_handle_t knet_h, uint8_t thread_id, uint8_t status)
+{
+	if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "Unable to get mutex lock");
+		return -1;
+	}
+
+	knet_h->threads_flush_queue[thread_id] = status;
+
+	log_debug(knet_h, KNET_SUB_HANDLE, "Updated flush queue request for thread %s to %u",
+		  get_thread_name(thread_id), status);
+
+	pthread_mutex_unlock(&knet_h->threads_status_mutex);
+	return 0;
+}
+
+int wait_all_threads_flush_queue(knet_handle_t knet_h)
+{
+	uint8_t i = 0, found = 0;
+
+	while (!found) {
+		usleep(knet_h->threads_timer_res);
+
+		if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
+			continue;
+		}
+
+		found = 1;
+
+		for (i = 0; i < KNET_THREAD_MAX; i++) {
+			if (knet_h->threads_flush_queue[i] == KNET_THREAD_QUEUE_FLUSHED) {
+				continue;
+			}
+			log_debug(knet_h, KNET_SUB_HANDLE, "Checking thread: %s queue: %u",
+					get_thread_name(i),
+					knet_h->threads_flush_queue[i]);
+			if (knet_h->threads_flush_queue[i] != KNET_THREAD_QUEUE_FLUSHED) {
+				found = 0;
+			}
+		}
+
+		pthread_mutex_unlock(&knet_h->threads_status_mutex);
+	}
+
+	return 0;
+}
+
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status)
 {
 	if (pthread_mutex_lock(&knet_h->threads_status_mutex) != 0) {
