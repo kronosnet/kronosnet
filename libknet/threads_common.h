@@ -32,6 +32,9 @@
 #endif
 #define KNET_THREAD_MAX		32
 
+#define KNET_THREAD_QUEUE_FLUSHED 0
+#define KNET_THREAD_QUEUE_FLUSH   1
+
 #define timespec_diff(start, end, diff) \
 do { \
 	if (end.tv_sec > start.tv_sec) \
@@ -43,6 +46,9 @@ do { \
 
 int shutdown_in_progress(knet_handle_t knet_h);
 int get_global_wrlock(knet_handle_t knet_h);
+int get_thread_flush_queue(knet_handle_t knet_h, uint8_t thread_id);
+int set_thread_flush_queue(knet_handle_t knet_h, uint8_t thread_id, uint8_t status);
+int wait_all_threads_flush_queue(knet_handle_t knet_h);
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status);
 int wait_all_threads_status(knet_handle_t knet_h, uint8_t status);
 void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu);

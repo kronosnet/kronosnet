@@ -673,6 +673,7 @@ void *_handle_send_to_links_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 	int i, nev, type;
+	int flush, flush_queue_limit;
 	int8_t channel;
 	struct iovec iov_in;
 	struct msghdr msg;
@@ -700,14 +701,47 @@ void *_handle_send_to_links_thread(void *data)
 		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);
 	}
 
+	flush_queue_limit = 0;
+
 	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(knet_h->send_to_links_epollfd, events, KNET_EPOLL_MAX_EVENTS + 1, KNET_THREADS_TIMERES / 1000);
+
+		flush = get_thread_flush_queue(knet_h, KNET_THREAD_TX);
 
 		/*
 		 * we use timeout to detect if thread is shutting down
 		 */
 		if (nev == 0) {
+			/*
+			 * ideally we want to communicate that we are done flushing
+			 * the queue when we have an epoll timeout event
+			 */
+			if (flush == KNET_THREAD_QUEUE_FLUSH) {
+				set_thread_flush_queue(knet_h, KNET_THREAD_TX, KNET_THREAD_QUEUE_FLUSHED);
+				flush_queue_limit = 0;
+			}
 			continue;
+		}
+
+		/*
+		 * fall back in case the TX sockets will continue receive traffic
+		 * and we do not hit an epoll timeout.
+		 *
+		 * allow up to a 100 loops to flush queues, then we give up.
+		 * there might be more clean ways to do it by checking the buffer queue
+		 * on each socket, but we have tons of sockets and calculations can go wrong.
+		 * Also, why would you disable data forwarding and still send packets?
+		 */
+		if (flush == KNET_THREAD_QUEUE_FLUSH) {
+			if (flush_queue_limit >= 100) {
+				log_debug(knet_h, KNET_SUB_TX, "Timeout flushing the TX queue, expect packet loss");
+				set_thread_flush_queue(knet_h, KNET_THREAD_TX, KNET_THREAD_QUEUE_FLUSHED);
+				flush_queue_limit = 0;
+			} else {
+				flush_queue_limit++;
+			}
+		} else {
+			flush_queue_limit = 0;
 		}
 
 		if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
@@ -739,6 +773,7 @@ void *_handle_send_to_links_thread(void *data)
 			_handle_send_to_links(knet_h, &msg, events[i].data.fd, channel, type);
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
+
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 

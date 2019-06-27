@@ -862,6 +862,15 @@ void *_handle_recv_from_links_thread(void *data)
 		nev = epoll_wait(knet_h->recv_from_links_epollfd, events, KNET_EPOLL_MAX_EVENTS, KNET_THREADS_TIMERES / 1000);
 
 		/*
+		 * the RX threads only need to notify that there has been at least
+		 * one successful run after queue flush has been requested.
+		 * See setfwd in handle.c
+		 */
+		if (get_thread_flush_queue(knet_h, KNET_THREAD_RX) == KNET_THREAD_QUEUE_FLUSH) {
+			set_thread_flush_queue(knet_h, KNET_THREAD_RX, KNET_THREAD_QUEUE_FLUSHED);
+		}
+
+		/*
 		 * we use timeout to detect if thread is shutting down
 		 */
 		if (nev == 0) {
