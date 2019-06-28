@@ -1173,15 +1173,56 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 		return -1;
 	}
 
-	knet_h->enabled = enabled;
-
 	if (enabled) {
+		knet_h->enabled = enabled;
 		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is enabled");
 	} else {
-		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is disabled");
+		/*
+		 * notify TX and RX threads to flush the queues
+		 */
+		if (set_thread_flush_queue(knet_h, KNET_THREAD_TX, KNET_THREAD_QUEUE_FLUSH) < 0) {
+			log_debug(knet_h, KNET_SUB_HANDLE, "Unable to request queue flushing for TX thread");
+		}
+		if (set_thread_flush_queue(knet_h, KNET_THREAD_RX, KNET_THREAD_QUEUE_FLUSH) < 0) {
+			log_debug(knet_h, KNET_SUB_HANDLE, "Unable to request queue flushing for RX thread");
+		}
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	/*
+	 * when disabling data forward, we need to give time to TX and RX
+	 * to flush the queues.
+	 *
+	 * the TX thread is the main leader here. When there is no more
+	 * data in the TX queue, we will also close traffic for RX.
+	 */
+	if (!enabled) {
+		/*
+		 * this usleep might be unnecessary, but wait_all_threads_flush_queue
+		 * adds extra locking delay.
+		 *
+		 * allow all threads to run free without extra locking interference
+		 * and then we switch to a more active wait in case the scheduler
+		 * has decided to delay one thread or another
+		 */
+		usleep(knet_h->threads_timer_res * 2);
+		wait_all_threads_flush_queue(knet_h);
+
+		/*
+		 * all threads have done flushing the queue, we can stop data forwarding
+		 */
+		savederrno = get_global_wrlock(knet_h);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+				strerror(savederrno));
+			errno = savederrno;
+			return -1;
+		}
+		knet_h->enabled = enabled;
+		log_debug(knet_h, KNET_SUB_HANDLE, "Data forwarding is disabled");
+		pthread_rwlock_unlock(&knet_h->global_rwlock);
+	}
 
 	errno = 0;
 	return 0;

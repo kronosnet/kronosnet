@@ -251,6 +251,17 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
+	if (knet_handle_setfwd(knet_h, 0) < 0) {
+		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
 		printf("Error waiting for packet: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
@@ -317,6 +328,17 @@ static void test(void)
 
 	printf("Test knet_send with only localhost\n");
 
+	if (knet_handle_setfwd(knet_h, 1) < 0) {
+		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_handle_enable_filter(knet_h, NULL, dhost_filter) < 0) {
 		printf("knet_handle_enable_filter failed: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
@@ -351,6 +373,17 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
+
+	if (knet_handle_setfwd(knet_h, 0) < 0) {
+		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
 		printf("Error waiting for packet: %s\n", strerror(errno));
