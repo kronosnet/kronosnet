@@ -1034,7 +1034,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 
 exit_error:
 	if (err) {
-		if (info->on_listener_epoll) {
+		if ((info) && (info->on_listener_epoll)) {
 			epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, listen_sock, &ev);
 		}
 		check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
