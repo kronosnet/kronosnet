@@ -303,7 +303,9 @@ int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 			/* Don't hold onto the lock while sleeping */
 			pthread_rwlock_unlock(&knet_h->global_rwlock);
 			usleep(knet_h->threads_timer_res / 16);
-			pthread_rwlock_rdlock(&knet_h->global_rwlock);
+			if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
+				log_warn(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to get read lock, results might be unpredictable!");
+			}
 			return 1;
 		}
 		return -1;
@@ -409,7 +411,9 @@ int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 	/* Don't hold onto the lock while sleeping */
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	usleep(knet_h->threads_timer_res / 2);
-	pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (pthread_rwlock_rdlock(&knet_h->global_rwlock) != 0) {
+		log_warn(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to get read lock, results might be unpredictable!");
+	}
 	return 0;
 }
 
