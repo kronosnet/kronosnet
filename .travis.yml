@@ -1,0 +1,62 @@
+sudo: false
+
+language: c
+
+compiler:
+  - gcc
+
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "UzfmWmjTx8Vq4DBlcbvXiEqWfDoPkoQ63dYgWrdlpvp+JTCb+XYMa/KAt0v8+U2IhixudI6Vuq5ztGFqFL8jnNFHOqfjIqTtdxi5Hen8vRymyqar963HOOhlXQ9+XN6+IztqmJx7jVI26O7m+Pt+CTzhaz8u2eh3yTYq6pIQ0Cs="
+
+git:
+  depth: false
+
+before_install:
+  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  - ./autogen.sh
+
+script: if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then ./configure && make ; fi
+
+branches:
+  only:
+    - coverity_scan
+
+addons:
+  coverity_scan:
+    project:
+      name: "kronosnet/kronosnet"
+      description: "Kronosnet, often referred to as knet, is a network abstraction layer designed for High Availability use cases, where redundancy, security, fault tolerance and fast fail-over are the core requirements of your application."
+    notification_email: fdinitto@redhat.com
+    build_command_prepend: "./configure"
+    build_command: "make"
+    branch_pattern: coverity_scan
+  apt:
+    packages:
+      - build-essential
+      - libtool-bin
+      - make
+      - git
+      - gcc
+      - clang
+      - autoconf
+      - autotools-dev
+      - libtool
+      - libnss3-dev
+      - libnspr4-dev
+      - libssl-dev
+      - pkg-config
+      - zlib1g-dev
+      - liblz4-dev
+      - liblzo2-dev
+      - liblzma-dev
+      - libbz2-dev
+      - libsctp-dev
+      - libqb-dev
+      - libxml2-dev
+      - doxygen
+      - libzstd-dev
+      - libnl-3-dev
+      - libnl-route-3-dev
