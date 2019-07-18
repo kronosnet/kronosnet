@@ -611,6 +611,13 @@ static void _handle_connected_sctp_errors(knet_handle_t knet_h)
 		return;
 	}
 
+	/*
+	 * revalidate sockfd
+	 */
+	if ((sockfd < 0) || (sockfd >= KNET_MAX_FDS)) {
+		return;
+	}
+
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Processing connected error on socket: %d", sockfd);
 
 	info = knet_h->knet_transport_fd_tracker[sockfd].data;
@@ -836,6 +843,13 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 
 	if (_is_valid_fd(knet_h, sockfd) < 1) {
 		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Received stray notification for listen socket fd error");
+		return;
+	}
+
+	/*
+	 * revalidate sockfd
+	 */
+	if ((sockfd < 0) || (sockfd >= KNET_MAX_FDS)) {
 		return;
 	}
 
