@@ -104,7 +104,7 @@ static void destroy_iface(nozzle_t nozzle)
 	if (!nozzle)
 		return;
 
-	if (nozzle->fd)
+	if (nozzle->fd >= 0)
 		close(nozzle->fd);
 
 #ifdef KNET_BSD
