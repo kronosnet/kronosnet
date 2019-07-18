@@ -252,7 +252,8 @@ static int _set_ip(nozzle_t nozzle,
 	addr = rtnl_addr_alloc();
 	if (!addr) {
 		errno = ENOMEM;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	if (rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache) < 0) {
