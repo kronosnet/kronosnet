@@ -811,12 +811,14 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 
 exit_error:
 	if (err) {
-		if ((i >= 0) || (i < MAX_ACCEPTED_SOCKS)) {
+		if ((i >= 0) && (i < MAX_ACCEPTED_SOCKS)) {
 			info->accepted_socks[i] = -1;
 		}
 		_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL);
 		free(accept_info);
-		close(new_fd);
+		if (new_fd >= 0) {
+			close(new_fd);
+		}
 	}
 	errno = savederrno;
 	return;
@@ -1205,7 +1207,7 @@ int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_li
 exit_error:
 	if (err) {
 		if (info) {
-			if (info->connect_sock) {
+			if (info->connect_sock >= 0) {
 				close(info->connect_sock);
 			}
 			if (info->listener) {
