@@ -32,7 +32,7 @@
  * Always add new items before the last NULL.
  */
 
-static compress_model_t compress_modules_cmds[] = {
+static compress_model_t compress_modules_cmds[KNET_MAX_COMPRESS_METHODS + 1] = {
 	{ "none" , 0, 0, 0, NULL },
 	{ "zlib" , 1, WITH_COMPRESS_ZLIB , 0, NULL },
 	{ "lz4"  , 2, WITH_COMPRESS_LZ4  , 0, NULL },
@@ -41,7 +41,7 @@ static compress_model_t compress_modules_cmds[] = {
 	{ "lzma" , 5, WITH_COMPRESS_LZMA , 0, NULL },
 	{ "bzip2", 6, WITH_COMPRESS_BZIP2, 0, NULL },
 	{ "zstd" , 7, WITH_COMPRESS_ZSTD, 0, NULL },
-	{ NULL, 255, 0, 0, NULL }
+	{ NULL, KNET_MAX_COMPRESS_METHODS, 0, 0, NULL }
 };
 
 static int max_model = 0;
@@ -387,8 +387,8 @@ void compress_fini(
 		return;
 	}
 
-	while (compress_modules_cmds[idx].model_name != NULL) {
-		if ((idx < KNET_MAX_COMPRESS_METHODS) && /* check idx first so we don't read bad data */
+	while (idx < KNET_MAX_COMPRESS_METHODS) {
+		if ((compress_modules_cmds[idx].model_name != NULL) &&
 		    (compress_modules_cmds[idx].built_in == 1) &&
 		    (compress_modules_cmds[idx].loaded == 1) &&
 		    (compress_modules_cmds[idx].model_id > 0) &&
