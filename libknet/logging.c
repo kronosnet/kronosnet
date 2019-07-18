@@ -20,7 +20,7 @@
 #include "logging.h"
 #include "threads_common.h"
 
-static struct pretty_names subsystem_names[] =
+static struct pretty_names subsystem_names[KNET_MAX_SUBSYSTEMS] =
 {
 	{ "common", KNET_SUB_COMMON },
 	{ "handle", KNET_SUB_HANDLE },
@@ -99,7 +99,7 @@ static int is_valid_subsystem(uint8_t subsystem)
 	return -1;
 }
 
-static struct pretty_names loglevel_names[] =
+static struct pretty_names loglevel_names[KNET_LOG_DEBUG + 1] =
 {
 	{ "ERROR", KNET_LOG_ERR },
 	{ "WARNING", KNET_LOG_WARN },
