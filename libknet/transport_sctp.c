@@ -1037,8 +1037,8 @@ exit_error:
 		if ((info) && (info->on_listener_epoll)) {
 			epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, listen_sock, &ev);
 		}
-		check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
 		if (listen_sock >= 0) {
+			check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
 			close(listen_sock);
 		}
 		if (info) {
