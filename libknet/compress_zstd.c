@@ -72,6 +72,8 @@ static int zstd_init(
 		}
 		memset(zstd_ctx, 0, sizeof(struct zstd_ctx));
 
+		knet_h->compress_int_data[method_idx] = zstd_ctx;
+
 		zstd_ctx->cctx = ZSTD_createCCtx();
 		if (!zstd_ctx->cctx) {
 			log_err(knet_h, KNET_SUB_ZSTDCOMP, "Unable to create compression context");
@@ -85,8 +87,6 @@ static int zstd_init(
 			err = -1;
 			goto out_err;
 		}
-
-		knet_h->compress_int_data[method_idx] = zstd_ctx;
 	}
 
 out_err:
