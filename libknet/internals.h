@@ -93,8 +93,8 @@ struct knet_host_defrag_buf {
 	uint8_t frag_recv;		/* how many frags did we receive */
 	uint8_t frag_map[PCKT_FRAG_MAX];/* bitmap of what we received? */
 	uint8_t	last_first;		/* special case if we receive the last fragment first */
-	uint16_t frag_size;		/* normal frag size (not the last one) */
-	uint16_t last_frag_size;	/* the last fragment might not be aligned with MTU size */
+	ssize_t frag_size;		/* normal frag size (not the last one) */
+	ssize_t last_frag_size;		/* the last fragment might not be aligned with MTU size */
 	struct timespec last_update;	/* keep time of the last pckt */
 };
 
