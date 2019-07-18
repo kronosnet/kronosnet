@@ -67,10 +67,13 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 	dlerror();
 
 	ret = dlopen(libname, RTLD_NOW | RTLD_GLOBAL | extra_flags);
-	error = dlerror();
-	if (error != NULL) {
-		log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: %s",
-			libname, error);
+	if (!ret) {
+		error = dlerror();
+		if (error) {
+			log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: %s", libname, error);
+		} else {
+			log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: unknown error", libname);
+		}
 		errno = EAGAIN;
 		return NULL;
 	}
