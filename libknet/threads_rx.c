@@ -813,11 +813,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 
 						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
 						memset(src_port, 0, KNET_MAX_PORT_LEN);
-						knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
-							       src_ipaddr, KNET_MAX_HOST_LEN,
-							       src_port, KNET_MAX_PORT_LEN);
+						if (knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
+								   src_ipaddr, KNET_MAX_HOST_LEN,
+								   src_port, KNET_MAX_PORT_LEN) < 0) {
 
-						log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+							log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+						} else {
+							log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+						}
 						/*
 						 * continue processing the other packets
 						 */
