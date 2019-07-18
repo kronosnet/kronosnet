@@ -279,10 +279,15 @@ int ipcheck_addip(void *fd_tracker_match_entry_head, int index,
 			/*
 			 * find the end of the list or stop at "index"
 			 */
-			while ((match_entry->next) || (i < index)) {
+
+			while (match_entry->next) {
 				match_entry = match_entry->next;
+				if (i == index) {
+					break;
+				}
 				i++;
 			}
+
 			/*
 			 * insert if there are more entries in the list
 			 */
