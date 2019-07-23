@@ -47,7 +47,7 @@ dist_doc_DATA		= \
 all-local: $(SPEC)
 
 clean-local:
-	rm -f $(SPEC)
+	rm -rf $(SPEC) cov*
 
 distclean-local:
 	rm -f $(PACKAGE_NAME)-*.tar.* $(PACKAGE_NAME)-*.sha256* tag-*
