@@ -108,6 +108,7 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 				log_debug(knet_h, KNET_SUB_COMMON, "Unable to readlink %s: %s", path, strerror(errno));
 				goto out;
 			}
+			link[sizeof(link) - 1] = 0;
 			/*
 			 * symlink is relative to the directory
 			 */
