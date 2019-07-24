@@ -294,7 +294,11 @@ retry:
 			return -1;
 		}
 
-		if (shutdown_in_progress(knet_h)) {
+		/*
+		 * we cannot use shutdown_in_progress in here because
+		 * we already hold the read lock
+		 */
+		if (knet_h->fini_in_progress) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted. shutdown in progress");
 			return -1;
