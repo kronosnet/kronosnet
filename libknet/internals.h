@@ -33,7 +33,9 @@
 #define PCKT_FRAG_MAX UINT8_MAX
 #define PCKT_RX_BUFS  512
 
-#define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX
+#define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX + 1
+
+#define KNET_INTERNAL_DATA_CHANNEL KNET_DATAFD_MAX
 
 typedef void *knet_transport_link_t; /* per link transport handle */
 typedef void *knet_transport_t;      /* per knet_h transport handle */
@@ -154,7 +156,7 @@ struct knet_handle_stats_extra {
 struct knet_handle {
 	knet_node_id_t host_id;
 	unsigned int enabled:1;
-	struct knet_sock sockfd[KNET_DATAFD_MAX];
+	struct knet_sock sockfd[KNET_DATAFD_MAX + 1];
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int hostsockfd[2];
