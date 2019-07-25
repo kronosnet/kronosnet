@@ -235,7 +235,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 						local_link->status.stats.tx_data_retries++;
 						buf += err;
 						buflen -= err;
-						usleep(knet_h->threads_timer_res / 16);
 						goto local_retry;
 					}
 					if (err == buflen) {
