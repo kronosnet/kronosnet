@@ -104,7 +104,7 @@ static void destroy_iface(nozzle_t nozzle)
 	if (!nozzle)
 		return;
 
-	if (nozzle->fd)
+	if (nozzle->fd >= 0)
 		close(nozzle->fd);
 
 #ifdef KNET_BSD
@@ -252,7 +252,8 @@ static int _set_ip(nozzle_t nozzle,
 	addr = rtnl_addr_alloc();
 	if (!addr) {
 		errno = ENOMEM;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	if (rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache) < 0) {
@@ -507,7 +508,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		goto out_error;
 	}
 	strncpy(devname, curnozzle, IFNAMSIZ);
-	strncpy(nozzle->name, curnozzle, IFNAMSIZ);
+	memmove(nozzle->name, curnozzle, IFNAMSIZ - 1);
 #endif
 
 #ifdef KNET_LINUX
@@ -531,7 +532,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	}
 
 	strncpy(devname, ifname, IFNAMSIZ);
-	strncpy(nozzle->name, ifname, IFNAMSIZ);
+	memmove(nozzle->name, ifname, IFNAMSIZ - 1);
 #endif
 
 	nozzle->default_mtu = get_iface_mtu(nozzle);

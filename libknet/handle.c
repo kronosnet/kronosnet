@@ -234,14 +234,14 @@ static int _init_buffers(knet_handle_t knet_h)
 	}
 	memset(knet_h->pingbuf, 0, KNET_HEADER_PING_SIZE);
 
-	knet_h->pmtudbuf = malloc(KNET_PMTUD_SIZE_V6);
+	knet_h->pmtudbuf = malloc(KNET_PMTUD_SIZE_V6 + KNET_HEADER_ALL_SIZE);
 	if (!knet_h->pmtudbuf) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to allocate memory for pmtud buffer: %s",
 			strerror(savederrno));
 		goto exit_fail;
 	}
-	memset(knet_h->pmtudbuf, 0, KNET_PMTUD_SIZE_V6);
+	memset(knet_h->pmtudbuf, 0, KNET_PMTUD_SIZE_V6 + KNET_HEADER_ALL_SIZE);
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		bufsize = ceil((float)KNET_MAX_PACKET_SIZE / (i + 1)) + KNET_HEADER_ALL_SIZE + KNET_DATABUFSIZE_CRYPT_PAD;

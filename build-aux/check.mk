@@ -26,3 +26,21 @@ if HAS_VALGRIND
 else
 	@echo valgrind not available on this platform
 endif
+
+check-covscan:
+if HAS_COVBUILD
+	rm -rf $(abs_top_builddir)/cov*
+	$(MAKE) -C $(abs_top_builddir) clean
+	$(COVBUILD_EXEC) --dir=$(abs_top_builddir)/cov $(MAKE) -C $(abs_top_builddir)
+if HAS_COVANALYZE
+	$(COVANALYZE_EXEC) --dir=$(abs_top_builddir)/cov --wait-for-license $(covoptions)
+if HAS_COVFORMATERRORS
+	$(COVFORMATERRORS_EXEC) --dir=$(abs_top_builddir)/cov --emacs-style > $(abs_top_builddir)/cov.output.txt
+	$(COVFORMATERRORS_EXEC) --dir=$(abs_top_builddir)/cov --html-output $(abs_top_builddir)/cov.html
+endif
+else
+	@echo directory $(abs_top_builddir)/cov ready to be uploaded to https://scan.coverity.com
+endif
+else
+	@echo cov-build not available on this platform
+endif

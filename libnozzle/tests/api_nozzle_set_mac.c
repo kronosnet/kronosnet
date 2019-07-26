@@ -34,7 +34,7 @@ static int test(void)
 	size_t size = IFNAMSIZ;
 	int err=0;
 	nozzle_t nozzle;
-	char *original_mac = NULL, *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
+	char *original_mac = NULL, *current_mac = NULL, *temp_mac = NULL;
 	struct ether_addr *orig_mac, *cur_mac, *tmp_mac;
 
 	printf("Testing set MAC\n");
@@ -96,8 +96,10 @@ static int test(void)
 		goto out_clean;
 	}
 
-	if (current_mac)
+	if (current_mac) {
 		free(current_mac);
+		current_mac = NULL;
+	}
 
 	if (nozzle_get_mac(nozzle, &current_mac) < 0) {
 		printf("Unable to get current MAC address.\n");
@@ -124,19 +126,13 @@ static int test(void)
 
 	printf("Pass NULL to set_mac (pass2)\n");
 	errno = 0;
-	if ((nozzle_set_mac(NULL, err_mac) >= 0) || (errno != EINVAL)) {
+	if ((nozzle_set_mac(NULL, current_mac) >= 0) || (errno != EINVAL)) {
 		printf("Something is wrong in nozzle_set_mac sanity checks\n");
 		err = -1;
 		goto out_clean;
 	}
 
 out_clean:
-	if (err_mac) {
-		printf("Something managed to set err_mac!\n");
-		err = -1;
-		free(err_mac);
-	}
-
 	if (current_mac)
 		free(current_mac);
 	if (temp_mac)

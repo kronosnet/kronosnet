@@ -33,8 +33,12 @@ static int test(void)
 	}
 
 	device_name_tmp = nozzle_get_name_by_handle(nozzle);
-	if ((!device_name_tmp) && (errno != ENOENT)) {
-		printf("Unable to get name by handle\n");
+	if (!device_name_tmp) {
+		if (errno != ENOENT) {
+			printf("Unable to get name by handle\n");
+		} else {
+			printf("received incorrect errno!\n");
+		}
 		err = -1;
 		goto out_clean;
 	}

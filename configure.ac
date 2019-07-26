@@ -85,6 +85,15 @@ PKG_PROG_PKG_CONFIG
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
+AC_CHECK_PROGS([COVBUILD_EXEC], [cov-build])
+AM_CONDITIONAL([HAS_COVBUILD], [test x$COVBUILD_EXEC != "x"])
+
+AC_CHECK_PROGS([COVANALYZE_EXEC], [cov-analyze])
+AM_CONDITIONAL([HAS_COVANALYZE], [test x$COVANALYZE_EXEC != "x"])
+
+AC_CHECK_PROGS([COVFORMATERRORS_EXEC], [cov-format-errors])
+AM_CONDITIONAL([HAS_COVFORMATERRORS], [test x$COVFORMATERRORS_EXEC != "x"])
+
 # KNET_OPTION_DEFINES(stem,type,detection code)
 # stem: enters name of option, Automake conditional and preprocessor define
 # type: compress or crypto, determines where the default comes from
