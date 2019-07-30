@@ -151,8 +151,6 @@ int crypto_init(
 		goto out;
 	}
 
-	log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
-
 out:
 	if (!err) {
 		knet_h->crypto_instance = new;
@@ -160,6 +158,8 @@ out:
 		knet_h->sec_block_size = new->sec_block_size;
 		knet_h->sec_hash_size = new->sec_hash_size;
 		knet_h->sec_salt_size = new->sec_salt_size;
+
+		log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
 
 		if (current) {
 			if (crypto_modules_cmds[current->model].ops->fini != NULL) {
