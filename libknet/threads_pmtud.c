@@ -91,6 +91,28 @@ restart:
 		failsafe++;
 	}
 
+	/*
+	 * unencrypted packet looks like:
+	 *
+	 * | ip | protocol | knet_header | unencrypted data                                  |
+	 * | onwire_len                                                                      |
+	 * | overhead_len  |
+	 *                 | data_len                                                        |
+	 *                               | app MTU                                           |
+	 *
+	 * encrypted packet looks like (not to scale):
+	 *
+	 * | ip | protocol | salt | crypto(knet_header | data)      | crypto_data_pad | hash |
+	 * | onwire_len                                                                      |
+	 * | overhead_len  |
+	 *                 | data_len                                                        |
+	 *                                             | app MTU    |
+	 *
+	 * knet_h->sec_block_size is >= 0 if encryption will pad the data
+	 * knet_h->sec_salt_size is >= 0 if encryption is enabled
+	 * knet_h->sec_hash_size is >= 0 if signing is enabled
+	 */
+
 	data_len = onwire_len - overhead_len;
 
 	if (knet_h->crypto_instance) {
