@@ -113,29 +113,68 @@ restart:
 	 * knet_h->sec_hash_size is >= 0 if signing is enabled
 	 */
 
+	/*
+	 * common to all packets
+	 */
 	data_len = onwire_len - overhead_len;
 
 	if (knet_h->crypto_instance) {
 
+realign:
 		if (knet_h->sec_block_size) {
+
+			/*
+			 * drop both salt and hash, that leaves only the crypto data and padding
+			 * we need to calculate the padding based on the real encrypted data.
+			 */
+			data_len = data_len - (knet_h->sec_salt_size + knet_h->sec_hash_size);
+
+			/*
+			 * if the crypto mechanism requires padding, calculate the padding
+			 * and add it back to data_len because that's what the crypto layer
+			 * would do.
+			 */
 			pad_len = knet_h->sec_block_size - (data_len % knet_h->sec_block_size);
+
+			/*
+			 * if are at the boundary, reset padding
+			 */
 			if (pad_len == knet_h->sec_block_size) {
 				pad_len = 0;
 			}
 			data_len = data_len + pad_len;
-		}
 
-		data_len = data_len + (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size);
-
-		if (knet_h->sec_block_size) {
+			/*
+			 * if our current data_len is higher than max_mtu_len
+			 * then we need to reduce by padding size (that is our
+			 * increment / decrement value)
+			 *
+			 * this generally happens only on the first PMTUd run
+			 */
 			while (data_len + overhead_len >= max_mtu_len) {
 				data_len = data_len - knet_h->sec_block_size;
 			}
+
+			/*
+			 * add both hash and salt size back, similar to padding above,
+			 * the crypto layer will add them to the data_len
+			 */
+			data_len = data_len + (knet_h->sec_salt_size + knet_h->sec_hash_size);
 		}
 
 		if (dst_link->last_bad_mtu) {
-			while (data_len + overhead_len >= dst_link->last_bad_mtu) {
-				data_len = data_len - (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size);
+			if (data_len + overhead_len >= dst_link->last_bad_mtu) {
+				/*
+				 * reduce data_len to something lower than last_bad_mtu, overhead_len
+				 * and sec_block_size (decrementing step) - 1 (granularity)
+				 */
+				data_len = dst_link->last_bad_mtu - overhead_len - knet_h->sec_block_size - 1;
+				if (knet_h->sec_block_size) {
+					/*
+					 * make sure that data_len is aligned to the sec_block_size boundary
+					 */
+					goto realign;
+				}
 			}
 		}
 
@@ -144,6 +183,10 @@ restart:
 			return -1;
 		}
 
+		/*
+		 * recalculate onwire_len based on crypto information
+		 * and place it in the PMTUd packet info
+		 */
 		onwire_len = data_len + overhead_len;
 		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 
