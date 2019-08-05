@@ -508,7 +508,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		goto out_error;
 	}
 	strncpy(devname, curnozzle, IFNAMSIZ);
-	memmove(nozzle->name, curnozzle, IFNAMSIZ - 1);
+	strncpy(nozzle->name, curnozzle, IFNAMSIZ);
 #endif
 
 #ifdef KNET_LINUX
@@ -532,7 +532,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	}
 
 	strncpy(devname, ifname, IFNAMSIZ);
-	memmove(nozzle->name, ifname, IFNAMSIZ - 1);
+	strncpy(nozzle->name, ifname, IFNAMSIZ);
 #endif
 
 	nozzle->default_mtu = get_iface_mtu(nozzle);
