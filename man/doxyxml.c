@@ -414,7 +414,7 @@ char *get_texttree(int *type, xmlNode *cur_node, char **returntext)
 
 		if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "para") == 0) {
 			tmp = get_text(this_tag, returntext);
-			strcat(buffer, tmp);
+			strncat(buffer, tmp, sizeof(buffer) - 1);
 			strcat(buffer, "\n");
 			free(tmp);
 		}
