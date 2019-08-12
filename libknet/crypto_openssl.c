@@ -566,11 +566,8 @@ static int opensslcrypto_init(
 	memmove(opensslcrypto_instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
 	opensslcrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
-	crypto_instance->sec_header_size = 0;
-
 	if (opensslcrypto_instance->crypto_hash_type) {
 		crypto_instance->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
-		crypto_instance->sec_header_size += crypto_instance->sec_hash_size;
 	}
 
 	if (opensslcrypto_instance->crypto_cipher_type) {
@@ -578,8 +575,6 @@ static int opensslcrypto_init(
 
 		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
 
-		crypto_instance->sec_header_size += (block_size * 2);
-		crypto_instance->sec_header_size += SALT_SIZE;
 		crypto_instance->sec_salt_size = SALT_SIZE;
 		crypto_instance->sec_block_size = block_size;
 	}
