@@ -38,6 +38,12 @@ int_checks		= \
 
 fun_checks		=
 
+# checks below need to be executed manually
+# or with a specifi environment
+
+long_run_checks		= \
+			  fun_pmtud_crypto_test
+
 benchmarks		= \
 			  knet_bench_test
 
@@ -45,6 +51,7 @@ noinst_PROGRAMS		= \
 			  api_knet_handle_new_limit_test \
 			  pckt_test \
 			  $(benchmarks) \
+			  $(long_run_checks) \
 			  $(check_PROGRAMS)
 
 noinst_SCRIPTS		= \
@@ -71,6 +78,7 @@ int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
 				../logging.c \
 				../netutils.c \
 				../threads_common.c \
+				../onwire.c \
 				../transports.c \
 				../transport_common.c \
 				../transport_loopback.c \
@@ -88,4 +96,9 @@ knet_bench_test_SOURCES	= knet_bench.c \
 			  ../logging.c \
 			  ../compat.c \
 			  ../transport_common.c \
-			  ../threads_common.c
+			  ../threads_common.c \
+			  ../onwire.c
+
+fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
+				test-common.c \
+				../onwire.c

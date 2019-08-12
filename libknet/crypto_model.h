@@ -14,13 +14,12 @@
 struct crypto_instance {
 	int	model;
 	void	*model_instance;
-	size_t	sec_header_size;
 	size_t	sec_block_size;
 	size_t	sec_hash_size;
 	size_t	sec_salt_size;
 };
 
-#define KNET_CRYPTO_MODEL_ABI 2
+#define KNET_CRYPTO_MODEL_ABI 3
 
 /*
  * see compress_model.h for explanation of the various lib related functions

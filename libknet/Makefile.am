@@ -36,6 +36,7 @@ sources			= \
 			  links_acl_loopback.c \
 			  logging.c \
 			  netutils.c \
+			  onwire.c \
 			  threads_common.c \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \

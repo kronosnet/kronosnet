@@ -265,7 +265,32 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		host->status.reachable = 1;
 		link->status.mtu = KNET_PMTUD_SIZE_V6;
 	} else {
-		link->status.mtu =  KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+		/*
+		 * calculate the minimum MTU that is safe to use,
+		 * based on RFCs and that each network device should
+		 * be able to support without any troubles
+		 */
+		if (link->dynamic == KNET_LINK_STATIC) {
+			/*
+			 * with static link we can be more precise than using
+			 * the generic calc_min_mtu()
+			 */
+			switch (link->dst_addr.ss_family) {
+				case AF_INET6:
+					link->status.mtu =  calc_max_data_outlen(knet_h, KNET_PMTUD_MIN_MTU_V6 - (KNET_PMTUD_OVERHEAD_V6 + link->proto_overhead));
+					break;
+				case AF_INET:
+					link->status.mtu =  calc_max_data_outlen(knet_h, KNET_PMTUD_MIN_MTU_V4 - (KNET_PMTUD_OVERHEAD_V4 + link->proto_overhead));
+					break;
+			}
+		} else {
+			/*
+			 * for dynamic links we start with the minimum MTU
+			 * possible and PMTUd will kick in immediately
+			 * after connection status is 1
+			 */
+			link->status.mtu =  calc_min_mtu(knet_h);
+		}
 		link->has_valid_mtu = 1;
 	}
 

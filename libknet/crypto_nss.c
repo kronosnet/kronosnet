@@ -801,10 +801,7 @@ static int nsscrypto_init(
 		goto out_err;
 	}
 
-	crypto_instance->sec_header_size = 0;
-
 	if (nsscrypto_instance->crypto_hash_type > 0) {
-		crypto_instance->sec_header_size += nsshash_len[nsscrypto_instance->crypto_hash_type];
 		crypto_instance->sec_hash_size = nsshash_len[nsscrypto_instance->crypto_hash_type];
 	}
 
@@ -821,8 +818,6 @@ static int nsscrypto_init(
 			}
 		}
 
-		crypto_instance->sec_header_size += (block_size * 2);
-		crypto_instance->sec_header_size += SALT_SIZE;
 		crypto_instance->sec_salt_size = SALT_SIZE;
 		crypto_instance->sec_block_size = block_size;
 	}
