@@ -36,8 +36,9 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	size_t app_mtu_len;		/* real data that we can send onwire */
 	ssize_t len;			/* len of what we were able to sendto onwire */
 
-	struct timespec ts;
-	unsigned long long pong_timeout_adj_tmp;
+	struct timespec ts, pmtud_crypto_start_ts, pmtud_crypto_stop_ts;
+	unsigned long long pong_timeout_adj_tmp, timediff;
+	int pmtud_crypto_reduce = 1;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
 
 	warn_once = 0;
@@ -243,6 +244,15 @@ retry:
 		}
 
 		/*
+		 * non fatal, we can wait the next round to reduce the
+		 * multiplier
+		 */
+		if (clock_gettime(CLOCK_MONOTONIC, &pmtud_crypto_start_ts) < 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));
+			pmtud_crypto_reduce = 0;
+		}
+
+		/*
 		 * set PMTUd reply timeout to match pong_timeout on a given link
 		 *
 		 * math: internally pong_timeout is expressed in microseconds, while
@@ -261,7 +271,7 @@ retry:
 			/*
 			 * crypto, under pressure, is a royal PITA
 			 */
-			pong_timeout_adj_tmp = dst_link->pong_timeout_adj * 2;
+			pong_timeout_adj_tmp = dst_link->pong_timeout_adj * dst_link->pmtud_crypto_timeout_multiplier;
 		} else {
 			pong_timeout_adj_tmp = dst_link->pong_timeout_adj;
 		}
@@ -295,6 +305,17 @@ retry:
 
 		if (ret) {
 			if (ret == ETIMEDOUT) {
+				if ((knet_h->crypto_instance) && (dst_link->pmtud_crypto_timeout_multiplier < KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MAX)) {
+					dst_link->pmtud_crypto_timeout_multiplier = dst_link->pmtud_crypto_timeout_multiplier * 2;
+					pmtud_crypto_reduce = 0;
+					log_debug(knet_h, KNET_SUB_PMTUD,
+							"Increasing PMTUd response timeout multiplier to (%u) for host %u link: %u",
+							dst_link->pmtud_crypto_timeout_multiplier,
+							dst_host->host_id,
+							dst_link->link_id);
+					pthread_mutex_unlock(&knet_h->pmtud_mutex);
+					goto restart;
+				}
 				if (!warn_once) {
 					log_warn(knet_h, KNET_SUB_PMTUD,
 							"possible MTU misconfiguration detected. "
@@ -320,6 +341,23 @@ retry:
 				}
 				mutex_retry_limit++;
 				goto restart;
+			}
+		}
+
+		if ((knet_h->crypto_instance) && (pmtud_crypto_reduce == 1) &&
+		    (dst_link->pmtud_crypto_timeout_multiplier > KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MIN)) {
+			if (!clock_gettime(CLOCK_MONOTONIC, &pmtud_crypto_stop_ts)) {
+				timespec_diff(pmtud_crypto_start_ts, pmtud_crypto_stop_ts, &timediff);
+				if (((pong_timeout_adj_tmp * 1000) / 2) > timediff) {
+					dst_link->pmtud_crypto_timeout_multiplier = dst_link->pmtud_crypto_timeout_multiplier / 2;
+					log_debug(knet_h, KNET_SUB_PMTUD,
+							"Decreasing PMTUd response timeout multiplier to (%u) for host %u link: %u",
+							dst_link->pmtud_crypto_timeout_multiplier,
+							dst_host->host_id,
+							dst_link->link_id);
+				}
+			} else {
+				log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));
 			}
 		}
 

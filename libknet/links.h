@@ -30,6 +30,16 @@
  */
 #define KNET_LINK_PONG_TIMEOUT_LAT_MUL	2
 
+/*
+ * under heavy load with crypto enabled, it takes much
+ * longer time to receive a response from the other node.
+ *
+ * 128 is somewhat arbitrary number but we want to set a limit
+ * and report failures after that.
+ */
+#define KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MIN	  2
+#define KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MAX	128
+
 int _link_updown(knet_handle_t knet_h, knet_node_id_t node_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected);
 

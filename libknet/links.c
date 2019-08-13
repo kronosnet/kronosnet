@@ -219,6 +219,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		}
 	}
 
+	link->pmtud_crypto_timeout_multiplier = KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MIN;
 	link->pong_count = KNET_LINK_DEFAULT_PONG_COUNT;
 	link->has_valid_mtu = 0;
 	link->ping_interval = KNET_LINK_DEFAULT_PING_INTERVAL * 1000; /* microseconds */

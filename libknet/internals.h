@@ -80,6 +80,7 @@ struct knet_link {
 	uint32_t last_bad_mtu;
 	uint32_t last_sent_mtu;
 	uint32_t last_recv_mtu;
+	uint32_t pmtud_crypto_timeout_multiplier;/* used by PMTUd to adjust timeouts on high loads */
 	uint8_t has_valid_mtu;
 };
 
