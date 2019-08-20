@@ -164,6 +164,7 @@ struct knet_handle {
 	int dst_link_handler_epollfd;
 	uint8_t use_access_lists; /* set to 0 for disable, 1 for enable */
 	unsigned int pmtud_interval;
+	unsigned int manual_mtu;
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
 	struct knet_host *host_head;
