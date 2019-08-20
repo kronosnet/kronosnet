@@ -38,6 +38,7 @@ api_checks		= \
 			  api_knet_handle_pmtud_getfreq_test \
 			  api_knet_handle_enable_pmtud_notify_test \
 			  api_knet_handle_pmtud_get_test \
+			  api_knet_handle_pmtud_set_test \
 			  api_knet_host_add_test \
 			  api_knet_host_remove_test \
 			  api_knet_host_set_name_test \
@@ -171,6 +172,9 @@ api_knet_handle_enable_pmtud_notify_test_SOURCES = api_knet_handle_enable_pmtud_
 						   test-common.c
 
 api_knet_handle_pmtud_get_test_SOURCES = api_knet_handle_pmtud_get.c \
+					 test-common.c
+
+api_knet_handle_pmtud_set_test_SOURCES = api_knet_handle_pmtud_set.c \
 					 test-common.c
 
 api_knet_host_add_test_SOURCES = api_knet_host_add.c \

@@ -22,6 +22,28 @@
 #include "threads_common.h"
 #include "threads_pmtud.h"
 
+static int _calculate_manual_mtu(knet_handle_t knet_h, struct knet_link *dst_link)
+{
+	size_t ipproto_overhead_len;	/* onwire packet overhead (protocol based) */
+
+	switch (dst_link->dst_addr.ss_family) {
+		case AF_INET6:
+			ipproto_overhead_len = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead;
+			break;
+		case AF_INET:
+			ipproto_overhead_len = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead;
+			break;
+		default:
+			log_debug(knet_h, KNET_SUB_PMTUD, "unknown protocol");
+			return 0;
+			break;
+	}
+
+	dst_link->status.mtu = calc_max_data_outlen(knet_h, knet_h->manual_mtu - ipproto_overhead_len);
+
+	return 1;
+}
+
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int err, ret, savederrno, mutex_retry_limit, failsafe, use_kernel_mtu, warn_once;
@@ -544,14 +566,24 @@ void *_handle_pmtud_link_thread(void *data)
 				     (dst_link->status.dynconnected != 1)))
 					continue;
 
-				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, force_run);
-				if (errno == EDEADLK) {
-					goto out_unlock;
-				}
-				if (link_has_mtu) {
-					have_mtu = 1;
-					if (dst_link->status.mtu < lower_mtu) {
-						lower_mtu = dst_link->status.mtu;
+				if (!knet_h->manual_mtu) {
+					link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, force_run);
+					if (errno == EDEADLK) {
+						goto out_unlock;
+					}
+					if (link_has_mtu) {
+						have_mtu = 1;
+						if (dst_link->status.mtu < lower_mtu) {
+							lower_mtu = dst_link->status.mtu;
+						}
+					}
+				} else {
+					link_has_mtu = _calculate_manual_mtu(knet_h, dst_link);
+					if (link_has_mtu) {
+						have_mtu = 1;
+						if (dst_link->status.mtu < lower_mtu) {
+							lower_mtu = dst_link->status.mtu;
+						}
 					}
 				}
 			}

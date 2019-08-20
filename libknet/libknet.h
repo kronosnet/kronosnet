@@ -664,6 +664,32 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 						unsigned int data_mtu));
 
 /**
+ * knet_handle_pmtud_set
+ *
+ * @brief Set the current interface MTU
+ *
+ * knet_h    - pointer to knet_handle_t
+ *
+ * iface_mtu - current interface MTU, value 0 to 65535. 0 will
+ *             re-enable automatic MTU discovery.
+ *             In a setup with multiple interfaces, please specify
+ *             the lowest MTU between the selected intefaces.
+ *             knet will automatically adjust this value for
+ *             all headers overhead and set the correct data_mtu.
+ *             data_mtu can be retrivied with knet_handle_pmtud_get(3)
+ *             or applications will receive a pmtud_nofity event
+ *             if enabled via knet_handle_enable_pmtud_notify(3).
+ *
+ * @return
+ * knet_handle_pmtud_set returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_pmtud_set(knet_handle_t knet_h,
+			  unsigned int iface_mtu);
+
+/**
  * knet_handle_pmtud_get
  *
  * @brief Get the current data MTU

@@ -1360,6 +1360,41 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 	return 0;
 }
 
+int knet_handle_pmtud_set(knet_handle_t knet_h,
+			  unsigned int iface_mtu)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (iface_mtu > KNET_PMTUD_SIZE_V4) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	log_info(knet_h, KNET_SUB_PMTUD, "MTU manually set to: %u", iface_mtu);
+
+	knet_h->manual_mtu = iface_mtu;
+
+	force_pmtud_run(knet_h, KNET_SUB_PMTUD, 0);
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
 int knet_handle_pmtud_get(knet_handle_t knet_h,
 			  unsigned int *data_mtu)
 {
