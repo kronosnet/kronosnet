@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "compat.h"
 #include "host.h"
@@ -274,6 +275,32 @@ exit_error:
 	return err;
 }
 
+static void _lock_sleep_relock(knet_handle_t knet_h)
+{
+	int i = 0;
+
+	/* Don't hold onto the lock while sleeping */
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	while (i < 5) {
+		usleep(KNET_THREADS_TIMERES / 16);
+		if (!pthread_rwlock_rdlock(&knet_h->global_rwlock)) {
+			/*
+			 * lock acquired, we can go out
+			 */
+			return;
+		} else {
+			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to get read lock!");
+			i++;
+		}
+	}
+	/*
+	 * time to crash! if we cannot re-acquire the lock
+	 * there is no easy way out of this one
+	 */
+	assert(0);
+}
+
 int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	sctp_connect_link_info_t *connect_info = knet_h->knet_transport_fd_tracker[sockfd].data;
@@ -300,10 +327,7 @@ int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 #ifdef DEBUG
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 #endif
-			/* Don't hold onto the lock while sleeping */
-			pthread_rwlock_unlock(&knet_h->global_rwlock);
-			usleep(KNET_THREADS_TIMERES / 16);
-			pthread_rwlock_rdlock(&knet_h->global_rwlock);
+			_lock_sleep_relock(knet_h);
 			return 1;
 		}
 		return -1;
@@ -406,10 +430,7 @@ int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 	 * Under RX pressure we need to give time to IPC to pick up the message
 	 */
 
-	/* Don't hold onto the lock while sleeping */
-	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	usleep(KNET_THREADS_TIMERES / 2);
-	pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	_lock_sleep_relock(knet_h);
 	return 0;
 }
 
