@@ -22,22 +22,45 @@
 #include "threads_common.h"
 #include "threads_pmtud.h"
 
+static int _calculate_manual_mtu(knet_handle_t knet_h, struct knet_link *dst_link)
+{
+	size_t ipproto_overhead_len;	/* onwire packet overhead (protocol based) */
+
+	switch (dst_link->dst_addr.ss_family) {
+		case AF_INET6:
+			ipproto_overhead_len = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead;
+			break;
+		case AF_INET:
+			ipproto_overhead_len = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead;
+			break;
+		default:
+			log_debug(knet_h, KNET_SUB_PMTUD, "unknown protocol");
+			return 0;
+			break;
+	}
+
+	dst_link->status.mtu = calc_max_data_outlen(knet_h, knet_h->manual_mtu - ipproto_overhead_len);
+
+	return 1;
+}
+
 static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
 	int err, ret, savederrno, mutex_retry_limit, failsafe, use_kernel_mtu, warn_once;
-	uint32_t kernel_mtu; /* record kernel_mtu from EMSGSIZE */
-	size_t onwire_len;   /* current packet onwire size */
-	size_t overhead_len; /* onwire packet overhead (protocol based) */
-	size_t max_mtu_len;  /* max mtu for protocol */
-	size_t data_len;     /* how much data we can send in the packet
-			      * generally would be onwire_len - overhead_len
-			      * needs to be adjusted for crypto
-			      */
-	size_t pad_len;	     /* crypto packet pad size, needs to move into crypto.c callbacks */
-	ssize_t len;	     /* len of what we were able to sendto onwire */
+	uint32_t kernel_mtu;		/* record kernel_mtu from EMSGSIZE */
+	size_t onwire_len;   		/* current packet onwire size */
+	size_t ipproto_overhead_len;	/* onwire packet overhead (protocol based) */
+	size_t max_mtu_len;		/* max mtu for protocol */
+	size_t data_len;		/* how much data we can send in the packet
+					 * generally would be onwire_len - ipproto_overhead_len
+					 * needs to be adjusted for crypto
+					 */
+	size_t app_mtu_len;		/* real data that we can send onwire */
+	ssize_t len;			/* len of what we were able to sendto onwire */
 
-	struct timespec ts;
-	unsigned long long pong_timeout_adj_tmp;
+	struct timespec ts, pmtud_crypto_start_ts, pmtud_crypto_stop_ts;
+	unsigned long long pong_timeout_adj_tmp, timediff;
+	int pmtud_crypto_reduce = 1;
 	unsigned char *outbuf = (unsigned char *)knet_h->pmtudbuf;
 
 	warn_once = 0;
@@ -45,26 +68,25 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	mutex_retry_limit = 0;
 	failsafe = 0;
 
-	dst_link->last_bad_mtu = 0;
-
 	knet_h->pmtudbuf->khp_pmtud_link = dst_link->link_id;
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
 			max_mtu_len = KNET_PMTUD_SIZE_V6;
-			overhead_len = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead;
-			dst_link->last_good_mtu = dst_link->last_ping_size + overhead_len;
+			ipproto_overhead_len = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead;
 			break;
 		case AF_INET:
 			max_mtu_len = KNET_PMTUD_SIZE_V4;
-			overhead_len = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead;
-			dst_link->last_good_mtu = dst_link->last_ping_size + overhead_len;
+			ipproto_overhead_len = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead;
 			break;
 		default:
 			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted, unknown protocol");
 			return -1;
 			break;
 	}
+
+	dst_link->last_bad_mtu = 0;
+	dst_link->last_good_mtu = dst_link->last_ping_size + ipproto_overhead_len;
 
 	/*
 	 * discovery starts from the top because kernel will
@@ -92,107 +114,39 @@ restart:
 	}
 
 	/*
-	 * unencrypted packet looks like:
-	 *
-	 * | ip | protocol | knet_header | unencrypted data                                  |
-	 * | onwire_len                                                                      |
-	 * | overhead_len  |
-	 *                 | data_len                                                        |
-	 *                               | app MTU                                           |
-	 *
-	 * encrypted packet looks like (not to scale):
-	 *
-	 * | ip | protocol | salt | crypto(knet_header | data)      | crypto_data_pad | hash |
-	 * | onwire_len                                                                      |
-	 * | overhead_len  |
-	 *                 | data_len                                                        |
-	 *                                             | app MTU    |
-	 *
-	 * knet_h->sec_block_size is >= 0 if encryption will pad the data
-	 * knet_h->sec_salt_size is >= 0 if encryption is enabled
-	 * knet_h->sec_hash_size is >= 0 if signing is enabled
+	 * common to all packets
 	 */
 
 	/*
-	 * common to all packets
+	 * calculate the application MTU based on current onwire_len minus ipproto_overhead_len
 	 */
-	data_len = onwire_len - overhead_len;
+
+	app_mtu_len = calc_max_data_outlen(knet_h, onwire_len - ipproto_overhead_len);
+
+	/*
+	 * recalculate onwire len back that might be different based
+	 * on data padding from crypto layer.
+	 */
+
+	onwire_len = calc_data_outlen(knet_h, app_mtu_len + KNET_HEADER_ALL_SIZE) + ipproto_overhead_len;
+
+	/*
+	 * calculate the size of what we need to send to sendto(2).
+	 * see also onwire.c for packet format explanation.
+	 */
+	data_len = app_mtu_len + knet_h->sec_hash_size + knet_h->sec_salt_size + KNET_HEADER_ALL_SIZE;
 
 	if (knet_h->crypto_instance) {
-
-realign:
-		if (knet_h->sec_block_size) {
-
-			/*
-			 * drop both salt and hash, that leaves only the crypto data and padding
-			 * we need to calculate the padding based on the real encrypted data.
-			 */
-			data_len = data_len - (knet_h->sec_salt_size + knet_h->sec_hash_size);
-
-			/*
-			 * if the crypto mechanism requires padding, calculate the padding
-			 * and add it back to data_len because that's what the crypto layer
-			 * would do.
-			 */
-			pad_len = knet_h->sec_block_size - (data_len % knet_h->sec_block_size);
-
-			/*
-			 * if are at the boundary, reset padding
-			 */
-			if (pad_len == knet_h->sec_block_size) {
-				pad_len = 0;
-			}
-			data_len = data_len + pad_len;
-
-			/*
-			 * if our current data_len is higher than max_mtu_len
-			 * then we need to reduce by padding size (that is our
-			 * increment / decrement value)
-			 *
-			 * this generally happens only on the first PMTUd run
-			 */
-			while (data_len + overhead_len >= max_mtu_len) {
-				data_len = data_len - knet_h->sec_block_size;
-			}
-
-			/*
-			 * add both hash and salt size back, similar to padding above,
-			 * the crypto layer will add them to the data_len
-			 */
-			data_len = data_len + (knet_h->sec_salt_size + knet_h->sec_hash_size);
-		}
-
-		if (dst_link->last_bad_mtu) {
-			if (data_len + overhead_len >= dst_link->last_bad_mtu) {
-				/*
-				 * reduce data_len to something lower than last_bad_mtu, overhead_len
-				 * and sec_block_size (decrementing step) - 1 (granularity)
-				 */
-				data_len = dst_link->last_bad_mtu - overhead_len - knet_h->sec_block_size - 1;
-				if (knet_h->sec_block_size) {
-					/*
-					 * make sure that data_len is aligned to the sec_block_size boundary
-					 */
-					goto realign;
-				}
-			}
-		}
-
-		if (data_len < (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size) + 1) {
+		if (data_len < (knet_h->sec_hash_size + knet_h->sec_salt_size) + 1) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Aborting PMTUD process: link mtu smaller than crypto header detected (link might have been disconnected)");
 			return -1;
 		}
 
-		/*
-		 * recalculate onwire_len based on crypto information
-		 * and place it in the PMTUd packet info
-		 */
-		onwire_len = data_len + overhead_len;
 		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 
 		if (crypto_encrypt_and_sign(knet_h,
 					    (const unsigned char *)knet_h->pmtudbuf,
-					    data_len - (knet_h->sec_hash_size + knet_h->sec_salt_size + knet_h->sec_block_size),
+					    data_len - (knet_h->sec_hash_size + knet_h->sec_salt_size),
 					    knet_h->pmtudbuf_crypt,
 					    (ssize_t *)&data_len) < 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to crypto pmtud packet");
@@ -201,11 +155,8 @@ realign:
 
 		outbuf = knet_h->pmtudbuf_crypt;
 		knet_h->stats_extra.tx_crypt_pmtu_packets++;
-
 	} else {
-
 		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
-
 	}
 
 	/* link has gone down, aborting pmtud */
@@ -315,6 +266,15 @@ retry:
 		}
 
 		/*
+		 * non fatal, we can wait the next round to reduce the
+		 * multiplier
+		 */
+		if (clock_gettime(CLOCK_MONOTONIC, &pmtud_crypto_start_ts) < 0) {
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));
+			pmtud_crypto_reduce = 0;
+		}
+
+		/*
 		 * set PMTUd reply timeout to match pong_timeout on a given link
 		 *
 		 * math: internally pong_timeout is expressed in microseconds, while
@@ -333,7 +293,7 @@ retry:
 			/*
 			 * crypto, under pressure, is a royal PITA
 			 */
-			pong_timeout_adj_tmp = dst_link->pong_timeout_adj * 2;
+			pong_timeout_adj_tmp = dst_link->pong_timeout_adj * dst_link->pmtud_crypto_timeout_multiplier;
 		} else {
 			pong_timeout_adj_tmp = dst_link->pong_timeout_adj;
 		}
@@ -371,6 +331,17 @@ retry:
 
 		if (ret) {
 			if (ret == ETIMEDOUT) {
+				if ((knet_h->crypto_instance) && (dst_link->pmtud_crypto_timeout_multiplier < KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MAX)) {
+					dst_link->pmtud_crypto_timeout_multiplier = dst_link->pmtud_crypto_timeout_multiplier * 2;
+					pmtud_crypto_reduce = 0;
+					log_debug(knet_h, KNET_SUB_PMTUD,
+							"Increasing PMTUd response timeout multiplier to (%u) for host %u link: %u",
+							dst_link->pmtud_crypto_timeout_multiplier,
+							dst_host->host_id,
+							dst_link->link_id);
+					pthread_mutex_unlock(&knet_h->pmtud_mutex);
+					goto restart;
+				}
 				if (!warn_once) {
 					log_warn(knet_h, KNET_SUB_PMTUD,
 							"possible MTU misconfiguration detected. "
@@ -399,6 +370,23 @@ retry:
 			}
 		}
 
+		if ((knet_h->crypto_instance) && (pmtud_crypto_reduce == 1) &&
+		    (dst_link->pmtud_crypto_timeout_multiplier > KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MIN)) {
+			if (!clock_gettime(CLOCK_MONOTONIC, &pmtud_crypto_stop_ts)) {
+				timespec_diff(pmtud_crypto_start_ts, pmtud_crypto_stop_ts, &timediff);
+				if (((pong_timeout_adj_tmp * 1000) / 2) > timediff) {
+					dst_link->pmtud_crypto_timeout_multiplier = dst_link->pmtud_crypto_timeout_multiplier / 2;
+					log_debug(knet_h, KNET_SUB_PMTUD,
+							"Decreasing PMTUd response timeout multiplier to (%u) for host %u link: %u",
+							dst_link->pmtud_crypto_timeout_multiplier,
+							dst_host->host_id,
+							dst_link->link_id);
+				}
+			} else {
+				log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));
+			}
+		}
+
 		if ((dst_link->last_recv_mtu != onwire_len) || (ret)) {
 			dst_link->last_bad_mtu = onwire_len;
 		} else {
@@ -421,7 +409,7 @@ retry:
 				/*
 				 * account for IP overhead, knet headers and crypto in PMTU calculation
 				 */
-				dst_link->status.mtu = onwire_len - dst_link->status.proto_overhead;
+				dst_link->status.mtu = calc_max_data_outlen(knet_h, onwire_len - ipproto_overhead_len);
 				pthread_mutex_unlock(&knet_h->pmtud_mutex);
 				return 0;
 			}
@@ -441,7 +429,7 @@ retry:
 	goto restart;
 }
 
-static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, unsigned int *min_mtu, int force_run)
+static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, int force_run)
 {
 	uint8_t saved_valid_pmtud;
 	unsigned int saved_pmtud;
@@ -459,17 +447,22 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 		timespec_diff(dst_link->pmtud_last, clock_now, &diff_pmtud);
 
 		if (diff_pmtud < interval) {
-			*min_mtu = dst_link->status.mtu;
 			return dst_link->has_valid_mtu;
 		}
 	}
 
+	/*
+	 * status.proto_overhead should include all IP/(UDP|SCTP)/knet headers
+	 *
+	 * please note that it is not the same as link->proto_overhead that
+	 * includes only either UDP or SCTP (at the moment) overhead.
+	 */
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
-			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
+			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V6 + dst_link->proto_overhead + KNET_HEADER_ALL_SIZE + knet_h->sec_hash_size + knet_h->sec_salt_size;
 			break;
 		case AF_INET:
-			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead + KNET_HEADER_ALL_SIZE + knet_h->sec_header_size;
+			dst_link->status.proto_overhead = KNET_PMTUD_OVERHEAD_V4 + dst_link->proto_overhead + KNET_HEADER_ALL_SIZE + knet_h->sec_hash_size + knet_h->sec_salt_size;
 			break;
 	}
 
@@ -490,26 +483,6 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 		dst_link->has_valid_mtu = 0;
 	} else {
 		dst_link->has_valid_mtu = 1;
-		switch (dst_link->dst_addr.ss_family) {
-			case AF_INET6:
-				if (((dst_link->status.mtu + dst_link->status.proto_overhead) < KNET_PMTUD_MIN_MTU_V6) ||
-				    ((dst_link->status.mtu + dst_link->status.proto_overhead) > KNET_PMTUD_SIZE_V6)) {
-					log_debug(knet_h, KNET_SUB_PMTUD,
-						  "PMTUD detected an IPv6 MTU out of bound value (%u) for host: %u link: %u.",
-						  dst_link->status.mtu + dst_link->status.proto_overhead, dst_host->host_id, dst_link->link_id);
-					dst_link->has_valid_mtu = 0;
-				}
-				break;
-			case AF_INET:
-				if (((dst_link->status.mtu + dst_link->status.proto_overhead) < KNET_PMTUD_MIN_MTU_V4) ||
-				    ((dst_link->status.mtu + dst_link->status.proto_overhead) > KNET_PMTUD_SIZE_V4)) {
-					log_debug(knet_h, KNET_SUB_PMTUD,
-						  "PMTUD detected an IPv4 MTU out of bound value (%u) for host: %u link: %u.",
-						  dst_link->status.mtu + dst_link->status.proto_overhead, dst_host->host_id, dst_link->link_id);
-					dst_link->has_valid_mtu = 0;
-				}
-				break;
-		}
 		if (dst_link->has_valid_mtu) {
 			if ((saved_pmtud) && (saved_pmtud != dst_link->status.mtu)) {
 				log_info(knet_h, KNET_SUB_PMTUD, "PMTUD link change for host: %u link: %u from %u to %u",
@@ -517,9 +490,6 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 			}
 			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD completed for host: %u link: %u current link mtu: %u",
 				  dst_host->host_id, dst_link->link_id, dst_link->status.mtu);
-			if (dst_link->status.mtu < *min_mtu) {
-				*min_mtu = dst_link->status.mtu;
-			}
 
 			/*
 			 * set pmtud_last, if we can, after we are done with the PMTUd process
@@ -545,14 +515,14 @@ void *_handle_pmtud_link_thread(void *data)
 	struct knet_host *dst_host;
 	struct knet_link *dst_link;
 	int link_idx;
-	unsigned int min_mtu, have_mtu;
+	unsigned int have_mtu;
 	unsigned int lower_mtu;
 	int link_has_mtu;
 	int force_run = 0;
 
 	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_STARTED);
 
-	knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+	knet_h->data_mtu = calc_min_mtu(knet_h);
 
 	/* preparing pmtu buffer */
 	knet_h->pmtudbuf->kh_version = KNET_HEADER_VERSION;
@@ -582,7 +552,6 @@ void *_handle_pmtud_link_thread(void *data)
 		}
 
 		lower_mtu = KNET_PMTUD_SIZE_V4;
-		min_mtu = KNET_PMTUD_SIZE_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
 		have_mtu = 0;
 
 		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
@@ -597,14 +566,24 @@ void *_handle_pmtud_link_thread(void *data)
 				     (dst_link->status.dynconnected != 1)))
 					continue;
 
-				link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, &min_mtu, force_run);
-				if (errno == EDEADLK) {
-					goto out_unlock;
-				}
-				if (link_has_mtu) {
-					have_mtu = 1;
-					if (min_mtu < lower_mtu) {
-						lower_mtu = min_mtu;
+				if (!knet_h->manual_mtu) {
+					link_has_mtu = _handle_check_pmtud(knet_h, dst_host, dst_link, force_run);
+					if (errno == EDEADLK) {
+						goto out_unlock;
+					}
+					if (link_has_mtu) {
+						have_mtu = 1;
+						if (dst_link->status.mtu < lower_mtu) {
+							lower_mtu = dst_link->status.mtu;
+						}
+					}
+				} else {
+					link_has_mtu = _calculate_manual_mtu(knet_h, dst_link);
+					if (link_has_mtu) {
+						have_mtu = 1;
+						if (dst_link->status.mtu < lower_mtu) {
+							lower_mtu = dst_link->status.mtu;
+						}
 					}
 				}
 			}

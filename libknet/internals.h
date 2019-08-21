@@ -73,13 +73,16 @@ struct knet_link {
 	uint8_t received_pong;
 	struct timespec ping_last;
 	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
-	uint32_t proto_overhead;
+	uint32_t proto_overhead;		/* IP + UDP/SCTP overhead. NOT to be confused
+						   with stats.proto_overhead that includes also knet headers
+						   and crypto headers */
 	struct timespec pmtud_last;
 	uint32_t last_ping_size;
 	uint32_t last_good_mtu;
 	uint32_t last_bad_mtu;
 	uint32_t last_sent_mtu;
 	uint32_t last_recv_mtu;
+	uint32_t pmtud_crypto_timeout_multiplier;/* used by PMTUd to adjust timeouts on high loads */
 	uint8_t has_valid_mtu;
 };
 
@@ -163,6 +166,7 @@ struct knet_handle {
 	int dst_link_handler_epollfd;
 	uint8_t use_access_lists; /* set to 0 for disable, 1 for enable */
 	unsigned int pmtud_interval;
+	unsigned int manual_mtu;
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
 	struct knet_host *host_head;
@@ -201,7 +205,6 @@ struct knet_handle {
 	int pmtud_forcerun;
 	int pmtud_abort;
 	struct crypto_instance *crypto_instance;
-	size_t sec_header_size;
 	size_t sec_block_size;
 	size_t sec_hash_size;
 	size_t sec_salt_size;

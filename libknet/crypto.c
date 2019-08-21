@@ -154,12 +154,14 @@ int crypto_init(
 out:
 	if (!err) {
 		knet_h->crypto_instance = new;
-		knet_h->sec_header_size = new->sec_header_size;
 		knet_h->sec_block_size = new->sec_block_size;
 		knet_h->sec_hash_size = new->sec_hash_size;
 		knet_h->sec_salt_size = new->sec_salt_size;
 
-		log_debug(knet_h, KNET_SUB_CRYPTO, "security network overhead: %zu", knet_h->sec_header_size);
+		log_debug(knet_h, KNET_SUB_CRYPTO, "Hash size: %zu salt size: %zu block size: %zu",
+			  knet_h->sec_hash_size,
+			  knet_h->sec_salt_size,
+			  knet_h->sec_block_size);
 
 		if (current) {
 			if (crypto_modules_cmds[current->model].ops->fini != NULL) {
@@ -195,7 +197,6 @@ void crypto_fini(
 			crypto_modules_cmds[knet_h->crypto_instance->model].ops->fini(knet_h, knet_h->crypto_instance);
 		}
 		free(knet_h->crypto_instance);
-		knet_h->sec_header_size = 0;
 		knet_h->sec_block_size = 0;
 		knet_h->sec_hash_size = 0;
 		knet_h->sec_salt_size = 0;

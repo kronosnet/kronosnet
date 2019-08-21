@@ -223,7 +223,7 @@ void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu)
 {
 	if (reset_mtu) {
 		log_debug(knet_h, subsystem, "PMTUd has been reset to default");
-		knet_h->data_mtu = KNET_PMTUD_MIN_MTU_V4 - KNET_HEADER_ALL_SIZE - knet_h->sec_header_size;
+		knet_h->data_mtu = calc_min_mtu(knet_h);
 		if (knet_h->pmtud_notify_fn) {
 			knet_h->pmtud_notify_fn(knet_h->pmtud_notify_fn_private_data,
 						knet_h->data_mtu);
