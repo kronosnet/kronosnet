@@ -337,6 +337,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 									break;
 								} else {
 									knet_h->kernel_mtu = sock_err->ee_info;
+									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "detected kernel MTU: %u", knet_h->kernel_mtu);
 									pthread_mutex_unlock(&knet_h->kmtu_mutex);
 								}
 

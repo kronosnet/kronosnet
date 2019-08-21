@@ -18,7 +18,7 @@ EXTRA_DIST		= $(SYMFILE)
 SUBDIRS			= . tests
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libversion		= 3:0:2
+libversion		= 4:0:3
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
@@ -36,6 +36,7 @@ sources			= \
 			  links_acl_loopback.c \
 			  logging.c \
 			  netutils.c \
+			  onwire.c \
 			  threads_common.c \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \

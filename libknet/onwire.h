@@ -120,7 +120,9 @@ struct knet_header_payload_ping {
 #define KNET_PMTUD_SIZE_V4 65535
 #define KNET_PMTUD_SIZE_V6 KNET_PMTUD_SIZE_V4
 
-/* These two get the protocol-specific overheads added to them */
+/*
+ * IPv4/IPv6 header size
+ */
 #define KNET_PMTUD_OVERHEAD_V4 20
 #define KNET_PMTUD_OVERHEAD_V6 40
 
@@ -198,5 +200,9 @@ struct knet_header {
 #define KNET_HEADER_PING_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping))
 #define KNET_HEADER_PMTUD_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud))
 #define KNET_HEADER_DATA_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_data))
+
+size_t calc_data_outlen(knet_handle_t knet_h, size_t inlen);
+size_t calc_max_data_outlen(knet_handle_t knet_h, size_t inlen);
+size_t calc_min_mtu(knet_handle_t knet_h);
 
 #endif

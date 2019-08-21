@@ -13,13 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <inttypes.h>
 
 #include "libknet.h"
 
-#include "compress.h"
 #include "internals.h"
-#include "netutils.h"
 #include "test-common.h"
 
 static int private_data;
@@ -34,27 +31,26 @@ static void sock_notify(void *pvt_data,
 	return;
 }
 
-static void test(const char *model)
+static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
+	unsigned int iface_mtu = 0, data_mtu;
 	int datafd = 0;
 	int8_t channel = 0;
-	struct knet_handle_stats stats;
-	char send_buff[KNET_MAX_PACKET_SIZE];
-	char recv_buff[KNET_MAX_PACKET_SIZE];
-	ssize_t send_len = 0;
-	int recv_len = 0;
-	int savederrno;
 	struct sockaddr_storage lo;
-	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 
 	if (make_local_sockaddr(&lo, 0) < 0) {
 		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
 		exit(FAIL);
 	}
 
-	memset(send_buff, 0, sizeof(send_buff));
+	printf("Test knet_handle_pmtud_set incorrect knet_h\n");
+
+	if ((!knet_handle_pmtud_set(NULL, iface_mtu)) || (errno != EINVAL)) {
+		printf("knet_handle_pmtud_set accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		exit(FAIL);
+	}
 
 	setup_logpipes(logfds);
 
@@ -62,21 +58,15 @@ static void test(const char *model)
 
 	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_send with %s and valid data\n", model);
-
-	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
-	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
-	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha256", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
-	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+	iface_mtu = KNET_PMTUD_SIZE_V4 + 1;
+	printf("Test knet_handle_pmtud_set with wrong iface_mtu\n");
+	if ((!knet_handle_pmtud_set(knet_h, iface_mtu)) || (errno != EINVAL)) {
+		printf("knet_handle_pmtud_set accepted invalid data_mtu or returned incorrect error: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
 		exit(FAIL);
-        }
+	}
 
 	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
 		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
@@ -114,6 +104,15 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
+	if (knet_link_set_pong_count(knet_h, 1, 0, 1) < 0) {
+		printf("knet_link_set_pong_count failed: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
 		printf("knet_link_set_enable failed: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
@@ -124,18 +123,7 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (knet_handle_setfwd(knet_h, 1) < 0) {
-		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (wait_for_host(knet_h, 1, 10, logfds[0], stdout) < 0) {
+	if (wait_for_host(knet_h, 1, 4, logfds[0], stdout) < 0) {
 		printf("timeout waiting for host to be reachable");
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
@@ -146,33 +134,10 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);
-	if (send_len <= 0) {
-		printf("knet_send failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (send_len != sizeof(send_buff)) {
-		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
 	flush_logs(logfds[0], stdout);
 
-	if (knet_handle_setfwd(knet_h, 0) < 0) {
-		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+	if (knet_handle_pmtud_get(knet_h, &data_mtu) < 0) {
+		printf("knet_handle_pmtud_get failed error: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -182,8 +147,14 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
-		printf("Error waiting for packet: %s\n", strerror(errno));
+	/*
+	 * 28 = IP (20) + UDP (8)
+	 */
+	iface_mtu = data_mtu + 28 + KNET_HEADER_ALL_SIZE - 64;
+	printf("Test knet_handle_pmtud_set with iface_mtu %u\n", iface_mtu);
+
+	if (knet_handle_pmtud_set(knet_h, iface_mtu) < 0) {
+		printf("knet_handle_pmtud_set failed error: %s\n", strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -193,54 +164,51 @@ static void test(const char *model)
 		exit(FAIL);
 	}
 
-	recv_len = knet_recv(knet_h, recv_buff, KNET_MAX_PACKET_SIZE, channel);
-	savederrno = errno;
-	if (recv_len != send_len) {
-		printf("knet_recv received only %d bytes: %s (errno: %d)\n", recv_len, strerror(errno), errno);
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
-			printf("helgrind exception. this is normal due to possible timeouts\n");
-			exit(PASS);
-		}
-		exit(FAIL);
-	}
-
-	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
-		printf("recv and send buffers are different!\n");
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	/* A sanity check on the stats */
-	if (knet_handle_get_stats(knet_h, &stats, sizeof(stats)) < 0) {
-		printf("knet_handle_get_stats failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (stats.tx_crypt_packets >= 1 ||
-	    stats.rx_crypt_packets < 1) {
-		printf("stats look wrong: tx_packets: %" PRIu64 ", rx_packets: %" PRIu64 "\n",
-		       stats.tx_crypt_packets,
-		       stats.rx_crypt_packets);
-	}
-
+	/*
+	 * wait for PMTUd to pick up the change
+	 */
+	sleep(1);
 	flush_logs(logfds[0], stdout);
+
+	if (knet_h->data_mtu != data_mtu - 64) {
+		printf("knet_handle_pmtud_set failed to set the value\n");
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	printf("Test knet_handle_pmtud_set with iface_mtu 0\n");
+	if (knet_handle_pmtud_set(knet_h, 0) < 0) {
+		printf("knet_handle_pmtud_set failed error: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	/*
+	 * wait for PMTUd to pick up the change
+	 */
+	sleep(1);
+	flush_logs(logfds[0], stdout);
+
+	if (knet_h->data_mtu != data_mtu) {
+		printf("knet_handle_pmtud_set failed to redetect MTU\n");
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	knet_link_set_enable(knet_h, 1, 0, 0);
 	knet_link_clear_config(knet_h, 1, 0);
@@ -252,32 +220,7 @@ static void test(const char *model)
 
 int main(int argc, char *argv[])
 {
-	struct knet_crypto_info crypto_list[16];
-	size_t crypto_list_entries;
-	size_t i;
-
-#ifdef KNET_BSD
-	if (is_memcheck() || is_helgrind()) {
-		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
-		return SKIP;
-	}
-#endif
-
-	memset(crypto_list, 0, sizeof(crypto_list));
-
-	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
-		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
-	}
-
-	if (crypto_list_entries == 0) {
-		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
-	}
-
-	for (i=0; i < crypto_list_entries; i++) {
-		test(crypto_list[i].name);
-	}
+	test();
 
 	return PASS;
 }
