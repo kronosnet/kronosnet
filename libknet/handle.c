@@ -456,9 +456,24 @@ static void _close_epolls(knet_handle_t knet_h)
 static int _start_threads(knet_handle_t knet_h)
 {
 	int savederrno = 0;
+	pthread_attr_t attr;
 
 	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_REGISTERED);
-	savederrno = pthread_create(&knet_h->pmtud_link_handler_thread, 0,
+
+	savederrno = pthread_attr_init(&attr);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init pthread attributes: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+	savederrno = pthread_attr_setstacksize(&attr, KNET_THREAD_STACK_SIZE);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set stack size attribute: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
+	savederrno = pthread_create(&knet_h->pmtud_link_handler_thread, &attr,
 				    _handle_pmtud_link_thread, (void *) knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start pmtud link thread: %s",
@@ -467,7 +482,7 @@ static int _start_threads(knet_handle_t knet_h)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_REGISTERED);
-	savederrno = pthread_create(&knet_h->dst_link_handler_thread, 0,
+	savederrno = pthread_create(&knet_h->dst_link_handler_thread, &attr,
 				    _handle_dst_link_handler_thread, (void *) knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start dst cache thread: %s",
@@ -476,7 +491,7 @@ static int _start_threads(knet_handle_t knet_h)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_REGISTERED);
-	savederrno = pthread_create(&knet_h->send_to_links_thread, 0,
+	savederrno = pthread_create(&knet_h->send_to_links_thread, &attr,
 				    _handle_send_to_links_thread, (void *) knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start datafd to link thread: %s",
@@ -485,7 +500,7 @@ static int _start_threads(knet_handle_t knet_h)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_REGISTERED);
-	savederrno = pthread_create(&knet_h->recv_from_links_thread, 0,
+	savederrno = pthread_create(&knet_h->recv_from_links_thread, &attr,
 				    _handle_recv_from_links_thread, (void *) knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start link to datafd thread: %s",
@@ -494,12 +509,21 @@ static int _start_threads(knet_handle_t knet_h)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_REGISTERED);
-	savederrno = pthread_create(&knet_h->heartbt_thread, 0,
+	savederrno = pthread_create(&knet_h->heartbt_thread, &attr,
 				    _handle_heartbt_thread, (void *) knet_h);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to start heartbeat thread: %s",
 			strerror(savederrno));
 		goto exit_fail;
+	}
+
+	savederrno = pthread_attr_destroy(&attr);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to destroy pthread attributes: %s",
+			strerror(savederrno));
+		/*
+		 * Do not return error code. Error is not critical.
+		 */
 	}
 
 	return 0;
