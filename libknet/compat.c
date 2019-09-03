@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/time.h>
-#include <sys/errno.h>
+#include <errno.h>
 
 static int32_t
 _poll_to_filter_(int32_t event)

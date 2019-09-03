@@ -205,6 +205,10 @@ AC_SEARCH_LIBS([dlopen], [dl dld], , [AC_MSG_ERROR([dlopen not found])])
 AC_SUBST([dl_LIBS], [$LIBS])
 LIBS="$saved_LIBS"
 
+# Check RTLD_DI_ORIGIN (not decalred by musl. glibc has it as an enum so cannot use ifdef)
+AC_CHECK_DECL([RTLD_DI_ORIGIN], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN], 1,
+    [define when RTLD_DI_ORIGIN is declared])], ,[[#include <dlfcn.h>]])
+
 # OS detection
 
 AC_MSG_CHECKING([for os in ${host_os}])
