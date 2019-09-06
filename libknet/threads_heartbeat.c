@@ -177,7 +177,7 @@ static void _adjust_pong_timeouts(knet_handle_t knet_h)
 				dst_link->pong_timeout_backoff--;
 			}
 
-			dst_link->pong_timeout_adj = (dst_link->pong_timeout * dst_link->pong_timeout_backoff) + (dst_link->status.stats.latency_max * KNET_LINK_PONG_TIMEOUT_LAT_MUL);
+			dst_link->pong_timeout_adj = (dst_link->pong_timeout * dst_link->pong_timeout_backoff) + (dst_link->status.latency * KNET_LINK_PONG_TIMEOUT_LAT_MUL);
 		}
 	}
 
