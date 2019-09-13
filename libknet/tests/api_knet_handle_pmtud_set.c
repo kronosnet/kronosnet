@@ -196,7 +196,7 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	sleep(1);
+	sleep(2);
 	flush_logs(logfds[0], stdout);
 
 	if (knet_h->data_mtu != data_mtu) {
