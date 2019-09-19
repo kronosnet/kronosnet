@@ -43,13 +43,13 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 	if (connected) {
 		time(&link->status.stats.last_up_times[link->status.stats.last_up_time_index]);
 		link->status.stats.up_count++;
-		if (++link->status.stats.last_up_time_index > MAX_LINK_EVENTS) {
+		if (++link->status.stats.last_up_time_index >= MAX_LINK_EVENTS) {
 			link->status.stats.last_up_time_index = 0;
 		}
 	} else {
 		time(&link->status.stats.last_down_times[link->status.stats.last_down_time_index]);
 		link->status.stats.down_count++;
-		if (++link->status.stats.last_down_time_index > MAX_LINK_EVENTS) {
+		if (++link->status.stats.last_down_time_index >= MAX_LINK_EVENTS) {
 			link->status.stats.last_down_time_index = 0;
 		}
 	}
