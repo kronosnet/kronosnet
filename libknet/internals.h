@@ -33,7 +33,17 @@
 #define PCKT_FRAG_MAX UINT8_MAX
 #define PCKT_RX_BUFS  512
 
-#define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX
+#define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX + 1
+
+#define KNET_INTERNAL_DATA_CHANNEL KNET_DATAFD_MAX
+
+/*
+ * Size of threads stack. Value is choosen by experimenting, how much is needed
+ * to sucesfully finish test suite, and at the time of writing patch it was
+ * ~300KiB. To have some room for future enhancement it is increased
+ * by factor of 3 and rounded.
+ */
+#define KNET_THREAD_STACK_SIZE (1024 * 1024)
 
 typedef void *knet_transport_link_t; /* per link transport handle */
 typedef void *knet_transport_t;      /* per knet_h transport handle */
@@ -93,8 +103,8 @@ struct knet_host_defrag_buf {
 	uint8_t frag_recv;		/* how many frags did we receive */
 	uint8_t frag_map[PCKT_FRAG_MAX];/* bitmap of what we received? */
 	uint8_t	last_first;		/* special case if we receive the last fragment first */
-	uint16_t frag_size;		/* normal frag size (not the last one) */
-	uint16_t last_frag_size;	/* the last fragment might not be aligned with MTU size */
+	ssize_t frag_size;		/* normal frag size (not the last one) */
+	ssize_t last_frag_size;		/* the last fragment might not be aligned with MTU size */
 	struct timespec last_update;	/* keep time of the last pckt */
 };
 
@@ -154,7 +164,7 @@ struct knet_handle_stats_extra {
 struct knet_handle {
 	knet_node_id_t host_id;
 	unsigned int enabled:1;
-	struct knet_sock sockfd[KNET_DATAFD_MAX];
+	struct knet_sock sockfd[KNET_DATAFD_MAX + 1];
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
 	int hostsockfd[2];

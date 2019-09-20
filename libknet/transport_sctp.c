@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "compat.h"
 #include "host.h"
@@ -274,6 +275,32 @@ exit_error:
 	return err;
 }
 
+static void _lock_sleep_relock(knet_handle_t knet_h)
+{
+	int i = 0;
+
+	/* Don't hold onto the lock while sleeping */
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	while (i < 5) {
+		usleep(KNET_THREADS_TIMERES / 16);
+		if (!pthread_rwlock_rdlock(&knet_h->global_rwlock)) {
+			/*
+			 * lock acquired, we can go out
+			 */
+			return;
+		} else {
+			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to get read lock!");
+			i++;
+		}
+	}
+	/*
+	 * time to crash! if we cannot re-acquire the lock
+	 * there is no easy way out of this one
+	 */
+	assert(0);
+}
+
 int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	sctp_connect_link_info_t *connect_info = knet_h->knet_transport_fd_tracker[sockfd].data;
@@ -300,10 +327,7 @@ int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 #ifdef DEBUG
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 #endif
-			/* Don't hold onto the lock while sleeping */
-			pthread_rwlock_unlock(&knet_h->global_rwlock);
-			usleep(KNET_THREADS_TIMERES / 16);
-			pthread_rwlock_rdlock(&knet_h->global_rwlock);
+			_lock_sleep_relock(knet_h);
 			return 1;
 		}
 		return -1;
@@ -406,10 +430,7 @@ int sctp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 	 * Under RX pressure we need to give time to IPC to pick up the message
 	 */
 
-	/* Don't hold onto the lock while sleeping */
-	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	usleep(KNET_THREADS_TIMERES / 2);
-	pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	_lock_sleep_relock(knet_h);
 	return 0;
 }
 
@@ -611,6 +632,13 @@ static void _handle_connected_sctp_errors(knet_handle_t knet_h)
 		return;
 	}
 
+	/*
+	 * revalidate sockfd
+	 */
+	if ((sockfd < 0) || (sockfd >= KNET_MAX_FDS)) {
+		return;
+	}
+
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Processing connected error on socket: %d", sockfd);
 
 	info = knet_h->knet_transport_fd_tracker[sockfd].data;
@@ -804,12 +832,14 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 
 exit_error:
 	if (err) {
-		if ((i >= 0) || (i < MAX_ACCEPTED_SOCKS)) {
+		if ((i >= 0) && (i < MAX_ACCEPTED_SOCKS)) {
 			info->accepted_socks[i] = -1;
 		}
 		_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL);
 		free(accept_info);
-		close(new_fd);
+		if (new_fd >= 0) {
+			close(new_fd);
+		}
 	}
 	errno = savederrno;
 	return;
@@ -836,6 +866,13 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 
 	if (_is_valid_fd(knet_h, sockfd) < 1) {
 		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Received stray notification for listen socket fd error");
+		return;
+	}
+
+	/*
+	 * revalidate sockfd
+	 */
+	if ((sockfd < 0) || (sockfd >= KNET_MAX_FDS)) {
 		return;
 	}
 
@@ -1034,11 +1071,11 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 
 exit_error:
 	if (err) {
-		if (info->on_listener_epoll) {
+		if ((info) && (info->on_listener_epoll)) {
 			epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, listen_sock, &ev);
 		}
-		check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
 		if (listen_sock >= 0) {
+			check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
 			close(listen_sock);
 		}
 		if (info) {
@@ -1191,7 +1228,7 @@ int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_li
 exit_error:
 	if (err) {
 		if (info) {
-			if (info->connect_sock) {
+			if (info->connect_sock >= 0) {
 				close(info->connect_sock);
 			}
 			if (info->listener) {

@@ -15,6 +15,12 @@
 #include "logging.h"
 #include "compress_model.h"
 
+#ifdef Z_DEFAULT_COMPRESSION
+#define KNET_COMPRESS_DEFAULT Z_DEFAULT_COMPRESSION /* zlib default compression level from zlib.h */
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
+
 static int zlib_compress(
 	knet_handle_t knet_h,
 	const unsigned char *buf_in,
@@ -106,6 +112,11 @@ static int zlib_decompress(
 	return err;
 }
 
+static int zlib_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	NULL,
@@ -113,5 +124,6 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	zlib_compress,
-	zlib_decompress
+	zlib_decompress,
+	zlib_get_default_level
 };

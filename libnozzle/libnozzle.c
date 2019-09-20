@@ -104,7 +104,7 @@ static void destroy_iface(nozzle_t nozzle)
 	if (!nozzle)
 		return;
 
-	if (nozzle->fd)
+	if (nozzle->fd >= 0)
 		close(nozzle->fd);
 
 #ifdef KNET_BSD
@@ -252,7 +252,8 @@ static int _set_ip(nozzle_t nozzle,
 	addr = rtnl_addr_alloc();
 	if (!addr) {
 		errno = ENOMEM;
-		return -1;
+		err = -1;
+		goto out;
 	}
 
 	if (rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache) < 0) {
@@ -487,7 +488,23 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 #ifdef KNET_BSD
 	if (!strlen(devname)) {
+		/*
+		 * FreeBSD 13 kernel has changed how the tap module
+		 * works and tap0 cannot be removed from the system.
+		 * This means that tap0 settings are never reset to default
+		 * and nozzle cannot control the default state of the device
+		 * when taking over.
+		 * nozzle expects some parameters to be default when opening
+		 * a tap device (such as random mac address, default MTU, no
+		 * other attributes, etc.)
+		 *
+		 * For 13 and higher, simply skip tap0 as usable device.
+		 */
+#if __FreeBSD__ >= 13
+		for (i = 1; i < 256; i++) {
+#else
 		for (i = 0; i < 256; i++) {
+#endif
 			snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/tap%u", i);
 			nozzle->fd = open(curnozzle, O_RDWR);
 			savederrno = errno;
@@ -507,7 +524,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		goto out_error;
 	}
 	strncpy(devname, curnozzle, IFNAMSIZ);
-	strncpy(nozzle->name, curnozzle, IFNAMSIZ);
+	memmove(nozzle->name, curnozzle, IFNAMSIZ - 1);
 #endif
 
 #ifdef KNET_LINUX
@@ -531,7 +548,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	}
 
 	strncpy(devname, ifname, IFNAMSIZ);
-	strncpy(nozzle->name, ifname, IFNAMSIZ);
+	memmove(nozzle->name, ifname, IFNAMSIZ - 1);
 #endif
 
 	nozzle->default_mtu = get_iface_mtu(nozzle);

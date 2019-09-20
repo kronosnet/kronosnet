@@ -615,37 +615,42 @@ retry_pong:
 		timespec_diff(recvtime,
 				src_link->status.pong_last, &latency_last);
 
-		src_link->status.latency =
-			((src_link->status.latency * src_link->latency_exp) +
-			((latency_last / 1000llu) *
-				(src_link->latency_fix - src_link->latency_exp))) /
-					src_link->latency_fix;
+		if ((latency_last / 1000llu) > src_link->pong_timeout) {
+			log_debug(knet_h, KNET_SUB_RX,
+				  "Incoming pong packet from host: %u link: %u has higher latency than pong_timeout. Discarding",
+				  src_host->host_id, src_link->link_id);
+		} else {
+			src_link->status.latency =
+				((src_link->status.latency * src_link->latency_exp) +
+				((latency_last / 1000llu) *
+					(src_link->latency_fix - src_link->latency_exp))) /
+						src_link->latency_fix;
 
-		if (src_link->status.latency < src_link->pong_timeout_adj) {
-			if (!src_link->status.connected) {
-				if (src_link->received_pong >= src_link->pong_count) {
-					log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
-						 src_host->host_id, src_link->link_id);
-					_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
-				} else {
-					src_link->received_pong++;
-					log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received pong: %u",
-						  src_host->host_id, src_link->link_id, src_link->received_pong);
+			if (src_link->status.latency < src_link->pong_timeout_adj) {
+				if (!src_link->status.connected) {
+					if (src_link->received_pong >= src_link->pong_count) {
+						log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
+							 src_host->host_id, src_link->link_id);
+						_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
+					} else {
+						src_link->received_pong++;
+						log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received pong: %u",
+							  src_host->host_id, src_link->link_id, src_link->received_pong);
+					}
 				}
 			}
+			/* Calculate latency stats */
+			if (src_link->status.latency > src_link->status.stats.latency_max) {
+				src_link->status.stats.latency_max = src_link->status.latency;
+			}
+			if (src_link->status.latency < src_link->status.stats.latency_min) {
+				src_link->status.stats.latency_min = src_link->status.latency;
+			}
+			src_link->status.stats.latency_ave =
+				(src_link->status.stats.latency_ave * src_link->status.stats.latency_samples +
+				 src_link->status.latency) / (src_link->status.stats.latency_samples+1);
+			src_link->status.stats.latency_samples++;
 		}
-		/* Calculate latency stats */
-		if (src_link->status.latency > src_link->status.stats.latency_max) {
-			src_link->status.stats.latency_max = src_link->status.latency;
-		}
-		if (src_link->status.latency < src_link->status.stats.latency_min) {
-			src_link->status.stats.latency_min = src_link->status.latency;
-		}
-		src_link->status.stats.latency_ave =
-			(src_link->status.stats.latency_ave * src_link->status.stats.latency_samples +
-			 src_link->status.latency) / (src_link->status.stats.latency_samples+1);
-		src_link->status.stats.latency_samples++;
-
 		break;
 	case KNET_HEADER_TYPE_PMTUD:
 		src_link->status.stats.rx_pmtu_packets++;
@@ -813,11 +818,14 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 
 						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
 						memset(src_port, 0, KNET_MAX_PORT_LEN);
-						knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
-							       src_ipaddr, KNET_MAX_HOST_LEN,
-							       src_port, KNET_MAX_PORT_LEN);
+						if (knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
+								   src_ipaddr, KNET_MAX_HOST_LEN,
+								   src_port, KNET_MAX_PORT_LEN) < 0) {
 
-						log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+							log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+						} else {
+							log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+						}
 						/*
 						 * continue processing the other packets
 						 */

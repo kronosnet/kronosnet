@@ -235,7 +235,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 						local_link->status.stats.tx_data_retries++;
 						buf += err;
 						buflen -= err;
-						usleep(KNET_THREADS_TIMERES / 16);
 						goto local_retry;
 					}
 					if (err == buflen) {
@@ -646,19 +645,25 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 		docallback = 1;
 		memset(&ev, 0, sizeof(struct epoll_event));
 
-		if (epoll_ctl(knet_h->send_to_links_epollfd,
-			      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
-			log_err(knet_h, KNET_SUB_TX, "Unable to del datafd %d from linkfd epoll pool: %s",
-				knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
-		} else {
-			knet_h->sockfd[channel].has_error = 1;
+		if (channel != KNET_INTERNAL_DATA_CHANNEL) {
+			if (epoll_ctl(knet_h->send_to_links_epollfd,
+				      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
+				log_err(knet_h, KNET_SUB_TX, "Unable to del datafd %d from linkfd epoll pool: %s",
+					knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
+			} else {
+				knet_h->sockfd[channel].has_error = 1;
+			}
 		}
+		/*
+		 * TODO: add error handling for KNET_INTERNAL_DATA_CHANNEL
+		 *       once we add support for internal knet communication
+		 */
 	} else {
 		knet_h->recv_from_sock_buf->kh_type = type;
 		_parse_recv_from_sock(knet_h, inlen, channel, 0);
 	}
 
-	if (docallback) {
+	if ((docallback) && (channel != KNET_INTERNAL_DATA_CHANNEL)) {
 		knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
 				       knet_h->sockfd[channel].sockfd[0],
 				       channel,
@@ -752,7 +757,7 @@ void *_handle_send_to_links_thread(void *data)
 		for (i = 0; i < nev; i++) {
 			if (events[i].data.fd == knet_h->hostsockfd[0]) {
 				type = KNET_HEADER_TYPE_HOST_INFO;
-				channel = -1;
+				channel = KNET_INTERNAL_DATA_CHANNEL;
 			} else {
 				type = KNET_HEADER_TYPE_DATA;
 				for (channel = 0; channel < KNET_DATAFD_MAX; channel++) {

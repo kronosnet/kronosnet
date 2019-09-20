@@ -277,22 +277,24 @@ static void setup_knet(int argc, char *argv[])
 					printf("Error: -p can only be specified once\n");
 					exit(FAIL);
 				}
-				policystr = optarg;
-				if (!strcmp(policystr, "active")) {
-					policy = KNET_LINK_POLICY_ACTIVE;
-					policyfound = 1;
-				}
-				/*
-				 * we can't use rr because clangs can't compile
-				 * an array of 3 strings, one of which is 2 bytes long
-				 */
-				if (!strcmp(policystr, "round-robin")) {
-					policy = KNET_LINK_POLICY_RR;
-					policyfound = 1;
-				}
-				if (!strcmp(policystr, "passive")) {
-					policy = KNET_LINK_POLICY_PASSIVE;
-					policyfound = 1;
+				if (optarg) {
+					policystr = optarg;
+					if (!strcmp(policystr, "active")) {
+						policy = KNET_LINK_POLICY_ACTIVE;
+						policyfound = 1;
+					}
+					/*
+					 * we can't use rr because clangs can't compile
+					 * an array of 3 strings, one of which is 2 bytes long
+					 */
+					if (!strcmp(policystr, "round-robin")) {
+						policy = KNET_LINK_POLICY_RR;
+						policyfound = 1;
+					}
+					if (!strcmp(policystr, "passive")) {
+						policy = KNET_LINK_POLICY_PASSIVE;
+						policyfound = 1;
+					}
 				}
 				if (!policyfound) {
 					printf("Error: invalid policy %s specified. -p accepts active|passive|rr\n", policystr);
@@ -304,14 +306,16 @@ static void setup_knet(int argc, char *argv[])
 					printf("Error: -P can only be specified once\n");
 					exit(FAIL);
 				}
-				protostr = optarg;
-				if (!strcmp(protostr, "UDP")) {
-					protocol = KNET_TRANSPORT_UDP;
-					protofound = 1;
-				}
-				if (!strcmp(protostr, "SCTP")) {
-					protocol = KNET_TRANSPORT_SCTP;
-					protofound = 1;
+				if (optarg) {
+					protostr = optarg;
+					if (!strcmp(protostr, "UDP")) {
+						protocol = KNET_TRANSPORT_UDP;
+						protofound = 1;
+					}
+					if (!strcmp(protostr, "SCTP")) {
+						protocol = KNET_TRANSPORT_SCTP;
+						protofound = 1;
+					}
 				}
 				if (!protofound) {
 					printf("Error: invalid protocol %s specified. -P accepts udp|sctp\n", policystr);
@@ -380,17 +384,22 @@ static void setup_knet(int argc, char *argv[])
 				}
 				break;
 			case 'T':
-				if (!strcmp("ping", optarg)) {
-					test_type = TEST_PING;
-				}
-				if (!strcmp("ping_data", optarg)) {
-					test_type = TEST_PING_AND_DATA;
-				}
-				if (!strcmp("perf-by-size", optarg)) {
-					test_type = TEST_PERF_BY_SIZE;
-				}
-				if (!strcmp("perf-by-time", optarg)) {
-					test_type = TEST_PERF_BY_TIME;
+				if (optarg) {
+					if (!strcmp("ping", optarg)) {
+						test_type = TEST_PING;
+					}
+					if (!strcmp("ping_data", optarg)) {
+						test_type = TEST_PING_AND_DATA;
+					}
+					if (!strcmp("perf-by-size", optarg)) {
+						test_type = TEST_PERF_BY_SIZE;
+					}
+					if (!strcmp("perf-by-time", optarg)) {
+						test_type = TEST_PERF_BY_TIME;
+					}
+				} else {
+					printf("Error: -T requires an option\n");
+					exit(FAIL);
 				}
 				break;
 			case 'S':
@@ -957,15 +966,14 @@ static void display_stats(int level)
 	struct knet_link_stats total_link_stats;
 	knet_node_id_t host_list[KNET_MAX_HOST];
 	uint8_t link_list[KNET_MAX_LINK];
-	int res;
 	unsigned int i,j;
 	size_t num_hosts, num_links;
 
-	res = knet_handle_get_stats(knet_h, &handle_stats, sizeof(handle_stats));
-	if (res) {
+	if (knet_handle_get_stats(knet_h, &handle_stats, sizeof(handle_stats)) < 0) {
 		perror("[info]: failed to get knet handle stats");
 		return;
 	}
+
 	if (compresscfg || cryptocfg) {
 		printf("\n");
 		printf("[stat]: handle stats\n");
@@ -1005,8 +1013,7 @@ static void display_stats(int level)
 
 	memset(&total_link_stats, 0, sizeof(struct knet_link_stats));
 
-	res = knet_host_get_host_list(knet_h, host_list, &num_hosts);
-	if (res) {
+	if (knet_host_get_host_list(knet_h, host_list, &num_hosts) < 0) {
 		perror("[info]: cannot get host list for stats");
 		return;
 	}
@@ -1015,18 +1022,16 @@ static void display_stats(int level)
 	qsort(host_list, num_hosts, sizeof(uint16_t), node_compare);
 
 	for (j=0; j<num_hosts; j++) {
-		res = knet_link_get_link_list(knet_h, host_list[j], link_list, &num_links);
-		if (res) {
+		if (knet_link_get_link_list(knet_h, host_list[j], link_list, &num_links) < 0) {
 			perror("[info]: cannot get link list for stats");
 			return;
 		}
 
 		for (i=0; i < num_links; i++) {
-			res = knet_link_get_status(knet_h,
-						   host_list[j],
-						   link_list[i],
-						   &link_status,
-						   sizeof(link_status));
+			if (knet_link_get_status(knet_h, host_list[j], link_list[i], &link_status, sizeof(link_status)) < 0) {
+				perror("[info]: cannot get link status");
+				return;
+			}
 
 			total_link_stats.tx_data_packets += link_status.stats.tx_data_packets;
 			total_link_stats.rx_data_packets += link_status.stats.rx_data_packets;

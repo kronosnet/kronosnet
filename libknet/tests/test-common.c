@@ -217,21 +217,20 @@ void close_logpipes(int *logfds)
 
 void flush_logs(int logfd, FILE *std)
 {
-	while (1) {
-		struct knet_log_msg msg;
+	struct knet_log_msg msg;
+	int len;
 
-		for (size_t bytes_read = 0; bytes_read < sizeof(msg); ) {
-			int len = read(logfd, &msg + bytes_read,
-				       sizeof(msg) - bytes_read);
-			if (len <= 0) {
-				/*
-				 * clear errno to avoid incorrect propagation
-				 */
-				errno = 0;
-				return;
-			}
-			bytes_read += len;
+	while (1) {
+		len = read(logfd, &msg, sizeof(msg));
+		if (len != sizeof(msg)) {
+			/*
+			 * clear errno to avoid incorrect propagation
+			 */
+			errno = 0;
+			return;
 		}
+
+		msg.msg[sizeof(msg.msg) - 1] = 0;
 
 		fprintf(std, "[knet]: [%s] %s: %.*s\n",
 			knet_log_get_loglevel_name(msg.msglevel),

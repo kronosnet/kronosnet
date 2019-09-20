@@ -85,6 +85,15 @@ PKG_PROG_PKG_CONFIG
 AC_CHECK_PROGS([VALGRIND_EXEC], [valgrind])
 AM_CONDITIONAL([HAS_VALGRIND], [test x$VALGRIND_EXEC != "x"])
 
+AC_CHECK_PROGS([COVBUILD_EXEC], [cov-build])
+AM_CONDITIONAL([HAS_COVBUILD], [test x$COVBUILD_EXEC != "x"])
+
+AC_CHECK_PROGS([COVANALYZE_EXEC], [cov-analyze])
+AM_CONDITIONAL([HAS_COVANALYZE], [test x$COVANALYZE_EXEC != "x"])
+
+AC_CHECK_PROGS([COVFORMATERRORS_EXEC], [cov-format-errors])
+AM_CONDITIONAL([HAS_COVFORMATERRORS], [test x$COVFORMATERRORS_EXEC != "x"])
+
 # KNET_OPTION_DEFINES(stem,type,detection code)
 # stem: enters name of option, Automake conditional and preprocessor define
 # type: compress or crypto, determines where the default comes from
@@ -195,6 +204,10 @@ LIBS=
 AC_SEARCH_LIBS([dlopen], [dl dld], , [AC_MSG_ERROR([dlopen not found])])
 AC_SUBST([dl_LIBS], [$LIBS])
 LIBS="$saved_LIBS"
+
+# Check RTLD_DI_ORIGIN (not decalred by musl. glibc has it as an enum so cannot use ifdef)
+AC_CHECK_DECL([RTLD_DI_ORIGIN], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN], 1,
+    [define when RTLD_DI_ORIGIN is declared])], ,[[#include <dlfcn.h>]])
 
 # OS detection
 

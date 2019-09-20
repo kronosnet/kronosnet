@@ -6,6 +6,7 @@
  * This software licensed under LGPL-2.0+
  */
 #define KNET_MODULE
+#define LZO2_COMPRESS_DEFAULT 1
 
 #include "config.h"
 
@@ -16,6 +17,12 @@
 
 #include "logging.h"
 #include "compress_model.h"
+
+#ifdef LZO2_COMPRESS_DEFAULT
+#define KNET_COMPRESS_DEFAULT LZO2_COMPRESS_DEFAULT
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
 
 static int lzo2_is_init(
 	knet_handle_t knet_h,
@@ -154,6 +161,11 @@ static int lzo2_decompress(
 	return err;
 }
 
+static int lzo2_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	lzo2_is_init,
@@ -161,5 +173,6 @@ compress_ops_t compress_model = {
 	lzo2_fini,
 	lzo2_val_level,
 	lzo2_compress,
-	lzo2_decompress
+	lzo2_decompress,
+	lzo2_get_default_level
 };

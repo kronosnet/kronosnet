@@ -57,3 +57,4 @@ doxyfile*.stamp
 xml-*/
 doxyxml
 *.3
+cov*

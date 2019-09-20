@@ -17,6 +17,12 @@
 #include "logging.h"
 #include "compress_model.h"
 
+#ifdef ZSTD_CLEVEL_DEFAULT
+#define KNET_COMPRESS_DEFAULT ZSTD_CLEVEL_DEFAULT /* zstd default compression level from zstd.h */
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
+
 struct zstd_ctx {
 	ZSTD_CCtx* cctx;
 	ZSTD_DCtx* dctx;
@@ -66,6 +72,8 @@ static int zstd_init(
 		}
 		memset(zstd_ctx, 0, sizeof(struct zstd_ctx));
 
+		knet_h->compress_int_data[method_idx] = zstd_ctx;
+
 		zstd_ctx->cctx = ZSTD_createCCtx();
 		if (!zstd_ctx->cctx) {
 			log_err(knet_h, KNET_SUB_ZSTDCOMP, "Unable to create compression context");
@@ -79,8 +87,6 @@ static int zstd_init(
 			err = -1;
 			goto out_err;
 		}
-
-		knet_h->compress_int_data[method_idx] = zstd_ctx;
 	}
 
 out_err:
@@ -149,6 +155,11 @@ static int zstd_decompress(
 	return 0;
 }
 
+static int zstd_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	zstd_is_init,
@@ -156,5 +167,6 @@ compress_ops_t compress_model = {
 	zstd_fini,
 	NULL,
 	zstd_compress,
-	zstd_decompress
+	zstd_decompress,
+	zstd_get_default_level
 };

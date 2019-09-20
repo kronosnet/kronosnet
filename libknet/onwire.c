@@ -8,7 +8,7 @@
 
 #include "config.h"
 
-#include <sys/errno.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 

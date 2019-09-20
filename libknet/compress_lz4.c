@@ -6,6 +6,7 @@
  * This software licensed under LGPL-2.0+
  */
 #define KNET_MODULE
+#define ACCELERATION_DEFAULT 1 /* lz4 default compression level from lz4.c */
 
 #include "config.h"
 
@@ -14,6 +15,12 @@
 
 #include "logging.h"
 #include "compress_model.h"
+
+#ifdef LZ4_COMPRESS_DEFAULT
+#define KNET_COMPRESS_DEFAULT LZ4_COMPRESS_DEFAULT
+#else
+#define KNET_COMPRESS_DEFAULT KNET_COMPRESS_UNKNOWN_DEFAULT
+#endif
 
 static int lz4_compress(
 	knet_handle_t knet_h,
@@ -80,6 +87,11 @@ static int lz4_decompress(
 	return err;
 }
 
+static int lz4_get_default_level()
+{
+	return KNET_COMPRESS_DEFAULT;
+}
+
 compress_ops_t compress_model = {
 	KNET_COMPRESS_MODEL_ABI,
 	NULL,
@@ -87,5 +99,6 @@ compress_ops_t compress_model = {
 	NULL,
 	NULL,
 	lz4_compress,
-	lz4_decompress
+	lz4_decompress,
+	lz4_get_default_level
 };

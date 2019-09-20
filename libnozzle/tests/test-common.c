@@ -124,7 +124,7 @@ void make_local_ips(char *testipv4_1, char *testipv4_2, char *testipv6_1, char *
 	pid = (uint8_t *)&mypid;
 
 	for (i = 0; i < sizeof(pid_t); i++) {
-		if (pid[i] == 0) {
+		if ((pid[i] == 0) || (pid[i] == 255)) {
 			pid[i] = 128;
 		}
 	}

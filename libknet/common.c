@@ -12,6 +12,8 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <libgen.h>
+#include <link.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>
@@ -54,6 +56,30 @@ int _fdset_nonblock(int fd)
 	return 0;
 }
 
+static int get_lib_dir(void *lib_handle, char dir[MAXPATHLEN])
+{
+	int res;
+#ifndef HAVE_RTLD_DI_ORIGIN
+	struct link_map *lm;
+	char l_name[MAXPATHLEN];
+#endif
+
+#ifdef HAVE_RTLD_DI_ORIGIN
+	res = dlinfo(lib_handle, RTLD_DI_ORIGIN, dir);
+#else
+	/*
+	 * musl libc doesn't support RTLD_DI_ORIGIN
+	 */
+	res = dlinfo(lib_handle, RTLD_DI_LINKMAP, &lm);
+	if (res == 0) {
+		snprintf(l_name, sizeof(l_name), "%s", lm->l_name);
+		snprintf(dir, MAXPATHLEN, "%s", dirname(l_name));
+	}
+#endif
+
+	return res;
+}
+
 static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags)
 {
 	void *ret = NULL;
@@ -67,10 +93,13 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 	dlerror();
 
 	ret = dlopen(libname, RTLD_NOW | RTLD_GLOBAL | extra_flags);
-	error = dlerror();
-	if (error != NULL) {
-		log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: %s",
-			libname, error);
+	if (!ret) {
+		error = dlerror();
+		if (error) {
+			log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: %s", libname, error);
+		} else {
+			log_err(knet_h, KNET_SUB_COMMON, "unable to dlopen %s: unknown error", libname);
+		}
 		errno = EAGAIN;
 		return NULL;
 	}
@@ -78,7 +107,7 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 	memset(dir, 0, sizeof(dir));
 	memset(link, 0, sizeof(link));
 	memset(path, 0, sizeof(path));
-	if (dlinfo(ret, RTLD_DI_ORIGIN, &dir) < 0) {
+	if (get_lib_dir(ret, dir) < 0) {
 		/*
 		 * should we dlclose and return error?
 		 */
@@ -105,6 +134,7 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 				log_debug(knet_h, KNET_SUB_COMMON, "Unable to readlink %s: %s", path, strerror(errno));
 				goto out;
 			}
+			link[sizeof(link) - 1] = 0;
 			/*
 			 * symlink is relative to the directory
 			 */

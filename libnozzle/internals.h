@@ -34,7 +34,7 @@ struct nozzle_lib_config {
 #define UPDOWN_PATH_MAX    PATH_MAX - 11 - 1 - IFNAMSIZ
 
 struct nozzle_iface {
-	char name[IFNAMSIZ];		/* interface name */
+	char name[IFNAMSIZ - 1];	/* interface name */
 	int fd;				/* interface fd */
 	int up;				/* interface status 0 is down, 1 is up */
 	/*

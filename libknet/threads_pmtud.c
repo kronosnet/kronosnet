@@ -319,7 +319,11 @@ retry:
 			return -1;
 		}
 
-		if (shutdown_in_progress(knet_h)) {
+		/*
+		 * we cannot use shutdown_in_progress in here because
+		 * we already hold the read lock
+		 */
+		if (knet_h->fini_in_progress) {
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			log_debug(knet_h, KNET_SUB_PMTUD, "PMTUD aborted. shutdown in progress");
 			return -1;
@@ -499,7 +503,7 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	}
 
 	if (saved_valid_pmtud != dst_link->has_valid_mtu) {
-		_host_dstcache_update_sync(knet_h, dst_host);
+		_host_dstcache_update_async(knet_h, dst_host);
 	}
 
 	return dst_link->has_valid_mtu;
