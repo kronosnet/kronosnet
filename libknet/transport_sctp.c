@@ -1266,7 +1266,7 @@ int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_
 	if ((sctp_link_listener_stop(knet_h, kn_link) <0) && (errno != EBUSY)) {
 		savederrno = errno;
 		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to remove listener trasport: %s",
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to remove listener transport: %s",
 			strerror(savederrno));
 		goto exit_error;
 	}
