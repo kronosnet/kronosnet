@@ -167,7 +167,7 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	sleep(1);
+	test_sleep(knet_h, 1);
 	flush_logs(logfds[0], stdout);
 
 	if (knet_h->data_mtu != data_mtu - 64) {
@@ -196,11 +196,11 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	sleep(2);
+	test_sleep(knet_h, 1);
 	flush_logs(logfds[0], stdout);
 
 	if (knet_h->data_mtu != data_mtu) {
-		printf("knet_handle_pmtud_set failed to redetect MTU\n");
+		printf("knet_handle_pmtud_set failed to redetect MTU: detected mtu: %u data_mtu: %u \n", knet_h->data_mtu, data_mtu);
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
