@@ -342,17 +342,18 @@ static void print_param(FILE *manfile, struct param_info *pi, int field_width, i
 {
 	char *asterisks = "  ";
 	char *type = pi->paramtype;
+	int typelength = strlen(type);
 
 	/* Reformat pointer params so they look nicer */
-	if (pi->paramtype[strlen(pi->paramtype)-1] == '*') {
+	if (typelength > 0 && pi->paramtype[typelength-1] == '*') {
 		asterisks=" *";
 		type = strdup(pi->paramtype);
-		type[strlen(type)-1] = '\0';
+		type[typelength-1] = '\0';
 
 		/* Cope with double pointers */
-		if (pi->paramtype[strlen(type)-1] == '*') {
+		if (typelength > 1 && pi->paramtype[typelength-2] == '*') {
 			asterisks="**";
-			type[strlen(type)-1] = '\0';
+			type[typelength-2] = '\0';
 		}
 	}
 
