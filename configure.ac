@@ -314,6 +314,12 @@ fi
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+AC_ARG_WITH([sanitizers],
+	[AS_HELP_STRING([--with-sanitizers=...,...],
+			[enable SANitizer build, do *NOT* use for production. Only ASAN/UBSAN/TSAN are currently supported])],
+	[ SANITIZERS="$withval" ],
+	[ SANITIZERS="" ])
+
 AC_ARG_WITH([testdir],
 	[AS_HELP_STRING([--with-testdir=DIR],[path to /usr/lib../kronosnet/tests/ dir where to install the test suite])],
 	[ TESTDIR="$withval" ],
@@ -413,13 +419,44 @@ else
 	GDB_FLAGS="-g"
 fi
 
+# --- ASAN/UBSAN/TSAN (see man gcc) ---
+# when using SANitizers, we need to pass the -fsanitize..
+# to both CFLAGS and LDFLAGS. The CFLAGS/LDFLAGS must be
+# specified as first in the list or there will be runtime
+# issues (for example user has to LD_PRELOAD asan for it to work
+# properly).
+
+if test -n "${SANITIZERS}"; then
+	SANITIZERS=$(echo $SANITIZERS | sed -e 's/,/ /g')
+	for SANITIZER in $SANITIZERS; do
+		case $SANITIZER in
+			asan|ASAN)
+				SANITIZERS_CFLAGS="$SANITIZERS_CFLAGS -fsanitize=address"
+				SANITIZERS_LDFLAGS="$SANITIZERS_LDFLAGS -fsanitize=address -lasan"
+				AC_CHECK_LIB([asan],[main],,AC_MSG_ERROR([Unable to find libasan]))
+				;;
+			ubsan|UBSAN)
+				SANITIZERS_CFLAGS="$SANITIZERS_CFLAGS -fsanitize=undefined"
+				SANITIZERS_LDFLAGS="$SANITIZERS_LDFLAGS -fsanitize=undefined -lubsan"
+				AC_CHECK_LIB([ubsan],[main],,AC_MSG_ERROR([Unable to find libubsan]))
+				;;
+			tsan|TSAN)
+				SANITIZERS_CFLAGS="$SANITIZERS_CFLAGS -fsanitize=thread"
+				SANITIZERS_LDFLAGS="$SANITIZERS_LDFLAGS -fsanitize=thread -ltsan"
+				AC_CHECK_LIB([tsan],[main],,AC_MSG_ERROR([Unable to find libtsan]))
+				;;
+		esac
+	done
+fi
+
 DEFAULT_CFLAGS="-Werror -Wall -Wextra"
 
 # manual overrides
 # generates too much noise for stub APIs
 UNWANTED_CFLAGS="-Wno-unused-parameter"
 
-AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_FLAGS $DEFAULT_CFLAGS $UNWANTED_CFLAGS"])
+AC_SUBST([AM_CFLAGS],["$SANITIZERS_CFLAGS $OPT_CFLAGS $GDB_FLAGS $DEFAULT_CFLAGS $UNWANTED_CFLAGS"])
+LDFLAGS="$SANITIZERS_LDFLAGS $LDFLAGS"
 
 AX_PROG_DATE
 AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],
