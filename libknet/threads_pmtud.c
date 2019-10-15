@@ -482,7 +482,14 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 		dst_link->has_valid_mtu = 0;
 	} else {
-		dst_link->has_valid_mtu = 1;
+		if (dst_link->status.mtu < calc_min_mtu(knet_h)) {
+			log_info(knet_h, KNET_SUB_PMTUD,
+				 "Invalid MTU detected for host: %u link: %u mtu: %u",
+				 dst_host->host_id, dst_link->link_id, dst_link->status.mtu);
+			dst_link->has_valid_mtu = 0;
+		} else {
+			dst_link->has_valid_mtu = 1;
+		}
 		if (dst_link->has_valid_mtu) {
 			if ((saved_pmtud) && (saved_pmtud != dst_link->status.mtu)) {
 				log_info(knet_h, KNET_SUB_PMTUD, "PMTUD link change for host: %u link: %u from %u to %u",
