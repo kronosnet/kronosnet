@@ -562,6 +562,35 @@ static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
 	}
 }
 
+static void _reclaim_old_defrag_bufs(struct knet_host *host, seq_num_t seq_num)
+{
+	seq_num_t head, tail; /* seq_num boundaries */
+	int i;
+
+	head = seq_num + 1;
+	tail = seq_num - (KNET_MAX_LINK + 1);
+
+	/*
+	 * expire old defrag buffers
+	 */
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		if (host->defrag_buf[i].in_use) {
+			/*
+			 * head has done a rollover to 0+
+			 */
+			if (tail > head) {
+				if ((host->defrag_buf[i].pckt_seq >= head) && (host->defrag_buf[i].pckt_seq <= tail)) {
+					host->defrag_buf[i].in_use = 0;
+				}
+			} else {
+				if ((host->defrag_buf[i].pckt_seq >= head) || (host->defrag_buf[i].pckt_seq <= tail)){
+					host->defrag_buf[i].in_use = 0;
+				}
+			}
+		}
+	}
+}
+
 /*
  * check if a given packet seq num is in the circular buffers
  * defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup
@@ -578,6 +607,8 @@ int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, i
 	if (clear_buf) {
 		_clear_cbuffers(host, seq_num);
 	}
+
+	_reclaim_old_defrag_bufs(host, seq_num);
 
 	if (seq_num < *dst_seq_num) {
 		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
