@@ -186,8 +186,10 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		defrag_buf->frag_size = *len;
 	}
 
-	memmove(defrag_buf->buf + ((inbuf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
-	       inbuf->khp_data_userdata, *len);
+	if (defrag_buf->frag_size) {
+		memmove(defrag_buf->buf + ((inbuf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
+		       inbuf->khp_data_userdata, *len);
+	}
 
 	defrag_buf->frag_recv++;
 	defrag_buf->frag_map[inbuf->khp_data_frag_seq] = 1;
