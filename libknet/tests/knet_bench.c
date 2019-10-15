@@ -67,6 +67,8 @@ static int test_type = TEST_PING;
 static uint64_t perf_by_size_size = 1 * ONE_GIGABYTE;
 static uint64_t perf_by_time_secs = 10;
 
+static uint32_t force_packet_size = 0;
+
 struct node {
 	int nodeid;
 	int links;
@@ -109,6 +111,7 @@ static void print_help(void)
 	printf(" -s                                        nodeid that will generate traffic for benchmarks\n");
 	printf(" -S [size|seconds]                         when used in combination with -T perf-by-size it indicates how many GB of traffic to generate for the test. (default: 1GB)\n");
 	printf("                                           when used in combination with -T perf-by-time it indicates how many Seconds of traffic to generate for the test. (default: 10 seconds)\n");
+	printf(" -x                                        force packet size for perf-by-time or perf-by-size\n");
 	printf(" -C                                        repeat the test continously (default: off)\n");
 	printf(" -X[XX]                                    show stats at the end of the run (default: 1)\n");
 	printf("                                           1: show handle stats, 2: show summary link stats\n");
@@ -250,7 +253,7 @@ static void setup_knet(int argc, char *argv[])
 
 	memset(nodes, 0, sizeof(nodes));
 
-	while ((rv = getopt(argc, argv, "aCT:S:s:ldfom:wb:t:n:c:p:X::P:z:h")) != EOF) {
+	while ((rv = getopt(argc, argv, "aCT:S:s:ldfom:wb:t:n:c:p:x:X::P:z:h")) != EOF) {
 		switch(rv) {
 			case 'h':
 				print_help();
@@ -405,6 +408,13 @@ static void setup_knet(int argc, char *argv[])
 			case 'S':
 				perf_by_size_size = (uint64_t)atoi(optarg) * ONE_GIGABYTE;
 				perf_by_time_secs = (uint64_t)atoi(optarg);
+				break;
+			case 'x':
+				force_packet_size = (uint32_t)atoi(optarg);
+				if ((force_packet_size < 1) || (force_packet_size > 65536)) {
+					printf("Unsupported packet size %u (accepted 1 - 65536)\n", force_packet_size);
+					exit(FAIL);
+				}
 				break;
 			case 'C':
 				continous = 1;
@@ -874,7 +884,7 @@ static int setup_send_buffers_common(struct knet_mmsghdr *msg, struct iovec *iov
 			printf("TXT: Unable to malloc!\n");
 			return -1;
 		}
-		memset(tx_buf[i], 0, KNET_MAX_PACKET_SIZE);
+		memset(tx_buf[i], i, KNET_MAX_PACKET_SIZE);
 		iov_out[i].iov_base = (void *)tx_buf[i];
 		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
 		msg[i].msg_hdr.msg_iov = &iov_out[i];
@@ -898,6 +908,9 @@ static void send_perf_data_by_size(void)
 	setup_send_buffers_common(msg, iov_out, tx_buf);
 
 	while (packetsize <= KNET_MAX_PACKET_SIZE) {
+		if (force_packet_size) {
+			packetsize = force_packet_size;
+		}
 		for (i = 0; i < PCKT_FRAG_MAX; i++) {
 			iov_out[i].iov_len = packetsize;
 		}
@@ -926,7 +939,7 @@ static void send_perf_data_by_size(void)
 
 		knet_send(knet_h, ctrl_message, TEST_STOP, channel);
 
-		if (packetsize == KNET_MAX_PACKET_SIZE) {
+		if ((packetsize == KNET_MAX_PACKET_SIZE) || (force_packet_size)) {
 			break;
 		}
 
@@ -1175,6 +1188,9 @@ static void send_perf_data_by_time(void)
 	memset(&clock_end, 0, sizeof(clock_start));
 
 	while (packetsize <= KNET_MAX_PACKET_SIZE) {
+		if (force_packet_size) {
+			packetsize = force_packet_size;
+		}
 		for (i = 0; i < PCKT_FRAG_MAX; i++) {
 			iov_out[i].iov_len = packetsize;
 		}
@@ -1205,7 +1221,7 @@ static void send_perf_data_by_time(void)
 
 		knet_send(knet_h, ctrl_message, TEST_STOP, channel);
 
-		if (packetsize == KNET_MAX_PACKET_SIZE) {
+		if ((packetsize == KNET_MAX_PACKET_SIZE) || (force_packet_size)) {
 			break;
 		}
 
