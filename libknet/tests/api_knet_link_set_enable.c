@@ -293,7 +293,7 @@ static void test_sctp(void)
 	}
 
 	printf("Wait 2 seconds for sockets to connect\n");
-	sleep(2);
+	test_sleep(knet_h, 2);
 
 	printf("Test knet_link_set_enable with correct values (0)\n");
 

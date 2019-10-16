@@ -562,6 +562,35 @@ static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
 	}
 }
 
+static void _reclaim_old_defrag_bufs(struct knet_host *host, seq_num_t seq_num)
+{
+	seq_num_t head, tail; /* seq_num boundaries */
+	int i;
+
+	head = seq_num + 1;
+	tail = seq_num - (KNET_MAX_LINK + 1);
+
+	/*
+	 * expire old defrag buffers
+	 */
+	for (i = 0; i < KNET_MAX_LINK; i++) {
+		if (host->defrag_buf[i].in_use) {
+			/*
+			 * head has done a rollover to 0+
+			 */
+			if (tail > head) {
+				if ((host->defrag_buf[i].pckt_seq >= head) && (host->defrag_buf[i].pckt_seq <= tail)) {
+					host->defrag_buf[i].in_use = 0;
+				}
+			} else {
+				if ((host->defrag_buf[i].pckt_seq >= head) || (host->defrag_buf[i].pckt_seq <= tail)){
+					host->defrag_buf[i].in_use = 0;
+				}
+			}
+		}
+	}
+}
+
 /*
  * check if a given packet seq num is in the circular buffers
  * defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup
@@ -569,7 +598,7 @@ static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
 
 int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf)
 {
-	size_t i, j; /* circular buffer indexes */
+	size_t head, tail; /* circular buffer indexes */
 	seq_num_t seq_dist;
 	char *dst_cbuf = host->circular_buffer;
 	char *dst_cbuf_defrag = host->circular_buffer_defrag;
@@ -579,19 +608,21 @@ int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, i
 		_clear_cbuffers(host, seq_num);
 	}
 
+	_reclaim_old_defrag_bufs(host, seq_num);
+
 	if (seq_num < *dst_seq_num) {
 		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
 	} else {
 		seq_dist = *dst_seq_num - seq_num;
 	}
 
-	j = seq_num % KNET_CBUFFER_SIZE;
+	head = seq_num % KNET_CBUFFER_SIZE;
 
 	if (seq_dist < KNET_CBUFFER_SIZE) { /* seq num is in ring buffer */
 		if (!defrag_buf) {
-			return (dst_cbuf[j] == 0) ? 1 : 0;
+			return (dst_cbuf[head] == 0) ? 1 : 0;
 		} else {
-			return (dst_cbuf_defrag[j] == 0) ? 1 : 0;
+			return (dst_cbuf_defrag[head] == 0) ? 1 : 0;
 		}
 	} else if (seq_dist <= SEQ_MAX - KNET_CBUFFER_SIZE) {
 		memset(dst_cbuf, 0, KNET_CBUFFER_SIZE);
@@ -600,16 +631,16 @@ int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, i
 	}
 
 	/* cleaning up circular buffer */
-	i = (*dst_seq_num + 1) % KNET_CBUFFER_SIZE;
+	tail = (*dst_seq_num + 1) % KNET_CBUFFER_SIZE;
 
-	if (i > j) {
-		memset(dst_cbuf + i, 0, KNET_CBUFFER_SIZE - i);
-		memset(dst_cbuf, 0, j + 1);
-		memset(dst_cbuf_defrag + i, 0, KNET_CBUFFER_SIZE - i);
-		memset(dst_cbuf_defrag, 0, j + 1);
+	if (tail > head) {
+		memset(dst_cbuf + tail, 0, KNET_CBUFFER_SIZE - tail);
+		memset(dst_cbuf, 0, head + 1);
+		memset(dst_cbuf_defrag + tail, 0, KNET_CBUFFER_SIZE - tail);
+		memset(dst_cbuf_defrag, 0, head + 1);
 	} else {
-		memset(dst_cbuf + i, 0, j - i + 1);
-		memset(dst_cbuf_defrag + i, 0, j - i + 1);
+		memset(dst_cbuf + tail, 0, head - tail + 1);
+		memset(dst_cbuf_defrag + tail, 0, head - tail + 1);
 	}
 
 	*dst_seq_num = seq_num;
