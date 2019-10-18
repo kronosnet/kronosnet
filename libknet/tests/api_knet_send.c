@@ -40,7 +40,7 @@ static void test(uint8_t transport)
 	int datafd = 0;
 	int8_t channel = 0;
 	struct knet_link_status link_status;
-	char send_buff[KNET_MAX_PACKET_SIZE];
+	char send_buff[KNET_MAX_PACKET_SIZE + 1];
 	char recv_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t send_len = 0;
 	int recv_len = 0;
@@ -234,7 +234,7 @@ static void test(uint8_t transport)
 		exit(FAIL);
 	}
 
-	if (send_len != sizeof(send_buff)) {
+	if (send_len != sizeof(send_buff) - 1) {
 		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
@@ -323,6 +323,33 @@ static void test(uint8_t transport)
 	}
 
 	flush_logs(logfds[0], stdout);
+
+	if (knet_handle_setfwd(knet_h, 1) < 0) {
+		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
+	printf("try to send big packet to local datafd (bypass knet_send)\n");
+	if (write(datafd, &send_buff, sizeof(send_buff)) != KNET_MAX_PACKET_SIZE + 1) {
+		printf("Error writing to datafd: %s\n", strerror(errno));
+	}
+
+	if (!wait_for_packet(knet_h, 2, datafd, logfds[0], stdout)) {
+		printf("Received unexpected packet!\n");
+		knet_link_set_enable(knet_h, 1, 0, 0);
+		knet_link_clear_config(knet_h, 1, 0);
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	knet_link_set_enable(knet_h, 1, 0, 0);
 	knet_link_clear_config(knet_h, 1, 0);
