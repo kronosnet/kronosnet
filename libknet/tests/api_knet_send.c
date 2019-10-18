@@ -212,7 +212,7 @@ static void test(uint8_t transport)
 	}
 
 	if (wait_for_host(knet_h, 1, 10, logfds[0], stdout) < 0) {
-		printf("timeout waiting for host to be reachable");
+		printf("timeout waiting for host to be reachable\n");
 		knet_link_set_enable(knet_h, 1, 0, 0);
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
