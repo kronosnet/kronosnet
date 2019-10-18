@@ -339,14 +339,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	switch (inbuf->kh_type) {
 	case KNET_HEADER_TYPE_HOST_INFO:
 	case KNET_HEADER_TYPE_DATA:
-		/*
-		 * TODO: should we accept data even if we can't reply to the other node?
-		 *       how would that work with SCTP and guaranteed delivery?
-		 */
-
 		if (!src_host->status.reachable) {
-			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet", src_host->host_id);
-			//return;
+			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
+			return;
 		}
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 		channel = inbuf->khp_data_channel;
