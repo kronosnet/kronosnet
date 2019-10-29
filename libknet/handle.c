@@ -671,6 +671,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init handles traceker: %s",
 			strerror(savederrno));
 		errno = savederrno;
+		pthread_mutex_unlock(&handle_config_mutex);
 		goto exit_fail;
 	}
 
