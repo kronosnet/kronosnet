@@ -556,13 +556,6 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 	sctp_connect_link_info_t *info = knet_h->knet_transport_fd_tracker[connect_sock].data;
 	struct knet_link *kn_link = info->link;
 
-	err = getsockopt(connect_sock, SOL_SOCKET, SO_ERROR, &status, &len);
-	if (err) {
-		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP getsockopt() on connecting socket %d failed: %s",
-			connect_sock, strerror(errno));
-		return;
-	}
-
 	if (info->close_sock) {
 		if (_close_connect_socket(knet_h, kn_link) < 0) {
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to close sock %d from _handle_connected_sctp: %s", connect_sock, strerror(errno));
@@ -573,6 +566,13 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to recreate connecting sock! %s", strerror(errno));
 			return;
 		}
+	}
+
+	err = getsockopt(connect_sock, SOL_SOCKET, SO_ERROR, &status, &len);
+	if (err) {
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP getsockopt() on connecting socket %d failed: %s",
+			connect_sock, strerror(errno));
+		return;
 	}
 
 	if (status) {
