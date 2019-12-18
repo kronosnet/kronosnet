@@ -195,8 +195,9 @@ static int _reconnect_socket(knet_handle_t knet_h, struct knet_link *kn_link)
 	struct epoll_event ev;
 
 	if (connect(info->connect_sock, (struct sockaddr *)&kn_link->dst_addr, sockaddr_len(&kn_link->dst_addr)) < 0) {
-		if ((errno != EALREADY) && (errno != EINPROGRESS) && (errno != EISCONN)) {
-			savederrno = errno;
+		savederrno = errno;
+		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "SCTP socket %d received error: %s", info->connect_sock, strerror(savederrno));
+		if ((savederrno != EALREADY) && (savederrno != EINPROGRESS) && (savederrno != EISCONN)) {
 			err = -1;
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to connect SCTP socket %d: %s",
 				info->connect_sock, strerror(savederrno));
