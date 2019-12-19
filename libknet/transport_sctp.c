@@ -448,6 +448,7 @@ int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsg
 	struct sctp_assoc_change *sac;
 	union sctp_notification  *snp;
 	sctp_accepted_link_info_t *info = knet_h->knet_transport_fd_tracker[sockfd].data;
+	sctp_connect_link_info_t *connect_info = knet_h->knet_transport_fd_tracker[sockfd].data;
 
 	if (!(msg->msg_hdr.msg_flags & MSG_NOTIFICATION)) {
 		if (msg->msg_len == 0) {
@@ -511,11 +512,37 @@ int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsg
 
 		switch (snp->sn_header.sn_type) {
 			case SCTP_ASSOC_CHANGE:
-				log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change");
+				log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change socket: %d", sockfd);
 				sac = &snp->sn_assoc_change;
-				if (sac->sac_state == SCTP_COMM_LOST) {
-					log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: comm_lost");
-					sctp_transport_rx_sock_error(knet_h, sockfd, 2, 0);
+				switch (sac->sac_state) {
+					case SCTP_COMM_LOST:
+						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: comm_lost");
+						sctp_transport_rx_sock_error(knet_h, sockfd, 2, 0);
+						break;
+					case SCTP_COMM_UP:
+						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: comm_up");
+						if (knet_h->knet_transport_fd_tracker[sockfd].data_type == SCTP_CONNECT_LINK_INFO) {
+							connect_info->link->transport_connected = 1;
+						}
+						break;
+					case SCTP_RESTART:
+						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: restart");
+						break;
+					case SCTP_SHUTDOWN_COMP:
+						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: shutdown comp");
+						break;
+					case SCTP_CANT_STR_ASSOC:
+#ifdef KNET_BSD
+						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: cant str assoc");
+						if (knet_h->knet_transport_fd_tracker[sockfd].data_type == SCTP_CONNECT_LINK_INFO) {
+							connect_info->close_sock = 1;
+							sctp_transport_rx_sock_error(knet_h, sockfd, 2, 0);
+						}
+#endif
+						break;
+					default:
+						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change: unknown %d", sac->sac_state);
+						break;
 				}
 				break;
 			case SCTP_SHUTDOWN_EVENT:
@@ -600,7 +627,6 @@ static void _handle_connected_sctp(knet_handle_t knet_h, int connect_sock)
 	}
 	info->on_connected_epoll = 0;
 
-	kn_link->transport_connected = 1;
 	kn_link->outsock = info->connect_sock;
 
 	memset(&ev, 0, sizeof(struct epoll_event));
@@ -646,7 +672,11 @@ static void _handle_connected_sctp_errors(knet_handle_t knet_h)
 
 	info->close_sock = 1;
 	info->link->transport_connected = 0;
+#ifdef	KNET_BSD
+	_handle_connected_sctp(knet_h, sockfd);
+#else
 	_reconnect_socket(knet_h, info->link);
+#endif
 }
 
 static void *_sctp_connect_thread(void *data)
