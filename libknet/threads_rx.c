@@ -843,6 +843,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
+			case 3:
+				log_debug(knet_h, KNET_SUB_RX, "Transport is processing sock OOB data, continue");
+				break;
+			case 4:
+				log_debug(knet_h, KNET_SUB_RX, "Transport has completed processing sock OOB data, stop");
+				goto exit_unlock;
+				break;
 		}
 	}
 
