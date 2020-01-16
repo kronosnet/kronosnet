@@ -41,6 +41,12 @@ int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsign
 		savederrno = errno;
 		if (err >= 0) {
 			msgvec[i].msg_len = err;
+			if (err == 0) {
+				/* No point in reading anything more until we know this has been dealt with
+				   or we'll just get a vector full of them. Several in fact */
+				i++;
+				break;
+			}
 		} else {
 			if ((i > 0) &&
 			    ((errno == EAGAIN) || (errno == EWOULDBLOCK))) {
