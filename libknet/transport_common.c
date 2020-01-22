@@ -64,13 +64,19 @@ int _sendmmsg(int sockfd, int connection_oriented, struct knet_mmsghdr *msgvec, 
 {
 	int savederrno = 0, err = 0;
 	unsigned int i;
+	struct msghdr temp_msg;
+	struct msghdr *use_msghdr;
 
 	for (i = 0; i < vlen; i++) {
 		if (connection_oriented == TRANSPORT_PROTO_IS_CONNECTION_ORIENTED) {
-			msgvec[i].msg_hdr.msg_name = NULL;
-			msgvec[i].msg_hdr.msg_namelen = 0;
+			memcpy(&temp_msg, &msgvec[i].msg_hdr, sizeof(struct msghdr));
+			temp_msg.msg_name = NULL;
+			temp_msg.msg_namelen = 0;
+			use_msghdr = &temp_msg;
+		} else {
+			use_msghdr = &msgvec[i].msg_hdr;
 		}
-		err = sendmsg(sockfd, &msgvec[i].msg_hdr, flags);
+		err = sendmsg(sockfd, use_msghdr, flags);
 		savederrno = errno;
 		if (err < 0) {
 			break;
