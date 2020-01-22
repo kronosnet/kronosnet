@@ -77,7 +77,7 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 	/*
 	 * set default host->name to host_id for logging
 	 */
-	snprintf(host->name, KNET_MAX_HOST_LEN - 1, "%u", host_id);
+	snprintf(host->name, KNET_MAX_HOST_LEN, "%u", host_id);
 
 	/*
 	 * initialize links internal data
@@ -226,7 +226,7 @@ int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id, const char 
 	}
 
 	for (host = knet_h->host_head; host != NULL; host = host->next) {
-		if (!strncmp(host->name, name, KNET_MAX_HOST_LEN - 1)) {
+		if (!strncmp(host->name, name, KNET_MAX_HOST_LEN)) {
 			err = -1;
 			savederrno = EEXIST;
 			log_err(knet_h, KNET_SUB_HOST, "Duplicated name found on host_id %u",
@@ -235,7 +235,7 @@ int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id, const char 
 		}
 	}
 
-	snprintf(knet_h->host_index[host_id]->name, KNET_MAX_HOST_LEN - 1, "%s", name);
+	snprintf(knet_h->host_index[host_id]->name, KNET_MAX_HOST_LEN, "%s", name);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
