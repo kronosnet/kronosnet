@@ -109,7 +109,7 @@ static void destroy_iface(nozzle_t nozzle)
 
 #ifdef KNET_BSD
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
 #endif
@@ -127,7 +127,7 @@ static int get_iface_mtu(const nozzle_t nozzle)
 	struct ifreq ifr;
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &ifr);
 	if (err) {
@@ -155,7 +155,7 @@ static int get_iface_mac(const nozzle_t nozzle, char **ether_addr)
 
 	memset(&mac, 0, MACADDR_CHAR_MAX);
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 #ifdef KNET_LINUX
 	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
@@ -523,8 +523,8 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		savederrno = EBUSY;
 		goto out_error;
 	}
-	strncpy(devname, curnozzle, IFNAMSIZ);
-	memmove(nozzle->name, curnozzle, IFNAMSIZ - 1);
+	memmove(devname, curnozzle, IFNAMSIZ);
+	memmove(nozzle->name, curnozzle, IFNAMSIZ);
 #endif
 
 #ifdef KNET_LINUX
@@ -547,8 +547,8 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		goto out_error;
 	}
 
-	strncpy(devname, ifname, IFNAMSIZ);
-	memmove(nozzle->name, ifname, IFNAMSIZ - 1);
+	memmove(devname, ifname, IFNAMSIZ);
+	memmove(nozzle->name, ifname, IFNAMSIZ);
 #endif
 
 	nozzle->default_mtu = get_iface_mtu(nozzle);
@@ -732,7 +732,7 @@ int nozzle_set_up(nozzle_t nozzle)
 	}
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 	if (err) {
@@ -777,7 +777,7 @@ int nozzle_set_down(nozzle_t nozzle)
 	}
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 	if (err) {
@@ -878,7 +878,7 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 	}
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 #ifdef KNET_LINUX
 	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
 	if (err) {
@@ -1025,7 +1025,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
 	}
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	strncpy(ifname, nozzle->name, IFNAMSIZ);
+	memmove(ifname, nozzle->name, IFNAMSIZ);
 	ifr.ifr_mtu = mtu;
 
 	err = ioctl(lib_cfg.ioctlfd, SIOCSIFMTU, &ifr);
