@@ -403,6 +403,12 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 #endif
 			usleep(KNET_THREADS_TIMERES / 16);
+		}
+		if (recv_errno == ENETUNREACH) {
+#ifdef DEBUG
+			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable", sockfd);
+#endif
+			usleep(KNET_THREADS_TIMERES / 16);
 		} else {
 			read_errs_from_sock(knet_h, sockfd);
 		}
