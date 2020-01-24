@@ -819,18 +819,18 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 		 */
 
 		switch(err) {
-			case -1: /* on error */
+			case KNET_TRANSPORT_RX_ERROR: /* on error */
 				log_debug(knet_h, KNET_SUB_RX, "Transport reported error parsing packet");
 				goto exit_unlock;
 				break;
-			case 0: /* packet is not data and we should continue the packet process loop */
+			case KNET_TRANSPORT_RX_NOT_DATA_CONTINUE: /* packet is not data and we should continue the packet process loop */
 				log_debug(knet_h, KNET_SUB_RX, "Transport reported no data, continue");
 				break;
-			case 1: /* packet is not data and we should STOP the packet process loop */
+			case KNET_TRANSPORT_RX_NOT_DATA_STOP: /* packet is not data and we should STOP the packet process loop */
 				log_debug(knet_h, KNET_SUB_RX, "Transport reported no data, stop");
 				goto exit_unlock;
 				break;
-			case 2: /* packet is data and should be parsed as such */
+			case KNET_TRANSPORT_RX_IS_DATA: /* packet is data and should be parsed as such */
 				/*
 				 * processing incoming packets vs access lists
 				 */
@@ -857,6 +857,13 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 					}
 				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
+				break;
+			case KNET_TRANSPORT_RX_OOB_DATA_CONTINUE:
+				log_debug(knet_h, KNET_SUB_RX, "Transport is processing sock OOB data, continue");
+				break;
+			case KNET_TRANSPORT_RX_OOB_DATA_STOP:
+				log_debug(knet_h, KNET_SUB_RX, "Transport has completed processing sock OOB data, stop");
+				goto exit_unlock;
 				break;
 		}
 	}
