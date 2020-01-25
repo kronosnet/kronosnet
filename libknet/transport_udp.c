@@ -398,15 +398,13 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 		if (recv_errno == EINVAL || recv_errno == EPERM) {
 			return -1;
 		}
-		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
+		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN) || (recv_errno == ENETUNREACH)) {
 #ifdef DEBUG
-			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
-#endif
-			usleep(KNET_THREADS_TIMERES / 16);
-		}
-		if (recv_errno == ENETUNREACH) {
-#ifdef DEBUG
-			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable", sockfd);
+			if (recv_errno == ENETUNREACH) {
+				log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable", sockfd);
+			} else {
+				log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
+			}
 #endif
 			usleep(KNET_THREADS_TIMERES / 16);
 		} else {
