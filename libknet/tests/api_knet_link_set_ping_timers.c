@@ -156,7 +156,7 @@ static void test(void)
 
 	if ((knet_h->host_index[1]->link[0].ping_interval != 1000000) ||
 	    (knet_h->host_index[1]->link[0].pong_timeout != 2000000) ||
-	    (knet_h->host_index[1]->link[0].latency_fix != 2048)) {
+	    (knet_h->host_index[1]->link[0].latency_max_samples != 2048)) {
 		printf("knet_link_set_ping_timers failed to set values\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
