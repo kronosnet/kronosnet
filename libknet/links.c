@@ -226,9 +226,8 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->pong_timeout = KNET_LINK_DEFAULT_PING_TIMEOUT * 1000; /* microseconds */
 	link->pong_timeout_backoff = KNET_LINK_PONG_TIMEOUT_BACKOFF;
 	link->pong_timeout_adj = link->pong_timeout * link->pong_timeout_backoff; /* microseconds */
-	link->latency_fix = KNET_LINK_DEFAULT_PING_PRECISION;
-	link->latency_exp = KNET_LINK_DEFAULT_PING_PRECISION - \
-			    ((link->ping_interval * KNET_LINK_DEFAULT_PING_PRECISION) / 8000000);
+	link->latency_max_samples = KNET_LINK_DEFAULT_PING_PRECISION;
+	link->latency_cur_samples = 0;
 	link->flags = flags;
 
 	if (transport_link_set_config(knet_h, link, transport) < 0) {
@@ -813,9 +812,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 
 	link->ping_interval = interval * 1000; /* microseconds */
 	link->pong_timeout = timeout * 1000; /* microseconds */
-	link->latency_fix = precision;
-	link->latency_exp = precision - \
-			    ((link->ping_interval * precision) / 8000000);
+	link->latency_max_samples = precision;
 
 	log_debug(knet_h, KNET_SUB_LINK,
 		  "host: %u link: %u timeout update - interval: %llu timeout: %llu precision: %u",
@@ -888,7 +885,7 @@ int knet_link_get_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 
 	*interval = link->ping_interval / 1000; /* microseconds */
 	*timeout = link->pong_timeout / 1000;
-	*precision = link->latency_fix;
+	*precision = link->latency_max_samples;
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

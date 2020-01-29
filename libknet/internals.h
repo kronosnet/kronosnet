@@ -65,7 +65,8 @@ struct knet_link {
 	unsigned long long pong_timeout;	/* timeout */
 	unsigned long long pong_timeout_adj;	/* timeout adjusted for latency */
 	uint8_t pong_timeout_backoff;		/* see link.h for definition */
-	unsigned int latency_fix;		/* precision */
+	unsigned int latency_max_samples;	/* precision */
+	unsigned int latency_cur_samples;
 	uint8_t pong_count;			/* how many ping/pong to send/receive before link is up */
 	uint64_t flags;
 	/* status */
@@ -77,7 +78,6 @@ struct knet_link {
 	int outsock;
 	unsigned int configured:1;		/* set to 1 if src/dst have been configured transport initialized on this link*/
 	unsigned int transport_connected:1;	/* set to 1 if lower level transport is connected */
-	unsigned int latency_exp;
 	uint8_t received_pong;
 	struct timespec ping_last;
 	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
