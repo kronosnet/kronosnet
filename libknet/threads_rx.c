@@ -661,10 +661,15 @@ retry_pong:
 			if (src_link->status.latency < src_link->status.stats.latency_min) {
 				src_link->status.stats.latency_min = src_link->status.latency;
 			}
-			src_link->status.stats.latency_ave =
-				(src_link->status.stats.latency_ave * src_link->status.stats.latency_samples +
-				 src_link->status.latency) / (src_link->status.stats.latency_samples+1);
-			src_link->status.stats.latency_samples++;
+
+			/*
+			 * those 2 lines below make all latency average calculations consistent and capped to
+			 * link precision. In future we will kill the one above to keep only this one in
+			 * the stats structure, but for now we leave it around to avoid API/ABI
+			 * breakage as we backport the fixes to stable
+			 */
+			src_link->status.stats.latency_ave = src_link->status.latency;
+			src_link->status.stats.latency_samples = src_link->latency_cur_samples;
 		}
 		break;
 	case KNET_HEADER_TYPE_PMTUD:
