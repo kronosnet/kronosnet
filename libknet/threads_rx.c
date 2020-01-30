@@ -625,11 +625,21 @@ retry_pong:
 				  "Incoming pong packet from host: %u link: %u has higher latency than pong_timeout. Discarding",
 				  src_host->host_id, src_link->link_id);
 		} else {
+
+			/*
+			 * in words : ('previous mean' * '(count -1)') + 'new value') / 'count'
+			 */
+
+			src_link->latency_cur_samples++;
+
+			/*
+			 * limit to max_samples (precision)
+			 */
+			if (src_link->latency_cur_samples >= src_link->latency_max_samples) {
+				src_link->latency_cur_samples = src_link->latency_max_samples;
+			}
 			src_link->status.latency =
-				((src_link->status.latency * src_link->latency_exp) +
-				((latency_last / 1000llu) *
-					(src_link->latency_fix - src_link->latency_exp))) /
-						src_link->latency_fix;
+				(((src_link->status.latency * (src_link->latency_cur_samples - 1)) + (latency_last / 1000llu)) / src_link->latency_cur_samples);
 
 			if (src_link->status.latency < src_link->pong_timeout_adj) {
 				if (!src_link->status.connected) {
