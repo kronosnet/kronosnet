@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2019-2020 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -76,7 +76,7 @@ static int read_2ip(const char *buf, const char *delim, struct sockaddr_storage 
  * ipcheck_validate calls
  */
 
-const char *rules[100] = {
+static const char *rules[100] = {
 	/*
 	 * ipv4
 	 */
@@ -188,7 +188,7 @@ static int default_rules(int load)
 	return 0;
 }
 
-const char *tests[100] = {
+static const char *tests[100] = {
 	/*
 	 * ipv4
 	 */
@@ -209,7 +209,7 @@ const char *tests[100] = {
 	"A3ffe:1::1:1"
 };
 
-const char *after_insert_tests[100] = {
+static const char *after_insert_tests[100] = {
 	/*
 	 * ipv4
 	 */

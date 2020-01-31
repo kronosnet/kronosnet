@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2020 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -8,6 +8,13 @@
 
 #ifndef __KNET_TRANSPORTS_H__
 #define __KNET_TRANSPORTS_H__
+
+#define KNET_TRANSPORT_RX_ERROR -1
+#define KNET_TRANSPORT_RX_NOT_DATA_CONTINUE 0
+#define KNET_TRANSPORT_RX_NOT_DATA_STOP 1
+#define KNET_TRANSPORT_RX_IS_DATA 2
+#define KNET_TRANSPORT_RX_OOB_DATA_CONTINUE 3
+#define KNET_TRANSPORT_RX_OOB_DATA_STOP 4
 
 int start_all_transports(knet_handle_t knet_h);
 void stop_all_transports(knet_handle_t knet_h);

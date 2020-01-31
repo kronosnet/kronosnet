@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2019 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2020 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -32,5 +32,9 @@ Running knet on FreeBSD
 knet requires big socket buffers and you need to set:
 kern.ipc.maxsockbuf=18388608
 in /etc/sysctl.conf or knet will fail to run.
+
+currently, knet requires also:
+net.inet.sctp.blackhole=1
+in /etc/sysctl.conf or knet will fail to work with SCTP.
 
 libnozzle requires if_tap.ko loaded in the kernel.

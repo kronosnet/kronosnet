@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2019 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2020 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -662,9 +662,10 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 
 	if (_init_shlib_tracker(knet_h) < 0) {
 		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init handles traceker: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init handle tracker: %s",
 			strerror(savederrno));
 		errno = savederrno;
+		pthread_mutex_unlock(&handle_config_mutex);
 		goto exit_fail;
 	}
 

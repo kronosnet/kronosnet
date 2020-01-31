@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2019 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2020 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -633,6 +633,10 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 		inlen = readv(sockfd, msg->msg_iov, 1);
 	} else {
 		inlen = recvmsg(sockfd, msg, MSG_DONTWAIT | MSG_NOSIGNAL);
+		if (msg->msg_flags & MSG_TRUNC) {
+			log_warn(knet_h, KNET_SUB_TX, "Received truncated message from sock %d. Discarding", sockfd);
+			return;
+		}
 	}
 
 	if (inlen == 0) {

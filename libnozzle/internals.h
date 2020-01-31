@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2020 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -34,7 +34,7 @@ struct nozzle_lib_config {
 #define UPDOWN_PATH_MAX    PATH_MAX - 11 - 1 - IFNAMSIZ
 
 struct nozzle_iface {
-	char name[IFNAMSIZ - 1];	/* interface name */
+	char name[IFNAMSIZ];		/* interface name */
 	int fd;				/* interface fd */
 	int up;				/* interface status 0 is down, 1 is up */
 	/*
