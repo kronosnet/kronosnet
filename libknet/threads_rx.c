@@ -582,34 +582,36 @@ retry:
 		}
 
 retry_pong:
-		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
-			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
-		} else {
-			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
-		}
-		savederrno = errno;
-		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
-			switch(err) {
-				case -1: /* unrecoverable error */
-					log_debug(knet_h, KNET_SUB_RX,
-						  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-						  src_link->outsock, errno, strerror(errno),
-						  src_link->status.src_ipaddr, src_link->status.src_port,
-						  src_link->status.dst_ipaddr, src_link->status.dst_port);
-					src_link->status.stats.tx_pong_errors++;
-					break;
-				case 0: /* ignore error and continue */
-					break;
-				case 1: /* retry to send those same data */
-					src_link->status.stats.tx_pong_retries++;
-					goto retry_pong;
-					break;
+		if (src_link->transport_connected) {
+			if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+					     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
+			} else {
+				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
 			}
+			savederrno = errno;
+			if (len != outlen) {
+				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
+				switch(err) {
+					case -1: /* unrecoverable error */
+						log_debug(knet_h, KNET_SUB_RX,
+							  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+							  src_link->outsock, errno, strerror(errno),
+							  src_link->status.src_ipaddr, src_link->status.src_port,
+							  src_link->status.dst_ipaddr, src_link->status.dst_port);
+						src_link->status.stats.tx_pong_errors++;
+						break;
+					case 0: /* ignore error and continue */
+						break;
+					case 1: /* retry to send those same data */
+						src_link->status.stats.tx_pong_retries++;
+						goto retry_pong;
+						break;
+				}
+			}
+			src_link->status.stats.tx_pong_packets++;
+			src_link->status.stats.tx_pong_bytes += outlen;
 		}
-		src_link->status.stats.tx_pong_packets++;
-		src_link->status.stats.tx_pong_bytes += outlen;
 		break;
 	case KNET_HEADER_TYPE_PONG:
 		src_link->status.stats.rx_pong_packets++;
@@ -698,32 +700,34 @@ retry_pong:
 			goto out_pmtud;
 		}
 retry_pmtud:
-		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
-			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-				     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
-		} else {
-			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
-		}
-		savederrno = errno;
-		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
-			switch(err) {
-				case -1: /* unrecoverable error */
-					log_debug(knet_h, KNET_SUB_RX,
-						  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-						  src_link->outsock, errno, strerror(errno),
-						  src_link->status.src_ipaddr, src_link->status.src_port,
-						  src_link->status.dst_ipaddr, src_link->status.dst_port);
+		if (src_link->transport_connected) {
+			if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
+					     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
+			} else {
+				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+			}
+			savederrno = errno;
+			if (len != outlen) {
+				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
+				switch(err) {
+					case -1: /* unrecoverable error */
+						log_debug(knet_h, KNET_SUB_RX,
+							  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+							  src_link->outsock, errno, strerror(errno),
+							  src_link->status.src_ipaddr, src_link->status.src_port,
+							  src_link->status.dst_ipaddr, src_link->status.dst_port);
 
-					src_link->status.stats.tx_pmtu_errors++;
-					break;
-				case 0: /* ignore error and continue */
-					src_link->status.stats.tx_pmtu_errors++;
-					break;
-				case 1: /* retry to send those same data */
-					src_link->status.stats.tx_pmtu_retries++;
-					goto retry_pmtud;
-					break;
+						src_link->status.stats.tx_pmtu_errors++;
+						break;
+					case 0: /* ignore error and continue */
+						src_link->status.stats.tx_pmtu_errors++;
+						break;
+					case 1: /* retry to send those same data */
+						src_link->status.stats.tx_pmtu_retries++;
+						goto retry_pmtud;
+						break;
+				}
 			}
 		}
 		pthread_mutex_unlock(&knet_h->tx_mutex);
