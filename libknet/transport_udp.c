@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2019 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2020 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -29,6 +29,7 @@
 #include "common.h"
 #include "transport_common.h"
 #include "transport_udp.h"
+#include "transports.h"
 #include "threads_common.h"
 
 typedef struct udp_handle_info {
@@ -421,9 +422,9 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	if (msg->msg_len == 0)
-		return 0;
+		return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
 
-	return 2;
+	return KNET_TRANSPORT_RX_IS_DATA;
 }
 
 int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
