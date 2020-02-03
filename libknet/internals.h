@@ -66,7 +66,6 @@ struct knet_link {
 	unsigned long long pong_timeout_adj;	/* timeout adjusted for latency */
 	uint8_t pong_timeout_backoff;		/* see link.h for definition */
 	unsigned int latency_max_samples;	/* precision */
-	unsigned int latency_cur_samples;
 	uint8_t pong_count;			/* how many ping/pong to send/receive before link is up */
 	uint64_t flags;
 	/* status */

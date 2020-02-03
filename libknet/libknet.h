@@ -1962,9 +1962,6 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
  * dynconnected          the link has dynamic ip on the other end, and
  *                       we can see the other host is sending pings to us.
  *
- * latency               average latency of this link
- *                       see also knet_link_set/get_timeout.
- *
  * pong_last             if the link is down, this value tells us how long
  *                       ago this link was active. A value of 0 means that the link
  *                       has never been active.
@@ -2042,7 +2039,6 @@ struct knet_link_status {
 	uint8_t enabled;	        /* link is configured and admin enabled for traffic */
 	uint8_t connected;              /* link is connected for data (local view) */
 	uint8_t dynconnected;	        /* link has been activated by remote dynip */
-	unsigned long long latency;	/* average latency computed by fix/exp */
 	struct timespec pong_last;
 	unsigned int mtu;		/* current detected MTU on this link */
 	unsigned int proto_overhead;    /* contains the size of the IP protocol, knet headers and
