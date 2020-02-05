@@ -80,6 +80,13 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->handle_stats_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize handle stats mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	savederrno = pthread_mutex_init(&knet_h->threads_status_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize threads status mutex: %s",
@@ -154,6 +161,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->backoff_mutex);
 	pthread_mutex_destroy(&knet_h->tx_seq_num_mutex);
 	pthread_mutex_destroy(&knet_h->threads_status_mutex);
+	pthread_mutex_destroy(&knet_h->handle_stats_mutex);
 }
 
 static int _init_socks(knet_handle_t knet_h)
@@ -1676,7 +1684,7 @@ out_unlock:
 
 int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size)
 {
-	int savederrno = 0;
+	int err = 0, savederrno = 0;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -1688,12 +1696,20 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 		return -1;
 	}
 
-	savederrno = get_global_wrlock(knet_h);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	}
+
+	savederrno = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get mutex lock: %s",
+			strerror(savederrno));
+		err = -1;
+		goto out_unlock;
 	}
 
 	if (struct_size > sizeof(struct knet_handle_stats)) {
@@ -1715,8 +1731,10 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 	/* Tell the caller our full size in case they have an old version */
 	stats->size = sizeof(struct knet_handle_stats);
 
+out_unlock:
+	pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	return 0;
+	return err;
 }
 
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)

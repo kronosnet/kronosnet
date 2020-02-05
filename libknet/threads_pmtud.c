@@ -154,7 +154,12 @@ restart:
 		}
 
 		outbuf = knet_h->pmtudbuf_crypt;
+		if (pthread_mutex_lock(&knet_h->handle_stats_mutex) < 0) {
+			log_err(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
+			return -1;
+		}
 		knet_h->stats_extra.tx_crypt_pmtu_packets++;
+		pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 	} else {
 		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 	}
