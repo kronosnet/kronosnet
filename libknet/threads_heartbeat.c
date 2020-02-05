@@ -81,7 +81,12 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			}
 
 			outbuf = knet_h->pingbuf_crypt;
+			if (pthread_mutex_lock(&knet_h->handle_stats_mutex) < 0) {
+				log_err(knet_h, KNET_SUB_HEARTBEAT, "Unable to get mutex lock");
+				return;
+			}
 			knet_h->stats_extra.tx_crypt_ping_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
 retry:

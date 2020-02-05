@@ -228,7 +228,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 
 static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
 {
-	int err = 0, savederrno = 0;
+	int err = 0, savederrno = 0, stats_err = 0;
 	ssize_t outlen;
 	struct knet_host *src_host;
 	struct knet_link *src_link;
@@ -236,7 +236,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
-	uint64_t crypt_time = 0;
+	uint64_t decrypt_time = 0;
 	struct timespec recvtime;
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
 	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
@@ -263,14 +263,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			return;
 		}
 		clock_gettime(CLOCK_MONOTONIC, &end_time);
-		timespec_diff(start_time, end_time, &crypt_time);
-
-		if (crypt_time < knet_h->stats.rx_crypt_time_min) {
-			knet_h->stats.rx_crypt_time_min = crypt_time;
-		}
-		if (crypt_time > knet_h->stats.rx_crypt_time_max) {
-			knet_h->stats.rx_crypt_time_max = crypt_time;
-		}
+		timespec_diff(start_time, end_time, &decrypt_time);
 
 		len = outlen;
 		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
@@ -380,11 +373,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 					 len - KNET_HEADER_DATA_SIZE,
 					 knet_h->recv_from_links_buf_decompress,
 					 &decmp_outlen);
+
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				return;
+			}
+
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
+			timespec_diff(start_time, end_time, &compress_time);
+
 			if (!err) {
 				/* Collect stats */
-				clock_gettime(CLOCK_MONOTONIC, &end_time);
-				timespec_diff(start_time, end_time, &compress_time);
-
 				if (compress_time < knet_h->stats.rx_compress_time_min) {
 					knet_h->stats.rx_compress_time_min = compress_time;
 				}
@@ -402,22 +402,38 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				memmove(inbuf->khp_data_userdata, knet_h->recv_from_links_buf_decompress, decmp_outlen);
 				len = decmp_outlen + KNET_HEADER_DATA_SIZE;
 			} else {
+				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 				log_warn(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
 					 err, strerror(errno));
 				return;
 			}
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
+			if (knet_h->crypto_instance) {
+				stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+				if (stats_err < 0) {
+					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+					return;
+				}
+				/* Only update the crypto overhead for data packets. Mainly to be
+				   consistent with TX */
+				if (decrypt_time < knet_h->stats.rx_crypt_time_min) {
+					knet_h->stats.rx_crypt_time_min = decrypt_time;
+				}
+				if (decrypt_time > knet_h->stats.rx_crypt_time_max) {
+					knet_h->stats.rx_crypt_time_max = decrypt_time;
+				}
+				knet_h->stats.rx_crypt_time_ave =
+					(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
+					 decrypt_time) / (knet_h->stats.rx_crypt_packets+1);
+				knet_h->stats.rx_crypt_packets++;
+				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+			}
+
 			if (knet_h->enabled != 1) /* data forward is disabled */
 				break;
-
-			/* Only update the crypto overhead for data packets. Mainly to be
-			   consistent with TX */
-			knet_h->stats.rx_crypt_time_ave =
-				(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
-				 crypt_time) / (knet_h->stats.rx_crypt_packets+1);
-			knet_h->stats.rx_crypt_packets++;
 
 			if (knet_h->dst_host_filter_fn) {
 				size_t host_idx;
@@ -575,7 +591,13 @@ retry:
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				break;
+			}
 			knet_h->stats_extra.tx_crypt_pong_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
 retry_pong:
@@ -688,7 +710,13 @@ retry_pong:
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				break;
+			}
 			knet_h->stats_extra.tx_crypt_pmtu_reply_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
 		savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
