@@ -236,7 +236,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
-	int was_decrypted = 0;
 	uint64_t crypt_time = 0;
 	struct timespec recvtime;
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
@@ -275,7 +274,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 		len = outlen;
 		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
-		was_decrypted++;
 	}
 
 	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
