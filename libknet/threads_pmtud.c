@@ -188,9 +188,20 @@ restart:
 
 	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 	if (savederrno) {
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get TX mutex lock: %s", strerror(savederrno));
 		return -1;
 	}
+
+	savederrno = pthread_mutex_lock(&dst_link->link_stats_mutex);
+	if (savederrno) {
+		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+		pthread_mutex_unlock(&knet_h->tx_mutex);
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get stats mutex lock for host %u link %u: %s",
+			dst_host->host_id, dst_link->link_id, strerror(savederrno));
+		return -1;
+	}
+
 retry:
 	if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL,
@@ -223,6 +234,7 @@ retry:
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 			dst_link->status.stats.tx_pmtu_errors++;
+			pthread_mutex_unlock(&dst_link->link_stats_mutex);
 			return -1;
 		case 0: /* ignore error and continue */
 			break;
@@ -235,6 +247,7 @@ retry:
 	pthread_mutex_unlock(&knet_h->tx_mutex);
 
 	if (len != (ssize_t )data_len) {
+		pthread_mutex_unlock(&dst_link->link_stats_mutex);
 		if (savederrno == EMSGSIZE) {
 			/*
 			 * we cannot hold a lock on kmtu_mutex between resetting
@@ -263,6 +276,7 @@ retry:
 		dst_link->last_recv_mtu = 0;
 		dst_link->status.stats.tx_pmtu_packets++;
 		dst_link->status.stats.tx_pmtu_bytes += data_len;
+		pthread_mutex_unlock(&dst_link->link_stats_mutex);
 
 		if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get current time: %s", strerror(errno));
