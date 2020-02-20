@@ -31,13 +31,13 @@ static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct 
 	if (dst_link->status.connected == 1) {
 		log_info(knet_h, KNET_SUB_LINK, "host: %u link: %u is down",
 			 dst_host->host_id, dst_link->link_id);
-		_link_updown(knet_h, dst_host->host_id, dst_link->link_id, dst_link->status.enabled, 0);
+		_link_updown(knet_h, dst_host->host_id, dst_link->link_id, dst_link->status.enabled, 0, 1);
 	}
 }
 
 static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link, int timed)
 {
-	int err = 0, savederrno = 0;
+	int err = 0, savederrno = 0, stats_err = 0;
 	int len;
 	ssize_t outlen = KNET_HEADER_PING_SIZE;
 	struct timespec clock_now, pong_last;
@@ -89,6 +89,13 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
+		stats_err = pthread_mutex_lock(&dst_link->link_stats_mutex);
+		if (stats_err) {
+			log_err(knet_h, KNET_SUB_HEARTBEAT, "Unable to get stats mutex lock for host %u link %u: %s",
+				dst_host->host_id, dst_link->link_id, strerror(stats_err));
+			return;
+		}
+
 retry:
 		if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL,
@@ -123,6 +130,7 @@ retry:
 		} else {
 			dst_link->last_ping_size = outlen;
 		}
+		pthread_mutex_unlock(&dst_link->link_stats_mutex);
 	}
 
 	timespec_diff(pong_last, clock_now, &diff_ping);

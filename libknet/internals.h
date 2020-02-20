@@ -72,6 +72,7 @@ struct knet_link {
 	/* status */
 	struct knet_link_status status;
 	/* internals */
+	pthread_mutex_t link_stats_mutex;	/* used to update link stats */
 	uint8_t link_id;
 	uint8_t transport;                      /* #defined constant from API */
 	knet_transport_link_t transport_link;   /* link_info_t from transport */

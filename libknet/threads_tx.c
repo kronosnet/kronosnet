@@ -36,7 +36,7 @@
 static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_mmsghdr *msg, int msgs_to_send)
 {
 	int link_idx, msg_idx, sent_msgs, prev_sent, progress;
-	int err = 0, savederrno = 0;
+	int err = 0, savederrno = 0, locked = 0;
 	unsigned int i;
 	struct knet_mmsghdr *cur;
 	struct knet_link *cur_link;
@@ -44,12 +44,21 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 		prev_sent = 0;
 		progress = 1;
+		locked = 0;
 
 		cur_link = &dst_host->link[dst_host->active_links[link_idx]];
 
 		if (cur_link->transport == KNET_TRANSPORT_LOOPBACK) {
 			continue;
 		}
+
+		savederrno = pthread_mutex_lock(&cur_link->link_stats_mutex);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_TX, "Unable to get stats mutex lock for host %u link %u: %s",
+				dst_host->host_id, cur_link->link_id, strerror(savederrno));
+			continue;
+		}
+		locked = 1;
 
 		msg_idx = 0;
 		while (msg_idx < msgs_to_send) {
@@ -120,9 +129,14 @@ retry:
 
 			break;
 		}
+		pthread_mutex_unlock(&cur_link->link_stats_mutex);
+		locked = 0;
 	}
 
 out_unlock:
+	if (locked) {
+		pthread_mutex_unlock(&cur_link->link_stats_mutex);
+	}
 	errno = savederrno;
 	return err;
 }
