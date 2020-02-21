@@ -115,12 +115,12 @@ static char *get_child(xmlNode *node, const char *tag)
 			refid = NULL;
 			for (child = this_node->children; child; child = child->next) {
 				if (child->content) {
-					strcat(buffer, (char *)child->content);
+					strncat(buffer, (char *)child->content, sizeof(buffer)-1);
 				}
 
 				if ((strcmp( (char*)child->name, "ref") == 0)) {
 					if (child->children->content) {
-						strcat(buffer,(char *)child->children->content);
+						strncat(buffer, (char *)child->children->content, sizeof(buffer)-1);
 					}
 					refid = get_attr(child, "refid");
 				}
@@ -175,7 +175,7 @@ static void get_param_info(xmlNode *cur_node, struct qb_list_head *list)
 			if (sub_tag->type == XML_ELEMENT_NODE && strcmp((char *)sub_tag->name, "parameternamelist") == 0) {
 				paramname = (char*)sub_tag->children->next->children->content;
 			}
-			if (sub_tag->type == XML_ELEMENT_NODE && strcmp((char *)sub_tag->name, "parameterdescription") == 0) {
+			if (paramname && sub_tag->type == XML_ELEMENT_NODE && strcmp((char *)sub_tag->name, "parameterdescription") == 0) {
 				paramdesc = (char*)sub_tag->children->next->children->content;
 
 				/* Add text to the param_map */
@@ -207,24 +207,24 @@ static char *get_text(xmlNode *cur_node, char **returntext)
 	for (this_tag = cur_node->children; this_tag; this_tag = this_tag->next) {
 		if (this_tag->type == XML_TEXT_NODE && strcmp((char *)this_tag->name, "text") == 0) {
 			if (not_all_whitespace((char*)this_tag->content)) {
-				strcat(buffer, (char*)this_tag->content);
-				strcat(buffer, "\n");
+				strncat(buffer, (char*)this_tag->content, sizeof(buffer)-1);
+				strncat(buffer, "\n", sizeof(buffer)-1);
 			}
 		}
 		if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "emphasis") == 0) {
 			if (print_man) {
-				strcat(buffer, "\\fB");
+				strncat(buffer, "\\fB", sizeof(buffer)-1);
 			}
-			strcat(buffer, (char*)this_tag->children->content);
+			strncat(buffer, (char*)this_tag->children->content, sizeof(buffer)-1);
 			if (print_man) {
-				strcat(buffer, "\\fR");
+				strncat(buffer, "\\fR", sizeof(buffer)-1);
 			}
 		}
 		if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "itemizedlist") == 0) {
 			for (sub_tag = this_tag->children; sub_tag; sub_tag = sub_tag->next) {
 				if (sub_tag->type == XML_ELEMENT_NODE && strcmp((char *)sub_tag->name, "listitem") == 0) {
-					strcat(buffer, (char*)sub_tag->children->children->content);
-					strcat(buffer, "\n");
+					strncat(buffer, (char*)sub_tag->children->children->content, sizeof(buffer)-1);
+					strncat(buffer, "\n", sizeof(buffer)-1);
 				}
 			}
 		}
@@ -239,6 +239,7 @@ static char *get_text(xmlNode *cur_node, char **returntext)
 			if (returntext && strcmp(kind, "return") == 0) {
 				*returntext = tmp;
 			}
+			free(kind);
 		}
 
 		if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "parameterlist") == 0) {
@@ -249,6 +250,7 @@ static char *get_text(xmlNode *cur_node, char **returntext)
 			if (strcmp(kind, "retval") == 0) {
 				get_param_info(this_tag, &retval_list);
 			}
+			free(kind);
 		}
 	}
 	return strdup(buffer);
@@ -415,17 +417,17 @@ char *get_texttree(int *type, xmlNode *cur_node, char **returntext)
 
 		if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "para") == 0) {
 			tmp = get_text(this_tag, returntext);
-			strcat(buffer, tmp);
-			strcat(buffer, "\n");
+			strncat(buffer, tmp, sizeof(buffer)-1);
+			strncat(buffer, "\n", sizeof(buffer)-1);
 			free(tmp);
 		}
 	}
 
 	if (buffer[0]) {
-		tmp = strdup(buffer);
+		return strdup(buffer);
+	} else {
+		return NULL;
 	}
-
-	return tmp;
 }
 
 /* The text output is VERY basic and just a check that it's working really */
@@ -671,6 +673,7 @@ static void collect_functions(xmlNode *cur_node, void *arg)
 				num_functions++;
 			}
 		}
+		free(kind);
 	}
 }
 
@@ -693,6 +696,7 @@ static void collect_enums(xmlNode *cur_node, void *arg)
 			for (this_tag = cur_node->children; this_tag; this_tag = this_tag->next) {
 				if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "name") == 0) {
 					name = strdup((char *)this_tag->children->content);
+					break;
 				}
 			}
 
@@ -705,8 +709,10 @@ static void collect_enums(xmlNode *cur_node, void *arg)
 					traverse_node(cur_node, "enumvalue", read_struct, si);
 					qb_map_put(structures_map, refid, si);
 				}
+				free(name);
 			}
 		}
+		free(kind);
 	}
 }
 
@@ -733,14 +739,14 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 			if (!this_tag->children || !this_tag->children->content)
 				continue;
 
-			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "definition") == 0)
+			if (!def && this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "definition") == 0)
 				def = strdup((char *)this_tag->children->content);
-			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "argsstring") == 0)
+			if (!args && this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "argsstring") == 0)
 				args = strdup((char *)this_tag->children->content);
-			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "name") == 0)
+			if (!name && this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "name") == 0)
 				name = strdup((char *)this_tag->children->content);
 
-			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "briefdescription") == 0) {
+			if (!brief && this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "briefdescription") == 0) {
 				brief = get_texttree(&type, this_tag, &returntext);
 				if (brief) {
 					/*
@@ -750,7 +756,7 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 					brief[strlen(brief) - 3] = '\0';
 				}
 			}
-			if (this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "detaileddescription") == 0) {
+			if (!detailed && this_tag->type == XML_ELEMENT_NODE && strcmp((char *)this_tag->name, "detaileddescription") == 0) {
 				detailed = get_texttree(&type, this_tag, &returntext);
 			}
 			/* Get all the params */
@@ -768,7 +774,6 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 		}
 
 		if (kind && strcmp(kind, "function") == 0) {
-
 			/* Make sure function has a doxygen description */
 			if (!detailed) {
 				fprintf(stderr, "No doxygen description for function '%s' - please fix this\n", name);
@@ -787,6 +792,8 @@ static void traverse_members(xmlNode *cur_node, void *arg)
 		free(kind);
 		free(def);
 		free(args);
+		free(detailed);
+		free(brief);
 		free(name);
 	}
 }
