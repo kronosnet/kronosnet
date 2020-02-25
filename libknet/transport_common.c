@@ -349,15 +349,6 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 #endif
 	}
 
-	value = 1;
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0) {
-		savederrno = errno;
-		err = -1;
-		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s reuseaddr: %s",
-			type, strerror(savederrno));
-		goto exit_error;
-	}
-
 exit_error:
 	errno = savederrno;
 	return err;
