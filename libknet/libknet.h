@@ -1099,7 +1099,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
  * policy   - there are currently 3 kind of simple switching policies
  *            based on link configuration.
  *            KNET_LINK_POLICY_PASSIVE - the active link with the highest
- *                                       priority will be used.
+ *                                       priority (highest number) will be used.
  *                                       if one or more active links share
  *                                       the same priority, the one with
  *                                       lowest link_id will be used.
