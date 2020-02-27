@@ -47,11 +47,6 @@ static void test(uint8_t transport)
 	int savederrno;
 	struct sockaddr_storage lo;
 
-	if (make_local_sockaddr(&lo, 0) < 0) {
-		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
-		exit(FAIL);
-	}
-
 	memset(send_buff, 0, sizeof(send_buff));
 
 	printf("Test knet_send incorrect knet_h\n");
@@ -180,7 +175,7 @@ static void test(uint8_t transport)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, transport, &lo, &lo, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, transport, 0, AF_INET, 0, &lo) < 0 ) {
 		int exit_status = transport == KNET_TRANSPORT_SCTP && errno == EPROTONOSUPPORT ? SKIP : FAIL;
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
