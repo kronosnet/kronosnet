@@ -23,11 +23,12 @@
 #include "links_acl.h"
 
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
-		 unsigned int enabled, unsigned int connected)
+		 unsigned int enabled, unsigned int connected, unsigned int lock_stats)
 {
 	struct knet_host *host = knet_h->host_index[host_id];
 	struct knet_link *link = &host->link[link_id];
 	int notify_status = link->status.connected;
+	int savederrno = 0;
 
 	if ((link->status.enabled == enabled) &&
 	    (link->status.connected == connected))
@@ -59,6 +60,16 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 	    (!link->status.connected))
 		link->status.dynconnected = 0;
 
+	if (lock_stats) {
+		savederrno = pthread_mutex_lock(&link->link_stats_mutex);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_LINK, "Unable to get stats mutex lock for host %u link %u: %s",
+				host_id, link_id, strerror(savederrno));
+			errno = savederrno;
+			return -1;
+		}
+	}
+
 	if (connected) {
 		time(&link->status.stats.last_up_times[link->status.stats.last_up_time_index]);
 		link->status.stats.up_count++;
@@ -71,6 +82,10 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		if (++link->status.stats.last_down_time_index >= MAX_LINK_EVENTS) {
 			link->status.stats.last_down_time_index = 0;
 		}
+	}
+
+	if (lock_stats) {
+		pthread_mutex_unlock(&link->link_stats_mutex);
 	}
 	return 0;
 }
@@ -248,6 +263,13 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->latency_max_samples = KNET_LINK_DEFAULT_PING_PRECISION;
 	link->latency_cur_samples = 0;
 	link->flags = flags;
+
+	savederrno = pthread_mutex_init(&link->link_stats_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to initialize link stats mutex: %s", strerror(savederrno));
+		err = -1;
+		goto exit_unlock;
+	}
 
 	if (transport_link_set_config(knet_h, link, transport) < 0) {
 		savederrno = errno;
@@ -506,6 +528,8 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 		check_rmall(knet_h, sock, transport);
 	}
 
+	pthread_mutex_destroy(&link->link_stats_mutex);
+
 	memset(link, 0, sizeof(struct knet_link));
 	link->link_id = link_id;
 
@@ -579,7 +603,7 @@ int knet_link_set_enable(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
-	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected);
+	err = _link_updown(knet_h, host_id, link_id, enabled, link->status.connected, 0);
 	savederrno = errno;
 
 	if (enabled) {
@@ -1121,7 +1145,7 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		return -1;
 	}
 
-	savederrno = get_global_wrlock(knet_h);
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to get read lock: %s",
 			strerror(savederrno));
@@ -1148,7 +1172,17 @@ int knet_link_get_status(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
+	savederrno = pthread_mutex_lock(&link->link_stats_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_LINK, "Unable to get stats mutex lock for host %u link %u: %s",
+			host_id, link_id, strerror(savederrno));
+		err = -1;
+		goto exit_unlock;
+	}
+
 	memmove(status, &link->status, struct_size);
+
+	pthread_mutex_unlock(&link->link_stats_mutex);
 
 	/* Calculate totals - no point in doing this on-the-fly */
 	status->stats.rx_total_packets =
