@@ -40,11 +40,6 @@ static void test(void)
 	int8_t channel = 0;
 	struct sockaddr_storage lo;
 
-	if (make_local_sockaddr(&lo, 0) < 0) {
-		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
-		exit(FAIL);
-	}
-
 	printf("Test knet_handle_pmtud_set incorrect knet_h\n");
 
 	if ((!knet_handle_pmtud_set(NULL, iface_mtu)) || (errno != EINVAL)) {
@@ -95,7 +90,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

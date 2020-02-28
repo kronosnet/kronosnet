@@ -163,7 +163,7 @@ static void test(void)
 
 	printf("Test knet_link_add_acl with point to point link\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -173,7 +173,7 @@ static void test(void)
 	}
 
 	if ((!knet_link_add_acl(knet_h, 1, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) || (errno != EINVAL)) {
-		printf("knet_link_add_acl accepted point ot point link or returned incorrect error: %s\n", strerror(errno));
+		printf("knet_link_add_acl accepted point to point link or returned incorrect error: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -188,7 +188,7 @@ static void test(void)
 
 	printf("Test knet_link_add_acl with dynamic link\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, NULL, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

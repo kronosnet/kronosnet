@@ -25,19 +25,9 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	struct sockaddr_storage src, dst, get_src, get_dst;
+	struct sockaddr_storage lo, get_src, get_dst;
 	uint8_t dynamic = 0, transport = 0;
 	uint64_t flags;
-
-	if (make_local_sockaddr(&src, 0) < 0) {
-		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
-		exit(FAIL);
-	}
-
-	if (make_local_sockaddr(&dst, 1) < 0) {
-		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
-		exit(FAIL);
-	}
 
 	printf("Test knet_link_get_config incorrect knet_h\n");
 
@@ -142,7 +132,7 @@ static void test(void)
 
 	printf("Test knet_link_get_config with incorrect dst_addr\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
@@ -202,8 +192,8 @@ static void test(void)
 	}
 
 	if ((dynamic) ||
-	    (memcmp(&src, &get_src, sizeof(struct sockaddr_storage))) ||
-	    (memcmp(&dst, &get_dst, sizeof(struct sockaddr_storage)))) {
+	    (memcmp(&lo, &get_src, sizeof(struct sockaddr_storage))) ||
+	    (memcmp(&lo, &get_dst, sizeof(struct sockaddr_storage)))) {
 		printf("knet_link_get_config returned invalid data\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -226,7 +216,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -250,7 +240,7 @@ static void test(void)
 	}
 
 	if ((!dynamic) ||
-	    (memcmp(&src, &get_src, sizeof(struct sockaddr_storage)))) {
+	    (memcmp(&lo, &get_src, sizeof(struct sockaddr_storage)))) {
 		printf("knet_link_get_config returned invalid data\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -278,7 +268,7 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, NULL, KNET_LINK_FLAG_TRAFFICHIPRIO) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, KNET_LINK_FLAG_TRAFFICHIPRIO, AF_INET, 1, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);

@@ -170,6 +170,15 @@ static int _configure_sctp_socket(knet_handle_t knet_h, int sock, struct sockadd
 	}
 
 	value = 1;
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) < 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set reuseaddr on socket %d: %s",
+			sock, strerror(savederrno));
+		goto exit_error;
+	}
+
+	value = 1;
 	if (setsockopt(sock, level, SCTP_NODELAY, &value, sizeof(value)) < 0) {
 		savederrno = errno;
 		err = -1;

@@ -47,6 +47,14 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level);
 int knet_handle_stop(knet_handle_t knet_h);
 
 /*
+ * knet_link_set_config wrapper required to find a free port
+ */
+
+int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
+			  uint8_t transport, uint64_t flags, int family, int dynamic,
+			  struct sockaddr_storage *lo);
+
+/*
  * high level logging function.
  * automatically setup logpipes and start/stop logging thread.
  *
@@ -67,8 +75,8 @@ void close_logpipes(int *logfds);
 void flush_logs(int logfd, FILE *std);
 int start_logthread(int logfd, FILE *std);
 int stop_logthread(void);
-int make_local_sockaddr(struct sockaddr_storage *lo, uint16_t offset);
-int make_local_sockaddr6(struct sockaddr_storage *lo, uint16_t offset);
+int make_local_sockaddr(struct sockaddr_storage *lo, int offset);
+int make_local_sockaddr6(struct sockaddr_storage *lo, int offset);
 int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std);
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std);
 void test_sleep(knet_handle_t knet_h, int seconds);
