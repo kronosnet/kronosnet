@@ -668,18 +668,18 @@ retry_pong:
 			 * in words : ('previous mean' * '(count -1)') + 'new value') / 'count'
 			 */
 
-			src_link->latency_cur_samples++;
+			src_link->status.stats.latency_samples++;
 
 			/*
 			 * limit to max_samples (precision)
 			 */
-			if (src_link->latency_cur_samples >= src_link->latency_max_samples) {
-				src_link->latency_cur_samples = src_link->latency_max_samples;
+			if (src_link->status.stats.latency_samples >= src_link->latency_max_samples) {
+				src_link->status.stats.latency_samples = src_link->latency_max_samples;
 			}
-			src_link->status.latency =
-				(((src_link->status.latency * (src_link->latency_cur_samples - 1)) + (latency_last / 1000llu)) / src_link->latency_cur_samples);
+			src_link->status.stats.latency_ave =
+				(((src_link->status.stats.latency_ave * (src_link->status.stats.latency_samples - 1)) + (latency_last / 1000llu)) / src_link->status.stats.latency_samples);
 
-			if (src_link->status.latency < src_link->pong_timeout_adj) {
+			if (src_link->status.stats.latency_ave < src_link->pong_timeout_adj) {
 				if (!src_link->status.connected) {
 					if (src_link->received_pong >= src_link->pong_count) {
 						log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
@@ -693,21 +693,12 @@ retry_pong:
 				}
 			}
 			/* Calculate latency stats */
-			if (src_link->status.latency > src_link->status.stats.latency_max) {
-				src_link->status.stats.latency_max = src_link->status.latency;
+			if (src_link->status.stats.latency_ave > src_link->status.stats.latency_max) {
+				src_link->status.stats.latency_max = src_link->status.stats.latency_ave;
 			}
-			if (src_link->status.latency < src_link->status.stats.latency_min) {
-				src_link->status.stats.latency_min = src_link->status.latency;
+			if (src_link->status.stats.latency_ave < src_link->status.stats.latency_min) {
+				src_link->status.stats.latency_min = src_link->status.stats.latency_ave;
 			}
-
-			/*
-			 * those 2 lines below make all latency average calculations consistent and capped to
-			 * link precision. In future we will kill the one above to keep only this one in
-			 * the stats structure, but for now we leave it around to avoid API/ABI
-			 * breakage as we backport the fixes to stable
-			 */
-			src_link->status.stats.latency_ave = src_link->status.latency;
-			src_link->status.stats.latency_samples = src_link->latency_cur_samples;
 		}
 		break;
 	case KNET_HEADER_TYPE_PMTUD:

@@ -261,7 +261,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->pong_timeout_backoff = KNET_LINK_PONG_TIMEOUT_BACKOFF;
 	link->pong_timeout_adj = link->pong_timeout * link->pong_timeout_backoff; /* microseconds */
 	link->latency_max_samples = KNET_LINK_DEFAULT_PING_PRECISION;
-	link->latency_cur_samples = 0;
+	link->status.stats.latency_samples = 0;
 	link->flags = flags;
 
 	savederrno = pthread_mutex_init(&link->link_stats_mutex, NULL);
