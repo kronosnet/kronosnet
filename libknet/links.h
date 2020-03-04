@@ -41,7 +41,7 @@
 #define KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MAX	128
 
 int _link_updown(knet_handle_t knet_h, knet_node_id_t node_id, uint8_t link_id,
-		 unsigned int enabled, unsigned int connected);
+		 unsigned int enabled, unsigned int connected, unsigned int lock_stats);
 
 void _link_clear_stats(knet_handle_t knet_h);
 

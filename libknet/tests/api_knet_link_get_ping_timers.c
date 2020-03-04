@@ -25,19 +25,9 @@ static void test(void)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
-	struct sockaddr_storage src, dst;
 	time_t interval = 0, timeout = 0;
 	unsigned int precision = 0;
-
-	if (make_local_sockaddr(&src, 0) < 0) {
-		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
-		exit(FAIL);
-	}
-
-	if (make_local_sockaddr(&dst, 1) < 0) {
-		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	struct sockaddr_storage lo;
 
 	printf("Test knet_link_get_ping_timers incorrect knet_h\n");
 
@@ -137,7 +127,7 @@ static void test(void)
 
 	printf("Test knet_link_get_ping_timers with correct values\n");
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

@@ -114,11 +114,6 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 	unsigned int data_mtu, expected_mtu;
 	size_t calculated_iface_mtu = 0, detected_iface_mtu = 0;
 
-	if (make_local_sockaddr(&lo, 0) < 0) {
-		printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
-		exit_local(FAIL);
-	}
-
 	setup_logpipes(logfds);
 
 	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
@@ -168,7 +163,7 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 		exit_local(FAIL);
 	}
 
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

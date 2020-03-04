@@ -72,6 +72,7 @@ struct knet_link {
 	/* status */
 	struct knet_link_status status;
 	/* internals */
+	pthread_mutex_t link_stats_mutex;	/* used to update link stats */
 	uint8_t link_id;
 	uint8_t transport;                      /* #defined constant from API */
 	knet_transport_link_t transport_link;   /* link_info_t from transport */
@@ -183,6 +184,7 @@ struct knet_handle {
 	struct knet_fd_trackers knet_transport_fd_tracker[KNET_MAX_FDS]; /* track status for each fd handled by transports */
 	struct knet_handle_stats stats;
 	struct knet_handle_stats_extra stats_extra;
+	pthread_mutex_t handle_stats_mutex;	/* used to protect handle stats */
 	uint32_t reconnect_int;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;

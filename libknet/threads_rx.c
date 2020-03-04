@@ -228,7 +228,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 
 static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
 {
-	int err = 0, savederrno = 0;
+	int err = 0, savederrno = 0, stats_err = 0;
 	ssize_t outlen;
 	struct knet_host *src_host;
 	struct knet_link *src_link;
@@ -236,8 +236,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
-	int was_decrypted = 0;
-	uint64_t crypt_time = 0;
+	uint64_t decrypt_time = 0;
 	struct timespec recvtime;
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
 	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
@@ -264,18 +263,10 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			return;
 		}
 		clock_gettime(CLOCK_MONOTONIC, &end_time);
-		timespec_diff(start_time, end_time, &crypt_time);
-
-		if (crypt_time < knet_h->stats.rx_crypt_time_min) {
-			knet_h->stats.rx_crypt_time_min = crypt_time;
-		}
-		if (crypt_time > knet_h->stats.rx_crypt_time_max) {
-			knet_h->stats.rx_crypt_time_max = crypt_time;
-		}
+		timespec_diff(start_time, end_time, &decrypt_time);
 
 		len = outlen;
 		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
-		was_decrypted++;
 	}
 
 	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
@@ -294,8 +285,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		log_debug(knet_h, KNET_SUB_RX, "Unable to find source host for this packet");
 		return;
 	}
-
-	src_link = NULL;
 
 	src_link = src_host->link +
 		(inbuf->khp_ping_link % KNET_MAX_LINK);
@@ -333,10 +322,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 	}
 
+	stats_err = pthread_mutex_lock(&src_link->link_stats_mutex);
+	if (stats_err) {
+		log_err(knet_h, KNET_SUB_RX, "Unable to get stats mutex lock for host %u link %u: %s",
+			src_host->host_id, src_link->link_id, strerror(savederrno));
+		return;
+	}
+
 	switch (inbuf->kh_type) {
 	case KNET_HEADER_TYPE_HOST_INFO:
 	case KNET_HEADER_TYPE_DATA:
 		if (!src_host->status.reachable) {
+			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
 			return;
 		}
@@ -344,12 +341,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		channel = inbuf->khp_data_channel;
 		src_host->got_data = 1;
 
-		if (src_link) {
-			src_link->status.stats.rx_data_packets++;
-			src_link->status.stats.rx_data_bytes += len;
-		}
+		src_link->status.stats.rx_data_packets++;
+		src_link->status.stats.rx_data_bytes += len;
 
 		if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
+			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 				log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
 			}
@@ -365,6 +361,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			 */
 			len = len - KNET_HEADER_DATA_SIZE;
 			if (pckt_defrag(knet_h, inbuf, &len)) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
 				return;
 			}
 			len = len + KNET_HEADER_DATA_SIZE;
@@ -382,11 +379,19 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 					 len - KNET_HEADER_DATA_SIZE,
 					 knet_h->recv_from_links_buf_decompress,
 					 &decmp_outlen);
+
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				return;
+			}
+
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
+			timespec_diff(start_time, end_time, &compress_time);
+
 			if (!err) {
 				/* Collect stats */
-				clock_gettime(CLOCK_MONOTONIC, &end_time);
-				timespec_diff(start_time, end_time, &compress_time);
-
 				if (compress_time < knet_h->stats.rx_compress_time_min) {
 					knet_h->stats.rx_compress_time_min = compress_time;
 				}
@@ -404,22 +409,40 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				memmove(inbuf->khp_data_userdata, knet_h->recv_from_links_buf_decompress, decmp_outlen);
 				len = decmp_outlen + KNET_HEADER_DATA_SIZE;
 			} else {
+				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
 				log_warn(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
 					 err, strerror(errno));
 				return;
 			}
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
+			if (knet_h->crypto_instance) {
+				stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+				if (stats_err < 0) {
+					pthread_mutex_unlock(&src_link->link_stats_mutex);
+					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+					return;
+				}
+				/* Only update the crypto overhead for data packets. Mainly to be
+				   consistent with TX */
+				if (decrypt_time < knet_h->stats.rx_crypt_time_min) {
+					knet_h->stats.rx_crypt_time_min = decrypt_time;
+				}
+				if (decrypt_time > knet_h->stats.rx_crypt_time_max) {
+					knet_h->stats.rx_crypt_time_max = decrypt_time;
+				}
+				knet_h->stats.rx_crypt_time_ave =
+					(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
+					 decrypt_time) / (knet_h->stats.rx_crypt_packets+1);
+				knet_h->stats.rx_crypt_packets++;
+				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+			}
+
 			if (knet_h->enabled != 1) /* data forward is disabled */
 				break;
-
-			/* Only update the crypto overhead for data packets. Mainly to be
-			   consistent with TX */
-			knet_h->stats.rx_crypt_time_ave =
-				(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
-				 crypt_time) / (knet_h->stats.rx_crypt_packets+1);
-			knet_h->stats.rx_crypt_packets++;
 
 			if (knet_h->dst_host_filter_fn) {
 				size_t host_idx;
@@ -436,11 +459,13 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 						dst_host_ids,
 						&dst_host_ids_entries);
 				if (bcast < 0) {
+					pthread_mutex_unlock(&src_link->link_stats_mutex);
 					log_debug(knet_h, KNET_SUB_RX, "Error from dst_host_filter_fn: %d", bcast);
 					return;
 				}
 
 				if ((!bcast) && (!dst_host_ids_entries)) {
+					pthread_mutex_unlock(&src_link->link_stats_mutex);
 					log_debug(knet_h, KNET_SUB_RX, "Message is unicast but no dst_host_ids_entries");
 					return;
 				}
@@ -448,6 +473,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				/* check if we are dst for this packet */
 				if (!bcast) {
 					if (dst_host_ids_entries > KNET_MAX_HOST) {
+						pthread_mutex_unlock(&src_link->link_stats_mutex);
 						log_debug(knet_h, KNET_SUB_RX, "dst_host_filter_fn returned too many destinations");
 						return;
 					}
@@ -458,6 +484,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 						}
 					}
 					if (!found) {
+						pthread_mutex_unlock(&src_link->link_stats_mutex);
 						log_debug(knet_h, KNET_SUB_RX, "Packet is not for us");
 						return;
 					}
@@ -467,6 +494,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
 			if (!knet_h->sockfd[channel].in_use) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
 				log_debug(knet_h, KNET_SUB_RX,
 					  "received packet for channel %d but there is no local sock connected",
 					  channel);
@@ -495,6 +523,7 @@ retry:
 						       KNET_NOTIFY_RX,
 						       outlen,
 						       errno);
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
 				return;
 			}
 			if ((size_t)outlen == iov_out[0].iov_len) {
@@ -506,6 +535,7 @@ retry:
 				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
 			}
 			if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
 				return;
 			}
 			_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
@@ -577,7 +607,13 @@ retry:
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				break;
+			}
 			knet_h->stats_extra.tx_crypt_pong_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
 retry_pong:
@@ -647,7 +683,7 @@ retry_pong:
 					if (src_link->received_pong >= src_link->pong_count) {
 						log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
 							 src_host->host_id, src_link->link_id);
-						_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1);
+						_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1, 0);
 					} else {
 						src_link->received_pong++;
 						log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received pong: %u",
@@ -690,8 +726,17 @@ retry_pong:
 				break;
 			}
 			outbuf = knet_h->recv_from_links_buf_crypt;
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				break;
+			}
 			knet_h->stats_extra.tx_crypt_pmtu_reply_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
+
+		/* Unlock so we don't deadlock with tx_mutex */
+		pthread_mutex_unlock(&src_link->link_stats_mutex);
 
 		savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 		if (savederrno) {
@@ -709,6 +754,11 @@ retry_pmtud:
 			savederrno = errno;
 			if (len != outlen) {
 				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
+				stats_err = pthread_mutex_lock(&src_link->link_stats_mutex);
+				if (stats_err < 0) {
+					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+					break;
+				}
 				switch(err) {
 					case -1: /* unrecoverable error */
 						log_debug(knet_h, KNET_SUB_RX,
@@ -724,17 +774,23 @@ retry_pmtud:
 						break;
 					case 1: /* retry to send those same data */
 						src_link->status.stats.tx_pmtu_retries++;
+						pthread_mutex_unlock(&src_link->link_stats_mutex);
 						goto retry_pmtud;
 						break;
 				}
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
 			}
 		}
 		pthread_mutex_unlock(&knet_h->tx_mutex);
 out_pmtud:
-		break;
+		return; /* Don't need to unlock link_stats_mutex */
 	case KNET_HEADER_TYPE_PMTUD_REPLY:
 		src_link->status.stats.rx_pmtu_packets++;
 		src_link->status.stats.rx_pmtu_bytes += len;
+
+		/* pmtud_mutex can't be acquired while we hold a link_stats_mutex (ordering) */
+		pthread_mutex_unlock(&src_link->link_stats_mutex);
+
 		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
 			break;
@@ -742,10 +798,12 @@ out_pmtud:
 		src_link->last_recv_mtu = inbuf->khp_pmtud_size;
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
-		break;
+		return;
 	default:
+		pthread_mutex_unlock(&src_link->link_stats_mutex);
 		return;
 	}
+	pthread_mutex_unlock(&src_link->link_stats_mutex);
 }
 
 static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)

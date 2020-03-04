@@ -25,7 +25,7 @@ static void test(void)
 	int logfds[2];
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
-	struct sockaddr_storage ss;
+	struct sockaddr_storage lo;
 
 	printf("Test knet_host_add incorrect knet_h\n");
 
@@ -64,16 +64,7 @@ static void test(void)
 
 	printf("Test knet_host_remove with configured host_id and links\n");
 
-	if (make_local_sockaddr(&ss, 0) < 0) {
-		printf("Unable to convert str to sockaddr: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &ss, NULL, 0) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo) < 0) {
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);

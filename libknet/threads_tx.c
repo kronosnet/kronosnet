@@ -36,7 +36,7 @@
 static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_mmsghdr *msg, int msgs_to_send)
 {
 	int link_idx, msg_idx, sent_msgs, prev_sent, progress;
-	int err = 0, savederrno = 0;
+	int err = 0, savederrno = 0, locked = 0;
 	unsigned int i;
 	struct knet_mmsghdr *cur;
 	struct knet_link *cur_link;
@@ -44,12 +44,21 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 	for (link_idx = 0; link_idx < dst_host->active_link_entries; link_idx++) {
 		prev_sent = 0;
 		progress = 1;
+		locked = 0;
 
 		cur_link = &dst_host->link[dst_host->active_links[link_idx]];
 
 		if (cur_link->transport == KNET_TRANSPORT_LOOPBACK) {
 			continue;
 		}
+
+		savederrno = pthread_mutex_lock(&cur_link->link_stats_mutex);
+		if (savederrno) {
+			log_err(knet_h, KNET_SUB_TX, "Unable to get stats mutex lock for host %u link %u: %s",
+				dst_host->host_id, cur_link->link_id, strerror(savederrno));
+			continue;
+		}
+		locked = 1;
 
 		msg_idx = 0;
 		while (msg_idx < msgs_to_send) {
@@ -120,9 +129,14 @@ retry:
 
 			break;
 		}
+		pthread_mutex_unlock(&cur_link->link_stats_mutex);
+		locked = 0;
 	}
 
 out_unlock:
+	if (locked) {
+		pthread_mutex_unlock(&cur_link->link_stats_mutex);
+	}
 	errno = savederrno;
 	return err;
 }
@@ -154,6 +168,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	int send_local = 0;
 	int data_compressed = 0;
 	size_t uncrypted_frag_size;
+	int stats_locked = 0, stats_err = 0;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -346,23 +361,33 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		err = compress(knet_h,
 			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
 			       knet_h->send_to_links_buf_compress, (ssize_t *)&cmp_outlen);
+
+		savederrno = errno;
+
+		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+		if (stats_err < 0) {
+			log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
+			err = -1;
+			savederrno = stats_err;
+			goto out_unlock;
+		}
+		stats_locked = 1;
+		/* Collect stats */
+		clock_gettime(CLOCK_MONOTONIC, &end_time);
+		timespec_diff(start_time, end_time, &compress_time);
+
+		if (compress_time < knet_h->stats.tx_compress_time_min) {
+			knet_h->stats.tx_compress_time_min = compress_time;
+		}
+		if (compress_time > knet_h->stats.tx_compress_time_max) {
+			knet_h->stats.tx_compress_time_max = compress_time;
+		}
+		knet_h->stats.tx_compress_time_ave =
+			(unsigned long long)(knet_h->stats.tx_compress_time_ave * knet_h->stats.tx_compressed_packets +
+			 compress_time) / (knet_h->stats.tx_compressed_packets+1);
 		if (err < 0) {
-			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(errno));
+			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(savederrno));
 		} else {
-			/* Collect stats */
-			clock_gettime(CLOCK_MONOTONIC, &end_time);
-			timespec_diff(start_time, end_time, &compress_time);
-
-	                if (compress_time < knet_h->stats.tx_compress_time_min) {
-				knet_h->stats.tx_compress_time_min = compress_time;
-			}
-			if (compress_time > knet_h->stats.tx_compress_time_max) {
-				knet_h->stats.tx_compress_time_max = compress_time;
-			}
-			knet_h->stats.tx_compress_time_ave =
-				(unsigned long long)(knet_h->stats.tx_compress_time_ave * knet_h->stats.tx_compressed_packets +
-				 compress_time) / (knet_h->stats.tx_compressed_packets+1);
-
 			knet_h->stats.tx_compressed_packets++;
 			knet_h->stats.tx_compressed_original_bytes += inlen;
 			knet_h->stats.tx_compressed_size_bytes += cmp_outlen;
@@ -374,9 +399,20 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			}
 		}
 	}
+	if (!stats_locked) {
+		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+		if (stats_err < 0) {
+			log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
+			err = -1;
+			savederrno = stats_err;
+			goto out_unlock;
+		}
+	}
 	if (knet_h->compress_model > 0 && !data_compressed) {
 		knet_h->stats.tx_uncompressed_packets++;
 	}
+	pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+	stats_locked = 0;
 
 	/*
 	 * prepare the outgoing buffers
@@ -488,7 +524,15 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			timespec_diff(start_time, end_time, &crypt_time);
 
-	                if (crypt_time < knet_h->stats.tx_crypt_time_min) {
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
+				err = -1;
+				savederrno = stats_err;
+				goto out_unlock;
+			}
+
+			if (crypt_time < knet_h->stats.tx_crypt_time_min) {
 				knet_h->stats.tx_crypt_time_min = crypt_time;
 			}
 			if (crypt_time > knet_h->stats.tx_crypt_time_max) {
@@ -504,6 +548,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			}
 			knet_h->stats.tx_crypt_byte_overhead += (outlen - uncrypted_frag_size);
 			knet_h->stats.tx_crypt_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 
 			iov_out[frag_idx][0].iov_base = knet_h->send_to_links_buf_crypt[frag_idx];
 			iov_out[frag_idx][0].iov_len = outlen;
