@@ -15,6 +15,7 @@
  */
 
 #include <pthread.h>
+#include <stddef.h>
 #include "libknet.h"
 #include "onwire.h"
 #include "compat.h"
@@ -535,8 +536,8 @@ static inline int32_t knet_list_empty(const struct knet_list_head *head)
  * @param type:	the type of the struct this is embedded in.
  * @param member:	the name of the list_struct within the struct.
  */
-#define knet_list_entry(ptr,type,member)\
-	((type *)((char *)(ptr)-(char*)(&((type *)0)->member)))
+#define knet_list_entry(ptr,type,member) ({		\
+	((type *)((char*)ptr - offsetof(type, member))); })
 
 /**
  * Get the first element from a list
