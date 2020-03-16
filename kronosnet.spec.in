@@ -49,10 +49,10 @@ URL: https://kronosnet.org
 Source0: https://kronosnet.org/releases/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
 
 # Build dependencies
-BuildRequires: gcc
+BuildRequires: gcc libqb-devel
 # required to build man pages
 %if %{with buildman}
-BuildRequires: libqb-devel libxml2-devel doxygen
+BuildRequires: libxml2-devel doxygen
 %endif
 %if %{with sctp}
 BuildRequires: lksctp-tools-devel
