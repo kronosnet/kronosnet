@@ -33,8 +33,8 @@
 #include "transport_sctp.h"
 
 typedef struct sctp_handle_info {
-	struct knet_list_head listen_links_list;
-	struct knet_list_head connect_links_list;
+	struct qb_list_head listen_links_list;
+	struct qb_list_head connect_links_list;
 	int connect_epollfd;
 	int connectsockfd[2];
 	int listen_epollfd;
@@ -59,7 +59,7 @@ typedef struct sctp_handle_info {
 #define MAX_ACCEPTED_SOCKS 256
 
 typedef struct sctp_listen_link_info {
-	struct knet_list_head list;
+	struct qb_list_head list;
 	int listen_sock;
 	int accepted_socks[MAX_ACCEPTED_SOCKS];
 	struct sockaddr_storage src_address;
@@ -75,7 +75,7 @@ typedef struct sctp_accepted_link_info {
 } sctp_accepted_link_info_t ;
 
 typedef struct sctp_connect_link_info {
-	struct knet_list_head list;
+	struct qb_list_head list;
 	sctp_listen_link_info_t *listener;
 	struct knet_link *link;
 	struct sockaddr_storage dst_address;
@@ -977,7 +977,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	/*
 	 * Only allocate a new listener if src address is different
 	 */
-	knet_list_for_each_entry(info, &handle_info->listen_links_list, list) {
+	qb_list_for_each_entry(info, &handle_info->listen_links_list, list) {
 		if (memcmp(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
 			if ((check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP, -1,
 				       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
@@ -1059,7 +1059,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	info->on_listener_epoll = 1;
 
 	info->listen_sock = listen_sock;
-	knet_list_add(&info->list, &handle_info->listen_links_list);
+	qb_list_add(&info->list, &handle_info->listen_links_list);
 
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Listening on fd %d for %s:%s", listen_sock, kn_link->status.src_ipaddr, kn_link->status.src_port);
 
@@ -1169,7 +1169,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		}
 	}
 
-	knet_list_del(&info->list);
+	qb_list_del(&info->list);
 	free(info);
 	this_link_info->listener = NULL;
 
@@ -1216,7 +1216,7 @@ int sctp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_li
 		kn_link->outsock = info->connect_sock;
 	}
 
-	knet_list_add(&info->list, &handle_info->connect_links_list);
+	qb_list_add(&info->list, &handle_info->connect_links_list);
 
 exit_error:
 	if (err) {
@@ -1271,7 +1271,7 @@ int sctp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_
 		goto exit_error;
 	}
 
-	knet_list_del(&info->list);
+	qb_list_del(&info->list);
 
 	free(info);
 	kn_link->transport_link = NULL;
@@ -1305,10 +1305,10 @@ int sctp_transport_free(knet_handle_t knet_h)
 	/*
 	 * keep it here while we debug list usage and such
 	 */
-	if (!knet_list_empty(&handle_info->listen_links_list)) {
+	if (!qb_list_empty(&handle_info->listen_links_list)) {
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Internal error. listen links list is not empty");
 	}
-	if (!knet_list_empty(&handle_info->connect_links_list)) {
+	if (!qb_list_empty(&handle_info->connect_links_list)) {
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Internal error. connect links list is not empty");
 	}
 
@@ -1441,8 +1441,8 @@ int sctp_transport_init(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
-	knet_list_init(&handle_info->listen_links_list);
-	knet_list_init(&handle_info->connect_links_list);
+	qb_list_init(&handle_info->listen_links_list);
+	qb_list_init(&handle_info->connect_links_list);
 
 	handle_info->listen_epollfd = epoll_create(KNET_EPOLL_MAX_EVENTS + 1);
 	if (handle_info->listen_epollfd < 0) {
