@@ -272,6 +272,8 @@ if test "x$enable_man" = "xyes"; then
 	ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 fi
 
+PKG_CHECK_MODULES([libqb], [libqb])
+
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
 	if `echo $host_os | grep -q linux`; then
@@ -293,8 +295,6 @@ if test "x$enable_kronosnetd" = xyes; then
 			 [AC_CHECK_LIB([pam_misc], [misc_conv],
 				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
 				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
-
-	PKG_CHECK_MODULES([libqb], [libqb])
 
 	AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
 		     [have_qb_log_thread_priority_set="yes"],
