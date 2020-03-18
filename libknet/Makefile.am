@@ -87,7 +87,9 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-libknet_la_CFLAGS	= $(AM_CFLAGS) $(libqb_CFLAGS) $(PTHREAD_CFLAGS)
+AM_CFLAGS		+= $(libqb_CFLAGS)
+
+libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS)
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
