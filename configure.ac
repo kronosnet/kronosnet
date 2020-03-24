@@ -251,28 +251,44 @@ AC_TYPE_INT16_T
 AC_TYPE_INT32_T
 AC_TYPE_INT64_T
 
+PKG_CHECK_MODULES([libqb], [libqb])
+
 if test "x$enable_man" = "xyes"; then
 	AC_ARG_VAR([DOXYGEN], [override doxygen executable])
 	AC_CHECK_PROGS([DOXYGEN], [doxygen], [no])
 	if test "x$DOXYGEN" = xno; then
 		AC_MSG_ERROR(["Doxygen command not found"])
 	fi
-	# required by doxyxml to build man pages dynamically
-	# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
-	# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
-	: ${CFLAGS_FOR_BUILD=""}
-	AX_PROG_CC_FOR_BUILD
-	saved_PKG_CONFIG="$PKG_CONFIG"
-	saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
-	unset PKG_CONFIG ac_cv_path_PKG_CONFIG
-	AC_PATH_PROG([PKG_CONFIG], [pkg-config])
-	PKG_CHECK_MODULES([libqb_BUILD], [libqb])
-	PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
-	PKG_CONFIG="$saved_PKG_CONFIG"
-	ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
-fi
 
-PKG_CHECK_MODULES([libqb], [libqb])
+	AC_ARG_VAR([DOXYGEN2MAN], [override doxygen2man executable])
+	if test "x$cross_compiling" = "xno"; then
+		PKG_CHECK_VAR([libqb_PREFIX], [libqb], [prefix])
+		AC_PATH_PROG([DOXYGEN2MAN], [doxygen2man], [no], [$libqb_PREFIX/bin$PATH_SEPARATOR$PATH])
+	fi
+	if test "x$DOXYGEN2MAN" = "xno"; then
+		# required by doxyxml to build man pages dynamically
+		# Don't let AC_PROC_CC (invoked by AX_PROG_CC_FOR_BUILD) replace
+		# undefined CFLAGS_FOR_BUILD with -g -O2, overriding our special OPT_CFLAGS.
+		: ${CFLAGS_FOR_BUILD=""}
+		AX_PROG_CC_FOR_BUILD
+		saved_PKG_CONFIG="$PKG_CONFIG"
+		saved_ac_cv_path_PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+		unset PKG_CONFIG ac_cv_path_PKG_CONFIG
+		AC_PATH_PROG([PKG_CONFIG], [pkg-config])
+		PKG_CHECK_MODULES([libqb_BUILD], [libqb])
+		PKG_CHECK_VAR([libqb_BUILD_PREFIX], [libqb], [prefix])
+		AC_PATH_PROG([DOXYGEN2MAN], [doxygen2man], [no], [$libqb_BUILD_PREFIX/bin$PATH_SEPARATOR$PATH])
+		if test "x$DOXYGEN2MAN" = "xno"; then
+			PKG_CHECK_MODULES([libxml_BUILD], [libxml-2.0])
+			DOXYGEN2MAN="\${abs_top_builddir}/man/doxyxml"
+			build_doxy=yes
+		fi
+		PKG_CONFIG="$saved_PKG_CONFIG"
+		ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
+	fi
+	AC_SUBST([DOXYGEN2MAN])
+	AM_CONDITIONAL([BUILD_DOXYXML], [test "x$build_doxy" = "xyes"])
+fi
 
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
