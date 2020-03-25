@@ -15,27 +15,10 @@ EXTRA_DIST	= \
 		  kronosnetd.8 knet-keygen.8 \
 		  api-to-man-page-coverage
 
-# Avoid Automake warnings about overriding these user variables.
-# Programs in this directory are used during the build only.
-AUTOMAKE_OPTIONS = -Wno-gnu
-EXEEXT=$(BUILD_EXEEXT)
-CC=$(CC_FOR_BUILD)
-CFLAGS=$(CFLAGS_FOR_BUILD)
-CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
-LDFLAGS=$(LDFLAGS_FOR_BUILD)
-
 if BUILD_MAN
 
 if BUILD_KRONOSNETD
 man8_MANS	= kronosnetd.8 knet-keygen.8
-endif
-
-if BUILD_DOXYXML
-noinst_PROGRAMS	= doxyxml
-
-doxyxml_SOURCES = doxyxml.c
-doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
-doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
 endif
 
 knet_man3_MANS = \
@@ -133,16 +116,16 @@ man3_MANS = $(knet_man3_MANS) $(nozzle_man3_MANS)
 $(MANS): doxyfile-knet.stamp doxyfile-nozzle.stamp
 
 # export LSAN_OPTIONS unconditionally for now.
-# there is no urgency to fix doxyxml for leaks or bad memory access
+# there is no urgency to fix doxygen2man for leaks or bad memory access
 # since it's a one-shot tool and doesn't affect runtime.
 
-doxyfile-knet.stamp: $(noinst_PROGRAMS) Doxyfile-knet $(top_srcdir)/libknet/libknet.h
+doxyfile-knet.stamp: Doxyfile-knet $(top_srcdir)/libknet/libknet.h
 	$(DOXYGEN) Doxyfile-knet
 	LSAN_OPTIONS="exitcode=0" $(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
-doxyfile-nozzle.stamp: $(noinst_PROGRAMS) Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
+doxyfile-nozzle.stamp: Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
 if BUILD_LIBNOZZLE
 	$(DOXYGEN) Doxyfile-nozzle
 	LSAN_OPTIONS="exitcode=0" $(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
@@ -165,4 +148,4 @@ check-api-to-man-page-coverage-libknet:
 endif
 
 clean-local:
-	rm -rf doxyxml doxyfile*.stamp xml* *.3
+	rm -rf doxyfile*.stamp xml* *.3
