@@ -52,7 +52,7 @@ Source0: https://kronosnet.org/releases/%{name}-%{version}%{?numcomm:.%{numcomm}
 BuildRequires: gcc libqb-devel
 # required to build man pages
 %if %{with buildman}
-BuildRequires: libxml2-devel doxygen
+BuildRequires: doxygen doxygen2man
 %endif
 %if %{with sctp}
 BuildRequires: lksctp-tools-devel
