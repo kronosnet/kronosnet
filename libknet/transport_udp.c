@@ -27,6 +27,7 @@
 #include "link.h"
 #include "logging.h"
 #include "common.h"
+#include "netutils.h"
 #include "transport_common.h"
 #include "transport_udp.h"
 #include "transports.h"

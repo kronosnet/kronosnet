@@ -23,6 +23,7 @@
 #include "links_acl.h"
 #include "links_acl_ip.h"
 #include "logging.h"
+#include "netutils.h"
 #include "common.h"
 #include "transport_common.h"
 #include "transports.h"
