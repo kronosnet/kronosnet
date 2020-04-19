@@ -148,7 +148,7 @@ int ipcheck_validate(void *fd_tracker_match_entry_head, struct sockaddr_storage 
 	struct ip_acl_match_entry *match_entry = *match_entry_head;
 	int (*match_fn)(struct sockaddr_storage *checkip, struct ip_acl_match_entry *match_entry);
 
-	if (checkip->ss_family == AF_INET){
+	if (checkip->ss_family == AF_INET) {
 		match_fn = ip_matches_v4;
 	} else {
 		match_fn = ip_matches_v6;
