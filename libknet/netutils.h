@@ -15,5 +15,5 @@
 int cmpaddr(const struct sockaddr_storage *ss1, socklen_t sslen1, const struct sockaddr_storage *ss2, socklen_t sslen2);
 int cpyaddrport(struct sockaddr_storage *dst, const struct sockaddr_storage *src);
 
-socklen_t knet_sockaddr_len(const struct sockaddr_storage *ss);
+socklen_t sockaddr_len(const struct sockaddr_storage *ss);
 #endif

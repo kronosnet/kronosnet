@@ -403,8 +403,6 @@ typedef struct knet_transport_ops {
 	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg);
 } knet_transport_ops_t;
 
-socklen_t sockaddr_len(const struct sockaddr_storage *ss);
-
 struct pretty_names {
 	const char *name;
 	uint8_t val;
