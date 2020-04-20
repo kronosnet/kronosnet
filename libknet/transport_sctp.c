@@ -222,6 +222,7 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *kn_lin
 	struct epoll_event ev;
 	sctp_connect_link_info_t *info = kn_link->transport_link;
 	int connect_sock;
+	struct sockaddr_storage connect_addr;
 
 	connect_sock = socket(kn_link->dst_addr.ss_family, SOCK_STREAM, IPPROTO_SCTP);
 	if (connect_sock < 0) {
@@ -235,6 +236,24 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *kn_lin
 	if (_configure_sctp_socket(knet_h, connect_sock, &kn_link->dst_addr, kn_link->flags, "SCTP connect") < 0) {
 		savederrno = errno;
 		err = -1;
+		goto exit_error;
+	}
+
+	memset(&connect_addr, 0, sizeof(struct sockaddr_storage));
+	if (knet_strtoaddr(kn_link->status.src_ipaddr, "0", &connect_addr, sockaddr_len(&connect_addr)) < 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to resolve connecting socket: %s",
+			strerror(savederrno));
+		goto exit_error;
+
+	}
+
+	if (bind(connect_sock, (struct sockaddr *)&connect_addr, sockaddr_len(&connect_addr)) < 0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to bind connecting socket: %s",
+			strerror(savederrno));
 		goto exit_error;
 	}
 
