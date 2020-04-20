@@ -531,6 +531,10 @@ int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsg
 				switch (sac->sac_state) {
 					case SCTP_COMM_LOST:
 						log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "[event] sctp assoc change socket %d: comm_lost", sockfd);
+						if (knet_h->knet_transport_fd_tracker[sockfd].data_type == SCTP_CONNECT_LINK_INFO) {
+							connect_info->close_sock = 1;
+							connect_info->link->transport_connected = 0;
+						}
 						sctp_transport_rx_sock_error(knet_h, sockfd, 2, 0);
 						return KNET_TRANSPORT_RX_OOB_DATA_STOP;
 						break;
