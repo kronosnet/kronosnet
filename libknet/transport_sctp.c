@@ -590,6 +590,22 @@ int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsg
 	return KNET_TRANSPORT_RX_OOB_DATA_CONTINUE;
 }
 
+int sctp_transport_link_is_down(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
+	sctp_connect_link_info_t *info = kn_link->transport_link;
+
+	kn_link->transport_connected = 0;
+	info->close_sock = 1;
+
+	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Notifying connect thread that sockfd %d received a link down event", info->connect_sock);
+	if (sendto(handle_info->connectsockfd[1], &info->connect_sock, sizeof(int), MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0) != sizeof(int)) {
+		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to notify connect thread: %s", strerror(errno));
+	}
+
+	return 0;
+}
+
 /*
  * connect / outgoing socket management thread
  */
