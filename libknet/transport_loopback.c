@@ -78,3 +78,8 @@ int loopback_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *k
 {
 	return 0;
 }
+
+int loopback_transport_link_is_down(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	return 0;
+}

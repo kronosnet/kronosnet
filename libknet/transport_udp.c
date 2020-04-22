@@ -27,6 +27,7 @@
 #include "link.h"
 #include "logging.h"
 #include "common.h"
+#include "netutils.h"
 #include "transport_common.h"
 #include "transport_udp.h"
 #include "transports.h"
@@ -436,4 +437,9 @@ int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet
 int udp_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	return kn_link->outsock;
+}
+
+int udp_transport_link_is_down(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	return 0;
 }

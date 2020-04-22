@@ -409,9 +409,14 @@ typedef struct knet_transport_ops {
  * and fd_tracker read lock (from RX thread)
  */
 	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg);
-} knet_transport_ops_t;
 
-socklen_t sockaddr_len(const struct sockaddr_storage *ss);
+/*
+ * this function is called by links.c when a link down event is recorded
+ * to notify the transport that packets are not going through, and give
+ * transport the opportunity to take actions.
+ */
+	int (*transport_link_is_down)(knet_handle_t knet_h, struct knet_link *link);
+} knet_transport_ops_t;
 
 struct pretty_names {
 	const char *name;
