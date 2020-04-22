@@ -29,5 +29,6 @@ int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, st
 int transport_get_proto(knet_handle_t knet_h, uint8_t transport);
 int transport_get_acl_type(knet_handle_t knet_h, uint8_t transport);
 int transport_get_connection_oriented(knet_handle_t knet_h, uint8_t transport);
+int transport_link_is_down(knet_handle_t knet_h, struct knet_link *link);
 
 #endif

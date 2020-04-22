@@ -57,8 +57,13 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 	_host_dstcache_update_async(knet_h, host);
 
 	if ((link->status.dynconnected) &&
-	    (!link->status.connected))
+	    (!link->status.connected)) {
 		link->status.dynconnected = 0;
+	}
+
+	if (!connected) {
+		transport_link_is_down(knet_h, link);
+	}
 
 	if (lock_stats) {
 		savederrno = pthread_mutex_lock(&link->link_stats_mutex);
