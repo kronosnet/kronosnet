@@ -581,5 +581,6 @@ try_again:
 		return 0;
 	}
 
+	errno = ETIMEDOUT;
 	return -1;
 }

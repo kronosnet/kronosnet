@@ -27,17 +27,18 @@
 #include "link.h"
 #include "logging.h"
 #include "common.h"
+#include "netutils.h"
 #include "transport_common.h"
 #include "transport_udp.h"
 #include "transports.h"
 #include "threads_common.h"
 
 typedef struct udp_handle_info {
-	struct knet_list_head links_list;
+	struct qb_list_head links_list;
 } udp_handle_info_t;
 
 typedef struct udp_link_info {
-	struct knet_list_head list;
+	struct qb_list_head list;
 	struct sockaddr_storage local_address;
 	int socket_fd;
 	int on_epoll;
@@ -57,7 +58,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 	/*
 	 * Only allocate a new link if the local address is different
 	 */
-	knet_list_for_each_entry(info, &handle_info->links_list, list) {
+	qb_list_for_each_entry(info, &handle_info->links_list, list) {
 		if (memcmp(&info->local_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
 			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Re-using existing UDP socket for new link");
 			kn_link->outsock = info->socket_fd;
@@ -152,7 +153,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 
 	memmove(&info->local_address, &kn_link->src_addr, sizeof(struct sockaddr_storage));
 	info->socket_fd = sock;
-	knet_list_add(&info->list, &handle_info->links_list);
+	qb_list_add(&info->list, &handle_info->links_list);
 
 	kn_link->outsock = sock;
 	kn_link->transport_link = info;
@@ -226,7 +227,7 @@ int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_l
 	}
 
 	close(info->socket_fd);
-	knet_list_del(&info->list);
+	qb_list_del(&info->list);
 	free(kn_link->transport_link);
 
 exit_error:
@@ -248,7 +249,7 @@ int udp_transport_free(knet_handle_t knet_h)
 	/*
 	 * keep it here while we debug list usage and such
 	 */
-	if (!knet_list_empty(&handle_info->links_list)) {
+	if (!qb_list_empty(&handle_info->links_list)) {
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Internal error. handle list is not empty");
 		return -1;
 	}
@@ -278,7 +279,7 @@ int udp_transport_init(knet_handle_t knet_h)
 
 	knet_h->transports[KNET_TRANSPORT_UDP] = handle_info;
 
-	knet_list_init(&handle_info->links_list);
+	qb_list_init(&handle_info->links_list);
 
 	return 0;
 }
@@ -436,4 +437,9 @@ int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet
 int udp_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link)
 {
 	return kn_link->outsock;
+}
+
+int udp_transport_link_is_down(knet_handle_t knet_h, struct knet_link *kn_link)
+{
+	return 0;
 }

@@ -30,11 +30,13 @@ if BUILD_KRONOSNETD
 man8_MANS	= kronosnetd.8 knet-keygen.8
 endif
 
+if BUILD_DOXYXML
 noinst_PROGRAMS	= doxyxml
 
 doxyxml_SOURCES = doxyxml.c
 doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
 doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
+endif
 
 knet_man3_MANS = \
 		knet_addrtostr.3 \
@@ -130,14 +132,14 @@ $(MANS): doxyfile-knet.stamp doxyfile-nozzle.stamp
 
 doxyfile-knet.stamp: $(noinst_PROGRAMS) Doxyfile-knet $(top_srcdir)/libknet/libknet.h
 	$(DOXYGEN) Doxyfile-knet
-	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
+	$(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
 doxyfile-nozzle.stamp: $(noinst_PROGRAMS) Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
 if BUILD_LIBNOZZLE
 	$(DOXYGEN) Doxyfile-nozzle
-	$(builddir)/doxyxml -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
+	$(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
 endif
 	touch doxyfile-nozzle.stamp
@@ -157,4 +159,4 @@ check-api-to-man-page-coverage-libknet:
 endif
 
 clean-local:
-	rm -rf doxyfile*.stamp xml* *.3
+	rm -rf doxyxml doxyfile*.stamp xml* *.3
