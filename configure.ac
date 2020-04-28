@@ -287,8 +287,8 @@ if test "x$enable_man" = "xyes"; then
 		ac_cv_path_PKG_CONFIG="$saved_ac_cv_path_PKG_CONFIG"
 	fi
 	AC_SUBST([DOXYGEN2MAN])
-	AM_CONDITIONAL([BUILD_DOXYXML], [test "x$build_doxy" = "xyes"])
 fi
+AM_CONDITIONAL([BUILD_DOXYXML], [test "x$build_doxy" = "xyes"])
 
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
