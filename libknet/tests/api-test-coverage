@@ -15,7 +15,7 @@ headerapicalls="$(grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^
 # The PowerPC64 ELFv1 ABI defines the address of a function as that of a
 # function descriptor defined in .opd, a data (D) section.  Other ABIs
 # use the entry address of the function itself in the text (T) section.
-exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' [DT] ' | awk '{print $3}')"
+exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' [DT] ' | awk '{print $3}' | sed -e 's#@@LIBKNET##g')"
 
 echo "Checking for exported symbols NOT available in header file"
 
