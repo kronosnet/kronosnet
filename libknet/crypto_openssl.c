@@ -9,6 +9,18 @@
 
 #include "config.h"
 
+/*
+ * allow to build with openssl 3.0 that has deprecated
+ * use of direct access to HMAC API.
+ *
+ * knet will require some heavy rewrite to port to 3.0,
+ * but it clashes with the re-key feature branch.
+ *
+ * use path of less resistance for now, then we will
+ * port at a later stage.
+ */
+#define OPENSSL_API_COMPAT 0x1010000L
+
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
