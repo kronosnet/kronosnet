@@ -1,592 +1,260 @@
 {
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  lzma internals (spotted on Debian 9 and Ubuntu 18.04 LTS x86-64)
+  Memcheck:Cond
+  obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
+  fun:lzma_block_buffer_encode
+  fun:lzma_stream_buffer_encode
+  fun:lzma_easy_buffer_encode
+  fun:lzma_compress
+  fun:compress_lib_test
+  fun:compress_cfg
+  fun:knet_handle_compress
+  fun:test
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_stream_header_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  lzma internals (spotted on Ubuntu 18.04 LTS i386)
+  Memcheck:Cond
+  obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+  obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
+  fun:lzma_stream_buffer_encode
+  fun:lzma_easy_buffer_encode
+  fun:lzma_compress
+  fun:compress_lib_test
+  fun:compress_cfg
+  fun:knet_handle_compress
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_crc32
-   fun:lzma_stream_header_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on OpenSUSE 15)
+  Memcheck:Cond
+  fun:__memcmp_sse4_1
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:FIPS_selftest
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:FIPS_mode_set
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:call_init.part.0
+  fun:_dl_init
+  fun:dl_open_worker
+  fun:_dl_catch_error
+  fun:_dl_open
+  fun:dlopen_doit
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_crc32
-   fun:lzma_stream_header_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on OpenSUSE Tumbleweed)
+  Memcheck:Cond
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_block_header_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on OpenSUSE Tumbleweed)
+  Memcheck:Cond
+  obj:/usr/lib64/libcrypto.so.1.1
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on OpenSUSE Tumbleweed)
+  Memcheck:Cond
+  obj:/usr/lib64/libcrypto.so.1.1
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   fun:is_overlap
-   fun:memcpy@@GLIBC_2.14
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
+  openssl internals (spotted on OpenSUSE Tumbleweed)
+  Memcheck:Cond
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   fun:memcpy@@GLIBC_2.14
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   fun:memcpy@@GLIBC_2.14
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
+  openssl internals (spotted on OpenSUSE 15)
+  Memcheck:Cond
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:FIPS_mode_set
+  obj:/usr/lib64/libcrypto.so.1.1
+  fun:call_init.part.0
+  fun:_dl_init
+  fun:dl_open_worker
+  fun:_dl_catch_error
+  fun:_dl_open
+  fun:dlopen_doit
+  fun:_dl_catch_error
+  fun:_dlerror_run
+  fun:dlopen@@GLIBC_2.2.5
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_vli_encode
-   fun:lzma_filter_flags_encode
-   fun:lzma_block_header_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl uninitialised byte(s) (spotted on OpenSUSE Tumbleweed and Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Param
+  socketcall.sendto(msg)
+  fun:sendto
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_filter_flags_encode
-   fun:lzma_block_header_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl uninitialised byte(s) (spotted on OpenSUSE Tumbleweed and Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Param
+  socketcall.sendto(msg)
+  fun:sendto
+  fun:_parse_recv_from_links
+  fun:_handle_recv_from_links
+  fun:_handle_recv_from_links_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   fun:memset
-   fun:lzma_block_header_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl uninitialised byte(s) (spotted on OpenSUSE Tumbleweed and Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Param
+  socketcall.sendto(msg)
+  fun:sendto
+  fun:_handle_check_link_pmtud
+  fun:_handle_check_pmtud
+  fun:_handle_pmtud_link_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Value8
-   fun:memset
-   fun:lzma_block_header_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
+  openssl uninitialised byte(s) (spotted on OpenSUSE Tumbleweed)
+  Memcheck:Param
+  sendmsg(msg.msg_iov[0])
+  fun:sendmsg
+  fun:_sendmmsg
+  fun:_dispatch_to_links
+  fun:_parse_recv_from_sock
+  fun:_handle_send_to_links
+  fun:_handle_send_to_links_thread
+  fun:start_thread
+  fun:clone
 }
 {
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_block_unpadded_size
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_index_append
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_vli_size
-   fun:lzma_index_append
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Value8
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_vli_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_vli_encode
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_crc32
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_crc32
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_index_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_stream_footer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Value8
-   fun:lzma_crc32
-   fun:lzma_stream_footer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   fun:lzma_crc32
-   fun:lzma_stream_footer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   lzma internal stuff
-   Memcheck:Cond
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   obj:/usr/lib64/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-}
-{
-   lzma internal stuff (Debian Unstable)
-   Memcheck:Cond
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-}
-{
-   lzma internal stuff (Debian Experimental)
-   Memcheck:Cond
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   obj:*/libknet/.libs/compress_lzma.so
-   obj:*
-}
-{
-   lzma internal stuff (Debian / Ubuntu)
-   Memcheck:Cond
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/x86_64-linux-gnu/liblzma.so.5.2.2
-   fun:lzma_block_buffer_encode
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:compress_lib_test
-   fun:compress_cfg
-   fun:knet_handle_compress
-   fun:test
-}
-{
-   lzma internal stuff (Ubuntu 17.10 i386)
-   Memcheck:Cond
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-}
-{
-   lzma internal stuff (Ubuntu 17.10 i386)
-   Memcheck:Cond
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:compress
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-}
-{
-   lzma internal stuff (Ubuntu 17.10 i386)
-   Memcheck:Cond
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   obj:/lib/i386-linux-gnu/liblzma.so.5.2.2
-   fun:lzma_stream_buffer_encode
-   fun:lzma_easy_buffer_encode
-   fun:lzma_compress
-   fun:compress_lib_test
-   fun:compress_cfg
-   fun:knet_handle_compress
-}
-{
-   nss internal leak (3.38+) non recurring
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   fun:init_nss
-   fun:nsscrypto_init
-   fun:crypto_init
-   fun:knet_handle_crypto
-   fun:test
-   fun:main
-}
-{
-   nss internal leak (3.38+) non recurring
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:calloc
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   fun:init_nss
-   fun:nsscrypto_init
-   fun:crypto_init
-   fun:knet_handle_crypto
-   fun:test
-   fun:main
-}
-{
-   nss internal leak (3.38+) non recurring
-   Memcheck:Addr8
-   obj:/usr/lib64/libp11-kit.so.0.3.0
-   obj:/usr/lib64/libp11-kit.so.0.3.0
-   fun:_dl_close_worker
-   fun:_dl_close
-   fun:_dl_catch_exception
-   fun:_dl_catch_error
-   fun:_dlerror_run
-   fun:dlclose
-   fun:PR_UnloadLibrary
-   obj:/usr/lib64/libnss3.so
-   obj:/usr/lib64/libnss3.so
-   obj:/usr/lib64/libnss3.so
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2019-10-30)
+  Memcheck:Param
+  sendmsg(msg.msg_iov[0])
+  fun:__libc_sendmsg
+  fun:sendmsg
+  fun:_sendmmsg
+  fun:_dispatch_to_links
+  fun:_parse_recv_from_sock
+  fun:_handle_send_to_links
+  fun:_handle_send_to_links_thread
+  fun:start_thread
+  fun:clone
 }
 {
    nss internal leak (3.41) non recurring (spotted on f29)
@@ -604,238 +272,4 @@
    obj:*
    obj:*
    obj:/usr/lib64/libnss3.so
-}
-{
-   arm internal memory leak
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   fun:dl_open_worker
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Cond
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_instantiate
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_get0_public
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Cond
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_instantiate
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_get0_public
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Cond
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   fun:RAND_DRBG_bytes
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Cond
-   obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   fun:RAND_DRBG_bytes
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Param
-   socketcall.sendto(msg)
-   fun:sendto
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-   fun:clone
-}
-{
-
-   openssl 1.1.1c missing fix from master
-   Memcheck:Param
-   socketcall.sendto(msg)
-   fun:sendto
-   fun:_parse_recv_from_links
-   fun:_handle_recv_from_links
-   fun:_handle_recv_from_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Param
-   socketcall.sendto(msg)
-   fun:sendto
-   fun:_handle_check_link_pmtud
-   fun:_handle_check_pmtud
-   fun:_handle_pmtud_link_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   openssl 1.1.1c missing fix from master
-   Memcheck:Param
-   sendmsg(msg.msg_iov[0])
-   fun:__libc_sendmsg
-   fun:sendmsg
-   fun:_sendmmsg
-   fun:_dispatch_to_links
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   Opensuse 15 libnss
-   Memcheck:Cond
-   fun:__memcmp_sse4_1
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:FIPS_selftest
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:FIPS_mode_set
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:call_init.part.0
-   fun:_dl_init
-   fun:dl_open_worker
-   fun:_dl_catch_error
-   fun:_dl_open
-   fun:dlopen_doit
-}
-{
-   Opensuse 15 libnss
-   Memcheck:Cond
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:FIPS_mode_set
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:call_init.part.0
-   fun:_dl_init
-   fun:dl_open_worker
-   fun:_dl_catch_error
-   fun:_dl_open
-   fun:dlopen_doit
-   fun:_dl_catch_error
-   fun:_dlerror_run
-   fun:dlopen@@GLIBC_2.2.5
-}
-{
-   Opensuse tumbleweed libnss
-   Memcheck:Cond
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_instantiate
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_get0_public
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-}
-{
-   Opensuse tumbleweed libnss
-   Memcheck:Cond
-   obj:/usr/lib64/libcrypto.so.1.1
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_instantiate
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_get0_public
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-}
-{
-   Opensuse tumbleweed libnss
-   Memcheck:Cond
-   obj:/usr/lib64/libcrypto.so.1.1
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   fun:RAND_DRBG_bytes
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   Opensuse tumbleweed libnss
-   Memcheck:Cond
-   obj:/usr/lib64/libcrypto.so.1.1
-   fun:RAND_DRBG_generate
-   fun:RAND_DRBG_bytes
-   fun:encrypt_openssl
-   fun:opensslcrypto_encrypt_and_signv
-   fun:opensslcrypto_encrypt_and_sign
-   fun:_handle_check_each
-   fun:_send_pings
-   fun:_handle_heartbt_thread
-   fun:start_thread
-   fun:clone
-}
-{
-   Opensuse tumbleweed libnss
-   Memcheck:Param
-   sendmsg(msg.msg_iov[0])
-   fun:sendmsg
-   fun:_sendmmsg
-   fun:_dispatch_to_links
-   fun:_parse_recv_from_sock
-   fun:_handle_send_to_links
-   fun:_handle_send_to_links_thread
-   fun:start_thread
-   fun:clone
 }
