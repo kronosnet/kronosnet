@@ -216,8 +216,10 @@ elif test "x$fallback" = x || git --version >/dev/null 2>&1; then
         test -z "$v" \
             && echo "$0: WARNING: $gitarchive_version_file doesn't contain valid version tag" 1>&2 \
             && v=UNKNOWN
-    else
+    elif test "x$fallback" = x; then
         v=UNKNOWN
+    else
+        v=$fallback
     fi
 else
     v=$fallback
