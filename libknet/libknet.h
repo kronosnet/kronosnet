@@ -854,34 +854,6 @@ int knet_handle_crypto_rx_clear_traffic(knet_handle_t knet_h, uint8_t value);
 int knet_handle_crypto_use_config(knet_handle_t knet_h,
 				  uint8_t config_num);
 
-/**
- * knet_handle_crypto
- *
- * @brief set up packet cryptographic signing & encryption
- *
- * knet_h   - pointer to knet_handle_t
- *
- * knet_handle_crypto_cfg -
- *            pointer to a knet_handle_crypto_cfg structure
- *            see knet_handle_crypto_set_config(3) for details.
- *
- *
- * Implementation notes:
- *
- * knet_handle_crypto(3) is now a wrapper for knet_handle_crypto_set_config(3)
- * and knet_handle_crypto_use_config(3) with config_num set to 1.
- *
- * @return
- * knet_handle_crypto returns:
- * @retval 0 on success
- * @retval -1 on error and errno is set.
- * @retval -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
- */
-
-int knet_handle_crypto(knet_handle_t knet_h,
-		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
-
-
 
 #define KNET_COMPRESS_THRESHOLD 100
 

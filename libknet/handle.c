@@ -1459,10 +1459,9 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 	return 0;
 }
 
-static int _knet_handle_crypto_set_config(knet_handle_t knet_h,
-					  struct knet_handle_crypto_cfg *knet_handle_crypto_cfg,
-					  uint8_t config_num,
-					  uint8_t force)
+int knet_handle_crypto_set_config(knet_handle_t knet_h,
+				  struct knet_handle_crypto_cfg *knet_handle_crypto_cfg,
+				  uint8_t config_num)
 {
 	int savederrno = 0;
 	int err = 0;
@@ -1490,7 +1489,7 @@ static int _knet_handle_crypto_set_config(knet_handle_t knet_h,
 		return -1;
 	}
 
-	if ((knet_h->crypto_in_use_config == config_num) && (!force)) {
+	if (knet_h->crypto_in_use_config == config_num) {
 		savederrno = EBUSY;
 		err = -1;
 		goto exit_unlock;
@@ -1532,13 +1531,6 @@ exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
 	return err;
-}
-
-int knet_handle_crypto_set_config(knet_handle_t knet_h,
-				  struct knet_handle_crypto_cfg *knet_handle_crypto_cfg,
-				  uint8_t config_num)
-{
-	return _knet_handle_crypto_set_config(knet_h, knet_handle_crypto_cfg, config_num, 0);
 }
 
 int knet_handle_crypto_rx_clear_traffic(knet_handle_t knet_h,
@@ -1605,73 +1597,6 @@ int knet_handle_crypto_use_config(knet_handle_t knet_h,
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
 	return err;
-}
-
-/*
- * compatibility wrapper for 1.x releases
- */
-int knet_handle_crypto(knet_handle_t knet_h, struct knet_handle_crypto_cfg *knet_handle_crypto_cfg)
-{
-	int err = 0;
-	uint8_t value;
-
-	if (!knet_h) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	value = knet_h->crypto_only;
-	/*
-	 * configure crypto in slot 1
-	 */
-	err = _knet_handle_crypto_set_config(knet_h, knet_handle_crypto_cfg, 1, 1);
-	if (err < 0) {
-		return err;
-	}
-
-	if ((!strncmp("none", knet_handle_crypto_cfg->crypto_model, 4)) ||
-	    ((!strncmp("none", knet_handle_crypto_cfg->crypto_cipher_type, 4)) &&
-	     (!strncmp("none", knet_handle_crypto_cfg->crypto_hash_type, 4)))) {
-		err = knet_handle_crypto_rx_clear_traffic(knet_h, KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC);
-		if (err < 0) {
-			return err;
-		}
-
-		/*
-		 * start using clear traffic
-		 */
-		err = knet_handle_crypto_use_config(knet_h, 0);
-		if (err < 0) {
-			err = knet_handle_crypto_rx_clear_traffic(knet_h, value);
-			if (err < 0) {
-				/*
-				 * force attempt or things will go bad
-				 */
-				knet_h->crypto_only = value;
-			}
-		}
-		return err;
-	} else {
-		err = knet_handle_crypto_rx_clear_traffic(knet_h, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC);
-		if (err < 0) {
-			return err;
-		}
-
-		/*
-		 * start using crypto traffic
-		 */
-		err = knet_handle_crypto_use_config(knet_h, 1);
-		if (err < 0) {
-			err = knet_handle_crypto_rx_clear_traffic(knet_h, value);
-			if (err < 0) {
-				/*
-				 * force attempt or things will go bad
-				 */
-				knet_h->crypto_only = value;
-			}
-		}
-		return err;
-	}
 }
 
 int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *knet_handle_compress_cfg)
