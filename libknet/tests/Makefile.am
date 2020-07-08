@@ -36,7 +36,8 @@ int_checks		= \
 			  int_links_acl_ip_test \
 			  int_timediff_test
 
-fun_checks		=
+fun_checks		= \
+			  fun_config_crypto_test
 
 # checks below need to be executed manually
 # or with a specifi environment
@@ -102,3 +103,6 @@ knet_bench_test_SOURCES	= knet_bench.c \
 fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
 				test-common.c \
 				../onwire.c
+
+fun_config_crypto_test_SOURCES = fun_config_crypto.c \
+				 test-common.c

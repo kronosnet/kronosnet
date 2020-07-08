@@ -247,11 +247,23 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	struct sockaddr_storage pckt_src;
 	seq_num_t recv_seq_num;
 	int wipe_bufs = 0;
+	int try_decrypt = 0, decrypted = 0, i;
 
-	if (knet_h->crypto_instance) {
+	for (i = 1; i <= KNET_MAX_CRYPTO_INSTANCES; i++) {
+		if (knet_h->crypto_instance[i]) {
+			try_decrypt = 1;
+			break;
+		}
+	}
+
+	if ((!try_decrypt) && (knet_h->crypto_only == KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
+		log_debug(knet_h, KNET_SUB_RX, "RX thread configured to accept only crypto packets, but no crypto configs are configured!");
+		return;
+	}
+
+	if (try_decrypt) {
 		struct timespec start_time;
 		struct timespec end_time;
-
 
 		clock_gettime(CLOCK_MONOTONIC, &start_time);
 		if (crypto_authenticate_and_decrypt(knet_h,
@@ -260,13 +272,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 						    knet_h->recv_from_links_buf_decrypt,
 						    &outlen) < 0) {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to decrypt/auth packet");
-			return;
-		}
-		clock_gettime(CLOCK_MONOTONIC, &end_time);
-		timespec_diff(start_time, end_time, &decrypt_time);
+			if (knet_h->crypto_only == KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC) {
+				return;
+			}
+			log_debug(knet_h, KNET_SUB_RX, "Attempting to process packet as clear data");
+		} else {
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
+			timespec_diff(start_time, end_time, &decrypt_time);
 
-		len = outlen;
-		inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
+			len = outlen;
+			inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
+			decrypted = 1;
+		}
 	}
 
 	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
@@ -419,7 +436,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
-			if (knet_h->crypto_instance) {
+			if (decrypted) {
 				stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
 				if (stats_err < 0) {
 					pthread_mutex_unlock(&src_link->link_stats_mutex);
@@ -597,7 +614,7 @@ retry:
 			}
 		}
 
-		if (knet_h->crypto_instance) {
+		if (knet_h->crypto_in_use_config) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)inbuf,
 						    outlen,
@@ -716,7 +733,7 @@ retry_pong:
 		inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
 		inbuf->kh_node = htons(knet_h->host_id);
 
-		if (knet_h->crypto_instance) {
+		if (knet_h->crypto_in_use_config) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)inbuf,
 						    outlen,
