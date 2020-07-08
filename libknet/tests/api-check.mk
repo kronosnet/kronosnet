@@ -76,7 +76,10 @@ api_checks		= \
 			  api_knet_link_add_acl_test \
 			  api_knet_link_insert_acl_test \
 			  api_knet_link_rm_acl_test \
-			  api_knet_link_clear_acl_test
+			  api_knet_link_clear_acl_test \
+			  api_knet_handle_crypto_set_config_test \
+			  api_knet_handle_crypto_use_config_test \
+			  api_knet_handle_crypto_rx_clear_traffic_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -288,3 +291,12 @@ api_knet_link_rm_acl_test_SOURCES = api_knet_link_rm_acl.c \
 
 api_knet_link_clear_acl_test_SOURCES = api_knet_link_clear_acl.c \
 				       test-common.c
+
+api_knet_handle_crypto_set_config_test_SOURCES = api_knet_handle_crypto_set_config.c \
+						 test-common.c
+
+api_knet_handle_crypto_use_config_test_SOURCES = api_knet_handle_crypto_use_config.c \
+						 test-common.c
+
+api_knet_handle_crypto_rx_clear_traffic_test_SOURCES = api_knet_handle_crypto_rx_clear_traffic.c \
+						       test-common.c

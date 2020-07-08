@@ -506,7 +506,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		iovcnt_out = 1;
 	}
 
-	if (knet_h->crypto_instance) {
+	if (knet_h->crypto_in_use_config) {
 		struct timespec start_time;
 		struct timespec end_time;
 		uint64_t crypt_time;

@@ -136,7 +136,7 @@ restart:
 	 */
 	data_len = app_mtu_len + knet_h->sec_hash_size + knet_h->sec_salt_size + KNET_HEADER_ALL_SIZE;
 
-	if (knet_h->crypto_instance) {
+	if (knet_h->crypto_in_use_config) {
 		if (data_len < (knet_h->sec_hash_size + knet_h->sec_salt_size) + 1) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Aborting PMTUD process: link mtu smaller than crypto header detected (link might have been disconnected)");
 			return -1;
@@ -308,7 +308,7 @@ retry:
 			return -1;
 		}
 
-		if (knet_h->crypto_instance) {
+		if (knet_h->crypto_in_use_config) {
 			/*
 			 * crypto, under pressure, is a royal PITA
 			 */
@@ -350,7 +350,7 @@ retry:
 
 		if (ret) {
 			if (ret == ETIMEDOUT) {
-				if ((knet_h->crypto_instance) && (dst_link->pmtud_crypto_timeout_multiplier < KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MAX)) {
+				if ((knet_h->crypto_in_use_config) && (dst_link->pmtud_crypto_timeout_multiplier < KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MAX)) {
 					dst_link->pmtud_crypto_timeout_multiplier = dst_link->pmtud_crypto_timeout_multiplier * 2;
 					pmtud_crypto_reduce = 0;
 					log_debug(knet_h, KNET_SUB_PMTUD,
@@ -389,7 +389,7 @@ retry:
 			}
 		}
 
-		if ((knet_h->crypto_instance) && (pmtud_crypto_reduce == 1) &&
+		if ((knet_h->crypto_in_use_config) && (pmtud_crypto_reduce == 1) &&
 		    (dst_link->pmtud_crypto_timeout_multiplier > KNET_LINK_PMTUD_CRYPTO_TIMEOUT_MULTIPLIER_MIN)) {
 			if (!clock_gettime(CLOCK_MONOTONIC, &pmtud_crypto_stop_ts)) {
 				timespec_diff(pmtud_crypto_start_ts, pmtud_crypto_stop_ts, &timediff);
