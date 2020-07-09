@@ -26,7 +26,6 @@ knet_man3_MANS = \
 		knet_handle_add_datafd.3 \
 		knet_handle_clear_stats.3 \
 		knet_handle_compress.3 \
-		knet_handle_crypto.3 \
 		knet_handle_enable_filter.3 \
 		knet_handle_enable_pmtud_notify.3 \
 		knet_handle_enable_sock_notify.3 \
@@ -88,7 +87,10 @@ knet_man3_MANS = \
 		knet_link_add_acl.3 \
 		knet_link_insert_acl.3 \
 		knet_link_rm_acl.3 \
-		knet_link_clear_acl.3
+		knet_link_clear_acl.3 \
+		knet_handle_crypto_set_config.3 \
+		knet_handle_crypto_use_config.3 \
+		knet_handle_crypto_rx_clear_traffic.3
 
 if BUILD_LIBNOZZLE
 nozzle_man3_MANS = \

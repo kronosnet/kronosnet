@@ -720,7 +720,7 @@ struct knet_handle_crypto_cfg {
 };
 
 /**
- * knet_handle_crypto
+ * knet_handle_crypto_set_config
  *
  * @brief set up packet cryptographic signing & encryption
  *
@@ -759,34 +759,100 @@ struct knet_handle_crypto_cfg {
  *            private_key_len
  *                         length of the provided private_key.
  *
+ * config_num - knet supports 2 concurrent sets of crypto configurations,
+ *              to allow runtime change of crypto config and keys.
+ *              On RX both configurations will be used sequentially
+ *              in an attempt to decrypt/validate a packet (when 2 are available).
+ *              Note that this might slow down performance during a reconfiguration.
+ *              See also knet_handle_crypto_rx_clear_traffic(3) to enable / disable
+ *              processing of clear (unencrypted) traffic.
+ *              For TX, the user needs to specify which configuration to use via
+ *              knet_handle_crypto_use_config(3).
+ *              config_num accepts 0, 1 or 2 as the value. 0 should be used when
+ *              all crypto is being disabled.
+ *              Calling knet_handle_crypto_set_config(3) twice with
+ *              the same config_num will REPLACE the configuration and
+ *              NOT activate the second key. If the configuration is currently in use
+ *              EBUSY will be returned. See also knet_handle_crypto_use_config(3).
+ *              The correct sequence to perform a runtime rekey / reconfiguration
+ *              is:
+ *              - knet_handle_crypto_set_config(..., 1). -> first time config, will use config1
+ *              - knet_handle_crypto_use_config(..., 1). -> switch TX to config 1
+ *              - knet_handle_crypto_set_config(..., 2). -> install config2 and use it only for RX
+ *              - knet_handle_crypto_use_config(..., 2). -> switch TX to config 2
+ *              - knet_handle_crypto_set_config(..., 1). -> with a "none"/"none"/"none" configuration to
+ *                                                          release the resources previously allocated
+ *              The application is responsible for synchronizing calls on the nodes
+ *              to make sure the new config is in place before switching the TX configuration.
+ *              Failure to do so will result in knet being unable to talk to some of the nodes.
+ *
  * Implementation notes/current limitations:
  * - enabling crypto, will increase latency as packets have
  *   to processed.
  * - enabling crypto might reduce the overall throughtput
  *   due to crypto data overhead.
- * - re-keying is not implemented yet.
  * - private/public key encryption/hashing is not currently
  *   planned.
  * - crypto key must be the same for all hosts in the same
- *   knet instance.
- * - it is safe to call knet_handle_crypto multiple times at runtime.
+ *   knet instance / configX.
+ * - it is safe to call knet_handle_crypto_set_config multiple times at runtime.
  *   The last config will be used.
- *   IMPORTANT: a call to knet_handle_crypto can fail due to:
+ *   IMPORTANT: a call to knet_handle_crypto_set_config can fail due to:
  *              1) failure to obtain locking
  *              2) errors to initializing the crypto level.
- *   This can happen even in subsequent calls to knet_handle_crypto.
- *   A failure in crypto init will restore the previous crypto configuration.
+ *   This can happen even in subsequent calls to knet_handle_crypto_set_config(3).
+ *   A failure in crypto init will restore the previous crypto configuration if any.
  *
  * @return
- * knet_handle_crypto returns:
+ * knet_handle_crypto_set_config returns:
  * @retval 0 on success
  * @retval -1 on error and errno is set.
  * @retval -2 on crypto subsystem initialization error. No errno is provided at the moment (yet).
  */
 
-int knet_handle_crypto(knet_handle_t knet_h,
-		       struct knet_handle_crypto_cfg *knet_handle_crypto_cfg);
+int knet_handle_crypto_set_config(knet_handle_t knet_h,
+				  struct knet_handle_crypto_cfg *knet_handle_crypto_cfg,
+				  uint8_t config_num);
 
+
+
+#define KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC 0
+#define KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC 1
+
+/**
+ * knet_handle_crypto_rx_clear_traffic
+ *
+ * @brief enable or disable RX processing of clear (unencrypted) traffic
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * value    - KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC or KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC
+ *
+ * @return
+ * knet_handle_crypto_use_config returns:
+ * @retval 0 on success
+ * @retval -1 on error and errno is set.
+ */
+
+int knet_handle_crypto_rx_clear_traffic(knet_handle_t knet_h, uint8_t value);
+
+/**
+ * knet_handle_crypto_use_config
+ *
+ * @brief specify crypto configuration to use for TX
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * config_num - 1|2 use configuration 1 or 2, 0 for clear (unencrypted) traffic.
+ *
+ * @return
+ * knet_handle_crypto_use_config returns:
+ * @retval 0 on success
+ * @retval -1 on error and errno is set.
+ */
+
+int knet_handle_crypto_use_config(knet_handle_t knet_h,
+				  uint8_t config_num);
 
 
 #define KNET_COMPRESS_THRESHOLD 100

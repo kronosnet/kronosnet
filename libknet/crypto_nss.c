@@ -344,12 +344,13 @@ static int init_nss_crypto(knet_handle_t knet_h, struct crypto_instance *crypto_
 
 static int encrypt_nss(
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	const struct iovec *iov,
 	int iovcnt,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	struct nsscrypto_instance *instance = crypto_instance->model_instance;
 	PK11Context*	crypt_context = NULL;
 	SECItem		crypt_param;
 	SECItem		*nss_sec_param = NULL;
@@ -431,12 +432,14 @@ out:
 
 static int decrypt_nss (
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
-	ssize_t *buf_out_len)
+	ssize_t *buf_out_len,
+	uint8_t log_level)
 {
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	struct nsscrypto_instance *instance = crypto_instance->model_instance;
 	PK11Context*	decrypt_context = NULL;
 	SECItem		decrypt_param;
 	int		tmp1_outlen = 0;
@@ -467,15 +470,25 @@ static int decrypt_nss (
 
 	if (PK11_CipherOp(decrypt_context, buf_out, &tmp1_outlen,
 			  KNET_DATABUFSIZE_CRYPT, data, datalen) != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		if (log_level == KNET_LOG_DEBUG) {
+			log_debug(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d): %s",
+				  PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		} else {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp (decrypt) failed (err %d): %s",
+				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		}
 		goto out;
 	}
 
 	if (PK11_DigestFinal(decrypt_context, buf_out + tmp1_outlen, &tmp2_outlen,
 			     KNET_DATABUFSIZE_CRYPT - tmp1_outlen) != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		if (log_level == KNET_LOG_DEBUG) {
+			log_debug(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d): %s",
+				  PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		} else {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinal (decrypt) failed (err %d): %s",
+				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		}
 		goto out;
 	}
 
@@ -533,11 +546,13 @@ static int init_nss_hash(knet_handle_t knet_h, struct crypto_instance *crypto_in
 
 static int calculate_nss_hash(
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	const unsigned char *buf,
 	const size_t buf_len,
-	unsigned char *hash)
+	unsigned char *hash,
+	uint8_t log_level)
 {
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	struct nsscrypto_instance *instance = crypto_instance->model_instance;
 	PK11Context*	hash_context = NULL;
 	SECItem		hash_param;
 	unsigned int	hash_tmp_outlen = 0;
@@ -568,17 +583,29 @@ static int calculate_nss_hash(
 	}
 
 	if (PK11_DigestOp(hash_context, buf, buf_len) != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestOp failed (hash) hash_type=%d (err %d): %s",
-			(int)hash_to_nss[instance->crypto_hash_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		if (log_level == KNET_LOG_DEBUG) {
+			log_debug(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestOp failed (hash) hash_type=%d (err %d): %s",
+				  (int)hash_to_nss[instance->crypto_hash_type],
+				  PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		} else {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestOp failed (hash) hash_type=%d (err %d): %s",
+				(int)hash_to_nss[instance->crypto_hash_type],
+				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		}
 		goto out;
 	}
 
 	if (PK11_DigestFinal(hash_context, hash,
 			     &hash_tmp_outlen, nsshash_len[instance->crypto_hash_type]) != SECSuccess) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d): %s",
-			(int)hash_to_nss[instance->crypto_hash_type],
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		if (log_level == KNET_LOG_DEBUG) {
+			log_debug(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d): %s",
+				  (int)hash_to_nss[instance->crypto_hash_type],
+				  PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		} else {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_DigestFinale failed (hash) hash_type=%d (err %d): %s",
+				(int)hash_to_nss[instance->crypto_hash_type],
+				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		}
 		goto out;
 	}
 
@@ -636,16 +663,17 @@ static int init_nss(knet_handle_t knet_h, struct crypto_instance *crypto_instanc
 
 static int nsscrypto_encrypt_and_signv (
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	const struct iovec *iov_in,
 	int iovcnt_in,
 	unsigned char *buf_out,
 	ssize_t *buf_out_len)
 {
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	struct nsscrypto_instance *instance = crypto_instance->model_instance;
 	int i;
 
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (encrypt_nss(knet_h, iov_in, iovcnt_in, buf_out, buf_out_len) < 0) {
+		if (encrypt_nss(knet_h, crypto_instance, iov_in, iovcnt_in, buf_out, buf_out_len) < 0) {
 			return -1;
 		}
 	} else {
@@ -657,7 +685,7 @@ static int nsscrypto_encrypt_and_signv (
 	}
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
-		if (calculate_nss_hash(knet_h, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
+		if (calculate_nss_hash(knet_h, crypto_instance, buf_out, *buf_out_len, buf_out + *buf_out_len, KNET_LOG_ERR) < 0) {
 			return -1;
 		}
 		*buf_out_len = *buf_out_len + nsshash_len[instance->crypto_hash_type];
@@ -668,6 +696,7 @@ static int nsscrypto_encrypt_and_signv (
 
 static int nsscrypto_encrypt_and_sign (
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
@@ -679,17 +708,19 @@ static int nsscrypto_encrypt_and_sign (
 	iov_in.iov_base = (unsigned char *)buf_in;
 	iov_in.iov_len = buf_in_len;
 
-	return nsscrypto_encrypt_and_signv(knet_h, &iov_in, 1, buf_out, buf_out_len);
+	return nsscrypto_encrypt_and_signv(knet_h, crypto_instance, &iov_in, 1, buf_out, buf_out_len);
 }
 
 static int nsscrypto_authenticate_and_decrypt (
 	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
-	ssize_t *buf_out_len)
+	ssize_t *buf_out_len,
+	uint8_t log_level)
 {
-	struct nsscrypto_instance *instance = knet_h->crypto_instance->model_instance;
+	struct nsscrypto_instance *instance = crypto_instance->model_instance;
 	ssize_t temp_len = buf_in_len;
 
 	if (hash_to_nss[instance->crypto_hash_type]) {
@@ -701,12 +732,16 @@ static int nsscrypto_authenticate_and_decrypt (
 			return -1;
 		}
 
-		if (calculate_nss_hash(knet_h, buf_in, temp_buf_len, tmp_hash) < 0) {
+		if (calculate_nss_hash(knet_h, crypto_instance, buf_in, temp_buf_len, tmp_hash, log_level) < 0) {
 			return -1;
 		}
 
 		if (memcmp(tmp_hash, buf_in + temp_buf_len, nsshash_len[instance->crypto_hash_type]) != 0) {
-			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
+			if (log_level == KNET_LOG_DEBUG) {
+				log_debug(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
+			} else {
+				log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
+			}
 			return -1;
 		}
 
@@ -715,7 +750,7 @@ static int nsscrypto_authenticate_and_decrypt (
 	}
 
 	if (cipher_to_nss[instance->crypto_cipher_type]) {
-		if (decrypt_nss(knet_h, buf_in, temp_len, buf_out, buf_out_len) < 0) {
+		if (decrypt_nss(knet_h, crypto_instance, buf_in, temp_len, buf_out, buf_out_len, log_level) < 0) {
 			return -1;
 		}
 	} else {

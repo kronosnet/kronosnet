@@ -55,6 +55,13 @@ int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t 
 			  struct sockaddr_storage *lo);
 
 /*
+ * functional test helpers
+ */
+void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level);
+void knet_handle_stop_nodes(knet_handle_t knet_h[], uint8_t numnodes);
+void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport);
+
+/*
  * high level logging function.
  * automatically setup logpipes and start/stop logging thread.
  *

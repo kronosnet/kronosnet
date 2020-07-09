@@ -128,8 +128,24 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, hash, sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
-	if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-		printf("knet_handle_crypto failed with correct config: %s\n", strerror(errno));
+	if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 1)) {
+		printf("knet_handle_crypto_set_config failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit_local(FAIL);
+        }
+
+	if (knet_handle_crypto_use_config(knet_h, 1)) {
+		printf("knet_handle_crypto_use_config failed with correct config: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit_local(FAIL);
+        }
+
+	if (knet_handle_crypto_rx_clear_traffic(knet_h, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
+		printf("knet_handle_crypto_rx_clear_traffic failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);

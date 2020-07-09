@@ -19,7 +19,7 @@ struct crypto_instance {
 	size_t	sec_salt_size;
 };
 
-#define KNET_CRYPTO_MODEL_ABI 3
+#define KNET_CRYPTO_MODEL_ABI 4
 
 /*
  * see compress_model.h for explanation of the various lib related functions
@@ -32,20 +32,24 @@ typedef struct {
 	void (*fini)	(knet_handle_t knet_h,
 			 struct crypto_instance *crypto_instance);
 	int (*crypt)	(knet_handle_t knet_h,
+			 struct crypto_instance *crypto_instance,
 			 const unsigned char *buf_in,
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
 	int (*cryptv)	(knet_handle_t knet_h,
+			 struct crypto_instance *crypto_instance,
 			 const struct iovec *iov_in,
 			 int iovcnt_in,
 			 unsigned char *buf_out,
 			 ssize_t *buf_out_len);
 	int (*decrypt)	(knet_handle_t knet_h,
+			 struct crypto_instance *crypto_instance,
 			 const unsigned char *buf_in,
 			 const ssize_t buf_in_len,
 			 unsigned char *buf_out,
-			 ssize_t *buf_out_len);
+			 ssize_t *buf_out_len,
+			 uint8_t log_level);
 } crypto_ops_t;
 
 typedef struct {

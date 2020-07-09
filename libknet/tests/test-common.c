@@ -33,8 +33,6 @@ struct log_thread_data {
 	FILE *std;
 };
 static struct log_thread_data data;
-static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int stop_in_progress = 0;
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -242,7 +240,8 @@ void flush_logs(int logfd, FILE *std)
 
 		msg.msg[sizeof(msg.msg) - 1] = 0;
 
-		fprintf(std, "[knet]: [%s] %s: %.*s\n",
+		fprintf(std, "[knet: %p]: [%s] %s: %.*s\n",
+			msg.knet_h,
 			knet_log_get_loglevel_name(msg.msglevel),
 			knet_log_get_subsystem_name(msg.subsystem),
 			KNET_MAX_LOG_MSG_SIZE, msg.msg);
@@ -365,6 +364,7 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 	knet_handle_t knet_h = knet_handle_new(1, logfds[1], log_level, 0);
 
 	if (knet_h) {
+		printf("knet_handle_new at %p\n", knet_h);
 		return knet_h;
 	} else {
 		printf("knet_handle_new failed: %s\n", strerror(errno));
@@ -376,28 +376,11 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 
 int knet_handle_stop(knet_handle_t knet_h)
 {
-	int savederrno;
 	size_t i, j;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t host_ids_entries = 0, link_ids_entries = 0;
-	struct knet_link_status status;
-
-	savederrno = pthread_mutex_lock(&shutdown_mutex);
-	if (savederrno) {
-		printf("Unable to get shutdown mutex lock\n");
-		return -1;
-	}
-
-	if (stop_in_progress) {
-		pthread_mutex_unlock(&shutdown_mutex);
-		errno = EINVAL;
-		return -1;
-	}
-
-	stop_in_progress = 1;
-
-	pthread_mutex_unlock(&shutdown_mutex);
+	unsigned int enabled;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -420,16 +403,17 @@ int knet_handle_stop(knet_handle_t knet_h)
 			return -1;
 		}
 		for (j = 0; j < link_ids_entries; j++) {
-			if (knet_link_get_status(knet_h, host_ids[i], link_ids[j], &status, sizeof(struct knet_link_status))) {
-				printf("knet_link_get_status failed: %s\n", strerror(errno));
+			if (knet_link_get_enable(knet_h, host_ids[i], link_ids[j], &enabled)) {
+				printf("knet_link_get_enable failed: %s\n", strerror(errno));
 				return -1;
 			}
-			if (status.enabled) {
+			if (enabled) {
 				if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
 					printf("knet_link_set_enable failed: %s\n", strerror(errno));
 					return -1;
 				}
 			}
+			printf("clearing config for: %p host: %u link: %zu\n", knet_h, host_ids[i], j);
 			knet_link_clear_config(knet_h, host_ids[i], j);
 		}
 		if (knet_host_remove(knet_h, host_ids[i]) < 0) {
@@ -442,6 +426,7 @@ int knet_handle_stop(knet_handle_t knet_h)
 		printf("knet_handle_free failed: %s\n", strerror(errno));
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -593,4 +578,128 @@ try_again:
 
 	errno = ETIMEDOUT;
 	return -1;
+}
+
+/*
+ * functional tests helpers
+ */
+
+void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level)
+{
+	uint8_t i;
+
+	for (i = 1; i <= numnodes; i++) {
+		knet_h[i] = knet_handle_new(i, logfds[1], log_level, 0);
+		if (!knet_h[i]) {
+			printf("failed to create handle: %s\n", strerror(errno));
+			break;
+		} else {
+			printf("knet_h[%u] at %p\n", i, knet_h[i]);
+		}
+	}
+
+	if (i < numnodes) {
+		knet_handle_stop_nodes(knet_h, i);
+		exit(FAIL);
+	}
+
+	return;
+}
+
+void knet_handle_stop_nodes(knet_handle_t knet_h[], uint8_t numnodes)
+{
+	uint8_t i;
+
+	for (i = 1; i <= numnodes; i++) {
+		printf("stopping handle %u at %p\n", i, knet_h[i]);
+		knet_handle_stop(knet_h[i]);
+	}
+
+	return;
+}
+
+void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport)
+{
+	uint8_t i, x, j;
+	struct sockaddr_storage src, dst;
+
+	for (i = 1; i <= numnodes; i++) {
+		for (j = 1; j <= numnodes; j++) {
+			/*
+			 * don´t connect to itself
+			 */
+			if (j == i) {
+				continue;
+			}
+
+			printf("host %u adding host: %u\n", i, j);
+
+			if (knet_host_add(knet_h[i], j) < 0) {
+				printf("Unable to add host: %s\n", strerror(errno));
+				knet_handle_stop_nodes(knet_h, numnodes);
+				exit(FAIL);
+			}
+
+			for (x = 0; x < numlinks; x++) {
+				if (family == AF_INET6) {
+					if (make_local_sockaddr6(&src, i + x) < 0) {
+						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+
+					if (make_local_sockaddr6(&dst, j + x) < 0) {
+						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+				} else {
+					if (make_local_sockaddr(&src, i + x) < 0) {
+						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+
+					if (make_local_sockaddr(&dst, j + x) < 0) {
+						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+						knet_handle_stop_nodes(knet_h, numnodes);
+						exit(FAIL);
+					}
+				}
+
+				printf("joining node %u with node %u via link %u src offset: %u dst offset: %u\n", i, j, x, i+x, j+x);
+
+				if (knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0) < 0) {
+					printf("unable to configure link: %s\n", strerror(errno));
+					knet_handle_stop_nodes(knet_h, numnodes);
+					exit(FAIL);
+				}
+
+				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
+					printf("unable to enable link: %s\n", strerror(errno));
+					knet_handle_stop_nodes(knet_h, numnodes);
+					exit(FAIL);
+				}
+			}
+		}
+	}
+
+	for (i = 1; i <= numnodes; i++) {
+		for (j = 1; j <= numnodes; j++) {
+			/*
+			 * don´t wait for self
+			 */
+			if (j == i) {
+				continue;
+			}
+
+			if (wait_for_host(knet_h[i], j, (10 * numnodes) , knet_h[i]->logfd, stdout) < 0) {
+					printf("Cannot connect node %u to node %u: %s\n", i, j, strerror(errno));
+					knet_handle_stop_nodes(knet_h, numnodes);
+					exit(FAIL);
+			}
+		}
+	}
+
+	return;
 }

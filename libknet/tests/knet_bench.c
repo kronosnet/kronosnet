@@ -509,8 +509,16 @@ static void setup_knet(int argc, char *argv[])
 			strncpy(knet_handle_crypto_cfg.crypto_hash_type, cryptohash, sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 		}
 		knet_handle_crypto_cfg.private_key_len = KNET_MAX_KEY_LEN;
-		if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-			printf("Unable to init crypto\n");
+		if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 1)) {
+			printf("Unable to set crypto config\n");
+			exit(FAIL);
+		}
+		if (knet_handle_crypto_use_config(knet_h, 1)) {
+			printf("Unable to use crypto config\n");
+			exit(FAIL);
+		}
+		if (knet_handle_crypto_rx_clear_traffic(knet_h, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
+			printf("Unable to disable clear traffic on RX\n");
 			exit(FAIL);
 		}
 	}

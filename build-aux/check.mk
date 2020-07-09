@@ -33,7 +33,12 @@ if HAS_COVBUILD
 	$(MAKE) -C $(abs_top_builddir) clean
 	$(COVBUILD_EXEC) --dir=$(abs_top_builddir)/cov $(MAKE) -C $(abs_top_builddir)
 if HAS_COVANALYZE
-	$(COVANALYZE_EXEC) --dir=$(abs_top_builddir)/cov --wait-for-license $(covoptions)
+	if [ -z "$(covoptions)" ]; then \
+		COVOPTS="--all --disable STACK_USE --disable-parse-warnings";\
+	else \
+		COVOPTS="$(covoptions)";\
+	fi; \
+	$(COVANALYZE_EXEC) --dir=$(abs_top_builddir)/cov --wait-for-license $$COVOPTS
 if HAS_COVFORMATERRORS
 	$(COVFORMATERRORS_EXEC) --dir=$(abs_top_builddir)/cov --emacs-style > $(abs_top_builddir)/cov.output.txt
 	$(COVFORMATERRORS_EXEC) --dir=$(abs_top_builddir)/cov --html-output $(abs_top_builddir)/cov.html
