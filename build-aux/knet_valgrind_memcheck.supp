@@ -257,19 +257,102 @@
   fun:clone
 }
 {
-   nss internal leak (3.41) non recurring (spotted on f29)
-   Memcheck:Leak
-   match-leak-kinds: definite
-   fun:malloc
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:*
-   obj:/usr/lib64/libnss3.so
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2020-07-10)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2020-07-10)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+}
+{
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2020-07-10)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+}
+{
+  openssl internals (spotted on Ubuntu Devel x86-64 - 2020-07-10)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:_handle_check_each
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  nss internal leak (3.41) non recurring (spotted on f29)
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:/usr/lib64/libnss3.so
+}
+{
+  nss internal leak (3.41) non recurring
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:calloc
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  fun:init_nss
+  fun:nsscrypto_init
+  fun:crypto_init
+  fun:knet_handle_crypto_set_config
+  fun:test
+  fun:main
 }
