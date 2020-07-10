@@ -30,7 +30,7 @@ static void test(const char *model)
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int i,x,j;
-	int seconds = 10;
+	int seconds = 5;
 
 	if (is_memcheck() || is_helgrind()) {
 		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
@@ -118,7 +118,6 @@ static void test(const char *model)
 		for (x = 0; x < seconds; x++){
 			flush_logs(logfds[0], stdout);
 			sleep(1);
-			x++;
 		}
 		for (x = 1; x <= TESTNODES; x++) {
 			for (j = 1; j <= TESTNODES; j++) {
@@ -151,7 +150,6 @@ static void test(const char *model)
 		for (x = 0; x < seconds; x++){
 			flush_logs(logfds[0], stdout);
 			sleep(1);
-			x++;
 		}
 		for (x = 1; x <= TESTNODES; x++) {
 			for (j = 1; j <= TESTNODES; j++) {
@@ -232,7 +230,6 @@ static void test(const char *model)
 		for (x = 0; x < seconds; x++){
 			flush_logs(logfds[0], stdout);
 			sleep(1);
-			x++;
 		}
 		for (x = 1; x <= TESTNODES; x++) {
 			for (j = 1; j <= TESTNODES; j++) {
