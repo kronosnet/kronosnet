@@ -57,27 +57,21 @@ distclean-local:
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
 	date="`LC_ALL=C $(UTC_DATE_AT)$(SOURCE_EPOCH) "+%a %b %d %Y"`" && \
-	if [ -f $(abs_srcdir)/.tarball-version ]; then \
-		gitver="`cat $(abs_srcdir)/.tarball-version`" && \
-		rpmver=$$gitver && \
+	gvgver="`cd $(abs_srcdir); build-aux/git-version-gen --fallback $(VERSION) .tarball-version .gitarchivever`" && \
+	if [ "$$gvgver" = "`echo $$gvgver | sed 's/-/./'`" ];then \
+		rpmver="$$gvgver" && \
 		alphatag="" && \
 		dirty="" && \
 		numcomm="0"; \
-	elif [ "`git log -1 --pretty=format:x . 2>&1`" = "x" ]; then \
-		gitver="`GIT_DIR=$(abs_srcdir)/.git git describe --abbrev=4 --match='v*' HEAD 2>/dev/null`" && \
-		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
-		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
-		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
-		numcomm=`GIT_DIR=$(abs_srcdir)/.git git rev-list $$vtag..HEAD | wc -l` && \
-		cd $(abs_srcdir) && \
-		git update-index --refresh > /dev/null 2>&1 || true && \
-		dirty=`git diff-index --name-only HEAD 2>/dev/null` && cd - 2>/dev/null; \
 	else \
-		gitver="`cd $(abs_srcdir); build-aux/git-version-gen .tarball-version .gitarchivever`" && \
-		rpmver=$$gitver && \
-		alphatag="" && \
+		gitver="`echo $$gvgver | sed 's/\(.*\)\./\1-/'`" && \
+		rpmver=`echo $$gitver | sed 's/-.*//g'` && \
+		alphatag=`echo $$gvgver | sed 's/[^-]*-\([^-]*\).*/\1/'` && \
+		numcomm=`echo $$gitver | sed 's/[^-]*-\([^-]*\).*/\1/'` && \
 		dirty="" && \
-		numcomm="0"; \
+		if [ "`echo $$gitver | sed 's/^.*-dirty$$//g'`" = "" ];then \
+			dirty="dirty"; \
+		fi \
 	fi && \
 	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
 	if [ "$$numcomm" = "0" ]; then \

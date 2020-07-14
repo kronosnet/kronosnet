@@ -70,7 +70,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
 		knet_h->pingbuf->khp_ping_timed = timed;
 
-		if (knet_h->crypto_instance) {
+		if (knet_h->crypto_in_use_config) {
 			if (crypto_encrypt_and_sign(knet_h,
 						    (const unsigned char *)knet_h->pingbuf,
 						    outlen,
