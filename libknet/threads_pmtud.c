@@ -640,3 +640,165 @@ out_unlock:
 
 	return NULL;
 }
+
+int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!interval) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*interval = knet_h->pmtud_interval;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
+int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((!interval) || (interval > 86400)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->pmtud_interval = interval;
+	log_debug(knet_h, KNET_SUB_HANDLE, "PMTUd interval set to: %u seconds", interval);
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
+int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
+				    void *pmtud_notify_fn_private_data,
+				    void (*pmtud_notify_fn) (
+						void *private_data,
+						unsigned int data_mtu))
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->pmtud_notify_fn_private_data = pmtud_notify_fn_private_data;
+	knet_h->pmtud_notify_fn = pmtud_notify_fn;
+	if (knet_h->pmtud_notify_fn) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "pmtud_notify_fn enabled");
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "pmtud_notify_fn disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
+int knet_handle_pmtud_set(knet_handle_t knet_h,
+			  unsigned int iface_mtu)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (iface_mtu > KNET_PMTUD_SIZE_V4) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	log_info(knet_h, KNET_SUB_PMTUD, "MTU manually set to: %u", iface_mtu);
+
+	knet_h->manual_mtu = iface_mtu;
+
+	force_pmtud_run(knet_h, KNET_SUB_PMTUD, 0);
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
+int knet_handle_pmtud_get(knet_handle_t knet_h,
+			  unsigned int *data_mtu)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!data_mtu) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*data_mtu = knet_h->data_mtu;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}

@@ -29,6 +29,7 @@ sources			= \
 			  compress.c \
 			  crypto.c \
 			  handle.c \
+			  handle_api.c \
 			  host.c \
 			  links.c \
 			  links_acl.c \

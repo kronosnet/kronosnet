@@ -11,10 +11,6 @@
 
 #include "internals.h"
 
-int compress_cfg(
-	knet_handle_t knet_h,
-	struct knet_handle_compress_cfg *knet_handle_compress_cfg);
-
 int compress_init(
 	knet_handle_t knet_h);
 

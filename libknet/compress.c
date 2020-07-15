@@ -273,7 +273,7 @@ int compress_init(
 	return 0;
 }
 
-int compress_cfg(
+static int compress_cfg(
 	knet_handle_t knet_h,
 	struct knet_handle_compress_cfg *knet_handle_compress_cfg)
 {
@@ -482,6 +482,38 @@ out_unlock:
 	pthread_rwlock_unlock(&shlib_rwlock);
 
 	errno = savederrno;
+	return err;
+}
+
+int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *knet_handle_compress_cfg)
+{
+	int savederrno = 0;
+	int err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!knet_handle_compress_cfg) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	compress_fini(knet_h, 0);
+	err = compress_cfg(knet_h, knet_handle_compress_cfg);
+	savederrno = errno;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
 	return err;
 }
 
