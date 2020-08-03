@@ -9,25 +9,17 @@
 
 #include "config.h"
 
-/*
- * allow to build with openssl 3.0 that has deprecated
- * use of direct access to HMAC API.
- *
- * knet will require some heavy rewrite to port to 3.0,
- * but it clashes with the re-key feature branch.
- *
- * use path of less resistance for now, then we will
- * port at a later stage.
- */
-#define OPENSSL_API_COMPAT 0x1010000L
-
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <openssl/conf.h>
 #include <openssl/evp.h>
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
 #include <openssl/hmac.h>
+#else
+#include <openssl/mac.h>
+#endif
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
@@ -46,6 +38,15 @@
 
 #define SALT_SIZE 16
 
+/*
+ * required by OSSL_PARAM_construct_*
+ * making them global and cost, saves 2 strncpy and some memory on each config
+ */
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+static const char *hash = "digest";
+static const char *key = "key";
+#endif
+
 struct opensslcrypto_instance {
 	void *private_key;
 
@@ -54,6 +55,11 @@ struct opensslcrypto_instance {
 	const EVP_CIPHER *crypto_cipher_type;
 
 	const EVP_MD *crypto_hash_type;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+	EVP_MAC *crypto_hash_mac;
+	OSSL_PARAM params[3];
+	char hash_type[16]; /* Need to store a copy from knet_handle_crypto_cfg for OSSL_PARAM_construct_* */
+#endif
 };
 
 static int openssl_is_init = 0;
@@ -298,6 +304,7 @@ out:
  * hash/hmac/digest functions
  */
 
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
 static int calculate_openssl_hash(
 	knet_handle_t knet_h,
 	struct crypto_instance *crypto_instance,
@@ -328,6 +335,66 @@ static int calculate_openssl_hash(
 
 	return 0;
 }
+#else
+static int calculate_openssl_hash(
+	knet_handle_t knet_h,
+	struct crypto_instance *crypto_instance,
+	const unsigned char *buf,
+	const size_t buf_len,
+	unsigned char *hash,
+	uint8_t log_level)
+{
+	struct opensslcrypto_instance *instance = crypto_instance->model_instance;
+	EVP_MAC_CTX *ctx = NULL;
+	char sslerr[SSLERR_BUF_SIZE];
+	int err = 0;
+	size_t outlen = 0;
+
+	ctx = EVP_MAC_new_ctx(instance->crypto_hash_mac);
+	if (!ctx) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate openssl context: %s", sslerr);
+		err = -1;
+		goto out_err;
+	}
+
+	if (EVP_MAC_set_ctx_params(ctx, instance->params) < 0) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set openssl context parameters: %s", sslerr);
+		err = -1;
+		goto out_err;
+	}
+
+	if (!EVP_MAC_init(ctx)) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set openssl context parameters: %s", sslerr);
+		err = -1;
+		goto out_err;
+	}
+
+	if (!EVP_MAC_update(ctx, buf, buf_len)) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to update hash: %s", sslerr);
+		err = -1;
+		goto out_err;
+	}
+
+	if (!EVP_MAC_final(ctx, hash, &outlen, crypto_instance->sec_hash_size)) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize hash: %s", sslerr);
+		err = -1;
+		goto out_err;
+	}
+
+out_err:
+	if (ctx) {
+		EVP_MAC_free_ctx(ctx);
+	}
+
+	return err;
+
+}
+#endif
 
 /*
  * exported API
@@ -518,6 +585,11 @@ static void opensslcrypto_fini(
 			free(opensslcrypto_instance->private_key);
 			opensslcrypto_instance->private_key = NULL;
 		}
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		if (opensslcrypto_instance->crypto_hash_mac) {
+			EVP_MAC_free(opensslcrypto_instance->crypto_hash_mac);
+		}
+#endif
 		free(opensslcrypto_instance);
 		crypto_instance->model_instance = NULL;
 	}
@@ -536,6 +608,10 @@ static int opensslcrypto_init(
 {
 	struct opensslcrypto_instance *opensslcrypto_instance = NULL;
 	int savederrno;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+	char sslerr[SSLERR_BUF_SIZE];
+	size_t params_n = 0;
+#endif
 
 	log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO,
 		  "Initizializing openssl crypto module [%s/%s]",
@@ -573,6 +649,15 @@ static int opensslcrypto_init(
 
 	memset(opensslcrypto_instance, 0, sizeof(struct opensslcrypto_instance));
 
+	opensslcrypto_instance->private_key = malloc(knet_handle_crypto_cfg->private_key_len);
+	if (!opensslcrypto_instance->private_key) {
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl private key");
+		savederrno = ENOMEM;
+		goto out_err;
+	}
+	memmove(opensslcrypto_instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
+	opensslcrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
+
 	if (strcmp(knet_handle_crypto_cfg->crypto_cipher_type, "none") == 0) {
 		opensslcrypto_instance->crypto_cipher_type = NULL;
 	} else {
@@ -593,6 +678,25 @@ static int opensslcrypto_init(
 			savederrno = ENXIO;
 			goto out_err;
 		}
+
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		opensslcrypto_instance->crypto_hash_mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+		if (!opensslcrypto_instance->crypto_hash_mac) {
+			ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to fetch HMAC: %s", sslerr);
+			savederrno = ENXIO;
+			goto out_err;
+		}
+
+		/*
+		 * OSSL_PARAM_construct_* store pointers to the data, it´s important that the referenced data are per-instance
+		 */
+		memmove(opensslcrypto_instance->hash_type, knet_handle_crypto_cfg->crypto_hash_type, sizeof(opensslcrypto_instance->hash_type));
+
+		opensslcrypto_instance->params[params_n++] = OSSL_PARAM_construct_utf8_string(hash, opensslcrypto_instance->hash_type, 0);
+		opensslcrypto_instance->params[params_n++] = OSSL_PARAM_construct_octet_string(key, opensslcrypto_instance->private_key, opensslcrypto_instance->private_key_len);
+		opensslcrypto_instance->params[params_n] = OSSL_PARAM_construct_end();
+#endif
 	}
 
 	if ((opensslcrypto_instance->crypto_cipher_type) &&
@@ -601,15 +705,6 @@ static int opensslcrypto_init(
 		savederrno = EINVAL;
 		goto out_err;
 	}
-
-	opensslcrypto_instance->private_key = malloc(knet_handle_crypto_cfg->private_key_len);
-	if (!opensslcrypto_instance->private_key) {
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory for openssl private key");
-		savederrno = ENOMEM;
-		goto out_err;
-	}
-	memmove(opensslcrypto_instance->private_key, knet_handle_crypto_cfg->private_key, knet_handle_crypto_cfg->private_key_len);
-	opensslcrypto_instance->private_key_len = knet_handle_crypto_cfg->private_key_len;
 
 	if (opensslcrypto_instance->crypto_hash_type) {
 		crypto_instance->sec_hash_size = EVP_MD_size(opensslcrypto_instance->crypto_hash_type);
