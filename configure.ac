@@ -39,25 +39,17 @@ LT_INIT
 LDFLAGS="$saved_LDFLAGS"
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([kronosnetd/main.c])
+AC_CONFIG_SRCDIR([libknet/handle.c])
 AC_CONFIG_HEADERS([config.h])
 
 AC_CANONICAL_HOST
 
 AC_LANG([C])
 
-systemddir=${prefix}/lib/systemd/system
-
 if test "$prefix" = "NONE"; then
 	prefix="/usr"
 	if test "$localstatedir" = "\${prefix}/var"; then
 		localstatedir="/var"
-	fi
-	if test "$sysconfdir" = "\${prefix}/etc"; then
-		sysconfdir="/etc"
-	fi
-	if test "$systemddir" = "NONE/lib/systemd/system"; then
-		systemddir=/lib/systemd/system
 	fi
 	if test "$libdir" = "\${exec_prefix}/lib"; then
 		if test -e /usr/lib64; then
@@ -159,11 +151,6 @@ AC_ARG_ENABLE([poc],
 	[ enable_poc="no" ])
 AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
 
-AC_ARG_ENABLE([kronosnetd],
-	[AS_HELP_STRING([--enable-kronosnetd],[Kronosnetd support])],,
-	[ enable_kronosnetd="no" ])
-AM_CONDITIONAL([BUILD_KRONOSNETD], [test x$enable_kronosnetd = xyes])
-
 AC_ARG_ENABLE([runautogen],
 	[AS_HELP_STRING([--enable-runautogen],[run autogen.sh])],,
 	[ enable_runautogen="no" ])
@@ -180,9 +167,6 @@ AC_ARG_ENABLE([libnozzle],
 	[AS_HELP_STRING([--enable-libnozzle],[libnozzle support])],,
 	[ enable_libnozzle="yes" ])
 
-if test "x$enable_kronosnetd" = xyes; then
-	enable_libnozzle=yes
-fi
 AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 
 # Checks for libraries.
@@ -290,26 +274,6 @@ if test "x$enable_libnozzle" = xyes; then
 	fi
 fi
 
-# checks for kronosnetd
-if test "x$enable_kronosnetd" = xyes; then
-	AC_CHECK_HEADERS([security/pam_appl.h],
-			 [AC_CHECK_LIB([pam], [pam_start],
-				       [AC_SUBST([pam_LIBS], [-lpam])],
-				       [AC_MSG_ERROR([Unable to find LinuxPAM devel files])])])
-
-	AC_CHECK_HEADERS([security/pam_misc.h],
-			 [AC_CHECK_LIB([pam_misc], [misc_conv],
-				       [AC_SUBST([pam_misc_LIBS], [-lpam_misc])],
-				       [AC_MSG_ERROR([Unable to find LinuxPAM MISC devel files])])])
-
-	AC_CHECK_LIB([qb], [qb_log_thread_priority_set],
-		     [have_qb_log_thread_priority_set="yes"],
-		     [have_qb_log_thread_priority_set="no"])
-	if test "x${have_qb_log_thread_priority_set}" = xyes; then
-		AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], [1], [have qb_log_thread_priority_set])
-	fi
-fi
-
 # local options
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
@@ -325,84 +289,9 @@ AC_ARG_WITH([testdir],
 	[ TESTDIR="$withval" ],
 	[ TESTDIR="$libdir/kronosnet/tests" ])
 
-AC_ARG_WITH([initdefaultdir],
-	[AS_HELP_STRING([--with-initdefaultdir=DIR],[path to /etc/sysconfig or /etc/default dir])],
-	[ INITDEFAULTDIR="$withval" ],
-	[ INITDEFAULTDIR="$sysconfdir/default" ])
-
-AC_ARG_WITH([initddir],
-	[AS_HELP_STRING([--with-initddir=DIR],[path to init script directory])],
-	[ INITDDIR="$withval" ],
-	[ INITDDIR="$sysconfdir/init.d" ])
-
-AC_ARG_WITH([systemddir],
-	[AS_HELP_STRING([--with-systemddir=DIR],[path to systemd unit files directory])],
-	[ SYSTEMDDIR="$withval" ],
-	[ SYSTEMDDIR="$systemddir" ])
-
-AC_ARG_WITH([syslogfacility],
-	[AS_HELP_STRING([--with-syslogfacility=FACILITY],[default syslog facility])],
-	[ SYSLOGFACILITY="$withval" ],
-	[ SYSLOGFACILITY="LOG_DAEMON" ])
-
-AC_ARG_WITH([sysloglevel],
-	[AS_HELP_STRING([--with-sysloglevel=LEVEL],[default syslog level])],
-	[ SYSLOGLEVEL="$withval" ],
-	[ SYSLOGLEVEL="LOG_INFO" ])
-
-AC_ARG_WITH([defaultadmgroup],
-	[AS_HELP_STRING([--with-defaultadmgroup=GROUP],
-		[define PAM group. Users part of this group will be allowed to configure
-		 kronosnet. Others will only receive read-only rights.])],
-	[ DEFAULTADMGROUP="$withval" ],
-	[ DEFAULTADMGROUP="kronosnetadm" ])
-
-## random vars
-LOGDIR=${localstatedir}/log/
-RUNDIR=${localstatedir}/run/
-DEFAULT_CONFIG_DIR=${sysconfdir}/kronosnet
-
 ## do subst
 
 AC_SUBST([TESTDIR])
-AC_SUBST([DEFAULT_CONFIG_DIR])
-AC_SUBST([INITDEFAULTDIR])
-AC_SUBST([INITDDIR])
-AC_SUBST([SYSTEMDDIR])
-AC_SUBST([LOGDIR])
-AC_SUBST([DEFAULTADMGROUP])
-
-AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_DIR],
-		   ["$(eval echo ${DEFAULT_CONFIG_DIR})"],
-		   [Default config directory])
-
-AC_DEFINE_UNQUOTED([DEFAULT_CONFIG_FILE],
-		   ["$(eval echo ${DEFAULT_CONFIG_DIR}/kronosnetd.conf)"],
-		   [Default config file])
-
-AC_DEFINE_UNQUOTED([LOGDIR],
-		   ["$(eval echo ${LOGDIR})"],
-		   [Default logging directory])
-
-AC_DEFINE_UNQUOTED([DEFAULT_LOG_FILE],
-		   ["$(eval echo ${LOGDIR}/kronosnetd.log)"],
-		   [Default log file])
-
-AC_DEFINE_UNQUOTED([RUNDIR],
-		   ["$(eval echo ${RUNDIR})"],
-		   [Default run directory])
-
-AC_DEFINE_UNQUOTED([SYSLOGFACILITY],
-		   [$(eval echo ${SYSLOGFACILITY})],
-		   [Default syslog facility])
-
-AC_DEFINE_UNQUOTED([SYSLOGLEVEL],
-		   [$(eval echo ${SYSLOGLEVEL})],
-		   [Default syslog level])
-
-AC_DEFINE_UNQUOTED([DEFAULTADMGROUP],
-		   ["$(eval echo ${DEFAULTADMGROUP})"],
-		   [Default admin group])
 
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
@@ -501,12 +390,9 @@ AC_MSG_NOTICE([using source epoch $($UTC_DATE_AT$SOURCE_EPOCH +'%F %T %Z')])
 
 AC_CONFIG_FILES([
 		Makefile
-		init/Makefile
 		libnozzle/Makefile
 		libnozzle/libnozzle.pc
 		libnozzle/tests/Makefile
-		kronosnetd/Makefile
-		kronosnetd/kronosnetd.logrotate
 		libknet/Makefile
 		libknet/libknet.pc
 		libknet/tests/Makefile

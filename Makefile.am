@@ -27,7 +27,7 @@ EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
 			  $(SPEC).in build-aux
 
-SUBDIRS			= init libnozzle libknet kronosnetd
+SUBDIRS			= libnozzle libknet
 
 if BUILD_MAN
 SUBDIRS			+= man
@@ -136,11 +136,6 @@ if BUILD_COMPRESS_ZSTD
 	sed -i -e "s#@zstd@#bcond_without#g" $@-t
 else
 	sed -i -e "s#@zstd@#bcond_with#g" $@-t
-endif
-if BUILD_KRONOSNETD
-	sed -i -e "s#@kronosnetd@#bcond_without#g" $@-t
-else
-	sed -i -e "s#@kronosnetd@#bcond_with#g" $@-t
 endif
 if BUILD_LIBNOZZLE
 	sed -i -e "s#@libnozzle@#bcond_without#g" $@-t
