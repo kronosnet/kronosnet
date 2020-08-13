@@ -33,10 +33,6 @@ if BUILD_MAN
 SUBDIRS			+= man
 endif
 
-if BUILD_POC
-SUBDIRS			+= poc-code
-endif
-
 dist_doc_DATA		= \
 			  COPYING.applications \
 			  COPYING.libraries \

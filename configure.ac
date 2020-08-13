@@ -146,11 +146,6 @@ AC_ARG_ENABLE([install-tests],
 	[ enable_install_tests="no" ])
 AM_CONDITIONAL([INSTALL_TESTS], [test x$enable_install_tests = xyes])
 
-AC_ARG_ENABLE([poc],
-	[AS_HELP_STRING([--enable-poc],[enable building poc code])],,
-	[ enable_poc="no" ])
-AM_CONDITIONAL([BUILD_POC], [test x$enable_poc = xyes])
-
 AC_ARG_ENABLE([runautogen],
 	[AS_HELP_STRING([--enable-runautogen],[run autogen.sh])],,
 	[ enable_runautogen="no" ])
@@ -372,8 +367,6 @@ AC_CONFIG_FILES([
 		man/Makefile
 		man/Doxyfile-knet
 		man/Doxyfile-nozzle
-		poc-code/Makefile
-		poc-code/iov-hash/Makefile
 		])
 
 if test "x$VERSION" = "xUNKNOWN"; then
