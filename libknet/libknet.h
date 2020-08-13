@@ -460,8 +460,6 @@ int knet_send_sync(knet_handle_t knet_h,
  *    dst_host_ids_entries in the buffer.
  *  1 packet is broadcast/multicast and is sent all hosts.
  *    contents of dst_host_ids and dst_host_ids_entries are ignored.
- *  (see also kronosnetd/etherfilter.* for an example that filters based
- *   on ether protocol)
  *
  * @return
  * knet_handle_enable_filter returns

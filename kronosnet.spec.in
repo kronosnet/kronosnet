@@ -25,7 +25,6 @@
 %@lzma@ lzma
 %@bzip2@ bzip2
 %@zstd@ zstd
-%@kronosnetd@ kronosnetd
 %@libnozzle@ libnozzle
 %@runautogen@ runautogen
 %@rpmdebuginfo@ rpmdebuginfo
@@ -96,9 +95,6 @@ BuildRequires: bzip2-devel
 %endif
 %if %{with zstd}
 BuildRequires: libzstd-devel
-%endif
-%if %{with kronosnetd}
-BuildRequires: pam-devel
 %endif
 %if %{with libnozzle}
 BuildRequires: libnl3-devel
@@ -171,11 +167,6 @@ BuildRequires: autoconf automake libtool
 %else
 	--disable-compress-zstd \
 %endif
-%if %{with kronosnetd}
-	--enable-kronosnetd \
-%else
-	--disable-kronosnetd \
-%endif
 %if %{with libnozzle}
 	--enable-libnozzle \
 %else
@@ -205,48 +196,6 @@ rm -rf %{buildroot}/usr/share/doc/kronosnet
 # main empty package
 %description
  The kronosnet source
-
-%if %{with kronosnetd}
-## Runtime and subpackages section
-%package -n kronosnetd
-Summary: Multipoint-to-Multipoint VPN daemon
-License: GPLv2+
-Requires(post):   systemd-sysv
-Requires(post):   systemd-units
-Requires(preun):  systemd-units
-Requires(postun): systemd-units
-Requires(post):   shadow-utils
-Requires(preun):  shadow-utils
-Requires: pam, /etc/pam.d/passwd
-
-%description -n kronosnetd
- The kronosnet daemon is a bridge between kronosnet switching engine
- and kernel network tap devices, to create and administer a
- distributed LAN over multipoint-to-multipoint VPNs.
- The daemon does a poor attempt to provide a configure UI similar
- to other known network devices/tools (Cisco, quagga).
- Beside looking horrific, it allows runtime changes and
- reconfiguration of the kronosnet(s) without daemon reload
- or service disruption.
-
-%post -n kronosnetd
-%systemd_post kronosnetd.service
-getent group @defaultadmgroup@ >/dev/null || groupadd --force --system @defaultadmgroup@
-
-%preun -n kronosnetd
-%systemd_preun kronosnetd.service
-
-%files -n kronosnetd
-%license COPYING.* COPYRIGHT
-%dir %{_sysconfdir}/kronosnet
-%dir %{_sysconfdir}/kronosnet/*
-%config(noreplace) %{_sysconfdir}/sysconfig/kronosnetd
-%config(noreplace) %{_sysconfdir}/pam.d/kronosnetd
-%config(noreplace) %{_sysconfdir}/logrotate.d/kronosnetd
-%{_unitdir}/kronosnetd.service
-%{_sbindir}/*
-%{_mandir}/man8/*
-%endif
 
 %if %{with libnozzle}
 %package -n libnozzle1
