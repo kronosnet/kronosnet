@@ -696,6 +696,8 @@ static void *_sctp_connect_thread(void *data)
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STARTED);
 
+	memset(&events, 0, sizeof(events));
+
 	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(handle_info->connect_epollfd, events, KNET_EPOLL_MAX_EVENTS, knet_h->threads_timer_res / 1000);
 
@@ -955,6 +957,8 @@ static void *_sctp_listen_thread(void *data)
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_STARTED);
+
+	memset(&events, 0, sizeof(events));
 
 	while (!shutdown_in_progress(knet_h)) {
 		nev = epoll_wait(handle_info->listen_epollfd, events, KNET_EPOLL_MAX_EVENTS, knet_h->threads_timer_res / 1000);
