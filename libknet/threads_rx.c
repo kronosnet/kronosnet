@@ -958,6 +958,7 @@ void *_handle_recv_from_links_thread(void *data)
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STARTED);
 
 	memset(&msg, 0, sizeof(msg));
+	memset(&events, 0, sizeof(events));
 
 	for (i = 0; i < PCKT_RX_BUFS; i++) {
 		iov_in[i].iov_base = (void *)knet_h->recv_from_links_buf[i];

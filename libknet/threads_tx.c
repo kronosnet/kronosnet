@@ -665,6 +665,7 @@ void *_handle_send_to_links_thread(void *data)
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STARTED);
 
+	memset(&events, 0, sizeof(events));
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (void *)knet_h->recv_from_sock_buf->khp_data_userdata;
 	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
