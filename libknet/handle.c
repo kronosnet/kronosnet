@@ -167,13 +167,6 @@ static int _init_socks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	if (_init_socketpair(knet_h, knet_h->hostsockfd)) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal hostsockpair: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
 	if (_init_socketpair(knet_h, knet_h->dstsockfd)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize internal dstsockpair: %s",
@@ -191,7 +184,6 @@ exit_fail:
 static void _close_socks(knet_handle_t knet_h)
 {
 	_close_socketpair(knet_h, knet_h->dstsockfd);
-	_close_socketpair(knet_h, knet_h->hostsockfd);
 }
 
 static int _init_buffers(knet_handle_t knet_h)
@@ -408,18 +400,6 @@ static int _init_epolls(knet_handle_t knet_h)
 
 	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN;
-	ev.data.fd = knet_h->hostsockfd[0];
-
-	if (epoll_ctl(knet_h->send_to_links_epollfd,
-		      EPOLL_CTL_ADD, knet_h->hostsockfd[0], &ev)) {
-		savederrno = errno;
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to add hostsockfd[0] to epoll pool: %s",
-			strerror(savederrno));
-		goto exit_fail;
-	}
-
-	memset(&ev, 0, sizeof(struct epoll_event));
-	ev.events = EPOLLIN;
 	ev.data.fd = knet_h->dstsockfd[0];
 
 	if (epoll_ctl(knet_h->dst_link_handler_epollfd,
@@ -453,7 +433,6 @@ static void _close_epolls(knet_handle_t knet_h)
 		}
 	}
 
-	epoll_ctl(knet_h->send_to_links_epollfd, EPOLL_CTL_DEL, knet_h->hostsockfd[0], &ev);
 	epoll_ctl(knet_h->dst_link_handler_epollfd, EPOLL_CTL_DEL, knet_h->dstsockfd[0], &ev);
 	close(knet_h->send_to_links_epollfd);
 	close(knet_h->recv_from_links_epollfd);

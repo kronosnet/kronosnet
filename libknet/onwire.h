@@ -19,78 +19,6 @@
 
 #include "libknet.h"
 
-#if 0
-
-/*
- * for future protocol extension (re-switching table calculation)
- */
-
-struct knet_hinfo_link {
-	uint8_t			khl_link_id;
-	uint8_t			khl_link_dynamic;
-	uint8_t			khl_link_priority;
-	uint64_t		khl_link_latency;
-	char			khl_link_dst_ipaddr[KNET_MAX_HOST_LEN];
-	char			khl_link_dst_port[KNET_MAX_PORT_LEN];
-} __attribute__((packed));
-
-struct knet_hinfo_link_table {
-	knet_node_id_t		khlt_node_id;
-	uint8_t			khlt_local; /* we have this node connected locally */
-	struct knet_hinfo_link	khlt_link[KNET_MAX_LINK]; /* info we send about each link in the node */
-} __attribute__((packed));
-
-struct link_table {
-	knet_node_id_t		khdt_host_entries;
-	uint8_t			khdt_host_maps[0]; /* array of knet_hinfo_link_table[khdt_host_entries] */
-} __attribute__((packed));
-#endif
-
-#define KNET_HOSTINFO_LINK_STATUS_DOWN 0
-#define KNET_HOSTINFO_LINK_STATUS_UP   1
-
-struct knet_hostinfo_payload_link_status {
-	uint8_t		khip_link_status_link_id;	/* link id */
-	uint8_t		khip_link_status_status;	/* up/down status */
-} __attribute__((packed));
-
-/*
- * union to reference possible individual payloads
- */
-
-union knet_hostinfo_payload {
-	struct knet_hostinfo_payload_link_status knet_hostinfo_payload_link_status;
-} __attribute__((packed));
-
-/*
- * due to the nature of knet_hostinfo, we are currently
- * sending those data as part of knet_header_payload_data.khp_data_userdata
- * and avoid a union that increses knet_header_payload_data size
- * unnecessarely.
- * This might change later on depending on how we implement
- * host info exchange
- */
-
-#define KNET_HOSTINFO_TYPE_LINK_UP_DOWN 0 // UNUSED
-#define KNET_HOSTINFO_TYPE_LINK_TABLE   1 // NOT IMPLEMENTED
-
-#define KNET_HOSTINFO_UCAST 0	/* send info to a specific host */
-#define KNET_HOSTINFO_BCAST 1	/* send info to all known / connected hosts */
-
-struct knet_hostinfo {
-	uint8_t				khi_type;	/* type of hostinfo we are sending */
-	uint8_t				khi_bcast;	/* hostinfo destination bcast/ucast */
-	knet_node_id_t			khi_dst_node_id;/* used only if in ucast mode */
-	union knet_hostinfo_payload	khi_payload;
-} __attribute__((packed));
-
-#define KNET_HOSTINFO_ALL_SIZE sizeof(struct knet_hostinfo)
-#define KNET_HOSTINFO_SIZE (KNET_HOSTINFO_ALL_SIZE - sizeof(union knet_hostinfo_payload))
-#define KNET_HOSTINFO_LINK_STATUS_SIZE (KNET_HOSTINFO_SIZE + sizeof(struct knet_hostinfo_payload_link_status))
-
-#define khip_link_status_status khi_payload.knet_hostinfo_payload_link_status.khip_link_status_status
-#define khip_link_status_link_id khi_payload.knet_hostinfo_payload_link_status.khip_link_status_link_id
-
 /*
  * typedef uint64_t seq_num_t;
  * #define SEQ_MAX UINT64_MAX
@@ -152,7 +80,6 @@ union knet_header_payload {
 #define KNET_HEADER_VERSION          0x01 /* we currently support only one version */
 
 #define KNET_HEADER_TYPE_DATA        0x00 /* pure data packet */
-#define KNET_HEADER_TYPE_HOST_INFO   0x01 /* host status information pckt */
 
 #define KNET_HEADER_TYPE_PMSK        0x80 /* packet mask */
 #define KNET_HEADER_TYPE_PING        0x81 /* heartbeat */
