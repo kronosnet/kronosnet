@@ -150,7 +150,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
 	size_t dst_host_ids_entries = 0;
 	int bcast = 1;
-	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[PCKT_FRAG_MAX][2];
 	int iovcnt_out = 2;
 	uint8_t frag_idx;
@@ -172,8 +171,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 
 	inbuf = knet_h->recv_from_sock_buf;
 
-	if ((knet_h->enabled != 1) &&
-	    (inbuf->kh_type != KNET_HEADER_TYPE_HOST_INFO)) { /* data forward is disabled */
+	if (knet_h->enabled != 1) {
 		log_debug(knet_h, KNET_SUB_TX, "Received data packet but forwarding is disabled");
 		savederrno = ECANCELED;
 		err = -1;
@@ -257,15 +255,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 						local_link->status.stats.tx_data_bytes += inlen;
 					}
 				}
-			}
-			break;
-		case KNET_HEADER_TYPE_HOST_INFO:
-			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
-			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
-				bcast = 0;
-				dst_host_ids_temp[0] = knet_hostinfo->khi_dst_node_id;
-				dst_host_ids_entries_temp = 1;
-				knet_hostinfo->khi_dst_node_id = htons(knet_hostinfo->khi_dst_node_id);
 			}
 			break;
 		default:
@@ -624,25 +613,19 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 		docallback = 1;
 		memset(&ev, 0, sizeof(struct epoll_event));
 
-		if (channel != KNET_INTERNAL_DATA_CHANNEL) {
-			if (epoll_ctl(knet_h->send_to_links_epollfd,
-				      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
-				log_err(knet_h, KNET_SUB_TX, "Unable to del datafd %d from linkfd epoll pool: %s",
-					knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
-			} else {
-				knet_h->sockfd[channel].has_error = 1;
-			}
+		if (epoll_ctl(knet_h->send_to_links_epollfd,
+			      EPOLL_CTL_DEL, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], &ev)) {
+			log_err(knet_h, KNET_SUB_TX, "Unable to del datafd %d from linkfd epoll pool: %s",
+				knet_h->sockfd[channel].sockfd[0], strerror(savederrno));
+		} else {
+			knet_h->sockfd[channel].has_error = 1;
 		}
-		/*
-		 * TODO: add error handling for KNET_INTERNAL_DATA_CHANNEL
-		 *       once we add support for internal knet communication
-		 */
 	} else {
 		knet_h->recv_from_sock_buf->kh_type = type;
 		_parse_recv_from_sock(knet_h, inlen, channel, 0);
 	}
 
-	if ((docallback) && (channel != KNET_INTERNAL_DATA_CHANNEL)) {
+	if (docallback) {
 		knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
 				       knet_h->sockfd[channel].sockfd[0],
 				       channel,
@@ -735,21 +718,16 @@ void *_handle_send_to_links_thread(void *data)
 		}
 
 		for (i = 0; i < nev; i++) {
-			if (events[i].data.fd == knet_h->hostsockfd[0]) {
-				type = KNET_HEADER_TYPE_HOST_INFO;
-				channel = KNET_INTERNAL_DATA_CHANNEL;
-			} else {
-				type = KNET_HEADER_TYPE_DATA;
-				for (channel = 0; channel < KNET_DATAFD_MAX; channel++) {
-					if ((knet_h->sockfd[channel].in_use) &&
-					    (knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created] == events[i].data.fd)) {
-						break;
-					}
+			type = KNET_HEADER_TYPE_DATA;
+			for (channel = 0; channel < KNET_DATAFD_MAX; channel++) {
+				if ((knet_h->sockfd[channel].in_use) &&
+				    (knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created] == events[i].data.fd)) {
+					break;
 				}
-				if (channel >= KNET_DATAFD_MAX) {
-					log_debug(knet_h, KNET_SUB_TX, "No available channels");
-					continue; /* channel not found */
-				}
+			}
+			if (channel >= KNET_DATAFD_MAX) {
+				log_debug(knet_h, KNET_SUB_TX, "No available channels");
+				continue; /* channel not found */
 			}
 			if (pthread_mutex_lock(&knet_h->tx_mutex) != 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
