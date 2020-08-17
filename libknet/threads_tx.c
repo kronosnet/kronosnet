@@ -597,76 +597,6 @@ out_unlock:
 	return err;
 }
 
-int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
-{
-	int savederrno = 0, err = 0;
-
-	if (!knet_h) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (buff == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (buff_len <= 0) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (buff_len > KNET_MAX_PACKET_SIZE) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (channel < 0) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (channel >= KNET_DATAFD_MAX) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_TX, "Unable to get read lock: %s",
-			strerror(savederrno));
-		errno = savederrno;
-		return -1;
-	}
-
-	if (!knet_h->sockfd[channel].in_use) {
-		savederrno = EINVAL;
-		err = -1;
-		goto out;
-	}
-
-	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
-	if (savederrno) {
-		log_err(knet_h, KNET_SUB_TX, "Unable to get TX mutex lock: %s",
-			strerror(savederrno));
-		err = -1;
-		goto out;
-	}
-
-	knet_h->recv_from_sock_buf->kh_type = KNET_HEADER_TYPE_DATA;
-	memmove(knet_h->recv_from_sock_buf->khp_data_userdata, buff, buff_len);
-	err = _parse_recv_from_sock(knet_h, buff_len, channel, 1);
-	savederrno = errno;
-
-	pthread_mutex_unlock(&knet_h->tx_mutex);
-
-out:
-	pthread_rwlock_unlock(&knet_h->global_rwlock);
-
-	errno = err ? savederrno : 0;
-	return err;
-}
-
 static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int sockfd, int8_t channel, int type)
 {
 	ssize_t inlen = 0;
@@ -735,6 +665,7 @@ void *_handle_send_to_links_thread(void *data)
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STARTED);
 
+	memset(&events, 0, sizeof(events));
 	memset(&iov_in, 0, sizeof(iov_in));
 	iov_in.iov_base = (void *)knet_h->recv_from_sock_buf->khp_data_userdata;
 	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
@@ -834,4 +765,138 @@ void *_handle_send_to_links_thread(void *data)
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STOPPED);
 
 	return NULL;
+}
+
+int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
+{
+	int savederrno = 0, err = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff_len <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff_len > KNET_MAX_PACKET_SIZE) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel >= KNET_DATAFD_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_TX, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out;
+	}
+
+	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_TX, "Unable to get TX mutex lock: %s",
+			strerror(savederrno));
+		err = -1;
+		goto out;
+	}
+
+	knet_h->recv_from_sock_buf->kh_type = KNET_HEADER_TYPE_DATA;
+	memmove(knet_h->recv_from_sock_buf->khp_data_userdata, buff, buff_len);
+	err = _parse_recv_from_sock(knet_h, buff_len, channel, 1);
+	savederrno = errno;
+
+	pthread_mutex_unlock(&knet_h->tx_mutex);
+
+out:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = err ? savederrno : 0;
+	return err;
+}
+
+ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
+{
+	int savederrno = 0;
+	ssize_t err = 0;
+	struct iovec iov_out[1];
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff_len <= 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (buff_len > KNET_MAX_PACKET_SIZE) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel < 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (channel >= KNET_DATAFD_MAX) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		savederrno = EINVAL;
+		err = -1;
+		goto out_unlock;
+	}
+
+	memset(iov_out, 0, sizeof(iov_out));
+
+	iov_out[0].iov_base = (void *)buff;
+	iov_out[0].iov_len = buff_len;
+
+	err = writev(knet_h->sockfd[channel].sockfd[0], iov_out, 1);
+	savederrno = errno;
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = err ? savederrno : 0;
+	return err;
 }

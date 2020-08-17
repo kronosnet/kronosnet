@@ -12,7 +12,6 @@ MAINTAINERCLEANFILES	= Makefile.in
 include $(top_srcdir)/build-aux/check.mk
 
 EXTRA_DIST	= \
-		  kronosnetd.8 knet-keygen.8 \
 		  api-to-man-page-coverage
 
 # Avoid Automake warnings about overriding these user variables.
@@ -25,10 +24,6 @@ CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
 LDFLAGS=$(LDFLAGS_FOR_BUILD)
 
 if BUILD_MAN
-
-if BUILD_KRONOSNETD
-man8_MANS	= kronosnetd.8 knet-keygen.8
-endif
 
 if BUILD_DOXYXML
 noinst_PROGRAMS	= doxyxml
