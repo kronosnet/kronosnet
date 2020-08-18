@@ -170,6 +170,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	int stats_locked = 0, stats_err = 0;
 
 	inbuf = knet_h->recv_from_sock_buf;
+	inbuf->kh_type = KNET_HEADER_TYPE_DATA;
 
 	if (knet_h->enabled != 1) {
 		log_debug(knet_h, KNET_SUB_TX, "Received data packet but forwarding is disabled");
@@ -178,91 +179,77 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		goto out_unlock;
 	}
 
-	/*
-	 * move this into a separate function to expand on
-	 * extra switching rules
-	 */
-	switch(inbuf->kh_type) {
-		case KNET_HEADER_TYPE_DATA:
-			if (knet_h->dst_host_filter_fn) {
-				bcast = knet_h->dst_host_filter_fn(
-						knet_h->dst_host_filter_fn_private_data,
-						(const unsigned char *)inbuf->khp_data_userdata,
-						inlen,
-						KNET_NOTIFY_TX,
-						knet_h->host_id,
-						knet_h->host_id,
-						&channel,
-						dst_host_ids_temp,
-						&dst_host_ids_entries_temp);
-				if (bcast < 0) {
-					log_debug(knet_h, KNET_SUB_TX, "Error from dst_host_filter_fn: %d", bcast);
-					savederrno = EFAULT;
-					err = -1;
-					goto out_unlock;
-				}
-
-				if ((!bcast) && (!dst_host_ids_entries_temp)) {
-					log_debug(knet_h, KNET_SUB_TX, "Message is unicast but no dst_host_ids_entries");
-					savederrno = EINVAL;
-					err = -1;
-					goto out_unlock;
-				}
-
-				if ((!bcast) &&
-				    (dst_host_ids_entries_temp > KNET_MAX_HOST)) {
-					log_debug(knet_h, KNET_SUB_TX, "dst_host_filter_fn returned too many destinations");
-					savederrno = EINVAL;
-					err = -1;
-					goto out_unlock;
-				}
-			}
-
-			/* Send to localhost if appropriate and enabled */
-			if (knet_h->has_loop_link) {
-				send_local = 0;
-				if (bcast) {
-					send_local = 1;
-				} else {
-					for (i=0; i< dst_host_ids_entries_temp; i++) {
-						if (dst_host_ids_temp[i] == knet_h->host_id) {
-							send_local = 1;
-						}
-					}
-				}
-				if (send_local) {
-					const unsigned char *buf = inbuf->khp_data_userdata;
-					ssize_t buflen = inlen;
-					struct knet_link *local_link;
-
-					local_link = knet_h->host_index[knet_h->host_id]->link;
-
-				local_retry:
-					err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
-					if (err < 0) {
-						log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
-						local_link->status.stats.tx_data_errors++;
-					}
-					if (err > 0 && err < buflen) {
-						log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %zu\n", err, inlen);
-						local_link->status.stats.tx_data_retries++;
-						buf += err;
-						buflen -= err;
-						goto local_retry;
-					}
-					if (err == buflen) {
-						local_link->status.stats.tx_data_packets++;
-						local_link->status.stats.tx_data_bytes += inlen;
-					}
-				}
-			}
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_TX, "Receiving unknown messages from socket");
-			savederrno = ENOMSG;
+	if (knet_h->dst_host_filter_fn) {
+		bcast = knet_h->dst_host_filter_fn(
+				knet_h->dst_host_filter_fn_private_data,
+				(const unsigned char *)inbuf->khp_data_userdata,
+				inlen,
+				KNET_NOTIFY_TX,
+				knet_h->host_id,
+				knet_h->host_id,
+				&channel,
+				dst_host_ids_temp,
+				&dst_host_ids_entries_temp);
+		if (bcast < 0) {
+			log_debug(knet_h, KNET_SUB_TX, "Error from dst_host_filter_fn: %d", bcast);
+			savederrno = EFAULT;
 			err = -1;
 			goto out_unlock;
-			break;
+		}
+
+		if ((!bcast) && (!dst_host_ids_entries_temp)) {
+			log_debug(knet_h, KNET_SUB_TX, "Message is unicast but no dst_host_ids_entries");
+			savederrno = EINVAL;
+			err = -1;
+			goto out_unlock;
+		}
+
+		if ((!bcast) &&
+		    (dst_host_ids_entries_temp > KNET_MAX_HOST)) {
+			log_debug(knet_h, KNET_SUB_TX, "dst_host_filter_fn returned too many destinations");
+			savederrno = EINVAL;
+			err = -1;
+			goto out_unlock;
+		}
+	}
+
+	/* Send to localhost if appropriate and enabled */
+	if (knet_h->has_loop_link) {
+		send_local = 0;
+		if (bcast) {
+			send_local = 1;
+		} else {
+			for (i=0; i< dst_host_ids_entries_temp; i++) {
+				if (dst_host_ids_temp[i] == knet_h->host_id) {
+					send_local = 1;
+				}
+			}
+		}
+		if (send_local) {
+			const unsigned char *buf = inbuf->khp_data_userdata;
+			ssize_t buflen = inlen;
+			struct knet_link *local_link;
+
+			local_link = knet_h->host_index[knet_h->host_id]->link;
+
+		local_retry:
+			err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
+			if (err < 0) {
+				log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
+				local_link->status.stats.tx_data_errors++;
+			}
+			if (err > 0 && err < buflen) {
+				log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %zu\n", err, inlen);
+				local_link->status.stats.tx_data_retries++;
+				buf += err;
+				buflen -= err;
+				goto local_retry;
+			}
+			if (err == buflen) {
+				local_link->status.stats.tx_data_packets++;
+				local_link->status.stats.tx_data_bytes += inlen;
+			}
+		}
 	}
 
 	if (is_sync) {
@@ -589,7 +576,7 @@ out_unlock:
 	return err;
 }
 
-static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int sockfd, int8_t channel, int type)
+static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int sockfd, int8_t channel)
 {
 	ssize_t inlen = 0;
 	int savederrno = 0, docallback = 0;
@@ -624,7 +611,6 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 			knet_h->sockfd[channel].has_error = 1;
 		}
 	} else {
-		knet_h->recv_from_sock_buf->kh_type = type;
 		_parse_recv_from_sock(knet_h, inlen, channel, 0);
 	}
 
@@ -642,7 +628,7 @@ void *_handle_send_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
-	int i, nev, type;
+	int i, nev;
 	int flush, flush_queue_limit;
 	int8_t channel;
 	struct iovec iov_in;
@@ -721,7 +707,6 @@ void *_handle_send_to_links_thread(void *data)
 		}
 
 		for (i = 0; i < nev; i++) {
-			type = KNET_HEADER_TYPE_DATA;
 			for (channel = 0; channel < KNET_DATAFD_MAX; channel++) {
 				if ((knet_h->sockfd[channel].in_use) &&
 				    (knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created] == events[i].data.fd)) {
@@ -736,7 +721,7 @@ void *_handle_send_to_links_thread(void *data)
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
 				continue;
 			}
-			_handle_send_to_links(knet_h, &msg, events[i].data.fd, channel, type);
+			_handle_send_to_links(knet_h, &msg, events[i].data.fd, channel);
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
 
@@ -804,7 +789,6 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		goto out;
 	}
 
-	knet_h->recv_from_sock_buf->kh_type = KNET_HEADER_TYPE_DATA;
 	memmove(knet_h->recv_from_sock_buf->khp_data_userdata, buff, buff_len);
 	err = _parse_recv_from_sock(knet_h, buff_len, channel, 1);
 	savederrno = errno;
