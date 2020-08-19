@@ -11,9 +11,19 @@
 #define __KNET_NETUTILS_H__
 
 #include <sys/socket.h>
+#include <netinet/in.h>
 
-int cmpaddr(const struct sockaddr_storage *ss1, socklen_t sslen1, const struct sockaddr_storage *ss2, socklen_t sslen2);
-int cpyaddrport(struct sockaddr_storage *dst, const struct sockaddr_storage *src);
+/*
+ * s6_addr32 is not defined in BSD userland, only kernel.
+ * definition is the same as linux and it works fine for
+ * what we need.
+ */
+
+#ifndef s6_addr32
+#define s6_addr32 __u6_addr.__u6_addr32
+#endif
+
+int cmpaddr(const struct sockaddr_storage *ss1, const struct sockaddr_storage *ss2);
 
 socklen_t sockaddr_len(const struct sockaddr_storage *ss);
 #endif
