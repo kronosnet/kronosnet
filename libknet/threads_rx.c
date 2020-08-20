@@ -244,10 +244,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[1];
 	int8_t channel;
-	struct sockaddr_storage pckt_src;
 	seq_num_t recv_seq_num;
 	int wipe_bufs = 0;
-	int try_decrypt = 0, decrypted = 0, i;
+	int try_decrypt = 0, decrypted = 0, i, found_link = 0;
 
 	for (i = 1; i <= KNET_MAX_CRYPTO_INSTANCES; i++) {
 		if (knet_h->crypto_instance[i]) {
@@ -303,22 +302,16 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
-	src_link = src_host->link +
-		(inbuf->khp_ping_link % KNET_MAX_LINK);
 	if ((inbuf->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
+		/* be aware this works only for PING / PONG and PMTUd packets! */
+		src_link = src_host->link +
+			(inbuf->khp_ping_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
-			/*
-			 * cpyaddrport will only copy address and port of the incoming
-			 * packet and strip extra bits such as flow and scopeid
-			 */
-			cpyaddrport(&pckt_src, msg->msg_hdr.msg_name);
-
-			if (cmpaddr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
-				    &pckt_src, sockaddr_len(&pckt_src)) != 0) {
+			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
-				memmove(&src_link->dst_addr, &pckt_src, sizeof(struct sockaddr_storage));
-				if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(msg->msg_hdr.msg_name),
+				memmove(&src_link->dst_addr, msg->msg_hdr.msg_name, sizeof(struct sockaddr_storage));
+				if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 						src_link->status.dst_port, KNET_MAX_PORT_LEN) != 0) {
 					log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
@@ -336,6 +329,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			 * otherwise we would not be receiving packets
 			 */
 			transport_link_dyn_connect(knet_h, sockfd, src_link);
+		}
+	} else { /* data packet */
+		for (i = 0; i < KNET_MAX_LINK; i++) {
+			src_link = &src_host->link[i];
+			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) == 0) {
+				found_link = 1;
+				break;
+			}
+		}
+		if (!found_link) {
+			log_debug(knet_h, KNET_SUB_RX, "Unable to determine source link for data packet. Discarding packet.");
+			return;
 		}
 	}
 
