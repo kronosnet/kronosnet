@@ -354,17 +354,42 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	switch (inbuf->kh_type) {
 	case KNET_HEADER_TYPE_HOST_INFO:
 	case KNET_HEADER_TYPE_DATA:
+
+		/* data stats at the top for consistency with TX */
+		src_link->status.stats.rx_data_packets++;
+		src_link->status.stats.rx_data_bytes += len;
+
+		if (decrypted) {
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				return;
+			}
+			/* Only update the crypto overhead for data packets. Mainly to be
+			   consistent with TX */
+			if (decrypt_time < knet_h->stats.rx_crypt_time_min) {
+				knet_h->stats.rx_crypt_time_min = decrypt_time;
+			}
+			if (decrypt_time > knet_h->stats.rx_crypt_time_max) {
+				knet_h->stats.rx_crypt_time_max = decrypt_time;
+			}
+			knet_h->stats.rx_crypt_time_ave =
+				(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
+				 decrypt_time) / (knet_h->stats.rx_crypt_packets+1);
+			knet_h->stats.rx_crypt_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+		}
+
 		if (!src_host->status.reachable) {
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
 			return;
 		}
+
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 		channel = inbuf->khp_data_channel;
 		src_host->got_data = 1;
-
-		src_link->status.stats.rx_data_packets++;
-		src_link->status.stats.rx_data_bytes += len;
 
 		if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
@@ -441,27 +466,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 
 		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
-			if (decrypted) {
-				stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
-				if (stats_err < 0) {
-					pthread_mutex_unlock(&src_link->link_stats_mutex);
-					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
-					return;
-				}
-				/* Only update the crypto overhead for data packets. Mainly to be
-				   consistent with TX */
-				if (decrypt_time < knet_h->stats.rx_crypt_time_min) {
-					knet_h->stats.rx_crypt_time_min = decrypt_time;
-				}
-				if (decrypt_time > knet_h->stats.rx_crypt_time_max) {
-					knet_h->stats.rx_crypt_time_max = decrypt_time;
-				}
-				knet_h->stats.rx_crypt_time_ave =
-					(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
-					 decrypt_time) / (knet_h->stats.rx_crypt_packets+1);
-				knet_h->stats.rx_crypt_packets++;
-				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
-			}
 
 			if (knet_h->enabled != 1) /* data forward is disabled */
 				break;
