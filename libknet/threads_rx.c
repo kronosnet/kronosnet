@@ -26,6 +26,7 @@
 #include "transport_common.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"
+#include "threads_pmtud.h"
 #include "threads_rx.h"
 #include "netutils.h"
 
@@ -237,7 +238,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	int bcast = 1;
 	uint64_t decrypt_time = 0;
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
-	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
 	ssize_t len = msg->msg_len;
 	struct iovec iov_out[1];
 	int8_t channel;
@@ -556,92 +556,16 @@ retry:
 	case KNET_HEADER_TYPE_PMTUD:
 		src_link->status.stats.rx_pmtu_packets++;
 		src_link->status.stats.rx_pmtu_bytes += len;
-		outlen = KNET_HEADER_PMTUD_SIZE;
-		inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
-		inbuf->kh_node = htons(knet_h->host_id);
-
-		if (knet_h->crypto_in_use_config) {
-			if (crypto_encrypt_and_sign(knet_h,
-						    (const unsigned char *)inbuf,
-						    outlen,
-						    knet_h->recv_from_links_buf_crypt,
-						    &outlen) < 0) {
-				log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt PMTUd reply packet");
-				break;
-			}
-			outbuf = knet_h->recv_from_links_buf_crypt;
-			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
-			if (stats_err < 0) {
-				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
-				break;
-			}
-			knet_h->stats_extra.tx_crypt_pmtu_reply_packets++;
-			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
-		}
-
 		/* Unlock so we don't deadlock with tx_mutex */
 		pthread_mutex_unlock(&src_link->link_stats_mutex);
-
-		savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
-		if (savederrno) {
-			log_err(knet_h, KNET_SUB_RX, "Unable to get TX mutex lock: %s", strerror(savederrno));
-			goto out_pmtud;
-		}
-retry_pmtud:
-		if (src_link->transport_connected) {
-			if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
-				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-					     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
-			} else {
-				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
-			}
-			savederrno = errno;
-			if (len != outlen) {
-				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
-				stats_err = pthread_mutex_lock(&src_link->link_stats_mutex);
-				if (stats_err < 0) {
-					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
-					break;
-				}
-				switch(err) {
-					case -1: /* unrecoverable error */
-						log_debug(knet_h, KNET_SUB_RX,
-							  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-							  src_link->outsock, errno, strerror(errno),
-							  src_link->status.src_ipaddr, src_link->status.src_port,
-							  src_link->status.dst_ipaddr, src_link->status.dst_port);
-
-						src_link->status.stats.tx_pmtu_errors++;
-						break;
-					case 0: /* ignore error and continue */
-						src_link->status.stats.tx_pmtu_errors++;
-						break;
-					case 1: /* retry to send those same data */
-						src_link->status.stats.tx_pmtu_retries++;
-						pthread_mutex_unlock(&src_link->link_stats_mutex);
-						goto retry_pmtud;
-						break;
-				}
-				pthread_mutex_unlock(&src_link->link_stats_mutex);
-			}
-		}
-		pthread_mutex_unlock(&knet_h->tx_mutex);
-out_pmtud:
+		process_pmtud(knet_h, src_link, inbuf);
 		return; /* Don't need to unlock link_stats_mutex */
 	case KNET_HEADER_TYPE_PMTUD_REPLY:
 		src_link->status.stats.rx_pmtu_packets++;
 		src_link->status.stats.rx_pmtu_bytes += len;
-
 		/* pmtud_mutex can't be acquired while we hold a link_stats_mutex (ordering) */
 		pthread_mutex_unlock(&src_link->link_stats_mutex);
-
-		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
-			log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
-			break;
-		}
-		src_link->last_recv_mtu = inbuf->khp_pmtud_size;
-		pthread_cond_signal(&knet_h->pmtud_cond);
-		pthread_mutex_unlock(&knet_h->pmtud_mutex);
+		process_pmtud_reply(knet_h, src_link, inbuf);
 		return;
 	default:
 		pthread_mutex_unlock(&src_link->link_stats_mutex);
