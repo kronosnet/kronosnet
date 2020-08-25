@@ -13,4 +13,7 @@
 void _send_pings(knet_handle_t knet_h, int timed);
 void *_handle_heartbt_thread(void *data);
 
+void process_ping(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len);
+void process_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len);
+
 #endif
