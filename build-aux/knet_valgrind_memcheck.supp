@@ -373,3 +373,22 @@
   fun:test
   fun:main
 }
+{
+  nss internal leak (3.55) non recurring (spotted on f34)
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  fun:realpath@@GLIBC_2.3
+  obj:*
+  obj:*
+  obj:*
+  obj:/usr/lib64/libnss3.so
+  fun:SECMOD_LoadModule
+  fun:SECMOD_LoadModule
+  obj:/usr/lib64/libnss3.so
+  fun:NSS_NoDB_Init
+  fun:init_nss
+  fun:nsscrypto_init
+  fun:crypto_init
+  fun:_knet_handle_crypto_set_config
+}
