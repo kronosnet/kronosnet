@@ -285,8 +285,17 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
-	if (inbuf->kh_version != KNET_HEADER_VERSION) {
-		log_debug(knet_h, KNET_SUB_RX, "Packet version does not match");
+	if ((inbuf->kh_version > KNET_HEADER_ONWIRE_MAX_VER) &&
+	    (inbuf->kh_version < KNET_HEADER_ONWIRE_MIN_VER)) {
+		if (KNET_HEADER_ONWIRE_MAX_VER > 1 ) {
+			log_debug(knet_h, KNET_SUB_RX,
+				  "Received packet version %u. current node only supports onwire version from %u to %u",
+				  inbuf->kh_version, KNET_HEADER_ONWIRE_MIN_VER, KNET_HEADER_ONWIRE_MAX_VER);
+		} else {
+			log_debug(knet_h, KNET_SUB_RX,
+				  "Received packet version %u. current node only supports %u",
+				  inbuf->kh_version, KNET_HEADER_ONWIRE_MAX_VER);
+		}
 		return;
 	}
 

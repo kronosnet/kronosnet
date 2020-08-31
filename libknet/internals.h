@@ -209,6 +209,8 @@ struct knet_handle {
 	pthread_mutex_t hb_mutex;		/* used to protect heartbeat thread and seq_num broadcasting */
 	pthread_mutex_t backoff_mutex;		/* used to protect dst_link->pong_timeout_adj */
 	pthread_mutex_t kmtu_mutex;		/* used to protect kernel_mtu */
+	pthread_mutex_t onwire_mutex;		/* used to protect onwire version */
+	uint8_t onwire_ver;
 	uint32_t kernel_mtu;			/* contains the MTU detected by the kernel on a given link */
 	int pmtud_waiting;
 	int pmtud_running;

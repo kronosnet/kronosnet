@@ -142,6 +142,13 @@ static int _init_locks(knet_handle_t knet_h)
 		goto exit_fail;
 	}
 
+	savederrno = pthread_mutex_init(&knet_h->onwire_mutex, NULL);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize onwire_mutex mutex: %s",
+			strerror(savederrno));
+		goto exit_fail;
+	}
+
 	return 0;
 
 exit_fail:
@@ -161,6 +168,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->tx_seq_num_mutex);
 	pthread_mutex_destroy(&knet_h->threads_status_mutex);
 	pthread_mutex_destroy(&knet_h->handle_stats_mutex);
+	pthread_mutex_destroy(&knet_h->onwire_mutex);
 }
 
 static int _init_socks(knet_handle_t knet_h)
@@ -636,6 +644,26 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	knet_h->stats.rx_compress_time_min = UINT64_MAX;
 	knet_h->stats.tx_crypt_time_min = UINT64_MAX;
 	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
+
+	/*
+	 * set onwire version
+	 */
+
+#ifdef DEBUG
+	/*
+	 * need this small hack to test the code without new packets and
+	 * override internal defaults
+	 */
+	if (getenv("KNET_PROTO_VER")) {
+		knet_h->onwire_ver = atoi(getenv("KNET_PROTO_VER"));
+	} else {
+		knet_h->onwire_ver = KNET_HEADER_ONWIRE_MAX_VER;
+	}
+#else
+	knet_h->onwire_ver = KNET_HEADER_ONWIRE_MAX_VER;
+#endif
+
+	log_info(knet_h, KNET_SUB_HANDLE, "Default onwire version: %u", knet_h->onwire_ver);
 
 	/*
 	 * init global shlib tracker

@@ -551,7 +551,8 @@ void *_handle_pmtud_link_thread(void *data)
 	knet_h->data_mtu = calc_min_mtu(knet_h);
 
 	/* preparing pmtu buffer */
-	knet_h->pmtudbuf->kh_version = KNET_HEADER_VERSION;
+	knet_h->pmtudbuf->kh_version = knet_h->onwire_ver;
+	knet_h->pmtudbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
 	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
 	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 

@@ -77,7 +77,14 @@ union knet_header_payload {
  * starting point
  */
 
-#define KNET_HEADER_VERSION          0x01 /* we currently support only one version */
+/*
+ * Plan is to support MAX_VER with MIN_VER = MAX_VER - 1
+ * but for the sake of not rewriting the world later on,
+ * let´s make sure we can support a random range of protocol
+ * versions
+ */
+#define KNET_HEADER_ONWIRE_MAX_VER   0x01
+#define KNET_HEADER_ONWIRE_MIN_VER   0x01
 
 #define KNET_HEADER_TYPE_DATA        0x00 /* pure data packet */
 
@@ -87,12 +94,16 @@ union knet_header_payload {
 #define KNET_HEADER_TYPE_PMTUD       0x83 /* Used to determine Path MTU */
 #define KNET_HEADER_TYPE_PMTUD_REPLY 0x84 /* reply from remote host */
 
+/*
+ * this header CANNOT change or onwire compat will break!
+ */
+
 struct knet_header {
-	uint8_t				kh_version; /* pckt format/version */
+	uint8_t				kh_version; /* this pckt format/version */
 	uint8_t				kh_type;    /* from above defines. Tells what kind of pckt it is */
 	knet_node_id_t			kh_node;    /* host id of the source host for this pckt */
+	uint8_t				kh_max_ver; /* max version of the protocol supported by this node */
 	uint8_t				kh_pad1;    /* make sure to have space in the header to grow features */
-	uint8_t				kh_pad2;
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 

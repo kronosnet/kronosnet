@@ -171,7 +171,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 
 	inbuf = knet_h->recv_from_sock_buf;
 	inbuf->kh_type = KNET_HEADER_TYPE_DATA;
-	inbuf->kh_version = KNET_HEADER_VERSION;
+	inbuf->kh_version = knet_h->onwire_ver;
+	inbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
 	inbuf->khp_data_frag_seq = 0;
 	inbuf->kh_node = htons(knet_h->host_id);
 
@@ -468,7 +469,8 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			/*
 			 * copy the frag info on all buffers
 			 */
-			knet_h->send_to_links_buf[frag_idx]->kh_version = KNET_HEADER_VERSION;
+			knet_h->send_to_links_buf[frag_idx]->kh_version = inbuf->kh_version;
+			knet_h->send_to_links_buf[frag_idx]->kh_max_ver = inbuf->kh_max_ver;
 			knet_h->send_to_links_buf[frag_idx]->kh_node = htons(knet_h->host_id);
 			knet_h->send_to_links_buf[frag_idx]->kh_type = inbuf->kh_type;
 			knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = inbuf->khp_data_seq_num;

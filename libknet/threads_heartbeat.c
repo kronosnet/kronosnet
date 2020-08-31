@@ -62,7 +62,8 @@ static void send_ping(knet_handle_t knet_h, struct knet_host *dst_host, struct k
 
 	if ((diff_ping >= (dst_link->ping_interval * 1000llu)) || (!timed)) {
 		/* preparing ping buffer */
-		knet_h->pingbuf->kh_version = KNET_HEADER_VERSION;
+		knet_h->pingbuf->kh_version = knet_h->onwire_ver;
+		knet_h->pingbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
 		knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
 		knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 
