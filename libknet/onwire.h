@@ -10,24 +10,53 @@
 #ifndef __KNET_ONWIRE_H__
 #define __KNET_ONWIRE_H__
 
-/*
- * data structures to define network packets.
- * Start from knet_header at the bottom
- */
-
 #include <stdint.h>
 
 #include "libknet.h"
 
 /*
- * typedef uint64_t seq_num_t;
- * #define SEQ_MAX UINT64_MAX
+ * data structures to define network packets.
+ * Start from knet_header at the bottom
  */
-typedef uint16_t seq_num_t;
+
+/*
+ * Plan is to support MAX_VER with MIN_VER = MAX_VER - 1
+ * but for the sake of not rewriting the world later on,
+ * let´s make sure we can support a random range of protocol
+ * versions
+ */
+
+#define KNET_HEADER_ONWIRE_MAX_VER   0x01 /* max onwire protocol supported by this build */
+#define KNET_HEADER_ONWIRE_MIN_VER   0x01 /* min onwire protocol supported by this build */
+
+/*
+ * Packet types
+ */
+
+#define KNET_HEADER_TYPE_DATA        0x00 /* pure data packet */
+
+/*
+ * NOTE: adding packets in the PMSK requires changes to thread_rx.c
+ *       KNET_LINK_DYNIP code handling as thread_rx expects
+ *       link_id as first uint8_t in the packet structure.
+ *       See also above pmtud and ping/pong packets.
+ */
+
+#define KNET_HEADER_TYPE_PMSK        0x80 /* packet mask */
+#define KNET_HEADER_TYPE_PING        0x81 /* heartbeat */
+#define KNET_HEADER_TYPE_PONG        0x82 /* reply to heartbeat */
+#define KNET_HEADER_TYPE_PMTUD       0x83 /* Used to determine Path MTU */
+#define KNET_HEADER_TYPE_PMTUD_REPLY 0x84 /* reply from remote host */
+
+/*
+ * KNET_HEADER_TYPE_DATA
+ */
+
+typedef uint16_t seq_num_t;			/* data sequence number required to deduplicate pckts */
 #define SEQ_MAX UINT16_MAX
 
 struct knet_header_payload_data {
-	seq_num_t	khp_data_seq_num;	/* pckt seq number used to deduplicate pkcts */
+	seq_num_t	khp_data_seq_num;	/* pckt seq number used to deduplicate pckts */
 	uint8_t		khp_data_compress;	/* identify if user data are compressed */
 	uint8_t		khp_data_pad1;		/* make sure to have space in the header to grow features */
 	uint8_t		khp_data_bcast;		/* data destination bcast/ucast */
@@ -37,14 +66,38 @@ struct knet_header_payload_data {
 	uint8_t		khp_data_userdata[0];	/* pointer to the real user data */
 } __attribute__((packed));
 
+#define khp_data_seq_num  kh_payload.khp_data.khp_data_seq_num
+#define khp_data_frag_num kh_payload.khp_data.khp_data_frag_num
+#define khp_data_frag_seq kh_payload.khp_data.khp_data_frag_seq
+#define khp_data_userdata kh_payload.khp_data.khp_data_userdata
+#define khp_data_bcast    kh_payload.khp_data.khp_data_bcast
+#define khp_data_channel  kh_payload.khp_data.khp_data_channel
+#define khp_data_compress kh_payload.khp_data.khp_data_compress
+
+/*
+ * KNET_HEADER_TYPE_PING / KNET_HEADER_TYPE_PONG
+ */
+
 struct knet_header_payload_ping {
-	uint8_t		khp_ping_link;		/* source link id */
+	uint8_t		khp_ping_link;		/* changing khp_ping_link requires changes to thread_rx.c
+						   KNET_LINK_DYNIP code handling */
 	uint32_t	khp_ping_time[4];	/* ping timestamp */
 	seq_num_t	khp_ping_seq_num;	/* transport host seq_num */
 	uint8_t		khp_ping_timed;		/* timed pinged (1) or forced by seq_num (0) */
 }  __attribute__((packed));
 
-/* taken from tracepath6 */
+#define khp_ping_link     kh_payload.khp_ping.khp_ping_link
+#define khp_ping_time     kh_payload.khp_ping.khp_ping_time
+#define khp_ping_seq_num  kh_payload.khp_ping.khp_ping_seq_num
+#define khp_ping_timed    kh_payload.khp_ping.khp_ping_timed
+
+/*
+ * KNET_HEADER_TYPE_PMTUD / KNET_HEADER_TYPE_PMTUD_REPLY
+ */
+
+/*
+ * taken from tracepath6
+ */
 #define KNET_PMTUD_SIZE_V4 65535
 #define KNET_PMTUD_SIZE_V6 KNET_PMTUD_SIZE_V4
 
@@ -58,10 +111,23 @@ struct knet_header_payload_ping {
 #define KNET_PMTUD_MIN_MTU_V6 1280
 
 struct knet_header_payload_pmtud {
-	uint8_t		khp_pmtud_link;		/* source link id */
+	uint8_t		khp_pmtud_link;		/* changing khp_pmtud_link requires changes to thread_rx.c
+						   KNET_LINK_DYNIP code handling */
 	uint16_t	khp_pmtud_size;		/* size of the current packet */
 	uint8_t		khp_pmtud_data[0];	/* pointer to empty/random data/fill buffer */
 } __attribute__((packed));
+
+#define khp_pmtud_link    kh_payload.khp_pmtud.khp_pmtud_link
+#define khp_pmtud_size    kh_payload.khp_pmtud.khp_pmtud_size
+#define khp_pmtud_data    kh_payload.khp_pmtud.khp_pmtud_data
+
+/*
+ * PMTUd related functions
+ */
+
+size_t calc_data_outlen(knet_handle_t knet_h, size_t inlen);
+size_t calc_max_data_outlen(knet_handle_t knet_h, size_t inlen);
+size_t calc_min_mtu(knet_handle_t knet_h);
 
 /*
  * union to reference possible individual payloads
@@ -72,27 +138,6 @@ union knet_header_payload {
 	struct knet_header_payload_ping		khp_ping;  /* heartbeat packet struct */
 	struct knet_header_payload_pmtud 	khp_pmtud; /* Path MTU discovery packet struct */
 } __attribute__((packed));
-
-/*
- * starting point
- */
-
-/*
- * Plan is to support MAX_VER with MIN_VER = MAX_VER - 1
- * but for the sake of not rewriting the world later on,
- * let´s make sure we can support a random range of protocol
- * versions
- */
-#define KNET_HEADER_ONWIRE_MAX_VER   0x01
-#define KNET_HEADER_ONWIRE_MIN_VER   0x01
-
-#define KNET_HEADER_TYPE_DATA        0x00 /* pure data packet */
-
-#define KNET_HEADER_TYPE_PMSK        0x80 /* packet mask */
-#define KNET_HEADER_TYPE_PING        0x81 /* heartbeat */
-#define KNET_HEADER_TYPE_PONG        0x82 /* reply to heartbeat */
-#define KNET_HEADER_TYPE_PMTUD       0x83 /* Used to determine Path MTU */
-#define KNET_HEADER_TYPE_PMTUD_REPLY 0x84 /* reply from remote host */
 
 /*
  * this header CANNOT change or onwire compat will break!
@@ -108,28 +153,6 @@ struct knet_header {
 } __attribute__((packed));
 
 /*
- * commodoty defines to hide structure nesting
- * (needs review and cleanup)
- */
-
-#define khp_data_seq_num  kh_payload.khp_data.khp_data_seq_num
-#define khp_data_frag_num kh_payload.khp_data.khp_data_frag_num
-#define khp_data_frag_seq kh_payload.khp_data.khp_data_frag_seq
-#define khp_data_userdata kh_payload.khp_data.khp_data_userdata
-#define khp_data_bcast    kh_payload.khp_data.khp_data_bcast
-#define khp_data_channel  kh_payload.khp_data.khp_data_channel
-#define khp_data_compress kh_payload.khp_data.khp_data_compress
-
-#define khp_ping_link     kh_payload.khp_ping.khp_ping_link
-#define khp_ping_time     kh_payload.khp_ping.khp_ping_time
-#define khp_ping_seq_num  kh_payload.khp_ping.khp_ping_seq_num
-#define khp_ping_timed    kh_payload.khp_ping.khp_ping_timed
-
-#define khp_pmtud_link    kh_payload.khp_pmtud.khp_pmtud_link
-#define khp_pmtud_size    kh_payload.khp_pmtud.khp_pmtud_size
-#define khp_pmtud_data    kh_payload.khp_pmtud.khp_pmtud_data
-
-/*
  * extra defines to avoid mingling with sizeof() too much
  */
 
@@ -138,9 +161,5 @@ struct knet_header {
 #define KNET_HEADER_PING_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping))
 #define KNET_HEADER_PMTUD_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud))
 #define KNET_HEADER_DATA_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_data))
-
-size_t calc_data_outlen(knet_handle_t knet_h, size_t inlen);
-size_t calc_max_data_outlen(knet_handle_t knet_h, size_t inlen);
-size_t calc_min_mtu(knet_handle_t knet_h);
 
 #endif
