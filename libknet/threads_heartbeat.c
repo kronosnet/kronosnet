@@ -97,40 +97,38 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 		}
 
 retry:
-		if (dst_link->transport_connected) {
-			if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
-				len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL,
-					     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
-			} else {
-				len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
-			}
-			savederrno = errno;
+		if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
+			len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL,
+				     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
+		} else {
+			len = sendto(dst_link->outsock, outbuf, outlen,	MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
+		}
+		savederrno = errno;
 
-			dst_link->ping_last = clock_now;
-			dst_link->status.stats.tx_ping_packets++;
-			dst_link->status.stats.tx_ping_bytes += outlen;
+		dst_link->ping_last = clock_now;
+		dst_link->status.stats.tx_ping_packets++;
+		dst_link->status.stats.tx_ping_bytes += outlen;
 
-			if (len != outlen) {
-				err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
-				switch(err) {
-					case -1: /* unrecoverable error */
-						log_debug(knet_h, KNET_SUB_HEARTBEAT,
-							  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
-							  dst_link->outsock, savederrno, strerror(savederrno),
-							  dst_link->status.src_ipaddr, dst_link->status.src_port,
-							  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
-						dst_link->status.stats.tx_ping_errors++;
-						break;
-					case 0:
-						break;
-					case 1:
-						dst_link->status.stats.tx_ping_retries++;
-						goto retry;
-						break;
-				}
-			} else {
-				dst_link->last_ping_size = outlen;
+		if (len != outlen) {
+			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
+			switch(err) {
+				case -1: /* unrecoverable error */
+					log_debug(knet_h, KNET_SUB_HEARTBEAT,
+						  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
+						  dst_link->outsock, savederrno, strerror(savederrno),
+						  dst_link->status.src_ipaddr, dst_link->status.src_port,
+						  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
+					dst_link->status.stats.tx_ping_errors++;
+					break;
+				case 0:
+					break;
+				case 1:
+					dst_link->status.stats.tx_ping_retries++;
+					goto retry;
+					break;
 			}
+		} else {
+			dst_link->last_ping_size = outlen;
 		}
 		pthread_mutex_unlock(&dst_link->link_stats_mutex);
 	}
