@@ -658,13 +658,13 @@ static void send_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, s
 					    outlen,
 					    knet_h->recv_from_links_buf_crypt,
 					    &outlen) < 0) {
-			log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt PMTUd reply packet");
+			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to encrypt PMTUd reply packet");
 			return;
 		}
 		outbuf = knet_h->recv_from_links_buf_crypt;
 		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
 		if (stats_err < 0) {
-			log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+			log_err(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock: %s", strerror(stats_err));
 			return;
 		}
 		knet_h->stats_extra.tx_crypt_pmtu_reply_packets++;
@@ -673,10 +673,11 @@ static void send_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, s
 
 	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_RX, "Unable to get TX mutex lock: %s", strerror(savederrno));
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get TX mutex lock: %s", strerror(savederrno));
 		return;
 	}
-retry_pmtud:
+
+retry:
 	if (src_link->transport_connected) {
 		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
@@ -689,12 +690,12 @@ retry_pmtud:
 			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			stats_err = pthread_mutex_lock(&src_link->link_stats_mutex);
 			if (stats_err < 0) {
-				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				log_err(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock: %s", strerror(stats_err));
 				return;
 			}
 			switch(err) {
 				case -1: /* unrecoverable error */
-					log_debug(knet_h, KNET_SUB_RX,
+					log_debug(knet_h, KNET_SUB_PMTUD,
 						  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 						  src_link->outsock, errno, strerror(errno),
 						  src_link->status.src_ipaddr, src_link->status.src_port,
@@ -708,7 +709,7 @@ retry_pmtud:
 				case 1: /* retry to send those same data */
 					src_link->status.stats.tx_pmtu_retries++;
 					pthread_mutex_unlock(&src_link->link_stats_mutex);
-					goto retry_pmtud;
+					goto retry;
 					break;
 			}
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
@@ -725,7 +726,7 @@ void process_pmtud(knet_handle_t knet_h, struct knet_link *src_link, struct knet
 void process_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, struct knet_header *inbuf)
 {
 	if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
 		return;
 	}
 	src_link->last_recv_mtu = inbuf->khp_pmtud_size;
@@ -749,7 +750,7 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -779,14 +780,14 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
 	}
 
 	knet_h->pmtud_interval = interval;
-	log_debug(knet_h, KNET_SUB_HANDLE, "PMTUd interval set to: %u seconds", interval);
+	log_debug(knet_h, KNET_SUB_PMTUD, "PMTUd interval set to: %u seconds", interval);
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
@@ -809,7 +810,7 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 
 	savederrno = get_global_wrlock(knet_h);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get write lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
@@ -818,9 +819,9 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 	knet_h->pmtud_notify_fn_private_data = pmtud_notify_fn_private_data;
 	knet_h->pmtud_notify_fn = pmtud_notify_fn;
 	if (knet_h->pmtud_notify_fn) {
-		log_debug(knet_h, KNET_SUB_HANDLE, "pmtud_notify_fn enabled");
+		log_debug(knet_h, KNET_SUB_PMTUD, "pmtud_notify_fn enabled");
 	} else {
-		log_debug(knet_h, KNET_SUB_HANDLE, "pmtud_notify_fn disabled");
+		log_debug(knet_h, KNET_SUB_PMTUD, "pmtud_notify_fn disabled");
 	}
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
@@ -881,7 +882,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 
 	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
 	if (savederrno) {
-		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+		log_err(knet_h, KNET_SUB_PMTUD, "Unable to get read lock: %s",
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;

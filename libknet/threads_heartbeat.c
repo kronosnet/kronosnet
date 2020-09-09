@@ -162,20 +162,20 @@ static void send_pong(knet_handle_t knet_h, struct knet_host *src_host, struct k
 					    outlen,
 					    knet_h->recv_from_links_buf_crypt,
 					    &outlen) < 0) {
-			log_debug(knet_h, KNET_SUB_RX, "Unable to encrypt pong packet");
+			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to encrypt pong packet");
 			return;
 		}
 		outbuf = knet_h->recv_from_links_buf_crypt;
 		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
 		if (stats_err < 0) {
-			log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+			log_err(knet_h, KNET_SUB_HEARTBEAT, "Unable to get mutex lock: %s", strerror(stats_err));
 			return;
 		}
 		knet_h->stats_extra.tx_crypt_pong_packets++;
 		pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 	}
 
-retry_pong:
+retry:
 	if (src_link->transport_connected) {
 		if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 			len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
@@ -188,7 +188,7 @@ retry_pong:
 			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
-					log_debug(knet_h, KNET_SUB_RX,
+					log_debug(knet_h, KNET_SUB_HEARTBEAT,
 						  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 						  src_link->outsock, errno, strerror(errno),
 						  src_link->status.src_ipaddr, src_link->status.src_port,
@@ -199,7 +199,7 @@ retry_pong:
 					break;
 				case 1: /* retry to send those same data */
 					src_link->status.stats.tx_pong_retries++;
-					goto retry_pong;
+					goto retry;
 					break;
 			}
 		}
