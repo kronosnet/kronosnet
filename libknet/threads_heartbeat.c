@@ -22,6 +22,7 @@
 #include "transports.h"
 #include "threads_common.h"
 #include "threads_heartbeat.h"
+#include "onwire_v1.h"
 
 static void _link_down(knet_handle_t knet_h, struct knet_host *dst_host, struct knet_link *dst_link)
 {
@@ -40,10 +41,11 @@ static void send_ping(knet_handle_t knet_h, struct knet_host *dst_host, struct k
 {
 	int err = 0, savederrno = 0, stats_err = 0;
 	int len;
-	ssize_t outlen = KNET_HEADER_PING_SIZE;
+	ssize_t outlen;
 	struct timespec clock_now, pong_last;
 	unsigned long long diff_ping;
 	unsigned char *outbuf = (unsigned char *)knet_h->pingbuf;
+	uint8_t onwire_ver;
 
 	if (dst_link->transport_connected == 0) {
 		_link_down(knet_h, dst_host, dst_link);
@@ -61,21 +63,23 @@ static void send_ping(knet_handle_t knet_h, struct knet_host *dst_host, struct k
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
 	if ((diff_ping >= (dst_link->ping_interval * 1000llu)) || (!timed)) {
-		/* preparing ping buffer */
-		knet_h->pingbuf->kh_version = knet_h->onwire_ver;
-		knet_h->pingbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
-		knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
-		knet_h->pingbuf->kh_node = htons(knet_h->host_id);
-
-		memmove(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
-		knet_h->pingbuf->khp_ping_link = dst_link->link_id;
-		if (pthread_mutex_lock(&knet_h->tx_seq_num_mutex)) {
-			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get seq mutex lock");
+		if (pthread_mutex_lock(&knet_h->onwire_mutex)) {
+			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get onwire mutex lock");
 			return;
 		}
-		knet_h->pingbuf->khp_ping_seq_num = htons(knet_h->tx_seq_num);
-		pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
-		knet_h->pingbuf->khp_ping_timed = timed;
+		onwire_ver = knet_h->onwire_ver;
+		pthread_mutex_unlock(&knet_h->onwire_mutex);
+
+		switch (onwire_ver) {
+			case 1:
+				if (prep_ping_v1(knet_h, dst_link, onwire_ver, clock_now, timed, &outlen) < 0) {
+					return;
+				}
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_HEARTBEAT, "preparing ping onwire version %u not supported", onwire_ver);
+				return;
+		}
 
 		if (knet_h->crypto_in_use_config) {
 			if (crypto_encrypt_and_sign(knet_h,
@@ -147,14 +151,20 @@ retry:
 	}
 }
 
-static void send_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf) {
+static void send_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf)
+{
 	int err = 0, savederrno = 0, stats_err = 0;
 	unsigned char *outbuf = (unsigned char *)inbuf;
 	ssize_t len, outlen;
 
-	outlen = KNET_HEADER_PING_SIZE;
-	inbuf->kh_type = KNET_HEADER_TYPE_PONG;
-	inbuf->kh_node = htons(knet_h->host_id);
+	switch (inbuf->kh_version) {
+		case 1:
+			prep_pong_v1(knet_h, inbuf, &outlen);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_HEARTBEAT, "preparing pong onwire version %u not supported", inbuf->kh_version);
+			return;
+	}
 
 	if (knet_h->crypto_in_use_config) {
 		if (crypto_encrypt_and_sign(knet_h,
@@ -208,67 +218,47 @@ retry:
 	}
 }
 
-void process_ping(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len) {
-	int wipe_bufs = 0;
-	seq_num_t recv_seq_num = ntohs(inbuf->khp_ping_seq_num);
-
+void process_ping(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len)
+{
 	src_link->status.stats.rx_ping_packets++;
 	src_link->status.stats.rx_ping_bytes += len;
 
-	if (!inbuf->khp_ping_timed) {
-		/*
-		 * we might be receiving this message from all links, but we want
-		 * to process it only the first time
-		 */
-		if (recv_seq_num != src_host->untimed_rx_seq_num) {
-			/*
-			 * cache the untimed seq num
-			 */
-			src_host->untimed_rx_seq_num = recv_seq_num;
-			/*
-			 * if the host has received data in between
-			 * untimed ping, then we don't need to wipe the bufs
-			 */
-			if (src_host->got_data) {
-				src_host->got_data = 0;
-				wipe_bufs = 0;
-			} else {
-				wipe_bufs = 1;
-			}
-		}
-		_seq_num_lookup(src_host, recv_seq_num, 0, wipe_bufs);
-	} else {
-		/*
-		 * pings always arrives in bursts over all the link
-		 * catch the first of them to cache the seq num and
-		 * avoid duplicate processing
-		 */
-		if (recv_seq_num != src_host->timed_rx_seq_num) {
-			src_host->timed_rx_seq_num = recv_seq_num;
-
-			if (recv_seq_num == 0) {
-				_seq_num_lookup(src_host, recv_seq_num, 0, 1);
-			}
-		}
+	switch (inbuf->kh_version) {
+		case 1:
+			process_ping_v1(knet_h, src_host, src_link, inbuf, len);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_HEARTBEAT, "parsing ping onwire version %u not supported", inbuf->kh_version);
+			return;
 	}
 
 	send_pong(knet_h, src_host, src_link, inbuf);
 }
 
-void process_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len) {
+void process_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len)
+{
 	struct timespec recvtime;
 	unsigned long long latency_last;
 
-	src_link->status.stats.rx_pong_packets++;
-	src_link->status.stats.rx_pong_bytes += len;
 	clock_gettime(CLOCK_MONOTONIC, &src_link->status.pong_last);
 
-	memmove(&recvtime, &inbuf->khp_ping_time[0], sizeof(struct timespec));
+	src_link->status.stats.rx_pong_packets++;
+	src_link->status.stats.rx_pong_bytes += len;
+
+	switch (inbuf->kh_version) {
+		case 1:
+			process_pong_v1(knet_h, src_host, src_link, inbuf, &recvtime);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_HEARTBEAT, "parsing pong onwire version %u not supported", inbuf->kh_version);
+			return;
+	}
+
 	timespec_diff(recvtime,
 		      src_link->status.pong_last, &latency_last);
 
 	if ((latency_last / 1000llu) > src_link->pong_timeout) {
-		log_debug(knet_h, KNET_SUB_RX,
+		log_debug(knet_h, KNET_SUB_HEARTBEAT,
 			  "Incoming pong packet from host: %u link: %u has higher latency than pong_timeout. Discarding",
 			  src_host->host_id, src_link->link_id);
 	} else {
@@ -291,12 +281,12 @@ void process_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_
 		if (src_link->status.stats.latency_ave < src_link->pong_timeout_adj) {
 			if (!src_link->status.connected) {
 				if (src_link->received_pong >= src_link->pong_count) {
-					log_info(knet_h, KNET_SUB_RX, "host: %u link: %u is up",
+					log_info(knet_h, KNET_SUB_HEARTBEAT, "host: %u link: %u is up",
 						 src_host->host_id, src_link->link_id);
 					_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1, 0);
 				} else {
 					src_link->received_pong++;
-					log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received pong: %u",
+					log_debug(knet_h, KNET_SUB_HEARTBEAT, "host: %u link: %u received pong: %u",
 						  src_host->host_id, src_link->link_id, src_link->received_pong);
 				}
 			}

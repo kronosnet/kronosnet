@@ -497,9 +497,16 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
-	if ((inbuf->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
-		/* be aware this works only for PING / PONG and PMTUd packets! */
-		src_link = &src_host->link[inbuf->khp_ping_link];
+	if (inbuf->kh_type == KNET_HEADER_TYPE_PING) {
+		switch (inbuf->kh_version) {
+			case 1:
+				src_link = &src_host->link[inbuf->khp_ping_v1_link];
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_RX, "Parsing ping onwire version %u not supported", inbuf->kh_version);
+				return;
+		}
+
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",

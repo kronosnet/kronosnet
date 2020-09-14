@@ -38,6 +38,7 @@ sources			= \
 			  logging.c \
 			  netutils.c \
 			  onwire.c \
+			  onwire_v1.c \
 			  threads_common.c \
 			  threads_dsthandler.c \
 			  threads_heartbeat.c \
@@ -72,6 +73,7 @@ noinst_HEADERS		= \
 			  logging.h \
 			  netutils.h \
 			  onwire.h \
+			  onwire_v1.h \
 			  threads_common.h \
 			  threads_dsthandler.h \
 			  threads_heartbeat.h \
