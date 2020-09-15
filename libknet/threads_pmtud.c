@@ -152,6 +152,7 @@ restart:
 		default:
 			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD onwire version %u not supported", onwire_ver);
 			return -1;
+			break;
 	}
 
 	if (knet_h->crypto_in_use_config) {
@@ -250,6 +251,7 @@ retry:
 			dst_link->status.stats.tx_pmtu_errors++;
 			pthread_mutex_unlock(&dst_link->link_stats_mutex);
 			return -1;
+			break;
 		case 0: /* ignore error and continue */
 			break;
 		case 1: /* retry to send those same data */
@@ -663,6 +665,7 @@ static void send_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, s
 		default:
 			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
 			return;
+			break;
 	}
 
 	if (knet_h->crypto_in_use_config) {
@@ -755,6 +758,7 @@ void process_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, struc
 		default:
 			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
 			goto out_unlock;
+			break;
 	}
 
 	pthread_cond_signal(&knet_h->pmtud_cond);
