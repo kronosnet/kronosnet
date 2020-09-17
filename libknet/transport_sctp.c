@@ -871,7 +871,13 @@ exit_error:
 		if ((i >= 0) && (i < MAX_ACCEPTED_SOCKS)) {
 			info->accepted_socks[i] = -1;
 		}
-		_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL);
+		/*
+		 * check the error to make coverity scan happy.
+		 * _set_fd_tracker cannot fail at this stage
+		 */
+		if (_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL) < 0){
+			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to update fdtracker for socket %d", new_fd);
+		}
 		free(accept_info);
 		if (new_fd >= 0) {
 			close(new_fd);
@@ -939,7 +945,13 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 	for (i=0; i<MAX_ACCEPTED_SOCKS; i++) {
 		if (sockfd == info->accepted_socks[i]) {
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Closing accepted socket %d", sockfd);
-			_set_fd_tracker(knet_h, sockfd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL);
+			/*
+			 * check the error to make coverity scan happy.
+			 * _set_fd_tracker cannot fail at this stage
+			 */
+			if (_set_fd_tracker(knet_h, sockfd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, NULL) < 0) {
+				log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to update fdtracker for socket %d", sockfd);
+			}
 			info->accepted_socks[i] = -1;
 			free(accept_info);
 			close(sockfd);
