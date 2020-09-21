@@ -102,15 +102,15 @@ struct knet_header_payload_ping_v1 {
 #define KNET_PMTUD_MIN_MTU_V4 576
 #define KNET_PMTUD_MIN_MTU_V6 1280
 
-struct knet_header_payload_pmtud {
+struct knet_header_payload_pmtud_v1 {
 	uint8_t		khp_pmtud_link;		/* link_id */
 	uint16_t	khp_pmtud_size;		/* size of the current packet */
 	uint8_t		khp_pmtud_data[0];	/* pointer to empty/random data/fill buffer */
 } __attribute__((packed));
 
-#define khp_pmtud_link    kh_payload.khp_pmtud.khp_pmtud_link
-#define khp_pmtud_size    kh_payload.khp_pmtud.khp_pmtud_size
-#define khp_pmtud_data    kh_payload.khp_pmtud.khp_pmtud_data
+#define khp_pmtud_v1_link    kh_payload.khp_pmtud_v1.khp_pmtud_link
+#define khp_pmtud_v1_size    kh_payload.khp_pmtud_v1.khp_pmtud_size
+#define khp_pmtud_v1_data    kh_payload.khp_pmtud_v1.khp_pmtud_data
 
 /*
  * PMTUd related functions
@@ -127,7 +127,7 @@ size_t calc_min_mtu(knet_handle_t knet_h);
 union knet_header_payload {
 	struct knet_header_payload_data		khp_data;     /* pure data packet struct */
 	struct knet_header_payload_ping_v1	khp_ping_v1;  /* heartbeat packet struct */
-	struct knet_header_payload_pmtud 	khp_pmtud;    /* Path MTU discovery packet struct */
+	struct knet_header_payload_pmtud_v1 	khp_pmtud_v1; /* Path MTU discovery packet struct */
 } __attribute__((packed));
 
 /*
@@ -150,7 +150,7 @@ struct knet_header {
 #define KNET_HEADER_ALL_SIZE sizeof(struct knet_header)
 #define KNET_HEADER_SIZE (KNET_HEADER_ALL_SIZE - sizeof(union knet_header_payload))
 #define KNET_HEADER_PING_V1_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_ping_v1))
-#define KNET_HEADER_PMTUD_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud))
+#define KNET_HEADER_PMTUD_V1_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_pmtud_v1))
 #define KNET_HEADER_DATA_SIZE (KNET_HEADER_SIZE + sizeof(struct knet_header_payload_data))
 
 #endif

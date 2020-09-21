@@ -21,6 +21,7 @@
 #include "transports.h"
 #include "threads_common.h"
 #include "threads_pmtud.h"
+#include "onwire_v1.h"
 
 static int _calculate_manual_mtu(knet_handle_t knet_h, struct knet_link *dst_link)
 {
@@ -57,6 +58,7 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 					 */
 	size_t app_mtu_len;		/* real data that we can send onwire */
 	ssize_t len;			/* len of what we were able to sendto onwire */
+	uint8_t onwire_ver;
 
 	struct timespec ts, pmtud_crypto_start_ts, pmtud_crypto_stop_ts;
 	unsigned long long pong_timeout_adj_tmp, timediff;
@@ -67,8 +69,6 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 
 	mutex_retry_limit = 0;
 	failsafe = 0;
-
-	knet_h->pmtudbuf->khp_pmtud_link = dst_link->link_id;
 
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
@@ -95,8 +95,17 @@ static int _handle_check_link_pmtud(knet_handle_t knet_h, struct knet_host *dst_
 	 */ 
 	onwire_len = max_mtu_len;
 
-restart:
+	/*
+	 * cache onwire version for this link / run
+	 */
+	if (pthread_mutex_lock(&knet_h->onwire_mutex)) {
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get onwire mutex lock");
+		return -1;
+	}
+	onwire_ver = knet_h->onwire_ver;
+	pthread_mutex_unlock(&knet_h->onwire_mutex);
 
+restart:
 	/*
 	 * prevent a race when interface mtu is changed _exactly_ during
 	 * the discovery process and it's complex to detect. Easier
@@ -136,13 +145,20 @@ restart:
 	 */
 	data_len = app_mtu_len + knet_h->sec_hash_size + knet_h->sec_salt_size + KNET_HEADER_ALL_SIZE;
 
+	switch (onwire_ver) {
+		case 1:
+			prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD onwire version %u not supported", onwire_ver);
+			return -1;
+	}
+
 	if (knet_h->crypto_in_use_config) {
 		if (data_len < (knet_h->sec_hash_size + knet_h->sec_salt_size) + 1) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Aborting PMTUD process: link mtu smaller than crypto header detected (link might have been disconnected)");
 			return -1;
 		}
-
-		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 
 		if (crypto_encrypt_and_sign(knet_h,
 					    (const unsigned char *)knet_h->pmtudbuf,
@@ -160,8 +176,6 @@ restart:
 		}
 		knet_h->stats_extra.tx_crypt_pmtu_packets++;
 		pthread_mutex_unlock(&knet_h->handle_stats_mutex);
-	} else {
-		knet_h->pmtudbuf->khp_pmtud_size = onwire_len;
 	}
 
 	/* link has gone down, aborting pmtud */
@@ -550,12 +564,6 @@ void *_handle_pmtud_link_thread(void *data)
 
 	knet_h->data_mtu = calc_min_mtu(knet_h);
 
-	/* preparing pmtu buffer */
-	knet_h->pmtudbuf->kh_version = knet_h->onwire_ver;
-	knet_h->pmtudbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
-	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
-	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
-
 	while (!shutdown_in_progress(knet_h)) {
 		usleep(knet_h->threads_timer_res);
 
@@ -648,9 +656,14 @@ static void send_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, s
 	unsigned char *outbuf = (unsigned char *)inbuf;
 	ssize_t len, outlen;
 
-	outlen = KNET_HEADER_PMTUD_SIZE;
-	inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
-	inbuf->kh_node = htons(knet_h->host_id);
+	switch (inbuf->kh_version) {
+		case 1:
+			prep_pmtud_reply_v1(knet_h, inbuf, &outlen);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
+			return;
+	}
 
 	if (knet_h->crypto_in_use_config) {
 		if (crypto_encrypt_and_sign(knet_h,
@@ -720,6 +733,11 @@ retry:
 
 void process_pmtud(knet_handle_t knet_h, struct knet_link *src_link, struct knet_header *inbuf)
 {
+	/*
+	 * at the moment we don't need to take any extra
+	 * actions when processing a PMTUd packet, except
+	 * sending a reply
+	 */
 	send_pmtud_reply(knet_h, src_link, inbuf);
 }
 
@@ -729,8 +747,18 @@ void process_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, struc
 		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
 		return;
 	}
-	src_link->last_recv_mtu = inbuf->khp_pmtud_size;
+
+	switch (inbuf->kh_version) {
+		case 1:
+			process_pmtud_reply_v1(knet_h, src_link, inbuf);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
+			goto out_unlock;
+	}
+
 	pthread_cond_signal(&knet_h->pmtud_cond);
+out_unlock:
 	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 }
 

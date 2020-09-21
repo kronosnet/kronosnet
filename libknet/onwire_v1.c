@@ -17,6 +17,7 @@
 #include "logging.h"
 #include "host.h"
 #include "links.h"
+#include "onwire_v1.h"
 
 int prep_ping_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwire_ver, struct timespec clock_now, int timed, ssize_t *outlen)
 {
@@ -94,4 +95,26 @@ void process_ping_v1(knet_handle_t knet_h, struct knet_host *src_host, struct kn
 void process_pong_v1(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, struct timespec *recvtime)
 {
 	memmove(recvtime, &inbuf->khp_ping_v1_time[0], sizeof(struct timespec));
+}
+
+void prep_pmtud_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwire_ver, size_t onwire_len)
+{
+	knet_h->pmtudbuf->kh_version = onwire_ver;
+	knet_h->pmtudbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
+	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
+	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
+	knet_h->pmtudbuf->khp_pmtud_v1_link = dst_link->link_id;
+	knet_h->pmtudbuf->khp_pmtud_v1_size = onwire_len;
+}
+
+void prep_pmtud_reply_v1(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t *outlen)
+{
+	*outlen = KNET_HEADER_PMTUD_V1_SIZE;
+	inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
+	inbuf->kh_node = htons(knet_h->host_id);
+}
+
+void process_pmtud_reply_v1(knet_handle_t knet_h, struct knet_link *src_link, struct knet_header *inbuf)
+{
+	src_link->last_recv_mtu = inbuf->khp_pmtud_v1_size;
 }
