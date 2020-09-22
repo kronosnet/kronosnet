@@ -29,6 +29,7 @@
 #include "threads_pmtud.h"
 #include "threads_rx.h"
 #include "netutils.h"
+#include "onwire_v1.h"
 
 /*
  * RECV
@@ -39,7 +40,7 @@
  *  return -1 if b > a
  *  return 0 if they are equal
  */
-static inline int timecmp(struct timespec a, struct timespec b)
+static inline int _timecmp(struct timespec a, struct timespec b)
 {
 	if (a.tv_sec != b.tv_sec) {
 		if (a.tv_sec > b.tv_sec) {
@@ -63,9 +64,8 @@ static inline int timecmp(struct timespec a, struct timespec b)
  * to a knet_host_defrag_buf. (-1 on errors)
  */
 
-static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
+static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_host, seq_num_t seq_num)
 {
-	struct knet_host *src_host = knet_h->host_index[inbuf->kh_node];
 	int i, oldest;
 
 	/*
@@ -73,7 +73,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	 */
 	for (i = 0; i < KNET_MAX_LINK; i++) {
 		if (src_host->defrag_buf[i].in_use) {
-			if (src_host->defrag_buf[i].pckt_seq == inbuf->khp_data_seq_num) {
+			if (src_host->defrag_buf[i].pckt_seq == seq_num) {
 				return i;
 			}
 		}
@@ -86,7 +86,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
 	 * and there is no point to try to defrag it again.
 	 */
-	if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 1, 0)) {
+	if (!_seq_num_lookup(src_host, seq_num, 1, 0)) {
 		errno = ETIME;
 		return -1;
 	}
@@ -94,7 +94,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	/*
 	 * register the pckt as seen
 	 */
-	_seq_num_set(src_host, inbuf->khp_data_seq_num, 1);
+	_seq_num_set(src_host, seq_num, 1);
 
 	/*
 	 * see if there is a free buffer
@@ -114,7 +114,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	oldest = 0;
 
 	for (i = 0; i < KNET_MAX_LINK; i++) {
-		if (timecmp(src_host->defrag_buf[i].last_update, src_host->defrag_buf[oldest].last_update) < 0) {
+		if (_timecmp(src_host->defrag_buf[i].last_update, src_host->defrag_buf[oldest].last_update) < 0) {
 			oldest = i;
 		}
 	}
@@ -122,17 +122,17 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	return oldest;
 }
 
-static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t *len)
+static int _pckt_defrag(knet_handle_t knet_h, struct knet_host *src_host, seq_num_t seq_num, unsigned char *data, ssize_t *len, uint8_t frags, uint8_t frag_seq)
 {
 	struct knet_host_defrag_buf *defrag_buf;
 	int defrag_buf_idx;
 
-	defrag_buf_idx = find_pckt_defrag_buf(knet_h, inbuf);
+	defrag_buf_idx = _find_pckt_defrag_buf(knet_h, src_host, seq_num);
 	if (defrag_buf_idx < 0) {
 		return 1;
 	}
 
-	defrag_buf = &knet_h->host_index[inbuf->kh_node]->defrag_buf[defrag_buf_idx];
+	defrag_buf = &src_host->defrag_buf[defrag_buf_idx];
 
 	/*
 	 * if the buf is not is use, then make sure it's clean
@@ -140,7 +140,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	if (!defrag_buf->in_use) {
 		memset(defrag_buf, 0, sizeof(struct knet_host_defrag_buf));
 		defrag_buf->in_use = 1;
-		defrag_buf->pckt_seq = inbuf->khp_data_seq_num;
+		defrag_buf->pckt_seq = seq_num;
 	}
 
 	/*
@@ -151,7 +151,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	/*
 	 * check if we already received this fragment
 	 */
-	if (defrag_buf->frag_map[inbuf->khp_data_frag_seq]) {
+	if (defrag_buf->frag_map[frag_seq]) {
 		/*
 		 * if we have received this fragment and we didn't clear the buffer
 		 * it means that we don't have all fragments yet
@@ -163,7 +163,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	 *  we need to handle the last packet with gloves due to its different size
 	 */
 
-	if (inbuf->khp_data_frag_seq == inbuf->khp_data_frag_num) {
+	if (frag_seq == frags) {
 		defrag_buf->last_frag_size = *len;
 
 		/*
@@ -177,7 +177,7 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		if (!defrag_buf->frag_size) {
 			defrag_buf->last_first = 1;
 			memmove(defrag_buf->buf + (KNET_MAX_PACKET_SIZE - *len),
-			       inbuf->khp_data_userdata,
+			       data,
 			       *len);
 		}
 	} else {
@@ -185,23 +185,23 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	}
 
 	if (defrag_buf->frag_size) {
-		memmove(defrag_buf->buf + ((inbuf->khp_data_frag_seq - 1) * defrag_buf->frag_size),
-		       inbuf->khp_data_userdata, *len);
+		memmove(defrag_buf->buf + ((frag_seq - 1) * defrag_buf->frag_size),
+			data, *len);
 	}
 
 	defrag_buf->frag_recv++;
-	defrag_buf->frag_map[inbuf->khp_data_frag_seq] = 1;
+	defrag_buf->frag_map[frag_seq] = 1;
 
 	/*
 	 * check if we received all the fragments
 	 */
-	if (defrag_buf->frag_recv == inbuf->khp_data_frag_num) {
+	if (defrag_buf->frag_recv == frags) {
 		/*
 		 * special case the last pckt
 		 */
 
 		if (defrag_buf->last_first) {
-			memmove(defrag_buf->buf + ((inbuf->khp_data_frag_num - 1) * defrag_buf->frag_size),
+			memmove(defrag_buf->buf + ((frags - 1) * defrag_buf->frag_size),
 			        defrag_buf->buf + (KNET_MAX_PACKET_SIZE - defrag_buf->last_frag_size),
 				defrag_buf->last_frag_size);
 		}
@@ -210,12 +210,12 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 		 * recalculate packet lenght
 		 */
 
-		*len = ((inbuf->khp_data_frag_num - 1) * defrag_buf->frag_size) + defrag_buf->last_frag_size;
+		*len = ((frags - 1) * defrag_buf->frag_size) + defrag_buf->last_frag_size;
 
 		/*
 		 * copy the pckt back in the user data
 		 */
-		memmove(inbuf->khp_data_userdata, defrag_buf->buf, *len);
+		memmove(data, defrag_buf->buf, *len);
 
 		/*
 		 * free this buffer
@@ -227,15 +227,9 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
-static void process_data(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len, uint64_t decrypt_time)
+static int _handle_data_stats(knet_handle_t knet_h, struct knet_link *src_link, ssize_t len, uint64_t decrypt_time)
 {
-	int err = 0, stats_err = 0;
-	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
-	size_t dst_host_ids_entries = 0;
-	int bcast = 1;
-	struct iovec iov_out[1];
-	int8_t channel;
-	ssize_t outlen;
+	int stats_err;
 
 	/* data stats at the top for consistency with TX */
 	src_link->status.stats.rx_data_packets++;
@@ -245,7 +239,7 @@ static void process_data(knet_handle_t knet_h, struct knet_host *src_host, struc
 		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
 		if (stats_err < 0) {
 			log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
-			return;
+			return -1;
 		}
 		/* Only update the crypto overhead for data packets. Mainly to be
 		   consistent with TX */
@@ -261,119 +255,99 @@ static void process_data(knet_handle_t knet_h, struct knet_host *src_host, struc
 		knet_h->stats.rx_crypt_packets++;
 		pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 	}
+	return 0;
+}
 
-	inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
-	channel = inbuf->khp_data_channel;
-	src_host->got_data = 1;
+static int _decompress_data(knet_handle_t knet_h, uint8_t decompress_type, unsigned char *data, ssize_t *len, ssize_t header_size)
+{
+	int err = 0, stats_err = 0;
 
-	if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
-		if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
-			log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
-		}
-		return;
-	}
-
-	if (inbuf->khp_data_frag_num > 1) {
-		/*
-		 * len as received from the socket also includes extra stuff
-		 * that the defrag code doesn't care about. So strip it
-		 * here and readd only for repadding once we are done
-		 * defragging
-		 */
-		len = len - KNET_HEADER_DATA_SIZE;
-		if (pckt_defrag(knet_h, inbuf, &len)) {
-			return;
-		}
-		len = len + KNET_HEADER_DATA_SIZE;
-	}
-
-	if (inbuf->khp_data_compress) {
+	if (decompress_type) {
 		ssize_t decmp_outlen = KNET_DATABUFSIZE_COMPRESS;
 		struct timespec start_time;
 		struct timespec end_time;
-		uint64_t compress_time;
+		uint64_t decompress_time;
 
 		clock_gettime(CLOCK_MONOTONIC, &start_time);
-		err = decompress(knet_h, inbuf->khp_data_compress,
-				 (const unsigned char *)inbuf->khp_data_userdata,
-				 len - KNET_HEADER_DATA_SIZE,
+		err = decompress(knet_h, decompress_type,
+				 data,
+				 *len - header_size,
 				 knet_h->recv_from_links_buf_decompress,
 				 &decmp_outlen);
+
+		clock_gettime(CLOCK_MONOTONIC, &end_time);
+		timespec_diff(start_time, end_time, &decompress_time);
 
 		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
 		if (stats_err < 0) {
 			log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
-			return;
+			return -1;
 		}
-
-		clock_gettime(CLOCK_MONOTONIC, &end_time);
-		timespec_diff(start_time, end_time, &compress_time);
 
 		if (!err) {
 			/* Collect stats */
-			if (compress_time < knet_h->stats.rx_compress_time_min) {
-				knet_h->stats.rx_compress_time_min = compress_time;
+			if (decompress_time < knet_h->stats.rx_compress_time_min) {
+				knet_h->stats.rx_compress_time_min = decompress_time;
 			}
-			if (compress_time > knet_h->stats.rx_compress_time_max) {
-				knet_h->stats.rx_compress_time_max = compress_time;
+			if (decompress_time > knet_h->stats.rx_compress_time_max) {
+				knet_h->stats.rx_compress_time_max = decompress_time;
 			}
 			knet_h->stats.rx_compress_time_ave =
 				(knet_h->stats.rx_compress_time_ave * knet_h->stats.rx_compressed_packets +
-				 compress_time) / (knet_h->stats.rx_compressed_packets+1);
+				 decompress_time) / (knet_h->stats.rx_compressed_packets+1);
 
 			knet_h->stats.rx_compressed_packets++;
 			knet_h->stats.rx_compressed_original_bytes += decmp_outlen;
-			knet_h->stats.rx_compressed_size_bytes += len - KNET_HEADER_SIZE;
+			knet_h->stats.rx_compressed_size_bytes += *len - KNET_HEADER_SIZE;
 
-			memmove(inbuf->khp_data_userdata, knet_h->recv_from_links_buf_decompress, decmp_outlen);
-			len = decmp_outlen + KNET_HEADER_DATA_SIZE;
+			memmove(data, knet_h->recv_from_links_buf_decompress, decmp_outlen);
+			*len = decmp_outlen + header_size;
 		} else {
 			knet_h->stats.rx_failed_to_decompress++;
 			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 			log_warn(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
 				 err, strerror(errno));
-			return;
+			return -1;
 		}
 		pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 	}
+	return 0;
+}
 
-	if (!src_host->status.reachable) {
-		log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
-		return;
-	}
-
-	if (knet_h->enabled != 1) /* data forward is disabled */
-		return;
+static int _check_destination(knet_handle_t knet_h, struct knet_header *inbuf, unsigned char *data, ssize_t len, ssize_t header_size, int8_t *channel)
+{
+	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
+	size_t dst_host_ids_entries = 0;
+	int bcast = 1;
+	size_t host_idx;
+	int found = 0;
 
 	if (knet_h->dst_host_filter_fn) {
-		size_t host_idx;
-		int found = 0;
-
 		bcast = knet_h->dst_host_filter_fn(
 				knet_h->dst_host_filter_fn_private_data,
-				(const unsigned char *)inbuf->khp_data_userdata,
-				len - KNET_HEADER_DATA_SIZE,
+				data,
+				len - header_size,
 				KNET_NOTIFY_RX,
 				knet_h->host_id,
 				inbuf->kh_node,
-				&channel,
+				channel,
 				dst_host_ids,
 				&dst_host_ids_entries);
 		if (bcast < 0) {
 			log_debug(knet_h, KNET_SUB_RX, "Error from dst_host_filter_fn: %d", bcast);
-			return;
+			return -1;
 		}
 
 		if ((!bcast) && (!dst_host_ids_entries)) {
 			log_debug(knet_h, KNET_SUB_RX, "Message is unicast but no dst_host_ids_entries");
-			return;
+			return -1;
 		}
 
 		/* check if we are dst for this packet */
 		if (!bcast) {
 			if (dst_host_ids_entries > KNET_MAX_HOST) {
 				log_debug(knet_h, KNET_SUB_RX, "dst_host_filter_fn returned too many destinations");
-				return;
+				return -1;
 			}
 			for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
 				if (dst_host_ids[host_idx] == knet_h->host_id) {
@@ -383,24 +357,23 @@ static void process_data(knet_handle_t knet_h, struct knet_host *src_host, struc
 			}
 			if (!found) {
 				log_debug(knet_h, KNET_SUB_RX, "Packet is not for us");
-				return;
+				return -1;
 			}
 		}
 	}
+	return 0;
+}
 
-	if (!knet_h->sockfd[channel].in_use) {
-		log_debug(knet_h, KNET_SUB_RX,
-			  "received packet for channel %d but there is no local sock connected",
-			  channel);
-		return;
-	}
+static int _deliver_data(knet_handle_t knet_h, unsigned char *data, ssize_t len, ssize_t header_size, int8_t channel)
+{
+	struct iovec iov_out[1];
+	ssize_t	outlen = 0;
 
-	outlen = 0;
 	memset(iov_out, 0, sizeof(iov_out));
 
 retry:
-	iov_out[0].iov_base = (void *) inbuf->khp_data_userdata + outlen;
-	iov_out[0].iov_len = len - (outlen + KNET_HEADER_DATA_SIZE);
+	iov_out[0].iov_base = (void *) data + outlen;
+	iov_out[0].iov_len = len - (outlen + header_size);
 
 	outlen = writev(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, 1);
 	if ((outlen > 0) && (outlen < (ssize_t)iov_out[0].iov_len)) {
@@ -417,23 +390,108 @@ retry:
 				       KNET_NOTIFY_RX,
 				       outlen,
 				       errno);
-		return;
+		return -1;
 	}
-	if ((size_t)outlen == iov_out[0].iov_len) {
-		_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
+
+	if ((size_t)outlen != iov_out[0].iov_len) {
+		return -1;
 	}
+
+	return 0;
 }
 
-static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
+static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len, uint64_t decrypt_time)
 {
-	int savederrno = 0, stats_err = 0;
+	int8_t channel;
+       	uint8_t decompress_type = 0;
+	ssize_t header_size;
+	seq_num_t seq_num;
+	uint8_t frags, frag_seq;
+	unsigned char *data;
+
+	if (_handle_data_stats(knet_h, src_link, len, decrypt_time) < 0) {
+		return;
+	}
+
+	/*
+	 * register host is sending data. Required to determine if we need
+	 * to reset circular buffers. (see onwire_v1.c)
+	 */
+	src_host->got_data = 1;
+
+	switch (inbuf->kh_version) {
+		case 1:
+			get_data_header_info_v1(knet_h, inbuf, &header_size, &channel, &seq_num, &decompress_type, &frags, &frag_seq);
+			data = get_data_v1(knet_h, inbuf);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_RX, "processing data onwire version %u not supported", inbuf->kh_version);
+			return;
+			break;
+	}
+
+	if (!_seq_num_lookup(src_host, seq_num, 0, 0)) {
+		if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
+			log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
+		}
+		return;
+	}
+
+	if (frags > 1) {
+		/*
+		 * len as received from the socket also includes extra stuff
+		 * that the defrag code doesn't care about. So strip it
+		 * here and readd only for repadding once we are done
+		 * defragging
+		 *
+		 * the defrag code assumes that data packets have all the same size
+		 * except the last one that might be smaller.
+		 *
+		 */
+		len = len - header_size;
+		if (_pckt_defrag(knet_h, src_host, seq_num, data, &len, frags, frag_seq)) {
+			return;
+		}
+		len = len + header_size;
+	}
+
+	if (_decompress_data(knet_h, decompress_type, data, &len, header_size) < 0) {
+		return;
+	}
+
+	if (!src_host->status.reachable) {
+		log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
+		return;
+	}
+
+	if (knet_h->enabled != 1) /* data forward is disabled */
+		return;
+
+	if (_check_destination(knet_h, inbuf, data, len, header_size, &channel) < 0) {
+		return;
+	}
+
+	if (!knet_h->sockfd[channel].in_use) {
+		log_debug(knet_h, KNET_SUB_RX,
+			  "received packet for channel %d but there is no local sock connected",
+			  channel);
+		return;
+	}
+
+	if (_deliver_data(knet_h, data, len, header_size, channel) < 0) {
+		return;
+	}
+
+	_seq_num_set(src_host, seq_num, 0);
+}
+
+static struct knet_header *_decrypt_packet(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t *len, uint64_t *decrypt_time)
+{
+	int try_decrypt = 0;
+	int i = 0;
+	struct timespec start_time;
+	struct timespec end_time;
 	ssize_t outlen;
-	struct knet_host *src_host;
-	struct knet_link *src_link;
-	uint64_t decrypt_time = 0;
-	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
-	ssize_t len = msg->msg_len;
-	int try_decrypt = 0, i, found_link = 0;
 
 	for (i = 1; i <= KNET_MAX_CRYPTO_INSTANCES; i++) {
 		if (knet_h->crypto_instance[i]) {
@@ -444,36 +502,37 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 	if ((!try_decrypt) && (knet_h->crypto_only == KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
 		log_debug(knet_h, KNET_SUB_RX, "RX thread configured to accept only crypto packets, but no crypto configs are configured!");
-		return;
+		return NULL;
 	}
 
 	if (try_decrypt) {
-		struct timespec start_time;
-		struct timespec end_time;
-
 		clock_gettime(CLOCK_MONOTONIC, &start_time);
 		if (crypto_authenticate_and_decrypt(knet_h,
 						    (unsigned char *)inbuf,
-						    len,
+						    *len,
 						    knet_h->recv_from_links_buf_decrypt,
 						    &outlen) < 0) {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to decrypt/auth packet");
 			if (knet_h->crypto_only == KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC) {
-				return;
+				return NULL;
 			}
 			log_debug(knet_h, KNET_SUB_RX, "Attempting to process packet as clear data");
 		} else {
 			clock_gettime(CLOCK_MONOTONIC, &end_time);
-			timespec_diff(start_time, end_time, &decrypt_time);
+			timespec_diff(start_time, end_time, decrypt_time);
 
-			len = outlen;
+			*len = outlen;
 			inbuf = (struct knet_header *)knet_h->recv_from_links_buf_decrypt;
 		}
 	}
+	return inbuf;
+}
 
+static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t len)
+{
 	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
 		log_debug(knet_h, KNET_SUB_RX, "Packet is too short: %ld", (long)len);
-		return;
+		return -1;
 	}
 
 	if ((inbuf->kh_version > KNET_HEADER_ONWIRE_MAX_VER) &&
@@ -487,9 +546,61 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				  "Received packet version %u. current node only supports %u",
 				  inbuf->kh_version, KNET_HEADER_ONWIRE_MAX_VER);
 		}
+		return -1;
+	}
+	return 0;
+}
+
+static void _handle_dynip(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, int sockfd, const struct knet_mmsghdr *msg)
+{
+	if (src_link->dynamic == KNET_LINK_DYNIP) {
+		if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
+			log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
+				  src_host->host_id, src_link->link_id);
+			memmove(&src_link->dst_addr, msg->msg_hdr.msg_name, sizeof(struct sockaddr_storage));
+			if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
+					src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
+					src_link->status.dst_port, KNET_MAX_PORT_LEN) != 0) {
+				log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
+				snprintf(src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
+				snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
+			} else {
+				log_info(knet_h, KNET_SUB_RX,
+					 "host: %u link: %u new connection established from: %s %s",
+					 src_host->host_id, src_link->link_id,
+					 src_link->status.dst_ipaddr, src_link->status.dst_port);
+			}
+		}
+		/*
+		 * transport has already accepted the connection here
+		 * otherwise we would not be receiving packets
+		 */
+		transport_link_dyn_connect(knet_h, sockfd, src_link);
+	}
+}
+
+static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
+{
+	int savederrno = 0, stats_err = 0;
+	struct knet_host *src_host;
+	struct knet_link *src_link;
+	uint64_t decrypt_time = 0;
+	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
+	ssize_t len = msg->msg_len;
+	int i, found_link = 0;
+
+	inbuf = _decrypt_packet(knet_h, inbuf, &len, &decrypt_time);
+	if (!inbuf) {
 		return;
 	}
 
+	if (_packet_checks(knet_h, inbuf, len) < 0) {
+		return;
+	}
+
+	/*
+	 * determine source host
+	 */
 	inbuf->kh_node = ntohs(inbuf->kh_node);
 	src_host = knet_h->host_index[inbuf->kh_node];
 	if (src_host == NULL) {  /* host not found */
@@ -497,41 +608,21 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
+	/*
+	 * deteremine source link
+	 */
 	if (inbuf->kh_type == KNET_HEADER_TYPE_PING) {
 		switch (inbuf->kh_version) {
 			case 1:
-				src_link = &src_host->link[inbuf->khp_ping_v1_link];
+				src_link = get_link_from_pong_v1(knet_h, src_host, inbuf);
 				break;
 			default:
 				log_warn(knet_h, KNET_SUB_RX, "Parsing ping onwire version %u not supported", inbuf->kh_version);
 				return;
+				break;
 		}
-
-		if (src_link->dynamic == KNET_LINK_DYNIP) {
-			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
-				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
-					  src_host->host_id, src_link->link_id);
-				memmove(&src_link->dst_addr, msg->msg_hdr.msg_name, sizeof(struct sockaddr_storage));
-				if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
-						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
-						src_link->status.dst_port, KNET_MAX_PORT_LEN) != 0) {
-					log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
-					snprintf(src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN - 1, "Unknown!!!");
-					snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
-				} else {
-					log_info(knet_h, KNET_SUB_RX,
-						 "host: %u link: %u new connection established from: %s %s",
-						 src_host->host_id, src_link->link_id,
-						 src_link->status.dst_ipaddr, src_link->status.dst_port);
-				}
-			}
-			/*
-			 * transport has already accepted the connection here
-			 * otherwise we would not be receiving packets
-			 */
-			transport_link_dyn_connect(knet_h, sockfd, src_link);
-		}
-	} else { /* data packet */
+		_handle_dynip(knet_h, src_host, src_link, sockfd, msg);
+	} else { /* all other packets */
 		for (i = 0; i < KNET_MAX_LINK; i++) {
 			src_link = &src_host->link[i];
 			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) == 0) {
@@ -554,7 +645,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 	switch (inbuf->kh_type) {
 		case KNET_HEADER_TYPE_DATA:
-			process_data(knet_h, src_host, src_link, inbuf, len, decrypt_time);
+			_process_data(knet_h, src_host, src_link, inbuf, len, decrypt_time);
 			break;
 		case KNET_HEADER_TYPE_PING:
 			process_ping(knet_h, src_host, src_link, inbuf, len);
@@ -569,6 +660,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			process_pmtud(knet_h, src_link, inbuf);
 			return; /* Don't need to unlock link_stats_mutex */
+			break;
 		case KNET_HEADER_TYPE_PMTUD_REPLY:
 			src_link->status.stats.rx_pmtu_packets++;
 			src_link->status.stats.rx_pmtu_bytes += len;
@@ -576,9 +668,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			process_pmtud_reply(knet_h, src_link, inbuf);
 			return;
+			break;
 		default:
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			return;
+			break;
 	}
 	pthread_mutex_unlock(&src_link->link_stats_mutex);
 }

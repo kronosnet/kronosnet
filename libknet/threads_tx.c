@@ -9,7 +9,6 @@
 
 #include "config.h"
 
-#include <math.h>
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -28,6 +27,7 @@
 #include "threads_heartbeat.h"
 #include "threads_tx.h"
 #include "netutils.h"
+#include "onwire_v1.h"
 
 /*
  * SEND
@@ -141,174 +141,45 @@ out_unlock:
 	return err;
 }
 
-static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t channel, int is_sync)
+static int _dispatch_to_local(knet_handle_t knet_h, unsigned char *data, size_t inlen, int8_t channel)
 {
-	size_t outlen, frag_len;
-	struct knet_host *dst_host;
-	knet_node_id_t dst_host_ids_temp[KNET_MAX_HOST];
-	size_t dst_host_ids_entries_temp = 0;
-	knet_node_id_t dst_host_ids[KNET_MAX_HOST];
-	size_t dst_host_ids_entries = 0;
-	int bcast = 1;
-	struct iovec iov_out[PCKT_FRAG_MAX][2];
-	int iovcnt_out = 2;
-	uint8_t frag_idx;
+	int err = 0, savederrno = 0;
+	const unsigned char *buf = data;
+	ssize_t buflen = inlen;
+	struct knet_link *local_link = knet_h->host_index[knet_h->host_id]->link;
+
+local_retry:
+	err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
+	savederrno = errno;
+	if (err < 0) {
+		log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
+		local_link->status.stats.tx_data_errors++;
+		goto out;
+	}
+	if (err > 0 && err < buflen) {
+		log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %zu\n", err, inlen);
+		local_link->status.stats.tx_data_retries++;
+		buf += err;
+		buflen -= err;
+		goto local_retry;
+	}
+	if (err == buflen) {
+		local_link->status.stats.tx_data_packets++;
+		local_link->status.stats.tx_data_bytes += inlen;
+	}
+out:
+	errno = savederrno;
+	return err;
+}
+
+static int _prep_tx_bufs(knet_handle_t knet_h,
+			  struct knet_header *inbuf, uint8_t onwire_ver,
+			  unsigned char *data, size_t inlen,
+			  seq_num_t tx_seq_num, int8_t channel, int bcast, int data_compressed,
+			  int *msgs_to_send, struct iovec iov_out[PCKT_FRAG_MAX][2], int *iovcnt_out)
+{
+	int err = 0, savederrno = 0;
 	unsigned int temp_data_mtu;
-	size_t host_idx;
-	int send_mcast = 0;
-	struct knet_header *inbuf;
-	int savederrno = 0;
-	int err = 0;
-	seq_num_t tx_seq_num;
-	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
-	int msgs_to_send, msg_idx;
-	unsigned int i;
-	int j;
-	int send_local = 0;
-	int data_compressed = 0;
-	size_t uncrypted_frag_size;
-	int stats_locked = 0, stats_err = 0;
-
-	inbuf = knet_h->recv_from_sock_buf;
-	inbuf->kh_type = KNET_HEADER_TYPE_DATA;
-	inbuf->kh_version = knet_h->onwire_ver;
-	inbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
-	inbuf->khp_data_frag_seq = 0;
-	inbuf->kh_node = htons(knet_h->host_id);
-
-	if (knet_h->enabled != 1) {
-		log_debug(knet_h, KNET_SUB_TX, "Received data packet but forwarding is disabled");
-		savederrno = ECANCELED;
-		err = -1;
-		goto out_unlock;
-	}
-
-	if (knet_h->dst_host_filter_fn) {
-		bcast = knet_h->dst_host_filter_fn(
-				knet_h->dst_host_filter_fn_private_data,
-				(const unsigned char *)inbuf->khp_data_userdata,
-				inlen,
-				KNET_NOTIFY_TX,
-				knet_h->host_id,
-				knet_h->host_id,
-				&channel,
-				dst_host_ids_temp,
-				&dst_host_ids_entries_temp);
-		if (bcast < 0) {
-			log_debug(knet_h, KNET_SUB_TX, "Error from dst_host_filter_fn: %d", bcast);
-			savederrno = EFAULT;
-			err = -1;
-			goto out_unlock;
-		}
-
-		if ((!bcast) && (!dst_host_ids_entries_temp)) {
-			log_debug(knet_h, KNET_SUB_TX, "Message is unicast but no dst_host_ids_entries");
-			savederrno = EINVAL;
-			err = -1;
-			goto out_unlock;
-		}
-
-		if ((!bcast) &&
-		    (dst_host_ids_entries_temp > KNET_MAX_HOST)) {
-			log_debug(knet_h, KNET_SUB_TX, "dst_host_filter_fn returned too many destinations");
-			savederrno = EINVAL;
-			err = -1;
-			goto out_unlock;
-		}
-	}
-
-	/* Send to localhost if appropriate and enabled */
-	if (knet_h->has_loop_link) {
-		send_local = 0;
-		if (bcast) {
-			send_local = 1;
-		} else {
-			for (i=0; i< dst_host_ids_entries_temp; i++) {
-				if (dst_host_ids_temp[i] == knet_h->host_id) {
-					send_local = 1;
-				}
-			}
-		}
-		if (send_local) {
-			const unsigned char *buf = inbuf->khp_data_userdata;
-			ssize_t buflen = inlen;
-			struct knet_link *local_link;
-
-			local_link = knet_h->host_index[knet_h->host_id]->link;
-
-		local_retry:
-			err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
-			if (err < 0) {
-				log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
-				local_link->status.stats.tx_data_errors++;
-			}
-			if (err > 0 && err < buflen) {
-				log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %zu\n", err, inlen);
-				local_link->status.stats.tx_data_retries++;
-				buf += err;
-				buflen -= err;
-				goto local_retry;
-			}
-			if (err == buflen) {
-				local_link->status.stats.tx_data_packets++;
-				local_link->status.stats.tx_data_bytes += inlen;
-			}
-		}
-	}
-
-	if (is_sync) {
-		if ((bcast) ||
-		    ((!bcast) && (dst_host_ids_entries_temp > 1))) {
-			log_debug(knet_h, KNET_SUB_TX, "knet_send_sync is only supported with unicast packets for one destination");
-			savederrno = E2BIG;
-			err = -1;
-			goto out_unlock;
-		}
-	}
-
-	/*
-	 * check destinations hosts before spending time
-	 * in fragmenting/encrypting packets to save
-	 * time processing data for unreachable hosts.
-	 * for unicast, also remap the destination data
-	 * to skip unreachable hosts.
-	 */
-
-	if (!bcast) {
-		dst_host_ids_entries = 0;
-		for (host_idx = 0; host_idx < dst_host_ids_entries_temp; host_idx++) {
-			dst_host = knet_h->host_index[dst_host_ids_temp[host_idx]];
-			if (!dst_host) {
-				continue;
-			}
-			if (!(dst_host->host_id == knet_h->host_id &&
-			     knet_h->has_loop_link) &&
-			    dst_host->status.reachable) {
-				dst_host_ids[dst_host_ids_entries] = dst_host_ids_temp[host_idx];
-				dst_host_ids_entries++;
-			}
-		}
-		if (!dst_host_ids_entries) {
-			savederrno = EHOSTDOWN;
-			err = -1;
-			goto out_unlock;
-		}
-	} else {
-		send_mcast = 0;
-		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
-			if (!(dst_host->host_id == knet_h->host_id &&
-			      knet_h->has_loop_link) &&
-			    dst_host->status.reachable) {
-				send_mcast = 1;
-				break;
-			}
-		}
-		if (!send_mcast) {
-			savederrno = EHOSTDOWN;
-			err = -1;
-			goto out_unlock;
-		}
-	}
 
 	if (!knet_h->data_mtu) {
 		/*
@@ -328,185 +199,127 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		temp_data_mtu = knet_h->data_mtu;
 	}
 
+	switch (onwire_ver) {
+		case 1:
+			prep_tx_bufs_v1(knet_h, inbuf, data, inlen, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
+			break;
+		default: /* this should never hit as filters are in place in the calling functions */
+			log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
+			savederrno = EINVAL;
+			err = -1;
+			goto out;
+			break;
+	}
+
+out:
+	errno = savederrno;
+	return err;
+}
+
+static int _compress_data(knet_handle_t knet_h, unsigned char* data, size_t *inlen, int *data_compressed)
+{
+	int err = 0, savederrno = 0;
+	int stats_locked = 0, stats_err = 0;
+	size_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
+	struct timespec start_time;
+	struct timespec end_time;
+	uint64_t compress_time;
+
 	/*
 	 * compress data
 	 */
-	if ((knet_h->compress_model > 0) && (inlen > knet_h->compress_threshold)) {
-		size_t cmp_outlen = KNET_DATABUFSIZE_COMPRESS;
-		struct timespec start_time;
-		struct timespec end_time;
-		uint64_t compress_time;
+	if (knet_h->compress_model > 0) {
+		if (*inlen > knet_h->compress_threshold) {
+			clock_gettime(CLOCK_MONOTONIC, &start_time);
+			err = compress(knet_h,
+				       data, *inlen,
+				       knet_h->send_to_links_buf_compress, (ssize_t *)&cmp_outlen);
 
-		clock_gettime(CLOCK_MONOTONIC, &start_time);
-		err = compress(knet_h,
-			       (const unsigned char *)inbuf->khp_data_userdata, inlen,
-			       knet_h->send_to_links_buf_compress, (ssize_t *)&cmp_outlen);
+			savederrno = errno;
+			clock_gettime(CLOCK_MONOTONIC, &end_time);
+			timespec_diff(start_time, end_time, &compress_time);
 
-		savederrno = errno;
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
+				err = -1;
+				savederrno = stats_err;
+				goto out;
+			}
+			stats_locked = 1;
+			/* Collect stats */
 
-		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
-		if (stats_err < 0) {
-			log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
-			err = -1;
-			savederrno = stats_err;
-			goto out_unlock;
-		}
-		stats_locked = 1;
-		/* Collect stats */
-		clock_gettime(CLOCK_MONOTONIC, &end_time);
-		timespec_diff(start_time, end_time, &compress_time);
-
-		if (compress_time < knet_h->stats.tx_compress_time_min) {
-			knet_h->stats.tx_compress_time_min = compress_time;
-		}
-		if (compress_time > knet_h->stats.tx_compress_time_max) {
-			knet_h->stats.tx_compress_time_max = compress_time;
-		}
-		knet_h->stats.tx_compress_time_ave =
-			(unsigned long long)(knet_h->stats.tx_compress_time_ave * knet_h->stats.tx_compressed_packets +
-			 compress_time) / (knet_h->stats.tx_compressed_packets+1);
-		if (err < 0) {
-			knet_h->stats.tx_failed_to_compress++;
-			log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(savederrno));
-		} else {
-			knet_h->stats.tx_compressed_packets++;
-			knet_h->stats.tx_compressed_original_bytes += inlen;
-			knet_h->stats.tx_compressed_size_bytes += cmp_outlen;
-
-			if (cmp_outlen < inlen) {
-				memmove(inbuf->khp_data_userdata, knet_h->send_to_links_buf_compress, cmp_outlen);
-				inlen = cmp_outlen;
-				data_compressed = 1;
+			if (compress_time < knet_h->stats.tx_compress_time_min) {
+				knet_h->stats.tx_compress_time_min = compress_time;
+			}
+			if (compress_time > knet_h->stats.tx_compress_time_max) {
+				knet_h->stats.tx_compress_time_max = compress_time;
+			}
+			knet_h->stats.tx_compress_time_ave =
+				(unsigned long long)(knet_h->stats.tx_compress_time_ave * knet_h->stats.tx_compressed_packets +
+				 compress_time) / (knet_h->stats.tx_compressed_packets+1);
+			if (err < 0) {
+				knet_h->stats.tx_failed_to_compress++;
+				log_warn(knet_h, KNET_SUB_COMPRESS, "Compression failed (%d): %s", err, strerror(savederrno));
 			} else {
-				knet_h->stats.tx_unable_to_compress++;
+				knet_h->stats.tx_compressed_packets++;
+				knet_h->stats.tx_compressed_original_bytes += *inlen;
+				knet_h->stats.tx_compressed_size_bytes += cmp_outlen;
+
+				if (cmp_outlen < *inlen) {
+					memmove(data, knet_h->send_to_links_buf_compress, cmp_outlen);
+					*inlen = cmp_outlen;
+					*data_compressed = 1;
+				} else {
+					knet_h->stats.tx_unable_to_compress++;
+				}
 			}
 		}
-	}
-	if (!stats_locked) {
-		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
-		if (stats_err < 0) {
-			log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
-			err = -1;
-			savederrno = stats_err;
-			goto out_unlock;
-		}
-	}
-	if (knet_h->compress_model > 0 && !data_compressed) {
-		knet_h->stats.tx_uncompressed_packets++;
-	}
-	pthread_mutex_unlock(&knet_h->handle_stats_mutex);
-	stats_locked = 0;
-
-	/*
-	 * prepare the outgoing buffers
-	 */
-
-	frag_len = inlen;
-	frag_idx = 0;
-
-	inbuf->khp_data_bcast = bcast;
-	inbuf->khp_data_frag_num = ceil((float)inlen / temp_data_mtu);
-	inbuf->khp_data_channel = channel;
-	if (data_compressed) {
-		inbuf->khp_data_compress = knet_h->compress_model;
-	} else {
-		inbuf->khp_data_compress = 0;
-	}
-
-	if (pthread_mutex_lock(&knet_h->tx_seq_num_mutex)) {
-		log_debug(knet_h, KNET_SUB_TX, "Unable to get seq mutex lock");
-		goto out_unlock;
-	}
-	knet_h->tx_seq_num++;
-	/*
-	 * force seq_num 0 to detect a node that has crashed and rejoining
-	 * the knet instance. seq_num 0 will clear the buffers in the RX
-	 * thread
-	 */
-	if (knet_h->tx_seq_num == 0) {
-		knet_h->tx_seq_num++;
-	}
-	/*
-	 * cache the value in locked context
-	 */
-	tx_seq_num = knet_h->tx_seq_num;
-	inbuf->khp_data_seq_num = htons(knet_h->tx_seq_num);
-	pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
-
-	/*
-	 * forcefully broadcast a ping to all nodes every SEQ_MAX / 8
-	 * pckts.
-	 * this solves 2 problems:
-	 * 1) on TX socket overloads we generate extra pings to keep links alive
-	 * 2) in 3+ nodes setup, where all the traffic is flowing between node 1 and 2,
-	 *    node 3+ will be able to keep in sync on the TX seq_num even without
-	 *    receiving traffic or pings in betweens. This avoids issues with
-	 *    rollover of the circular buffer
-	 */
-
-	if (tx_seq_num % (SEQ_MAX / 8) == 0) {
-		_send_pings(knet_h, 0);
-	}
-
-	if (inbuf->khp_data_frag_num > 1) {
-		while (frag_idx < inbuf->khp_data_frag_num) {
-			/*
-			 * set the iov_base
-			 */
-			iov_out[frag_idx][0].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
-			iov_out[frag_idx][0].iov_len = KNET_HEADER_DATA_SIZE;
-			iov_out[frag_idx][1].iov_base = inbuf->khp_data_userdata + (temp_data_mtu * frag_idx);
-
-			/*
-			 * set the len
-			 */
-			if (frag_len > temp_data_mtu) {
-				iov_out[frag_idx][1].iov_len = temp_data_mtu;
-			} else {
-				iov_out[frag_idx][1].iov_len = frag_len;
+		if (!*data_compressed) {
+			if (!stats_locked) {
+				stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+				if (stats_err < 0) {
+					log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
+					err = -1;
+					savederrno = stats_err;
+					goto out;
+				}
+				stats_locked = 1;
 			}
-
-			/*
-			 * copy the frag info on all buffers
-			 */
-			knet_h->send_to_links_buf[frag_idx]->kh_version = inbuf->kh_version;
-			knet_h->send_to_links_buf[frag_idx]->kh_max_ver = inbuf->kh_max_ver;
-			knet_h->send_to_links_buf[frag_idx]->kh_node = htons(knet_h->host_id);
-			knet_h->send_to_links_buf[frag_idx]->kh_type = inbuf->kh_type;
-			knet_h->send_to_links_buf[frag_idx]->khp_data_seq_num = inbuf->khp_data_seq_num;
-			knet_h->send_to_links_buf[frag_idx]->khp_data_frag_num = inbuf->khp_data_frag_num;
-			knet_h->send_to_links_buf[frag_idx]->khp_data_frag_seq = frag_idx + 1;
-			knet_h->send_to_links_buf[frag_idx]->khp_data_bcast = inbuf->khp_data_bcast;
-			knet_h->send_to_links_buf[frag_idx]->khp_data_channel = inbuf->khp_data_channel;
-			knet_h->send_to_links_buf[frag_idx]->khp_data_compress = inbuf->khp_data_compress;
-
-			frag_len = frag_len - temp_data_mtu;
-			frag_idx++;
+			knet_h->stats.tx_uncompressed_packets++;
 		}
-		iovcnt_out = 2;
-	} else {
-		iov_out[frag_idx][0].iov_base = (void *)inbuf;
-		iov_out[frag_idx][0].iov_len = frag_len + KNET_HEADER_DATA_SIZE;
-		iovcnt_out = 1;
+		if (stats_locked) {
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+		}
 	}
+
+out:
+	errno = savederrno;
+	return err;
+}
+
+static int _encrypt_bufs(knet_handle_t knet_h, int msgs_to_send, struct iovec iov_out[PCKT_FRAG_MAX][2], int *iovcnt_out)
+{
+	int err = 0, savederrno = 0, stats_err = 0;
+	struct timespec start_time;
+	struct timespec end_time;
+	uint64_t crypt_time;
+	uint8_t frag_idx = 0;
+	size_t outlen, uncrypted_frag_size;
+	int j;
 
 	if (knet_h->crypto_in_use_config) {
-		struct timespec start_time;
-		struct timespec end_time;
-		uint64_t crypt_time;
-
-		frag_idx = 0;
-		while (frag_idx < inbuf->khp_data_frag_num) {
+		while (frag_idx < msgs_to_send) {
 			clock_gettime(CLOCK_MONOTONIC, &start_time);
 			if (crypto_encrypt_and_signv(
 					knet_h,
-					iov_out[frag_idx], iovcnt_out,
+					iov_out[frag_idx], *iovcnt_out,
 					knet_h->send_to_links_buf_crypt[frag_idx],
 					(ssize_t *)&outlen) < 0) {
 				log_debug(knet_h, KNET_SUB_TX, "Unable to encrypt packet");
 				savederrno = ECHILD;
 				err = -1;
-				goto out_unlock;
+				goto out;
 			}
 			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			timespec_diff(start_time, end_time, &crypt_time);
@@ -516,7 +329,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 				log_err(knet_h, KNET_SUB_TX, "Unable to get mutex lock: %s", strerror(stats_err));
 				err = -1;
 				savederrno = stats_err;
-				goto out_unlock;
+				goto out;
 			}
 
 			if (crypt_time < knet_h->stats.tx_crypt_time_min) {
@@ -530,7 +343,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 				 crypt_time) / (knet_h->stats.tx_crypt_packets+1);
 
 			uncrypted_frag_size = 0;
-			for (j=0; j < iovcnt_out; j++) {
+			for (j=0; j < *iovcnt_out; j++) {
 				uncrypted_frag_size += iov_out[frag_idx][j].iov_len;
 			}
 			knet_h->stats.tx_crypt_byte_overhead += (outlen - uncrypted_frag_size);
@@ -541,12 +354,180 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			iov_out[frag_idx][0].iov_len = outlen;
 			frag_idx++;
 		}
-		iovcnt_out = 1;
+		*iovcnt_out = 1;
+	}
+out:
+	errno = savederrno;
+	return err;
+}
+
+static int _get_tx_seq_num(knet_handle_t knet_h, seq_num_t *tx_seq_num)
+{
+	int savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&knet_h->tx_seq_num_mutex);
+	if (savederrno) {
+		log_debug(knet_h, KNET_SUB_TX, "Unable to get seq mutex lock");
+		errno = savederrno;
+		return -1;
 	}
 
-	memset(&msg, 0, sizeof(msg));
+	knet_h->tx_seq_num++;
+	/*
+	 * force seq_num 0 to detect a node that has crashed and rejoining
+	 * the knet instance. seq_num 0 will clear the buffers in the RX
+	 * thread
+	 */
+	if (knet_h->tx_seq_num == 0) {
+		knet_h->tx_seq_num++;
+	}
+	/*
+	 * cache the value in locked context
+	 */
+	*tx_seq_num = knet_h->tx_seq_num;
+	pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
 
-	msgs_to_send = inbuf->khp_data_frag_num;
+	/*
+	 * forcefully broadcast a ping to all nodes every SEQ_MAX / 8
+	 * pckts.
+	 * this solves 2 problems:
+	 * 1) on TX socket overloads we generate extra pings to keep links alive
+	 * 2) in 3+ nodes setup, where all the traffic is flowing between node 1 and 2,
+	 *    node 3+ will be able to keep in sync on the TX seq_num even without
+	 *    receiving traffic or pings in betweens. This avoids issues with
+	 *    rollover of the circular buffer
+	 */
+
+	if (*tx_seq_num % (SEQ_MAX / 8) == 0) {
+		_send_pings(knet_h, 0);
+	}
+	return 0;
+}
+
+
+static int _get_data_dests(knet_handle_t knet_h, unsigned char* data, size_t inlen,
+			   int8_t *channel, int *bcast, int *send_local,
+			   knet_node_id_t *dst_host_ids, size_t *dst_host_ids_entries,
+			   int is_sync)
+{
+	int err = 0, savederrno = 0;
+	knet_node_id_t dst_host_ids_temp[KNET_MAX_HOST];	/* store destinations from filter */
+	size_t dst_host_ids_entries_temp = 0;
+	size_t dst_host_ids_entries_temp2 = 0;			/* workaround gcc here */
+	struct knet_host *dst_host;
+	size_t host_idx;
+
+	if (knet_h->dst_host_filter_fn) {
+		*bcast = knet_h->dst_host_filter_fn(
+				knet_h->dst_host_filter_fn_private_data,
+				data,
+				inlen,
+				KNET_NOTIFY_TX,
+				knet_h->host_id,
+				knet_h->host_id,
+				channel,
+				dst_host_ids_temp,
+				&dst_host_ids_entries_temp);
+		if (*bcast < 0) {
+			log_debug(knet_h, KNET_SUB_TX, "Error from dst_host_filter_fn: %d", *bcast);
+			savederrno = EFAULT;
+			err = -1;
+			goto out;
+		}
+
+		if ((!*bcast) && (!dst_host_ids_entries_temp)) {
+			log_debug(knet_h, KNET_SUB_TX, "Message is unicast but no dst_host_ids_entries");
+			savederrno = EINVAL;
+			err = -1;
+			goto out;
+		}
+
+		if ((!*bcast) &&
+		    (dst_host_ids_entries_temp > KNET_MAX_HOST)) {
+			log_debug(knet_h, KNET_SUB_TX, "dst_host_filter_fn returned too many destinations");
+			savederrno = EINVAL;
+			err = -1;
+			goto out;
+		}
+
+		if (is_sync) {
+			if ((*bcast) ||
+			    ((!*bcast) && (dst_host_ids_entries_temp > 1))) {
+				log_debug(knet_h, KNET_SUB_TX, "knet_send_sync is only supported with unicast packets for one destination");
+				savederrno = E2BIG;
+				err = -1;
+				goto out;
+			}
+		}
+	}
+
+	/*
+	 * check destinations hosts before spending time
+	 * in fragmenting/encrypting packets to save
+	 * time processing data for unreachable hosts.
+	 * for unicast, also remap the destination data
+	 * to skip unreachable hosts.
+	 */
+
+	if (!*bcast) {
+		*dst_host_ids_entries = dst_host_ids_entries_temp2;
+		for (host_idx = 0; host_idx < dst_host_ids_entries_temp; host_idx++) {
+			dst_host = knet_h->host_index[dst_host_ids_temp[host_idx]];
+			if (!dst_host) {
+				continue;
+			}
+			if ((dst_host->host_id == knet_h->host_id) &&
+			    (knet_h->has_loop_link)) {
+				*send_local = 1;
+			}
+			if (!((dst_host->host_id == knet_h->host_id) &&
+			     (knet_h->has_loop_link)) &&
+			    dst_host->status.reachable) {
+				dst_host_ids[dst_host_ids_entries_temp2] = dst_host_ids_temp[host_idx];
+				dst_host_ids_entries_temp2++;
+			}
+		}
+		if ((!dst_host_ids_entries_temp2) && (!*send_local)) {
+			savederrno = EHOSTDOWN;
+			err = -1;
+			goto out;
+		}
+		*dst_host_ids_entries = dst_host_ids_entries_temp2;
+	} else {
+		*bcast = 0;
+		*send_local = 0;
+		for (dst_host = knet_h->host_head; dst_host != NULL; dst_host = dst_host->next) {
+			if ((dst_host->host_id == knet_h->host_id) &&
+			    (knet_h->has_loop_link)) {
+				*send_local = 1;
+			}
+			if (!(dst_host->host_id == knet_h->host_id &&
+			      knet_h->has_loop_link) &&
+			    dst_host->status.reachable) {
+				*bcast = 1;
+			}
+		}
+		if ((!*bcast) && (!*send_local)) {
+			savederrno = EHOSTDOWN;
+			err = -1;
+			goto out;
+		}
+	}
+
+out:
+	errno = savederrno;
+	return err;
+}
+
+static int _prep_and_send_msgs(knet_handle_t knet_h, int bcast, knet_node_id_t *dst_host_ids, size_t dst_host_ids_entries, int msgs_to_send, struct iovec iov_out[PCKT_FRAG_MAX][2], int iovcnt_out)
+{
+	int err = 0, savederrno = 0;
+	struct knet_host *dst_host;
+	struct knet_mmsghdr msg[PCKT_FRAG_MAX];
+	int msg_idx;
+	size_t host_idx;
+
+	memset(&msg, 0, sizeof(msg));
 
 	msg_idx = 0;
 
@@ -564,7 +545,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 			err = _dispatch_to_links(knet_h, dst_host, &msg[0], msgs_to_send);
 			savederrno = errno;
 			if (err) {
-				goto out_unlock;
+				goto out;
 			}
 		}
 	} else {
@@ -573,18 +554,107 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 				err = _dispatch_to_links(knet_h, dst_host, &msg[0], msgs_to_send);
 				savederrno = errno;
 				if (err) {
-					goto out_unlock;
+					goto out;
 				}
 			}
 		}
 	}
 
-out_unlock:
+out:
 	errno = savederrno;
 	return err;
 }
 
-static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t channel)
+static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t channel, uint8_t onwire_ver, int is_sync)
+{
+	int err = 0, savederrno = 0;
+	struct knet_header *inbuf = knet_h->recv_from_sock_buf; /* all TX packets are stored here regardless of the onwire */
+	unsigned char *data;					/* onwire neutrual pointer to data to send */
+	int data_compressed = 0;				/* track data compression to fill the header */
+	seq_num_t tx_seq_num;
+
+	int bcast = 1;						/* assume all packets are to be broadcasted unless filter tells us differently */
+	knet_node_id_t dst_host_ids[KNET_MAX_HOST];		/* store destinations from filter */
+	size_t dst_host_ids_entries = 0;
+	int send_local = 0;					/* send packets to loopback */
+
+	struct iovec iov_out[PCKT_FRAG_MAX][2];
+	int iovcnt_out = 2;
+	int msgs_to_send = 0;
+
+	if (knet_h->enabled != 1) {
+		log_debug(knet_h, KNET_SUB_TX, "Received data packet but forwarding is disabled");
+		savederrno = ECANCELED;
+		err = -1;
+		goto out;
+	}
+
+	switch (onwire_ver) {
+		case 1:
+			data = get_data_v1(knet_h, inbuf);
+			break;
+		default: /* this should never hit as filters are in place in the calling functions */
+			log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
+			savederrno = EINVAL;
+			err = -1;
+			goto out;
+			break;
+	}
+
+	err = _get_data_dests(knet_h, data, inlen,
+			      &channel, &bcast, &send_local,
+			      dst_host_ids, &dst_host_ids_entries,
+			      is_sync);
+	if (err < 0) {
+		savederrno = errno;
+		goto out;
+	}
+
+	/* Send to localhost if appropriate and enabled */
+	if (send_local) {
+		err = _dispatch_to_local(knet_h, data, inlen, channel);
+		if (err < 0) {
+			savederrno = errno;
+			goto out;
+		}
+	}
+
+	err = _compress_data(knet_h, data, &inlen, &data_compressed);
+	if (err < 0) {
+		savederrno = errno;
+		goto out;
+	}
+
+	err = _get_tx_seq_num(knet_h, &tx_seq_num);
+	if (err < 0) {
+		savederrno = errno;
+		goto out;
+	}
+
+	err = _prep_tx_bufs(knet_h, inbuf, onwire_ver, data, inlen, tx_seq_num, channel, bcast, data_compressed, &msgs_to_send, iov_out, &iovcnt_out);
+	if (err < 0) {
+		savederrno = errno;
+		goto out;
+	}
+
+	err = _encrypt_bufs(knet_h, msgs_to_send, iov_out, &iovcnt_out);
+	if (err < 0) {
+		savederrno = errno;
+		goto out;
+	}
+
+	err = _prep_and_send_msgs(knet_h, bcast, dst_host_ids, dst_host_ids_entries, msgs_to_send, iov_out, iovcnt_out);
+	if (err < 0) {
+		savederrno = errno;
+		goto out;
+	}
+
+out:
+	errno = savederrno;
+	return err;
+}
+
+static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, uint8_t onwire_ver, int8_t channel)
 {
 	ssize_t inlen = 0;
 	int savederrno = 0, docallback = 0;
@@ -593,8 +663,16 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 	struct sockaddr_storage address;
 
 	memset(&iov_in, 0, sizeof(iov_in));
-	iov_in.iov_base = (void *)knet_h->recv_from_sock_buf->khp_data_userdata;
-	iov_in.iov_len = KNET_MAX_PACKET_SIZE;
+
+	switch (onwire_ver) {
+		case 1:
+			iov_in.iov_base = (void *)get_data_v1(knet_h, knet_h->recv_from_sock_buf);
+			iov_in.iov_len = KNET_MAX_PACKET_SIZE;
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
+			break;
+	}
 
 	memset(&msg, 0, sizeof(struct msghdr));
 	msg.msg_name = &address;
@@ -632,7 +710,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, int8_t chann
 			knet_h->sockfd[channel].has_error = 1;
 		}
 	} else {
-		_parse_recv_from_sock(knet_h, inlen, channel, 0);
+		_parse_recv_from_sock(knet_h, inlen, channel, onwire_ver, 0);
 	}
 
 	if (docallback) {
@@ -652,6 +730,7 @@ void *_handle_send_to_links_thread(void *data)
 	int i, nev;
 	int flush, flush_queue_limit;
 	int8_t channel;
+	uint8_t onwire_ver;
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STARTED);
 
@@ -705,6 +784,13 @@ void *_handle_send_to_links_thread(void *data)
 			continue;
 		}
 
+		if (pthread_mutex_lock(&knet_h->onwire_mutex)) {
+			log_debug(knet_h, KNET_SUB_TX, "Unable to get onwire mutex lock");
+			goto out_unlock;
+		}
+		onwire_ver = knet_h->onwire_ver;
+		pthread_mutex_unlock(&knet_h->onwire_mutex);
+
 		for (i = 0; i < nev; i++) {
 			for (channel = 0; channel < KNET_DATAFD_MAX; channel++) {
 				if ((knet_h->sockfd[channel].in_use) &&
@@ -720,10 +806,10 @@ void *_handle_send_to_links_thread(void *data)
 				log_debug(knet_h, KNET_SUB_TX, "Unable to get mutex lock");
 				continue;
 			}
-			_handle_send_to_links(knet_h, events[i].data.fd, channel);
+			_handle_send_to_links(knet_h, events[i].data.fd, onwire_ver, channel);
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 		}
-
+out_unlock:
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 	}
 
@@ -735,6 +821,7 @@ void *_handle_send_to_links_thread(void *data)
 int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len, const int8_t channel)
 {
 	int savederrno = 0, err = 0;
+	uint8_t onwire_ver;
 
 	if (!knet_h) {
 		errno = EINVAL;
@@ -780,6 +867,13 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		goto out;
 	}
 
+	if (pthread_mutex_lock(&knet_h->onwire_mutex)) {
+		log_debug(knet_h, KNET_SUB_TX, "Unable to get onwire mutex lock");
+		goto out;
+	}
+	onwire_ver = knet_h->onwire_ver;
+	pthread_mutex_unlock(&knet_h->onwire_mutex);
+
 	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_TX, "Unable to get TX mutex lock: %s",
@@ -788,12 +882,21 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		goto out;
 	}
 
-	memmove(knet_h->recv_from_sock_buf->khp_data_userdata, buff, buff_len);
-	err = _parse_recv_from_sock(knet_h, buff_len, channel, 1);
+	switch (onwire_ver) {
+		case 1:
+			memmove(get_data_v1(knet_h, knet_h->recv_from_sock_buf), buff, buff_len);
+			break;
+		default:
+			log_warn(knet_h, KNET_SUB_TX, "preparing sync data onwire version %u not supported", onwire_ver);
+			goto out_tx;
+			break;
+	}
+
+	err = _parse_recv_from_sock(knet_h, buff_len, channel, onwire_ver, 1);
 	savederrno = errno;
 
+out_tx:
 	pthread_mutex_unlock(&knet_h->tx_mutex);
-
 out:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
