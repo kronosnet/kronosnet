@@ -18,4 +18,6 @@ void _seq_num_set(struct knet_host *host, seq_num_t seq_num, int defrag_buf);
 int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host);
 int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host);
 
+void _handle_onwire_version(knet_handle_t knet_h, struct knet_host *host, struct knet_header *inbuf);
+
 #endif

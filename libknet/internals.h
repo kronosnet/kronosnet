@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <stddef.h>
 #include <qb/qblist.h>
+
 #include "libknet.h"
 #include "onwire.h"
 #include "compat.h"
@@ -116,6 +117,11 @@ struct knet_host {
 	char name[KNET_MAX_HOST_LEN];
 	/* status */
 	struct knet_host_status status;
+	/*
+	 * onwire info
+	 */
+	uint8_t onwire_ver;		/* node current onwire version */
+	uint8_t onwire_max_ver;		/* node supports up to this version */
 	/* internals */
 	char circular_buffer[KNET_CBUFFER_SIZE];
 	seq_num_t rx_seq_num;
@@ -210,7 +216,11 @@ struct knet_handle {
 	pthread_mutex_t backoff_mutex;		/* used to protect dst_link->pong_timeout_adj */
 	pthread_mutex_t kmtu_mutex;		/* used to protect kernel_mtu */
 	pthread_mutex_t onwire_mutex;		/* used to protect onwire version */
-	uint8_t onwire_ver;
+	uint8_t onwire_ver;			/* currently agreed onwire version across known nodes */
+	uint8_t onwire_min_ver;			/* min and max are constant and don´t need any mutex protection. */
+	uint8_t onwire_max_ver;			/* we define them as part of internal handle so that we can mingle with them for testing purposes */
+	uint8_t onwire_force_ver;		/* manually configure onwire_ver */
+	uint8_t onwire_ver_remap;		/* when this is on, all mapping will use version 1 for now */
 	uint32_t kernel_mtu;			/* contains the MTU detected by the kernel on a given link */
 	int pmtud_waiting;
 	int pmtud_running;
@@ -275,6 +285,12 @@ struct knet_handle {
 		uint8_t tx_rx,
 		int error,
 		int errorno);
+	void *onwire_ver_notify_fn_private_data;
+	void (*onwire_ver_notify_fn) (
+		void *private_data,
+		uint8_t onwire_min_ver,
+		uint8_t onwire_max_ver,
+		uint8_t onwire_ver);
 	int fini_in_progress;
 	uint64_t flags;
 };

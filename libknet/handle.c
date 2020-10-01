@@ -646,22 +646,14 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
 
 	/*
-	 * set onwire version
+	 * set onwire version. See also comments in internals.h
+	 * on why we don´t use constants directly across the code.
 	 */
 
-#ifdef DEBUG
-	/*
-	 * need this small hack to test the code without new packets and
-	 * override internal defaults
-	 */
-	if (getenv("KNET_PROTO_VER")) {
-		knet_h->onwire_ver = atoi(getenv("KNET_PROTO_VER"));
-	} else {
-		knet_h->onwire_ver = KNET_HEADER_ONWIRE_MAX_VER;
-	}
-#else
-	knet_h->onwire_ver = KNET_HEADER_ONWIRE_MAX_VER;
-#endif
+	knet_h->onwire_ver = KNET_HEADER_ONWIRE_MIN_VER;
+	knet_h->onwire_min_ver = KNET_HEADER_ONWIRE_MIN_VER;
+	knet_h->onwire_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
+	knet_h->onwire_ver_remap = 0;
 
 	log_info(knet_h, KNET_SUB_HANDLE, "Default onwire version: %u", knet_h->onwire_ver);
 

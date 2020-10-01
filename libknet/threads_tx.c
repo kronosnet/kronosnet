@@ -199,16 +199,20 @@ static int _prep_tx_bufs(knet_handle_t knet_h,
 		temp_data_mtu = knet_h->data_mtu;
 	}
 
-	switch (onwire_ver) {
-		case 1:
-			prep_tx_bufs_v1(knet_h, inbuf, data, inlen, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
-			break;
-		default: /* this should never hit as filters are in place in the calling functions */
-			log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
-			savederrno = EINVAL;
-			err = -1;
-			goto out;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		prep_tx_bufs_v1(knet_h, inbuf, data, inlen, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
+	} else {
+		switch (onwire_ver) {
+			case 1:
+				prep_tx_bufs_v1(knet_h, inbuf, data, inlen, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
+				break;
+			default: /* this should never hit as filters are in place in the calling functions */
+				log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
+				savederrno = EINVAL;
+				err = -1;
+				goto out;
+				break;
+		}
 	}
 
 out:
@@ -589,16 +593,20 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		goto out;
 	}
 
-	switch (onwire_ver) {
-		case 1:
-			data = get_data_v1(knet_h, inbuf);
-			break;
-		default: /* this should never hit as filters are in place in the calling functions */
-			log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
-			savederrno = EINVAL;
-			err = -1;
-			goto out;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		data = get_data_v1(knet_h, inbuf);
+	} else {
+		switch (onwire_ver) {
+			case 1:
+				data = get_data_v1(knet_h, inbuf);
+				break;
+			default: /* this should never hit as filters are in place in the calling functions */
+				log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
+				savederrno = EINVAL;
+				err = -1;
+				goto out;
+				break;
+		}
 	}
 
 	err = _get_data_dests(knet_h, data, inlen,
@@ -664,14 +672,19 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, uint8_t onwi
 
 	memset(&iov_in, 0, sizeof(iov_in));
 
-	switch (onwire_ver) {
-		case 1:
-			iov_in.iov_base = (void *)get_data_v1(knet_h, knet_h->recv_from_sock_buf);
-			iov_in.iov_len = KNET_MAX_PACKET_SIZE;
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
-			break;
+	if (knet_h->onwire_ver_remap) {
+		iov_in.iov_base = (void *)get_data_v1(knet_h, knet_h->recv_from_sock_buf);
+		iov_in.iov_len = KNET_MAX_PACKET_SIZE;
+	} else {
+		switch (onwire_ver) {
+			case 1:
+				iov_in.iov_base = (void *)get_data_v1(knet_h, knet_h->recv_from_sock_buf);
+				iov_in.iov_len = KNET_MAX_PACKET_SIZE;
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
+				break;
+		}
 	}
 
 	memset(&msg, 0, sizeof(struct msghdr));
@@ -882,14 +895,18 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 		goto out;
 	}
 
-	switch (onwire_ver) {
-		case 1:
-			memmove(get_data_v1(knet_h, knet_h->recv_from_sock_buf), buff, buff_len);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_TX, "preparing sync data onwire version %u not supported", onwire_ver);
-			goto out_tx;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		memmove(get_data_v1(knet_h, knet_h->recv_from_sock_buf), buff, buff_len);
+	} else {
+		switch (onwire_ver) {
+			case 1:
+				memmove(get_data_v1(knet_h, knet_h->recv_from_sock_buf), buff, buff_len);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_TX, "preparing sync data onwire version %u not supported", onwire_ver);
+				goto out_tx;
+				break;
+		}
 	}
 
 	err = _parse_recv_from_sock(knet_h, buff_len, channel, onwire_ver, 1);

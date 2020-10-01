@@ -26,7 +26,7 @@ int prep_ping_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwir
 
 	/* preparing ping buffer */
 	knet_h->pingbuf->kh_version = onwire_ver;
-	knet_h->pingbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
+	knet_h->pingbuf->kh_max_ver = knet_h->onwire_max_ver;
 	knet_h->pingbuf->kh_type = KNET_HEADER_TYPE_PING;
 	knet_h->pingbuf->kh_node = htons(knet_h->host_id);
 	knet_h->pingbuf->khp_ping_v1_link = dst_link->link_id;
@@ -106,7 +106,7 @@ struct knet_link *get_link_from_pong_v1(knet_handle_t knet_h, struct knet_host *
 void prep_pmtud_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwire_ver, size_t onwire_len)
 {
 	knet_h->pmtudbuf->kh_version = onwire_ver;
-	knet_h->pmtudbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
+	knet_h->pmtudbuf->kh_max_ver = knet_h->onwire_max_ver;
 	knet_h->pmtudbuf->kh_type = KNET_HEADER_TYPE_PMTUD;
 	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 	knet_h->pmtudbuf->khp_pmtud_v1_link = dst_link->link_id;
@@ -138,7 +138,7 @@ void prep_tx_bufs_v1(knet_handle_t knet_h,
 	 */
 	inbuf->kh_type = KNET_HEADER_TYPE_DATA;
 	inbuf->kh_version = 1;
-	inbuf->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
+	inbuf->kh_max_ver = knet_h->onwire_max_ver;
 	inbuf->kh_node = htons(knet_h->host_id);
 
 	/*

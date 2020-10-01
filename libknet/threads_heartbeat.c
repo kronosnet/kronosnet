@@ -70,16 +70,22 @@ static void send_ping(knet_handle_t knet_h, struct knet_host *dst_host, struct k
 		onwire_ver = knet_h->onwire_ver;
 		pthread_mutex_unlock(&knet_h->onwire_mutex);
 
-		switch (onwire_ver) {
-			case 1:
-				if (prep_ping_v1(knet_h, dst_link, onwire_ver, clock_now, timed, &outlen) < 0) {
-					return;
-				}
-				break;
-			default:
-				log_warn(knet_h, KNET_SUB_HEARTBEAT, "preparing ping onwire version %u not supported", onwire_ver);
+		if (knet_h->onwire_ver_remap) {
+			if (prep_ping_v1(knet_h, dst_link, onwire_ver, clock_now, timed, &outlen) < 0) {
 				return;
-				break;
+			}
+		} else {
+			switch (onwire_ver) {
+				case 1:
+					if (prep_ping_v1(knet_h, dst_link, onwire_ver, clock_now, timed, &outlen) < 0) {
+						return;
+					}
+					break;
+				default:
+					log_warn(knet_h, KNET_SUB_HEARTBEAT, "preparing ping onwire version %u not supported", onwire_ver);
+					return;
+					break;
+			}
 		}
 
 		if (knet_h->crypto_in_use_config) {
@@ -158,14 +164,18 @@ static void send_pong(knet_handle_t knet_h, struct knet_host *src_host, struct k
 	unsigned char *outbuf = (unsigned char *)inbuf;
 	ssize_t len, outlen;
 
-	switch (inbuf->kh_version) {
-		case 1:
-			prep_pong_v1(knet_h, inbuf, &outlen);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_HEARTBEAT, "preparing pong onwire version %u not supported", inbuf->kh_version);
-			return;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		prep_pong_v1(knet_h, inbuf, &outlen);
+	} else {
+		switch (inbuf->kh_version) {
+			case 1:
+				prep_pong_v1(knet_h, inbuf, &outlen);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_HEARTBEAT, "preparing pong onwire version %u not supported", inbuf->kh_version);
+				return;
+				break;
+		}
 	}
 
 	if (knet_h->crypto_in_use_config) {
@@ -225,14 +235,18 @@ void process_ping(knet_handle_t knet_h, struct knet_host *src_host, struct knet_
 	src_link->status.stats.rx_ping_packets++;
 	src_link->status.stats.rx_ping_bytes += len;
 
-	switch (inbuf->kh_version) {
-		case 1:
-			process_ping_v1(knet_h, src_host, src_link, inbuf, len);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_HEARTBEAT, "parsing ping onwire version %u not supported", inbuf->kh_version);
-			return;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		process_ping_v1(knet_h, src_host, src_link, inbuf, len);
+	} else {
+		switch (inbuf->kh_version) {
+			case 1:
+				process_ping_v1(knet_h, src_host, src_link, inbuf, len);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_HEARTBEAT, "parsing ping onwire version %u not supported", inbuf->kh_version);
+				return;
+				break;
+		}
 	}
 
 	send_pong(knet_h, src_host, src_link, inbuf);
@@ -248,14 +262,19 @@ void process_pong(knet_handle_t knet_h, struct knet_host *src_host, struct knet_
 	src_link->status.stats.rx_pong_packets++;
 	src_link->status.stats.rx_pong_bytes += len;
 
-	switch (inbuf->kh_version) {
-		case 1:
-			process_pong_v1(knet_h, src_host, src_link, inbuf, &recvtime);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_HEARTBEAT, "parsing pong onwire version %u not supported", inbuf->kh_version);
-			return;
-			break;
+
+	if (knet_h->onwire_ver_remap) {
+		process_pong_v1(knet_h, src_host, src_link, inbuf, &recvtime);
+	} else {
+		switch (inbuf->kh_version) {
+			case 1:
+				process_pong_v1(knet_h, src_host, src_link, inbuf, &recvtime);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_HEARTBEAT, "parsing pong onwire version %u not supported", inbuf->kh_version);
+				return;
+				break;
+		}
 	}
 
 	timespec_diff(recvtime,

@@ -75,6 +75,15 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 	host->host_id = host_id;
 
 	/*
+	 * fill up our own data
+	 */
+
+	if (knet_h->host_id == host->host_id) {
+		host->onwire_ver = knet_h->onwire_ver;
+		host->onwire_max_ver = knet_h->onwire_max_ver;
+	}
+
+	/*
 	 * set default host->name to host_id for logging
 	 */
 	snprintf(host->name, KNET_MAX_HOST_LEN, "%u", host_id);
@@ -718,4 +727,78 @@ int _host_dstcache_update_sync(knet_handle_t knet_h, struct knet_host *host)
 	}
 
 	return 0;
+}
+
+void _handle_onwire_version(knet_handle_t knet_h, struct knet_host *host, struct knet_header *inbuf)
+{
+	struct knet_host *tmp_host = NULL;
+	uint8_t onwire_ver = knet_h->onwire_max_ver;
+	int docallback = 0;
+
+	/*
+	 * data we process here are onwire independent
+	 * we are in a global read only lock context, so it´s safe to parse host lists
+	 * and we can change onwire_ver using the dedicated mutex
+	 */
+
+	/*
+	 * update current host onwire info
+	 */
+	host->onwire_ver = inbuf->kh_version;
+	host->onwire_max_ver = inbuf->kh_max_ver;
+
+	for (tmp_host = knet_h->host_head; tmp_host != NULL; tmp_host = tmp_host->next) {
+		/*
+		 * do not attempt to change protocol till
+		 * we see all nodes at least once.
+		 */
+		if (!tmp_host->onwire_max_ver) {
+			return;
+		}
+
+		/*
+		 * ignore nodes were max ver is lower than our min ver
+		 * logged as error by thread_rx, we need to make sure to skip it
+		 * during onwire_ver calculation.
+		 */
+		if (tmp_host->onwire_max_ver < knet_h->onwire_min_ver) {
+			continue;
+		}
+
+		/*
+		 * use the highest max_ver common to all known nodes
+		 */
+		if (tmp_host->onwire_max_ver < onwire_ver) {
+			onwire_ver = tmp_host->onwire_max_ver;
+		}
+	}
+
+	if (pthread_mutex_lock(&knet_h->onwire_mutex)) {
+		log_debug(knet_h, KNET_SUB_HOST, "Unable to get onwire mutex lock");
+		return;
+	}
+
+	if (knet_h->onwire_force_ver) {
+		onwire_ver = knet_h->onwire_force_ver;
+	}
+
+	if (knet_h->onwire_ver != onwire_ver) {
+		log_debug(knet_h, KNET_SUB_HOST, "node %u updating onwire version to %u", knet_h->host_id, onwire_ver);
+		knet_h->onwire_ver = onwire_ver;
+		docallback = 1;
+	}
+
+	pthread_mutex_unlock(&knet_h->onwire_mutex);
+
+	/*
+	 * do the callback outside of locked context and use cached value
+	 * to avoid blocking on locking
+	 */
+	if ((docallback) &&
+	    (knet_h->onwire_ver_notify_fn)) {
+		knet_h->onwire_ver_notify_fn(knet_h->onwire_ver_notify_fn_private_data,
+					     knet_h->onwire_min_ver,
+					     knet_h->onwire_max_ver,
+					     onwire_ver);
+	}
 }

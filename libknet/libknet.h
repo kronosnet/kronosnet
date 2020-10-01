@@ -675,7 +675,7 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
  *             knet will automatically adjust this value for
  *             all headers overhead and set the correct data_mtu.
  *             data_mtu can be retrivied with knet_handle_pmtud_get(3)
- *             or applications will receive a pmtud_nofity event
+ *             or applications will receive a pmtud_notify event
  *             if enabled via knet_handle_enable_pmtud_notify(3).
  *
  * @return
@@ -1068,6 +1068,96 @@ struct knet_compress_info {
 
 int knet_get_compress_list(struct knet_compress_info *compress_list,
 			   size_t *compress_list_entries);
+
+/**
+ * knet_handle_enable_onwire_ver_notify
+ *
+ * @brief install a callback to receive onwire changes
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * onwire_ver_notify_fn_private_data
+ *            void pointer to data that can be used to identify
+ *            the callback.
+ *
+ * onwire_ver_notify_fn
+ *            is a callback function that is invoked every time
+ *            an onwire version change is detected.
+ *            The function allows libknet to notify the user
+ *            of onwire version changes.
+ *            onwire_min_ver - minimum onwire version supported
+ *            onwire_max_ver - maximum onwire version supported
+ *            onwire_ver     - currently onwire version in use
+ *            This function MUST NEVER block or add substantial delays.
+ *
+ * NOTE: the callback function will be invoked upon install to
+ *       immediately notify the user of the current configuration.
+ *       During startup, it is safer to use onwire_min_ver and
+ *       onwire_ver on subsequent calls.
+ *
+ * @return
+ * knet_handle_enable_onwire_ver_notify returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_enable_onwire_ver_notify(knet_handle_t knet_h,
+					 void *onwire_ver_notify_fn_private_data,
+					 void (*onwire_ver_notify_fn) (
+						void *private_data,
+						uint8_t onwire_min_ver,
+						uint8_t onwire_max_ver,
+						uint8_t onwire_ver));
+
+/**
+ * knet_handle_get_onwire_ver
+ *
+ * @brief get onwire protocol version information
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * host_id  - see knet_host_add(3)
+ *
+ * onwire_min_ver - minimum onwire version supported by local node.
+ *                  this value is set to 0 for remote nodes.
+ *
+ * onwire_max_ver - maximum onwire version supported by local or
+ *                  remote node.
+ *
+ * onwire_ver     - currently onwire version in use by local or
+ *                  remote node.
+ *
+ * @return
+ * knet_handle_get_onwire_ver returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_get_onwire_ver(knet_handle_t knet_h,
+			       knet_node_id_t host_id,
+			       uint8_t *onwire_min_ver,
+			       uint8_t *onwire_max_ver,
+			       uint8_t *onwire_ver);
+
+/**
+ * knet_handle_set_onwire_ver
+ *
+ * @brief force onwire protocol version
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * onwire_ver - onwire version to use.
+ *              reset to 0 to allow knet to detect
+ *              automatically the highest version.
+ *
+ * @return
+ * knet_handle_get_onwire_ver returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_set_onwire_ver(knet_handle_t knet_h,
+			       uint8_t onwire_ver);
 
 /*
  * host structs/API calls

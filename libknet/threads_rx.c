@@ -419,15 +419,20 @@ static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, stru
 	 */
 	src_host->got_data = 1;
 
-	switch (inbuf->kh_version) {
-		case 1:
-			get_data_header_info_v1(knet_h, inbuf, &header_size, &channel, &seq_num, &decompress_type, &frags, &frag_seq);
-			data = get_data_v1(knet_h, inbuf);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_RX, "processing data onwire version %u not supported", inbuf->kh_version);
-			return;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		get_data_header_info_v1(knet_h, inbuf, &header_size, &channel, &seq_num, &decompress_type, &frags, &frag_seq);
+		data = get_data_v1(knet_h, inbuf);
+	} else {
+		switch (inbuf->kh_version) {
+			case 1:
+				get_data_header_info_v1(knet_h, inbuf, &header_size, &channel, &seq_num, &decompress_type, &frags, &frag_seq);
+				data = get_data_v1(knet_h, inbuf);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_RX, "processing data onwire version %u not supported", inbuf->kh_version);
+				return;
+				break;
+		}
 	}
 
 	if (!_seq_num_lookup(src_host, seq_num, 0, 0)) {
@@ -535,17 +540,44 @@ static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize
 		return -1;
 	}
 
-	if ((inbuf->kh_version > KNET_HEADER_ONWIRE_MAX_VER) &&
-	    (inbuf->kh_version < KNET_HEADER_ONWIRE_MIN_VER)) {
-		if (KNET_HEADER_ONWIRE_MAX_VER > 1 ) {
-			log_debug(knet_h, KNET_SUB_RX,
-				  "Received packet version %u. current node only supports onwire version from %u to %u",
-				  inbuf->kh_version, KNET_HEADER_ONWIRE_MIN_VER, KNET_HEADER_ONWIRE_MAX_VER);
-		} else {
-			log_debug(knet_h, KNET_SUB_RX,
-				  "Received packet version %u. current node only supports %u",
-				  inbuf->kh_version, KNET_HEADER_ONWIRE_MAX_VER);
-		}
+	/*
+	 * old versions of knet did not advertise max_ver and max_ver is set to 0.
+	 */
+	if (!inbuf->kh_max_ver) {
+		inbuf->kh_max_ver = 1;
+	}
+
+	/*
+	 * if the node joining max version is lower than the min version
+	 * then we reject the node
+	 */
+	if (inbuf->kh_max_ver < knet_h->onwire_min_ver) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Received packet version %u from node %u, lower than currently minimal supported onwire version. Rejecting.", inbuf->kh_version, inbuf->kh_node);
+		return -1;
+	}
+
+	/*
+	 * if the node joining with version higher than our max version
+	 * then we reject the node
+	 */
+	if (inbuf->kh_version > knet_h->onwire_max_ver) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Received packet version %u from node %u, higher than currently maximum supported onwire version. Rejecting.", inbuf->kh_version, inbuf->kh_node);
+		return -1;
+	}
+
+	/*
+	 * if the node joining with version lower than the current in use version
+	 * then we reject the node
+	 *
+	 * NOTE: should we make this configurable and support downgrades?
+	 */
+	if ((!knet_h->onwire_force_ver) &&
+	    (inbuf->kh_version < knet_h->onwire_ver) &&
+	    (inbuf->kh_max_ver > inbuf->kh_version)) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Received packet version %u from node %u, lower than currently in use onwire version. Rejecting.", inbuf->kh_version, inbuf->kh_node);
 		return -1;
 	}
 	return 0;
@@ -594,6 +626,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
+	inbuf->kh_node = ntohs(inbuf->kh_node);
+
 	if (_packet_checks(knet_h, inbuf, len) < 0) {
 		return;
 	}
@@ -601,7 +635,6 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	/*
 	 * determine source host
 	 */
-	inbuf->kh_node = ntohs(inbuf->kh_node);
 	src_host = knet_h->host_index[inbuf->kh_node];
 	if (src_host == NULL) {  /* host not found */
 		log_debug(knet_h, KNET_SUB_RX, "Unable to find source host for this packet");
@@ -612,14 +645,19 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	 * deteremine source link
 	 */
 	if (inbuf->kh_type == KNET_HEADER_TYPE_PING) {
-		switch (inbuf->kh_version) {
-			case 1:
-				src_link = get_link_from_pong_v1(knet_h, src_host, inbuf);
-				break;
-			default:
-				log_warn(knet_h, KNET_SUB_RX, "Parsing ping onwire version %u not supported", inbuf->kh_version);
-				return;
-				break;
+		_handle_onwire_version(knet_h, src_host, inbuf);
+		if (knet_h->onwire_ver_remap) {
+			src_link = get_link_from_pong_v1(knet_h, src_host, inbuf);
+		} else {
+			switch (inbuf->kh_version) {
+				case 1:
+					src_link = get_link_from_pong_v1(knet_h, src_host, inbuf);
+					break;
+				default:
+					log_warn(knet_h, KNET_SUB_RX, "Parsing ping onwire version %u not supported", inbuf->kh_version);
+					return;
+					break;
+			}
 		}
 		_handle_dynip(knet_h, src_host, src_link, sockfd, msg);
 	} else { /* all other packets */

@@ -145,14 +145,18 @@ restart:
 	 */
 	data_len = app_mtu_len + knet_h->sec_hash_size + knet_h->sec_salt_size + KNET_HEADER_ALL_SIZE;
 
-	switch (onwire_ver) {
-		case 1:
-			prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD onwire version %u not supported", onwire_ver);
-			return -1;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len);
+	} else {
+		switch (onwire_ver) {
+			case 1:
+				prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD onwire version %u not supported", onwire_ver);
+				return -1;
+				break;
+		}
 	}
 
 	if (knet_h->crypto_in_use_config) {
@@ -658,14 +662,18 @@ static void send_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, s
 	unsigned char *outbuf = (unsigned char *)inbuf;
 	ssize_t len, outlen;
 
-	switch (inbuf->kh_version) {
-		case 1:
-			prep_pmtud_reply_v1(knet_h, inbuf, &outlen);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
-			return;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		prep_pmtud_reply_v1(knet_h, inbuf, &outlen);
+	} else {
+		switch (inbuf->kh_version) {
+			case 1:
+				prep_pmtud_reply_v1(knet_h, inbuf, &outlen);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
+				return;
+				break;
+		}
 	}
 
 	if (knet_h->crypto_in_use_config) {
@@ -751,14 +759,18 @@ void process_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, struc
 		return;
 	}
 
-	switch (inbuf->kh_version) {
-		case 1:
-			process_pmtud_reply_v1(knet_h, src_link, inbuf);
-			break;
-		default:
-			log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
-			goto out_unlock;
-			break;
+	if (knet_h->onwire_ver_remap) {
+		process_pmtud_reply_v1(knet_h, src_link, inbuf);
+	} else {
+		switch (inbuf->kh_version) {
+			case 1:
+				process_pmtud_reply_v1(knet_h, src_link, inbuf);
+				break;
+			default:
+				log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD reply onwire version %u not supported", inbuf->kh_version);
+				goto out_unlock;
+				break;
+		}
 	}
 
 	pthread_cond_signal(&knet_h->pmtud_cond);
