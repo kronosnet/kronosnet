@@ -37,7 +37,8 @@ int_checks		= \
 			  int_timediff_test
 
 fun_checks		= \
-			  fun_config_crypto_test
+			  fun_config_crypto_test \
+			  fun_onwire_upgrade_test
 
 # checks below need to be executed manually
 # or with a specifi environment
@@ -102,7 +103,12 @@ knet_bench_test_SOURCES	= knet_bench.c \
 
 fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
 				test-common.c \
-				../onwire.c
+				../onwire.c \
+				../logging.c \
+				../threads_common.c
 
 fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 				 test-common.c
+
+fun_onwire_upgrade_test_SOURCES = fun_onwire_upgrade.c \
+				  test-common.c

@@ -125,3 +125,144 @@ size_t calc_min_mtu(knet_handle_t knet_h)
 {
 	return calc_max_data_outlen(knet_h, KNET_PMTUD_MIN_MTU_V4 - (KNET_PMTUD_OVERHEAD_V6 + KNET_PMTUD_SCTP_OVERHEAD));
 }
+
+int knet_handle_enable_onwire_ver_notify(knet_handle_t knet_h,
+					 void *onwire_ver_notify_fn_private_data,
+					 void (*onwire_ver_notify_fn) (
+						void *private_data,
+						uint8_t onwire_min_ver,
+						uint8_t onwire_max_ver,
+						uint8_t onwire_ver))
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->onwire_ver_notify_fn_private_data = onwire_ver_notify_fn_private_data;
+	knet_h->onwire_ver_notify_fn = onwire_ver_notify_fn;
+	if (knet_h->onwire_ver_notify_fn) {
+		log_debug(knet_h, KNET_SUB_HANDLE, "onwire_ver_notify_fn enabled");
+		/*
+		 * generate an artificial call to notify the app of what´s curently
+		 * happening
+		 */
+		knet_h->onwire_ver_notify_fn(knet_h->onwire_ver_notify_fn_private_data,
+					     knet_h->onwire_min_ver,
+					     knet_h->onwire_max_ver,
+					     knet_h->onwire_ver);
+	} else {
+		log_debug(knet_h, KNET_SUB_HANDLE, "onwire_ver_notify_fn disabled");
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	return 0;
+}
+
+int knet_handle_get_onwire_ver(knet_handle_t knet_h,
+			       knet_node_id_t host_id,
+			       uint8_t *onwire_min_ver,
+			       uint8_t *onwire_max_ver,
+			       uint8_t *onwire_ver)
+{
+	int err = 0, savederrno = 0;
+	struct knet_host *host;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!onwire_min_ver) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!onwire_max_ver) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!onwire_ver) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * we need a write lock here so that gathering host onwire info
+	 * is not racy (updated by thread_rx) and we can save a mutex_lock
+	 * to gather local node info.
+	 */
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	if (host_id == knet_h->host_id) {
+		*onwire_min_ver = knet_h->onwire_min_ver;
+		*onwire_max_ver = knet_h->onwire_max_ver;
+		*onwire_ver = knet_h->onwire_ver;
+	} else {
+		host = knet_h->host_index[host_id];
+		if (!host) {
+			err = -1;
+			savederrno = EINVAL;
+			log_err(knet_h, KNET_SUB_HANDLE, "Unable to find host %u: %s", host_id, strerror(savederrno));
+			goto out_unlock;
+		}
+		*onwire_min_ver = 0;
+		*onwire_max_ver = host->onwire_max_ver;
+		*onwire_ver = host->onwire_ver;
+	}
+
+out_unlock:
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = savederrno;
+	return err;
+}
+
+int knet_handle_set_onwire_ver(knet_handle_t knet_h,
+			       uint8_t onwire_ver)
+{
+	int savederrno = 0;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((onwire_ver) &&
+	    ((onwire_ver < knet_h->onwire_min_ver) ||
+	     (onwire_ver > knet_h->onwire_max_ver))) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->onwire_force_ver = onwire_ver;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	return 0;
+}

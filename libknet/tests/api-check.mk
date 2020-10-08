@@ -78,7 +78,10 @@ api_checks		= \
 			  api_knet_link_clear_acl_test \
 			  api_knet_handle_crypto_set_config_test \
 			  api_knet_handle_crypto_use_config_test \
-			  api_knet_handle_crypto_rx_clear_traffic_test
+			  api_knet_handle_crypto_rx_clear_traffic_test \
+			  api_knet_handle_enable_onwire_ver_notify_test \
+			  api_knet_handle_get_onwire_ver_test \
+			  api_knet_handle_set_onwire_ver_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -296,3 +299,12 @@ api_knet_handle_crypto_use_config_test_SOURCES = api_knet_handle_crypto_use_conf
 
 api_knet_handle_crypto_rx_clear_traffic_test_SOURCES = api_knet_handle_crypto_rx_clear_traffic.c \
 						       test-common.c
+
+api_knet_handle_enable_onwire_ver_notify_test_SOURCES = api_knet_handle_enable_onwire_ver_notify.c \
+							test-common.c
+
+api_knet_handle_get_onwire_ver_test_SOURCES = api_knet_handle_get_onwire_ver.c \
+					      test-common.c
+
+api_knet_handle_set_onwire_ver_test_SOURCES = api_knet_handle_set_onwire_ver.c \
+					      test-common.c

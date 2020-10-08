@@ -12,4 +12,7 @@
 
 void *_handle_pmtud_link_thread(void *data);
 
+void process_pmtud(knet_handle_t knet_h, struct knet_link *src_link, struct knet_header *inbuf);
+void process_pmtud_reply(knet_handle_t knet_h, struct knet_link *src_link, struct knet_header *inbuf);
+
 #endif
