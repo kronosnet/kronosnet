@@ -511,3 +511,70 @@
   fun:start_thread
   fun:clone
 }
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
