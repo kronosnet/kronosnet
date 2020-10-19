@@ -373,3 +373,208 @@
   fun:test
   fun:main
 }
+{
+  nss internal leak (3.55) non recurring (spotted on f34)
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  fun:realpath@@GLIBC_2.3
+  obj:*
+  obj:*
+  obj:*
+  obj:/usr/lib64/libnss3.so
+  fun:SECMOD_LoadModule
+  fun:SECMOD_LoadModule
+  obj:/usr/lib64/libnss3.so
+  fun:NSS_NoDB_Init
+  fun:init_nss
+  fun:nsscrypto_init
+  fun:crypto_init
+  fun:_knet_handle_crypto_set_config
+}
+{
+  openssl uncoditional jump (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+}
+{
+  openssl uncoditional jump (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+}
+{
+  openssl uncoditional jump (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  openssl uncoditional jump (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl.isra.0
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  ubuntu-devel new toolchain is not stable yet (spotted on Ubuntu devel 10092020)
+  Memcheck:Param
+  socketcall.sendto(msg)
+  fun:sendto
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  ubuntu-devel new toolchain is not stable yet (spotted on Ubuntu devel 10092020)
+  Memcheck:Param
+  socketcall.sendto(msg)
+  fun:sendto
+  fun:send_pong
+  fun:process_ping
+  fun:_parse_recv_from_links
+  fun:_handle_recv_from_links
+  fun:_handle_recv_from_links_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  ubuntu-devel new toolchain is not stable yet (spotted on Ubuntu devel 10092020)
+  Memcheck:Param
+  socketcall.sendto(msg)
+  fun:sendto
+  fun:send_pmtud_reply
+  fun:process_pmtud
+  fun:_parse_recv_from_links
+  fun:_handle_recv_from_links
+  fun:_handle_recv_from_links_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  ubuntu-devel new toolchain is not stable yet (spotted on Ubuntu devel 10092020)
+  Memcheck:Param
+  sendmsg(msg.msg_iov[0])
+  fun:__libc_sendmsg
+  fun:sendmsg
+  fun:_sendmmsg
+  fun:_dispatch_to_links
+  fun:_prep_and_send_msgs
+  fun:_parse_recv_from_sock
+  fun:_handle_send_to_links
+  fun:_handle_send_to_links_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_instantiate
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_get0_public
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  openssl uncoditional jump (clang) (spotted on Ubuntu devel 10092020)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+  fun:RAND_DRBG_generate
+  fun:RAND_DRBG_bytes
+  fun:encrypt_openssl
+  fun:opensslcrypto_encrypt_and_signv
+  fun:opensslcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}

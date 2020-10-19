@@ -37,8 +37,6 @@
 
 #define KNET_EPOLL_MAX_EVENTS KNET_DATAFD_MAX + 1
 
-#define KNET_INTERNAL_DATA_CHANNEL KNET_DATAFD_MAX
-
 /*
  * Size of threads stack. Value is choosen by experimenting, how much is needed
  * to sucesfully finish test suite, and at the time of writing patch it was
@@ -172,7 +170,6 @@ struct knet_handle {
 	struct knet_sock sockfd[KNET_DATAFD_MAX + 1];
 	int logfd;
 	uint8_t log_levels[KNET_MAX_SUBSYSTEMS];
-	int hostsockfd[2];
 	int dstsockfd[2];
 	int send_to_links_epollfd;
 	int recv_from_links_epollfd;

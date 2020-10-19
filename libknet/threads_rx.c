@@ -241,13 +241,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	struct knet_header *inbuf = msg->msg_hdr.msg_iov->iov_base;
 	unsigned char *outbuf = (unsigned char *)msg->msg_hdr.msg_iov->iov_base;
 	ssize_t len = msg->msg_len;
-	struct knet_hostinfo *knet_hostinfo;
 	struct iovec iov_out[1];
 	int8_t channel;
-	struct sockaddr_storage pckt_src;
 	seq_num_t recv_seq_num;
 	int wipe_bufs = 0;
-	int try_decrypt = 0, decrypted = 0, i;
+	int try_decrypt = 0, decrypted = 0, i, found_link = 0;
 
 	for (i = 1; i <= KNET_MAX_CRYPTO_INSTANCES; i++) {
 		if (knet_h->crypto_instance[i]) {
@@ -303,22 +301,16 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
-	src_link = src_host->link +
-		(inbuf->khp_ping_link % KNET_MAX_LINK);
 	if ((inbuf->kh_type & KNET_HEADER_TYPE_PMSK) != 0) {
+		/* be aware this works only for PING / PONG and PMTUd packets! */
+		src_link = src_host->link +
+			(inbuf->khp_ping_link % KNET_MAX_LINK);
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
-			/*
-			 * cpyaddrport will only copy address and port of the incoming
-			 * packet and strip extra bits such as flow and scopeid
-			 */
-			cpyaddrport(&pckt_src, msg->msg_hdr.msg_name);
-
-			if (cmpaddr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
-				    &pckt_src, sockaddr_len(&pckt_src)) != 0) {
+			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
 					  src_host->host_id, src_link->link_id);
-				memmove(&src_link->dst_addr, &pckt_src, sizeof(struct sockaddr_storage));
-				if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(msg->msg_hdr.msg_name),
+				memmove(&src_link->dst_addr, msg->msg_hdr.msg_name, sizeof(struct sockaddr_storage));
+				if (knet_addrtostr(&src_link->dst_addr, sockaddr_len(&src_link->dst_addr),
 						src_link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 						src_link->status.dst_port, KNET_MAX_PORT_LEN) != 0) {
 					log_debug(knet_h, KNET_SUB_RX, "Unable to resolve ???");
@@ -337,6 +329,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			 */
 			transport_link_dyn_connect(knet_h, sockfd, src_link);
 		}
+	} else { /* data packet */
+		for (i = 0; i < KNET_MAX_LINK; i++) {
+			src_link = &src_host->link[i];
+			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) == 0) {
+				found_link = 1;
+				break;
+			}
+		}
+		if (!found_link) {
+			log_debug(knet_h, KNET_SUB_RX, "Unable to determine source link for data packet. Discarding packet.");
+			return;
+		}
 	}
 
 	stats_err = pthread_mutex_lock(&src_link->link_stats_mutex);
@@ -347,19 +351,43 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	}
 
 	switch (inbuf->kh_type) {
-	case KNET_HEADER_TYPE_HOST_INFO:
 	case KNET_HEADER_TYPE_DATA:
+
+		/* data stats at the top for consistency with TX */
+		src_link->status.stats.rx_data_packets++;
+		src_link->status.stats.rx_data_bytes += len;
+
+		if (decrypted) {
+			stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
+			if (stats_err < 0) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
+				log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
+				return;
+			}
+			/* Only update the crypto overhead for data packets. Mainly to be
+			   consistent with TX */
+			if (decrypt_time < knet_h->stats.rx_crypt_time_min) {
+				knet_h->stats.rx_crypt_time_min = decrypt_time;
+			}
+			if (decrypt_time > knet_h->stats.rx_crypt_time_max) {
+				knet_h->stats.rx_crypt_time_max = decrypt_time;
+			}
+			knet_h->stats.rx_crypt_time_ave =
+				(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
+				 decrypt_time) / (knet_h->stats.rx_crypt_packets+1);
+			knet_h->stats.rx_crypt_packets++;
+			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+		}
+
 		if (!src_host->status.reachable) {
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
 			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
 			return;
 		}
+
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
 		channel = inbuf->khp_data_channel;
 		src_host->got_data = 1;
-
-		src_link->status.stats.rx_data_packets++;
-		src_link->status.stats.rx_data_bytes += len;
 
 		if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
 			pthread_mutex_unlock(&src_link->link_stats_mutex);
@@ -435,136 +463,91 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 		}
 
-		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
-			if (decrypted) {
-				stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
-				if (stats_err < 0) {
-					pthread_mutex_unlock(&src_link->link_stats_mutex);
-					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
-					return;
-				}
-				/* Only update the crypto overhead for data packets. Mainly to be
-				   consistent with TX */
-				if (decrypt_time < knet_h->stats.rx_crypt_time_min) {
-					knet_h->stats.rx_crypt_time_min = decrypt_time;
-				}
-				if (decrypt_time > knet_h->stats.rx_crypt_time_max) {
-					knet_h->stats.rx_crypt_time_max = decrypt_time;
-				}
-				knet_h->stats.rx_crypt_time_ave =
-					(knet_h->stats.rx_crypt_time_ave * knet_h->stats.rx_crypt_packets +
-					 decrypt_time) / (knet_h->stats.rx_crypt_packets+1);
-				knet_h->stats.rx_crypt_packets++;
-				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+		if (knet_h->enabled != 1) /* data forward is disabled */
+			break;
+
+		if (knet_h->dst_host_filter_fn) {
+			size_t host_idx;
+			int found = 0;
+
+			bcast = knet_h->dst_host_filter_fn(
+					knet_h->dst_host_filter_fn_private_data,
+					(const unsigned char *)inbuf->khp_data_userdata,
+					len - KNET_HEADER_DATA_SIZE,
+					KNET_NOTIFY_RX,
+					knet_h->host_id,
+					inbuf->kh_node,
+					&channel,
+					dst_host_ids,
+					&dst_host_ids_entries);
+			if (bcast < 0) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
+				log_debug(knet_h, KNET_SUB_RX, "Error from dst_host_filter_fn: %d", bcast);
+				return;
 			}
 
-			if (knet_h->enabled != 1) /* data forward is disabled */
-				break;
+			if ((!bcast) && (!dst_host_ids_entries)) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
+				log_debug(knet_h, KNET_SUB_RX, "Message is unicast but no dst_host_ids_entries");
+				return;
+			}
 
-			if (knet_h->dst_host_filter_fn) {
-				size_t host_idx;
-				int found = 0;
-
-				bcast = knet_h->dst_host_filter_fn(
-						knet_h->dst_host_filter_fn_private_data,
-						(const unsigned char *)inbuf->khp_data_userdata,
-						len - KNET_HEADER_DATA_SIZE,
-						KNET_NOTIFY_RX,
-						knet_h->host_id,
-						inbuf->kh_node,
-						&channel,
-						dst_host_ids,
-						&dst_host_ids_entries);
-				if (bcast < 0) {
+			/* check if we are dst for this packet */
+			if (!bcast) {
+				if (dst_host_ids_entries > KNET_MAX_HOST) {
 					pthread_mutex_unlock(&src_link->link_stats_mutex);
-					log_debug(knet_h, KNET_SUB_RX, "Error from dst_host_filter_fn: %d", bcast);
+					log_debug(knet_h, KNET_SUB_RX, "dst_host_filter_fn returned too many destinations");
 					return;
 				}
-
-				if ((!bcast) && (!dst_host_ids_entries)) {
-					pthread_mutex_unlock(&src_link->link_stats_mutex);
-					log_debug(knet_h, KNET_SUB_RX, "Message is unicast but no dst_host_ids_entries");
-					return;
+				for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
+					if (dst_host_ids[host_idx] == knet_h->host_id) {
+						found = 1;
+						break;
+					}
 				}
-
-				/* check if we are dst for this packet */
-				if (!bcast) {
-					if (dst_host_ids_entries > KNET_MAX_HOST) {
-						pthread_mutex_unlock(&src_link->link_stats_mutex);
-						log_debug(knet_h, KNET_SUB_RX, "dst_host_filter_fn returned too many destinations");
-						return;
-					}
-					for (host_idx = 0; host_idx < dst_host_ids_entries; host_idx++) {
-						if (dst_host_ids[host_idx] == knet_h->host_id) {
-							found = 1;
-							break;
-						}
-					}
-					if (!found) {
-						pthread_mutex_unlock(&src_link->link_stats_mutex);
-						log_debug(knet_h, KNET_SUB_RX, "Packet is not for us");
-						return;
-					}
+				if (!found) {
+					pthread_mutex_unlock(&src_link->link_stats_mutex);
+					log_debug(knet_h, KNET_SUB_RX, "Packet is not for us");
+					return;
 				}
 			}
 		}
 
-		if (inbuf->kh_type == KNET_HEADER_TYPE_DATA) {
-			if (!knet_h->sockfd[channel].in_use) {
-				pthread_mutex_unlock(&src_link->link_stats_mutex);
-				log_debug(knet_h, KNET_SUB_RX,
-					  "received packet for channel %d but there is no local sock connected",
-					  channel);
-				return;
-			}
+		if (!knet_h->sockfd[channel].in_use) {
+			pthread_mutex_unlock(&src_link->link_stats_mutex);
+			log_debug(knet_h, KNET_SUB_RX,
+				  "received packet for channel %d but there is no local sock connected",
+				  channel);
+			return;
+		}
 
-			outlen = 0;
-			memset(iov_out, 0, sizeof(iov_out));
+		outlen = 0;
+		memset(iov_out, 0, sizeof(iov_out));
 
 retry:
-			iov_out[0].iov_base = (void *) inbuf->khp_data_userdata + outlen;
-			iov_out[0].iov_len = len - (outlen + KNET_HEADER_DATA_SIZE);
+		iov_out[0].iov_base = (void *) inbuf->khp_data_userdata + outlen;
+		iov_out[0].iov_len = len - (outlen + KNET_HEADER_DATA_SIZE);
 
-			outlen = writev(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, 1);
-			if ((outlen > 0) && (outlen < (ssize_t)iov_out[0].iov_len)) {
-				log_debug(knet_h, KNET_SUB_RX,
-					  "Unable to send all data to the application in one go. Expected: %zu Sent: %zd\n",
-					  iov_out[0].iov_len, outlen);
-				goto retry;
-			}
+		outlen = writev(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, 1);
+		if ((outlen > 0) && (outlen < (ssize_t)iov_out[0].iov_len)) {
+			log_debug(knet_h, KNET_SUB_RX,
+				  "Unable to send all data to the application in one go. Expected: %zu Sent: %zd\n",
+				  iov_out[0].iov_len, outlen);
+			goto retry;
+		}
 
-			if (outlen <= 0) {
-				knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
-						       knet_h->sockfd[channel].sockfd[0],
-						       channel,
-						       KNET_NOTIFY_RX,
-						       outlen,
-						       errno);
-				pthread_mutex_unlock(&src_link->link_stats_mutex);
-				return;
-			}
-			if ((size_t)outlen == iov_out[0].iov_len) {
-				_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
-			}
-		} else { /* HOSTINFO */
-			knet_hostinfo = (struct knet_hostinfo *)inbuf->khp_data_userdata;
-			if (knet_hostinfo->khi_bcast == KNET_HOSTINFO_UCAST) {
-				knet_hostinfo->khi_dst_node_id = ntohs(knet_hostinfo->khi_dst_node_id);
-			}
-			if (!_seq_num_lookup(src_host, inbuf->khp_data_seq_num, 0, 0)) {
-				pthread_mutex_unlock(&src_link->link_stats_mutex);
-				return;
-			}
+		if (outlen <= 0) {
+			knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
+					       knet_h->sockfd[channel].sockfd[0],
+					       channel,
+					       KNET_NOTIFY_RX,
+					       outlen,
+					       errno);
+			pthread_mutex_unlock(&src_link->link_stats_mutex);
+			return;
+		}
+		if ((size_t)outlen == iov_out[0].iov_len) {
 			_seq_num_set(src_host, inbuf->khp_data_seq_num, 0);
-			switch(knet_hostinfo->khi_type) {
-				case KNET_HOSTINFO_TYPE_LINK_UP_DOWN:
-					break;
-				case KNET_HOSTINFO_TYPE_LINK_TABLE:
-					break;
-				default:
-					log_warn(knet_h, KNET_SUB_RX, "Receiving unknown host info message from host %u", src_host->host_id);
-					break;
-			}
 		}
 		break;
 	case KNET_HEADER_TYPE_PING:
