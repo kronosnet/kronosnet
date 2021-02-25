@@ -610,6 +610,8 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 {
 	uint8_t i, x, j;
 	struct sockaddr_storage src, dst;
+	int offset = 0;
+	int res;
 
 	for (i = 1; i <= numnodes; i++) {
 		for (j = 1; j <= numnodes; j++) {
@@ -629,40 +631,24 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 			}
 
 			for (x = 0; x < numlinks; x++) {
-				if (family == AF_INET6) {
-					if (make_local_sockaddr6(&src, i + x) < 0) {
+				res = -1;
+				offset = 0;
+				while (i + x + offset++ < 65535 && res != 0) {
+					if (_make_local_sockaddr(&src, i + x + offset, family) < 0) {
 						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
 						knet_handle_stop_nodes(knet_h, numnodes);
 						exit(FAIL);
 					}
 
-					if (make_local_sockaddr6(&dst, j + x) < 0) {
+					if (_make_local_sockaddr(&dst, j + x + offset, family) < 0) {
 						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
-						knet_handle_stop_nodes(knet_h, numnodes);
-						exit(FAIL);
-					}
-				} else {
-					if (make_local_sockaddr(&src, i + x) < 0) {
-						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
 						knet_handle_stop_nodes(knet_h, numnodes);
 						exit(FAIL);
 					}
 
-					if (make_local_sockaddr(&dst, j + x) < 0) {
-						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
-						knet_handle_stop_nodes(knet_h, numnodes);
-						exit(FAIL);
-					}
+					res = knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0);
 				}
-
 				printf("joining node %u with node %u via link %u src offset: %u dst offset: %u\n", i, j, x, i+x, j+x);
-
-				if (knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0) < 0) {
-					printf("unable to configure link: %s\n", strerror(errno));
-					knet_handle_stop_nodes(knet_h, numnodes);
-					exit(FAIL);
-				}
-
 				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
 					printf("unable to enable link: %s\n", strerror(errno));
 					knet_handle_stop_nodes(knet_h, numnodes);
