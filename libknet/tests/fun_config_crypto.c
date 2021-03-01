@@ -30,7 +30,7 @@ static void test(const char *model)
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int i,x,j;
-	int seconds = 5;
+	int seconds = 10;
 
 	if (is_memcheck() || is_helgrind()) {
 		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");

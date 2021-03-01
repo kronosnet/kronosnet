@@ -52,7 +52,7 @@ static void test(void)
 	knet_handle_t knet_h[TESTNODES + 1];
 	int logfds[2];
 	int i,j;
-	int seconds = 5;
+	int seconds = 10;
 
 	if (is_memcheck() || is_helgrind()) {
 		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
