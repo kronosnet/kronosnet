@@ -508,28 +508,6 @@ void test_sleep(knet_handle_t knet_h, int seconds)
 	sleep(seconds);
 }
 
-int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std)
-{
-	int i = 0;
-
-	if (is_memcheck() || is_helgrind()) {
-		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
-		seconds = seconds * 16;
-	}
-
-	while (i < seconds) {
-		flush_logs(logfd, std);
-		if (knet_h->host_index[host_id]->status.reachable == 1) {
-			printf("Waiting for host to settle\n");
-			test_sleep(knet_h, 1);
-			return 0;
-		}
-		printf("waiting host %u to be reachable for %d more seconds\n", host_id, seconds - i);
-		sleep(1);
-		i++;
-	}
-	return -1;
-}
 
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std)
 {
@@ -659,21 +637,141 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 	}
 
 	for (i = 1; i <= numnodes; i++) {
-		for (j = 1; j <= numnodes; j++) {
-			/*
-			 * don´t wait for self
-			 */
-			if (j == i) {
-				continue;
-			}
+		wait_for_nodes_state(knet_h[i], numnodes, 1, 600, knet_h[1]->logfd, stdout);
+	}
+	return;
+}
 
-			if (wait_for_host(knet_h[i], j, (10 * numnodes) , knet_h[i]->logfd, stdout) < 0) {
-					printf("Cannot connect node %u to node %u: %s\n", i, j, strerror(errno));
-					knet_handle_stop_nodes(knet_h, numnodes);
-					exit(FAIL);
-			}
+
+static int target=0;
+static pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t wait_cond = PTHREAD_COND_INITIALIZER;
+
+static int count_nodes(knet_handle_t knet_h)
+{
+	int nodes = 0;
+	int i;
+
+	for (i=0; i< KNET_MAX_HOST; i++) {
+		if (knet_h->host_index[i] && knet_h->host_index[i]->status.reachable == 1) {
+			nodes++;
 		}
 	}
+	return nodes;
+}
 
-	return;
+static void nodes_notify_callback(void *private_data,
+				  knet_node_id_t host_id,
+				  uint8_t reachable, uint8_t remote, uint8_t external)
+{
+	knet_handle_t knet_h = (knet_handle_t) private_data;
+	int nodes;
+
+	nodes = count_nodes(knet_h);
+
+	if (nodes == target) {
+		pthread_cond_signal(&wait_cond);
+	}
+}
+
+static void host_notify_callback(void *private_data,
+				 knet_node_id_t host_id,
+				 uint8_t reachable, uint8_t remote, uint8_t external)
+{
+	knet_handle_t knet_h = (knet_handle_t) private_data;
+
+	if (knet_h->host_index[host_id]->status.reachable == 1) {
+		pthread_cond_signal(&wait_cond);
+	}
+}
+
+/* Wait for a cluster of 'numnodes' to come up/go down */
+int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
+			 uint8_t state, uint32_t timeout,
+			 int logfd, FILE *std)
+{
+	struct timespec ts;
+	int res;
+
+	if (state) {
+		target = numnodes-1; /* exclude us */
+	} else {
+		target = 0; /* Wait for all to go down */
+	}
+
+	/* Set this before checking existing status or there's a race condition */
+	knet_host_enable_status_change_notify(knet_h,
+					      (void *)(long)knet_h,
+					      nodes_notify_callback);
+
+	/* Check we haven't already got all the nodes in the correct state */
+	if (count_nodes(knet_h) == target) {
+		fprintf(stderr, "target already reached\n");
+		knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
+		flush_logs(logfd, std);
+		return 0;
+	}
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+	ts.tv_sec += timeout;
+	if (pthread_mutex_lock(&wait_mutex)) {
+		fprintf(stderr, "unable to get nodewait mutex: %s\n", strerror(errno));
+		return -1;
+	}
+	res = pthread_cond_timedwait(&wait_cond, &wait_mutex, &ts);
+	if (res == -1 && errno == ETIMEDOUT) {
+		fprintf(stderr, "Timed-out\n");
+	}
+	pthread_mutex_unlock(&wait_mutex);
+
+	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
+	flush_logs(logfd, std);
+	return res;
+}
+
+/* Wait for a single node to come up */
+int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std)
+{
+	int res;
+	struct timespec ts;
+
+	if (is_memcheck() || is_helgrind()) {
+		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
+		seconds = seconds * 16;
+	}
+
+	/* Set this before checking existing status or there's a race condition */
+	knet_host_enable_status_change_notify(knet_h,
+					      (void *)(long)knet_h,
+					      host_notify_callback);
+
+	/* Check it's not already reachable */
+	if (knet_h->host_index[host_id]->status.reachable == 1) {
+		knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
+		flush_logs(logfd, std);
+		return 0;
+	}
+
+	clock_gettime(CLOCK_REALTIME, &ts);
+	ts.tv_sec += seconds;
+	if (pthread_mutex_lock(&wait_mutex)) {
+		fprintf(stderr, "unable to get nodewait mutex: %s\n", strerror(errno));
+		return -1;
+	}
+	res = pthread_cond_timedwait(&wait_cond, &wait_mutex, &ts);
+	if (res == -1 && errno == ETIMEDOUT) {
+		fprintf(stderr, "Timed-out\n");
+		knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
+		pthread_mutex_unlock(&wait_mutex);
+		flush_logs(logfd, std);
+		return -1;
+	}
+	pthread_mutex_unlock(&wait_mutex);
+
+	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
+
+	/* Still wait for it to settle */
+	flush_logs(logfd, std);
+	test_sleep(knet_h, 1);
+	return 0;
 }
