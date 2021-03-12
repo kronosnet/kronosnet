@@ -87,16 +87,7 @@ static void test(void)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		for (j = 1; j <= TESTNODES; j++) {
-			if (j == i) {
-				continue;
-			}
-			if (knet_h[i]->host_index[j]->status.reachable != 1) {
-				knet_handle_stop_nodes(knet_h, TESTNODES);
-				flush_logs(logfds[0], stdout);
-				close_logpipes(logfds);
-				exit(FAIL);
-			}
-		flush_logs(logfds[0], stdout);
+			wait_for_nodes_state(knet_h[j], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 		}
 	}
 
@@ -120,15 +111,7 @@ static void test(void)
 	for (i = 1; i <= TESTNODES; i++) {
 		printf("node %u, onwire: %u min: %u max: %u\n", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
 		for (j = 1; j <= TESTNODES; j++) {
-			if (j == i) {
-				continue;
-			}
-			if ((knet_h[i]->host_index[j]->status.reachable != 1) || (knet_h[i]->onwire_ver != knet_h[1]->onwire_max_ver)) {
-				knet_handle_stop_nodes(knet_h, TESTNODES);
-				flush_logs(logfds[0], stdout);
-				close_logpipes(logfds);
-				exit(FAIL);
-			}
+			wait_for_nodes_state(knet_h[j], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 		}
 	}
 
@@ -156,15 +139,7 @@ static void test(void)
 	for (i = 1; i <= TESTNODES; i++) {
 		printf("node %u, onwire: %u min: %u max: %u\n", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
 		for (j = 1; j <= TESTNODES; j++) {
-			if (j == i) {
-				continue;
-			}
-			if ((knet_h[i]->host_index[j]->status.reachable != 1) || (knet_h[i]->onwire_ver == knet_h[1]->onwire_max_ver)) {
-				knet_handle_stop_nodes(knet_h, TESTNODES);
-				flush_logs(logfds[0], stdout);
-				close_logpipes(logfds);
-				exit(FAIL);
-			}
+			wait_for_nodes_state(knet_h[j], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 		}
 	}
 
