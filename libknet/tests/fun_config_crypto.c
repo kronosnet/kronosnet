@@ -29,7 +29,7 @@ static void test(const char *model)
 	knet_handle_t knet_h[TESTNODES + 1];
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
-	int i,x,j;
+	int i,x;
 	int seconds = 10;
 
 	if (is_memcheck() || is_helgrind()) {
@@ -115,23 +115,8 @@ static void test(const char *model)
 			close_logpipes(logfds);
 			exit(FAIL);
 		}
-		for (x = 0; x < seconds; x++){
-			flush_logs(logfds[0], stdout);
-			sleep(1);
-		}
 		for (x = 1; x <= TESTNODES; x++) {
-			for (j = 1; j <= TESTNODES; j++) {
-				if (j == x) {
-					continue;
-				}
-				if (knet_h[x]->host_index[j]->status.reachable != 1) {
-					printf("knet failed to switch config for host %d\n", x);
-					knet_handle_stop_nodes(knet_h, TESTNODES);
-					flush_logs(logfds[0], stdout);
-					close_logpipes(logfds);
-					exit(FAIL);
-				}
-			}
+			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 		}
 	}
 
@@ -147,24 +132,7 @@ static void test(const char *model)
 			close_logpipes(logfds);
 			exit(FAIL);
 		}
-		for (x = 0; x < seconds; x++){
-			flush_logs(logfds[0], stdout);
-			sleep(1);
-		}
-		for (x = 1; x <= TESTNODES; x++) {
-			for (j = 1; j <= TESTNODES; j++) {
-				if (j == x) {
-					continue;
-				}
-				if (knet_h[x]->host_index[j]->status.reachable != 1) {
-					printf("knet failed to switch config for host %d\n", x);
-					knet_handle_stop_nodes(knet_h, TESTNODES);
-					flush_logs(logfds[0], stdout);
-					close_logpipes(logfds);
-					exit(FAIL);
-				}
-			}
-		}
+		wait_for_nodes_state(knet_h[i], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 	}
 
 	printf("Testing disable crypto config and allow clear traffic\n");
@@ -232,18 +200,7 @@ static void test(const char *model)
 			sleep(1);
 		}
 		for (x = 1; x <= TESTNODES; x++) {
-			for (j = 1; j <= TESTNODES; j++) {
-				if (j == x) {
-					continue;
-				}
-				if (knet_h[x]->host_index[j]->status.reachable != 1) {
-					printf("knet failed to switch config for host %d\n", x);
-					knet_handle_stop_nodes(knet_h, TESTNODES);
-					flush_logs(logfds[0], stdout);
-					close_logpipes(logfds);
-					exit(FAIL);
-				}
-			}
+			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 		}
 	}
 
