@@ -89,5 +89,8 @@ int make_local_sockaddr6(struct sockaddr_storage *lo, int offset);
 int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std);
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std);
 void test_sleep(knet_handle_t knet_h, int seconds);
+int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
+			 uint8_t state, uint32_t timeout,
+			 int logfd, FILE *std);
 
 #endif
