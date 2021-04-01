@@ -19,6 +19,7 @@
 %@sctp@ sctp
 %@nss@ nss
 %@openssl@ openssl
+%@gcrypt@ gcrypt
 %@zlib@ zlib
 %@lz4@ lz4
 %@lzo2@ lzo2
@@ -69,6 +70,9 @@ BuildRequires: libopenssl-devel
 %else
 BuildRequires: openssl-devel
 %endif
+%endif
+%if %{with gcrypt}
+BuildRequires: libgcrypt-devel >= 1.8.0
 %endif
 %if %{with zlib}
 BuildRequires: zlib-devel
@@ -137,6 +141,11 @@ BuildRequires: autoconf automake libtool
 %else
 	--disable-crypto-openssl \
 %endif
+%if %{with gcrypt}
+	--enable-crypto-gcrypt \
+%else
+	--disable-crypto-gcrypt \
+%endif
 %if %{with zlib}
 	--enable-compress-zlib \
 %else
@@ -186,9 +195,6 @@ make install DESTDIR=%{buildroot}
 find %{buildroot} -name "*.a" -exec rm {} \;
 # remove libtools leftovers
 find %{buildroot} -name "*.la" -exec rm {} \;
-
-# remove init scripts
-rm -rf %{buildroot}/etc/init.d
 
 # remove docs
 rm -rf %{buildroot}/usr/share/doc/kronosnet
@@ -306,6 +312,19 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %{_libdir}/kronosnet/crypto_openssl.so
 %endif
 
+%if %{with gcrypt}
+%package -n libknet1-crypto-gcrypt-plugin
+Summary: Provides libknet1 gcrypt support
+License: LGPLv2+
+Requires: libknet1%{_isa} = %{version}-%{release}
+
+%description -n libknet1-crypto-gcrypt-plugin
+ Provides libgcrypt crypto support for libknet1.
+
+%files -n libknet1-crypto-gcrypt-plugin
+%{_libdir}/kronosnet/crypto_gcrypt.so
+%endif
+
 %if %{with zlib}
 %package -n libknet1-compress-zlib-plugin
 Summary: Provides libknet1 zlib support
@@ -393,6 +412,9 @@ Requires: libknet1-crypto-nss-plugin%{_isa} = %{version}-%{release}
 %endif
 %if %{with openssl}
 Requires: libknet1-crypto-openssl-plugin%{_isa} = %{version}-%{release}
+%endif
+%if %{with gcrypt}
+Requires: libknet1-crypto-gcrypt-plugin%{_isa} = %{version}-%{release}
 %endif
 
 %description -n libknet1-crypto-plugins-all

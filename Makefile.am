@@ -103,6 +103,11 @@ if BUILD_CRYPTO_OPENSSL
 else
 	sed -i -e "s#@openssl@#bcond_with#g" $@-t
 endif
+if BUILD_CRYPTO_GCRYPT
+	sed -i -e "s#@gcrypt@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@gcrypt@#bcond_with#g" $@-t
+endif
 if BUILD_COMPRESS_ZLIB
 	sed -i -e "s#@zlib@#bcond_without#g" $@-t
 else

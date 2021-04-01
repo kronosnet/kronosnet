@@ -728,7 +728,7 @@ struct knet_handle_crypto_cfg {
  *            pointer to a knet_handle_crypto_cfg structure
  *
  *            crypto_model should contain the model name.
- *                         Currently only "openssl" and "nss" are supported.
+ *                         Currently "openssl", "nss" and "gcrypt" are supported.
  *                         Setting to "none" will disable crypto.
  *
  *            crypto_cipher_type
@@ -2316,8 +2316,9 @@ int knet_link_enable_status_change_notify(knet_handle_t knet_h,
 #define KNET_SUB_TRANSP_UDP      (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_UDP)
 #define KNET_SUB_TRANSP_SCTP     (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_SCTP)
 
-#define KNET_SUB_NSSCRYPTO     60 /* nsscrypto.c */
-#define KNET_SUB_OPENSSLCRYPTO 61 /* opensslcrypto.c */
+#define KNET_SUB_NSSCRYPTO     60 /* crypto_nss.c */
+#define KNET_SUB_OPENSSLCRYPTO 61 /* crypto_openssl.c */
+#define KNET_SUB_GCRYPTCRYPTO  62 /* crypto_gcrypt.c */
 
 #define KNET_SUB_ZLIBCOMP      70 /* compress_zlib.c */
 #define KNET_SUB_LZ4COMP       71 /* compress_lz4.c */

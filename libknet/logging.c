@@ -41,6 +41,7 @@ static struct pretty_names subsystem_names[KNET_MAX_SUBSYSTEMS] =
 	{ "sctp", KNET_SUB_TRANSP_SCTP },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO },
 	{ "opensslcrypto", KNET_SUB_OPENSSLCRYPTO },
+	{ "gcryptcrypto", KNET_SUB_GCRYPTCRYPTO },
 	{ "zlibcomp", KNET_SUB_ZLIBCOMP },
 	{ "lz4comp", KNET_SUB_LZ4COMP },
 	{ "lz4hccomp", KNET_SUB_LZ4HCCOMP },

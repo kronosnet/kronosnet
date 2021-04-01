@@ -114,7 +114,16 @@ AC_ARG_ENABLE([crypto-all],
 	[ enable_crypto_all="yes" ])
 
 KNET_OPTION_DEFINES([nss],[crypto],[PKG_CHECK_MODULES([nss], [nss])])
-KNET_OPTION_DEFINES([openssl],[crypto],[PKG_CHECK_MODULES([openssl],[libcrypto])])
+KNET_OPTION_DEFINES([openssl],[crypto],[PKG_CHECK_MODULES([openssl], [libcrypto])])
+
+# use gcry_mac_open to detect if libgcrypt is new enough
+KNET_OPTION_DEFINES([gcrypt],[crypto],[
+	PKG_CHECK_MODULES([gcrypt], [libgcrypt >= 1.8.0],,
+		[AC_CHECK_HEADERS([gcrypt.h],
+			[AC_CHECK_LIB([gcrypt], [gcry_mac_open],
+				[AC_SUBST([gcrypt_LIBS], ["-lgcrypt -ldl -lgpg-error"])])],
+				[AC_MSG_ERROR(["missing required gcrypt.h"])])])
+])
 
 AC_ARG_ENABLE([compress-all],
 	[AS_HELP_STRING([--disable-compress-all],[disable libknet all compress modules support])],,

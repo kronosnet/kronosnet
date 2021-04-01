@@ -167,3 +167,10 @@ crypto_openssl_la_LDFLAGS = $(MODULELDFLAGS)
 crypto_openssl_la_CFLAGS = $(AM_CFLAGS) $(openssl_CFLAGS)
 crypto_openssl_la_LIBADD = $(openssl_LIBS)
 endif
+
+if BUILD_CRYPTO_GCRYPT
+pkglib_LTLIBRARIES	+= crypto_gcrypt.la
+crypto_gcrypt_la_LDFLAGS = $(MODULELDFLAGS)
+crypto_gcrypt_la_CFLAGS = $(AM_CFLAGS) $(gcrypt_CFLAGS)
+crypto_gcrypt_la_LIBADD = $(gcrypt_LIBS)
+endif
