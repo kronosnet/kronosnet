@@ -792,6 +792,7 @@ int knet_handle_free(knet_handle_t knet_h)
 	crypto_fini(knet_h, KNET_MAX_CRYPTO_INSTANCES + 1); /* values above MAX_CRYPTO will release all crypto resources */
 	compress_fini(knet_h, 1);
 	_destroy_locks(knet_h);
+	close(knet_h->logfd);
 
 	free(knet_h);
 	knet_h = NULL;
