@@ -2,7 +2,7 @@
 # Print a version string.
 scriptversion=2018-08-31.20; # UTC
 
-# Copyright (C) 2012-2020 Red Hat, Inc.
+# Copyright (C) 2012-2021 Red Hat, Inc.
 # Copyright (C) 2007-2016 Free Software Foundation, Inc.
 #
 # This program is free software: you can redistribute it and/or modify
