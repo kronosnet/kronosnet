@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2021 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -17,8 +17,6 @@
 #include <openssl/evp.h>
 #if (OPENSSL_VERSION_NUMBER < 0x30000000L)
 #include <openssl/hmac.h>
-#else
-#include <openssl/mac.h>
 #endif
 #include <openssl/rand.h>
 #include <openssl/err.h>
@@ -44,7 +42,6 @@
  */
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 static const char *hash = "digest";
-static const char *key = "key";
 #endif
 
 struct opensslcrypto_instance {
@@ -350,7 +347,7 @@ static int calculate_openssl_hash(
 	int err = 0;
 	size_t outlen = 0;
 
-	ctx = EVP_MAC_new_ctx(instance->crypto_hash_mac);
+	ctx = EVP_MAC_CTX_new(instance->crypto_hash_mac);
 	if (!ctx) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate openssl context: %s", sslerr);
@@ -358,14 +355,7 @@ static int calculate_openssl_hash(
 		goto out_err;
 	}
 
-	if (EVP_MAC_set_ctx_params(ctx, instance->params) < 0) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set openssl context parameters: %s", sslerr);
-		err = -1;
-		goto out_err;
-	}
-
-	if (!EVP_MAC_init(ctx)) {
+	if (!EVP_MAC_init(ctx, instance->private_key, instance->private_key_len, instance->params)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set openssl context parameters: %s", sslerr);
 		err = -1;
@@ -388,7 +378,7 @@ static int calculate_openssl_hash(
 
 out_err:
 	if (ctx) {
-		EVP_MAC_free_ctx(ctx);
+		EVP_MAC_CTX_free(ctx);
 	}
 
 	return err;
@@ -694,7 +684,6 @@ static int opensslcrypto_init(
 		memmove(opensslcrypto_instance->hash_type, knet_handle_crypto_cfg->crypto_hash_type, sizeof(opensslcrypto_instance->hash_type));
 
 		opensslcrypto_instance->params[params_n++] = OSSL_PARAM_construct_utf8_string(hash, opensslcrypto_instance->hash_type, 0);
-		opensslcrypto_instance->params[params_n++] = OSSL_PARAM_construct_octet_string(key, opensslcrypto_instance->private_key, opensslcrypto_instance->private_key_len);
 		opensslcrypto_instance->params[params_n] = OSSL_PARAM_construct_end();
 #endif
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2021 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -27,6 +27,7 @@
 static crypto_model_t crypto_modules_cmds[] = {
 	{ "nss", WITH_CRYPTO_NSS, 0, NULL },
 	{ "openssl", WITH_CRYPTO_OPENSSL, 0, NULL },
+	{ "gcrypt", WITH_CRYPTO_GCRYPT, 0, NULL },
 	{ NULL, 0, 0, NULL }
 };
 

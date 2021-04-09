@@ -614,3 +614,75 @@
   fun:init_nss
   fun:nsscrypto_init
 }
+{
+  libgcrypt internal conditinal (debian 10)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  fun:encrypt_gcrypt.isra.0
+  fun:gcryptcrypto_encrypt_and_signv
+  fun:gcryptcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  libgcrypt internal conditinal (debian 10 - clang)
+  Memcheck:Cond
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
+  fun:encrypt_gcrypt
+  fun:gcryptcrypto_encrypt_and_signv
+  fun:gcryptcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  libgcrypt internal conditinal (opensuse 15)
+  Memcheck:Cond
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  fun:encrypt_gcrypt.isra.0
+  fun:gcryptcrypto_encrypt_and_signv
+  fun:gcryptcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
+{
+  libgcrypt internal conditinal (opensuse 15 - clang)
+  Memcheck:Cond
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  obj:/usr/lib64/libgcrypt.so.20.2.2
+  fun:encrypt_gcrypt
+  fun:gcryptcrypto_encrypt_and_signv
+  fun:gcryptcrypto_encrypt_and_sign
+  fun:send_ping
+  fun:_send_pings
+  fun:_handle_heartbt_thread
+  fun:start_thread
+  fun:clone
+}
