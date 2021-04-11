@@ -234,8 +234,7 @@ int knet_handle_set_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -271,8 +270,7 @@ int knet_handle_get_transport_reconnect_interval(knet_handle_t knet_h, uint32_t 
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

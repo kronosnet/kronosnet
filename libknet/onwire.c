@@ -136,8 +136,7 @@ int knet_handle_enable_onwire_ver_notify(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -179,8 +178,7 @@ int knet_handle_get_onwire_ver(knet_handle_t knet_h,
 	int err = 0, savederrno = 0;
 	struct knet_host *host;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -240,8 +238,7 @@ int knet_handle_set_onwire_ver(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

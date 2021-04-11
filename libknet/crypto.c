@@ -299,8 +299,7 @@ int knet_handle_crypto_set_config(knet_handle_t knet_h,
 	int savederrno = 0;
 	int err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -371,8 +370,7 @@ int knet_handle_crypto_rx_clear_traffic(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -406,8 +404,7 @@ int knet_handle_crypto_use_config(knet_handle_t knet_h,
 	int savederrno = 0;
 	int err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

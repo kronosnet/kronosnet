@@ -836,8 +836,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 	int savederrno = 0, err = 0;
 	uint8_t onwire_ver;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -927,8 +926,7 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 	ssize_t err = 0;
 	struct iovec iov_out[1];
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
