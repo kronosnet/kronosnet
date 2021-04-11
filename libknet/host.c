@@ -37,8 +37,7 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 	struct knet_host *host = NULL;
 	uint8_t link_idx;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -117,8 +116,7 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id)
 	struct knet_host *host, *removed;
 	uint8_t link_idx;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -188,8 +186,7 @@ int knet_host_set_name(knet_handle_t knet_h, knet_node_id_t host_id, const char 
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -248,8 +245,7 @@ int knet_host_get_name_by_host_id(knet_handle_t knet_h, knet_node_id_t host_id,
 {
 	int savederrno = 0, err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -287,8 +283,7 @@ int knet_host_get_id_by_host_name(knet_handle_t knet_h, const char *name,
 	int savederrno = 0, err = 0, found = 0;
 	struct knet_host *host;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -333,8 +328,7 @@ int knet_host_get_host_list(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -364,8 +358,7 @@ int knet_host_set_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 	int savederrno = 0, err = 0;
 	uint8_t old_policy;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -414,8 +407,7 @@ int knet_host_get_policy(knet_handle_t knet_h, knet_node_id_t host_id,
 {
 	int savederrno = 0, err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -454,8 +446,7 @@ int knet_host_get_status(knet_handle_t knet_h, knet_node_id_t host_id,
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -500,8 +491,7 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

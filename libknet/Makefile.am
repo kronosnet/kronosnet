@@ -31,6 +31,7 @@ sources			= \
 			  handle.c \
 			  handle_api.c \
 			  host.c \
+			  lib_config.c \
 			  links.c \
 			  links_acl.c \
 			  links_acl_ip.c \

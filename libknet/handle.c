@@ -34,40 +34,6 @@
 #include "transport_common.h"
 #include "logging.h"
 
-static pthread_mutex_t handle_config_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_rwlock_t shlib_rwlock;
-static uint8_t shlib_wrlock_init = 0;
-
-static uint32_t knet_ref = 0;
-
-static int _init_shlib_tracker(knet_handle_t knet_h)
-{
-	int savederrno = 0;
-
-	if (!shlib_wrlock_init) {
-		savederrno = pthread_rwlock_init(&shlib_rwlock, NULL);
-		if (savederrno) {
-			log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize shared lib rwlock: %s",
-				strerror(savederrno));
-			errno = savederrno;
-			return -1;
-		}
-		shlib_wrlock_init = 1;
-	}
-
-	return 0;
-}
-
-static void _fini_shlib_tracker(void)
-{
-	if (knet_ref == 0) {
-		pthread_rwlock_destroy(&shlib_rwlock);
-		shlib_wrlock_init = 0;
-	}
-	return;
-}
-
 static int _init_locks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -632,7 +598,7 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
 
 	/*
-	 * init global shlib tracker
+	 * init global shared bits
 	 */
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
 	if (savederrno) {
@@ -644,8 +610,16 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 		return NULL;
 	}
 
-	knet_ref++;
+	if (!handle_list_init) {
+		qb_list_init(&handle_list.head);
+		handle_list_init = 1;
+	}
 
+	qb_list_add(&knet_h->list, &handle_list.head);
+
+	/*
+	 * init global shlib tracker
+	 */
 	if (_init_shlib_tracker(knet_h) < 0) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to init handle tracker: %s",
@@ -738,8 +712,7 @@ int knet_handle_free(knet_handle_t knet_h)
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -774,13 +747,13 @@ int knet_handle_free(knet_handle_t knet_h)
 	compress_fini(knet_h, 1);
 	_destroy_locks(knet_h);
 
-	free(knet_h);
-	knet_h = NULL;
-
 	(void)pthread_mutex_lock(&handle_config_mutex);
-	knet_ref--;
+	qb_list_del(&knet_h->list);
 	_fini_shlib_tracker();
 	pthread_mutex_unlock(&handle_config_mutex);
+
+	free(knet_h);
+	knet_h = NULL;
 
 	errno = 0;
 	return 0;

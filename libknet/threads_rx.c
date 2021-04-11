@@ -990,8 +990,7 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const
 	ssize_t err = 0;
 	struct iovec iov_in;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
