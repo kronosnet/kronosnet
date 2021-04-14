@@ -88,7 +88,8 @@ int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
 				../transport_udp.c \
 				../links_acl.c \
 				../links_acl_ip.c \
-				../links_acl_loopback.c
+				../links_acl_loopback.c \
+				../lib_config.c
 
 int_timediff_test_SOURCES = int_timediff.c
 
@@ -99,13 +100,15 @@ knet_bench_test_SOURCES	= knet_bench.c \
 			  ../compat.c \
 			  ../transport_common.c \
 			  ../threads_common.c \
-			  ../onwire.c
+			  ../onwire.c \
+			  ../lib_config.c
 
 fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
 				test-common.c \
 				../onwire.c \
 				../logging.c \
-				../threads_common.c
+				../threads_common.c \
+				../lib_config.c
 
 fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 				 test-common.c
