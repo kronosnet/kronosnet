@@ -1,0 +1,26 @@
+# Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Christine Caulfield <ccaulfie@redhat.com>
+#
+# This software licensed under GPL-2.0+
+
+[package]
+name = "knet-bindings-tests"
+version = "@libknetrustver@"
+authors = ["Christine Caulfield <ccaulfie@redhat.com>"]
+edition = "2018"
+
+[build-dependencies]
+cc = "1.0"
+pkg-config = "0.3.19"
+
+[dependencies]
+knet-bindings = { path = ".." }
+libc = "0.2.97"
+
+[[bin]]
+name = "knet-test"
+test = true
+bench = false
+
+

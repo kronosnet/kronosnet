@@ -14,6 +14,7 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "netutils.h"
 #include "internals.h"
 #include "logging.h"
 #include "links.h"
@@ -418,14 +419,14 @@ int knet_link_get_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
-	memmove(src_addr, &link->src_addr, sizeof(struct sockaddr_storage));
+	memmove(src_addr, &link->src_addr, sockaddr_len(&link->src_addr));
 
 	*transport = link->transport;
 	*flags = link->flags;
 
 	if (link->dynamic == KNET_LINK_STATIC) {
 		*dynamic = 0;
-		memmove(dst_addr, &link->dst_addr, sizeof(struct sockaddr_storage));
+		memmove(dst_addr, &link->dst_addr, sockaddr_len(&link->dst_addr));
 	} else {
 		*dynamic = 1;
 	}
