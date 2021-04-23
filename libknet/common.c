@@ -91,8 +91,11 @@ static void *open_lib(knet_handle_t knet_h, const char *libname, int extra_flags
 	 * clear any pending error
 	 */
 	dlerror();
+	strncpy(path, knet_h->plugin_path, sizeof(path)-1);
+	strncat(path, "/", sizeof(path)-1);
+	strncat(path, libname, sizeof(path)-strlen(knet_h->plugin_path)-2);
 
-	ret = dlopen(libname, RTLD_NOW | RTLD_GLOBAL | extra_flags);
+	ret = dlopen(path, RTLD_NOW | RTLD_GLOBAL | extra_flags);
 	if (!ret) {
 		error = dlerror();
 		if (error) {

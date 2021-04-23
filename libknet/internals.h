@@ -268,6 +268,7 @@ struct knet_handle {
 	int fini_in_progress;
 	uint64_t flags;
 	struct qb_list_head list;
+	const char *plugin_path;
 };
 
 struct handle_tracker {

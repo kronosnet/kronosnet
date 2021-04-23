@@ -589,6 +589,11 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	knet_h->reconnect_int = KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL;
 
 	/*
+	 * Set the default path for plugins
+	 */
+	knet_h->plugin_path = PLUGINPATH;
+
+	/*
 	 * Set 'min' stats to the maximum value so the
 	 * first value we get is always less
 	 */
