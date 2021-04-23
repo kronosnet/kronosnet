@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
  *
@@ -17,6 +18,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <dirent.h>
 #include <sys/select.h>
 
 #include "libknet.h"
@@ -33,6 +35,7 @@ struct log_thread_data {
 	FILE *std;
 };
 static struct log_thread_data data;
+static char plugin_path[PATH_MAX];
 
 static int _read_pipe(int fd, char **file, size_t *length)
 {
@@ -359,12 +362,104 @@ int start_logging(FILE *std)
 	return log_fds[1];
 }
 
+static int dir_filter(const struct dirent *dname)
+{
+	if ( (strcmp(dname->d_name + strlen(dname->d_name)-3, ".so") == 0) &&
+	    ((strncmp(dname->d_name,"crypto", 6) == 0) ||
+	     (strncmp(dname->d_name,"compress", 8) == 0))) {
+		return 1;
+	}
+	return 0;
+}
+
+/* Make sure the proposed plugin path has at least 1 of each plugin available
+   - just as a sanity check really */
+static int contains_plugins(char *path)
+{
+	struct dirent **namelist;
+	int n,i;
+	size_t j;
+	struct knet_compress_info compress_list[256];
+	struct knet_crypto_info crypto_list[256];
+	size_t num_compress, num_crypto;
+	size_t compress_found = 0;
+	size_t crypto_found = 0;
+
+	if (knet_get_compress_list(compress_list, &num_compress) == -1) {
+		return 0;
+	}
+	if (knet_get_crypto_list(crypto_list, &num_crypto) == -1) {
+		return 0;
+	}
+
+	n = scandir(path, &namelist, dir_filter, alphasort);
+	if (n == -1) {
+		return 0;
+	}
+
+	/* Look for plugins in the list */
+	for (i=0; i<n; i++) {
+		for (j=0; j<num_crypto; j++) {
+			if (strlen(namelist[i]->d_name) >= 7 &&
+			    strncmp(crypto_list[j].name, namelist[i]->d_name+7,
+				    strlen(crypto_list[j].name)) == 0) {
+				crypto_found++;
+			}
+		}
+		for (j=0; j<num_compress; j++) {
+			if (strlen(namelist[i]->d_name) >= 9 &&
+			    strncmp(compress_list[j].name, namelist[i]->d_name+9,
+				    strlen(compress_list[j].name)) == 0) {
+				compress_found++;
+			}
+		}
+		free(namelist[i]);
+	}
+	free(namelist);
+	/* If at least one plugin was found (or none were built) */
+	if ((crypto_found || num_crypto == 0) &&
+	    (compress_found || num_compress == 0)) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+
+/* libtool sets LD_LIBRARY_PATH to the build tree when running test in-tree */
+static char *find_plugins_path(void)
+{
+	char *ld_libs_env = getenv("LD_LIBRARY_PATH");
+	if (ld_libs_env) {
+		char *ld_libs = strdup(ld_libs_env);
+		char *str = strtok(ld_libs, ":");
+		while (str) {
+			if (contains_plugins(str)) {
+				strncpy(plugin_path, str, sizeof(plugin_path)-1);
+				free(ld_libs);
+				printf("Using plugins from %s\n", plugin_path);
+				return plugin_path;
+			}
+			str = strtok(NULL, ":");
+		}
+		free(ld_libs);
+	}
+	return NULL;
+}
+
+
 knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 {
 	knet_handle_t knet_h = knet_handle_new(1, logfds[1], log_level, 0);
+	char *plugins_path;
 
 	if (knet_h) {
 		printf("knet_handle_new at %p\n", knet_h);
+		plugins_path = find_plugins_path();
+		/* Use plugins from the build tree */
+		if (plugins_path) {
+			knet_h->plugin_path = plugins_path;
+		}
 		return knet_h;
 	} else {
 		printf("knet_handle_new failed: %s\n", strerror(errno));
@@ -645,6 +740,7 @@ try_again:
 void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level)
 {
 	uint8_t i;
+	char *plugins_path = find_plugins_path();
 
 	for (i = 1; i <= numnodes; i++) {
 		knet_h[i] = knet_handle_new(i, logfds[1], log_level, 0);
@@ -653,6 +749,10 @@ void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd
 			break;
 		} else {
 			printf("knet_h[%u] at %p\n", i, knet_h[i]);
+		}
+		/* Use plugins from the build tree */
+		if (plugins_path) {
+			knet_h[i]->plugin_path = plugins_path;
 		}
 	}
 
