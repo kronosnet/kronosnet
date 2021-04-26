@@ -42,6 +42,7 @@
 #endif
 #ifdef KNET_BSD
 #include <net/if_dl.h>
+#include <sys/sockio.h>
 #endif
 
 #include "libnozzle.h"
@@ -394,6 +395,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	uint16_t i;
 	long int nozzlenum = 0;
 	char curnozzle[IFNAMSIZ];
+	struct ifreq ifr;
 #endif
 
 	if (devname == NULL) {
@@ -505,15 +507,31 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 #else
 		for (i = 0; i < 256; i++) {
 #endif
+			memset(&ifr, 0, sizeof(struct ifreq));
+
+			snprintf(curnozzle, sizeof(curnozzle) - 1, "tap%u", i);
+			memmove(ifr.ifr_name, curnozzle, IFNAMSIZ);
+			if (ioctl(lib_cfg.ioctlfd, SIOCIFCREATE2, &ifr) < 0) {
+			        continue;
+			}
+
 			snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/tap%u", i);
 			nozzle->fd = open(curnozzle, O_RDWR);
 			savederrno = errno;
 			if (nozzle->fd > 0) {
 				break;
 			}
+			/* For some reason we can't open that device, keep trying
+			   but don't leave debris */
+			(void)ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
 		}
 		snprintf(curnozzle, sizeof(curnozzle) -1 , "tap%u", i);
 	} else {
+		memmove(ifr.ifr_name, devname, IFNAMSIZ);
+		if (ioctl(lib_cfg.ioctlfd, SIOCIFCREATE2, &ifr) < 0) {
+			goto out_error;
+		}
+
 		snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/%s", devname);
 		nozzle->fd = open(curnozzle, O_RDWR);
 		savederrno = errno;
