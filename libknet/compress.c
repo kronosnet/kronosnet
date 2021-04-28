@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2021 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -490,8 +490,7 @@ int knet_handle_compress(knet_handle_t knet_h, struct knet_handle_compress_cfg *
 	int savederrno = 0;
 	int err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

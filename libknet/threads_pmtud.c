@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2015-2021 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -645,8 +645,7 @@ int knet_handle_pmtud_getfreq(knet_handle_t knet_h, unsigned int *interval)
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -675,8 +674,7 @@ int knet_handle_pmtud_setfreq(knet_handle_t knet_h, unsigned int interval)
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -710,8 +708,7 @@ int knet_handle_enable_pmtud_notify(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -742,8 +739,7 @@ int knet_handle_pmtud_set(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -777,8 +773,7 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

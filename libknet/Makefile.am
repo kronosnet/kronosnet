@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2020 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2021 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
@@ -31,6 +31,7 @@ sources			= \
 			  handle.c \
 			  handle_api.c \
 			  host.c \
+			  lib_config.c \
 			  links.c \
 			  links_acl.c \
 			  links_acl_ip.c \
@@ -90,13 +91,13 @@ libknet_la_SOURCES	= $(sources)
 
 AM_CFLAGS		+= $(libqb_CFLAGS)
 
-libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS)
+libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
+			  -DPLUGINPATH="\"$(pkglibdir)\""
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
 libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
-			  -Wl,-rpath=$(pkglibdir) \
 			  -version-info $(libversion)
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)

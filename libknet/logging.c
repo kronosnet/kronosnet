@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2021 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -138,8 +138,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -173,8 +172,7 @@ int knet_log_get_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2021 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -141,6 +141,7 @@ char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
 	struct in_addr mask;
 	struct in_addr broadcast;
 	struct in_addr address;
+	char buf[INET6_ADDRSTRLEN];
 
 	prefix_len = atoi(prefix);
 
@@ -155,7 +156,7 @@ char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
 	memset(&broadcast, 0, sizeof(broadcast));
 	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
 
-	return strdup(inet_ntoa(broadcast));
+	return strdup(inet_ntop(AF_INET, (void *)&broadcast, buf, sizeof(buf)));
 }
 
 int find_ip(nozzle_t nozzle,

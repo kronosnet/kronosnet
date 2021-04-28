@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2021 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -267,9 +267,25 @@ struct knet_handle {
 		int errorno);
 	int fini_in_progress;
 	uint64_t flags;
+	struct qb_list_head list;
+	const char *plugin_path;
 };
 
+struct handle_tracker {
+	struct qb_list_head head;
+};
+
+/*
+ * lib_config stuff shared across everything
+ */
 extern pthread_rwlock_t shlib_rwlock;       /* global shared lib load lock */
+extern pthread_mutex_t handle_config_mutex;
+
+extern struct handle_tracker handle_list;
+extern uint8_t handle_list_init;
+int _is_valid_handle(knet_handle_t knet_h);
+int _init_shlib_tracker(knet_handle_t knet_h);
+void _fini_shlib_tracker(void);
 
 /*
  * NOTE: every single operation must be implementend

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2021 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -299,8 +299,7 @@ static int _knet_handle_crypto_set_config(knet_handle_t knet_h,
 	int savederrno = 0;
 	int err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -378,8 +377,7 @@ int knet_handle_crypto_rx_clear_traffic(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -413,8 +411,7 @@ int knet_handle_crypto_use_config(knet_handle_t knet_h,
 	int savederrno = 0;
 	int err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2021 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -749,8 +749,7 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 {
 	int savederrno = 0, err = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -821,8 +820,7 @@ ssize_t knet_send(knet_handle_t knet_h, const char *buff, const size_t buff_len,
 	ssize_t err = 0;
 	struct iovec iov_out[1];
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 

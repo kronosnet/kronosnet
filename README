@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2020 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2021 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -33,8 +33,14 @@ knet requires big socket buffers and you need to set:
 kern.ipc.maxsockbuf=18388608
 in /etc/sysctl.conf or knet will fail to run.
 
-currently, knet requires also:
+For version 12 (or lower), knet requires also:
 net.inet.sctp.blackhole=1
 in /etc/sysctl.conf or knet will fail to work with SCTP.
+This sysctl is obsoleted in version 13.
 
 libnozzle requires if_tap.ko loaded in the kernel.
+
+Please avoid to use ifconfig_DEFAULT in /etc/rc.conf to use
+DHCP for all interfaces or the dhclient will interfere with
+libnozzle interface management, causing errors on some
+operations such as "ifconfig tap down".

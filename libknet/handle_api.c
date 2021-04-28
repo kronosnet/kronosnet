@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2020-2021 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -35,8 +35,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -68,8 +67,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 	int i;
 	struct epoll_event ev;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -210,8 +208,7 @@ int knet_handle_remove_datafd(knet_handle_t knet_h, int datafd)
 	int i;
 	struct epoll_event ev;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -271,8 +268,7 @@ int knet_handle_get_datafd(knet_handle_t knet_h, const int8_t channel, int *data
 {
 	int err = 0, savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -313,8 +309,7 @@ int knet_handle_get_channel(knet_handle_t knet_h, const int datafd, int8_t *chan
 	int err = 0, savederrno = 0;
 	int i;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -373,8 +368,7 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -404,8 +398,7 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -481,8 +474,7 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 {
 	int err = 0, savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -536,8 +528,7 @@ int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option)
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
@@ -569,8 +560,7 @@ int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled)
 {
 	int savederrno = 0;
 
-	if (!knet_h) {
-		errno = EINVAL;
+	if (!_is_valid_handle(knet_h)) {
 		return -1;
 	}
 
