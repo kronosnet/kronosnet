@@ -775,6 +775,8 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	char port_str[KNET_MAX_PORT_LEN];
 	sctp_accepted_link_info_t *accept_info = NULL;
 
+	memset(&ss, 0, sizeof(ss));
+
 	new_fd = accept(listen_sock, (struct sockaddr *)&ss, &sock_len);
 	if (new_fd < 0) {
 		savederrno = errno;
