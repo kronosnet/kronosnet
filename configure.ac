@@ -173,6 +173,23 @@ AC_ARG_ENABLE([libnozzle],
 
 AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 
+## local helper functions
+# this function checks if CC support options passed as
+# args. Global CPPFLAGS are ignored during this test.
+cc_supports_flag() {
+	saveCPPFLAGS="$CPPFLAGS"
+	CPPFLAGS="$@"
+	if echo $CC | grep -q clang; then
+		CPPFLAGS="-Werror $CPPFLAGS"
+	fi
+	AC_MSG_CHECKING([whether $CC supports "$@"])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+			  [RC=0; AC_MSG_RESULT([yes])],
+			  [RC=1; AC_MSG_RESULT([no])])
+	CPPFLAGS="$saveCPPFLAGS"
+	return $RC
+}
+
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
 saved_LIBS="$LIBS"
@@ -282,6 +299,10 @@ fi
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+AC_ARG_ENABLE([hardening],
+	[AS_HELP_STRING([--disable-hardening],[disable hardening build flags])],,
+	[ enable_hardening="yes" ])
+
 AC_ARG_WITH([sanitizers],
 	[AS_HELP_STRING([--with-sanitizers=...,...],
 			[enable SANitizer build, do *NOT* use for production. Only ASAN/UBSAN/TSAN are currently supported])],
@@ -297,6 +318,17 @@ AC_ARG_WITH([testdir],
 
 AC_SUBST([TESTDIR])
 
+# Check for availablility of hardening options
+HARDENING_CFLAGS="-fstack-clash-protection"
+EXTRA_HARDENING_CFLAGS=""
+if test "x${enable_hardening}" = xyes; then
+	for j in $HARDENING_CFLAGS; do
+		if cc_supports_flag $j; then
+			EXTRA_HARDENING_CFLAGS="$EXTRA_HARDENING_CFLAGS $j";
+		fi
+	done
+fi
+
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
@@ -307,9 +339,9 @@ fi
 
 # gdb flags
 if test "x${GCC}" = xyes; then
-	GDB_FLAGS="-ggdb3"
+	GDB_CFLAGS="-ggdb3"
 else
-	GDB_FLAGS="-g"
+	GDB_CFLAGS="-g"
 fi
 
 # --- ASAN/UBSAN/TSAN (see man gcc) ---
@@ -348,7 +380,7 @@ DEFAULT_CFLAGS="-Werror -Wall -Wextra"
 # generates too much noise for stub APIs
 UNWANTED_CFLAGS="-Wno-unused-parameter"
 
-AC_SUBST([AM_CFLAGS],["$SANITIZERS_CFLAGS $OPT_CFLAGS $GDB_FLAGS $DEFAULT_CFLAGS $UNWANTED_CFLAGS"])
+AC_SUBST([AM_CFLAGS],["$SANITIZERS_CFLAGS $OPT_CFLAGS $GDB_CFLAGS $DEFAULT_CFLAGS $EXTRA_HARDENING_CFLAGS $UNWANTED_CFLAGS"])
 LDFLAGS="$SANITIZERS_LDFLAGS $LDFLAGS"
 
 AX_PROG_DATE
