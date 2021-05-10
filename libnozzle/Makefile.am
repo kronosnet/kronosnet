@@ -46,4 +46,6 @@ libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 
 libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(libnl_LIBS) $(libnlroute_LIBS)
 
+check-local: check-annocheck-libs
+
 endif
