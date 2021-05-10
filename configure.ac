@@ -32,7 +32,6 @@ AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],
 		   [AC_MSG_ERROR(["Linker support for --enable-new-dtags is required"])])
 AX_CHECK_LINK_FLAG([-Wl,--as-needed], [AM_LDFLAGS="$AM_LDFLAGS -Wl,--as-needed"])
 
-AC_SUBST([AM_LDFLAGS])
 saved_LDFLAGS="$LDFLAGS"
 LDFLAGS="$AM_LDFLAGS $LDFLAGS"
 LT_INIT
@@ -181,6 +180,23 @@ AC_ARG_ENABLE([rust-bindings],
 	[AS_HELP_STRING([--enable-rust-bindings],[rust bindings support])],,
 	[ enable_rust_bindings="no" ])
 AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
+
+## local helper functions
+# this function checks if CC support options passed as
+# args. Global CPPFLAGS are ignored during this test.
+cc_supports_flag() {
+	saveCPPFLAGS="$CPPFLAGS"
+	CPPFLAGS="$@"
+	if echo $CC | grep -q clang; then
+		CPPFLAGS="-Werror $CPPFLAGS"
+	fi
+	AC_MSG_CHECKING([whether $CC supports "$@"])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+			  [RC=0; AC_MSG_RESULT([yes])],
+			  [RC=1; AC_MSG_RESULT([no])])
+	CPPFLAGS="$saveCPPFLAGS"
+	return $RC
+}
 
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
@@ -348,6 +364,10 @@ AC_SUBST([libnozzlerustver])
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+AC_ARG_ENABLE([hardening],
+	[AS_HELP_STRING([--disable-hardening],[disable hardening build flags])],,
+	[ enable_hardening="yes" ])
+
 AC_ARG_WITH([sanitizers],
 	[AS_HELP_STRING([--with-sanitizers=...,...],
 			[enable SANitizer build, do *NOT* use for production. Only ASAN/UBSAN/TSAN are currently supported])],
@@ -363,6 +383,50 @@ AC_ARG_WITH([testdir],
 
 AC_SUBST([TESTDIR])
 
+# Check for availablility of hardening options
+
+annocheck=no
+
+if test "x${enable_hardening}" = xyes; then
+	# support only gcc for now
+	if echo $CC | grep -q gcc; then
+		ANNOPLUGIN="-fplugin=annobin"
+		annocheck=yes
+	fi
+
+	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
+	HARDENING_CFLAGS="-fstack-clash-protection -fcf-protection=full -mcet -mstackrealign"
+	EXTRA_HARDENING_CFLAGS=""
+
+	# check for annobin required cflags/ldflags
+	for j in $HARDENING_CFLAGS_ANNOCHECK; do
+		if cc_supports_flag $j; then
+			EXTRA_HARDENING_CFLAGS="$EXTRA_HARDENING_CFLAGS $j"
+		else
+			annocheck=no
+		fi
+	done
+
+	# check for other hardening cflags/ldflags
+	for j in $HARDENING_CFLAGS; do
+		if cc_supports_flag $j; then
+			EXTRA_HARDENING_CFLAGS="$EXTRA_HARDENING_CFLAGS $j"
+		fi
+	done
+
+	# check if annocheck binary is available
+	if test "x${annocheck}" = xyes; then
+		AC_CHECK_PROGS([ANNOCHECK_EXEC], [annocheck])
+		if test "x${ANNOCHECK_EXEC}" = x; then
+			annocheck=no
+		fi
+	fi
+
+	AM_LDFLAGS="$AM_LDFLAGS $EXTRA_HARDENING_CFLAGS"
+fi
+
+AM_CONDITIONAL([HAS_ANNOCHECK], [test "x$annocheck" = "xyes"])
+
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
@@ -377,9 +441,9 @@ fi
 
 # gdb flags
 if test "x${GCC}" = xyes; then
-	GDB_FLAGS="-ggdb3"
+	GDB_CFLAGS="-ggdb3"
 else
-	GDB_FLAGS="-g"
+	GDB_CFLAGS="-g"
 fi
 
 # --- ASAN/UBSAN/TSAN (see man gcc) ---
@@ -418,8 +482,9 @@ DEFAULT_CFLAGS="-Werror -Wall -Wextra"
 # generates too much noise for stub APIs
 UNWANTED_CFLAGS="-Wno-unused-parameter"
 
-AC_SUBST([AM_CFLAGS],["$SANITIZERS_CFLAGS $OPT_CFLAGS $GDB_FLAGS $DEFAULT_CFLAGS $UNWANTED_CFLAGS"])
+AC_SUBST([AM_CFLAGS],["$SANITIZERS_CFLAGS $OPT_CFLAGS $GDB_CFLAGS $DEFAULT_CFLAGS $EXTRA_HARDENING_CFLAGS $UNWANTED_CFLAGS"])
 LDFLAGS="$SANITIZERS_LDFLAGS $LDFLAGS"
+AC_SUBST([AM_LDFLAGS])
 AC_SUBST([RUST_FLAGS])
 AC_SUBST([RUST_TARGET_DIR])
 
