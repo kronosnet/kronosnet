@@ -147,6 +147,7 @@ struct knet_fd_trackers {
 	uint8_t transport;		    /* transport type (UDP/SCTP...) */
 	uint8_t data_type;		    /* internal use for transport to define what data are associated
 					     * with this fd */
+	socklen_t sockaddr_len;             /* Size of sockaddr_in[6] structure for this socket */
 	void *data;			    /* pointer to the data */
 	void *access_list_match_entry_head; /* pointer to access list match_entry list head */
 };

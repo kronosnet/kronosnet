@@ -63,6 +63,7 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 		msg_idx = 0;
 		while (msg_idx < msgs_to_send) {
 			msg[msg_idx].msg_hdr.msg_name = &cur_link->dst_addr;
+			msg[msg_idx].msg_hdr.msg_namelen = knet_h->knet_transport_fd_tracker[cur_link->outsock].sockaddr_len;
 
 			/* Cast for Linux/BSD compatibility */
 			for (i=0; i<(unsigned int)msg[msg_idx].msg_hdr.msg_iovlen; i++) {
@@ -553,7 +554,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	msg_idx = 0;
 
 	while (msg_idx < msgs_to_send) {
-		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[msg_idx].msg_hdr.msg_namelen = sockaddr_len((const struct sockaddr_storage *)&msg[msg_idx].msg_hdr.msg_name);
 		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx][0];
 		msg[msg_idx].msg_hdr.msg_iovlen = iovcnt_out;
 		msg_idx++;
@@ -590,6 +591,11 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 {
 	ssize_t inlen = 0;
 	int savederrno = 0, docallback = 0;
+
+	/*
+	 * make sure BSD gets the right size
+	 */
+	msg->msg_namelen = knet_h->knet_transport_fd_tracker[sockfd].sockaddr_len;
 
 	if ((channel >= 0) &&
 	    (channel < KNET_DATAFD_MAX) &&

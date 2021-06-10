@@ -205,7 +205,8 @@ restart:
 retry:
 	if (transport_get_connection_oriented(knet_h, dst_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL,
-			     (struct sockaddr *) &dst_link->dst_addr, sizeof(struct sockaddr_storage));
+			     (struct sockaddr *) &dst_link->dst_addr,
+			     knet_h->knet_transport_fd_tracker[dst_link->outsock].sockaddr_len);
 	} else {
 		len = sendto(dst_link->outsock, outbuf, data_len, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
 	}

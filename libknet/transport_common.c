@@ -426,7 +426,7 @@ int _is_valid_fd(knet_handle_t knet_h, int sockfd)
  * must be called with global write lock
  */
 
-int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, void *data)
+int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, socklen_t socklen, void *data)
 {
 	if (sockfd < 0) {
 		errno = EINVAL;
@@ -440,6 +440,7 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 
 	knet_h->knet_transport_fd_tracker[sockfd].transport = transport;
 	knet_h->knet_transport_fd_tracker[sockfd].data_type = data_type;
+	knet_h->knet_transport_fd_tracker[sockfd].sockaddr_len = socklen;
 	knet_h->knet_transport_fd_tracker[sockfd].data = data;
 
 	return 0;
