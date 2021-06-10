@@ -63,6 +63,7 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 		msg_idx = 0;
 		while (msg_idx < msgs_to_send) {
 			msg[msg_idx].msg_hdr.msg_name = &cur_link->dst_addr;
+			msg[msg_idx].msg_hdr.msg_namelen = knet_h->knet_transport_fd_tracker[cur_link->outsock].sockaddr_len;
 
 			/* Cast for Linux/BSD compatibility */
 			for (i=0; i<(unsigned int)msg[msg_idx].msg_hdr.msg_iovlen; i++) {
@@ -536,7 +537,7 @@ static int _prep_and_send_msgs(knet_handle_t knet_h, int bcast, knet_node_id_t *
 	msg_idx = 0;
 
 	while (msg_idx < msgs_to_send) {
-		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[msg_idx].msg_hdr.msg_namelen = sockaddr_len((const struct sockaddr_storage *)&msg[msg_idx].msg_hdr.msg_name);
 		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx][0];
 		msg[msg_idx].msg_hdr.msg_iovlen = iovcnt_out;
 		msg_idx++;
@@ -689,7 +690,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, uint8_t onwi
 
 	memset(&msg, 0, sizeof(struct msghdr));
 	msg.msg_name = &address;
-	msg.msg_namelen = sizeof(struct sockaddr_storage);
+	msg.msg_namelen = knet_h->knet_transport_fd_tracker[sockfd].sockaddr_len;
 	msg.msg_iov = &iov_in;
 	msg.msg_iovlen = 1;
 

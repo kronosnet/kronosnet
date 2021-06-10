@@ -741,7 +741,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 	 */
 
 	for (i = 0; i < PCKT_RX_BUFS; i++) {
-		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[i].msg_hdr.msg_namelen = knet_h->knet_transport_fd_tracker[sockfd].sockaddr_len;
 	}
 
 	msg_recv = _recvmmsg(sockfd, &msg[0], PCKT_RX_BUFS, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -859,7 +859,7 @@ void *_handle_recv_from_links_thread(void *data)
 		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
 
 		msg[i].msg_hdr.msg_name = &address[i];
-		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage); /* Real value filled in before actual use */
 		msg[i].msg_hdr.msg_iov = &iov_in[i];
 		msg[i].msg_hdr.msg_iovlen = 1;
 	}
