@@ -554,7 +554,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	msg_idx = 0;
 
 	while (msg_idx < msgs_to_send) {
-		msg[msg_idx].msg_hdr.msg_namelen = sockaddr_len((const struct sockaddr_storage *)&msg[msg_idx].msg_hdr.msg_name);
+		msg[msg_idx].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage); /* this will set properly in _dispatch_to_links() */
 		msg[msg_idx].msg_hdr.msg_iov = &iov_out[msg_idx][0];
 		msg[msg_idx].msg_hdr.msg_iovlen = iovcnt_out;
 		msg_idx++;
