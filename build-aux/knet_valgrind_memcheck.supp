@@ -1,3 +1,9 @@
+# Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+
+
 {
   lzma internals (spotted on Debian 9 and Ubuntu 18.04 LTS x86-64)
   Memcheck:Cond
