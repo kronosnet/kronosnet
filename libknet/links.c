@@ -14,6 +14,7 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "netutils.h"
 #include "internals.h"
 #include "logging.h"
 #include "links.h"
@@ -191,7 +192,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
-	memmove(&link->src_addr, src_addr, sizeof(struct sockaddr_storage));
+	copy_sockaddr(&link->src_addr, src_addr);
 
 	err = knet_addrtostr(src_addr, sizeof(struct sockaddr_storage),
 			     link->status.src_ipaddr, KNET_MAX_HOST_LEN,
@@ -218,7 +219,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 
 		link->dynamic = KNET_LINK_STATIC;
 
-		memmove(&link->dst_addr, dst_addr, sizeof(struct sockaddr_storage));
+		copy_sockaddr(&link->dst_addr, dst_addr);
 		err = knet_addrtostr(dst_addr, sizeof(struct sockaddr_storage),
 				     link->status.dst_ipaddr, KNET_MAX_HOST_LEN,
 				     link->status.dst_port, KNET_MAX_PORT_LEN);
