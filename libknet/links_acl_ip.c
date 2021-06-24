@@ -253,8 +253,8 @@ int ipcheck_addip(void *fd_tracker_match_entry_head, int index,
 		return -1;
 	}
 
-	memmove(&new_match_entry->addr1, ss1, sizeof(struct sockaddr_storage));
-	memmove(&new_match_entry->addr2, ss2, sizeof(struct sockaddr_storage));
+	copy_sockaddr(&new_match_entry->addr1, ss1);
+	copy_sockaddr(&new_match_entry->addr2, ss2);
 	new_match_entry->type = type;
 	new_match_entry->acceptreject = acceptreject;
 	new_match_entry->next = NULL;

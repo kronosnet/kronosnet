@@ -25,5 +25,7 @@
 
 int cmpaddr(const struct sockaddr_storage *ss1, const struct sockaddr_storage *ss2);
 
+void copy_sockaddr(struct sockaddr_storage *sout, const struct sockaddr_storage *sin);
+
 socklen_t sockaddr_len(const struct sockaddr_storage *ss);
 #endif
