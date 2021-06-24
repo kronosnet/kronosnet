@@ -620,3 +620,15 @@
   fun:init_nss
   fun:nsscrypto_init
 }
+{
+  nss internal leak non recurring (spotted on rhel8.4 and clang)
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:malloc
+  fun:realpath@@GLIBC_2.3
+  ...
+  obj:/usr/lib64/libnss3.so
+  fun:SECMOD_LoadModule
+  fun:SECMOD_LoadModule
+  obj:/usr/lib64/libnss3.so
+}
