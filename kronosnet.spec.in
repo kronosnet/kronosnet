@@ -177,12 +177,10 @@ BuildRequires: autoconf automake libtool
 	--disable-compress-zstd \
 %endif
 %if %{with libnozzle}
-	--enable-libnozzle \
+	--enable-libnozzle
 %else
-	--disable-libnozzle \
+	--disable-libnozzle
 %endif
-	--with-initdefaultdir=%{_sysconfdir}/sysconfig/ \
-	--with-systemddir=%{_unitdir}
 
 make %{_smp_mflags}
 
@@ -480,4 +478,3 @@ Requires: libknet1%{_isa} = %{version}-%{release}
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
 - These aren't the droids you're looking for.
-
