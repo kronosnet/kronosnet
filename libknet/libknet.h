@@ -115,6 +115,8 @@ typedef struct knet_handle *knet_handle_t;
  *            It is strongly encouraged to use pipes (ex: pipe(2) or pipe2(2)) for
  *            logging fds due to the atomic nature of writes between fds.
  *            See also libknet test suite for reference and guidance.
+ *            The caller is responsible for management of the FD. eg. knet will not
+ *            close it when knet_handle_free(3) is called
  *
  * default_log_level -
  *            If logfd is specified, it will initialize all subsystems to log
