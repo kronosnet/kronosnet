@@ -621,6 +621,18 @@
   fun:nsscrypto_init
 }
 {
+  nss internal leak non recurring (spotted on rhel8.4 and clang)
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:malloc
+  fun:realpath@@GLIBC_2.3
+  ...
+  obj:/usr/lib64/libnss3.so
+  fun:SECMOD_LoadModule
+  fun:SECMOD_LoadModule
+  obj:/usr/lib64/libnss3.so
+}
+{
   libgcrypt internal conditinal (debian 10)
   Memcheck:Cond
   obj:/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.2.4
