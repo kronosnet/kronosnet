@@ -39,7 +39,7 @@ endif
 .PHONY: setup
 setup: checks
 	./autogen.sh
-	./configure
+	./configure --enable-rust-bindings
 	make maintainer-clean
 
 
@@ -60,9 +60,9 @@ endif
 .PHONY: tarballs
 tarballs: tag
 	./autogen.sh
-	./configure
-	#make distcheck (disabled.. needs root)
-	make dist
+	./configure --enable-rust-bindings
+	make distcheck DISTCHECK_CONFIGURE_FLAGS="--enable-rust-bindings"
+	make all -j
 
 
 .PHONY: sha256
@@ -102,6 +102,8 @@ else
 	@git push --follow-tags origin
 	@echo : publishing files
 	@scp $(deliverables) $(deliverables:=.asc) www.kronosnet.org:kronosnet/releases/.
+	$(MAKE) -C libnozzle/bindings/rust crates-publish
+	$(MAKE) -C libknet/bindings/rust crates-publish
 endif
 
 

@@ -427,7 +427,7 @@ static int contains_plugins(char *path)
 
 
 /* libtool sets LD_LIBRARY_PATH to the build tree when running test in-tree */
-static char *find_plugins_path(void)
+char *find_plugins_path(void)
 {
 	char *ld_libs_env = getenv("LD_LIBRARY_PATH");
 	if (ld_libs_env) {

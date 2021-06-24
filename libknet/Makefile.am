@@ -15,10 +15,7 @@ SYMFILE			= libknet_exported_syms
 
 EXTRA_DIST		= $(SYMFILE)
 
-SUBDIRS			= . tests
-
-# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libversion		= 2:0:0
+SUBDIRS			= . tests bindings
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
@@ -100,7 +97,7 @@ EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
 libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
-			  -version-info $(libversion)
+			  -version-info $(libknetversion)
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
 

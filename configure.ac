@@ -170,8 +170,12 @@ AM_CONDITIONAL([OVERRIDE_RPM_DEBUGINFO], [test x$override_rpm_debuginfo_option =
 AC_ARG_ENABLE([libnozzle],
 	[AS_HELP_STRING([--enable-libnozzle],[libnozzle support])],,
 	[ enable_libnozzle="yes" ])
-
 AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
+
+AC_ARG_ENABLE([rust-bindings],
+	[AS_HELP_STRING([--enable-rust-bindings],[rust bindings support])],,
+	[ enable_rust_bindings="no" ])
+AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
 
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
@@ -268,6 +272,39 @@ if test "x$enable_man" = "xyes"; then
 	AC_SUBST([DOXYGEN2MAN])
 fi
 
+# check for rust tools to build bindings
+if test "x$enable_rust_bindings" = "xyes"; then
+	AC_PATH_PROG([CARGO], [cargo], [no])
+	if test "x$CARGO" = xno; then
+		AC_MSG_ERROR(["cargo command not found"])
+	fi
+
+	AC_PATH_PROG([RUSTC], [rustc], [no])
+	if test "x$RUSTC" = xno; then
+		AC_MSG_ERROR(["rustc command not found"])
+	fi
+
+	AC_PATH_PROG([RUSTDOC], [rustdoc], [no])
+	if test "x$RUSTDOC" = xno; then
+		AC_MSG_ERROR(["rustdoc command not found"])
+	fi
+
+	AC_PATH_PROG([BINDGEN], [bindgen], [no])
+	if test "x$BINDGEN" = xno; then
+		AC_MSG_ERROR(["bindgen command not found"])
+	fi
+
+	AC_PATH_PROG([CLIPPY], [clippy-driver], [no])
+	if test "x$CLIPPY" = xno; then
+		AC_MSG_ERROR(["clippy-driver command not found"])
+	fi
+
+	AC_PATH_PROG([RUSTFMT], [rustfmt], [no])
+	if test "x$RUSTFMT" = xno; then
+		AC_MSG_WARN(["rustfmt command not found (optional)"])
+	fi
+fi
+
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
 	if `echo $host_os | grep -q linux`; then
@@ -277,6 +314,30 @@ if test "x$enable_libnozzle" = xyes; then
 					   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
 	fi
 fi
+
+# https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+knetcurrent="2"
+knetrevision="0"
+knetage="0"
+# c:r:a
+libknetversion="$knetcurrent:$knetrevision:$knetage"
+# soname derived from c:r:a
+# use $VERSION as build info https://semver.org/. build info are incremental automatically
+knetalpha="-alpha1"
+libknetrustver="$(($knetcurrent - $knetage)).$knetage.$knetrevision$knetalpha+$VERSION"
+
+nozzlecurrent="1"
+nozzlerevision="0"
+nozzleage="0"
+libnozzleversion="$nozzlecurrent:$nozzlerevision:$nozzleage"
+# nozzle is stable for now
+nozzlealpha=""
+libnozzlerustver="$(($nozzlecurrent - $nozzleage)).$nozzleage.$nozzlerevision$nozzlealpha+$VERSION"
+
+AC_SUBST([libknetversion])
+AC_SUBST([libknetrustver])
+AC_SUBST([libnozzleversion])
+AC_SUBST([libnozzlerustver])
 
 # local options
 AC_ARG_ENABLE([debug],
@@ -301,8 +362,12 @@ AC_SUBST([TESTDIR])
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
 	OPT_CFLAGS="-O0"
+	RUST_FLAGS=""
+	RUST_TARGET_DIR="debug"
 else
 	OPT_CFLAGS="-O3"
+	RUST_FLAGS="--release"
+	RUST_TARGET_DIR="release"
 fi
 
 # gdb flags
@@ -350,6 +415,8 @@ UNWANTED_CFLAGS="-Wno-unused-parameter"
 
 AC_SUBST([AM_CFLAGS],["$SANITIZERS_CFLAGS $OPT_CFLAGS $GDB_FLAGS $DEFAULT_CFLAGS $UNWANTED_CFLAGS"])
 LDFLAGS="$SANITIZERS_LDFLAGS $LDFLAGS"
+AC_SUBST([RUST_FLAGS])
+AC_SUBST([RUST_TARGET_DIR])
 
 AX_PROG_DATE
 AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],
@@ -397,9 +464,19 @@ AC_CONFIG_FILES([
 		libnozzle/Makefile
 		libnozzle/libnozzle.pc
 		libnozzle/tests/Makefile
+		libnozzle/bindings/Makefile
+		libnozzle/bindings/rust/Makefile
+		libnozzle/bindings/rust/Cargo.toml
+		libnozzle/bindings/rust/tests/Makefile
+		libnozzle/bindings/rust/tests/Cargo.toml
 		libknet/Makefile
 		libknet/libknet.pc
 		libknet/tests/Makefile
+		libknet/bindings/Makefile
+		libknet/bindings/rust/Makefile
+		libknet/bindings/rust/Cargo.toml
+		libknet/bindings/rust/tests/Makefile
+		libknet/bindings/rust/tests/Cargo.toml
 		man/Makefile
 		man/Doxyfile-knet
 		man/Doxyfile-nozzle

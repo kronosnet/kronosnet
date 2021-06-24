@@ -1,0 +1,30 @@
+// Copyright (c) 2021 Red Hat, Inc.
+//
+// All rights reserved.
+//
+// Author: Christine Caulfield (ccaulfi@redhat.com)
+//
+
+extern crate pkg_config;
+
+fn main() {
+
+    // Tell the compiler to use the build-tree libs & headers for compiling
+    println!("cargo:rustc-link-search=native=../../../.libs/");
+    println!("cargo:rustc-link-lib=knet");
+
+    let lib = pkg_config::probe_library("libqb").unwrap();
+
+    cc::Build::new()
+	.file("src/bin/set_plugin_path.c")
+	.file("@ABSTOPLEVELSRC@/libknet/tests/test-common.c")   // for find_plugins_path()
+	.flag("-Wno-unused-parameter")                          // Needed for test-common.c to compile cleanly
+	.include("@ABSTOPLEVELSRC@")                            // for config.h
+	.include("@ABSTOPLEVELSRC@/libknet")                    // for internals.h
+	.include("@ABSTOPLEVELSRC@/libknet/tests")              // for test-common.h
+	.include("@ABSTOPLEVELBUILD@")                          // for config.h
+	.include("@ABSTOPLEVELBUILD@/libknet")                  // for internals.h
+	.include("@ABSTOPLEVELBUILD@/libknet/tests")            // for test-common.h
+	.includes(lib.include_paths)
+	.compile("set_plugin_path");
+}

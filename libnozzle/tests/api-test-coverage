@@ -79,6 +79,54 @@ for i in $headerapicalls; do
 	fi
 done
 
+
+# Check Rust bindings coverage
+rust_found=0
+rust_missing=0
+deliberately_missing=""
+rustapicalls=$numapicalls
+for i in $headerapicalls; do
+    rustcall=`echo $i|awk '{print substr($0, 8)}'`
+    grep "^pub fn ${rustcall}(" $1/libnozzle/bindings/rust/src/nozzle_bindings.rs > /dev/null 2>/dev/null
+    if [ $? = 0 ]
+    then
+	rust_found=$((rust_found+1))
+    else
+	echo $deliberately_missing | grep $i 2>/dev/null >/dev/null
+	if [ $? != 0 ]
+	then
+	    echo "$i Missing from Rust API"
+	    rust_missing=$((rust_missing+1))
+	else
+	    rustapicalls=$((rustapicalls-1))
+	fi
+    fi
+done
+
+# Check Rust test coverage
+rust_test_found=0
+rust_test_missing=0
+deliberately_missing=""
+rust_testapicalls=$numapicalls
+for i in $headerapicalls; do
+    rustcall=`echo $i|awk '{print substr($0, 8)}'`
+    grep "nozzle::${rustcall}(" $1/libnozzle/bindings/rust/tests/src/bin/nozzle-test.rs > /dev/null 2>/dev/null
+    if [ $? = 0 ]
+    then
+	rust_test_found=$((rust_test_found+1))
+    else
+	echo $deliberately_missing | grep $i 2>/dev/null >/dev/null
+	if [ $? != 0 ]
+	then
+	    echo "$i Missing from Rust test"
+	    rust_test_missing=$((rust_test_missing+1))
+	else
+	    rust_testapicalls=$((rust_testapicalls-1))
+	fi
+    fi
+done
+
+echo ""
 echo "Summary"
 echo "-------"
 echo "Found   : $found"
@@ -88,6 +136,27 @@ which bc > /dev/null 2>&1 && {
 	coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
 	echo "Coverage: $coverage%"
 }
-exit 0
+echo
+echo "Rust API Summary"
+echo "----------------"
+echo "Found   : $rust_found"
+echo "Missing : $rust_missing"
+echo "Total   : $rustapicalls"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $rust_found / $rustapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
+
+
+echo
+echo "Rust test Summary"
+echo "-----------------"
+echo "Found   : $rust_test_found"
+echo "Missing : $rust_test_missing"
+echo "Total   : $rustapicalls"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $rust_test_found / $rust_testapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
 
 exit 0

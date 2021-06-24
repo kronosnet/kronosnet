@@ -40,7 +40,27 @@ This sysctl is obsoleted in version 13.
 
 libnozzle requires if_tap.ko loaded in the kernel.
 
-Please avoid to use ifconfig_DEFAULT in /etc/rc.conf to use
+Please avoid using ifconfig_DEFAULT in /etc/rc.conf to use
 DHCP for all interfaces or the dhclient will interfere with
 libnozzle interface management, causing errors on some
 operations such as "ifconfig tap down".
+
+
+Rust Bindings
+-------------
+
+Rust bindings for libknet and libnozzle are part of this
+source tree, but are included here mainly to keep all of the
+kronosnet APIs in one place and to ensure that everything is kept
+up-to-date and properly tested in our CI system.
+
+The correct place to get the Rust crates for libknet and libnozzle
+is still crates.io as it would be for other crates. These will be
+updated when we issue a new release of knet.
+
+https://crates.io/crates/knet-bindings
+https://crates.io/crates/nozzle-bindings
+
+Of course, if you want to try any new features in the APIs that
+may have not yet been released then you can try these sources, but
+please keep in touch with us via email or IRC if you do so.

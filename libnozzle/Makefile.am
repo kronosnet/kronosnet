@@ -16,9 +16,7 @@ EXTRA_DIST		= $(SYMFILE)
 
 if BUILD_LIBNOZZLE
 
-SUBDIRS			= . tests
-
-libversion		= 1:0:0
+SUBDIRS			= . tests bindings
 
 sources			= libnozzle.c \
 			  internals.c
@@ -42,7 +40,7 @@ EXTRA_libnozzle_la_DEPENDENCIES	= $(SYMFILE)
 
 libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
-			  -version-info $(libversion)
+			  -version-info $(libnozzleversion)
 
 libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(libnl_LIBS) $(libnlroute_LIBS)
 

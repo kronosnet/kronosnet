@@ -1,0 +1,13 @@
+# Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Christine Caulfield <ccaulfie@redhat.com>
+#
+# This software licensed under GPL-2.0+
+
+This crate contains Rust bindings for the kronosnet (knet)
+library libknet: https://kronosnet.org/
+
+Kronosnet, often referred to as knet, is a network abstraction
+layer designed for High Availability use cases, where redundancy,
+security, fault tolerance and fast fail-over are the core
+requirements of your application.

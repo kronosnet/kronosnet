@@ -1,0 +1,24 @@
+# Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Christine Caulfield <ccaulfie@redhat.com>
+#
+# This software licensed under GPL-2.0+
+
+[package]
+name = "nozzle-bindings-tests"
+version = "@libnozzlerustver@"
+authors = ["Christine Caulfield <ccaulfie@redhat.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nozzle-bindings = { path = ".." }
+libc = "0.2.93"
+tempfile = "3"
+
+[[bin]]
+name = "nozzle-test"
+test = true
+bench = false
+

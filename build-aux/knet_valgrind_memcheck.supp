@@ -1,3 +1,9 @@
+# Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+
+
 {
   lzma internals (spotted on Debian 9 and Ubuntu 18.04 LTS x86-64)
   Memcheck:Cond
@@ -720,4 +726,46 @@
   fun:_handle_heartbt_thread
   fun:start_thread
   fun:clone
+}
+{
+  For knet-test Rust API checker
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:malloc
+  ...
+  fun:_ZN*
+}
+{
+  For knet-test Rust API checker
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:calloc
+  fun:UnknownInlinedFun
+  fun:allocate_dtv
+  fun:_dl_allocate_tls
+  fun:pthread_create
+  ...
+  fun:_ZN*
+}
+{
+  For knet-test Rust API checker
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:calloc
+  fun:UnknownInlinedFun
+  fun:allocate_dtv
+  fun:_dl_allocate_tls
+  fun:pthread_create
+  ...
+  fun:_ZN*
+  fun:main
+}
+{
+  For knet-test Rust API checker
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:malloc
+  ...
+  fun:_ZN*
+  fun:main
 }

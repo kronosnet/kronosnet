@@ -1,0 +1,10 @@
+# Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Christine Caulfield <ccaulfie@redhat.com>
+#
+# This software licensed under GPL-2.0+
+
+This crate contains Rust bindings for the libnozzle
+library, part of kornosnet: https://kronosnet.org/
+
+libnozzle is a commodity library to manage tap (ethernet) interfaces

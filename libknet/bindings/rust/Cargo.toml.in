@@ -1,0 +1,28 @@
+# Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Christine Caulfield <ccaulfie@redhat.com>
+#
+# This software licensed under LGPL-2.1+
+
+[package]
+name = "knet-bindings"
+version = "@libknetrustver@"
+authors = ["Christine Caulfield <ccaulfie@redhat.com>"]
+edition = "2018"
+readme = "README"
+license = "LGPL-2.1+"
+repository = "https://github.com/kronosnet/kronosnet"
+description = "Rust bindings for Kronosnet libraries"
+categories = ["api-bindings"]
+keywords = ["cluster", "high-availability"]
+exclude = [
+    "*.in",
+    "Makefile*",
+]
+
+[dependencies]
+bitflags = "1.2.1"
+lazy_static = "1.4.0"
+os_socketaddr = "0.2.0"
+libc = "0.2.93"
+

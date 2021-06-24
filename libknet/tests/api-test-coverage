@@ -77,6 +77,57 @@ for i in $headerapicalls; do
 	fi
 done
 
+# Check Rust bindings coverage
+rust_found=0
+rust_missing=0
+# These are implemented directly in the Rust code
+deliberately_missing="knet_strtoaddr knet_addrtostr knet_get_transport_name_by_id knet_get_transport_id_by_name"
+rustapicalls=$numapicalls
+for i in $headerapicalls; do
+    rustcall=`echo $i|awk '{print substr($0, 6)}'`
+    grep "^pub fn ${rustcall}(" $1/libknet/bindings/rust/src/knet_bindings.rs > /dev/null 2>/dev/null
+    if [ $? = 0 ]
+    then
+	rust_found=$((rust_found+1))
+    else
+	echo $deliberately_missing | grep $i 2>/dev/null >/dev/null
+	if [ $? != 0 ]
+	then
+	    echo "$i Missing from Rust API"
+	    rust_missing=$((rust_missing+1))
+	else
+	    rustapicalls=$((rustapicalls-1))
+	fi
+    fi
+done
+
+
+
+# Check Rust test coverage
+rust_test_found=0
+rust_test_missing=0
+deliberately_missing="knet_strtoaddr knet_addrtostr knet_get_transport_name_by_id knet_get_transport_id_by_name"
+rust_testapicalls=$numapicalls
+for i in $headerapicalls; do
+    rustcall=`echo $i|awk '{print substr($0, 6)}'`
+    grep "knet::${rustcall}(" $1/libknet/bindings/rust/tests/src/bin/knet-test.rs > /dev/null 2>/dev/null
+    if [ $? = 0 ]
+    then
+	rust_test_found=$((rust_test_found+1))
+    else
+	echo $deliberately_missing | grep $i 2>/dev/null >/dev/null
+	if [ $? != 0 ]
+	then
+	    echo "$i Missing from Rust test"
+	    rust_test_missing=$((rust_test_missing+1))
+	else
+	    rust_testapicalls=$((rust_testapicalls-1))
+	fi
+    fi
+done
+
+
+echo ""
 echo "Summary"
 echo "-------"
 echo "Found   : $found"
@@ -86,4 +137,28 @@ which bc > /dev/null 2>&1 && {
 	coverage=$(echo "scale=3; $found / $numapicalls * 100" | bc -l)
 	echo "Coverage: $coverage%"
 }
+
+echo
+echo "Rust API Summary"
+echo "----------------"
+echo "Found   : $rust_found"
+echo "Missing : $rust_missing"
+echo "Total   : $rustapicalls"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $rust_found / $rustapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
+
+
+echo
+echo "Rust test Summary"
+echo "-----------------"
+echo "Found   : $rust_test_found"
+echo "Missing : $rust_test_missing"
+echo "Total   : $rustapicalls"
+which bc > /dev/null 2>&1 && {
+	coverage=$(echo "scale=3; $rust_test_found / $rust_testapicalls * 100" | bc -l)
+	echo "Coverage: $coverage%"
+}
+
 exit 0
