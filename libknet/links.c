@@ -543,7 +543,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * remove any other access lists when the socket is no
 	 * longer in use by the transport.
 	 */
-	if ((transport_get_acl_type(knet_h, link->transport) == USE_GENERIC_ACL) &&
+	if ((transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL) &&
 	    (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS)) {
 		check_rmall(knet_h, sock, transport);
 	}
