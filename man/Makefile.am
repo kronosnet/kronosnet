@@ -120,14 +120,14 @@ $(MANS): doxyfile-knet.stamp doxyfile-nozzle.stamp
 # since it's a one-shot tool and doesn't affect runtime.
 
 doxyfile-knet.stamp: Doxyfile-knet $(top_srcdir)/libknet/libknet.h
-	$(DOXYGEN) Doxyfile-knet
+	$(DOXYGEN) Doxyfile-knet 2>&1 | $(EGREP) -v 'warning.*macro definition'
 	LSAN_OPTIONS="exitcode=0" $(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
 doxyfile-nozzle.stamp: Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
 if BUILD_LIBNOZZLE
-	$(DOXYGEN) Doxyfile-nozzle
+	$(DOXYGEN) Doxyfile-nozzle 2>&1 | $(EGREP) -v 'warning.*macro definition'
 	LSAN_OPTIONS="exitcode=0" $(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
 endif

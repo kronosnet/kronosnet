@@ -30,11 +30,14 @@
  * libknet limits
  */
 
+
+/** typedef for a knet node */
+typedef uint16_t knet_node_id_t;
+
+
 /*
  * Maximum number of hosts
  */
-
-typedef uint16_t knet_node_id_t;
 
 #define KNET_MAX_HOST 65536
 
@@ -94,6 +97,10 @@ typedef uint16_t knet_node_id_t;
 
 #define KNET_THREADS_TIMER_RES 200000
 
+/**
+ * Opaque handle for this knet connection, created with knet_handle_new() and
+ * freed with knet_handle_free()
+ */
 typedef struct knet_handle *knet_handle_t;
 
 /*
@@ -711,11 +718,21 @@ int knet_handle_pmtud_get(knet_handle_t knet_h,
 #define KNET_MIN_KEY_LEN  128
 #define KNET_MAX_KEY_LEN 4096
 
+
+/**
+ * Structure passed into knet_handle_set_crypto_config() to determine
+ * the crypto options to use for the current communications handle
+ */
 struct knet_handle_crypto_cfg {
+	/** Model to use. nss, openssl, etc */
 	char		crypto_model[16];
+	/** Cipher type name for encryption. aes 256 etc */
 	char		crypto_cipher_type[16];
+	/** Hash type for digest. sha512 etc */
 	char		crypto_hash_type[16];
+	/** Private key */
 	unsigned char	private_key[KNET_MAX_KEY_LEN];
+	/** Length of private key */
 	unsigned int	private_key_len;
 };
 
@@ -857,9 +874,19 @@ int knet_handle_crypto_use_config(knet_handle_t knet_h,
 
 #define KNET_COMPRESS_THRESHOLD 100
 
+
+/**
+ * Structure passed into knet_handle_compress()
+ * to tell knet what type of compression to use
+ * for this communiction
+ */
+
 struct knet_handle_compress_cfg {
+	/** Compression library to use, bzip2 etc... */
 	char	 compress_model[16];
+	/** Threshold. Packets smaller than this will not be compressed */
 	uint32_t compress_threshold;
+	/** Passed into the compression library as an indication of the level of compression to apply */
 	int	 compress_level;
 };
 
@@ -922,38 +949,65 @@ int knet_handle_compress(knet_handle_t knet_h,
 			 struct knet_handle_compress_cfg *knet_handle_compress_cfg);
 
 
+/**
+ * Detailed stats for this knet handle as returned by knet_handle_get_stats()
+ */
 
 struct knet_handle_stats {
+	/** Size of the structure. set this to sizeof(struct knet_handle_stats) before calling */
 	size_t   size;
-
+	/** Number of uncompressed packets sent */
 	uint64_t tx_uncompressed_packets;
+	/** Number of compressed packets sent */
 	uint64_t tx_compressed_packets;
+	/** Number of bytes sent (as if uncompressed, ie actual data bytes) */
 	uint64_t tx_compressed_original_bytes;
+	/** Number of bytes sent on the wire after compresion */
 	uint64_t tx_compressed_size_bytes;
+	/** Average(mean) time take to compress transmitted packets */
 	uint64_t tx_compress_time_ave;
+	/** Minumum time taken to compress transmitted packets */
 	uint64_t tx_compress_time_min;
+	/** Maximum time taken to compress transmitted packets */
 	uint64_t tx_compress_time_max;
+	/** Number of times the compression attempt failed for some reason */
 	uint64_t tx_failed_to_compress;
+	/** Number of packets where the compressed size was no smaller than the original */
 	uint64_t tx_unable_to_compress;
 
+	/** Number of compressed packets received */
 	uint64_t rx_compressed_packets;
+	/** Number of bytes received - after decompression */
 	uint64_t rx_compressed_original_bytes;
+	/** Number of compressed bytes received before decompression */
 	uint64_t rx_compressed_size_bytes;
+	/** Average(mean) time take to decompress received packets */
 	uint64_t rx_compress_time_ave;
+	/** Minimum time take to decompress received packets */
 	uint64_t rx_compress_time_min;
+	/** Maximum time take to decompress received packets */
 	uint64_t rx_compress_time_max;
+	/** Number of times decompression failed */
 	uint64_t rx_failed_to_decompress;
 
-	/* Overhead times, measured in usecs */
+	/** Number of encrypted packets sent */
 	uint64_t tx_crypt_packets;
+	/** Cumulative byte overhead of encrypted traffic */
 	uint64_t tx_crypt_byte_overhead;
+	/** Average(mean) time take to encrypt packets in usecs */
 	uint64_t tx_crypt_time_ave;
+	/** Minimum time take to encrypto packets in usecs */
 	uint64_t tx_crypt_time_min;
+	/** Maximum time take to encrypto packets in usecs */
 	uint64_t tx_crypt_time_max;
 
+	/** Number of encrypted packets received */
 	uint64_t rx_crypt_packets;
+	/** Average(mean) time take to decrypt received packets */
 	uint64_t rx_crypt_time_ave;
+	/** Minimum time take to decrypt received packets in usecs */
 	uint64_t rx_crypt_time_min;
+	/** Maximum time take to decrypt received packets in usecs */
 	uint64_t rx_crypt_time_max;
 };
 
@@ -1010,11 +1064,18 @@ int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats,
 int knet_handle_clear_stats(knet_handle_t knet_h, int clear_option);
 
 
+/**
+ * Structure returned from get_crypto_list() containing
+ * information about the installed cryptographic systems
+ */
 
 struct knet_crypto_info {
-	const char *name; /* openssl,nss,etc.. */
-	uint8_t properties; /* currently unused */
-	char pad[256];      /* currently unused */
+	/** Name of the crypto library/ openssl, nss,etc .. */
+	const char *name;
+	/** Properties - currently unused */
+	uint8_t properties;
+	/** Currently unused padding */
+	char pad[256];
 };
 
 /**
@@ -1042,10 +1103,17 @@ int knet_get_crypto_list(struct knet_crypto_info *crypto_list,
 
 
 
+/**
+ * Structure returned from get_compress_list() containing
+ * information about the installed compression systems
+ */
 struct knet_compress_info {
-	const char *name; /* bzip2, lz4, etc.. */
-	uint8_t properties; /* currently unused */
-	char pad[256];      /* currently unused */
+	/** Name of the compression type  bzip2, lz4, etc.. */
+	const char *name;
+	/** Properties - currently unused */
+	uint8_t properties;
+	/** Currently unused padding */
+	char pad[256];
 };
 
 /**
@@ -1407,9 +1475,15 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
  *                       1 host_id has been received via another host_id
  */
 
+/**
+ * status of a knet host, returned from knet_host_get_status()
+ */
 struct knet_host_status {
+	/** Whether the host is currently reachable */
 	uint8_t reachable;
+	/** Whether the host is a remote node (not currently implemented) */
 	uint8_t remote;
+	/** Whether the host is external (not currently implemented) */
 	uint8_t external;
 	/* add host statistics */
 };
@@ -1523,11 +1597,19 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
  * local host.
  */
 
+
+/**
+ * Transport information returned from knet_get_transport_list()
+ */
 struct knet_transport_info {
-	const char *name;   /* UDP/SCTP/etc... */
-	uint8_t id;         /* value that can be used for link_set_config */
-	uint8_t properties; /* currently unused */
-	char pad[256];      /* currently unused */
+	/** Transport name. UDP, SCTP, etc... */
+	const char *name;
+	/** value that can be used for knet_link_set_config() */
+	uint8_t id;
+	/** currently unused */
+	uint8_t properties;
+	/** currently unused */
+	char pad[256];
 };
 
 /**
@@ -2127,85 +2209,150 @@ int knet_link_get_link_list(knet_handle_t knet_h, knet_node_id_t host_id,
 
 #define MAX_LINK_EVENTS 16
 
+/**
+ * Stats for a knet link
+ * returned from knet_link_get_status() as part of a knet_link_status structure
+ * link stats are 'onwire', ie they indicate the number of actual bytes/packets
+ * sent including overheads, not just data packets.
+ */
 struct knet_link_stats {
-	/* onwire values */
+	/** Number of data packets sent */
 	uint64_t tx_data_packets;
+	/** Number of data packets received */
 	uint64_t rx_data_packets;
+	/** Number of data bytes sent */
 	uint64_t tx_data_bytes;
+	/** Number of data bytes received */
 	uint64_t rx_data_bytes;
+	/** Number of ping packets sent */
 	uint64_t rx_ping_packets;
+	/** Number of ping packets received */
 	uint64_t tx_ping_packets;
+	/** Number of ping bytes sent */
 	uint64_t rx_ping_bytes;
+	/** Number of ping bytes received */
 	uint64_t tx_ping_bytes;
+	/** Number of pong packets sent */
 	uint64_t rx_pong_packets;
+	/** Number of pong packets received */
 	uint64_t tx_pong_packets;
+	/** Number of pong bytes sent */
 	uint64_t rx_pong_bytes;
+	/** Number of pong bytes received */
 	uint64_t tx_pong_bytes;
+	/** Number of pMTU packets sent */
 	uint64_t rx_pmtu_packets;
+	/** Number of pMTU packets received */
 	uint64_t tx_pmtu_packets;
+	/** Number of pMTU bytes sent */
 	uint64_t rx_pmtu_bytes;
+	/** Number of pMTU bytes received */
 	uint64_t tx_pmtu_bytes;
 
-	/* Only filled in when requested */
+	/* These are only filled in when requested
+	   ie. they are not collected in realtime */
+	/** Total of all packets sent */
 	uint64_t tx_total_packets;
+	/** Total of all packets received */
 	uint64_t rx_total_packets;
+	/** Total number of bytes sent */
 	uint64_t tx_total_bytes;
+	/** Total number of bytes received */
 	uint64_t rx_total_bytes;
+	/** Total number of errors that occurred while sending */
 	uint64_t tx_total_errors;
+	/** Total number of retries that occurred while sending */
 	uint64_t tx_total_retries;
 
+	/** Total number of errors that occurred while sending pMTU packets */
 	uint32_t tx_pmtu_errors;
+	/** Total number of retries that occurred while sending pMTU packets */
 	uint32_t tx_pmtu_retries;
+	/** Total number of errors that occurred while sending ping packets */
 	uint32_t tx_ping_errors;
+	/** Total number of retries that occurred while sending ping packets */
 	uint32_t tx_ping_retries;
+	/** Total number of errors that occurred while sending pong packets */
 	uint32_t tx_pong_errors;
+	/** Total number of retries that occurred while sending pong packets */
 	uint32_t tx_pong_retries;
+	/** Total number of errors that occurred while sending data packets */
 	uint32_t tx_data_errors;
+	/** Total number of retries that occurred while sending data packets */
 	uint32_t tx_data_retries;
 
-	/* measured in usecs */
+	/** Minimum latency measured in usecs */
 	uint32_t latency_min;
+	/** Maximum latency measured in usecs */
 	uint32_t latency_max;
+	/** Average(mean) latency measured in usecs */
 	uint32_t latency_ave;
+	/** Number of samples used to calculate latency */
 	uint32_t latency_samples;
 
-	/* how many times the link has been going up/down */
+	/** How many times the link has gone down */
 	uint32_t down_count;
+	/** How many times the link has come up */
 	uint32_t up_count;
 
-	/*
-	 * circular buffer of time_t structs collecting the history
-	 * of up/down events on this link.
-	 * the index indicates current/last event.
+	/**
+	 * A circular buffer of time_t structs collecting the history
+	 * of up events on this link.
+	 * The index indicates current/last event.
 	 * it is safe to walk back the history by decreasing the index
 	 */
 	time_t   last_up_times[MAX_LINK_EVENTS];
+	/**
+	 * A circular buffer of time_t structs collecting the history
+	 * of down events on this link.
+	 * The index indicates current/last event.
+	 * it is safe to walk back the history by decreasing the index
+	 */
 	time_t   last_down_times[MAX_LINK_EVENTS];
+	/** Index of last element in the last_up_times[] array */
 	int8_t   last_up_time_index;
+	/** Index of last element in the last_down_times[] array */
 	int8_t   last_down_time_index;
 	/* Always add new stats at the end */
 };
 
+
+/**
+ * Status of a knet link as returned from knet_link_get_status()
+ */
 struct knet_link_status {
-	size_t size;                    /* For ABI checking */
+	/** Size of the structure for ABI checking, set this to sizeof(knet_link_status) before calling knet_link_get_status() */
+	size_t size;
+	/** Local IP address as a string*/
 	char src_ipaddr[KNET_MAX_HOST_LEN];
+	/** Local IP port as a string */
 	char src_port[KNET_MAX_PORT_LEN];
+	/** Remote IP address as a string */
 	char dst_ipaddr[KNET_MAX_HOST_LEN];
+	/** Remote IP port as a string*/
 	char dst_port[KNET_MAX_PORT_LEN];
-	uint8_t enabled;	        /* link is configured and admin enabled for traffic */
-	uint8_t connected;              /* link is connected for data (local view) */
-	uint8_t dynconnected;	        /* link has been activated by remote dynip */
+	/** Link is configured and admin enabled for traffic */
+	uint8_t enabled;
+	/** Link is connected for data (local view) */
+	uint8_t connected;
+	/** Link has been activated by remote dynip */
+	uint8_t dynconnected;
+	/** Timestamp of the past pong received */
 	struct timespec pong_last;
-	unsigned int mtu;		/* current detected MTU on this link */
-	unsigned int proto_overhead;    /* contains the size of the IP protocol, knet headers and
-					 * crypto headers (if configured). This value is filled in
-					 * ONLY after the first PMTUd run on that given link,
-					 * and can change if link configuration or crypto configuration
-					 * changes at runtime.
-					 * WARNING: in general mtu + proto_overhead might or might
-					 * not match the output of ifconfig mtu due to crypto
-					 * requirements to pad packets to some specific boundaries. */
-	/* Link statistics */
+	/** Currently detected MTU on this link */
+	unsigned int mtu;
+	/**
+	 * Contains the size of the IP protocol, knet headers and
+	 * crypto headers (if configured). This value is filled in
+	 * ONLY after the first PMTUd run on that given link,
+	 * and can change if link configuration or crypto configuration
+	 * changes at runtime.
+	 * WARNING: in general mtu + proto_overhead might or might
+	 * not match the output of ifconfig mtu due to crypto
+	 * requirements to pad packets to some specific boundaries.
+	 */
+	unsigned int proto_overhead;
+	/** Link statistics */
 	struct knet_link_stats stats;
 };
 
@@ -2406,11 +2553,19 @@ uint8_t knet_log_get_loglevel_id(const char *name);
 #error KNET_MAX_LOG_MSG_SIZE cannot be bigger than PIPE_BUF for guaranteed system atomic writes
 #endif
 
+
+/**
+ * Structure of a log message sent to the logging fd
+ */
 struct knet_log_msg {
+	/** Text of the log message */
 	char	msg[KNET_MAX_LOG_MSG_SIZE];
-	uint8_t	subsystem;	/* KNET_SUB_* */
-	uint8_t msglevel;	/* KNET_LOG_* */
-	knet_handle_t knet_h;	/* pointer to the handle generating the log */
+	/** Subsystem that sent this message. KNET_SUB_* */
+	uint8_t	subsystem;
+	/** Logging level of this message. KNET_LOG_* */
+	uint8_t msglevel;
+	/** Pointer to the handle generating the log message */
+	knet_handle_t knet_h;
 };
 
 /**
