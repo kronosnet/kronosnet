@@ -103,8 +103,8 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 struct sockaddr_storage *dst_addr,
 			 uint64_t flags)
 {
-	int savederrno = 0, err = 0, i, wipelink = 0;
-	struct knet_host *host;
+	int savederrno = 0, err = 0, i, wipelink = 0, link_idx;
+	struct knet_host *host, *tmp_host;
 	struct knet_link *link;
 
 	if (!_is_valid_handle(knet_h)) {
@@ -256,6 +256,28 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->latency_max_samples = KNET_LINK_DEFAULT_PING_PRECISION;
 	link->latency_cur_samples = 0;
 	link->flags = flags;
+
+	/*
+	 * check for DYNIP vs STATIC collisions.
+	 * example: link0 is static, user attempts to configure link1 as dynamic with the same source
+	 * address/port.
+	 * This configuration is invalid and would cause ACL collisions.
+	 */
+	for (tmp_host = knet_h->host_head; tmp_host != NULL; tmp_host = tmp_host->next) {
+		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+			if (&tmp_host->link[link_idx] == link)
+				continue;
+
+			if ((!memcmp(&tmp_host->link[link_idx].src_addr, &link->src_addr, sizeof(struct sockaddr_storage))) &&
+			    (tmp_host->link[link_idx].dynamic != link->dynamic)) {
+				savederrno = EINVAL;
+				err = -1;
+				log_err(knet_h, KNET_SUB_LINK, "Failed to configure host %u link %u dyn %u. Conflicts with host %u link %u dyn %u: %s",
+					host_id, link_id, link->dynamic, tmp_host->host_id, link_idx, tmp_host->link[link_idx].dynamic, strerror(savederrno));
+				goto exit_unlock;
+			}
+		}
+	}
 
 	savederrno = pthread_mutex_init(&link->link_stats_mutex, NULL);
 	if (savederrno) {
