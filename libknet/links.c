@@ -121,8 +121,8 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			 struct sockaddr_storage *dst_addr,
 			 uint64_t flags)
 {
-	int savederrno = 0, err = 0, i;
-	struct knet_host *host;
+	int savederrno = 0, err = 0, i, wipelink = 0, link_idx;
+	struct knet_host *host, *tmp_host;
 	struct knet_link *link;
 
 	if (!_is_valid_handle(knet_h)) {
@@ -210,6 +210,12 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
+	/*
+	 * errors happening after this point should trigger
+	 * a memset of the link
+	 */
+	wipelink = 1;
+
 	copy_sockaddr(&link->src_addr, src_addr);
 
 	err = knet_addrtostr(src_addr, sizeof(struct sockaddr_storage),
@@ -269,6 +275,28 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->status.stats.latency_samples = 0;
 	link->flags = flags;
 
+	/*
+	 * check for DYNIP vs STATIC collisions.
+	 * example: link0 is static, user attempts to configure link1 as dynamic with the same source
+	 * address/port.
+	 * This configuration is invalid and would cause ACL collisions.
+	 */
+	for (tmp_host = knet_h->host_head; tmp_host != NULL; tmp_host = tmp_host->next) {
+		for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+			if (&tmp_host->link[link_idx] == link)
+				continue;
+
+			if ((!memcmp(&tmp_host->link[link_idx].src_addr, &link->src_addr, sizeof(struct sockaddr_storage))) &&
+			    (tmp_host->link[link_idx].dynamic != link->dynamic)) {
+				savederrno = EINVAL;
+				err = -1;
+				log_err(knet_h, KNET_SUB_LINK, "Failed to configure host %u link %u dyn %u. Conflicts with host %u link %u dyn %u: %s",
+					host_id, link_id, link->dynamic, tmp_host->host_id, link_idx, tmp_host->link[link_idx].dynamic, strerror(savederrno));
+				goto exit_unlock;
+			}
+		}
+	}
+
 	savederrno = pthread_mutex_init(&link->link_stats_mutex, NULL);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_LINK, "Unable to initialize link stats mutex: %s", strerror(savederrno));
@@ -279,7 +307,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	if (transport_link_set_config(knet_h, link, transport) < 0) {
 		savederrno = errno;
 		err = -1;
-		goto exit_unlock;
+		goto exit_transport_err;
 	}
 
 	/*
@@ -297,10 +325,13 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 			log_warn(knet_h, KNET_SUB_LINK, "Failed to configure default access lists for host: %u link: %u", host_id, link_id);
 			savederrno = errno;
 			err = -1;
-			goto exit_unlock;
+			goto exit_acl_error;
 		}
 	}
 
+	/*
+	 * no errors should happen after link is configured
+	 */
 	link->configured = 1;
 	log_debug(knet_h, KNET_SUB_LINK, "host: %u link: %u is configured",
 		  host_id, link_id);
@@ -340,7 +371,33 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		link->has_valid_mtu = 1;
 	}
 
+exit_acl_error:
+	/*
+	 * if creating access lists has error, we only need to clean
+	 * the transport and the stuff below.
+	 */
+	if (err < 0) {
+		if ((transport_link_clear_config(knet_h, link) < 0)  &&
+		    (errno != EBUSY)) {
+			log_warn(knet_h, KNET_SUB_LINK, "Failed to deconfigure transport for host %u link %u: %s", host_id, link_id, strerror(errno));
+		}
+	}
+exit_transport_err:
+	/*
+	 * if transport has errors, transport will clean after itself
+	 * and we only need to clean the mutex
+	 */
+	if (err < 0) {
+		pthread_mutex_destroy(&link->link_stats_mutex);
+	}
 exit_unlock:
+	/*
+	 * re-init the link on error
+	 */
+	if ((err < 0) && (wipelink)) {
+		memset(link, 0, sizeof(struct knet_link));
+		link->link_id = link_id;
+	}
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	errno = err ? savederrno : 0;
 	return err;
@@ -526,7 +583,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 * remove any other access lists when the socket is no
 	 * longer in use by the transport.
 	 */
-	if ((transport_get_acl_type(knet_h, link->transport) == USE_GENERIC_ACL) &&
+	if ((transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL) &&
 	    (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS)) {
 		check_rmall(knet_h, sock, transport);
 	}
