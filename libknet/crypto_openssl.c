@@ -456,6 +456,8 @@ static int opensslcrypto_authenticate_and_decrypt (
 		unsigned char tmp_hash[crypto_instance->sec_hash_size];
 		ssize_t temp_buf_len = buf_in_len - crypto_instance->sec_hash_size;
 
+		memset(tmp_hash, 0, sizeof(tmp_hash));
+
 		if ((temp_buf_len <= 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
 			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Incorrect packet size.");
 			return -1;

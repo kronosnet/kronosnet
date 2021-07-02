@@ -1,3 +1,9 @@
+# Copyright (C) 2020-2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+
+
 # PKG_CHECK_VAR(VARIABLE, MODULE, CONFIG-VARIABLE,
 # [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
 # -------------------------------------------

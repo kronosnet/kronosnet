@@ -46,6 +46,13 @@ socklen_t sockaddr_len(const struct sockaddr_storage *ss)
 	}
 }
 
+/* Only copy the valid parts of a sockaddr* */
+void copy_sockaddr(struct sockaddr_storage *sout, const struct sockaddr_storage *sin)
+{
+	memset(sout, 0, sizeof(struct sockaddr_storage));
+	memmove(sout, sin, sockaddr_len(sin));
+}
+
 /*
  * exported APIs
  */

@@ -21,6 +21,11 @@
  * nozzle is a commodity library to manage tap (ethernet) interfaces
  */
 
+/**
+ * An opaque handle returned from nozzle_open(), this should be
+ * passed into all other nozzle API calls and closed with nozzle_close()
+ * when finished with.
+ */
 typedef struct nozzle_iface *nozzle_t;
 
 /**
@@ -42,7 +47,7 @@ typedef struct nozzle_iface *nozzle_t;
  * updownpath - nozzle supports the typical filesystem structure to execute
  *              actions for: down.d  post-down.d  pre-up.d  up.d
  *              in the form of:
- *              updownpath/<action>/<interface_name>
+ *              updownpath/\<action\>/\<interface_name\>
  *              updownpath specifies where to find those directories on the
  *              filesystem and it must be an absolute path.
  *
@@ -169,10 +174,18 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix);
 #define IPADDR_CHAR_MAX	128
 #define PREFIX_CHAR_MAX	  4
 
+/**
+ * Info about an IP address on a nozzle interface
+ * as returned from nozzle_get_ips
+ */
 struct nozzle_ip {
+	/** The IP address */
 	char ipaddr[IPADDR_CHAR_MAX + 1];
+	/** Prefix - eg "24" */
 	char prefix[PREFIX_CHAR_MAX + 1];
-	int  domain;	/* AF_INET or AF_INET6 */
+	/** AF_INET or AF_INET6 */
+	int  domain;
+	/** Pointer to next struct or NULL */
 	struct nozzle_ip *next;
 };
 
