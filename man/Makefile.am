@@ -27,8 +27,9 @@ if BUILD_MAN
 
 if BUILD_DOXYXML
 noinst_PROGRAMS	= doxyxml
+noinst_HEADERS  = cstring.h
 
-doxyxml_SOURCES = doxyxml.c
+doxyxml_SOURCES = doxyxml.c cstring.c
 doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
 doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
 endif
