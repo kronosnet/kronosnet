@@ -60,6 +60,14 @@ static void test(uint8_t transport)
 
 	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
 
+	if (knet_handle_enable_access_lists(knet_h, 1) < 0) {
+		printf("Cannot enable access lists: %s\n", strerror(errno));
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
+
 	printf("Test knet_send with no send_buff\n");
 
 	if ((!knet_send(knet_h, NULL, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
