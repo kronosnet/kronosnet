@@ -678,8 +678,10 @@ void knet_handle_stop_nodes(knet_handle_t knet_h[], uint8_t numnodes)
 	uint8_t i;
 
 	for (i = 1; i <= numnodes; i++) {
-		printf("stopping handle %u at %p\n", i, knet_h[i]);
-		knet_handle_stop(knet_h[i]);
+		if (knet_h[i]) {
+			printf("stopping handle %u at %p\n", i, knet_h[i]);
+			knet_handle_stop(knet_h[i]);
+		}
 	}
 
 	return;
@@ -792,7 +794,7 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 			 int logfd, FILE *std)
 {
 	struct timespec ts;
-	int res;
+	int res, savederrno = 0;
 
 	if (state) {
 		target = numnodes-1; /* exclude us */
@@ -819,14 +821,23 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 		fprintf(stderr, "unable to get nodewait mutex: %s\n", strerror(errno));
 		return -1;
 	}
+
 	res = pthread_cond_timedwait(&wait_cond, &wait_mutex, &ts);
-	if (res == -1 && errno == ETIMEDOUT) {
+	if (res != 0 && res != ETIMEDOUT) {
+		fprintf(stderr, "pthread_cond_timedwait fatal error\n");
+		errno = res;
+		return -1;
+	}
+	if (res == ETIMEDOUT) {
 		fprintf(stderr, "Timed-out\n");
+		savederrno = ETIMEDOUT;
+		res = -1;
 	}
 	pthread_mutex_unlock(&wait_mutex);
 
 	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
 	flush_logs(logfd, std);
+	errno = savederrno;
 	return res;
 }
 

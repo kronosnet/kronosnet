@@ -301,7 +301,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	    (link->dynamic == KNET_LINK_STATIC)) {
 		log_debug(knet_h, KNET_SUB_LINK, "Configuring default access lists for host: %u link: %u socket: %d",
 			  host_id, link_id, link->outsock);
-		if ((check_add(knet_h, link->outsock, transport, -1,
+		if ((check_add(knet_h, link, -1,
 			       &link->dst_addr, &link->dst_addr,
 			       CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 			log_warn(knet_h, KNET_SUB_LINK, "Failed to configure default access lists for host: %u link: %u", host_id, link_id);
@@ -536,7 +536,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 */
 	if ((transport_get_acl_type(knet_h, link->transport) == USE_GENERIC_ACL) &&
 	    (link->dynamic == KNET_LINK_STATIC)) {
-		if ((check_rm(knet_h, link->outsock, link->transport,
+		if ((check_rm(knet_h, link,
 			      &link->dst_addr, &link->dst_addr,
 			      CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != ENOENT)) {
 			err = -1;
@@ -567,7 +567,7 @@ int knet_link_clear_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t
 	 */
 	if ((transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL) &&
 	    (knet_h->knet_transport_fd_tracker[sock].transport == KNET_MAX_TRANSPORTS)) {
-		check_rmall(knet_h, sock, transport);
+		check_rmall(knet_h, link);
 	}
 
 	pthread_mutex_destroy(&link->link_stats_mutex);
@@ -1340,7 +1340,7 @@ int knet_link_insert_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 		goto exit_unlock;
 	}
 
-	err = check_add(knet_h, transport_link_get_acl_fd(knet_h, link), link->transport, index,
+	err = check_add(knet_h, link, index,
 			ss1, ss2, type, acceptreject);
 	savederrno = errno;
 
@@ -1442,7 +1442,7 @@ int knet_link_rm_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_
 		goto exit_unlock;
 	}
 
-	err = check_rm(knet_h, transport_link_get_acl_fd(knet_h, link), link->transport,
+	err = check_rm(knet_h, link,
 		       ss1, ss2, type, acceptreject);
 	savederrno = errno;
 
@@ -1503,7 +1503,7 @@ int knet_link_clear_acl(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t li
 		goto exit_unlock;
 	}
 
-	check_rmall(knet_h, transport_link_get_acl_fd(knet_h, link), link->transport);
+	check_rmall(knet_h, link);
 
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);

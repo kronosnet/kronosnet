@@ -137,7 +137,7 @@ static void test(void)
 	host = knet_h->host_index[1];
 	link = &host->link[0];
 
-	if (knet_h->knet_transport_fd_tracker[link->outsock].access_list_match_entry_head) {
+	if (link->access_list_match_entry_head) {
 		printf("found access lists for dynamic dst_addr!\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -260,7 +260,7 @@ static void test(void)
 	host = knet_h->host_index[1];
 	link = &host->link[0];
 
-	if (!knet_h->knet_transport_fd_tracker[link->outsock].access_list_match_entry_head) {
+	if (!link->access_list_match_entry_head) {
 		printf("Unable to find default access lists for static dst_addr!\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);

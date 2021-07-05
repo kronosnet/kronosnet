@@ -226,6 +226,32 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
+/*
+ * processing incoming packets vs access lists
+ */
+static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const struct knet_mmsghdr *msg)
+{
+	if (knet_h->use_access_lists) {
+		if (!check_validate(knet_h, src_link, msg->msg_hdr.msg_name)) {
+			char src_ipaddr[KNET_MAX_HOST_LEN];
+			char src_port[KNET_MAX_PORT_LEN];
+			
+			memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+			memset(src_port, 0, KNET_MAX_PORT_LEN);
+			if (knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+					   src_ipaddr, KNET_MAX_HOST_LEN,
+					   src_port, KNET_MAX_PORT_LEN) < 0) {
+
+				log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+			} else {
+				log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+			}
+			return 0;
+		}
+	}
+	return 1;
+}
+
 static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
 {
 	int err = 0, savederrno = 0, stats_err = 0;
@@ -305,6 +331,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		/* be aware this works only for PING / PONG and PMTUd packets! */
 		src_link = src_host->link +
 			(inbuf->khp_ping_link % KNET_MAX_LINK);
+		if (!_check_rx_acl(knet_h, src_link, msg)) {
+			return;
+		}
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
@@ -337,7 +366,14 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				break;
 			}
 		}
-		if (!found_link) {
+		if (found_link) {
+			/*
+			 * this check is currently redundant.. Keep it here for now
+			 */
+			if (!_check_rx_acl(knet_h, src_link, msg)) {
+				return;
+			}
+		} else {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to determine source link for data packet. Discarding packet.");
 			return;
 		}
@@ -888,31 +924,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				goto exit_unlock;
 				break;
 			case KNET_TRANSPORT_RX_IS_DATA: /* packet is data and should be parsed as such */
-				/*
-				 * processing incoming packets vs access lists
-				 */
-				if ((knet_h->use_access_lists) &&
-				    (transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL)) {
-					if (!check_validate(knet_h, sockfd, transport, msg[i].msg_hdr.msg_name)) {
-						char src_ipaddr[KNET_MAX_HOST_LEN];
-						char src_port[KNET_MAX_PORT_LEN];
-
-						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
-						memset(src_port, 0, KNET_MAX_PORT_LEN);
-						if (knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
-								   src_ipaddr, KNET_MAX_HOST_LEN,
-								   src_port, KNET_MAX_PORT_LEN) < 0) {
-
-							log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
-						} else {
-							log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
-						}
-						/*
-						 * continue processing the other packets
-						 */
-						continue;
-					}
-				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
 			case KNET_TRANSPORT_RX_OOB_DATA_CONTINUE:
