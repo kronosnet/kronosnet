@@ -92,7 +92,7 @@ static int dhost_filter(void *pvt_data,
 	return dhost_filter_ret;
 }
 
-static void test(void)
+static void test(int transport)
 {
 	knet_handle_t knet_h;
 	int logfds[2];
@@ -303,13 +303,14 @@ static void test(void)
 		exit(FAIL);
 	}
 
-	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
+	if (_knet_link_set_config(knet_h, 1, 0, transport, 0, AF_INET, 0, &lo) < 0) {
+		int exit_status = transport == KNET_TRANSPORT_SCTP && errno == EPROTONOSUPPORT ? SKIP : FAIL;
 		printf("Unable to configure link: %s\n", strerror(errno));
 		knet_host_remove(knet_h, 1);
 		knet_handle_free(knet_h);
 		flush_logs(logfds[0], stdout);
 		close_logpipes(logfds);
-		exit(FAIL);
+		exit(exit_status);
 	}
 
 	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
@@ -403,7 +404,13 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
-	test();
+	printf("Testing with UDP\n");
+	test(KNET_TRANSPORT_UDP);
+
+#ifdef HAVE_NETINET_SCTP_H
+	printf("Testing with SCTP\n");
+	test(KNET_TRANSPORT_SCTP);
+#endif
 
 	return PASS;
 }

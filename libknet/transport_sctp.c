@@ -492,8 +492,10 @@ transport_rx_isdata_t sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd
 			 * copy the incoming data into mread_buf + mread_len (incremental)
 			 * and increase mread_len
 			 */
-			memmove(listen_info->mread_buf + listen_info->mread_len, iov->iov_base, msg->msg_len);
-			listen_info->mread_len = listen_info->mread_len + msg->msg_len;
+			if (knet_h->knet_transport_fd_tracker[sockfd].data_type != SCTP_CONNECT_LINK_INFO) {
+				memmove(listen_info->mread_buf + listen_info->mread_len, iov->iov_base, msg->msg_len);
+				listen_info->mread_len = listen_info->mread_len + msg->msg_len;
+			}
 			return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
 		}
 		/*
@@ -502,7 +504,8 @@ transport_rx_isdata_t sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd
 		 * complete reassembling the packet in mread_buf, copy it back in the iov
 		 * and set the iov/msg len numbers (size) correctly
 		 */
-		if (listen_info->mread_len) {
+		if ((knet_h->knet_transport_fd_tracker[sockfd].data_type != SCTP_CONNECT_LINK_INFO) &&
+		    (listen_info->mread_len)) {
 			/*
 			 * add last fragment to mread_buf
 			 */
