@@ -492,8 +492,10 @@ int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsg
 			 * copy the incoming data into mread_buf + mread_len (incremental)
 			 * and increase mread_len
 			 */
-			memmove(listen_info->mread_buf + listen_info->mread_len, iov->iov_base, msg->msg_len);
-			listen_info->mread_len = listen_info->mread_len + msg->msg_len;
+			if (knet_h->knet_transport_fd_tracker[sockfd].data_type != SCTP_CONNECT_LINK_INFO) {
+				memmove(listen_info->mread_buf + listen_info->mread_len, iov->iov_base, msg->msg_len);
+				listen_info->mread_len = listen_info->mread_len + msg->msg_len;
+			}
 			return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
 		}
 		/*
@@ -502,7 +504,8 @@ int sctp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsg
 		 * complete reassembling the packet in mread_buf, copy it back in the iov
 		 * and set the iov/msg len numbers (size) correctly
 		 */
-		if (listen_info->mread_len) {
+		if ((knet_h->knet_transport_fd_tracker[sockfd].data_type != SCTP_CONNECT_LINK_INFO) &&
+		    (listen_info->mread_len)) {
 			/*
 			 * add last fragment to mread_buf
 			 */
@@ -774,6 +777,12 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 	char addr_str[KNET_MAX_HOST_LEN];
 	char port_str[KNET_MAX_PORT_LEN];
 	sctp_accepted_link_info_t *accept_info = NULL;
+	struct knet_host *host;
+	struct knet_link *kn_link;
+	int link_idx;
+	sctp_connect_link_info_t *this_link_connect_info;
+	sctp_listen_link_info_t *this_link_listen_info;
+	int pass_acl = 0;
 
 	memset(&ss, 0, sizeof(ss));
 
@@ -796,8 +805,27 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 
 	log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Incoming: received connection from: %s port: %s",
 						addr_str, port_str);
+
 	if (knet_h->use_access_lists) {
-		if (!check_validate(knet_h, listen_sock, KNET_TRANSPORT_SCTP, &ss)) {
+		for (host = knet_h->host_head; host != NULL; host = host->next) {
+			for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+				kn_link = &host->link[link_idx];
+
+				if ((kn_link->configured) && (kn_link->transport == KNET_TRANSPORT_SCTP)) {
+					this_link_connect_info = kn_link->transport_link;
+					this_link_listen_info = this_link_connect_info->listener;
+					if ((this_link_listen_info->listen_sock == listen_sock) &&
+					    (check_validate(knet_h, kn_link, &ss))) {
+						pass_acl = 1;
+						break;
+					}
+				}
+			}
+			if (pass_acl) {
+				break;
+			}
+		}
+		if (!pass_acl) {
 			savederrno = EINVAL;
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Connection rejected from %s/%s", addr_str, port_str);
 			close(new_fd);
@@ -1039,7 +1067,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 	 */
 	qb_list_for_each_entry(info, &handle_info->listen_links_list, list) {
 		if (memcmp(&info->src_address, &kn_link->src_addr, sizeof(struct sockaddr_storage)) == 0) {
-			if ((check_add(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP, -1,
+			if ((check_add(knet_h, kn_link, -1,
 				       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 				return NULL;
 			}
@@ -1097,7 +1125,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if ((check_add(knet_h, listen_sock, KNET_TRANSPORT_SCTP, -1,
+	if ((check_add(knet_h, kn_link, -1,
 		       &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != EEXIST)) {
 		savederrno = errno;
 		err = -1;
@@ -1129,7 +1157,7 @@ exit_error:
 			epoll_ctl(handle_info->listen_epollfd, EPOLL_CTL_DEL, listen_sock, &ev);
 		}
 		if (listen_sock >= 0) {
-			check_rmall(knet_h, listen_sock, KNET_TRANSPORT_SCTP);
+			check_rmall(knet_h, kn_link);
 			close(listen_sock);
 		}
 		if (info) {
@@ -1167,7 +1195,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		}
 	}
 
-	if ((check_rm(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP,
+	if ((check_rm(knet_h, kn_link,
 		      &kn_link->dst_addr, &kn_link->dst_addr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) && (errno != ENOENT)) {
 		log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to remove default access lists for %d", info->listen_sock);
 	}
@@ -1202,8 +1230,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		goto exit_error;
 	}
 
-	check_rmall(knet_h, info->listen_sock, KNET_TRANSPORT_SCTP);
-
+	check_rmall(knet_h, kn_link);
 	close(info->listen_sock);
 
 	for (i=0; i< MAX_ACCEPTED_SOCKS; i++) {

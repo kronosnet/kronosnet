@@ -31,35 +31,37 @@ static check_ops_t proto_check_modules_cmds[] = {
  * protocol specific functions
  */
 
-int check_add(knet_handle_t knet_h, int sock, uint8_t transport, int index,
+int check_add(knet_handle_t knet_h, struct knet_link *kn_link,
+	      int index,
 	      struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 	      check_type_t type, check_acceptreject_t acceptreject)
 {
-	return proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_add(
-			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head, index,
+	return proto_check_modules_cmds[transport_get_proto(knet_h, kn_link->transport)].protocheck_add(
+			&kn_link->access_list_match_entry_head, index,
 			ss1, ss2, type, acceptreject);
 }
 
-int check_rm(knet_handle_t knet_h, int sock, uint8_t transport,
+int check_rm(knet_handle_t knet_h, struct knet_link *kn_link,
 	     struct sockaddr_storage *ss1, struct sockaddr_storage *ss2,
 	     check_type_t type, check_acceptreject_t acceptreject)
 {
-	return proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_rm(
-			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head,
+	return proto_check_modules_cmds[transport_get_proto(knet_h, kn_link->transport)].protocheck_rm(
+			&kn_link->access_list_match_entry_head,
 			ss1, ss2, type, acceptreject);
 }
 
-void check_rmall(knet_handle_t knet_h, int sock, uint8_t transport)
+void check_rmall(knet_handle_t knet_h, struct knet_link *kn_link)
 {
-	proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_rmall(
-		&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head);
+	proto_check_modules_cmds[transport_get_proto(knet_h, kn_link->transport)].protocheck_rmall(
+		&kn_link->access_list_match_entry_head);
 }
 
 /*
  * return 0 to reject and 1 to accept a packet
  */
-int check_validate(knet_handle_t knet_h, int sock, uint8_t transport, struct sockaddr_storage *checkip)
+int check_validate(knet_handle_t knet_h, struct knet_link *kn_link,
+		   struct sockaddr_storage *checkip)
 {
-	return proto_check_modules_cmds[transport_get_proto(knet_h, transport)].protocheck_validate(
-			&knet_h->knet_transport_fd_tracker[sock].access_list_match_entry_head, checkip);
+	return proto_check_modules_cmds[transport_get_proto(knet_h, kn_link->transport)].protocheck_validate(
+			&kn_link->access_list_match_entry_head, checkip);
 }
