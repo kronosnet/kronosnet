@@ -23,6 +23,7 @@
 
 #define FAIL_ON_ERR(fn) \
 	if ((res = fn) < 0) {				  \
+	  int savederrno = errno;			  \
 	  knet_link_set_enable(knet_h[1], 2, 0, 0);	  \
 	  knet_link_set_enable(knet_h[2], 1, 0, 0);	  \
 	  knet_link_clear_config(knet_h[1], 2, 0);        \
@@ -37,7 +38,7 @@
 	  if (res == -2) {				  \
 		  exit(SKIP);				  \
 	  } else {					  \
-		  printf("*** on line %d %s failed: %s\n", __LINE__ , #fn, strerror(errno)); \
+		  printf("*** on line %d %s failed: %s\n", __LINE__ , #fn, strerror(savederrno)); \
 		  exit(FAIL);				  \
 	  }						  \
 	} else {					  \
@@ -141,22 +142,6 @@ static void notify_fn(void *private_data,
 	printf("NOTIFY fn called\n");
 }
 
-/*
- * After ACLs are removed there might still be a period where the link
- * can go down and up - especially when running under valgrind/helgrind.
- * So hang around a while until we can reasonably expect it to be stable
- * again.
- */
-static void post_rmacl_wait()
-{
-	int seconds = 2;
-	if (is_memcheck() || is_helgrind()) {
-		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
-		seconds = seconds * 16;
-	}
-	sleep(seconds);
-}
-
 
 #define TESTNODES 2
 static void test(int transport)
@@ -230,11 +215,11 @@ static void test(int transport)
 	// This needs to go after the first ACLs are added
 	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h[1], 1));
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "0Address blocked - this should NOT get through"));
-	sleep(1); // Wait for receive to get it
 
 	// Unblock and check again
+	wait_for_nodes_state(knet_h[1], 2, 0, 60, logfds[0], stdout);
 	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
-	post_rmacl_wait();
+	wait_for_nodes_state(knet_h[1], 2, 1, 60, logfds[0], stdout);
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
 
 	// Block traffic using a netmask
@@ -242,11 +227,11 @@ static void test(int transport)
 	knet_strtoaddr("255.0.0.1","0", &ss2, sizeof(ss2));
 	FAIL_ON_ERR(knet_link_insert_acl(knet_h[1], 2, 0, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "0Netmask blocked - this should NOT get through"));
-	sleep(1); // Wait for receive to get it
 
 	// Unblock and check again
+	wait_for_nodes_state(knet_h[1], 2, 0, 60, logfds[0], stdout);
 	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
-	post_rmacl_wait();
+	wait_for_nodes_state(knet_h[1], 2, 1, 60, logfds[0], stdout);
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
 
 	// Block traffic from a range
@@ -255,10 +240,11 @@ static void test(int transport)
 	FAIL_ON_ERR(knet_link_insert_acl(knet_h[1], 2, 0, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
 
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "0Range blocked - this should NOT get through"));
-	sleep(1); // Wait for receive to get it
 
 	// Unblock and check again
+	wait_for_nodes_state(knet_h[1], 2, 0, 60, logfds[0], stdout);
 	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
+	wait_for_nodes_state(knet_h[1], 2, 1, 60, logfds[0], stdout);
 
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Range unblocked - this should get through"));
 
@@ -269,6 +255,7 @@ static void test(int transport)
 	// Check return from the receiving thread
 	pthread_join(recv_thread, (void**)&thread_err);
 	if (*thread_err) {
+		printf("Thread returned %d\n", *thread_err);
 		exit(FAIL);
 	}
 
