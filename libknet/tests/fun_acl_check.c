@@ -141,6 +141,22 @@ static void notify_fn(void *private_data,
 	printf("NOTIFY fn called\n");
 }
 
+/*
+ * After ACLs are removed there might still be a period where the link
+ * can go down and up - especially when running under valgrind/helgrind.
+ * So hang around a while until we can reasonably expect it to be stable
+ * again.
+ */
+static void post_rmacl_wait()
+{
+	int seconds = 2;
+	if (is_memcheck() || is_helgrind()) {
+		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
+		seconds = seconds * 16;
+	}
+	sleep(seconds);
+}
+
 
 #define TESTNODES 2
 static void test(int transport)
@@ -218,6 +234,7 @@ static void test(int transport)
 
 	// Unblock and check again
 	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
+	post_rmacl_wait();
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
 
 	// Block traffic using a netmask
@@ -229,6 +246,7 @@ static void test(int transport)
 
 	// Unblock and check again
 	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
+	post_rmacl_wait();
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
 
 	// Block traffic from a range
