@@ -31,8 +31,8 @@ pub fn open(devname: &mut String, updownpath: &str) -> Result<Handle>
     let mut c_updownpath: [c_char; libc::PATH_MAX as usize] = [0; libc::PATH_MAX as usize];
     let c_devname_size = IFNAMSZ;
 
-    crate::string_to_bytes(&devname, &mut c_devname)?;
-    crate::string_to_bytes(&updownpath, &mut c_updownpath)?;
+    crate::string_to_bytes(devname, &mut c_devname)?;
+    crate::string_to_bytes(updownpath, &mut c_updownpath)?;
 
     let res = unsafe {
 	ffi::nozzle_open(c_devname.as_mut_ptr(), c_devname_size, c_updownpath.as_ptr())
@@ -140,8 +140,8 @@ pub fn add_ip(handle: Handle, ipaddr: &str, prefix: &str) -> Result<()>
     let mut c_ipaddr: [c_char; IPADDR_CHAR_MAX] = [0; IPADDR_CHAR_MAX];
     let mut c_prefix: [c_char; PREFIX_CHAR_MAX] = [0; PREFIX_CHAR_MAX];
 
-    crate::string_to_bytes(&ipaddr, &mut c_ipaddr)?;
-    crate::string_to_bytes(&prefix, &mut c_prefix)?;
+    crate::string_to_bytes(ipaddr, &mut c_ipaddr)?;
+    crate::string_to_bytes(prefix, &mut c_prefix)?;
     let res = unsafe {
 	ffi::nozzle_add_ip(handle.nozzle_handle, c_ipaddr.as_ptr(), c_prefix.as_ptr())
     };
@@ -159,8 +159,8 @@ pub fn del_ip(handle: Handle, ipaddr: &str, prefix: &str) -> Result<()>
     let mut c_ipaddr: [c_char; IPADDR_CHAR_MAX] = [0; IPADDR_CHAR_MAX];
     let mut c_prefix: [c_char; PREFIX_CHAR_MAX] = [0; PREFIX_CHAR_MAX];
 
-    crate::string_to_bytes(&ipaddr, &mut c_ipaddr)?;
-    crate::string_to_bytes(&prefix, &mut c_prefix)?;
+    crate::string_to_bytes(ipaddr, &mut c_ipaddr)?;
+    crate::string_to_bytes(prefix, &mut c_prefix)?;
     let res = unsafe {
 	ffi::nozzle_del_ip(handle.nozzle_handle, c_ipaddr.as_ptr(), c_prefix.as_ptr())
     };
@@ -301,7 +301,7 @@ pub fn get_mac(handle: Handle) -> Result<String>
 pub fn set_mac(handle: Handle, ether_addr: &str) -> Result<()>
 {
     let mut c_mac: [c_char; 24_usize] = [0; 24_usize]; // Needs to be 8byte aligned
-    crate::string_to_bytes(&ether_addr, &mut c_mac)?;
+    crate::string_to_bytes(ether_addr, &mut c_mac)?;
     let res = unsafe {
 	ffi::nozzle_set_mac(handle.nozzle_handle, c_mac.as_ptr())
     };
@@ -329,7 +329,7 @@ pub fn reset_mac(handle: Handle) -> Result<()>
 pub fn get_handle_by_name(devname: &str) -> Result<Handle>
 {
     let mut c_devname: [c_char; IFNAMSZ] = [0; IFNAMSZ];
-    crate::string_to_bytes(&devname, &mut c_devname)?;
+    crate::string_to_bytes(devname, &mut c_devname)?;
     let res = unsafe {
 	ffi::nozzle_get_handle_by_name(c_devname.as_ptr())
     };

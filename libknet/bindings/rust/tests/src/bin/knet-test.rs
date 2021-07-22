@@ -101,7 +101,7 @@ fn setup_node(our_hostid: &knet::HostId, other_hostid: &knet::HostId, name: &str
     let (log_sender, log_receiver) = channel::<knet::LogMsg>();
     spawn(move || logging_thread(log_receiver));
 
-    let knet_handle = match knet::handle_new(&our_hostid, Some(log_sender),
+    let knet_handle = match knet::handle_new(our_hostid, Some(log_sender),
 					     knet::LogLevel::Debug, knet::HandleFlags::NONE) {
 	Ok(h) => h,
 	Err(e) => {
@@ -115,11 +115,11 @@ fn setup_node(our_hostid: &knet::HostId, other_hostid: &knet::HostId, name: &str
 	set_plugin_path(knet_handle);
     }
 
-    if let Err(e) = knet::host_add(knet_handle, &other_hostid) {
+    if let Err(e) = knet::host_add(knet_handle, other_hostid) {
 	println!("Error from host_add: {}", e);
 	return Err(e);
     }
-    if let Err(e) = knet::host_set_name(knet_handle, &other_hostid, name) {
+    if let Err(e) = knet::host_set_name(knet_handle, other_hostid, name) {
 	println!("Error from host_set_name: {}", e);
 	return Err(e);
     }
@@ -250,18 +250,18 @@ fn configure_link(knet_handle: knet::Handle, our_hostid: &knet::HostId, other_ho
 	return Err(e);
     }
 
-    if let Err(e) = knet::link_set_enable(knet_handle, &other_hostid, 0, true) {
+    if let Err(e) = knet::link_set_enable(knet_handle, other_hostid, 0, true) {
 	println!("Error from set_link_enable(true): {}", e);
 	return Err(e);
     }
 
-    if let Err(e) = knet::link_set_ping_timers(knet_handle, &other_hostid, 0,
+    if let Err(e) = knet::link_set_ping_timers(knet_handle, other_hostid, 0,
 					       500, 1000, 1024) {
 	println!("Error from set_link_ping_timers: {}", e);
 	return Err(e);
     }
 
-    match knet::link_get_ping_timers(knet_handle, &other_hostid, 0) {
+    match knet::link_get_ping_timers(knet_handle, other_hostid, 0) {
 	Ok((a,b,c)) => {
 	    if a != 500 || b != 1000 || c != 1024 {
 		println!("get_link_ping_timers returned wrong values {}, {},{} (s/b 500,1000,1024)",
@@ -677,7 +677,7 @@ fn test_metadata_calls(handle: knet::Handle, host: &knet::HostId) -> Result<()>
 	return Err(e);
     }
 
-    match knet::handle_get_onwire_ver(handle, &host) {
+    match knet::handle_get_onwire_ver(handle, host) {
 	Ok((min, max, ver)) => {
 	    println!("get_onwire_ver: Got onwire ver: {}/{}/{}", min, max, ver);
 	},

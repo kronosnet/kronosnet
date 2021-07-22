@@ -37,7 +37,7 @@ fn main() -> Result<()>
 
     // Let the OS generate a tap name
     let mut nozzle_name = String::from("");
-    let handle = match nozzle::open(&mut nozzle_name, &tmp_dir) {
+    let handle = match nozzle::open(&mut nozzle_name, tmp_dir) {
 	Ok(h) => {
 	    println!("Opened device {}", nozzle_name);
 	    h
@@ -65,20 +65,20 @@ fn main() -> Result<()>
     };
 
     // Play with APIs
-    if let Err(e) = nozzle::add_ip(handle, &"192.160.100.1", &"24") {
+    if let Err(e) = nozzle::add_ip(handle, "192.160.100.1", "24") {
 	println!("Error from add_ip: {}", e);
 	return Err(e);
     }
-    if let Err(e) = nozzle::add_ip(handle, &"192.160.100.2", &"24") {
+    if let Err(e) = nozzle::add_ip(handle, "192.160.100.2", "24") {
 	println!("Error from add_ip2: {}", e);
 	return Err(e);
     }
-    if let Err(e) = nozzle::add_ip(handle, &"192.160.100.3", &"24") {
+    if let Err(e) = nozzle::add_ip(handle, "192.160.100.3", "24") {
 	println!("Error from add_ip3: {}", e);
 	return Err(e);
     }
 
-    if let Err(e) = nozzle::set_mac(handle, &"AA:00:04:00:22:01") {
+    if let Err(e) = nozzle::set_mac(handle, "AA:00:04:00:22:01") {
 	println!("Error from set_mac: {}", e);
 	return Err(e);
     }
@@ -131,7 +131,7 @@ fn main() -> Result<()>
 
     // Tidy up after ourself - remove the up.d/tapX file
     fs::remove_file(&up_filename)?;
-    fs::remove_dir(&"up.d")?;
+    fs::remove_dir("up.d")?;
 
     match nozzle::get_ips(handle) {
 	Ok(ips) => {
@@ -194,7 +194,7 @@ fn main() -> Result<()>
     // Wait a little while in case user wants to check with 'ip' command
     thread::sleep(time::Duration::from_millis(1000));
 
-    if let Err(e) = nozzle::del_ip(handle, &"192.160.100.3", &"24") {
+    if let Err(e) = nozzle::del_ip(handle, "192.160.100.3", "24") {
 	println!("Error from del_ip: {}", e);
 	return Err(e);
     }
