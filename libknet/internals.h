@@ -403,11 +403,6 @@ typedef struct knet_transport_ops {
 
 
 /*
- * return the fd to use for access lists
- */
-	int (*transport_link_get_acl_fd)(knet_handle_t knet_h, struct knet_link *link);
-
-/*
  * per transport error handling of recvmmsg
  * (see _handle_recv_from_links comments for details)
  */
