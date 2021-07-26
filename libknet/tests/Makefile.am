@@ -29,8 +29,11 @@ noinst_HEADERS		= \
 
 check_PROGRAMS		= \
 			  $(api_checks) \
-			  $(int_checks) \
-			  $(fun_checks)
+			  $(int_checks)
+
+if RUN_FUN_TESTS
+check_PROGRAMS		+= $(fun_checks)
+endif
 
 int_checks		= \
 			  int_links_acl_ip_test \
@@ -55,7 +58,9 @@ noinst_PROGRAMS		= \
 			  pckt_test \
 			  $(benchmarks) \
 			  $(long_run_checks) \
-			  $(check_PROGRAMS)
+			  $(api_checks) \
+			  $(int_checks) \
+			  $(fun_checks)
 
 noinst_SCRIPTS		= \
 			  api-test-coverage
