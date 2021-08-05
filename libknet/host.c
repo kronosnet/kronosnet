@@ -586,7 +586,7 @@ int _seq_num_lookup(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_
 		_clear_cbuffers(host, seq_num);
 	}
 
-	_reclaim_old_defrag_bufs(knet_h, host, seq_num);
+	_reclaim_old_defrag_bufs(knet_h, host, *dst_seq_num);
 
 	if (seq_num < *dst_seq_num) {
 		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
