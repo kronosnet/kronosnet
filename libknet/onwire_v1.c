@@ -76,7 +76,7 @@ void process_ping_v1(knet_handle_t knet_h, struct knet_host *src_host, struct kn
 				wipe_bufs = 1;
 			}
 		}
-		_seq_num_lookup(src_host, recv_seq_num, 0, wipe_bufs);
+		_seq_num_lookup(knet_h, src_host, recv_seq_num, 0, wipe_bufs);
 	} else {
 		/*
 		 * pings always arrives in bursts over all the link
@@ -87,7 +87,7 @@ void process_ping_v1(knet_handle_t knet_h, struct knet_host *src_host, struct kn
 			src_host->timed_rx_seq_num = recv_seq_num;
 
 			if (recv_seq_num == 0) {
-				_seq_num_lookup(src_host, recv_seq_num, 0, 1);
+				_seq_num_lookup(knet_h, src_host, recv_seq_num, 0, 1);
 			}
 		}
 	}

@@ -86,7 +86,7 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
 	 * and there is no point to try to defrag it again.
 	 */
-	if (!_seq_num_lookup(src_host, seq_num, 1, 0)) {
+	if (!_seq_num_lookup(knet_h, src_host, seq_num, 1, 0)) {
 		errno = ETIME;
 		return -1;
 	}
@@ -435,7 +435,7 @@ static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, stru
 		}
 	}
 
-	if (!_seq_num_lookup(src_host, seq_num, 0, 0)) {
+	if (!_seq_num_lookup(knet_h, src_host, seq_num, 0, 0)) {
 		if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 			log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
 		}
