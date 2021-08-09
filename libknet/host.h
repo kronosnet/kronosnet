@@ -12,7 +12,7 @@
 
 #include "internals.h"
 
-int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf);
+int _seq_num_lookup(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf);
 void _seq_num_set(struct knet_host *host, seq_num_t seq_num, int defrag_buf);
 
 int _host_dstcache_update_async(knet_handle_t knet_h, struct knet_host *host);

@@ -95,6 +95,7 @@ struct knet_link {
 	uint8_t has_valid_mtu;
 };
 
+#define KNET_DEFRAG_BUFFERS 32
 #define KNET_CBUFFER_SIZE 4096
 
 struct knet_host_defrag_buf {
@@ -129,7 +130,7 @@ struct knet_host {
 	seq_num_t timed_rx_seq_num;
 	uint8_t got_data;
 	/* defrag/reassembly buffers */
-	struct knet_host_defrag_buf defrag_buf[KNET_MAX_LINK];
+	struct knet_host_defrag_buf defrag_buf[KNET_DEFRAG_BUFFERS];
 	char circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];

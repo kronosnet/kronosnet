@@ -535,23 +535,23 @@ static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
 
 	memset(host->circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
 
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		memset(&host->defrag_buf[i], 0, sizeof(struct knet_host_defrag_buf));
 	}
 }
 
-static void _reclaim_old_defrag_bufs(struct knet_host *host, seq_num_t seq_num)
+static void _reclaim_old_defrag_bufs(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_num)
 {
 	seq_num_t head, tail; /* seq_num boundaries */
 	int i;
 
 	head = seq_num + 1;
-	tail = seq_num - (KNET_MAX_LINK + 1);
+	tail = seq_num - (KNET_DEFRAG_BUFFERS + 1);
 
 	/*
 	 * expire old defrag buffers
 	 */
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (host->defrag_buf[i].in_use) {
 			/*
 			 * head has done a rollover to 0+
@@ -574,7 +574,7 @@ static void _reclaim_old_defrag_bufs(struct knet_host *host, seq_num_t seq_num)
  * defrag_buf = 0 -> use normal cbuf 1 -> use the defrag buffer lookup
  */
 
-int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf)
+int _seq_num_lookup(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf)
 {
 	size_t head, tail; /* circular buffer indexes */
 	seq_num_t seq_dist;
@@ -586,7 +586,7 @@ int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, i
 		_clear_cbuffers(host, seq_num);
 	}
 
-	_reclaim_old_defrag_bufs(host, seq_num);
+	_reclaim_old_defrag_bufs(knet_h, host, *dst_seq_num);
 
 	if (seq_num < *dst_seq_num) {
 		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;

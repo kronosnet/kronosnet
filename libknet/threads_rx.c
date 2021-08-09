@@ -71,7 +71,7 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 	/*
 	 * check if there is a buffer already in use handling the same seq_num
 	 */
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (src_host->defrag_buf[i].in_use) {
 			if (src_host->defrag_buf[i].pckt_seq == seq_num) {
 				return i;
@@ -86,7 +86,7 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
 	 * and there is no point to try to defrag it again.
 	 */
-	if (!_seq_num_lookup(src_host, seq_num, 1, 0)) {
+	if (!_seq_num_lookup(knet_h, src_host, seq_num, 1, 0)) {
 		errno = ETIME;
 		return -1;
 	}
@@ -99,7 +99,7 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 	/*
 	 * see if there is a free buffer
 	 */
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (!src_host->defrag_buf[i].in_use) {
 			return i;
 		}
@@ -113,7 +113,7 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 
 	oldest = 0;
 
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (_timecmp(src_host->defrag_buf[i].last_update, src_host->defrag_buf[oldest].last_update) < 0) {
 			oldest = i;
 		}
@@ -435,7 +435,7 @@ static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, stru
 		}
 	}
 
-	if (!_seq_num_lookup(src_host, seq_num, 0, 0)) {
+	if (!_seq_num_lookup(knet_h, src_host, seq_num, 0, 0)) {
 		if (src_host->link_handler_policy != KNET_LINK_POLICY_ACTIVE) {
 			log_debug(knet_h, KNET_SUB_RX, "Packet has already been delivered");
 		}
