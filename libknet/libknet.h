@@ -428,6 +428,7 @@ ssize_t knet_send(knet_handle_t knet_h,
  * @retval EHOSTDOWN - unicast pckt cannot be delivered because dest host is not connected yet
  * @retval ECHILD    - crypto failed
  * @retval EAGAIN    - sendmmsg was unable to send all messages and there was no progress during retry
+ * @retval ENETDOWN  - a packet filter was not installed (necessary for knet_send_sync, but not knet_send)
  */
 
 int knet_send_sync(knet_handle_t knet_h,

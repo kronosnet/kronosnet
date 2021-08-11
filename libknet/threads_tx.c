@@ -179,6 +179,9 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		goto out_unlock;
 	}
 
+	memset(dst_host_ids_temp, 0, sizeof(dst_host_ids_temp));
+	memset(dst_host_ids, 0, sizeof(dst_host_ids));
+
 	/*
 	 * move this into a separate function to expand on
 	 * extra switching rules
@@ -790,6 +793,12 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	}
+
+	if (!knet_h->dst_host_filter_fn) {
+		savederrno = ENETDOWN;
+		err = -1;
+		goto out;
 	}
 
 	if (!knet_h->sockfd[channel].in_use) {
