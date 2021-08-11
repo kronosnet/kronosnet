@@ -422,6 +422,8 @@ static int _get_data_dests(knet_handle_t knet_h, unsigned char* data, size_t inl
 	struct knet_host *dst_host;
 	size_t host_idx;
 
+	memset(dst_host_ids_temp, 0, sizeof(dst_host_ids_temp));
+
 	if (knet_h->dst_host_filter_fn) {
 		*bcast = knet_h->dst_host_filter_fn(
 				knet_h->dst_host_filter_fn_private_data,
@@ -610,6 +612,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		}
 	}
 
+	memset(dst_host_ids, 0, sizeof(dst_host_ids));
 	err = _get_data_dests(knet_h, data, inlen,
 			      &channel, &bcast, &send_local,
 			      dst_host_ids, &dst_host_ids_entries,
@@ -872,6 +875,12 @@ int knet_send_sync(knet_handle_t knet_h, const char *buff, const size_t buff_len
 			strerror(savederrno));
 		errno = savederrno;
 		return -1;
+	}
+
+	if (!knet_h->dst_host_filter_fn) {
+		savederrno = ENETDOWN;
+		err = -1;
+		goto out;
 	}
 
 	if (!knet_h->sockfd[channel].in_use) {
