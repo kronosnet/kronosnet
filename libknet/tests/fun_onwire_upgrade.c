@@ -25,20 +25,27 @@
 
 #define TESTNODES 3
 
-static int upgrade_onwire_max_ver(knet_handle_t knet_h, uint8_t min, uint8_t max, int seconds, int logfd, FILE *std)
+static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, uint8_t max, int seconds, int logfd, FILE *std)
 {
 	if (knet_handle_disconnect_links(knet_h) < 0) {
 		return -1;
 	}
 
-	wait_for_nodes_state(knet_h, 3, 0, seconds, logfd, std);
+	if (wait_for_nodes_state(knet_h, TESTNODES, 0, seconds, logfd, std) < 0) {
+		printf("Failed waiting for nodes 0\n");
+	}
 
 	knet_h->onwire_min_ver = min;
 	knet_h->onwire_max_ver = max;
 	if (knet_handle_reconnect_links(knet_h) < 0) {
 		return -1;
 	}
-	wait_for_nodes_state(knet_h, 3, 1, seconds, logfd, std);
+
+	if (nodes) {
+		if (wait_for_nodes_state(knet_h, nodes, 1, seconds, logfd, std) < 0) {
+			printf("Failed waiting for nodes 1\n");
+		}
+	}
 
 	return 0;
 }
@@ -85,16 +92,10 @@ static void test(void)
 
 	flush_logs(logfds[0], stdout);
 
-	for (i = 1; i <= TESTNODES; i++) {
-		for (j = 1; j <= TESTNODES; j++) {
-			wait_for_nodes_state(knet_h[j], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
-		}
-	}
-
 	printf("Test normal onwire upgrade from %u to %u\n", knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1);
 
 	for (i = 1; i <= TESTNODES; i++) {
-		if (upgrade_onwire_max_ver(knet_h[i], knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1, seconds,
+		if (upgrade_onwire_max_ver(knet_h[i], TESTNODES, knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1, seconds,
 					   logfds[0], stdout) < 0) {
 			knet_handle_stop_nodes(knet_h, TESTNODES);
 			flush_logs(logfds[0], stdout);
@@ -110,9 +111,6 @@ static void test(void)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		printf("node %u, onwire: %u min: %u max: %u\n", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
-		for (j = 1; j <= TESTNODES; j++) {
-			wait_for_nodes_state(knet_h[j], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
-		}
 	}
 
 	flush_logs(logfds[0], stdout);
@@ -122,7 +120,7 @@ static void test(void)
 	printf("Test onwire upgrade from %u to %u (all but one node)\n", knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1);
 
 	for (i = 1; i < TESTNODES; i++) {
-		if (upgrade_onwire_max_ver(knet_h[i], knet_h[i]->onwire_ver, knet_h[i]->onwire_ver + 1, seconds,
+		if (upgrade_onwire_max_ver(knet_h[i], TESTNODES, knet_h[i]->onwire_ver, knet_h[i]->onwire_ver + 1, seconds,
 					   logfds[0], stdout) < 0) {
 			knet_handle_stop_nodes(knet_h, TESTNODES);
 			flush_logs(logfds[0], stdout);
@@ -138,9 +136,6 @@ static void test(void)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		printf("node %u, onwire: %u min: %u max: %u\n", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
-		for (j = 1; j <= TESTNODES; j++) {
-			wait_for_nodes_state(knet_h[j], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
-		}
 	}
 
 	flush_logs(logfds[0], stdout);
@@ -150,7 +145,7 @@ static void test(void)
 	printf("Test onwire upgrade from %u to %u (all but one node - phase 2, node should be kicked out and remaining nodes should upgrade)\n", knet_h[1]->onwire_max_ver, knet_h[1]->onwire_max_ver + 1);
 
 	for (i = 1; i < TESTNODES; i++) {
-		if (upgrade_onwire_max_ver(knet_h[i], knet_h[i]->onwire_max_ver, knet_h[i]->onwire_max_ver + 1, seconds,
+		if (upgrade_onwire_max_ver(knet_h[i], TESTNODES - 1, knet_h[i]->onwire_max_ver, knet_h[i]->onwire_max_ver + 1, seconds,
 					   logfds[0], stdout) < 0) {
 			knet_handle_stop_nodes(knet_h, TESTNODES);
 			flush_logs(logfds[0], stdout);
@@ -215,7 +210,7 @@ static void test(void)
 	 */
 	printf("Testing node rejoining one version lower (cluster should reject the node)\n");
 
-	if (upgrade_onwire_max_ver(knet_h[TESTNODES], knet_h[1]->onwire_min_ver - 1, knet_h[1]->onwire_max_ver - 1, seconds,
+	if (upgrade_onwire_max_ver(knet_h[TESTNODES], 0, knet_h[1]->onwire_min_ver - 1, knet_h[1]->onwire_max_ver - 1, seconds,
 				   logfds[0], stdout) < 0) {
 		knet_handle_stop_nodes(knet_h, TESTNODES);
 		flush_logs(logfds[0], stdout);
@@ -276,7 +271,7 @@ static void test(void)
 
 	printf("Testing node rejoining with proper version (cluster should reform)\n");
 
-	if (upgrade_onwire_max_ver(knet_h[TESTNODES], knet_h[1]->onwire_min_ver, knet_h[1]->onwire_max_ver, seconds,
+	if (upgrade_onwire_max_ver(knet_h[TESTNODES], TESTNODES, knet_h[1]->onwire_min_ver, knet_h[1]->onwire_max_ver, seconds,
 				   logfds[0], stdout) < 0) {
 		knet_handle_stop_nodes(knet_h, TESTNODES);
 		flush_logs(logfds[0], stdout);
