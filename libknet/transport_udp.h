@@ -23,7 +23,6 @@ int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
 int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg);
 int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link);
-int udp_transport_link_get_acl_fd(knet_handle_t knet_h, struct knet_link *kn_link);
 int udp_transport_link_is_down(knet_handle_t knet_h, struct knet_link *kn_link);
 
 #endif

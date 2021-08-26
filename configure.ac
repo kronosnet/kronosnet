@@ -109,6 +109,11 @@ AC_ARG_ENABLE([libknet-sctp],
 	[ enable_libknet_sctp="yes" ])
 AM_CONDITIONAL([BUILD_SCTP], [test x$enable_libknet_sctp = xyes])
 
+AC_ARG_ENABLE([functional-tests],
+	[AS_HELP_STRING([--disable-functional-tests],[disable execution of functional tests, useful for old and slow arches])],,
+	[ enable_functional_tests="yes" ])
+AM_CONDITIONAL([RUN_FUN_TESTS], [test x$enable_functional_tests = xyes])
+
 AC_ARG_ENABLE([crypto-all],
 	[AS_HELP_STRING([--disable-crypto-all],[disable libknet all crypto modules support])],,
 	[ enable_crypto_all="yes" ])

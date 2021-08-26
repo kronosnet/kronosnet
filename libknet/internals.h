@@ -69,6 +69,7 @@ struct knet_link {
 	unsigned int latency_max_samples;	/* precision */
 	uint8_t pong_count;			/* how many ping/pong to send/receive before link is up */
 	uint64_t flags;
+	void *access_list_match_entry_head;	/* pointer to access list match_entry list head */
 	/* status */
 	struct knet_link_status status;
 	/* internals */
@@ -155,7 +156,6 @@ struct knet_fd_trackers {
 					     * with this fd */
 	socklen_t sockaddr_len;             /* Size of sockaddr_in[6] structure for this socket */
 	void *data;			    /* pointer to the data */
-	void *access_list_match_entry_head; /* pointer to access list match_entry list head */
 };
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
@@ -401,11 +401,6 @@ typedef struct knet_transport_ops {
  */
 	int (*transport_link_dyn_connect)(knet_handle_t knet_h, int sockfd, struct knet_link *link);
 
-
-/*
- * return the fd to use for access lists
- */
-	int (*transport_link_get_acl_fd)(knet_handle_t knet_h, struct knet_link *link);
 
 /*
  * per transport error handling of recvmmsg

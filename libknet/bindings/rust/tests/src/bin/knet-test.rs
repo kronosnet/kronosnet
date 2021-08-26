@@ -77,9 +77,12 @@ fn filter_fn(private_data: u64,
     println!("Filter ({}) called {} to {} from {}, channel: {}",
 	     private_data, txrx, this_host_id, src_host_id, channel);
 
+    let dst: u16 = (private_data & 0xFFFF) as u16;
+
     match txrx {
 	knet::TxRx::Tx => {
-	    knet::FilterDecision::Multicast
+	    dst_host_ids.push(knet::HostId::new(3-dst));
+	    knet::FilterDecision::Unicast
 	}
 	knet::TxRx::Rx => {
 	    dst_host_ids.push(this_host_id);
@@ -461,13 +464,6 @@ fn send_messages(handle: knet::Handle, send_quit: bool) -> Result<()>
 	}
     }
 
-    // Sleep to allow messages to calm down before we remove the filter
-    thread::sleep(time::Duration::from_millis(3000));
-    if let Err(e) = knet::handle_enable_filter(handle, 0, None) {
-	println!("Error from handle_enable_filter (disable): {}", e);
-	return Err(e);
-    }
-
     let s = String::from("SYNC TEST").into_bytes();
     if let Err(e) = knet::send_sync(handle, &s, CHANNEL) {
 	println!("send_sync failed: {}", e);
@@ -475,6 +471,9 @@ fn send_messages(handle: knet::Handle, send_quit: bool) -> Result<()>
     }
 
     if send_quit {
+	// Sleep to allow messages to calm down before we tell the RX thread to quit
+	thread::sleep(time::Duration::from_millis(3000));
+
 	let b = String::from("QUIT").into_bytes();
 	match knet::send(handle, &b, CHANNEL) {
 	    Ok(len) => {
