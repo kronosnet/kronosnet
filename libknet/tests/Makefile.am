@@ -42,7 +42,8 @@ int_checks		= \
 fun_checks		= \
 			  fun_config_crypto_test \
 			  fun_onwire_upgrade_test \
-			  fun_acl_check_test
+			  fun_acl_check_test \
+			  fun_dynamic_check_test
 
 # checks below need to be executed manually
 # or with a specifi environment
@@ -124,3 +125,6 @@ fun_onwire_upgrade_test_SOURCES = fun_onwire_upgrade.c \
 
 fun_acl_check_test_SOURCES = fun_acl_check.c \
 			     test-common.c
+
+fun_dynamic_check_test_SOURCES = fun_dynamic_check.c \
+				 test-common.c
