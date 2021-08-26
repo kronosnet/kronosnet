@@ -33,6 +33,7 @@ static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, 
 
 	if (wait_for_nodes_state(knet_h, TESTNODES, 0, seconds, logfd, std) < 0) {
 		printf("Failed waiting for nodes 0\n");
+		return -1;
 	}
 
 	knet_h->onwire_min_ver = min;
@@ -44,6 +45,7 @@ static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, 
 	if (nodes) {
 		if (wait_for_nodes_state(knet_h, nodes, 1, seconds, logfd, std) < 0) {
 			printf("Failed waiting for nodes 1\n");
+			return -1;
 		}
 	}
 
