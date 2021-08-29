@@ -380,8 +380,7 @@ out_clean:
 	if (tmpdir) {
 		snprintf(tmpstr, sizeof(tmpstr) - 1, "rm -rf %s", tmpdir);
 		printf("Removing temporary dir: %s\n", tmpstr);
-		err = execute_bin_sh_command(tmpstr, &error_string);
-		if (err) {
+		if (execute_bin_sh_command(tmpstr, &error_string)) {
 			printf("Error removing directory: %s\n", error_string);
 		}
 		if (error_string) {
