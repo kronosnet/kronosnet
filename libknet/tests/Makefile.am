@@ -29,15 +29,19 @@ noinst_HEADERS		= \
 
 check_PROGRAMS		= \
 			  $(api_checks) \
-			  $(int_checks) \
-			  $(fun_checks)
+			  $(int_checks)
+
+if RUN_FUN_TESTS
+check_PROGRAMS		+= $(fun_checks)
+endif
 
 int_checks		= \
 			  int_links_acl_ip_test \
 			  int_timediff_test
 
 fun_checks		= \
-			  fun_config_crypto_test
+			  fun_config_crypto_test \
+			  fun_acl_check_test
 
 # checks below need to be executed manually
 # or with a specifi environment
@@ -53,7 +57,9 @@ noinst_PROGRAMS		= \
 			  pckt_test \
 			  $(benchmarks) \
 			  $(long_run_checks) \
-			  $(check_PROGRAMS)
+			  $(api_checks) \
+			  $(int_checks) \
+			  $(fun_checks)
 
 noinst_SCRIPTS		= \
 			  api-test-coverage
@@ -111,3 +117,6 @@ fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
 
 fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 				 test-common.c
+
+fun_acl_check_test_SOURCES = fun_acl_check.c \
+			     test-common.c

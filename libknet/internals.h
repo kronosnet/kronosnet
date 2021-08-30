@@ -69,6 +69,7 @@ struct knet_link {
 	unsigned int latency_cur_samples;
 	uint8_t pong_count;			/* how many ping/pong to send/receive before link is up */
 	uint64_t flags;
+	void *access_list_match_entry_head;	/* pointer to access list match_entry list head */
 	/* status */
 	struct knet_link_status status;
 	/* internals */
@@ -95,6 +96,7 @@ struct knet_link {
 	uint8_t has_valid_mtu;
 };
 
+#define KNET_DEFRAG_BUFFERS 32
 #define KNET_CBUFFER_SIZE 4096
 
 struct knet_host_defrag_buf {
@@ -124,7 +126,7 @@ struct knet_host {
 	seq_num_t timed_rx_seq_num;
 	uint8_t got_data;
 	/* defrag/reassembly buffers */
-	struct knet_host_defrag_buf defrag_buf[KNET_MAX_LINK];
+	struct knet_host_defrag_buf defrag_buf[KNET_DEFRAG_BUFFERS];
 	char circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
@@ -147,8 +149,8 @@ struct knet_fd_trackers {
 	uint8_t transport;		    /* transport type (UDP/SCTP...) */
 	uint8_t data_type;		    /* internal use for transport to define what data are associated
 					     * with this fd */
+	socklen_t sockaddr_len;             /* Size of sockaddr_in[6] structure for this socket */
 	void *data;			    /* pointer to the data */
-	void *access_list_match_entry_head; /* pointer to access list match_entry list head */
 };
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
@@ -373,11 +375,6 @@ typedef struct knet_transport_ops {
  */
 	int (*transport_link_dyn_connect)(knet_handle_t knet_h, int sockfd, struct knet_link *link);
 
-
-/*
- * return the fd to use for access lists
- */
-	int (*transport_link_get_acl_fd)(knet_handle_t knet_h, struct knet_link *link);
 
 /*
  * per transport error handling of recvmmsg

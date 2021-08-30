@@ -70,7 +70,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	/*
 	 * check if there is a buffer already in use handling the same seq_num
 	 */
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (src_host->defrag_buf[i].in_use) {
 			if (src_host->defrag_buf[i].pckt_seq == inbuf->khp_data_seq_num) {
 				return i;
@@ -98,7 +98,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 	/*
 	 * see if there is a free buffer
 	 */
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (!src_host->defrag_buf[i].in_use) {
 			return i;
 		}
@@ -112,7 +112,7 @@ static int find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_header *inbuf)
 
 	oldest = 0;
 
-	for (i = 0; i < KNET_MAX_LINK; i++) {
+	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (timecmp(src_host->defrag_buf[i].last_update, src_host->defrag_buf[oldest].last_update) < 0) {
 			oldest = i;
 		}
@@ -226,6 +226,32 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	return 1;
 }
 
+/*
+ * processing incoming packets vs access lists
+ */
+static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const struct knet_mmsghdr *msg)
+{
+	if (knet_h->use_access_lists) {
+		if (!check_validate(knet_h, src_link, msg->msg_hdr.msg_name)) {
+			char src_ipaddr[KNET_MAX_HOST_LEN];
+			char src_port[KNET_MAX_PORT_LEN];
+			
+			memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+			memset(src_port, 0, KNET_MAX_PORT_LEN);
+			if (knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+					   src_ipaddr, KNET_MAX_HOST_LEN,
+					   src_port, KNET_MAX_PORT_LEN) < 0) {
+
+				log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+			} else {
+				log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+			}
+			return 0;
+		}
+	}
+	return 1;
+}
+
 static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
 {
 	int err = 0, savederrno = 0, stats_err = 0;
@@ -305,6 +331,9 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		/* be aware this works only for PING / PONG and PMTUd packets! */
 		src_link = src_host->link +
 			(inbuf->khp_ping_link % KNET_MAX_LINK);
+		if (!_check_rx_acl(knet_h, src_link, msg)) {
+			return;
+		}
 		if (src_link->dynamic == KNET_LINK_DYNIP) {
 			if (cmpaddr(&src_link->dst_addr, msg->msg_hdr.msg_name) != 0) {
 				log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u appears to have changed ip address",
@@ -337,7 +366,14 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 				break;
 			}
 		}
-		if (!found_link) {
+		if (found_link) {
+			/*
+			 * this check is currently redundant.. Keep it here for now
+			 */
+			if (!_check_rx_acl(knet_h, src_link, msg)) {
+				return;
+			}
+		} else {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to determine source link for data packet. Discarding packet.");
 			return;
 		}
@@ -620,7 +656,7 @@ retry_pong:
 		if (src_link->transport_connected) {
 			if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-					     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
+					     (struct sockaddr *) &src_link->dst_addr, knet_h->knet_transport_fd_tracker[src_link->outsock].sockaddr_len);
 			} else {
 				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
 			}
@@ -747,7 +783,7 @@ retry_pmtud:
 		if (src_link->transport_connected) {
 			if (transport_get_connection_oriented(knet_h, src_link->transport) == TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED) {
 				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL,
-					     (struct sockaddr *) &src_link->dst_addr, sizeof(struct sockaddr_storage));
+					     (struct sockaddr *) &src_link->dst_addr, knet_h->knet_transport_fd_tracker[src_link->outsock].sockaddr_len);
 			} else {
 				len = sendto(src_link->outsock, outbuf, outlen, MSG_DONTWAIT | MSG_NOSIGNAL, NULL, 0);
 			}
@@ -832,7 +868,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 	 */
 
 	for (i = 0; i < PCKT_RX_BUFS; i++) {
-		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[i].msg_hdr.msg_namelen = knet_h->knet_transport_fd_tracker[sockfd].sockaddr_len;
 	}
 
 	msg_recv = _recvmmsg(sockfd, &msg[0], PCKT_RX_BUFS, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -888,31 +924,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				goto exit_unlock;
 				break;
 			case KNET_TRANSPORT_RX_IS_DATA: /* packet is data and should be parsed as such */
-				/*
-				 * processing incoming packets vs access lists
-				 */
-				if ((knet_h->use_access_lists) &&
-				    (transport_get_acl_type(knet_h, transport) == USE_GENERIC_ACL)) {
-					if (!check_validate(knet_h, sockfd, transport, msg[i].msg_hdr.msg_name)) {
-						char src_ipaddr[KNET_MAX_HOST_LEN];
-						char src_port[KNET_MAX_PORT_LEN];
-
-						memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
-						memset(src_port, 0, KNET_MAX_PORT_LEN);
-						if (knet_addrtostr(msg[i].msg_hdr.msg_name, sockaddr_len(msg[i].msg_hdr.msg_name),
-								   src_ipaddr, KNET_MAX_HOST_LEN,
-								   src_port, KNET_MAX_PORT_LEN) < 0) {
-
-							log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
-						} else {
-							log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
-						}
-						/*
-						 * continue processing the other packets
-						 */
-						continue;
-					}
-				}
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
 				break;
 			case KNET_TRANSPORT_RX_OOB_DATA_CONTINUE:
@@ -950,7 +961,7 @@ void *_handle_recv_from_links_thread(void *data)
 		memset(&msg[i].msg_hdr, 0, sizeof(struct msghdr));
 
 		msg[i].msg_hdr.msg_name = &address[i];
-		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage);
+		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage); /* Real value filled in before actual use */
 		msg[i].msg_hdr.msg_iov = &iov_in[i];
 		msg[i].msg_hdr.msg_iovlen = 1;
 	}

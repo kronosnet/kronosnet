@@ -27,8 +27,9 @@ if BUILD_MAN
 
 if BUILD_DOXYXML
 noinst_PROGRAMS	= doxyxml
+noinst_HEADERS  = cstring.h
 
-doxyxml_SOURCES = doxyxml.c
+doxyxml_SOURCES = doxyxml.c cstring.c
 doxyxml_CFLAGS = $(AM_CFLAGS) $(libqb_BUILD_CFLAGS) $(libxml_BUILD_CFLAGS)
 doxyxml_LDADD = $(libqb_BUILD_LIBS) $(libxml_BUILD_LIBS)
 endif
@@ -129,14 +130,14 @@ man3_MANS = $(knet_man3_MANS) $(nozzle_man3_MANS)
 $(MANS): doxyfile-knet.stamp doxyfile-nozzle.stamp
 
 doxyfile-knet.stamp: $(noinst_PROGRAMS) Doxyfile-knet $(top_srcdir)/libknet/libknet.h
-	$(DOXYGEN) Doxyfile-knet
+	$(DOXYGEN) Doxyfile-knet 2>&1 | $(EGREP) -v 'warning.*macro definition'
 	$(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-knet/ libknet_8h.xml
 	touch doxyfile-knet.stamp
 
 doxyfile-nozzle.stamp: $(noinst_PROGRAMS) Doxyfile-nozzle $(top_srcdir)/libnozzle/libnozzle.h
 if BUILD_LIBNOZZLE
-	$(DOXYGEN) Doxyfile-nozzle
+	$(DOXYGEN) Doxyfile-nozzle 2>&1 | $(EGREP) -v 'warning.*macro definition'
 	$(DOXYGEN2MAN) -m -P -o $(builddir) -s 3 -p @PACKAGE_NAME@ -H "Kronosnet Programmer's Manual" \
 		$$($(UTC_DATE_AT)$(SOURCE_EPOCH) +"-D %F -Y %Y") -d $(builddir)/xml-nozzle/ libnozzle_8h.xml
 endif

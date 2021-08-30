@@ -137,7 +137,7 @@ static void test(void)
 	host = knet_h->host_index[1];
 	link = &host->link[0];
 
-	if (knet_h->knet_transport_fd_tracker[link->outsock].access_list_match_entry_head) {
+	if (link->access_list_match_entry_head) {
 		printf("found access lists for dynamic dst_addr!\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);
@@ -172,6 +172,17 @@ static void test(void)
 	}
 
 	flush_logs(logfds[0], stdout);
+
+	printf("Test knet_link_set_config with dynamic link (0) and static link (1)\n");
+
+	if (!knet_link_set_config(knet_h, 1, 1, KNET_TRANSPORT_UDP, &lo, &lo, 0) || (errno != EINVAL)) {
+		printf("knet_link_set_config accepted request mixed static/dynamic request or returned incorrect error: %s\n", strerror(errno));
+		knet_host_remove(knet_h, 1);
+		knet_handle_free(knet_h);
+		flush_logs(logfds[0], stdout);
+		close_logpipes(logfds);
+		exit(FAIL);
+	}
 
 	printf("Test knet_link_set_config with already configured link\n");
 	if ((!knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, &lo, NULL, 0) || (errno != EBUSY))) {
@@ -249,7 +260,7 @@ static void test(void)
 	host = knet_h->host_index[1];
 	link = &host->link[0];
 
-	if (!knet_h->knet_transport_fd_tracker[link->outsock].access_list_match_entry_head) {
+	if (!link->access_list_match_entry_head) {
 		printf("Unable to find default access lists for static dst_addr!\n");
 		knet_link_clear_config(knet_h, 1, 0);
 		knet_host_remove(knet_h, 1);

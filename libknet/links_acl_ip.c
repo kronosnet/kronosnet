@@ -183,8 +183,9 @@ static struct ip_acl_match_entry *ipcheck_findmatch(struct ip_acl_match_entry **
 	struct ip_acl_match_entry *match_entry = *match_entry_head;
 
 	while (match_entry) {
-		if ((!memcmp(&match_entry->addr1, ss1, sizeof(struct sockaddr_storage))) &&
-		    (!memcmp(&match_entry->addr2, ss2, sizeof(struct sockaddr_storage))) &&
+		if ((!memcmp(&match_entry->addr1, ss1, sockaddr_len(ss1))) &&
+		    ((match_entry->type == CHECK_TYPE_ADDRESS) ||
+		     ((match_entry->type != CHECK_TYPE_ADDRESS) && ss2 && !memcmp(&match_entry->addr2, ss2, sockaddr_len(ss1)))) &&
 		    (match_entry->type == type) &&
 		    (match_entry->acceptreject == acceptreject)) {
 			return match_entry;
@@ -253,8 +254,10 @@ int ipcheck_addip(void *fd_tracker_match_entry_head, int index,
 		return -1;
 	}
 
-	memmove(&new_match_entry->addr1, ss1, sizeof(struct sockaddr_storage));
-	memmove(&new_match_entry->addr2, ss2, sizeof(struct sockaddr_storage));
+	copy_sockaddr(&new_match_entry->addr1, ss1);
+	if (ss2) {
+		copy_sockaddr(&new_match_entry->addr2, ss2);
+	}
 	new_match_entry->type = type;
 	new_match_entry->acceptreject = acceptreject;
 	new_match_entry->next = NULL;

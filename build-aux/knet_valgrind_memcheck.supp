@@ -1,3 +1,9 @@
+# Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+#
+# Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+#
+# This software licensed under GPL-2.0+
+
 {
   lzma internals (spotted on Debian 9 and Ubuntu 18.04 LTS x86-64)
   Memcheck:Cond
@@ -613,4 +619,16 @@
   obj:*
   fun:init_nss
   fun:nsscrypto_init
+}
+{
+  nss internal leak non recurring (spotted on rhel8.4 and clang)
+  Memcheck:Leak
+  match-leak-kinds: possible
+  fun:malloc
+  fun:realpath@@GLIBC_2.3
+  ...
+  obj:/usr/lib64/libnss3.so
+  fun:SECMOD_LoadModule
+  fun:SECMOD_LoadModule
+  obj:/usr/lib64/libnss3.so
 }
