@@ -670,6 +670,28 @@ fn test_metadata_calls(handle: knet::Handle, host: &knet::HostId) -> Result<()>
 	}
     }
 
+    if let Err(e) = knet::handle_set_host_defrag_bufs(handle, 4, 32, 25, knet::DefragReclaimPolicy::Absolute) {
+	println!("handle_config_set_host_defrag_bufs failed: {:?}", e);
+	return Err(e);
+    }
+    match knet::handle_get_host_defrag_bufs(handle) {
+	Ok((min, max, shrink, policy)) => {
+	    if min != 4 || max != 32 ||
+		shrink != 25 || policy != knet::DefragReclaimPolicy::Absolute {
+		    println!("handle_config_get_host_defrag_bufs returned bad values");
+		    println!("Got {},{},{},{}. expected 4,32,2,Absolute", min, max, shrink, policy);
+		} else {
+		    println!("Defrag params correct: {},{},{},{}", min, max, shrink, policy);
+		}
+	}
+	Err(e) => {
+	    println!("handle_config_get_host_defrag_bufs failed: {:?}", e);
+	    return Err(e);
+	}
+    }
+
+
+
     // Can't set this to anything different
     if let Err(e) = knet::handle_set_onwire_ver(handle, 1) {
 	println!("knet_link_set_onwire_ver failed: {:?}", e);

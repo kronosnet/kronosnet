@@ -96,7 +96,6 @@ struct knet_link {
 	uint8_t has_valid_mtu;
 };
 
-#define KNET_DEFRAG_BUFFERS 32
 #define KNET_CBUFFER_SIZE 4096
 
 struct knet_host_defrag_buf {
@@ -131,7 +130,12 @@ struct knet_host {
 	seq_num_t timed_rx_seq_num;
 	uint8_t got_data;
 	/* defrag/reassembly buffers */
-	struct knet_host_defrag_buf defrag_buf[KNET_DEFRAG_BUFFERS];
+	struct knet_host_defrag_buf *defrag_bufs;
+	uint16_t allocated_defrag_bufs;
+	/* track use % of allocated defrag buffers */
+	uint8_t in_use_defrag_buffers[UINT8_MAX];
+	uint8_t in_use_defrag_buffers_samples;
+	uint8_t in_use_defrag_buffers_index;
 	char circular_buffer_defrag[KNET_CBUFFER_SIZE];
 	/* link stuff */
 	struct knet_link link[KNET_MAX_LINK];
@@ -170,6 +174,10 @@ struct knet_handle_stats_extra {
 	uint64_t tx_crypt_ping_packets;
 	uint64_t tx_crypt_pong_packets;
 };
+
+
+#define KNET_USAGE_SAMPLES_DEFAULT               UINT8_MAX
+#define KNET_USAGE_SAMPLES_TIMESPAN_DEFAULT      10 /* seconds */
 
 struct knet_handle {
 	knet_node_id_t host_id;
@@ -247,6 +255,13 @@ struct knet_handle {
 	unsigned char *send_to_links_buf_compress;
 	seq_num_t tx_seq_num;
 	pthread_mutex_t tx_seq_num_mutex;
+	uint16_t defrag_bufs_min;
+	uint16_t defrag_bufs_max;
+	uint8_t defrag_bufs_shrink_threshold;
+	uint8_t defrag_bufs_usage_samples;
+	uint8_t defrag_bufs_usage_samples_timespan;
+	defrag_bufs_reclaim_policy_t defrag_bufs_reclaim_policy;
+	struct timespec defrag_bufs_last_run;
 	uint8_t has_loop_link;
 	uint8_t loop_link;
 	void *dst_host_filter_fn_private_data;

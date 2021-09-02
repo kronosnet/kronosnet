@@ -12,6 +12,8 @@
 
 #include "internals.h"
 
+void _clear_defrag_bufs_stats(struct knet_host *host);
+
 int _seq_num_lookup(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_num, int defrag_buf, int clear_buf);
 void _seq_num_set(struct knet_host *host, seq_num_t seq_num, int defrag_buf);
 

@@ -18,6 +18,7 @@
 
 #include "internals.h"
 #include "crypto.h"
+#include "host.h"
 #include "links.h"
 #include "common.h"
 #include "transport_common.h"
@@ -589,4 +590,129 @@ int knet_handle_enable_access_lists(knet_handle_t knet_h, unsigned int enabled)
 
 	errno = 0;
 	return 0;
+}
+
+int knet_handle_get_host_defrag_bufs(knet_handle_t knet_h,
+				     uint16_t *min_defrag_bufs,
+				     uint16_t *max_defrag_bufs,
+				     uint8_t *shrink_threshold,
+				     defrag_bufs_reclaim_policy_t *reclaim_policy)
+{
+	int savederrno = 0;
+
+	if (!_is_valid_handle(knet_h)) {
+		return -1;
+	}
+
+	if (!min_defrag_bufs) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!max_defrag_bufs) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!shrink_threshold) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!reclaim_policy) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = pthread_rwlock_rdlock(&knet_h->global_rwlock);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get read lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	*min_defrag_bufs = knet_h->defrag_bufs_min;
+	*max_defrag_bufs = knet_h->defrag_bufs_max;
+	*shrink_threshold = knet_h->defrag_bufs_shrink_threshold;
+	*reclaim_policy = knet_h->defrag_bufs_reclaim_policy;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = 0;
+	return 0;
+}
+
+static int _is_power_of_two(uint16_t num)
+{
+	if ((num != 0) && ((num &(num - 1)) == 0)) {
+		return 1;
+	}
+	return 0;
+}
+
+int knet_handle_set_host_defrag_bufs(knet_handle_t knet_h,
+				     uint16_t min_defrag_bufs,
+				     uint16_t max_defrag_bufs,
+				     uint8_t shrink_threshold,
+				     defrag_bufs_reclaim_policy_t reclaim_policy)
+{
+	int err = 0, savederrno = 0;
+	struct knet_host *host;
+
+	if (!_is_valid_handle(knet_h)) {
+		return -1;
+	}
+
+	if ((!min_defrag_bufs) ||
+	    (!_is_power_of_two(min_defrag_bufs)) ||
+	    (min_defrag_bufs > max_defrag_bufs)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((!max_defrag_bufs) ||
+	    (!_is_power_of_two(max_defrag_bufs)) ||
+	    (max_defrag_bufs < min_defrag_bufs)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((!shrink_threshold) ||
+	    (shrink_threshold > 50)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (reclaim_policy > 1) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	/*
+	 * all those parameters are managed by thread_rx in read only context.
+	 * it is safe to change them here because we are in write lock.
+	 */
+	knet_h->defrag_bufs_min = min_defrag_bufs;
+	knet_h->defrag_bufs_max = max_defrag_bufs;
+	knet_h->defrag_bufs_shrink_threshold = shrink_threshold;
+	knet_h->defrag_bufs_reclaim_policy = reclaim_policy;
+
+	/*
+	 * reset all stats based on new values
+	 */
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+		_clear_defrag_bufs_stats(host);
+	}
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+	errno = 0;
+	return err;
 }

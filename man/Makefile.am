@@ -88,7 +88,9 @@ knet_man3_MANS = \
 		knet_handle_crypto_rx_clear_traffic.3 \
 		knet_handle_enable_onwire_ver_notify.3 \
 		knet_handle_get_onwire_ver.3 \
-		knet_handle_set_onwire_ver.3
+		knet_handle_set_onwire_ver.3 \
+		knet_handle_get_host_defrag_bufs.3 \
+		knet_handle_set_host_defrag_bufs.3
 
 if BUILD_LIBNOZZLE
 nozzle_man3_MANS = \
