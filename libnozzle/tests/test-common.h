@@ -28,6 +28,7 @@
 #define IPBUFSIZE 1024
 
 void need_root(void);
+void need_tun(void);
 int test_iface(char *name, size_t size, const char *updownpath);
 int is_if_in_system(char *name);
 int get_random_byte(void);

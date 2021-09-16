@@ -92,6 +92,7 @@ out_clean:
 int main(void)
 {
 	need_root();
+	need_tun();
 
 	if (test() < 0)
 		return FAIL;
