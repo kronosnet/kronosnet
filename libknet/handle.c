@@ -629,6 +629,17 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	log_info(knet_h, KNET_SUB_HANDLE, "Default onwire version: %u", knet_h->onwire_ver);
 
 	/*
+	 * set default buffers
+	 */
+
+	knet_h->defrag_bufs_min = KNET_MIN_DEFRAG_BUFS_DEFAULT;
+	knet_h->defrag_bufs_max = KNET_MAX_DEFRAG_BUFS_DEFAULT;
+	knet_h->defrag_bufs_shrink_threshold = KNET_SHRINK_THRESHOLD_DEFAULT;
+	knet_h->defrag_bufs_usage_samples = KNET_USAGE_SAMPLES_DEFAULT;
+	knet_h->defrag_bufs_usage_samples_timespan = KNET_USAGE_SAMPLES_TIMESPAN_DEFAULT;
+	knet_h->defrag_bufs_reclaim_policy = RECLAIM_POLICY_ABSOLUTE;
+
+	/*
 	 * init global shared bits
 	 */
 	savederrno = pthread_mutex_lock(&handle_config_mutex);

@@ -570,6 +570,82 @@ pub fn handle_get_datafd(handle: Handle, channel: i8) -> Result<i32>
     }
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum DefragReclaimPolicy {
+    Average = 0,
+    Absolute = 1
+}
+
+impl DefragReclaimPolicy {
+    pub fn new (policy: u32) -> DefragReclaimPolicy {
+	{
+	    match policy {
+		1 => DefragReclaimPolicy::Absolute,
+		_ => DefragReclaimPolicy::Average,
+	    }
+	}
+    }
+    pub fn to_u32 (&self) -> u32 {
+	{
+	    match self {
+		DefragReclaimPolicy::Absolute => 1,
+		DefragReclaimPolicy::Average => 0,
+	    }
+	}
+    }
+}
+
+impl fmt::Display for DefragReclaimPolicy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+	match self {
+	    DefragReclaimPolicy::Absolute => write!(f, "Absolute"),
+	    DefragReclaimPolicy::Average => write!(f, "Average"),
+	}
+    }
+}
+
+/// Configure the defrag buffer parameters - applies to all hosts
+pub fn handle_set_host_defrag_bufs(handle: Handle, min_defrag_bufs: u16, max_defrag_bufs: u16,
+				   shrink_threshold: u8,
+				   reclaim_policy: DefragReclaimPolicy) -> Result<()>
+{
+    let res = unsafe {
+	ffi::knet_handle_set_host_defrag_bufs(handle.knet_handle as ffi::knet_handle_t,
+					      min_defrag_bufs, max_defrag_bufs,
+					      shrink_threshold,
+					      reclaim_policy.to_u32())
+    };
+    if res == 0 {
+	Ok(())
+    } else {
+	Err(Error::last_os_error())
+    }
+}
+
+
+/// Get the defrag buffer parameters.
+/// Returns (min_defrag_bufs, max_defrag_bufs, shrink_threshold, usage_samples, usage_samples_timespan, reclaim_policy)
+pub fn handle_get_host_defrag_bufs(handle: Handle) -> Result<(u16, u16, u8, DefragReclaimPolicy)>
+{
+    let mut min_defrag_bufs: u16 = 0;
+    let mut max_defrag_bufs: u16 = 0;
+    let mut shrink_threshold: u8 = 0;
+    let mut reclaim_policy: u32 = 0;
+    let res = unsafe {
+	ffi::knet_handle_get_host_defrag_bufs(handle.knet_handle as ffi::knet_handle_t,
+					      &mut min_defrag_bufs, &mut max_defrag_bufs,
+					      &mut shrink_threshold,
+					      &mut reclaim_policy)
+    };
+    if res == 0 {
+	Ok((min_defrag_bufs, max_defrag_bufs,
+	    shrink_threshold,
+	    DefragReclaimPolicy::new(reclaim_policy)))
+    } else {
+	Err(Error::last_os_error())
+    }
+}
+
 /// Receive messages from knet
 pub fn recv(handle: Handle, buf: &[u8], channel: i8) -> Result<isize>
 {

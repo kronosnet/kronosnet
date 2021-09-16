@@ -494,6 +494,11 @@ static void setup_knet(int argc, char *argv[])
 		exit(FAIL);
 	}
 
+	if (knet_handle_set_host_defrag_bufs(knet_h, 4, KNET_MAX_DEFRAG_BUFS_DEFAULT, KNET_SHRINK_THRESHOLD_DEFAULT, RECLAIM_POLICY_ABSOLUTE) < 0) {
+		printf("Unable to knet_handle_set_host_defrag_bufs: %s\n", strerror(errno));
+		exit(FAIL);
+	}
+
 	if (cryptocfg) {
 		memset(&knet_handle_crypto_cfg, 0, sizeof(knet_handle_crypto_cfg));
 		cryptomodel = strtok(cryptocfg, ":");

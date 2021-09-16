@@ -81,7 +81,9 @@ api_checks		= \
 			  api_knet_handle_crypto_rx_clear_traffic_test \
 			  api_knet_handle_enable_onwire_ver_notify_test \
 			  api_knet_handle_get_onwire_ver_test \
-			  api_knet_handle_set_onwire_ver_test
+			  api_knet_handle_set_onwire_ver_test \
+			  api_knet_handle_get_host_defrag_bufs_test \
+			  api_knet_handle_set_host_defrag_bufs_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -308,3 +310,9 @@ api_knet_handle_get_onwire_ver_test_SOURCES = api_knet_handle_get_onwire_ver.c \
 
 api_knet_handle_set_onwire_ver_test_SOURCES = api_knet_handle_set_onwire_ver.c \
 					      test-common.c
+
+api_knet_handle_get_host_defrag_bufs_test_SOURCES = api_knet_handle_get_host_defrag_bufs.c \
+						    test-common.c
+
+api_knet_handle_set_host_defrag_bufs_test_SOURCES = api_knet_handle_set_host_defrag_bufs.c \
+						    test-common.c

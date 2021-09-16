@@ -68,6 +68,22 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 
 	memset(host, 0, sizeof(struct knet_host));
 
+	host->defrag_bufs = malloc(knet_h->defrag_bufs_min * sizeof(struct knet_host_defrag_buf));
+	if (!host->defrag_bufs) {
+		err = -1;
+		savederrno = errno;
+		log_err(knet_h, KNET_SUB_HOST, "Unable to allocate memory for host %u defrag buffers: %s",
+			host_id, strerror(savederrno));
+		goto exit_unlock;
+	}
+
+	host->allocated_defrag_bufs = knet_h->defrag_bufs_min;
+
+	memset(host->defrag_bufs, 0, host->allocated_defrag_bufs * sizeof(struct knet_host_defrag_buf));
+
+	log_debug(knet_h, KNET_SUB_HOST, "Allocated %u defrag buffers for host %u",
+		  host->allocated_defrag_bufs, host_id);
+
 	/*
 	 * set host_id
 	 */
@@ -113,6 +129,9 @@ int knet_host_add(knet_handle_t knet_h, knet_node_id_t host_id)
 exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	if (err < 0) {
+		if (host) {
+			free(host->defrag_bufs);
+		}
 		free(host);
 	}
 	errno = err ? savederrno : 0;
@@ -180,6 +199,10 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id)
 	}
 
 	knet_h->host_index[host_id] = NULL;
+
+	if (removed) {
+		free(removed->defrag_bufs);
+	}
 	free(removed);
 
 	_host_list_update(knet_h);
@@ -526,6 +549,13 @@ int knet_host_enable_status_change_notify(knet_handle_t knet_h,
 	return 0;
 }
 
+void _clear_defrag_bufs_stats(struct knet_host *host)
+{
+	memset(&host->in_use_defrag_buffers, 0, sizeof(host->in_use_defrag_buffers));
+	host->in_use_defrag_buffers_samples = 0;
+	host->in_use_defrag_buffers_index = 0;
+}
+
 static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
 {
 	int i;
@@ -535,9 +565,10 @@ static void _clear_cbuffers(struct knet_host *host, seq_num_t rx_seq_num)
 
 	memset(host->circular_buffer_defrag, 0, KNET_CBUFFER_SIZE);
 
-	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
-		memset(&host->defrag_buf[i], 0, sizeof(struct knet_host_defrag_buf));
+	for (i = 0; i < host->allocated_defrag_bufs; i++) {
+		memset(&host->defrag_bufs[i], 0, sizeof(struct knet_host_defrag_buf));
 	}
+	_clear_defrag_bufs_stats(host);
 }
 
 static void _reclaim_old_defrag_bufs(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_num)
@@ -546,23 +577,27 @@ static void _reclaim_old_defrag_bufs(knet_handle_t knet_h, struct knet_host *hos
 	int i;
 
 	head = seq_num + 1;
-	tail = seq_num - (KNET_DEFRAG_BUFFERS + 1);
+	if (knet_h->defrag_bufs_max > host->allocated_defrag_bufs) {
+		tail = seq_num - (knet_h->defrag_bufs_max + 1);
+	} else {
+		tail = seq_num - (host->allocated_defrag_bufs + 1);
+	}
 
 	/*
 	 * expire old defrag buffers
 	 */
-	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
-		if (host->defrag_buf[i].in_use) {
+	for (i = 0; i < host->allocated_defrag_bufs; i++) {
+		if (host->defrag_bufs[i].in_use) {
 			/*
 			 * head has done a rollover to 0+
 			 */
 			if (tail > head) {
-				if ((host->defrag_buf[i].pckt_seq >= head) && (host->defrag_buf[i].pckt_seq <= tail)) {
-					host->defrag_buf[i].in_use = 0;
+				if ((host->defrag_bufs[i].pckt_seq >= head) && (host->defrag_bufs[i].pckt_seq <= tail)) {
+					host->defrag_bufs[i].in_use = 0;
 				}
 			} else {
-				if ((host->defrag_buf[i].pckt_seq >= head) || (host->defrag_buf[i].pckt_seq <= tail)){
-					host->defrag_buf[i].in_use = 0;
+				if ((host->defrag_bufs[i].pckt_seq >= head) || (host->defrag_bufs[i].pckt_seq <= tail)){
+					host->defrag_bufs[i].in_use = 0;
 				}
 			}
 		}

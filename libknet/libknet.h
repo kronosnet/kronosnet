@@ -1231,6 +1231,90 @@ int knet_handle_set_onwire_ver(knet_handle_t knet_h,
 			       uint8_t onwire_ver);
 
 /*
+ * defrag buffer configuration defaults
+ */
+#define KNET_MIN_DEFRAG_BUFS_DEFAULT             32
+#define KNET_MAX_DEFRAG_BUFS_DEFAULT             1024
+#define KNET_SHRINK_THRESHOLD_DEFAULT            25
+
+
+/**
+ * reclaim_policy for defrag buffers
+ */
+typedef enum {
+	RECLAIM_POLICY_AVERAGE = 0,
+	RECLAIM_POLICY_ABSOLUTE = 1 /* default */
+} defrag_bufs_reclaim_policy_t;
+
+/**
+ * knet_handle_get_host_defrag_bufs
+ *
+ * @brief Return the defrag buffers parameters for hosts
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * min_defrag_bufs - minimum defrag buffers for each host
+ *
+ * max_defrag_bufs - maximum defrag buffers for each host
+ *
+ * shrink_threshold - define buffer usage threshold in %
+ *                    below which buffers will be shrunk.
+ *                    This is measured over the last
+ *                    usage_samples_timespan, as an
+ *                    average of usage_samples.
+ *
+ * reclaim_policy - define how % threshold is calculated.
+ *
+ * @return
+ * knet_handle_set_host_defrag_bufs returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_get_host_defrag_bufs(knet_handle_t knet_h,
+				     uint16_t *min_defrag_bufs,
+				     uint16_t *max_defrag_bufs,
+				     uint8_t *shrink_threshold,
+				     defrag_bufs_reclaim_policy_t *reclaim_policy);
+
+/**
+ * knet_handle_set_host_defrag_bufs
+ *
+ * @brief configure defrag buffers parameters per host
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * min_defrag_bufs - minimum defrag buffers for each host,
+ *                   This should be a power of 2.
+ *
+ * max_defrag_bufs - maximum defrag buffers for each host,
+ *                   This should be a power of 2.
+ *
+ * shrink_threshold - define buffer usage threshold in %
+ *                    below which buffers will be shrunk.
+ *                    This is measured over the last
+ *                    usage_samples_timespan, as an
+ *                    average of usage_samples.
+ *                    Only values less than or equal to 50% are accepted.
+ *
+ * reclaim_policy - define how % threshold is calculated.
+ *
+ * @note The defrag buffer parameters are global to a handle
+ * but the buffers themselves are allocated and shrunk per-host.
+ *
+ * @return
+ * knet_handle_set_host_defrag_bufs returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_set_host_defrag_bufs(knet_handle_t knet_h,
+				     uint16_t min_defrag_bufs,
+				     uint16_t max_defrag_bufs,
+				     uint8_t shrink_threshold,
+				     defrag_bufs_reclaim_policy_t reclaim_policy);
+
+/*
  * host structs/API calls
  */
 

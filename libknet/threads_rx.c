@@ -10,6 +10,7 @@
 #include "config.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/uio.h>
@@ -60,20 +61,216 @@ static inline int _timecmp(struct timespec a, struct timespec b)
 }
 
 /*
- * this functions needs to return an index (0 to 7)
+ * calculate use % of defrag buffers per host
+ * and if % is <= knet_h->defrag_bufs_shrink_threshold for the last second, then half the size
+ */
+
+static void _shrink_defrag_buffers(knet_handle_t knet_h)
+{
+	struct knet_host *host;
+	struct knet_host_defrag_buf *new_bufs = NULL;
+	struct timespec now;
+	unsigned long long time_diff; /* nanoseconds */
+	uint16_t i, x, in_use_bufs;
+	uint32_t sum;
+
+	/*
+	 * first run.
+	 */
+	if ((knet_h->defrag_bufs_last_run.tv_sec == 0) &&
+	    (knet_h->defrag_bufs_last_run.tv_nsec == 0)) {
+		clock_gettime(CLOCK_MONOTONIC, &knet_h->defrag_bufs_last_run);
+		return;
+	}
+
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	timespec_diff(knet_h->defrag_bufs_last_run, now, &time_diff);
+
+	if (time_diff < (((unsigned long long)knet_h->defrag_bufs_usage_samples_timespan * 1000000000) / knet_h->defrag_bufs_usage_samples)) {
+		return;
+	}
+
+	/*
+	 * record the last run
+	 */
+	memmove(&knet_h->defrag_bufs_last_run, &now, sizeof(struct timespec));
+
+	/*
+	 * do the real work:
+	 */
+	for (host = knet_h->host_head; host != NULL; host = host->next) {
+
+		/*
+		 * Update buffer usage stats. We do this for all nodes.
+		 */
+		in_use_bufs = 0;
+
+		for (i = 0; i < host->allocated_defrag_bufs; i++) {
+			if (host->defrag_bufs[i].in_use) {
+				in_use_bufs++;
+			}
+		}
+
+		/*
+		 * record only %
+		 */
+		host->in_use_defrag_buffers[host->in_use_defrag_buffers_index] = (in_use_bufs * 100 / host->allocated_defrag_bufs);
+		host->in_use_defrag_buffers_index++;
+
+		/*
+		 * make sure to stay within buffer
+		 */
+		if (host->in_use_defrag_buffers_index == knet_h->defrag_bufs_usage_samples) {
+			host->in_use_defrag_buffers_index = 0;
+		}
+
+		/*
+		 * only allow shrinking if we have enough samples
+		 */
+		if (host->in_use_defrag_buffers_samples < knet_h->defrag_bufs_usage_samples) {
+			host->in_use_defrag_buffers_samples++;
+			continue;
+		}
+
+		/*
+		 * only allow shrinking if in use bufs are <= knet_h->defrag_bufs_shrink_threshold%
+		 */
+		if (knet_h->defrag_bufs_reclaim_policy == RECLAIM_POLICY_AVERAGE) {
+			sum = 0;
+			for (i = 0; i < knet_h->defrag_bufs_usage_samples; i++) {
+				sum += host->in_use_defrag_buffers[i];
+			}
+			sum = sum / knet_h->defrag_bufs_usage_samples;
+
+			if (sum > knet_h->defrag_bufs_shrink_threshold) {
+				continue;
+			}
+		} else {
+			sum = 0;
+			for (i = 0; i < knet_h->defrag_bufs_usage_samples; i++) {
+				if (host->in_use_defrag_buffers[i] > knet_h->defrag_bufs_shrink_threshold) {
+					sum = 1;
+				}
+			}
+
+			if (sum) {
+				continue;
+			}
+		}
+
+		/*
+		 * only allow shrinking if allocated bufs > min_defrag_bufs
+		 */
+		if (host->allocated_defrag_bufs == knet_h->defrag_bufs_min) {
+			continue;
+		}
+
+		/*
+		 * compat all the in_use buffers at the beginning.
+		 * we the checks above, we are 100% sure they fit
+		 */
+		x = 0;
+		for (i = 0; i < host->allocated_defrag_bufs; i++) {
+			if (host->defrag_bufs[i].in_use) {
+				memmove(&host->defrag_bufs[x], &host->defrag_bufs[i], sizeof(struct knet_host_defrag_buf));
+				x++;
+			}
+		}
+
+		/*
+		 * memory allocation is not critical. it just means the system is under
+		 * memory pressure and we will need to wait our turn to free memory... how odd :)
+		 */
+		new_bufs = realloc(host->defrag_bufs, sizeof(struct knet_host_defrag_buf) * (host->allocated_defrag_bufs / 2));
+		if (!new_bufs) {
+			log_err(knet_h, KNET_SUB_RX, "Unable to decrease defrag buffers for host %u: %s",
+				host->host_id, strerror(errno));
+			continue;
+		}
+
+		host->defrag_bufs = new_bufs;
+		host->allocated_defrag_bufs = host->allocated_defrag_bufs / 2;
+
+		/*
+		 * clear buffer use stats. Old ones are no good for new one
+		 */
+		_clear_defrag_bufs_stats(host);
+
+		log_debug(knet_h, KNET_SUB_RX, "Defrag buffers for host %u decreased from %u to: %u",
+			  host->host_id, host->allocated_defrag_bufs * 2, host->allocated_defrag_bufs);
+	}
+}
+
+/*
+ * check if we can double the defrag buffers.
+ *
+ * return 0 if we cannot reallocate
+ * return 1 if we have more buffers
+ */
+
+static int _realloc_defrag_buffers(knet_handle_t knet_h, struct knet_host *src_host)
+{
+	struct knet_host_defrag_buf *new_bufs = NULL;
+	int i;
+
+	/*
+	 * max_defrag_bufs is a power of 2
+	 * allocated_defrag_bufs doubles on each iteration.
+	 * Sooner or later (and hopefully never) allocated with be == to max.
+	 */
+	if (src_host->allocated_defrag_bufs < knet_h->defrag_bufs_max) {
+		new_bufs = realloc(src_host->defrag_bufs,
+				   src_host->allocated_defrag_bufs * 2 * sizeof(struct knet_host_defrag_buf));
+		if (!new_bufs) {
+			log_err(knet_h, KNET_SUB_RX, "Unable to increase defrag buffers for host %u: %s",
+				src_host->host_id, strerror(errno));
+			return 0;
+		}
+
+		/*
+		 * keep the math simple here between arrays, pointers and what not.
+		 * Init each buffer individually.
+		 */
+		for (i = src_host->allocated_defrag_bufs; i < src_host->allocated_defrag_bufs * 2; i++) {
+			memset(&new_bufs[i], 0, sizeof(struct knet_host_defrag_buf));
+		}
+
+		src_host->allocated_defrag_bufs = src_host->allocated_defrag_bufs * 2;
+
+		src_host->defrag_bufs = new_bufs;
+
+		/*
+		 * clear buffer use stats. Old ones are no good for new one
+		 */
+		_clear_defrag_bufs_stats(src_host);
+
+		log_debug(knet_h, KNET_SUB_RX, "Defrag buffers for host %u increased from %u to: %u",
+			  src_host->host_id, src_host->allocated_defrag_bufs / 2, src_host->allocated_defrag_bufs);
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * this functions needs to return an index
  * to a knet_host_defrag_buf. (-1 on errors)
  */
 
 static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_host, seq_num_t seq_num)
 {
 	int i, oldest;
+	uint16_t cur_allocated_defrag_bufs = src_host->allocated_defrag_bufs;
 
 	/*
 	 * check if there is a buffer already in use handling the same seq_num
 	 */
-	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
-		if (src_host->defrag_buf[i].in_use) {
-			if (src_host->defrag_buf[i].pckt_seq == seq_num) {
+
+	for (i = 0; i < src_host->allocated_defrag_bufs; i++) {
+		if (src_host->defrag_bufs[i].in_use) {
+			if (src_host->defrag_bufs[i].pckt_seq == seq_num) {
 				return i;
 			}
 		}
@@ -86,6 +283,7 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 	 * buffer. If the pckt has been seen before, the buffer expired (ETIME)
 	 * and there is no point to try to defrag it again.
 	 */
+
 	if (!_seq_num_lookup(knet_h, src_host, seq_num, 1, 0)) {
 		errno = ETIME;
 		return -1;
@@ -94,15 +292,25 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 	/*
 	 * register the pckt as seen
 	 */
+
 	_seq_num_set(src_host, seq_num, 1);
 
 	/*
 	 * see if there is a free buffer
 	 */
-	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
-		if (!src_host->defrag_buf[i].in_use) {
+
+	for (i = 0; i < src_host->allocated_defrag_bufs; i++) {
+		if (!src_host->defrag_bufs[i].in_use) {
 			return i;
 		}
+	}
+
+	/*
+	 * check if we can increase num of buffers
+	 */
+
+	if (_realloc_defrag_buffers(knet_h, src_host)) {
+		return cur_allocated_defrag_bufs + 1;
 	}
 
 	/*
@@ -113,12 +321,13 @@ static int _find_pckt_defrag_buf(knet_handle_t knet_h, struct knet_host *src_hos
 
 	oldest = 0;
 
-	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
-		if (_timecmp(src_host->defrag_buf[i].last_update, src_host->defrag_buf[oldest].last_update) < 0) {
+	for (i = 0; i < src_host->allocated_defrag_bufs; i++) {
+		if (_timecmp(src_host->defrag_bufs[i].last_update, src_host->defrag_bufs[oldest].last_update) < 0) {
 			oldest = i;
 		}
 	}
-	src_host->defrag_buf[oldest].in_use = 0;
+	src_host->defrag_bufs[oldest].in_use = 0;
+
 	return oldest;
 }
 
@@ -132,7 +341,7 @@ static int _pckt_defrag(knet_handle_t knet_h, struct knet_host *src_host, seq_nu
 		return 1;
 	}
 
-	defrag_buf = &src_host->defrag_buf[defrag_buf_idx];
+	defrag_buf = &src_host->defrag_bufs[defrag_buf_idx];
 
 	/*
 	 * if the buf is not is use, then make sure it's clean
@@ -897,6 +1106,8 @@ void *_handle_recv_from_links_thread(void *data)
 		for (i = 0; i < nev; i++) {
 			_handle_recv_from_links(knet_h, events[i].data.fd, msg);
 		}
+
+		_shrink_defrag_buffers(knet_h);
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STOPPED);
