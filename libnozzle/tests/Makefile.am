@@ -63,7 +63,7 @@ testsuitedir		= $(TESTDIR)
 testsuite_PROGRAMS	= $(noinst_PROGRAMS)
 endif
 
-check-local: check-api-test-coverage
+check-local: check-api-test-coverage check-annocheck-bins
 
 check-api-test-coverage:
 	chmod u+x $(top_srcdir)/libnozzle/tests/api-test-coverage
