@@ -131,7 +131,7 @@ retry:
 		if (len != outlen) {
 			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
 			switch(err) {
-				case -1: /* unrecoverable error */
+				case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
 						  "Unable to send ping (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 						  dst_link->outsock, savederrno, strerror(savederrno),
@@ -139,9 +139,9 @@ retry:
 						  dst_link->status.dst_ipaddr, dst_link->status.dst_port);
 					dst_link->status.stats.tx_ping_errors++;
 					break;
-				case 0:
+				case KNET_TRANSPORT_SOCK_ERROR_IGNORE:
 					break;
-				case 1:
+				case KNET_TRANSPORT_SOCK_ERROR_RETRY:
 					dst_link->status.stats.tx_ping_retries++;
 					goto retry;
 					break;
@@ -153,7 +153,7 @@ retry:
 	}
 
 	timespec_diff(pong_last, clock_now, &diff_ping);
-	if ((pong_last.tv_nsec) && 
+	if ((pong_last.tv_nsec) &&
 	    (diff_ping >= (dst_link->pong_timeout_adj * 1000llu))) {
 		_link_down(knet_h, dst_host, dst_link);
 	}
@@ -211,7 +211,7 @@ retry:
 		if (len != outlen) {
 			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
 			switch(err) {
-				case -1: /* unrecoverable error */
+				case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
 						  "Unable to send pong reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 						  src_link->outsock, errno, strerror(errno),
@@ -219,9 +219,9 @@ retry:
 						  src_link->status.dst_ipaddr, src_link->status.dst_port);
 					src_link->status.stats.tx_pong_errors++;
 					break;
-				case 0: /* ignore error and continue */
+				case KNET_TRANSPORT_SOCK_ERROR_IGNORE:
 					break;
-				case 1: /* retry to send those same data */
+				case KNET_TRANSPORT_SOCK_ERROR_RETRY:
 					src_link->status.stats.tx_pong_retries++;
 					goto retry;
 					break;

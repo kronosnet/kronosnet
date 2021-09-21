@@ -367,6 +367,33 @@ typedef enum {
 #define TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED 0
 #define TRANSPORT_PROTO_IS_CONNECTION_ORIENTED  1
 
+/*
+ * Returns from transport_tx_sock_error
+ */
+typedef enum {
+	KNET_TRANSPORT_RX_ERROR = -1,
+	KNET_TRANSPORT_SOCK_ERROR_INTERNAL = -1,
+	KNET_TRANSPORT_SOCK_ERROR_IGNORE = 0,
+	KNET_TRANSPORT_SOCK_ERROR_RETRY = 1,
+} transport_sock_error_t;
+
+/*
+ * Returns from transport_rx_is_data
+ */
+typedef enum {
+	KNET_TRANSPORT_RX_ISDATA_ERROR = -1,
+	KNET_TRANSPORT_RX_NOT_DATA_CONTINUE = 0,
+	KNET_TRANSPORT_RX_NOT_DATA_STOP = 1,
+	KNET_TRANSPORT_RX_IS_DATA = 2,
+	/* These two are only really used by SCTP */
+	KNET_TRANSPORT_RX_OOB_DATA_CONTINUE = 3,
+	KNET_TRANSPORT_RX_OOB_DATA_STOP = 4
+} transport_rx_isdata_t;
+
+
+/*
+ * All functions that return int return 0 for success, and -1 for failure.
+ */
 typedef struct knet_transport_ops {
 /*
  * transport generic information
@@ -401,7 +428,7 @@ typedef struct knet_transport_ops {
 /*
  * link operations should take care of all the
  * sockets and epoll management for a given link/transport set
- * transport_link_disable should return err = -1 and errno = EBUSY
+ * transport_link_disable should return -1 and errno = EBUSY
  * if listener is still in use, and any other errno in case
  * the link cannot be disabled.
  *
@@ -434,28 +461,21 @@ typedef struct knet_transport_ops {
  * transport_tx_sock_error is invoked with global_rwlock and
  * it's invoked when sendto or sendmmsg returns =< 0
  *
- * it should return:
- * -1 on internal error
- *  0 ignore error and continue
- *  1 retry
+ * it should return a transport_sock_error_t
  *    any sleep or wait action should happen inside the transport code
  */
-	int (*transport_tx_sock_error)(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
+	transport_sock_error_t (*transport_tx_sock_error)(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
 
 /*
  * this function is called on _every_ received packet
  * to verify if the packet is data or internal protocol error handling
  *
- * it should return:
- * -1 on error
- *  0 packet is not data and we should continue the packet process loop
- *  1 packet is not data and we should STOP the packet process loop
- *  2 packet is data and should be parsed as such
+ * it should return a transport_tx_isdata_t
  *
  * transport_rx_is_data is invoked with both global_rwlock
  * and fd_tracker read lock (from RX thread)
  */
-	int (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg);
+	transport_rx_isdata_t (*transport_rx_is_data)(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg);
 
 /*
  * this function is called by links.c when a link down event is recorded

@@ -83,13 +83,13 @@ retry:
 
 		err = transport_tx_sock_error(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport, dst_host->link[dst_host->active_links[link_idx]].outsock, sent_msgs, savederrno);
 		switch(err) {
-			case -1: /* unrecoverable error */
+			case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 				cur_link->status.stats.tx_data_errors++;
 				goto out_unlock;
 				break;
-			case 0: /* ignore error and continue */
+			case KNET_TRANSPORT_SOCK_ERROR_IGNORE:
 				break;
-			case 1: /* retry to send those same data */
+			case KNET_TRANSPORT_SOCK_ERROR_RETRY:
 				cur_link->status.stats.tx_data_retries++;
 				goto retry;
 				break;

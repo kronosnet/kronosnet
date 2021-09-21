@@ -390,12 +390,12 @@ int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 	return 0;
 }
 
-int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+transport_sock_error_t udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	if (recv_err < 0) {
 		if (recv_errno == EMSGSIZE) {
 			read_errs_from_sock(knet_h, sockfd);
-			return 0;
+			return KNET_TRANSPORT_SOCK_ERROR_IGNORE;
 		}
 		if ((recv_errno == EINVAL) || (recv_errno == EPERM) ||
 		    (recv_errno == ENETUNREACH) || (recv_errno == ENETDOWN)) {
@@ -404,7 +404,7 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 				log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable.", sockfd);
 			}
 #endif
-			return -1;
+			return KNET_TRANSPORT_SOCK_ERROR_INTERNAL;
 		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
 #ifdef DEBUG
@@ -414,13 +414,13 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 		} else {
 			read_errs_from_sock(knet_h, sockfd);
 		}
-		return 1;
+		return KNET_TRANSPORT_SOCK_ERROR_RETRY;
 	}
 
-	return 0;
+	return KNET_TRANSPORT_SOCK_ERROR_IGNORE;
 }
 
-int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
+transport_rx_isdata_t udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	if (msg->msg_len == 0)
 		return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;

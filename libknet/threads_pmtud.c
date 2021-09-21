@@ -249,7 +249,7 @@ retry:
 
 	err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
 	switch(err) {
-		case -1: /* unrecoverable error */
+		case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
 			pthread_mutex_unlock(&knet_h->tx_mutex);
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
@@ -257,9 +257,9 @@ retry:
 			pthread_mutex_unlock(&dst_link->link_stats_mutex);
 			return -1;
 			break;
-		case 0: /* ignore error and continue */
+		case KNET_TRANSPORT_SOCK_ERROR_IGNORE:
 			break;
-		case 1: /* retry to send those same data */
+		case KNET_TRANSPORT_SOCK_ERROR_RETRY:
 			dst_link->status.stats.tx_pmtu_retries++;
 			goto retry;
 			break;
@@ -720,7 +720,7 @@ retry:
 				return;
 			}
 			switch(err) {
-				case -1: /* unrecoverable error */
+				case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 					log_debug(knet_h, KNET_SUB_PMTUD,
 						  "Unable to send PMTUd reply (sock: %d) packet (sendto): %d %s. recorded src ip: %s src port: %s dst ip: %s dst port: %s",
 						  src_link->outsock, errno, strerror(errno),
@@ -729,10 +729,10 @@ retry:
 
 					src_link->status.stats.tx_pmtu_errors++;
 					break;
-				case 0: /* ignore error and continue */
+				case KNET_TRANSPORT_SOCK_ERROR_IGNORE:
 					src_link->status.stats.tx_pmtu_errors++;
 					break;
-				case 1: /* retry to send those same data */
+				case KNET_TRANSPORT_SOCK_ERROR_RETRY:
 					src_link->status.stats.tx_pmtu_retries++;
 					pthread_mutex_unlock(&src_link->link_stats_mutex);
 					goto retry;
