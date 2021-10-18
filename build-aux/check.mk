@@ -53,8 +53,8 @@ endif
 check-annocheck-libs:
 if HAS_ANNOCHECK
 	@echo Running annocheck libs test
-	if ! $(ANNOCHECK_EXEC) --quiet .libs/*.so; then \
-		$(ANNOCHECK_EXEC) --verbose .libs/*.so; \
+	if ! $(ANNOCHECK_EXEC) --skip-lto --quiet .libs/*.so; then \
+		$(ANNOCHECK_EXEC) --skip-lto --verbose .libs/*.so; \
 		echo annocheck libs test: FAILED; \
 		exit 1; \
 	else \
@@ -70,8 +70,8 @@ endif
 check-annocheck-bins:
 if HAS_ANNOCHECK
 	@echo Running annocheck binaries test
-	if ! $(ANNOCHECK_EXEC) --skip-run-path --quiet .libs/*; then \
-		$(ANNOCHECK_EXEC) --skip-run-path --verbose .libs/*; \
+	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --quiet .libs/*; then \
+		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --verbose .libs/*; \
 		echo annocheck binaries test: FAILED; \
 		exit 1; \
 	else \
