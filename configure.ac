@@ -317,6 +317,16 @@ AC_ARG_WITH([testdir],
 
 AC_SUBST([TESTDIR])
 
+# debug build stuff
+if test "x${enable_debug}" = xyes; then
+	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
+	OPT_CFLAGS="-O0"
+	FORTIFY_CFLAGS=""
+else
+	OPT_CFLAGS="-O3"
+	FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=2"
+fi
+
 # Check for availablility of hardening options
 
 annocheck=no
@@ -328,7 +338,7 @@ if test "x${enable_hardening}" = xyes; then
 		annocheck=yes
 	fi
 
-	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
+	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie $FORTIFY_CFLAGS -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
 	HARDENING_CFLAGS="-fstack-clash-protection -fcf-protection=full -mcet -mstackrealign"
 	EXTRA_HARDENING_CFLAGS=""
 
@@ -359,15 +369,11 @@ if test "x${enable_hardening}" = xyes; then
 	AM_LDFLAGS="$AM_LDFLAGS $EXTRA_HARDENING_CFLAGS"
 fi
 
-AM_CONDITIONAL([HAS_ANNOCHECK], [test "x$annocheck" = "xyes"])
-
-# debug build stuff
 if test "x${enable_debug}" = xyes; then
-	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
-	OPT_CFLAGS="-O0"
-else
-	OPT_CFLAGS="-O3"
+	annocheck=no
 fi
+
+AM_CONDITIONAL([HAS_ANNOCHECK], [test "x$annocheck" = "xyes"])
 
 # gdb flags
 if test "x${GCC}" = xyes; then
