@@ -394,9 +394,9 @@ static int encrypt_nss(
 	}
 
 	for (i=0; i<iovcnt; i++) {
-		if (PK11_CipherOp(crypt_context, data,
+		if (PK11_CipherOp(crypt_context, data + tmp1_outlen,
 				  &tmp_outlen,
-				  KNET_DATABUFSIZE_CRYPT,
+				  KNET_DATABUFSIZE_CRYPT - tmp1_outlen,
 				  (unsigned char *)iov[i].iov_base,
 				  iov[i].iov_len) != SECSuccess) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d): %s",
