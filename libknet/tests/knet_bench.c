@@ -676,24 +676,6 @@ static void setup_knet(int argc, char *argv[])
 	}
 }
 
-/*
- * calculate weak chksum (stole from corosync for debugging purposes)
- */
-static uint32_t compute_chsum(const unsigned char *data, uint32_t data_len)
-{
-	unsigned int i;
-	unsigned int checksum = 0;
-
-	for (i = 0; i < data_len; i++) {
-		if (checksum & 1) {
-			checksum |= 0x10000;
-		}
-
-		checksum = ((checksum >> 1) + (unsigned char)data[i]) & 0xffff;
-	}
-	return (checksum);
-}
-
 static void *_rx_thread(void *args)
 {
 	int rx_epoll;
@@ -814,7 +796,7 @@ static void *_rx_thread(void *args)
 								printf("Wrong packet len received: %u expected: %u!\n", msg[i].msg_len, recv_pckt->len);
 								exit(FAIL);
 							}
-							chksum = compute_chsum((const unsigned char *)msg[i].msg_hdr.msg_iov->iov_base + sizeof(struct pckt_ver), msg[i].msg_len - sizeof(struct pckt_ver));
+							chksum = compute_chksum((const unsigned char *)msg[i].msg_hdr.msg_iov->iov_base + sizeof(struct pckt_ver), msg[i].msg_len - sizeof(struct pckt_ver));
 							if (recv_pckt->chksum != chksum){
 								printf("Wrong packet checksum received: %u expected: %u!\n", recv_pckt->chksum, chksum);
 								exit(FAIL);
@@ -970,7 +952,7 @@ static void send_perf_data_by_size(void)
 			if (use_pckt_verification) {
 				struct pckt_ver *tx_pckt = (struct pckt_ver *)&iov_out[i].iov_base;
 				tx_pckt->len = iov_out[i].iov_len;
-				tx_pckt->chksum = compute_chsum((const unsigned char *)iov_out[i].iov_base + sizeof(struct pckt_ver), iov_out[i].iov_len - sizeof(struct pckt_ver));
+				tx_pckt->chksum = compute_chksum((const unsigned char *)iov_out[i].iov_base + sizeof(struct pckt_ver), iov_out[i].iov_len - sizeof(struct pckt_ver));
 			}
 		}
 
@@ -1258,7 +1240,7 @@ static void send_perf_data_by_time(void)
 			if (use_pckt_verification) {
 				struct pckt_ver *tx_pckt = (struct pckt_ver *)iov_out[i].iov_base;
 				tx_pckt->len = iov_out[i].iov_len;
-				tx_pckt->chksum = compute_chsum((const unsigned char *)iov_out[i].iov_base + sizeof(struct pckt_ver), iov_out[i].iov_len - sizeof(struct pckt_ver));
+				tx_pckt->chksum = compute_chksum((const unsigned char *)iov_out[i].iov_base + sizeof(struct pckt_ver), iov_out[i].iov_len - sizeof(struct pckt_ver));
 			}
 		}
 		printf("[info]: testing with %u bytes packet size for %" PRIu64 " seconds.\n", packetsize, perf_by_time_secs);

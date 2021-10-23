@@ -364,6 +364,9 @@ AC_SUBST([libnozzlerustver])
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+# for standard crc32 function (used in test suite)
+PKG_CHECK_MODULES([zlib], [zlib])
+
 AC_ARG_ENABLE([hardening],
 	[AS_HELP_STRING([--disable-hardening],[disable hardening build flags])],,
 	[ enable_hardening="yes" ])

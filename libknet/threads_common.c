@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <string.h>
+#include <zlib.h>
 
 #include "internals.h"
 #include "logging.h"
@@ -313,4 +314,14 @@ int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	return 0;
+}
+
+uint32_t compute_chksum(const unsigned char *data, uint32_t data_len)
+{
+	uLong crc;
+
+	crc = crc32(0, NULL, 0);
+	crc = crc32(crc, (Bytef*)data, data_len);
+
+	return crc;
 }

@@ -50,5 +50,6 @@ int wait_all_threads_flush_queue(knet_handle_t knet_h);
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status);
 int wait_all_threads_status(knet_handle_t knet_h, uint8_t status);
 void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu);
+uint32_t compute_chksum(const unsigned char *data, uint32_t data_len);
 
 #endif
