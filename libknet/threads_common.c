@@ -325,3 +325,17 @@ uint32_t compute_chksum(const unsigned char *data, uint32_t data_len)
 
 	return crc;
 }
+
+uint32_t compute_chksumv(const struct iovec *iov_in, int iovcnt_in)
+{
+	uLong crc;
+	int i;
+
+	crc = crc32(0, NULL, 0);
+
+	for (i = 0; i < iovcnt_in; i++) {
+		crc = crc32(crc, (Bytef*)iov_in[i].iov_base, iov_in[i].iov_len);
+	}
+
+	return crc;
+}
