@@ -65,6 +65,9 @@ struct knet_header_payload_data_v1 {
 	uint8_t		khp_data_frag_num;	/* number of fragments of this pckt. 1 is not fragmented */
 	uint8_t		khp_data_frag_seq;	/* as above, indicates the frag sequence number */
 	int8_t		khp_data_channel;	/* transport channel data for localsock <-> knet <-> localsock mapping */
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	uint32_t	khp_data_checksum;	/* debug checksum of all user data */
+#endif
 	uint8_t		khp_data_userdata[0];	/* pointer to the real user data */
 } __attribute__((packed));
 
@@ -75,6 +78,9 @@ struct knet_header_payload_data_v1 {
 #define khp_data_v1_bcast    kh_payload.khp_data_v1.khp_data_bcast
 #define khp_data_v1_channel  kh_payload.khp_data_v1.khp_data_channel
 #define khp_data_v1_compress kh_payload.khp_data_v1.khp_data_compress
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+#define khp_data_v1_checksum kh_payload.khp_data_v1.khp_data_checksum
+#endif
 
 /*
  * KNET_HEADER_TYPE_PING / KNET_HEADER_TYPE_PONG
@@ -150,6 +156,9 @@ struct knet_header {
 	knet_node_id_t			kh_node;    /* host id of the source host for this pckt */
 	uint8_t				kh_max_ver; /* max version of the protocol supported by this node */
 	uint8_t				kh_pad1;    /* make sure to have space in the header to grow features */
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	uint32_t			kh_checksum;/* debug checksum per packet */
+#endif
 	union knet_header_payload	kh_payload; /* union of potential data struct based on kh_type */
 } __attribute__((packed));
 

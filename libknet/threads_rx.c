@@ -692,6 +692,17 @@ static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, stru
 		return;
 	}
 
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	if (inbuf->khp_data_v1_checksum != compute_chksum(data, len - header_size)) {
+		log_err(knet_h, KNET_SUB_RX, "Received incorrect data checksum after reassembly from host: %u seq: %u", src_host->host_id, seq_num);
+		/*
+		 * give a chance to the log threads to pick up the message
+		 */
+		sleep(1);
+		abort();
+	}
+#endif
+
 	if (_deliver_data(knet_h, data, len, header_size, channel) < 0) {
 		return;
 	}
@@ -744,10 +755,28 @@ static struct knet_header *_decrypt_packet(knet_handle_t knet_h, struct knet_hea
 
 static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t len)
 {
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	uint32_t rx_packet_checksum, expected_packet_checksum;
+#endif
+
 	if (len < (ssize_t)(KNET_HEADER_SIZE + 1)) {
 		log_debug(knet_h, KNET_SUB_RX, "Packet is too short: %ld", (long)len);
 		return -1;
 	}
+
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	rx_packet_checksum = inbuf->kh_checksum;
+	inbuf->kh_checksum = 0;
+	expected_packet_checksum = compute_chksum((const unsigned char *)inbuf, len);
+	if (rx_packet_checksum != expected_packet_checksum) {
+		log_err(knet_h, KNET_SUB_RX, "Received packet with incorrect checksum. Received: %u Expected: %u", rx_packet_checksum, expected_packet_checksum);
+		/*
+		 * give a chance to the log threads to pick up the message
+		 */
+		sleep(1);
+		abort();
+	}
+#endif
 
 	/*
 	 * old versions of knet did not advertise max_ver and max_ver is set to 0.
@@ -861,11 +890,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
-	inbuf->kh_node = ntohs(inbuf->kh_node);
-
 	if (_packet_checks(knet_h, inbuf, len) < 0) {
 		return;
 	}
+
+	inbuf->kh_node = ntohs(inbuf->kh_node);
 
 	/*
 	 * determine source host

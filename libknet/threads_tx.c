@@ -175,7 +175,7 @@ out:
 
 static int _prep_tx_bufs(knet_handle_t knet_h,
 			  struct knet_header *inbuf, uint8_t onwire_ver,
-			  unsigned char *data, size_t inlen,
+			  unsigned char *data, size_t inlen, uint32_t data_checksum,
 			  seq_num_t tx_seq_num, int8_t channel, int bcast, int data_compressed,
 			  int *msgs_to_send, struct iovec iov_out[PCKT_FRAG_MAX][2], int *iovcnt_out)
 {
@@ -201,11 +201,11 @@ static int _prep_tx_bufs(knet_handle_t knet_h,
 	}
 
 	if (knet_h->onwire_ver_remap) {
-		prep_tx_bufs_v1(knet_h, inbuf, data, inlen, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
+		prep_tx_bufs_v1(knet_h, inbuf, data, inlen, data_checksum, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
 	} else {
 		switch (onwire_ver) {
 			case 1:
-				prep_tx_bufs_v1(knet_h, inbuf, data, inlen, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
+				prep_tx_bufs_v1(knet_h, inbuf, data, inlen, data_checksum, temp_data_mtu, tx_seq_num, channel, bcast, data_compressed, msgs_to_send, iov_out, iovcnt_out);
 				break;
 			default: /* this should never hit as filters are in place in the calling functions */
 				log_warn(knet_h, KNET_SUB_TX, "preparing data onwire version %u not supported", onwire_ver);
@@ -579,6 +579,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	unsigned char *data;					/* onwire neutrual pointer to data to send */
 	int data_compressed = 0;				/* track data compression to fill the header */
 	seq_num_t tx_seq_num;
+	uint32_t data_checksum = 0;				/* used only for debugging at the moment */
 
 	int bcast = 1;						/* assume all packets are to be broadcasted unless filter tells us differently */
 	knet_node_id_t dst_host_ids[KNET_MAX_HOST];		/* store destinations from filter */
@@ -612,6 +613,10 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		}
 	}
 
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	data_checksum = compute_chksum(data, inlen);
+#endif
+
 	memset(dst_host_ids, 0, sizeof(dst_host_ids));
 	err = _get_data_dests(knet_h, data, inlen,
 			      &channel, &bcast, &send_local,
@@ -643,7 +648,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		goto out;
 	}
 
-	err = _prep_tx_bufs(knet_h, inbuf, onwire_ver, data, inlen, tx_seq_num, channel, bcast, data_compressed, &msgs_to_send, iov_out, &iovcnt_out);
+	err = _prep_tx_bufs(knet_h, inbuf, onwire_ver, data, inlen, data_checksum, tx_seq_num, channel, bcast, data_compressed, &msgs_to_send, iov_out, &iovcnt_out);
 	if (err < 0) {
 		savederrno = errno;
 		goto out;

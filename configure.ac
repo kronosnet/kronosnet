@@ -364,6 +364,13 @@ AC_SUBST([libnozzlerustver])
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+AC_ARG_ENABLE([onwire-v1-extra-debug],
+	[AS_HELP_STRING([--enable-onwire-v1-extra-debug],[enable onwire protocol v1 extra debug. WARNING: IT BREAKS ONWIRE COMPATIBILITY! DO NOT USE IN PRODUCTION!])])
+
+if test "x${enable_onwire_v1_extra_debug}" = xyes; then
+	AC_DEFINE_UNQUOTED([ONWIRE_V1_EXTRA_DEBUG], [1], [Enable crc32 checksum for data and packets])
+fi
+
 # for standard crc32 function (used in test suite)
 PKG_CHECK_MODULES([zlib], [zlib])
 

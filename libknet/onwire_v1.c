@@ -40,6 +40,11 @@ int prep_ping_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwir
 	knet_h->pingbuf->khp_ping_v1_seq_num = htons(knet_h->tx_seq_num);
 	pthread_mutex_unlock(&knet_h->tx_seq_num_mutex);
 
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	knet_h->pingbuf->kh_checksum = 0;
+	knet_h->pingbuf->kh_checksum = compute_chksum((const unsigned char*)knet_h->pingbuf, KNET_HEADER_PING_V1_SIZE);
+#endif
+
 	return 0;
 }
 
@@ -48,6 +53,11 @@ void prep_pong_v1(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t *outl
 	*outlen = KNET_HEADER_PING_V1_SIZE;
 	inbuf->kh_type = KNET_HEADER_TYPE_PONG;
 	inbuf->kh_node = htons(knet_h->host_id);
+
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	inbuf->kh_checksum = 0;
+	inbuf->kh_checksum = compute_chksum((const unsigned char*)inbuf, KNET_HEADER_PING_V1_SIZE);
+#endif
 }
 
 void process_ping_v1(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len)
@@ -103,7 +113,7 @@ struct knet_link *get_link_from_pong_v1(knet_handle_t knet_h, struct knet_host *
 	return &src_host->link[inbuf->khp_ping_v1_link];
 }
 
-void prep_pmtud_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwire_ver, size_t onwire_len)
+void prep_pmtud_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwire_ver, size_t onwire_len, size_t data_len)
 {
 	knet_h->pmtudbuf->kh_version = onwire_ver;
 	knet_h->pmtudbuf->kh_max_ver = knet_h->onwire_max_ver;
@@ -111,6 +121,11 @@ void prep_pmtud_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onw
 	knet_h->pmtudbuf->kh_node = htons(knet_h->host_id);
 	knet_h->pmtudbuf->khp_pmtud_v1_link = dst_link->link_id;
 	knet_h->pmtudbuf->khp_pmtud_v1_size = onwire_len;
+
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	knet_h->pmtudbuf->kh_checksum = 0;
+	knet_h->pmtudbuf->kh_checksum = compute_chksum((const unsigned char*)knet_h->pmtudbuf, data_len);
+#endif
 }
 
 void prep_pmtud_reply_v1(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t *outlen)
@@ -118,6 +133,11 @@ void prep_pmtud_reply_v1(knet_handle_t knet_h, struct knet_header *inbuf, ssize_
 	*outlen = KNET_HEADER_PMTUD_V1_SIZE;
 	inbuf->kh_type = KNET_HEADER_TYPE_PMTUD_REPLY;
 	inbuf->kh_node = htons(knet_h->host_id);
+
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	inbuf->kh_checksum = 0;
+	inbuf->kh_checksum = compute_chksum((const unsigned char*)inbuf, KNET_HEADER_PMTUD_V1_SIZE);
+#endif
 }
 
 void process_pmtud_reply_v1(knet_handle_t knet_h, struct knet_link *src_link, struct knet_header *inbuf)
@@ -126,7 +146,7 @@ void process_pmtud_reply_v1(knet_handle_t knet_h, struct knet_link *src_link, st
 }
 
 void prep_tx_bufs_v1(knet_handle_t knet_h,
-		     struct knet_header *inbuf, unsigned char *data, size_t inlen, unsigned int temp_data_mtu,
+		     struct knet_header *inbuf, unsigned char *data, size_t inlen, uint32_t data_checksum, unsigned int temp_data_mtu,
 		     seq_num_t tx_seq_num, int8_t channel, int bcast, int data_compressed,
 		     int *msgs_to_send, struct iovec iov_out[PCKT_FRAG_MAX][2], int *iovcnt_out)
 {
@@ -154,7 +174,9 @@ void prep_tx_bufs_v1(knet_handle_t knet_h,
 	} else {
 		inbuf->khp_data_v1_compress = 0;
 	}
-
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+	inbuf->khp_data_v1_checksum = data_checksum;
+#endif
 	/*
 	 * handle fragmentation
 	 */
@@ -185,6 +207,11 @@ void prep_tx_bufs_v1(knet_handle_t knet_h,
 			 */
 			knet_h->send_to_links_buf[frag_idx]->khp_data_v1_frag_seq = frag_idx + 1;
 
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+			knet_h->send_to_links_buf[frag_idx]->kh_checksum = 0;
+			knet_h->send_to_links_buf[frag_idx]->kh_checksum = compute_chksumv(iov_out[frag_idx], 2);
+#endif
+
 			frag_len = frag_len - temp_data_mtu;
 			frag_idx++;
 		}
@@ -193,6 +220,11 @@ void prep_tx_bufs_v1(knet_handle_t knet_h,
 		iov_out[frag_idx][0].iov_base = (void *)inbuf;
 		iov_out[frag_idx][0].iov_len = frag_len + KNET_HEADER_DATA_V1_SIZE;
 		*iovcnt_out = 1;
+
+#ifdef ONWIRE_V1_EXTRA_DEBUG
+		inbuf->kh_checksum = 0;
+		inbuf->kh_checksum = compute_chksumv(iov_out[frag_idx], 1);
+#endif
 	}
 	*msgs_to_send = inbuf->khp_data_v1_frag_num;
 }
