@@ -90,7 +90,7 @@ libknet_la_SOURCES	= $(sources)
 
 AM_CFLAGS		+= $(libqb_CFLAGS)
 
-libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
+libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) $(zlib_CFLAGS) \
 			  -DPLUGINPATH="\"$(pkglibdir)\""
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
@@ -99,7 +99,7 @@ libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
 			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
 			  -version-info $(libknetversion)
 
-libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
+libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS) $(zlib_LIBS)
 
 check-local: check-annocheck-libs
 

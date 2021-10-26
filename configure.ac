@@ -364,6 +364,16 @@ AC_SUBST([libnozzlerustver])
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],[enable debug build])])
 
+AC_ARG_ENABLE([onwire-v1-extra-debug],
+	[AS_HELP_STRING([--enable-onwire-v1-extra-debug],[enable onwire protocol v1 extra debug. WARNING: IT BREAKS ONWIRE COMPATIBILITY! DO NOT USE IN PRODUCTION!])])
+
+if test "x${enable_onwire_v1_extra_debug}" = xyes; then
+	AC_DEFINE_UNQUOTED([ONWIRE_V1_EXTRA_DEBUG], [1], [Enable crc32 checksum for data and packets])
+fi
+
+# for standard crc32 function (used in test suite)
+PKG_CHECK_MODULES([zlib], [zlib])
+
 AC_ARG_ENABLE([hardening],
 	[AS_HELP_STRING([--disable-hardening],[disable hardening build flags])],,
 	[ enable_hardening="yes" ])
@@ -383,6 +393,20 @@ AC_ARG_WITH([testdir],
 
 AC_SUBST([TESTDIR])
 
+# debug build stuff
+if test "x${enable_debug}" = xyes; then
+	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
+	OPT_CFLAGS="-O0"
+	FORTIFY_CFLAGS=""
+	RUST_FLAGS=""
+	RUST_TARGET_DIR="debug"
+else
+	OPT_CFLAGS="-O3"
+	FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=2"
+	RUST_FLAGS="--release"
+	RUST_TARGET_DIR="release"
+fi
+
 # Check for availablility of hardening options
 
 annocheck=no
@@ -394,7 +418,7 @@ if test "x${enable_hardening}" = xyes; then
 		annocheck=yes
 	fi
 
-	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
+	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie $FORTIFY_CFLAGS -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
 	HARDENING_CFLAGS="-fstack-clash-protection -fcf-protection=full -mcet -mstackrealign"
 	EXTRA_HARDENING_CFLAGS=""
 
@@ -425,19 +449,11 @@ if test "x${enable_hardening}" = xyes; then
 	AM_LDFLAGS="$AM_LDFLAGS $EXTRA_HARDENING_CFLAGS"
 fi
 
-AM_CONDITIONAL([HAS_ANNOCHECK], [test "x$annocheck" = "xyes"])
-
-# debug build stuff
 if test "x${enable_debug}" = xyes; then
-	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
-	OPT_CFLAGS="-O0"
-	RUST_FLAGS=""
-	RUST_TARGET_DIR="debug"
-else
-	OPT_CFLAGS="-O3"
-	RUST_FLAGS="--release"
-	RUST_TARGET_DIR="release"
+	annocheck=no
 fi
+
+AM_CONDITIONAL([HAS_ANNOCHECK], [test "x$annocheck" = "xyes"])
 
 # gdb flags
 if test "x${GCC}" = xyes; then

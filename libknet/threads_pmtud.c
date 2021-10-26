@@ -146,11 +146,11 @@ restart:
 	data_len = app_mtu_len + knet_h->sec_hash_size + knet_h->sec_salt_size + KNET_HEADER_ALL_SIZE;
 
 	if (knet_h->onwire_ver_remap) {
-		prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len);
+		prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len, app_mtu_len + KNET_HEADER_ALL_SIZE);
 	} else {
 		switch (onwire_ver) {
 			case 1:
-				prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len);
+				prep_pmtud_v1(knet_h, dst_link, onwire_ver, onwire_len, app_mtu_len + KNET_HEADER_ALL_SIZE);
 				break;
 			default:
 				log_warn(knet_h, KNET_SUB_PMTUD, "preparing PMTUD onwire version %u not supported", onwire_ver);

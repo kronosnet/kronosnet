@@ -16,9 +16,9 @@ EXTRA_DIST		= \
 			  api-check.mk
 
 AM_CPPFLAGS		= -I$(top_srcdir)/libknet
-AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libqb_CFLAGS)
+AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libqb_CFLAGS) $(zlib_CFLAGS)
 LIBS			= $(top_builddir)/libknet/libknet.la \
-			  $(PTHREAD_LIBS) $(dl_LIBS)
+			  $(PTHREAD_LIBS) $(dl_LIBS) $(zlib_LIBS)
 
 noinst_HEADERS		= \
 			  test-common.h
