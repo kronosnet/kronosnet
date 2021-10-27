@@ -1084,6 +1084,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 	}
 
 exit_unlock:
+	_shrink_defrag_buffers(knet_h);
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 }
 
@@ -1135,8 +1136,6 @@ void *_handle_recv_from_links_thread(void *data)
 		for (i = 0; i < nev; i++) {
 			_handle_recv_from_links(knet_h, events[i].data.fd, msg);
 		}
-
-		_shrink_defrag_buffers(knet_h);
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STOPPED);
