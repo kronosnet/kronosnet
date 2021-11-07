@@ -364,6 +364,46 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from %s: %s destination unknown", addr_str, strerror(sock_err->ee_errno));
 								} else {
 									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Received ICMP error from %s: %s %s", addr_str, strerror(sock_err->ee_errno), addr_remote_str);
+									if ((sock_err->ee_errno == ECONNREFUSED) || /* knet is not running on the other node */
+									    (sock_err->ee_errno == ECONNABORTED) || /* local kernel closed the socket */
+									    (sock_err->ee_errno == ENONET)       || /* network does not exist */
+									    (sock_err->ee_errno == ENETUNREACH)  || /* network unreachable */
+									    (sock_err->ee_errno == EHOSTUNREACH) || /* host unreachable */
+									    (sock_err->ee_errno == EHOSTDOWN)    || /* host down (from kernel/net/ipv4/icmp.c */
+									    (sock_err->ee_errno == ENETDOWN)) {     /* network down */
+										struct knet_host *host = NULL;
+										struct knet_link *kn_link = NULL;
+										int link_idx, found = 0;
+
+										for (host = knet_h->host_head; host != NULL; host = host->next) {
+											for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+												kn_link = &host->link[link_idx];
+												if (kn_link->outsock == sockfd) {
+													if (!cmpaddr(&remote, &kn_link->dst_addr)) {
+														found = 1;
+														break;
+													}
+												}
+											}
+											if (found) {
+												break;
+											}
+										}
+
+										if ((host) && (kn_link) &&
+										    (kn_link->status.connected)) {
+											log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Setting down host %u link %i", host->host_id, kn_link->link_id);
+											/*
+											 * setting transport_connected = 0 will trigger
+											 * thread_heartbeat link_down process.
+											 *
+											 * the process terminates calling into transport_link_down
+											 * below that will set transport_connected = 1
+											 */
+											kn_link->transport_connected = 0;
+										}
+
+									}
 								}
 							}
 							break;
@@ -436,5 +476,9 @@ int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet
 
 int udp_transport_link_is_down(knet_handle_t knet_h, struct knet_link *kn_link)
 {
+	/*
+	 * see comments about handling ICMP error messages
+	 */
+	kn_link->transport_connected = 1;
 	return 0;
 }
