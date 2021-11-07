@@ -338,7 +338,7 @@ int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err,
 				listen_info = accepted_info->link_info;
 				if (listen_info->listen_sock != sockfd) {
 					if (listen_info->on_rx_epoll == 0) {
-						return -KNET_TRANSPORT_SOCK_ERROR_INTERNAL;
+						return KNET_TRANSPORT_SOCK_ERROR_INTERNAL;
 					}
 				}
 				break;
