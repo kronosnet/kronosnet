@@ -617,6 +617,21 @@ int _seq_num_lookup(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_
 	char *dst_cbuf_defrag = host->circular_buffer_defrag;
 	seq_num_t *dst_seq_num = &host->rx_seq_num;
 
+	/*
+	 * There is a potential race condition where the sender
+	 * is overloaded, sending data packets before pings
+	 * can kick in and set the correct dst_seq_num.
+	 *
+	 * if this node is starting up (dst_seq_num = 0),
+	 * it can start rejecing valid packets and get stuck.
+	 *
+	 * Set the dst_seq_num to the first seen packet and
+	 * use that as reference instead.
+	 */
+	if (!*dst_seq_num) {
+		*dst_seq_num = seq_num;
+	}
+
 	if (clear_buf) {
 		_clear_cbuffers(host, seq_num);
 	}
