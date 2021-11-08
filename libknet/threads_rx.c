@@ -1059,7 +1059,7 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 		 */
 
 		switch(err) {
-			case KNET_TRANSPORT_RX_ERROR: /* on error */
+			case KNET_TRANSPORT_RX_ISDATA_ERROR: /* on error */
 				log_debug(knet_h, KNET_SUB_RX, "Transport reported error parsing packet");
 				goto exit_unlock;
 				break;
