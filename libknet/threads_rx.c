@@ -242,9 +242,9 @@ static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const
 					   src_ipaddr, KNET_MAX_HOST_LEN,
 					   src_port, KNET_MAX_PORT_LEN) < 0) {
 
-				log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+				log_warn(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
 			} else {
-				log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+				log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s", src_ipaddr, src_port);
 			}
 			return 0;
 		}
@@ -297,6 +297,18 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 						    &outlen) < 0) {
 			log_debug(knet_h, KNET_SUB_RX, "Unable to decrypt/auth packet");
 			if (knet_h->crypto_only == KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC) {
+				char src_ipaddr[KNET_MAX_HOST_LEN];
+				char src_port[KNET_MAX_PORT_LEN];
+
+				memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+				memset(src_port, 0, KNET_MAX_PORT_LEN);
+				if (knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+						   src_ipaddr, KNET_MAX_HOST_LEN,
+						   src_port, KNET_MAX_PORT_LEN) < 0) {
+					log_err(knet_h, KNET_SUB_RX, "Unable to decrypt packet from unknown host/port (size %zu)!", len);
+				} else {
+					log_err(knet_h, KNET_SUB_RX, "Unable to decrypt packet from %s:%s (size %zu)!", src_ipaddr, src_port, len);
+				}
 				return;
 			}
 			log_debug(knet_h, KNET_SUB_RX, "Attempting to process packet as clear data");
@@ -347,7 +359,7 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 					snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
 				} else {
 					log_info(knet_h, KNET_SUB_RX,
-						 "host: %u link: %u new connection established from: %s %s",
+						 "host: %u link: %u new connection established from: %s:%s",
 						 src_host->host_id, src_link->link_id,
 						 src_link->status.dst_ipaddr, src_link->status.dst_port);
 				}
@@ -492,8 +504,8 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			} else {
 				pthread_mutex_unlock(&knet_h->handle_stats_mutex);
 				pthread_mutex_unlock(&src_link->link_stats_mutex);
-				log_warn(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
-					 err, strerror(errno));
+				log_err(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
+					err, strerror(errno));
 				return;
 			}
 			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
