@@ -358,7 +358,7 @@ static int gcryptcrypto_authenticate_and_decrypt (
 		ssize_t temp_buf_len = buf_in_len - crypto_instance->sec_hash_size;
 
 		if ((temp_buf_len <= 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
-			log_err(knet_h, KNET_SUB_GCRYPTCRYPTO, "Incorrect packet size.");
+			log_debug(knet_h, KNET_SUB_GCRYPTCRYPTO, "Received incorrect packet size: %zu for hash size: %zu", buf_in_len, crypto_instance->sec_hash_size);
 			return -1;
 		}
 
@@ -368,9 +368,9 @@ static int gcryptcrypto_authenticate_and_decrypt (
 
 		if (memcmp(tmp_hash, buf_in + temp_buf_len, crypto_instance->sec_hash_size) != 0) {
 			if (log_level == KNET_LOG_DEBUG) {
-				log_debug(knet_h, KNET_SUB_GCRYPTCRYPTO, "Digest does not match");
+				log_debug(knet_h, KNET_SUB_GCRYPTCRYPTO, "Digest does not match. Check crypto key and configuration.");
 			} else {
-				log_err(knet_h, KNET_SUB_GCRYPTCRYPTO, "Digest does not match");
+				log_err(knet_h, KNET_SUB_GCRYPTCRYPTO, "Digest does not match. Check crypto key and configuration.");
 			}
 			return -1;
 		}
