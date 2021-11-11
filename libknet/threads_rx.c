@@ -908,6 +908,13 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 	inbuf->kh_node = ntohs(inbuf->kh_node);
 
 	if (_packet_checks(knet_h, inbuf, len) < 0) {
+		if (knet_h->rx_odd_packets < KNET_RX_ODD_PACKETS_THRESHOLD) {
+			knet_h->rx_odd_packets++;
+		} else {
+			log_warn(knet_h, KNET_SUB_RX, "This node has received more than %u packets that have failed basic sanity checks", KNET_RX_ODD_PACKETS_THRESHOLD);
+			log_warn(knet_h, KNET_SUB_RX, "It is highly recommended to check if all nodes are using the same crypto configuration");
+			knet_h->rx_odd_packets = 0;
+		}
 		return;
 	}
 
