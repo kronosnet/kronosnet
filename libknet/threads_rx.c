@@ -765,6 +765,7 @@ static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize
 	}
 
 #ifdef ONWIRE_V1_EXTRA_DEBUG
+	inbuf->kh_node = htons(inbuf->kh_node);
 	rx_packet_checksum = inbuf->kh_checksum;
 	inbuf->kh_checksum = 0;
 	expected_packet_checksum = compute_chksum((const unsigned char *)inbuf, len);
@@ -776,6 +777,7 @@ static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize
 		sleep(1);
 		abort();
 	}
+	inbuf->kh_node = ntohs(inbuf->kh_node);
 #endif
 
 	/*
@@ -903,11 +905,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		return;
 	}
 
+	inbuf->kh_node = ntohs(inbuf->kh_node);
+
 	if (_packet_checks(knet_h, inbuf, len) < 0) {
 		return;
 	}
-
-	inbuf->kh_node = ntohs(inbuf->kh_node);
 
 	/*
 	 * determine source host
