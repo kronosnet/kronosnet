@@ -209,6 +209,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	struct knet_log_msg msg;
 	size_t byte_cnt = 0;
 	int len;
+	int retry_loop = 0;
 
 	if ((!knet_h) ||
 	    (subsystem == KNET_MAX_SUBSYSTEMS) ||
@@ -234,9 +235,35 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 #endif
 	va_end(ap);
 
+retry:
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
 		if (len <= 0) {
+			if (errno == EAGAIN) {
+				struct timeval tv;
+
+				/*
+				 * those 3 lines are the equivalent of usleep(1)
+				 * but usleep makes some static code analizers very
+				 * unhappy.
+				 *
+				 * this version is somewhat stolen from gnulib
+				 * nanosleep implementation
+				 */
+				tv.tv_sec = 0;
+				tv.tv_usec = 1;
+				select(0, NULL, NULL, NULL, &tv);
+
+				retry_loop++;
+				/*
+				 * arbitrary amount of retries.
+				 * tested with fun_log_bench, 10 retries was never hit
+				 */
+				if (retry_loop >= 100) {
+					goto out;
+				}
+				goto retry;
+			}
 			goto out;
 		}
 

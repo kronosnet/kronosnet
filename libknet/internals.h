@@ -175,6 +175,7 @@ struct knet_handle_stats_extra {
 	uint64_t tx_crypt_pong_packets;
 };
 
+#define KNET_RX_ODD_PACKETS_THRESHOLD            20
 
 #define KNET_USAGE_SAMPLES_DEFAULT               UINT8_MAX
 #define KNET_USAGE_SAMPLES_TIMESPAN_DEFAULT      10 /* seconds */
@@ -231,6 +232,7 @@ struct knet_handle {
 	uint8_t onwire_max_ver;			/* we define them as part of internal handle so that we can mingle with them for testing purposes */
 	uint8_t onwire_force_ver;		/* manually configure onwire_ver */
 	uint8_t onwire_ver_remap;		/* when this is on, all mapping will use version 1 for now */
+	uint8_t rx_odd_packets;			/* used to warn if too many weird packets are being received */
 	uint32_t kernel_mtu;			/* contains the MTU detected by the kernel on a given link */
 	int pmtud_waiting;
 	int pmtud_running;

@@ -514,8 +514,8 @@ static int _decompress_data(knet_handle_t knet_h, uint8_t decompress_type, unsig
 		} else {
 			knet_h->stats.rx_failed_to_decompress++;
 			pthread_mutex_unlock(&knet_h->handle_stats_mutex);
-			log_warn(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
-				 err, strerror(errno));
+			log_err(knet_h, KNET_SUB_COMPRESS, "Unable to decompress packet (%d): %s",
+				err, strerror(errno));
 			return -1;
 		}
 		pthread_mutex_unlock(&knet_h->handle_stats_mutex);
@@ -765,6 +765,7 @@ static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize
 	}
 
 #ifdef ONWIRE_V1_EXTRA_DEBUG
+	inbuf->kh_node = htons(inbuf->kh_node);
 	rx_packet_checksum = inbuf->kh_checksum;
 	inbuf->kh_checksum = 0;
 	expected_packet_checksum = compute_chksum((const unsigned char *)inbuf, len);
@@ -776,6 +777,7 @@ static int _packet_checks(knet_handle_t knet_h, struct knet_header *inbuf, ssize
 		sleep(1);
 		abort();
 	}
+	inbuf->kh_node = ntohs(inbuf->kh_node);
 #endif
 
 	/*
@@ -836,7 +838,7 @@ static void _handle_dynip(knet_handle_t knet_h, struct knet_host *src_host, stru
 				snprintf(src_link->status.dst_port, KNET_MAX_PORT_LEN - 1, "??");
 			} else {
 				log_info(knet_h, KNET_SUB_RX,
-					 "host: %u link: %u new connection established from: %s %s",
+					 "host: %u link: %u new connection established from: %s:%s",
 					 src_host->host_id, src_link->link_id,
 					 src_link->status.dst_ipaddr, src_link->status.dst_port);
 			}
@@ -865,9 +867,9 @@ static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const
 					   src_ipaddr, KNET_MAX_HOST_LEN,
 					   src_port, KNET_MAX_PORT_LEN) < 0) {
 
-				log_debug(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+				log_warn(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
 			} else {
-				log_debug(knet_h, KNET_SUB_RX, "Packet rejected from %s/%s", src_ipaddr, src_port);
+				log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s", src_ipaddr, src_port);
 			}
 			return 0;
 		}
@@ -887,14 +889,34 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 
 	inbuf = _decrypt_packet(knet_h, inbuf, &len, &decrypt_time);
 	if (!inbuf) {
-		return;
-	}
+		char src_ipaddr[KNET_MAX_HOST_LEN];
+		char src_port[KNET_MAX_PORT_LEN];
 
-	if (_packet_checks(knet_h, inbuf, len) < 0) {
+		memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
+		memset(src_port, 0, KNET_MAX_PORT_LEN);
+		if (knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+				   src_ipaddr, KNET_MAX_HOST_LEN,
+				   src_port, KNET_MAX_PORT_LEN) < 0) {
+
+			log_err(knet_h, KNET_SUB_RX, "Unable to decrypt packet from unknown host/port (size %zu)!", len);
+		} else {
+			log_err(knet_h, KNET_SUB_RX, "Unable to decrypt packet from %s:%s (size %zu)!", src_ipaddr, src_port, len);
+		}
 		return;
 	}
 
 	inbuf->kh_node = ntohs(inbuf->kh_node);
+
+	if (_packet_checks(knet_h, inbuf, len) < 0) {
+		if (knet_h->rx_odd_packets < KNET_RX_ODD_PACKETS_THRESHOLD) {
+			knet_h->rx_odd_packets++;
+		} else {
+			log_warn(knet_h, KNET_SUB_RX, "This node has received more than %u packets that have failed basic sanity checks", KNET_RX_ODD_PACKETS_THRESHOLD);
+			log_warn(knet_h, KNET_SUB_RX, "It is highly recommended to check if all nodes are using the same crypto configuration");
+			knet_h->rx_odd_packets = 0;
+		}
+		return;
+	}
 
 	/*
 	 * determine source host
