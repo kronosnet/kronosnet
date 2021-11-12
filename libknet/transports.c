@@ -34,7 +34,7 @@ static knet_transport_ops_t transport_modules_cmd[KNET_MAX_TRANSPORTS] = {
 	{ "UDP", KNET_TRANSPORT_UDP, 1, TRANSPORT_PROTO_IP_PROTO, USE_GENERIC_ACL, TRANSPORT_PROTO_NOT_CONNECTION_ORIENTED, KNET_PMTUD_UDP_OVERHEAD, udp_transport_init, udp_transport_free, udp_transport_link_set_config, udp_transport_link_clear_config, udp_transport_link_dyn_connect, udp_transport_rx_sock_error, udp_transport_tx_sock_error, udp_transport_rx_is_data, udp_transport_link_is_down },
 	{ "SCTP", KNET_TRANSPORT_SCTP,
 #ifdef HAVE_NETINET_SCTP_H
-				       1, TRANSPORT_PROTO_IP_PROTO, USE_PROTO_ACL, TRANSPORT_PROTO_IS_CONNECTION_ORIENTED, KNET_PMTUD_SCTP_OVERHEAD, sctp_transport_init, sctp_transport_free, sctp_transport_link_set_config, sctp_transport_link_clear_config, sctp_transport_link_dyn_connect, sctp_transport_rx_sock_error, sctp_transport_tx_sock_error, sctp_transport_rx_is_data, sctp_transport_link_is_down },
+				       1, TRANSPORT_PROTO_IP_PROTO, USE_GENERIC_ACL, TRANSPORT_PROTO_IS_CONNECTION_ORIENTED, KNET_PMTUD_SCTP_OVERHEAD, sctp_transport_init, sctp_transport_free, sctp_transport_link_set_config, sctp_transport_link_clear_config, sctp_transport_link_dyn_connect, sctp_transport_rx_sock_error, sctp_transport_tx_sock_error, sctp_transport_rx_is_data, sctp_transport_link_is_down },
 #else
 empty_module
 #endif

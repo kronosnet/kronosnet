@@ -199,6 +199,7 @@ static int dhost_filter(void *pvt_data,
    the main thread was waiting for it.
    Go old-fashioned.
 */
+
 static int wait_for_reply(int seconds)
 {
 	int res;
@@ -240,7 +241,7 @@ static void test(int transport)
 	int *thread_err;
 	int datafd;
 	int8_t channel;
-	int seconds = 90; // dynamic tests take longer than normal tests
+	int seconds = 10; // dynamic tests take longer than normal tests
 
 	if (is_memcheck() || is_helgrind()) {
 		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
@@ -339,6 +340,9 @@ static void test(int transport)
 	// Unblock and check again
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
+	printf("SLEEEEEEEEEPING*************************************\n");
+	sleep(5);
+	printf("DONE SLEEEEEEEEEPING*************************************\n");
 	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
@@ -397,12 +401,13 @@ static void test(int transport)
 
 int main(int argc, char *argv[])
 {
+
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
 
 #ifdef HAVE_NETINET_SCTP_H
 	printf("Testing with SCTP currently disabled\n");
-	//test(KNET_TRANSPORT_SCTP);
+	test(KNET_TRANSPORT_SCTP);
 #endif
 
 	return PASS;
