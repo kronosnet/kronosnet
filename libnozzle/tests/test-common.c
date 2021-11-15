@@ -8,8 +8,10 @@
 
 #include "config.h"
 
+#include <errno.h>
+#include <fcntl.h>
 #include <string.h>
-#include <sys/types.h>
+#include <sys/stat.h>
 #include <ifaddrs.h>
 #include <limits.h>
 #include <unistd.h>
@@ -27,13 +29,28 @@ void need_root(void)
 	}
 }
 
+void need_tun(void)
+{
+#ifdef KNET_LINUX
+	const char *tundev = "/dev/net/tun";
+#else
+	const char *tundev = "/dev/tun";
+#endif
+	int fd = open(tundev, O_RDWR);
+	if (fd < 0) {
+		printf("Failed to open %s (errno=%d); this test requires TUN support\n", tundev, errno);
+		exit(SKIP);
+	}
+	close(fd);
+}
+
 int test_iface(char *name, size_t size, const char *updownpath)
 {
 	nozzle_t nozzle;
 
 	nozzle=nozzle_open(name, size, updownpath);
 	if (!nozzle) {
-		printf("Unable to open nozzle.\n");
+		printf("Unable to open nozzle (errno=%d).\n", errno);
 		return -1;
 	}
 	printf("Created interface: %s\n", name);

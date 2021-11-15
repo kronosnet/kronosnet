@@ -172,6 +172,7 @@ out_clean:
 int main(void)
 {
 	need_root();
+	need_tun();
 
 	make_local_ips(testipv4_1, testipv4_2, testipv6_1, testipv6_2);
 

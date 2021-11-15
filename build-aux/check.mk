@@ -49,3 +49,34 @@ endif
 else
 	@echo cov-build not available on this platform
 endif
+
+check-annocheck-libs:
+if HAS_ANNOCHECK
+	@echo Running annocheck libs test
+	if ! $(ANNOCHECK_EXEC) --skip-lto --quiet .libs/*.so; then \
+		$(ANNOCHECK_EXEC) --skip-lto --verbose .libs/*.so; \
+		echo annocheck libs test: FAILED; \
+		exit 1; \
+	else \
+		echo annocheck libs test: PASS; \
+	fi
+else
+	@echo Annocheck build or binary not available
+endif
+
+# we cannot check run-path because CI builds with specific prefix/user_prefix
+# and the only binaries affected are the test suite.
+
+check-annocheck-bins:
+if HAS_ANNOCHECK
+	@echo Running annocheck binaries test
+	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --quiet .libs/*; then \
+		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --verbose .libs/*; \
+		echo annocheck binaries test: FAILED; \
+		exit 1; \
+	else \
+		echo annocheck binaries test: PASS; \
+	fi
+else
+	@echo Annocheck build or binary not available
+endif

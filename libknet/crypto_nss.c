@@ -394,9 +394,9 @@ static int encrypt_nss(
 	}
 
 	for (i=0; i<iovcnt; i++) {
-		if (PK11_CipherOp(crypt_context, data,
+		if (PK11_CipherOp(crypt_context, data + tmp1_outlen,
 				  &tmp_outlen,
-				  KNET_DATABUFSIZE_CRYPT,
+				  KNET_DATABUFSIZE_CRYPT - tmp1_outlen,
 				  (unsigned char *)iov[i].iov_base,
 				  iov[i].iov_len) != SECSuccess) {
 			log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d): %s",
@@ -728,7 +728,7 @@ static int nsscrypto_authenticate_and_decrypt (
 		ssize_t temp_buf_len = buf_in_len - nsshash_len[instance->crypto_hash_type];
 
 		if ((temp_buf_len <= 0) || (temp_buf_len > KNET_MAX_PACKET_SIZE)) {
-			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Incorrect packet size.");
+			log_debug(knet_h, KNET_SUB_NSSCRYPTO, "Received incorrect packet size: %zu for hash size: %zu", buf_in_len, nsshash_len[instance->crypto_hash_type]);
 			return -1;
 		}
 
@@ -738,9 +738,9 @@ static int nsscrypto_authenticate_and_decrypt (
 
 		if (memcmp(tmp_hash, buf_in + temp_buf_len, nsshash_len[instance->crypto_hash_type]) != 0) {
 			if (log_level == KNET_LOG_DEBUG) {
-				log_debug(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
+				log_debug(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match. Check crypto key and configuration.");
 			} else {
-				log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match");
+				log_err(knet_h, KNET_SUB_NSSCRYPTO, "Digest does not match. Check crypto key and configuration.");
 			}
 			return -1;
 		}

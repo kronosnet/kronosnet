@@ -102,6 +102,8 @@ libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
 
+check-local: check-annocheck-libs
+
 # Prepare empty value for appending
 pkglib_LTLIBRARIES	=
 
