@@ -186,10 +186,7 @@ AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
 # args. Global CPPFLAGS are ignored during this test.
 cc_supports_flag() {
 	saveCPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="$@"
-	if echo $CC | grep -q clang; then
-		CPPFLAGS="-Werror $CPPFLAGS"
-	fi
+	CPPFLAGS="-Werror $@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
