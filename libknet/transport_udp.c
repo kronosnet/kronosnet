@@ -438,7 +438,8 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 			return 0;
 		}
 		if ((recv_errno == EINVAL) || (recv_errno == EPERM) ||
-		    (recv_errno == ENETUNREACH) || (recv_errno == ENETDOWN)) {
+		    (recv_errno == ENETUNREACH) || (recv_errno == ENETDOWN) ||
+		    (recv_errno == EHOSTUNREACH)) {
 #ifdef DEBUG
 			if ((recv_errno == ENETUNREACH) || (recv_errno == ENETDOWN)) {
 				log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable.", sockfd);
