@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -33,7 +33,9 @@ static void sock_notify(void *pvt_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h[2];
+	knet_handle_t knet_h1;
+	int res;
 	int logfds[2];
 	int datafd = 0, i;
 	int8_t channel = 0;
@@ -49,162 +51,62 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_handle_add_datafd with no datafd\n");
-
-	if ((!knet_handle_add_datafd(knet_h, NULL, &channel)) || (errno != EINVAL)) {
-		printf("knet_handle_add_datafd accepted invalid datafd or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, NULL, &channel), EINVAL);
 
 	printf("Test knet_handle_add_datafd with no channel\n");
-
-	if ((!knet_handle_add_datafd(knet_h, &datafd, NULL)) || (errno != EINVAL)) {
-		printf("knet_handle_add_datafd accepted invalid channel or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, NULL), EINVAL);
 
 	printf("Test knet_handle_add_datafd with invalid channel\n");
-
 	channel = KNET_DATAFD_MAX;
 
-	if ((!knet_handle_add_datafd(knet_h, &datafd, &channel)) || (errno != EINVAL)) {
-		printf("knet_handle_add_datafd accepted invalid channel or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EINVAL);
 
-	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_add_datafd with no socknotify\n");
-
 	datafd = 0;
 	channel = -1;
-
-	if ((!knet_handle_add_datafd(knet_h, &datafd, &channel)) || (errno != EINVAL)) {
-		printf("knet_handle_add_datafd accepted invalid channel or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EINVAL);
 
 	printf("Test knet_handle_add_datafd with automatic config values\n");
-
-	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
-		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 
 	datafd = 0;
 	channel = -1;
 
-	if (knet_handle_add_datafd(knet_h, &datafd, &channel) < 0) {
-		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
 	printf("got datafd: %d channel: %d\n", datafd, channel);
 
-	flush_logs(logfds[0], stdout);
-
 	printf("Test knet_handle_add_datafd with duplicated datafd\n");
-
-	if ((!knet_handle_add_datafd(knet_h, &datafd, &channel)) || (errno != EEXIST)) {
-		printf("knet_handle_add_datafd accepted duplicated datafd or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EEXIST);
 
 	printf("Test knet_handle_add_datafd with busy channel\n");
-
 	datafd = datafd + 1;
-
-	if ((!knet_handle_add_datafd(knet_h, &datafd, &channel)) || (errno != EBUSY)) {
-		printf("knet_handle_add_datafd accepted duplicated datafd or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EBUSY);
 
 	datafd = datafd - 1;
 
-	if (knet_handle_remove_datafd(knet_h, datafd) < 0) {
-		printf("knet_handle_remove_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafd));
 
 	printf("Test knet_handle_add_datafd with no available channels\n");
-
 	for (i = 0; i < KNET_DATAFD_MAX; i++) {
 		datafdmax[i] = 0;
 		channels[i] = -1;
-		if (knet_handle_add_datafd(knet_h, &datafdmax[i], &channels[i]) < 0) {
-			printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
-			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafdmax[i], &channels[i]));
 	}
 
 	datafd = 0;
 	channel = -1;
 
-	if ((!knet_handle_add_datafd(knet_h, &datafd, &channel)) || (errno != EBUSY)) {
-		printf("knet_handle_add_datafd accepted entry with no available channels or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EBUSY);
 
 	for (i = 0; i < KNET_DATAFD_MAX; i++) {
-		if (knet_handle_remove_datafd(knet_h, datafdmax[i]) < 0) {
-			printf("knet_handle_remove_datafd failed: %s\n", strerror(errno));
-			knet_handle_free(knet_h);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafdmax[i]));
 	}
 
-	flush_logs(logfds[0], stdout);
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

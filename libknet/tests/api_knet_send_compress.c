@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -36,7 +36,7 @@ static void sock_notify(void *pvt_data,
 
 static void test(const char *model)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
 	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
@@ -46,6 +46,7 @@ static void test(const char *model)
 	ssize_t send_len = 0;
 	int recv_len = 0;
 	int savederrno;
+	int res;
 	struct sockaddr_storage lo;
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
 
@@ -53,7 +54,7 @@ static void test(const char *model)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	flush_logs(logfds[0], stdout);
 
@@ -64,170 +65,58 @@ static void test(const char *model)
 	knet_handle_compress_cfg.compress_level = 4;
 	knet_handle_compress_cfg.compress_threshold = 0;
 
-	if (knet_handle_compress(knet_h, &knet_handle_compress_cfg) < 0) {
-		printf("knet_handle_compress did not accept zlib compress mode with compress level 1 cfg\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_compress(knet_h1, &knet_handle_compress_cfg));
 
-	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
-		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 
 	datafd = 0;
 	channel = -1;
 
-	if (knet_handle_add_datafd(knet_h, &datafd, &channel) < 0) {
-		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
 
-	if (knet_host_add(knet_h, 1) < 0) {
-		printf("knet_host_add failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
-		printf("Unable to configure link: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
 
-	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
-		printf("knet_link_set_enable failed: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 
-	if (knet_handle_setfwd(knet_h, 1) < 0) {
-		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
-	if (wait_for_host(knet_h, 1, 10, logfds[0], stdout) < 0) {
-		printf("timeout waiting for host to be reachable");
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfds[0], stdout));
 
-	send_len = knet_send(knet_h, send_buff, KNET_MAX_PACKET_SIZE, channel);
+	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		printf("knet_send failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
 		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
 
-	if (knet_handle_setfwd(knet_h, 0) < 0) {
-		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfds[0], stdout));
 
-	flush_logs(logfds[0], stdout);
-
-	if (wait_for_packet(knet_h, 10, datafd, logfds[0], stdout)) {
-		printf("Error waiting for packet: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	recv_len = knet_recv(knet_h, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;
 	if (recv_len != send_len) {
 		printf("knet_recv received only %d bytes: %s (errno: %d)\n", recv_len, strerror(errno), errno);
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
 			printf("helgrind exception. this is normal due to possible timeouts\n");
-			exit(PASS);
+			CLEAN_EXIT(PASS);
 		}
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		printf("recv and send buffers are different!\n");
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
 	/* A sanity check on the stats */
-	if (knet_handle_get_stats(knet_h, &stats, sizeof(stats)) < 0) {
-		printf("knet_handle_get_stats failed: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_get_stats(knet_h1, &stats, sizeof(stats)));
 
 	if (strcmp(model, "none") == 0) {
 		if (stats.tx_compressed_packets != 0 ||
@@ -256,14 +145,7 @@ static void test(const char *model)
 
 		}
 	}
-	flush_logs(logfds[0], stdout);
-
-	knet_link_set_enable(knet_h, 1, 0, 0);
-	knet_link_clear_config(knet_h, 1, 0);
-	knet_host_remove(knet_h, 1);
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

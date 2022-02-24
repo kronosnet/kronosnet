@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -21,7 +21,8 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 
 	printf("Test knet_host_set_policy incorrect knet_h\n");
@@ -33,69 +34,24 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_host_set_policy incorrect host_id\n");
-
-	if ((!knet_host_set_policy(knet_h, 1, KNET_LINK_POLICY_PASSIVE)) || (errno != EINVAL)) {
-		printf("knet_host_set_policy accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_PASSIVE), EINVAL);
 
 	printf("Test knet_host_set_policy incorrect policy\n");
-
-	if ((!knet_host_set_policy(knet_h, 1, KNET_LINK_POLICY_RR + 1)) || (errno != EINVAL)) {
-		printf("knet_host_set_policy accepted invalid policy or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_RR + 1), EINVAL);
 
 	printf("Test knet_host_set_policy correct policy\n");
-
-	if (knet_host_add(knet_h, 1) < 0) {
-		printf("knet_host_add failed error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_host_set_policy(knet_h, 1, KNET_LINK_POLICY_RR) < 0) {
+	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
+	FAIL_ON_ERR(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_RR));
+	if (knet_h1->host_index[1]->link_handler_policy != KNET_LINK_POLICY_RR) {
 		printf("knet_host_set_policy failed to set RR policy for host 1: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
-
-	if (knet_h->host_index[1]->link_handler_policy != KNET_LINK_POLICY_RR) {
-		printf("knet_host_set_policy failed to set RR policy for host 1: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	knet_host_remove(knet_h, 1);
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -36,7 +36,8 @@ static int dhost_filter(void *pvt_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 
 	printf("Test knet_handle_enable_filter incorrect knet_h\n");
@@ -48,97 +49,41 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_handle_enable_filter with no private_data\n");
+	FAIL_ON_ERR(knet_handle_enable_filter(knet_h1, NULL, dhost_filter));
 
-	if (knet_handle_enable_filter(knet_h, NULL, dhost_filter) < 0) {
-		printf("knet_handle_enable_filter failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h->dst_host_filter_fn_private_data != NULL) {
+	if (knet_h1->dst_host_filter_fn_private_data != NULL) {
 		printf("knet_handle_enable_filter failed to unset private_data");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-
+		CLEAN_EXIT(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_enable_filter with private_data\n");
+	FAIL_ON_ERR(knet_handle_enable_filter(knet_h1, &private_data, NULL));
 
-	if (knet_handle_enable_filter(knet_h, &private_data, NULL) < 0) {
-		printf("knet_handle_enable_filter failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h->dst_host_filter_fn_private_data != &private_data) {
+	if (knet_h1->dst_host_filter_fn_private_data != &private_data) {
 		printf("knet_handle_enable_filter failed to set private_data");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-
+		CLEAN_EXIT(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_enable_filter with no dhost_filter fn\n");
+	FAIL_ON_ERR(knet_handle_enable_filter(knet_h1, NULL, NULL));
 
-	if (knet_handle_enable_filter(knet_h, NULL, NULL) < 0) {
-		printf("knet_handle_enable_filter failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h->dst_host_filter_fn != NULL) {
+	if (knet_h1->dst_host_filter_fn != NULL) {
 		printf("knet_handle_enable_filter failed to unset dhost_filter fn");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-
+		CLEAN_EXIT(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_enable_filter with dhost_filter fn\n");
+	FAIL_ON_ERR(knet_handle_enable_filter(knet_h1, NULL, dhost_filter));
 
-	if (knet_handle_enable_filter(knet_h, NULL, dhost_filter) < 0) {
-		printf("knet_handle_enable_filter failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h->dst_host_filter_fn != &dhost_filter) {
+	if (knet_h1->dst_host_filter_fn != &dhost_filter) {
 		printf("knet_handle_enable_filter failed to set dhost_filter fn");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-
+		CLEAN_EXIT(FAIL);
 	}
 
-	flush_logs(logfds[0], stdout);
-
-
-	knet_host_remove(knet_h, 1);
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

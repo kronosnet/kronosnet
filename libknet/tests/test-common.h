@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -20,6 +20,8 @@
 #define SKIP	77
 #define ERROR	99
 #define FAIL	-1
+/* Extra for us to continue while still using the cleanup code */
+#define CONTINUE 101
 
 /* For *BSD compatibility */
 #ifndef s6_addr16
@@ -31,6 +33,65 @@
 /*
  * common facilities
  */
+#define TESTNODES 1
+
+#define FAIL_ON_ERR(fn)					  \
+	printf("FOE: %s\n", #fn);			  \
+	if ((res = fn) != 0) {				  \
+	  int savederrno = errno;			  \
+	  knet_handle_stop_everything(knet_h, TESTNODES); \
+	  stop_logthread();				  \
+	  flush_logs(logfds[0], stdout);		  \
+	  close_logpipes(logfds);			  \
+	  if (res == -2) {				  \
+		  exit(SKIP);				  \
+	  } else {					  \
+		  printf("*** FAIL on line %d. %s failed: %s\n", __LINE__ , #fn, strerror(savederrno)); \
+		  exit(FAIL);				  \
+	  }						  \
+	} else {					  \
+		flush_logs(logfds[0], stdout);		  \
+	}
+
+/* As above but allow a SKIP to continue */
+#define FAIL_ON_ERR_ONLY(fn)				  \
+	printf("FOEO: %s\n", #fn);			  \
+	if ((res = fn) == -1) {				  \
+	  int savederrno = errno;			  \
+	  knet_handle_stop_everything(knet_h, TESTNODES); \
+	  stop_logthread();				  \
+	  flush_logs(logfds[0], stdout);		  \
+	  close_logpipes(logfds);			  \
+	  printf("*** FAIL on line %d. %s failed: %s\n", __LINE__ , #fn, strerror(savederrno)); \
+	  exit(FAIL);							\
+	} else {					  \
+		flush_logs(logfds[0], stdout);		  \
+	}
+
+/* Voted "Best macro name of 2022" */
+#define FAIL_ON_SUCCESS(fn, errcode)			  \
+	printf("FOS: %s\n", #fn);			  \
+	if (((res = fn) == 0) ||			  \
+	    ((res == -1) && (errno != errcode))) {	  \
+	  int savederrno = errno;			  \
+	  knet_handle_stop_everything(knet_h, TESTNODES); \
+	  stop_logthread();				  \
+	  flush_logs(logfds[0], stdout);		  \
+	  close_logpipes(logfds);			  \
+	  if (res == -2) {				  \
+		  exit(SKIP);				  \
+	  } else {					  \
+		  printf("*** FAIL on line %d. %s did not return correct error: %s\n", __LINE__ , #fn, strerror(savederrno)); \
+		  exit(FAIL);				  \
+	  }						  \
+	} else {					  \
+		flush_logs(logfds[0], stdout);		  \
+	}
+
+#define CLEAN_EXIT(r)					\
+	clean_exit(knet_h, TESTNODES, logfds, r)
+
+void clean_exit(knet_handle_t *knet_h, int testnodes, int *logfds, int exit_status);
 
 int execute_shell(const char *command, char **error_string);
 
@@ -39,12 +100,7 @@ int is_helgrind(void);
 
 void set_scheduler(int policy);
 
-knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level);
-
-/*
- * consider moving this one as official API
- */
-int knet_handle_stop(knet_handle_t knet_h);
+knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level, knet_handle_t knet_h_array[]);
 
 /*
  * knet_link_set_config wrapper required to find a free port
@@ -57,8 +113,8 @@ int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t 
 /*
  * functional test helpers
  */
+void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes);
 void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level);
-void knet_handle_stop_nodes(knet_handle_t knet_h[], uint8_t numnodes);
 void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport);
 
 /*
