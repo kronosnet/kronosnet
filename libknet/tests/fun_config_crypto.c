@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2020-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -22,6 +22,7 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#undef TESTNODES
 #define TESTNODES 2
 
 static void test(const char *model)
@@ -31,6 +32,7 @@ static void test(const char *model)
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int i,x;
 	int seconds = 10;
+	int res;
 
 	if (is_memcheck() || is_helgrind()) {
 		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
@@ -54,29 +56,10 @@ static void test(const char *model)
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
 	for (i = 1; i <= TESTNODES; i++) {
-		if (knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 1) < 0) {
-			printf("knet_handle_crypto_set_config (1) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
-		if (knet_handle_crypto_use_config(knet_h[i], 1) < 0) {
-			printf("knet_handle_crypto_use_config (1) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
-		if (knet_handle_crypto_rx_clear_traffic(knet_h[i], KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
-			printf("knet_handle_crypto_rx_clear_traffic failed: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 1));
+		FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h[i], 1));
+		FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h[i], KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
 	}
-
 	flush_logs(logfds[0], stdout);
 
 	knet_handle_join_nodes(knet_h, TESTNODES, 1, AF_INET, KNET_TRANSPORT_UDP);
@@ -96,10 +79,7 @@ static void test(const char *model)
 	for (i = 1; i <= TESTNODES; i++) {
 		if (knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 2) < 0) {
 			printf("knet_handle_crypto_set_config (2) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
+			clean_exit(knet_h, TESTNODES, logfds, FAIL);
 		}
 	}
 
@@ -110,10 +90,7 @@ static void test(const char *model)
 	for (i = 1; i <= TESTNODES; i++) {
 		if (knet_handle_crypto_use_config(knet_h[i], 2) < 0) {
 			printf("knet_handle_crypto_use_config (2) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
+			clean_exit(knet_h, TESTNODES, logfds, FAIL);
 		}
 		for (x = 1; x <= TESTNODES; x++) {
 			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
@@ -125,13 +102,7 @@ static void test(const char *model)
 	printf("Testing crypto config switch from 2 to 1\n");
 
 	for (i = 1; i <= TESTNODES; i++) {
-		if (knet_handle_crypto_use_config(knet_h[i], 1) < 0) {
-			printf("knet_handle_crypto_use_config (1) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h[i], 1));
 		wait_for_nodes_state(knet_h[i], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
 	}
 
@@ -148,36 +119,18 @@ static void test(const char *model)
 		/*
 		 * config2 is no longer in use
 		 */
-		if (knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 2) < 0) {
-			printf("knet_handle_crypto_set_config (2) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 2));
 		/*
 		 * allow clear traffic on RX on all nodes, before we change config to clear traffic
 		 */
-		if (knet_handle_crypto_rx_clear_traffic(knet_h[i], KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC)) {
-			printf("knet_handle_crypto_rx_clear_traffic failed: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h[i], KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC));
 	}
 
 	for (i = 1; i <= TESTNODES; i++) {
 		/*
 		 * switch to clear traffic on RX on all nodes
 		 */
-		if (knet_handle_crypto_use_config(knet_h[i], 0) < 0) {
-			printf("knet_handle_crypto_use_config (0) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h[i], 0));
 	}
 
 
@@ -185,13 +138,7 @@ static void test(const char *model)
 		/*
 		 * config1 is no longer in use
 		 */
-		if (knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 1) < 0) {
-			printf("knet_handle_crypto_set_config (2) failed with correct config: %s\n", strerror(errno));
-			knet_handle_stop_nodes(knet_h, TESTNODES);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
-			exit(FAIL);
-		}
+		FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 1));
 	}
 
 	for (i = 1; i <= TESTNODES; i++) {
@@ -206,7 +153,7 @@ static void test(const char *model)
 
 	flush_logs(logfds[0], stdout);
 	close_logpipes(logfds);
-	knet_handle_stop_nodes(knet_h, TESTNODES);
+	knet_handle_stop_everything(knet_h, TESTNODES);
 }
 
 int main(int argc, char *argv[])

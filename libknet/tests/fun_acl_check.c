@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2021-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -31,6 +31,7 @@
 #define CORRECT_NUM_MSGS 5
 static int msgs_recvd = 0;
 
+#undef TESTNODES
 #define TESTNODES 2
 
 static pthread_mutex_t recv_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -38,7 +39,8 @@ static int quit_recv_thread = 0;
 
 static int reply_pipe[2];
 
-#define FAIL_ON_ERR(fn) \
+/* Our local version of FOE that also tidies up the threads */
+#define FAIL_ON_ERR_THR(fn) \
 	printf("FOE: %s\n", #fn);			  \
 	if ((res = fn) != 0) {				  \
 	  int savederrno = errno;			  \
@@ -46,9 +48,9 @@ static int reply_pipe[2];
 	  quit_recv_thread = 1;				  \
 	  pthread_mutex_unlock(&recv_mutex);		  \
 	  if (recv_thread) {				  \
-		  pthread_join(recv_thread, (void**)&thread_err); \
+		  pthread_join(recv_thread, (void**)&thread_err);	\
 	  }						  \
-	  knet_handle_stop_nodes(knet_h, TESTNODES);	  \
+	  knet_handle_stop_everything(knet_h, TESTNODES); \
 	  stop_logthread();				  \
 	  flush_logs(logfds[0], stdout);		  \
 	  close_logpipes(logfds);			  \
@@ -61,6 +63,7 @@ static int reply_pipe[2];
 		  exit(FAIL);				  \
 	  }						  \
 	}
+
 
 static int knet_send_str(knet_handle_t knet_h, char *str)
 {
@@ -251,7 +254,7 @@ static void test(int transport)
 	memset(reply_pipe, 0, sizeof(reply_pipe));
 	memset(logfds, 0, sizeof(logfds));
 
-	FAIL_ON_ERR(pipe(reply_pipe));
+	FAIL_ON_ERR_THR(pipe(reply_pipe));
 
 	// Initial setup gubbins
 	msgs_recvd = 0;
@@ -259,38 +262,38 @@ static void test(int transport)
 	start_logthread(logfds[1], stdout);
 	knet_handle_start_nodes(knet_h, TESTNODES, logfds, KNET_LOG_DEBUG);
 
-	FAIL_ON_ERR(knet_host_add(knet_h[2], 1));
-	FAIL_ON_ERR(knet_host_add(knet_h[1], 2));
+	FAIL_ON_ERR_THR(knet_host_add(knet_h[2], 1));
+	FAIL_ON_ERR_THR(knet_host_add(knet_h[1], 2));
 
-	FAIL_ON_ERR(knet_handle_enable_filter(knet_h[2], NULL, dhost_filter));
+	FAIL_ON_ERR_THR(knet_handle_enable_filter(knet_h[2], NULL, dhost_filter));
 
 	// Create the dynamic (receiving) link
-	FAIL_ON_ERR(dyn_knet_link_set_config(knet_h[1], 2, 0, transport, 0, AF_INET, 1, &lo0, NULL));
+	FAIL_ON_ERR_THR(dyn_knet_link_set_config(knet_h[1], 2, 0, transport, 0, AF_INET, 1, &lo0, NULL));
 
 	// Connect to the dynamic link
-	FAIL_ON_ERR(dyn_knet_link_set_config(knet_h[2], 1, 0, transport, 0, AF_INET, 0, &lo1, &lo0));
+	FAIL_ON_ERR_THR(dyn_knet_link_set_config(knet_h[2], 1, 0, transport, 0, AF_INET, 0, &lo1, &lo0));
 
 	// All the rest of the setup gubbins
-	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h[1], 0, &notify_fn));
-	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h[2], 0, &notify_fn));
+	FAIL_ON_ERR_THR(knet_handle_enable_sock_notify(knet_h[1], 0, &notify_fn));
+	FAIL_ON_ERR_THR(knet_handle_enable_sock_notify(knet_h[2], 0, &notify_fn));
 
 	channel = datafd = 0;
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h[1], &datafd, &channel));
+	FAIL_ON_ERR_THR(knet_handle_add_datafd(knet_h[1], &datafd, &channel));
 	channel = datafd = 0;
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h[2], &datafd, &channel));
+	FAIL_ON_ERR_THR(knet_handle_add_datafd(knet_h[2], &datafd, &channel));
 
-	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 2, 0, 1));
-	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 1));
+	FAIL_ON_ERR_THR(knet_link_set_enable(knet_h[1], 2, 0, 1));
+	FAIL_ON_ERR_THR(knet_link_set_enable(knet_h[2], 1, 0, 1));
 
-	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 1));
-	FAIL_ON_ERR(knet_handle_setfwd(knet_h[2], 1));
+	FAIL_ON_ERR_THR(knet_handle_setfwd(knet_h[1], 1));
+	FAIL_ON_ERR_THR(knet_handle_setfwd(knet_h[2], 1));
 
 	// Start receive thread
-	FAIL_ON_ERR(pthread_create(&recv_thread, NULL, recv_messages, (void *)knet_h[1]));
+	FAIL_ON_ERR_THR(pthread_create(&recv_thread, NULL, recv_messages, (void *)knet_h[1]));
 
 	// Let everything settle down
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
 	/*
 	 * TESTING STARTS HERE
@@ -300,99 +303,91 @@ static void test(int transport)
 
 	// No ACL
 	printf("Testing No ACL - this should get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1No ACL - this should get through"));
-	FAIL_ON_ERR(wait_for_reply(seconds))
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1No ACL - this should get through"));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds))
 
 	// Block traffic from this address.
 	memset(&ss1, 0, sizeof(ss1));
 	memset(&ss2, 0, sizeof(ss1));
 	knet_strtoaddr("127.0.0.1","0", &ss1, sizeof(ss1));
-	FAIL_ON_ERR(knet_link_add_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
+	FAIL_ON_ERR_THR(knet_link_add_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
 	// Accept ACL for when we remove them
-	FAIL_ON_ERR(knet_link_add_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_ACCEPT));
+	FAIL_ON_ERR_THR(knet_link_add_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_ACCEPT));
 
 	// This needs to go after the first ACLs are added
-	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h[1], 1));
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 1));
 
 	printf("Testing Address blocked - this should NOT get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "0Address blocked - this should NOT get through"));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "0Address blocked - this should NOT get through"));
 
 	// Unblock and check again
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
 	printf("Testing Address unblocked - this should get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
-	FAIL_ON_ERR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds));
 
 	// Block traffic using a netmask
 	knet_strtoaddr("127.0.0.1","0", &ss1, sizeof(ss1));
 	knet_strtoaddr("255.0.0.1","0", &ss2, sizeof(ss2));
-	FAIL_ON_ERR(knet_link_insert_acl(knet_h[1], 2, 0, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
+	FAIL_ON_ERR_THR(knet_link_insert_acl(knet_h[1], 2, 0, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
 
 	printf("Testing Netmask blocked - this should NOT get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "0Netmask blocked - this should NOT get through"));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "0Netmask blocked - this should NOT get through"));
 
 	// Unblock and check again
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
 	printf("Testing Netmask unblocked - this should get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
-	FAIL_ON_ERR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds));
 
 	// Block traffic from a range
 	knet_strtoaddr("127.0.0.0", "0", &ss1, sizeof(ss1));
 	knet_strtoaddr("127.0.0.9", "0", &ss2, sizeof(ss2));
-	FAIL_ON_ERR(knet_link_insert_acl(knet_h[1], 2, 0, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
+	FAIL_ON_ERR_THR(knet_link_insert_acl(knet_h[1], 2, 0, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
 
 	printf("Testing Range blocked - this should NOT get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "0Range blocked - this should NOT get through"));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "0Range blocked - this should NOT get through"));
 
 	// Unblock and check again
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
 	printf("Testing Range unblocked - this should get through\n");
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Range unblocked - this should get through"));
-	FAIL_ON_ERR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Range unblocked - this should get through"));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds));
 
 	// Finish up - disable ACLS to make sure the QUIT message gets through
-	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h[1], 0));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
-	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "QUIT"));
+	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "QUIT"));
 
 	// Check return from the receiving thread
 	pthread_join(recv_thread, (void**)&thread_err);
 	if (*thread_err) {
 		printf("Thread returned %d\n", *thread_err);
-		exit(FAIL);
+		clean_exit(knet_h, TESTNODES, logfds, FAIL);
 	}
-
-	//  Tidy Up
-	knet_handle_stop_nodes(knet_h, TESTNODES);
-
-	stop_logthread();
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
-	close(reply_pipe[0]);
-	close(reply_pipe[1]);
 
 	if (msgs_recvd != CORRECT_NUM_MSGS) {
 		printf("*** FAIL Recv thread got %d messages, expected %d\n", msgs_recvd, CORRECT_NUM_MSGS);
-		exit(FAIL);
+		clean_exit(knet_h, TESTNODES, logfds, FAIL);
 	}
+	clean_exit(knet_h, TESTNODES, logfds, PASS);
 }
 
 int main(int argc, char *argv[])

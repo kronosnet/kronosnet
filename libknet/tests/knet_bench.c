@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -1294,6 +1294,8 @@ static void send_perf_data_by_time(void)
 
 static void cleanup_all(void)
 {
+	knet_handle_t knet_h_tmp[2];
+
 	if (pthread_mutex_lock(&shutdown_mutex)) {
 		return;
 	}
@@ -1310,7 +1312,8 @@ static void cleanup_all(void)
 	if (rx_thread) {
 		stop_rx_thread();
 	}
-	knet_handle_stop(knet_h);
+	knet_h_tmp[1] = knet_h;
+	knet_handle_stop_everything(knet_h_tmp, 1);
 }
 
 static void sigint_handler(int signum)

@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -449,7 +449,7 @@ char *find_plugins_path(void)
 }
 
 
-knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
+knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level, knet_handle_t knet_h_array[])
 {
 	knet_handle_t knet_h = knet_handle_new(1, logfds[1], log_level, 0);
 	char *plugins_path;
@@ -461,6 +461,8 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level)
 		if (plugins_path) {
 			knet_h->plugin_path = plugins_path;
 		}
+		knet_h_array[1] = knet_h;
+		flush_logs(logfds[0], stdout);
 		return knet_h;
 	} else {
 		printf("knet_handle_new failed: %s\n", strerror(errno));
@@ -545,62 +547,6 @@ int knet_handle_disconnect_links(knet_handle_t knet_h)
 				}
 			}
 		}
-	}
-
-	return 0;
-}
-
-int knet_handle_stop(knet_handle_t knet_h)
-{
-	size_t i, j;
-	knet_node_id_t host_ids[KNET_MAX_HOST];
-	uint8_t link_ids[KNET_MAX_LINK];
-	size_t host_ids_entries = 0, link_ids_entries = 0;
-	unsigned int enabled;
-
-	if (!knet_h) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (knet_handle_setfwd(knet_h, 0) < 0) {
-		printf("knet_handle_setfwd failed: %s\n", strerror(errno));
-		return -1;
-	}
-
-	if (knet_host_get_host_list(knet_h, host_ids, &host_ids_entries) < 0) {
-		printf("knet_host_get_host_list failed: %s\n", strerror(errno));
-		return -1;
-	}
-
-	for (i = 0; i < host_ids_entries; i++) {
-		if (knet_link_get_link_list(knet_h, host_ids[i], link_ids, &link_ids_entries)) {
-			printf("knet_link_get_link_list failed: %s\n", strerror(errno));
-			return -1;
-		}
-		for (j = 0; j < link_ids_entries; j++) {
-			if (knet_link_get_enable(knet_h, host_ids[i], link_ids[j], &enabled)) {
-				printf("knet_link_get_enable failed: %s\n", strerror(errno));
-				return -1;
-			}
-			if (enabled) {
-				if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
-					printf("knet_link_set_enable failed: %s\n", strerror(errno));
-					return -1;
-				}
-			}
-			printf("clearing config for: %p host: %u link: %zu\n", knet_h, host_ids[i], j);
-			knet_link_clear_config(knet_h, host_ids[i], j);
-		}
-		if (knet_host_remove(knet_h, host_ids[i]) < 0) {
-			printf("knet_host_remove failed: %s\n", strerror(errno));
-			return -1;
-		}
-	}
-
-	if (knet_handle_free(knet_h)) {
-		printf("knet_handle_free failed: %s\n", strerror(errno));
-		return -1;
 	}
 
 	return 0;
@@ -758,22 +704,8 @@ void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd
 	}
 
 	if (i < numnodes) {
-		knet_handle_stop_nodes(knet_h, i);
+		knet_handle_stop_everything(knet_h, i);
 		exit(FAIL);
-	}
-
-	return;
-}
-
-void knet_handle_stop_nodes(knet_handle_t knet_h[], uint8_t numnodes)
-{
-	uint8_t i;
-
-	for (i = 1; i <= numnodes; i++) {
-		if (knet_h[i]) {
-			printf("stopping handle %u at %p\n", i, knet_h[i]);
-			knet_handle_stop(knet_h[i]);
-		}
 	}
 
 	return;
@@ -799,7 +731,7 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 
 			if (knet_host_add(knet_h[i], j) < 0) {
 				printf("Unable to add host: %s\n", strerror(errno));
-				knet_handle_stop_nodes(knet_h, numnodes);
+				knet_handle_stop_everything(knet_h, numnodes);
 				exit(FAIL);
 			}
 
@@ -809,13 +741,13 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 				while (i + x + offset++ < 65535 && res != 0) {
 					if (_make_local_sockaddr(&src, i + x + offset, family) < 0) {
 						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
-						knet_handle_stop_nodes(knet_h, numnodes);
+						knet_handle_stop_everything(knet_h, numnodes);
 						exit(FAIL);
 					}
 
 					if (_make_local_sockaddr(&dst, j + x + offset, family) < 0) {
 						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
-						knet_handle_stop_nodes(knet_h, numnodes);
+						knet_handle_stop_everything(knet_h, numnodes);
 						exit(FAIL);
 					}
 
@@ -824,7 +756,7 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 				printf("joining node %u with node %u via link %u src offset: %u dst offset: %u\n", i, j, x, i+x, j+x);
 				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
 					printf("unable to enable link: %s\n", strerror(errno));
-					knet_handle_stop_nodes(knet_h, numnodes);
+					knet_handle_stop_everything(knet_h, numnodes);
 					exit(FAIL);
 				}
 			}
@@ -1040,4 +972,72 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	test_sleep(knet_h, 1);
 	errno = savederrno;
 	return res;
+}
+
+void clean_exit(knet_handle_t *knet_h, int testnodes, int *logfds, int exit_status)
+{
+	knet_handle_stop_everything(knet_h, testnodes);
+	stop_logthread();
+	flush_logs(logfds[0], stdout);
+	close_logpipes(logfds);
+	if (exit_status != CONTINUE) {
+		exit(exit_status);
+	}
+}
+
+/* Shutdown all nodes and links attached to an array of knet handles.
+ * Mostly stolen from corosync code (that I wrote, before anyone complains about licences)
+ */
+void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes)
+{
+	int res = 0;
+	int h;
+	size_t i,j;
+	static knet_node_id_t nodes[KNET_MAX_HOST]; /* static to save stack */
+	uint8_t links[KNET_MAX_LINK];
+	size_t num_nodes;
+	size_t num_links;
+
+	for (h=1; h<numnodes+1; h++) {
+		res = knet_handle_setfwd(knet_h[h], 0);
+		if (res) {
+			perror("knet_handle_setfwd failed");
+		}
+
+		res = knet_host_get_host_list(knet_h[h], nodes, &num_nodes);
+		if (res) {
+			perror("Cannot get knet node list for shutdown");
+			continue;
+		}
+
+		/* Tidily shut down all nodes & links. */
+		for (i=0; i<num_nodes; i++) {
+
+			res = knet_link_get_link_list(knet_h[h], nodes[i], links, &num_links);
+			if (res) {
+				fprintf(stderr, "Cannot get knet link list for node %u  %s\n", nodes[i], strerror(errno));
+				goto finalise_error;
+			}
+			for (j=0; j<num_links; j++) {
+				res = knet_link_set_enable(knet_h[h], nodes[i], links[j], 0);
+				if (res) {
+					fprintf(stderr, "knet_link_set_enable(node %u, link %d) failed: %s\n", nodes[i], links[j], strerror(errno));
+				}
+				res = knet_link_clear_config(knet_h[h], nodes[i], links[j]);
+				if (res) {
+					fprintf(stderr, "knet_link_clear_config(node %u, link %d) failed: %s\n", nodes[i], links[j], strerror(errno));
+				}
+			}
+			res = knet_host_remove(knet_h[h], nodes[i]);
+			if (res) {
+				fprintf(stderr, "knet_host_remove(node %u) failed: %s\n", nodes[i], strerror(errno));
+			}
+		}
+
+	finalise_error:
+		res = knet_handle_free(knet_h[h]);
+		if (res) {
+			fprintf(stderr, "knet_handle_free failed: %s\n", strerror(errno));
+		}
+	}
 }
