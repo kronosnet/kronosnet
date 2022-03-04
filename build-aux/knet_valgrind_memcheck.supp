@@ -709,11 +709,7 @@
   Memcheck:Leak
   match-leak-kinds: definite
   fun:malloc
-  obj:*
-  obj:*
-  obj:*
-  obj:*
-  obj:*
+  ...
   fun:gcryptcrypto_init
   fun:crypto_init
   fun:knet_handle_crypto_set_config
@@ -725,11 +721,7 @@
   Memcheck:Leak
   match-leak-kinds: definite
   fun:malloc
-  obj:*
-  obj:*
-  obj:*
-  obj:*
-  obj:*
+  ...
   fun:encrypt_gcrypt
   fun:gcryptcrypto_encrypt_and_signv
   fun:gcryptcrypto_encrypt_and_sign
@@ -740,6 +732,46 @@
   fun:clone
 }
 {
+  glibc2.34 dlopen internal memory leak
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  ...
+  fun:_dl_catch_exception
+  fun:_dl_catch_error
+  fun:_dlerror_run
+  fun:dlopen_implementation
+  fun:dlopen@@GLIBC_2.34
+}
+{
+  glibc2.34 dlopen internal memory leak
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  fun:_dl_find_object_update
+  ...
+  fun:_dl_catch_error
+  fun:_dlerror_run
+  fun:dlopen@@GLIBC_2.34
+}
+{
+  glibc2.34 dlopen internal memory leak
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  ...
+  fun:_rtld_catch_error
+  fun:_dlerror_run
+}
+{
+  glibc2.34
+  Memcheck:Cond
+  fun:strcmp
+  ...
+  fun:_rtld_catch_error
+  fun:_dlerror_run
+}
+{
   For knet-test Rust API checker
   Memcheck:Leak
   match-leak-kinds: possible
@@ -780,4 +812,28 @@
   ...
   fun:_ZN*
   fun:main
+}
+{
+  For knet-test Rust API checker
+  Memcheck:Cond
+  ...
+  fun:_ZN*
+  fun:main
+}
+{
+  powerpc specific leak (in crypto code)
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
 }
