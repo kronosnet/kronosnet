@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -23,7 +23,8 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 	uint8_t priority = 0;
 	struct sockaddr_storage lo;
@@ -36,114 +37,31 @@ static void test(void)
 	}
 
 	setup_logpipes(logfds);
-
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_link_get_priority with unconfigured host_id\n");
-
-	if ((!knet_link_get_priority(knet_h, 1, 0, &priority)) || (errno != EINVAL)) {
-		printf("knet_link_get_priority accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_link_get_priority(knet_h1, 1, 0, &priority), EINVAL);
 
 	printf("Test knet_link_get_priority with incorrect linkid\n");
-
-	if (knet_host_add(knet_h, 1) < 0) {
-		printf("Unable to add host_id 1: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if ((!knet_link_get_priority(knet_h, 1, KNET_MAX_LINK, &priority)) || (errno != EINVAL)) {
-		printf("knet_link_get_priority accepted invalid linkid or returned incorrect error: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
+	FAIL_ON_SUCCESS(knet_link_get_priority(knet_h1, 1, KNET_MAX_LINK, &priority), EINVAL);
 
 	printf("Test knet_link_get_priority with unconfigured link\n");
-
-	if ((!knet_link_get_priority(knet_h, 1, 0, &priority)) || (errno != EINVAL)) {
-		printf("knet_link_get_priority accepted unconfigured link or returned incorrect error: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_link_get_priority(knet_h1, 1, 0, &priority), EINVAL);
 
 	printf("Test knet_link_get_priority with incorrect priority\n");
-
-	if ((!knet_link_get_priority(knet_h, 1, 0, NULL)) || (errno != EINVAL)) {
-		printf("knet_link_get_priority accepted incorrect priority or returned incorrect error: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_link_get_priority(knet_h1, 1, 0, NULL), EINVAL);
 
 	printf("Test knet_link_get_priority with correct values\n");
-
-	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
-		printf("Unable to configure link: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_link_set_priority(knet_h, 1, 0, 1) < 0) {
-		printf("knet_link_set_priority failed: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_link_get_priority(knet_h, 1, 0, &priority) < 0) {
-		printf("knet_link_get_priority failed: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	FAIL_ON_ERR(knet_link_set_priority(knet_h1, 1, 0, 1));
+	FAIL_ON_ERR(knet_link_get_priority(knet_h1, 1, 0, &priority));
 	if (priority != 1) {
 		printf("knet_link_get_priority failed to get correct values\n");
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
-	knet_link_clear_config(knet_h, 1, 0);
-	knet_host_remove(knet_h, 1);
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

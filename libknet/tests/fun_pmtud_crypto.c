@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -95,17 +95,18 @@ out_clean:
 	return err;
 }
 
-static int exit_local(int code)
+static void exit_local(int exit_code)
 {
 	set_iface_mtu(default_mtu);
 	close(iface_fd);
 	iface_fd = 0;
-	exit(code);
+	exit(exit_code);
 }
 
+#define TESTNODES 1
 static void test_mtu(const char *model, const char *crypto, const char *hash)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h[TESTNODES+1];
 	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
@@ -113,10 +114,11 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	unsigned int data_mtu, expected_mtu;
 	size_t calculated_iface_mtu = 0, detected_iface_mtu = 0;
+	int res;
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h[1] = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	flush_logs(logfds[0], stdout);
 
@@ -128,143 +130,51 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, hash, sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
-	if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 1)) {
-		printf("knet_handle_crypto_set_config failed with correct config: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h[1], &knet_handle_crypto_cfg, 1));
 
-	if (knet_handle_crypto_use_config(knet_h, 1)) {
-		printf("knet_handle_crypto_use_config failed with correct config: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h[1], 1));
 
-	if (knet_handle_crypto_rx_clear_traffic(knet_h, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
-		printf("knet_handle_crypto_rx_clear_traffic failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h[1], KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
 
-	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
-		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h[1], &private_data, sock_notify)); // CHECK cond was <0 not !=0
 
 	datafd = 0;
 	channel = -1;
 
-	if (knet_handle_add_datafd(knet_h, &datafd, &channel) < 0) {
-		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h[1], &datafd, &channel));
 
-	if (knet_host_add(knet_h, 1) < 0) {
-		printf("knet_host_add failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(knet_host_add(knet_h[1], 1));
 
-	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
-		printf("Unable to configure link: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
 
-	if (knet_link_set_pong_count(knet_h, 1, 0, 1) < 0) {
-		printf("knet_link_set_pong_count failed: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(knet_link_set_pong_count(knet_h[1], 1, 0, 1));
 
-	if (knet_link_set_enable(knet_h, 1, 0, 1) < 0) {
-		printf("knet_link_set_enable failed: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 1, 0, 1));
 
-	if (wait_for_host(knet_h, 1, 4, logfds[0], stdout) < 0) {
-		printf("timeout waiting for host to be reachable");
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, 4, logfds[0], stdout));
 
 	flush_logs(logfds[0], stdout);
 
-	if (knet_handle_pmtud_get(knet_h, &data_mtu) < 0) {
-		printf("knet_handle_pmtud_get failed error: %s\n", strerror(errno));
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_pmtud_get(knet_h[1], &data_mtu));
 
-	calculated_iface_mtu = calc_data_outlen(knet_h, data_mtu + KNET_HEADER_ALL_SIZE) + 28;
+	calculated_iface_mtu = calc_data_outlen(knet_h[1], data_mtu + KNET_HEADER_ALL_SIZE) + 28;
 	detected_iface_mtu = get_iface_mtu();
 	/*
 	 * 28 = 20 IP header + 8 UDP header
 	 */
-	expected_mtu = calc_max_data_outlen(knet_h, detected_iface_mtu - 28);
+	expected_mtu = calc_max_data_outlen(knet_h[1], detected_iface_mtu - 28);
 
 	if (expected_mtu != data_mtu) {
 		printf("Wrong MTU detected! interface mtu: %zu knet mtu: %u expected mtu: %u\n", detected_iface_mtu, data_mtu, expected_mtu);
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
+		clean_exit(knet_h, TESTNODES, logfds, FAIL);
 	}
 
-	if ((detected_iface_mtu - calculated_iface_mtu) >= knet_h->sec_block_size) {
+	if ((detected_iface_mtu - calculated_iface_mtu) >= knet_h[1]->sec_block_size) {
 		printf("Wrong MTU detected! real iface mtu: %zu calculated: %zu\n", detected_iface_mtu, calculated_iface_mtu);
-		knet_link_set_enable(knet_h, 1, 0, 0);
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit_local(FAIL);
+		clean_exit(knet_h, TESTNODES, logfds, FAIL);
 	}
 
-	knet_link_set_enable(knet_h, 1, 0, 0);
-	knet_link_clear_config(knet_h, 1, 0);
-	knet_host_remove(knet_h, 1);
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
+	knet_handle_stop_everything(knet_h, TESTNODES);
 	close_logpipes(logfds);
 }
 

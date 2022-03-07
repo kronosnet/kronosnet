@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -23,7 +23,8 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 	struct knet_host *host;
 	struct knet_link *link;
@@ -37,150 +38,46 @@ static void test(void)
 	}
 
 	setup_logpipes(logfds);
-
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_link_clear_acl with unconfigured host\n");
-
-	if ((!knet_link_clear_acl(knet_h, 1, 0)) || (errno != EINVAL)) {
-		printf("knet_link_clear_acl accepted unconfigured host or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_link_clear_acl(knet_h1, 1, 0), EINVAL);
 
 	printf("Test knet_link_clear_acl with unconfigured link\n");
-
-	if (knet_host_add(knet_h, 1) < 0) {
-		printf("knet_host_add failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if ((!knet_link_clear_acl(knet_h, 1, 0)) || (errno != EINVAL)) {
-		printf("knet_link_clear_acl accepted unconfigured link or returned incorrect error: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
+	FAIL_ON_SUCCESS(knet_link_clear_acl(knet_h1, 1, 0), EINVAL);
 
 	printf("Test knet_link_clear_acl with invalid link\n");
-
-	if ((!knet_link_clear_acl(knet_h, 1, KNET_MAX_LINK)) || (errno != EINVAL)) {
-		printf("knet_link_clear_acl accepted invalid link or returned incorrect error: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_link_clear_acl(knet_h1, 1, KNET_MAX_LINK), EINVAL);
 
 	printf("Test knet_link_clear_acl with point to point link\n");
-
-	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo) < 0) {
-		printf("Unable to configure link: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if ((!knet_link_clear_acl(knet_h, 1, 0)) || (errno != EINVAL)) {
-		printf("knet_link_clear_acl accepted point ot point link or returned incorrect error: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	knet_link_clear_config(knet_h, 1, 0);
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	FAIL_ON_SUCCESS(knet_link_clear_acl(knet_h1, 1, 0), EINVAL);
+	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
 
 	printf("Test knet_link_clear_acl with dynamic link\n");
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo));
 
-	if (_knet_link_set_config(knet_h, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo) < 0) {
-		printf("Unable to configure link: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	host = knet_h->host_index[1];
+	host = knet_h1->host_index[1];
 	link = &host->link[0];
 
 	if (link->access_list_match_entry_head) {
 		printf("match list NOT empty!");
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
-	if (knet_link_add_acl(knet_h, 1, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
-		printf("knet_link_clear_acl did not accept dynamic link error: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
+	FAIL_ON_ERR(knet_link_add_acl(knet_h1, 1, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT));
 	if (!link->access_list_match_entry_head) {
 		printf("match list empty!");
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
-	if (knet_link_clear_acl(knet_h, 1, 0) < 0) {
-		printf("knet_link_clear_acl failed to clear. error: %s\n", strerror(errno));
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
+	FAIL_ON_ERR(knet_link_clear_acl(knet_h1, 1, 0));
 	if (link->access_list_match_entry_head) {
 		printf("match list NOT empty!");
-		knet_link_clear_config(knet_h, 1, 0);
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
-	knet_link_clear_config(knet_h, 1, 0);
-	knet_host_remove(knet_h, 1);
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

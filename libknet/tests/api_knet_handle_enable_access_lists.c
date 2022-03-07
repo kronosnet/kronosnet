@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -21,8 +21,9 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
 	int logfds[2];
+	int res;
 
 	printf("Test knet_handle_enable_access_lists with invalid knet_h\n");
 
@@ -34,62 +35,26 @@ static void test(void)
 	setup_logpipes(logfds);
 
 	printf("Test knet_handle_enable_access_lists with invalid param (2) \n");
-
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
-
-	if ((!knet_handle_enable_access_lists(knet_h, 2)) || (errno != EINVAL)) {
-		printf("knet_handle_enable_access_lists accepted invalid param for enabled: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	FAIL_ON_SUCCESS(knet_handle_enable_access_lists(knet_h1, 2), EINVAL);
 
 	printf("Test knet_handle_enable_access_lists with valid param (1) \n");
+	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 1));
 
-	if (knet_handle_enable_access_lists(knet_h, 1) < 0) {
-		printf("knet_handle_enable_access_lists failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h->use_access_lists != 1) {
+	if (knet_h1->use_access_lists != 1) {
 		printf("knet_handle_enable_access_lists failed to set correct value");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_enable_access_lists with valid param (0) \n");
+	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 0));
 
-	if (knet_handle_enable_access_lists(knet_h, 0) < 0) {
-		printf("knet_handle_enable_access_lists failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_h->use_access_lists != 0) {
+	if (knet_h1->use_access_lists != 0) {
 		printf("knet_handle_enable_access_lists failed to set correct value");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
-	flush_logs(logfds[0], stdout);
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

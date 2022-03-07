@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -21,7 +21,8 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 	char name[KNET_MAX_HOST_LEN];
 
@@ -34,62 +35,23 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_host_get_name_by_host_id with incorrect hostid 1\n");
-
-	if ((!knet_host_get_name_by_host_id(knet_h, 1, name)) || (errno != EINVAL)) {
-		printf("knet_host_get_name_by_host_id accepted invalid host_id or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_host_get_name_by_host_id(knet_h1, 1, name), EINVAL);
 
 	printf("Test knet_host_get_name_by_host_id with incorrect name\n");
-
-	if ((!knet_host_get_name_by_host_id(knet_h, 1, NULL)) || (errno != EINVAL)) {
-		printf("knet_host_get_name_by_host_id accepted invalid name or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_host_get_name_by_host_id(knet_h1, 1, NULL), EINVAL);
 
 	printf("Test knet_host_get_name_by_host_id with correct values for hostid 1: ");
-
-	if (knet_host_add(knet_h, 1) < 0) {
-		printf("knet_host_add failed error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	if (knet_host_get_name_by_host_id(knet_h, 1, name) < 0) {
-		printf("knet_host_get_name_by_host_id faild to retrieve name: %s\n", strerror(errno));
-		knet_host_remove(knet_h, 1);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
+	FAIL_ON_ERR(knet_host_get_name_by_host_id(knet_h1, 1, name));
 
 	printf("%s\n", name);
 
-	flush_logs(logfds[0], stdout);
-
-	knet_host_remove(knet_h, 1);
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

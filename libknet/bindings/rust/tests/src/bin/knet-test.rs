@@ -14,12 +14,44 @@ use std::sync::mpsc::Receiver;
 use std::sync::mpsc::channel;
 use std::io::{Result, ErrorKind, Error};
 use std::{thread, time};
+use std::env;
 
 const CHANNEL: i8 = 1;
 
 // Dirty C function to set the plugin path for testing (only)
 extern {
     fn set_plugin_path(knet_h: knet::Handle);
+}
+
+fn is_memcheck() -> bool
+{
+    match env::var("KNETMEMCHECK") {
+	Ok(s) => {
+	    s == "yes"
+	}
+	Err(_) => false
+    }
+}
+
+// Probably this will never happen, but just-in-case
+fn is_helgrind() -> bool
+{
+    match env::var("KNETHELGRIND") {
+	Ok(s) => {
+	    s == "yes"
+	}
+	Err(_) => false
+    }
+}
+
+fn get_scaled_tmo(millis: u64) -> time::Duration
+{
+    if is_memcheck() || is_helgrind() {
+	println!("Running under valgrind, increasing timer from {} to {}", millis, millis*16);
+	time::Duration::from_millis(millis * 16)
+    } else {
+	time::Duration::from_millis(millis)
+    }
 }
 
 // Callbacks
@@ -341,7 +373,7 @@ fn recv_stuff(handle: knet::Handle, host: knet::HostId) -> Result<()>
 	    }
 	    Err(e) => {
 		if e.kind() == ErrorKind::WouldBlock {
-		    thread::sleep(time::Duration::from_millis(100));
+		    thread::sleep(get_scaled_tmo(100));
 		} else {
 		    println!("recv failed: {}", e);
 		    return Err(e);
@@ -472,7 +504,7 @@ fn send_messages(handle: knet::Handle, send_quit: bool) -> Result<()>
 
     if send_quit {
 	// Sleep to allow messages to calm down before we tell the RX thread to quit
-	thread::sleep(time::Duration::from_millis(3000));
+	thread::sleep(get_scaled_tmo(3000));
 
 	let b = String::from("QUIT").into_bytes();
 	match knet::send(handle, &b, CHANNEL) {
@@ -870,7 +902,7 @@ fn main() -> Result<()>
     let host2_clone = host2;
 
     // Wait for links to start
-    thread::sleep(time::Duration::from_millis(10000));
+    thread::sleep(get_scaled_tmo(10000));
     test_link_host_list(handle1)?;
     test_link_host_list(handle2)?;
 
@@ -882,7 +914,7 @@ fn main() -> Result<()>
 
     send_messages(handle1, false)?;
     send_messages(handle2, false)?;
-    thread::sleep(time::Duration::from_millis(3000));
+    thread::sleep(get_scaled_tmo(3000));
 
     set_crypto(handle1)?;
     set_crypto(handle2)?;
@@ -890,7 +922,7 @@ fn main() -> Result<()>
     set_compress(handle1)?;
     set_compress(handle2)?;
 
-    thread::sleep(time::Duration::from_millis(3000));
+    thread::sleep(get_scaled_tmo(3000));
 
     send_messages(handle1, true)?;
     send_messages(handle2, true)?;
@@ -937,6 +969,6 @@ fn main() -> Result<()>
     close_handle(handle2, 1)?;
 
     // Sleep to see if log thread dies
-    thread::sleep(time::Duration::from_millis(3000));
+    thread::sleep(get_scaled_tmo(3000));
     Ok(())
 }
