@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2021-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -26,8 +26,9 @@
 
 /*
  * Keep track of how many messages got through:
+ * (includes the QUIT)
  */
-#define CORRECT_NUM_MSGS 5
+#define CORRECT_NUM_MSGS 10
 static int msgs_recvd = 0;
 
 #define TESTNODES 2
@@ -44,8 +45,9 @@ static int reply_pipe[2];
 	  pthread_mutex_lock(&recv_mutex);		  \
 	  quit_recv_thread = 1;				  \
 	  pthread_mutex_unlock(&recv_mutex);		  \
-	  if (recv_thread) {				  \
-		  pthread_join(recv_thread, (void**)&thread_err); \
+	  if (recv_thread_1) {				  \
+		  pthread_join(recv_thread_1, (void**)&thread_err); \
+		  pthread_join(recv_thread_2, (void**)&thread_err); \
 	  }						  \
 	  knet_handle_stop_nodes(knet_h, TESTNODES);	  \
 	  stop_logthread();				  \
@@ -178,7 +180,7 @@ static void notify_fn(void *private_data,
 	printf("NOTIFY fn called\n");
 }
 
-/* A VERY basic filter because all data traffic is going to one place */
+/* A VERY basic filter to forward between nodes */
 static int dhost_filter(void *pvt_data,
 			const unsigned char *outdata,
 			ssize_t outdata_len,
@@ -189,7 +191,7 @@ static int dhost_filter(void *pvt_data,
 			knet_node_id_t *dst_host_ids,
 			size_t *dst_host_ids_entries)
 {
-	dst_host_ids[0] = 1;
+	dst_host_ids[0] = 3 - src_host_id;
 	*dst_host_ids_entries = 1;
 	return 0;
 }
@@ -230,7 +232,8 @@ static void test(int transport)
 	int logfds[2];
 	struct sockaddr_storage lo0, lo1;
 	int res;
-	pthread_t recv_thread = 0;
+	pthread_t recv_thread_1 = 0;
+	pthread_t recv_thread_2 = 0;
 	int *thread_err;
 	int datafd;
 	int8_t channel;
@@ -252,6 +255,7 @@ static void test(int transport)
 	FAIL_ON_ERR(knet_host_add(knet_h[2], 1));
 	FAIL_ON_ERR(knet_host_add(knet_h[1], 2));
 
+	FAIL_ON_ERR(knet_handle_enable_filter(knet_h[1], NULL, dhost_filter));
 	FAIL_ON_ERR(knet_handle_enable_filter(knet_h[2], NULL, dhost_filter));
 
 	// Create the dynamic (receiving) link
@@ -275,8 +279,9 @@ static void test(int transport)
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h[2], 1));
 
-	// Start receive thread
-	FAIL_ON_ERR(pthread_create(&recv_thread, NULL, recv_messages, (void *)knet_h[1]));
+	// Start receive threads
+	FAIL_ON_ERR(pthread_create(&recv_thread_1, NULL, recv_messages, (void *)knet_h[1]));
+	FAIL_ON_ERR(pthread_create(&recv_thread_2, NULL, recv_messages, (void *)knet_h[2]));
 
 	// Let everything settle down
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
@@ -284,62 +289,75 @@ static void test(int transport)
 
 	/*
 	 * TESTING STARTS HERE
-	 * strings starting '1' should reach the receiving thread
-	 * strings starting '0' should not
 	 */
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Testing from 127.0.0.1"));
+	FAIL_ON_ERR(knet_send_str(knet_h[2], "Testing from 127.0.0.1"));
 	FAIL_ON_ERR(wait_for_reply(seconds));
+
+	/* Test sending from the 'receiving' handle */
+	FAIL_ON_ERR(knet_send_str(knet_h[1], "Testing from 'receiving' handle to 127.0.0.1"));
+	// Don't wait for this on, let the error (occasionally) trigger
 
 	/* now try 127.0.0.2 */
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 0));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h[2], 1, 0));
-//	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
-//	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
 
 	FAIL_ON_ERR(dyn_knet_link_set_config(knet_h[2], 1, 0, transport, 0, AF_INET, 0, "127.0.0.2", &lo1, &lo0));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 1));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Testing from 127.0.0.2"));
+	FAIL_ON_ERR(knet_send_str(knet_h[2], "Testing from 127.0.0.2"));
+	FAIL_ON_ERR(wait_for_reply(seconds));
+
+	/* Test sending from the 'receiving' handle */
+	FAIL_ON_ERR(knet_send_str(knet_h[1], "Testing from 'receiving' handle to 127.0.0.2"));
 	FAIL_ON_ERR(wait_for_reply(seconds));
 
 	/* now try 127.0.0.3 */
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 0));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h[2], 1, 0));
-//	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
-//	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
 
 	FAIL_ON_ERR(dyn_knet_link_set_config(knet_h[2], 1, 0, transport, 0, AF_INET, 0, "127.0.0.3", &lo1, &lo0));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 1));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Testing from 127.0.0.3"));
+	FAIL_ON_ERR(knet_send_str(knet_h[2], "Testing from 127.0.0.3"));
 	FAIL_ON_ERR(wait_for_reply(seconds));
 
-	/* now try 127.0.0.1 again */
+	/* Test sending from the 'receiving' handle */
+	FAIL_ON_ERR(knet_send_str(knet_h[1], "Testing from 'receiving' handle to 127.0.0.3"));
+	FAIL_ON_ERR(wait_for_reply(seconds));
+
+	/* Now try 127.0.0.1 again */
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 0));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h[2], 1, 0));
-//	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfds[0], stdout));
-//	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfds[0], stdout));
 
 	FAIL_ON_ERR(dyn_knet_link_set_config(knet_h[2], 1, 0, transport, 0, AF_INET, 0, "127.0.0.1", &lo1, &lo0));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[2], 1, 0, 1));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfds[0], stdout));
 	FAIL_ON_ERR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfds[0], stdout));
 
-	FAIL_ON_ERR(knet_send_str(knet_h[2], "1Testing from 127.0.0.1 again"));
+	FAIL_ON_ERR(knet_send_str(knet_h[2], "Testing from 127.0.0.1 again"));
 	FAIL_ON_ERR(wait_for_reply(seconds));
 
+	/* Test sending from the 'receiving' handle */
+	FAIL_ON_ERR(knet_send_str(knet_h[1], "Testing from 'receiving' handle to 127.0.0.1 again"));
+	FAIL_ON_ERR(wait_for_reply(seconds));
 
 	// Finished testing, tidy up	----------------------
 	FAIL_ON_ERR(knet_send_str(knet_h[2], "QUIT"));
+	FAIL_ON_ERR(knet_send_str(knet_h[1], "QUIT"));
 
 	// Check return from the receiving thread
-	pthread_join(recv_thread, (void**)&thread_err);
+	pthread_join(recv_thread_1, (void**)&thread_err);
 	if (*thread_err) {
-		printf("Thread returned %d\n", *thread_err);
+		printf("Thread 1 returned %d\n", *thread_err);
+		exit(FAIL);
+	}
+	pthread_join(recv_thread_2, (void**)&thread_err);
+	if (*thread_err) {
+		printf("Thread 2 returned %d\n", *thread_err);
 		exit(FAIL);
 	}
 
@@ -352,7 +370,9 @@ static void test(int transport)
 	close(reply_pipe[0]);
 	close(reply_pipe[1]);
 
-	if (msgs_recvd != CORRECT_NUM_MSGS) {
+	/* We could receive CORRECT_NUM_MSGS or CORRECT_NUM_MSGS-1 depending
+	   on whether the first one gets lost or not (which is fine) */
+	if (msgs_recvd != CORRECT_NUM_MSGS && msgs_recvd != CORRECT_NUM_MSGS-1) {
 		printf("*** FAIL Recv thread got %d messages, expected %d\n", msgs_recvd, CORRECT_NUM_MSGS);
 		exit(FAIL);
 	}
