@@ -647,7 +647,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 void *_handle_send_to_links_thread(void *data)
 {
 	knet_handle_t knet_h = (knet_handle_t) data;
-	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
+	struct epoll_event events[KNET_EPOLL_MAX_EVENTS + 1]; /* see _init_epolls for + 1 */
 	int i, nev, type;
 	int flush, flush_queue_limit;
 	int8_t channel;
