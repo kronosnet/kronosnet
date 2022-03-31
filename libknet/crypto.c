@@ -200,7 +200,7 @@ static int crypto_init(
 	}
 
 	log_debug(knet_h, KNET_SUB_CRYPTO,
-		  "Initizializing crypto module [%s/%s/%s]",
+		  "Initializing crypto module [%s/%s/%s]",
 		  knet_handle_crypto_cfg->crypto_model,
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);

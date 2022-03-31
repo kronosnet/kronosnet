@@ -426,7 +426,7 @@ static int gcryptcrypto_init(
 	char remap_hash_type[sizeof(knet_handle_crypto_cfg->crypto_hash_type) + strlen("HMAC_") + 1];
 
 	log_debug(knet_h, KNET_SUB_GCRYPTCRYPTO,
-		  "Initizializing gcrypt crypto module [%s/%s]",
+		  "Initializing gcrypt crypto module [%s/%s]",
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
