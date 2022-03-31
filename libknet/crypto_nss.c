@@ -792,7 +792,7 @@ static int nsscrypto_init(
 	int savederrno;
 
 	log_debug(knet_h, KNET_SUB_NSSCRYPTO,
-		  "Initizializing nss crypto module [%s/%s]",
+		  "Initializing nss crypto module [%s/%s]",
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
