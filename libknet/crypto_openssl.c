@@ -606,7 +606,7 @@ static int opensslcrypto_init(
 #endif
 
 	log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO,
-		  "Initizializing openssl crypto module [%s/%s]",
+		  "Initializing openssl crypto module [%s/%s]",
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
