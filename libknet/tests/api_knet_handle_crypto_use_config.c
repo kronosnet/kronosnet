@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2020-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -22,7 +22,8 @@
 
 static void test(const char *model, const char *model2)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 
@@ -36,143 +37,50 @@ static void test(const char *model, const char *model2)
 	}
 
 	setup_logpipes(logfds);
-
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
-
-	flush_logs(logfds[0], stdout);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_handle_crypto_use_config with invalid config num\n");
-
-	if ((!knet_handle_crypto_use_config(knet_h, KNET_MAX_CRYPTO_INSTANCES + 1)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_use_config accepted invalid config num (%u) or returned incorrect error: %s\n", KNET_MAX_CRYPTO_INSTANCES + 1, strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, KNET_MAX_CRYPTO_INSTANCES + 1), EINVAL);
 
 	printf("Test knet_handle_crypto_use_config with un-initialized cfg\n");
-
-	if ((!knet_handle_crypto_use_config(knet_h, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_use_config accepted invalid un-initialized cfg (1): %d\n", errno);
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	if ((!knet_handle_crypto_use_config(knet_h, 2)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_use_config accepted invalid un-initialized cfg (2)\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, 1), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, 2), EINVAL);
 
 	printf("Test knet_handle_crypto_set_config with %s/aes128/sha1 and normal key\n", model);
-
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 1)) {
-		printf("knet_handle_crypto_set_config failed with correct config: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
 
 	printf("Test knet_handle_crypto_use_config with un-initialized cfg (part 2)\n");
-
-	if ((!knet_handle_crypto_use_config(knet_h, 2)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_use_config accepted invalid un-initialized cfg (2)\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	if ((knet_handle_crypto_use_config(knet_h, 1)) < 0) {
-		printf("knet_handle_crypto_use_config did not accept valid config (1)\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, 2), EINVAL);
+	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 1));
 
 	printf("Test knet_handle_crypto_set_config for second config with %s/aes128/sha1 and normal key\n", model);
-
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
-
-	if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 2)) {
-		printf("knet_handle_crypto_set_config failed with correct config: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 2));
 
 	printf("Test knet_handle_crypto_use_config with valid data\n");
-
-	if ((knet_handle_crypto_use_config(knet_h, 2)) < 0) {
-		printf("knet_handle_crypto_use_config did not accept valid config (1)\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	if (knet_h->crypto_in_use_config != 2) {
+	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 2));
+	if (knet_h1->crypto_in_use_config != 2) {
 		printf("knet_handle_crypto_set_config failed to set crypto in-use config to 2\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
 	printf("Shutdown crypto\n");
 
 	printf("Test knet_handle_crypto_use_config with valid data\n");
 
-	if ((knet_handle_crypto_use_config(knet_h, 0)) < 0) {
-		printf("knet_handle_crypto_use_config did not accept valid config (1)\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	if (knet_h->crypto_in_use_config != 0) {
+	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 0));
+	if (knet_h1->crypto_in_use_config != 0) {
 		printf("knet_handle_crypto_set_config failed to set crypto in-use config to 2\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
@@ -181,45 +89,18 @@ static void test(const char *model, const char *model2)
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "none", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
-	if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 1) < 0) {
-		printf("Unable to shutdown crypto: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	if (knet_h->crypto_instance[1]) {
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
+	if (knet_h1->crypto_instance[1]) {
 		printf("knet_handle_crypto_set_config failed to wipe first config but reported success\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
 
-	if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 2) < 0) {
-		printf("Unable to shutdown crypto: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	if (knet_h->crypto_instance[2]) {
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 2));
+	if (knet_h1->crypto_instance[2]) {
 		printf("knet_handle_crypto_set_config failed to wipe first config but reported success\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

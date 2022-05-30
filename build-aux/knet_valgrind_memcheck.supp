@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -631,4 +631,61 @@
   fun:SECMOD_LoadModule
   fun:SECMOD_LoadModule
   obj:/usr/lib64/libnss3.so
+}
+{
+  glibc2.34 dlopen internal memory leak
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  ...
+  fun:_dl_catch_exception
+  fun:_dl_catch_error
+  fun:_dlerror_run
+  fun:dlopen_implementation
+  fun:dlopen@@GLIBC_2.34
+}
+{
+  glibc2.34 dlopen internal memory leak
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  fun:_dl_find_object_update
+  ...
+  fun:_dl_catch_error
+  fun:_dlerror_run
+  fun:dlopen@@GLIBC_2.34
+}
+{
+  glibc2.34 dlopen internal memory leak
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  ...
+  fun:_rtld_catch_error
+  fun:_dlerror_run
+}
+{
+  glibc2.34
+  Memcheck:Cond
+  fun:strcmp
+  ...
+  fun:_rtld_catch_error
+  fun:_dlerror_run
+}
+{
+  powerpc specific leak (in crypto code)
+  Memcheck:Leak
+  match-leak-kinds: definite
+  fun:malloc
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
+  obj:*
 }

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2021 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2022 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -11,12 +11,11 @@ Upstream resources
 
 https://github.com/kronosnet/kronosnet/
 https://ci.kronosnet.org/
-https://trello.com/kronosnet (TODO list and activities tracking)
+https://projects.clusterlabs.org/project/board/86/ (TODO list and activities tracking)
 https://goo.gl/9ZvkLS (google shared drive)
-https://github.com/kronosnet/knet-ansible-ci
-https://lists.kronosnet.org/mailman/listinfo/users
-https://lists.kronosnet.org/mailman/listinfo/devel
-https://lists.kronosnet.org/mailman/listinfo/commits
+https://lists.kronosnet.org/mailman3/postorius/lists/users.lists.kronosnet.org/
+https://lists.kronosnet.org/mailman3/postorius/lists/devel.lists.kronosnet.org/
+https://lists.kronosnet.org/mailman3/postorius/lists/commits.lists.kronosnet.org/
 https://kronosnet.org/ (web 0.1 style)
 IRC: #kronosnet on Libera.Chat
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2022 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -288,7 +288,7 @@ static int compress_cfg(
 	}
 
 	log_debug(knet_h, KNET_SUB_COMPRESS,
-		  "Initizializing compress module [%s/%d/%u]",
+		  "Initializing compress module [%s/%d/%u]",
 		  knet_handle_compress_cfg->compress_model, knet_handle_compress_cfg->compress_level, knet_handle_compress_cfg->compress_threshold);
 
 	if (cmp_model > 0) {

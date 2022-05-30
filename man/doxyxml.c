@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2018-2022 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *

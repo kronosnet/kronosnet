@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -33,13 +33,13 @@ static void sock_notify(void *pvt_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0, old_channel = 0;
 
 	printf("Test knet_handle_get_channel incorrect knet_h\n");
-
 	if ((!knet_handle_get_channel(NULL, datafd, &channel)) || (errno != EINVAL)) {
 		printf("knet_handle_get_channel accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
@@ -47,92 +47,33 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_handle_get_channel with invalid datafd\n");
-
 	datafd = 0;
-
-	if ((!knet_handle_get_channel(knet_h, datafd, &channel)) || (errno != EINVAL)) {
-		printf("knet_handle_get_channel accepted invalid datafd or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_get_channel(knet_h1, datafd, &channel), EINVAL);
 
 	printf("Test knet_handle_get_channel with invalid channel\n");
-
 	datafd = 10;
-
-	if ((!knet_handle_get_channel(knet_h, datafd, NULL)) || (errno != EINVAL)) {
-		printf("knet_handle_get_channel accepted invalid channel or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_get_channel(knet_h1, datafd, NULL), EINVAL);
 
 	printf("Test knet_handle_get_channel with unconfigured datafd/channel\n");
-
 	datafd = 10;
-
-	if ((!knet_handle_get_channel(knet_h, datafd, &channel)) || (errno != EINVAL)) {
-		printf("knet_handle_get_channel accepted invalid channel or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_get_channel(knet_h1, datafd, &channel), EINVAL);
 
 	printf("Test knet_handle_get_channel with valid datafd\n");
-
-	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
-		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-        }
+	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 
 	datafd = 0;
 	old_channel = -1;
 
-	if (knet_handle_add_datafd(knet_h, &datafd, &old_channel) < 0) {
-		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &old_channel));
 
-	if (knet_handle_get_channel(knet_h, datafd, &channel) < 0) {
-		printf("knet_handle_get_channel failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
+	FAIL_ON_ERR(knet_handle_get_channel(knet_h1, datafd, &channel));
 	if (old_channel != channel) {
-		printf("knet_handle_get_channel got incorrect channel\n");
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
+		CLEAN_EXIT(FAIL);
 	}
-
-	flush_logs(logfds[0], stdout);
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

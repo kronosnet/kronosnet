@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2012-2021 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2012-2022 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -53,8 +53,9 @@ endif
 check-annocheck-libs:
 if HAS_ANNOCHECK
 	@echo Running annocheck libs test
-	if ! $(ANNOCHECK_EXEC) --skip-lto --quiet .libs/*.so; then \
-		$(ANNOCHECK_EXEC) --skip-lto --verbose .libs/*.so; \
+	TESTLIBS="$(shell find .libs/ -type f -name "*.so.*")"; \
+	if ! $(ANNOCHECK_EXEC) --skip-lto --quiet $$TESTLIBS; then \
+		$(ANNOCHECK_EXEC) --skip-lto --verbose $$TESTLIBS; \
 		echo annocheck libs test: FAILED; \
 		exit 1; \
 	else \
@@ -70,8 +71,9 @@ endif
 check-annocheck-bins:
 if HAS_ANNOCHECK
 	@echo Running annocheck binaries test
-	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --quiet .libs/*; then \
-		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --verbose .libs/*; \
+	TESTBINS="$(shell find .libs/ -type f)"; \
+	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --quiet $$TESTBINS; then \
+		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --verbose $$TESTBINS; \
 		echo annocheck binaries test: FAILED; \
 		exit 1; \
 	else \

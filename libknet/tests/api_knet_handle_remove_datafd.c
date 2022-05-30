@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -33,7 +33,8 @@ static void sock_notify(void *pvt_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h;
+	knet_handle_t knet_h1, knet_h[2];
+	int res;
 	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
@@ -47,70 +48,25 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	knet_h = knet_handle_start(logfds, KNET_LOG_DEBUG);
+	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_handle_remove_datafd with no datafd\n");
-
 	datafd = 0;
-
-	if ((!knet_handle_remove_datafd(knet_h, datafd)) || (errno != EINVAL)) {
-		printf("knet_handle_remove_datafd accepted invalid datafd or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_remove_datafd(knet_h1, datafd), EINVAL);
 
 	printf("Test knet_handle_remove_datafd with invalid datafd\n");
-
 	datafd = 10;
-
-	if ((!knet_handle_remove_datafd(knet_h, datafd)) || (errno != EINVAL)) {
-		printf("knet_handle_remove_datafd accepted invalid channel or returned incorrect error: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
+	FAIL_ON_SUCCESS(knet_handle_remove_datafd(knet_h1, datafd), EINVAL);
 
 	printf("Test knet_handle_remove_datafd with valid datafd\n");
-
-	if (knet_handle_enable_sock_notify(knet_h, &private_data, sock_notify) < 0) {
-		printf("knet_handle_enable_sock_notify failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-        }
-
+	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 	datafd = 0;
 	channel = -1;
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
 
-	if (knet_handle_add_datafd(knet_h, &datafd, &channel) < 0) {
-		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafd));
 
-	if (knet_handle_remove_datafd(knet_h, datafd) < 0) {
-		printf("knet_handle_remove_datafd failed: %s\n", strerror(errno));
-		knet_handle_free(knet_h);
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
-		exit(FAIL);
-	}
-
-	flush_logs(logfds[0], stdout);
-
-	knet_handle_free(knet_h);
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	CLEAN_EXIT(CONTINUE);
 }
 
 int main(int argc, char *argv[])

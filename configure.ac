@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2021 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2022 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
@@ -173,10 +173,7 @@ AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 # args. Global CPPFLAGS are ignored during this test.
 cc_supports_flag() {
 	saveCPPFLAGS="$CPPFLAGS"
-	CPPFLAGS="$@"
-	if echo $CC | grep -q clang; then
-		CPPFLAGS="-Werror $CPPFLAGS"
-	fi
+	CPPFLAGS="-Werror $@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],

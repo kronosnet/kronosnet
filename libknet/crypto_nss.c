@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2021 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2022 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -792,7 +792,7 @@ static int nsscrypto_init(
 	int savederrno;
 
 	log_debug(knet_h, KNET_SUB_NSSCRYPTO,
-		  "Initizializing nss crypto module [%s/%s]",
+		  "Initializing nss crypto module [%s/%s]",
 		  knet_handle_crypto_cfg->crypto_cipher_type,
 		  knet_handle_crypto_cfg->crypto_hash_type);
 
