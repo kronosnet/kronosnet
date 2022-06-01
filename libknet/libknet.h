@@ -967,7 +967,7 @@ struct knet_handle_stats {
 	uint64_t tx_compressed_size_bytes;
 	/** Average(mean) time take to compress transmitted packets */
 	uint64_t tx_compress_time_ave;
-	/** Minumum time taken to compress transmitted packets */
+	/** Minimum time taken to compress transmitted packets */
 	uint64_t tx_compress_time_min;
 	/** Maximum time taken to compress transmitted packets */
 	uint64_t tx_compress_time_max;
