@@ -963,7 +963,7 @@ struct knet_handle_stats {
 	uint64_t tx_compressed_packets;
 	/** Number of bytes sent (as if uncompressed, ie actual data bytes) */
 	uint64_t tx_compressed_original_bytes;
-	/** Number of bytes sent on the wire after compresion */
+	/** Number of bytes sent on the wire after compression */
 	uint64_t tx_compressed_size_bytes;
 	/** Average(mean) time take to compress transmitted packets */
 	uint64_t tx_compress_time_ave;
