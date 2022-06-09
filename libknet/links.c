@@ -123,7 +123,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 {
 	int savederrno = 0, err = 0, i, wipelink = 0, link_idx;
 	struct knet_host *host, *tmp_host;
-	struct knet_link *link;
+	struct knet_link *link = NULL;
 
 	if (!_is_valid_handle(knet_h)) {
 		return -1;
