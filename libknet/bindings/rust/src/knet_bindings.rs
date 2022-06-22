@@ -1,5 +1,5 @@
 // libknet interface for Rust
-// Copyright (c) 2021 Red Hat, Inc.
+// Copyright (c) 2021-2022 Red Hat, Inc.
 //
 // All rights reserved.
 //
@@ -25,7 +25,7 @@ use std::thread::spawn;
 use std::time::{Duration, SystemTime};
 use os_socketaddr::OsSocketAddr;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 /// The ID of a host known to knet.
 pub struct HostId {
     host_id: u16,
@@ -369,7 +369,7 @@ fn logging_thread(knet_pipe: i32, sender: Sender<LogMsg>)
 }
 
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(transparent)]
 /// a handle into the knet library, returned from [handle_new]
 pub struct Handle {
@@ -480,33 +480,30 @@ pub fn handle_enable_sock_notify(handle: Handle,
 				 private_data: u64,
 				 sock_notify_fn: Option<SockNotifyFn>) -> Result<()>
 {
-    let res = match HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	Some(h) => {
-	    h.sock_notify_private_data = private_data;
-	    h.sock_notify_fn = sock_notify_fn;
-	    match sock_notify_fn {
-		Some(_f) =>
-		    unsafe {
-			ffi::knet_handle_enable_sock_notify(handle.knet_handle as ffi::knet_handle_t,
-							    handle.knet_handle as *mut c_void,
-							    Some(rust_sock_notify_fn))
-		    },
-		None =>
-		    unsafe {
-			ffi::knet_handle_enable_sock_notify(handle.knet_handle as ffi::knet_handle_t,
-							    handle.knet_handle as *mut c_void,
-							    None)
-		    },
-	    }
-	},
-	None => return Err(Error::new(ErrorKind::Other, "Rust handle not found")),
-    };
-
-    if res == 0 {
-	Ok(())
-    } else {
-	Err(Error::last_os_error())
+    if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
+	h.sock_notify_private_data = private_data;
+	h.sock_notify_fn = sock_notify_fn;
+	let res = match sock_notify_fn {
+	    Some(_f) =>
+		unsafe {
+		    ffi::knet_handle_enable_sock_notify(handle.knet_handle as ffi::knet_handle_t,
+							handle.knet_handle as *mut c_void,
+							Some(rust_sock_notify_fn))
+		},
+	    None =>
+		unsafe {
+		    ffi::knet_handle_enable_sock_notify(handle.knet_handle as ffi::knet_handle_t,
+							handle.knet_handle as *mut c_void,
+							None)
+		},
+	};
+	if res == 0 {
+	    return Ok(());
+	} else {
+	    return Err(Error::last_os_error());
+	}
     }
+    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
 }
 
 /// Add a data FD to knet. if datafd is 0 then knet will allocate one for you.
@@ -570,7 +567,7 @@ pub fn handle_get_datafd(handle: Handle, channel: i8) -> Result<i32>
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DefragReclaimPolicy {
     Average = 0,
     Absolute = 1
@@ -711,34 +708,32 @@ pub fn handle_enable_filter(handle: Handle,
 			    private_data: u64,
 			    filter_fn: Option<FilterFn>) -> Result<()>
 {
-    let res = match HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	Some(h) => {
-	    h.filter_private_data = private_data;
-	    h.filter_fn = filter_fn;
-	    match filter_fn {
-		Some(_f) =>
-		    unsafe {
-			ffi::knet_handle_enable_filter(handle.knet_handle as ffi::knet_handle_t,
-						       handle.knet_handle as *mut c_void,
-						       Some(rust_filter_fn))
-		    },
-		None =>
-		    unsafe {
-			ffi::knet_handle_enable_filter(handle.knet_handle as ffi::knet_handle_t,
-						       handle.knet_handle as *mut c_void,
-						       None)
-		    },
-	    }
-	},
-
-	None => return Err(Error::new(ErrorKind::Other, "Rust handle not found")),
+    if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
+	h.filter_private_data = private_data;
+	h.filter_fn = filter_fn;
+	let res = match filter_fn {
+	    Some(_f) =>
+		unsafe {
+		    ffi::knet_handle_enable_filter(handle.knet_handle as ffi::knet_handle_t,
+						   handle.knet_handle as *mut c_void,
+						   Some(rust_filter_fn))
+		},
+	    None =>
+		unsafe {
+		    ffi::knet_handle_enable_filter(handle.knet_handle as ffi::knet_handle_t,
+						   handle.knet_handle as *mut c_void,
+						   None)
+		},
+	};
+        if res == 0 {
+	    return Ok(());
+	} else {
+	    return Err(Error::last_os_error());
+	}
     };
 
-    if res == 0 {
-	Ok(())
-    } else {
-	Err(Error::last_os_error())
-    }
+    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+
 }
 
 /// Set timer resolution
@@ -861,12 +856,11 @@ pub fn handle_enable_pmtud_notify(handle: Handle,
 				  private_data: u64,
 				  pmtud_notify_fn: Option<PmtudNotifyFn>) -> Result<()>
 {
-    let res = match HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	Some(h) => {
-	    h.pmtud_notify_private_data = private_data;
-	    h.pmtud_notify_fn = pmtud_notify_fn;
-	    match pmtud_notify_fn {
-		Some(_f) =>
+    if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
+	h.pmtud_notify_private_data = private_data;
+	h.pmtud_notify_fn = pmtud_notify_fn;
+	let res = match pmtud_notify_fn {
+	    Some(_f) =>
 		    unsafe {
 			ffi::knet_handle_enable_pmtud_notify(handle.knet_handle as ffi::knet_handle_t,
 							     handle.knet_handle as *mut c_void,
@@ -878,16 +872,14 @@ pub fn handle_enable_pmtud_notify(handle: Handle,
 							     handle.knet_handle as *mut c_void,
 							     None)
 		    },
-	    }
-	},
-	None => return Err(Error::new(ErrorKind::Other, "Rust handle not found")),
-    };
-
-    if res == 0 {
-	Ok(())
-    } else {
-	Err(Error::last_os_error())
+	};
+	if res == 0 {
+	    return Ok(());
+	} else {
+	    return Err(Error::last_os_error());
+	}
     }
+    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
 }
 
 /// Configure cryptographic seetings for packets being transmitted
@@ -1203,14 +1195,13 @@ pub fn handle_enable_onwire_ver_notify(handle: Handle,
 				       onwire_notify_fn: Option<OnwireNotifyFn>) -> Result<()>
 {
     // This looks a bit different to the other _enable*_notify calls because knet
-    // calls the calback function in the API. Which results in a deadlock with our
+    // calls the callback function in the API. Which results in a deadlock with our
     // own mutex
-    match HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	Some(h) => {
-	    h.onwire_notify_private_data = private_data;
-	    h.onwire_notify_fn = onwire_notify_fn;
-	},
-	None => return Err(Error::new(ErrorKind::Other, "Rust handle not found")),
+    if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
+	h.onwire_notify_private_data = private_data;
+	h.onwire_notify_fn = onwire_notify_fn;
+    } else {
+	return Err(Error::new(ErrorKind::Other, "Rust handle not found"));
     };
 
     let res = match onwire_notify_fn {
@@ -1400,7 +1391,7 @@ pub fn host_get_host_list(handle: Handle) -> Result<Vec<HostId>>
 }
 
 /// Link Policies for [host_set_policy]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum LinkPolicy {
     Passive,
     Active,
@@ -1509,33 +1500,30 @@ pub fn host_enable_status_change_notify(handle: Handle,
 					private_data: u64,
 					host_status_change_notify_fn: Option<HostStatusChangeNotifyFn>) -> Result<()>
 {
-    let res = match HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	Some(h) => {
-	    h.host_status_change_notify_private_data = private_data;
-	    h.host_status_change_notify_fn = host_status_change_notify_fn;
-	    match host_status_change_notify_fn {
-		Some(_f) =>
-		    unsafe {
-			ffi::knet_host_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
-								   handle.knet_handle as *mut c_void,
-								   Some(rust_host_status_change_notify_fn))
-		    },
-		None =>
-		    unsafe {
-			ffi::knet_host_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
-								   handle.knet_handle as *mut c_void,
-								   None)
-		    },
-	    }
-	},
-	None => return Err(Error::new(ErrorKind::Other, "Rust handle not found")),
-    };
-
-    if res == 0 {
-	Ok(())
-    } else {
-	Err(Error::last_os_error())
+    if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
+	h.host_status_change_notify_private_data = private_data;
+	h.host_status_change_notify_fn = host_status_change_notify_fn;
+	let res = match host_status_change_notify_fn {
+	    Some(_f) =>
+		unsafe {
+		    ffi::knet_host_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
+							       handle.knet_handle as *mut c_void,
+							       Some(rust_host_status_change_notify_fn))
+		},
+	    None =>
+		unsafe {
+		    ffi::knet_host_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
+							       handle.knet_handle as *mut c_void,
+							       None)
+		},
+	};
+	if res == 0 {
+	    return Ok(());
+	} else {
+	    return Err(Error::last_os_error());
+	}
     }
+    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
 }
 
 /// Transport types supported in knet
@@ -2022,33 +2010,31 @@ pub fn link_enable_status_change_notify(handle: Handle,
 					private_data: u64,
 					link_status_change_notify_fn: Option<LinkStatusChangeNotifyFn>) -> Result<()>
 {
-    let res = match HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	Some(h) => {
-	    h.link_status_change_notify_private_data = private_data;
-	    h.link_status_change_notify_fn = link_status_change_notify_fn;
-	    match link_status_change_notify_fn {
-		Some(_f) =>
-		    unsafe {
-			ffi::knet_link_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
-								   handle.knet_handle as *mut c_void,
-								   Some(rust_link_status_change_notify_fn))
-		    },
-		None =>
-		    unsafe {
-			ffi::knet_link_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
-								   handle.knet_handle as *mut c_void,
-								   None)
-		    },
-	    }
-	},
-	None => return Err(Error::new(ErrorKind::Other, "Rust handle not found")),
-    };
-
-    if res == 0 {
-	Ok(())
-    } else {
-	Err(Error::last_os_error())
+    if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
+	h.link_status_change_notify_private_data = private_data;
+	h.link_status_change_notify_fn = link_status_change_notify_fn;
+	let res = match link_status_change_notify_fn {
+	    Some(_f) =>
+		unsafe {
+		    ffi::knet_link_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
+							       handle.knet_handle as *mut c_void,
+							       Some(rust_link_status_change_notify_fn))
+		},
+	    None =>
+		unsafe {
+		    ffi::knet_link_enable_status_change_notify(handle.knet_handle as ffi::knet_handle_t,
+							       handle.knet_handle as *mut c_void,
+							       None)
+		},
+	};
+	if res == 0 {
+	    return Ok(());
+	} else {
+	    return Err(Error::last_os_error());
+	}
     }
+    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+
 }
 
 /// Link stats
