@@ -1,5 +1,5 @@
 // libnozzle interface for Rust
-// Copyright (c) 2021 Red Hat, Inc.
+// Copyright (c) 2021-2022 Red Hat, Inc.
 //
 // All rights reserved.
 //
@@ -17,7 +17,7 @@ use libc::free;
 use std::fmt;
 
 /// A handle into the nozzle library. Returned from [open] and needed for all other calls
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Handle {
     nozzle_handle: ffi::nozzle_t,
 }
