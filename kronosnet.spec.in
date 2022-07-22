@@ -441,6 +441,9 @@ Requires: libknet1-crypto-plugins-all%{_isa} = %{version}-%{release}
 Summary: Provides kronosnet test suite
 License: GPLv2+
 Requires: libknet1%{_isa} = %{version}-%{release}
+%if %{with libnozzle}
+Requires: libnozzle1%{_isa} = %{version}-%{release}
+%endif
 
 %description -n kronosnet-tests
  This package contains all the libknet and libnozzle test suite.
