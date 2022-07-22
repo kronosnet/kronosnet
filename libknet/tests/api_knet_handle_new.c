@@ -112,7 +112,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid 1, proper log_fd, proper log level (DEBUG)\n");
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	(void)knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 	CLEAN_EXIT(CONTINUE);
 }
 
