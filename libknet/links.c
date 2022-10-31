@@ -64,6 +64,10 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 
 	if (!connected) {
 		transport_link_is_down(knet_h, link);
+	} else {
+		/* Reset MTU in case new link can't use full line MTU */
+		log_info(knet_h, KNET_SUB_LINK, "Resetting MTU for link %u because host %u joined", link_id, host_id);
+		force_pmtud_run(knet_h, KNET_SUB_LINK, 1, 1);
 	}
 
 	if (lock_stats) {

@@ -145,7 +145,7 @@ static int crypto_use_config(
 		knet_h->sec_salt_size = 0;
 	}
 
-	force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1);
+	force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1, 0);
 
 	return 0;
 }
