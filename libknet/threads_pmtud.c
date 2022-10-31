@@ -761,7 +761,7 @@ int knet_handle_pmtud_set(knet_handle_t knet_h,
 
 	knet_h->manual_mtu = iface_mtu;
 
-	force_pmtud_run(knet_h, KNET_SUB_PMTUD, 0);
+	force_pmtud_run(knet_h, KNET_SUB_PMTUD, 0, 0);
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 

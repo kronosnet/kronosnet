@@ -37,13 +37,8 @@ int shutdown_in_progress(knet_handle_t knet_h)
 	return ret;
 }
 
-static int pmtud_reschedule(knet_handle_t knet_h)
+static int _pmtud_reschedule(knet_handle_t knet_h)
 {
-	if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
-		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
-		return -1;
-	}
-
 	if (knet_h->pmtud_running) {
 		knet_h->pmtud_abort = 1;
 
@@ -51,9 +46,20 @@ static int pmtud_reschedule(knet_handle_t knet_h)
 			pthread_cond_signal(&knet_h->pmtud_cond);
 		}
 	}
-
-	pthread_mutex_unlock(&knet_h->pmtud_mutex);
 	return 0;
+}
+
+static int pmtud_reschedule(knet_handle_t knet_h)
+{
+	int res;
+
+	if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
+		log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
+		return -1;
+	}
+	res = _pmtud_reschedule(knet_h);
+	pthread_mutex_unlock(&knet_h->pmtud_mutex);
+	return res;
 }
 
 int get_global_wrlock(knet_handle_t knet_h)
@@ -219,7 +225,7 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 	return 0;
 }
 
-void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu)
+void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu, uint8_t force_restart)
 {
 	if (reset_mtu) {
 		log_debug(knet_h, subsystem, "PMTUd has been reset to default");
@@ -242,6 +248,12 @@ void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu)
 			if (!knet_h->pmtud_forcerun) {
 				log_debug(knet_h, subsystem, "Notifying PMTUd to rerun");
 				knet_h->pmtud_forcerun = 1;
+			}
+		} else {
+			if (force_restart) {
+				if (_pmtud_reschedule(knet_h) < 0) {
+					log_info(knet_h, KNET_SUB_PMTUD, "Unable to notify PMTUd to reschedule. A joining node may struggle to connect properly");
+				}
 			}
 		}
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
