@@ -129,7 +129,7 @@ retry:
 		dst_link->status.stats.tx_ping_bytes += outlen;
 
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, KNET_SUB_HEARTBEAT, len, savederrno);
 			switch(err) {
 				case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
@@ -209,7 +209,7 @@ retry:
 		}
 		savederrno = errno;
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, KNET_SUB_HEARTBEAT, len, savederrno);
 			switch(err) {
 				case KNET_TRANSPORT_SOCK_ERROR_INTERNAL:
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,
