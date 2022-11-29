@@ -17,13 +17,13 @@ filter="$3"
 
 bindgen \
 	--size_t-is-usize \
-	--no-recursive-whitelist \
+	--no-recursive-allowlist \
 	--no-prepend-enum-name \
 	--no-layout-tests \
 	--no-doc-comments \
 	--generate functions,types,vars \
 	--fit-macro-constant-types \
-	--whitelist-var=$3.*  \
-	--whitelist-type=.* \
-	--whitelist-function=*. \
+	--allowlist-var=$3.*  \
+	--allowlist-type=.* \
+	--allowlist-function=.* \
 	$srcheader -o $dstrs
