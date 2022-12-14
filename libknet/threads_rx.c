@@ -674,7 +674,7 @@ retry_pong:
 			}
 			savederrno = errno;
 			if (len != outlen) {
-				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
+				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, KNET_SUB_RX, len, savederrno);
 				switch(err) {
 					case -1: /* unrecoverable error */
 						log_debug(knet_h, KNET_SUB_RX,
@@ -801,7 +801,7 @@ retry_pmtud:
 			}
 			savederrno = errno;
 			if (len != outlen) {
-				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, len, savederrno);
+				err = transport_tx_sock_error(knet_h, src_link->transport, src_link->outsock, KNET_SUB_RX, len, savederrno);
 				stats_err = pthread_mutex_lock(&src_link->link_stats_mutex);
 				if (stats_err < 0) {
 					log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));

@@ -399,7 +399,7 @@ typedef struct knet_transport_ops {
  *  1 retry
  *    any sleep or wait action should happen inside the transport code
  */
-	int (*transport_tx_sock_error)(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno);
+	int (*transport_tx_sock_error)(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno);
 
 /*
  * this function is called on _every_ received packet
