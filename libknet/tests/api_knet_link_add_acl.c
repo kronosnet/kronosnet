@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2019-2023 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
