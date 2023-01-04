@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2023 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -332,7 +332,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 					switch (sock_err->ee_origin) {
 						case SO_EE_ORIGIN_NONE: /* no origin */
 						case SO_EE_ORIGIN_LOCAL: /* local source (EMSGSIZE) */
-							if (sock_err->ee_errno == EMSGSIZE) {
+							if (sock_err->ee_errno == EMSGSIZE || sock_err->ee_errno == EPERM) {
 								if (pthread_mutex_lock(&knet_h->kmtu_mutex) != 0) {
 									log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Unable to get mutex lock");
 									knet_h->kernel_mtu = 0;
@@ -343,7 +343,7 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 									pthread_mutex_unlock(&knet_h->kmtu_mutex);
 								}
 
-								force_pmtud_run(knet_h, KNET_SUB_TRANSP_UDP, 0);
+								force_pmtud_run(knet_h, KNET_SUB_TRANSP_UDP, 0, 0);
 							}
 							/*
 							 * those errors are way too noisy
@@ -430,10 +430,11 @@ int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 	return 0;
 }
 
-int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno)
 {
 	if (recv_err < 0) {
-		if (recv_errno == EMSGSIZE) {
+		log_debug(knet_h, KNET_SUB_TRANSP_UDP, "tx_sock_error, subsys=%d, recv_err=%d, recv_errno=%d", subsys, recv_err, recv_errno);
+		if ((recv_errno == EMSGSIZE) || ((recv_errno == EPERM) && ((subsys == KNET_SUB_TX) || (subsys == KNET_SUB_PMTUD)))) {
 			read_errs_from_sock(knet_h, sockfd);
 			return 0;
 		}

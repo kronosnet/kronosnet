@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2023 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -321,7 +321,7 @@ static void _lock_sleep_relock(knet_handle_t knet_h)
 	assert(0);
 }
 
-int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno)
 {
 	sctp_connect_link_info_t *connect_info = knet_h->knet_transport_fd_tracker[sockfd].data;
 	sctp_accepted_link_info_t *accepted_info = knet_h->knet_transport_fd_tracker[sockfd].data;

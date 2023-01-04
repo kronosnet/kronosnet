@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2023 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -108,9 +108,9 @@ int transport_rx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd,
 	return transport_modules_cmd[transport].transport_rx_sock_error(knet_h, sockfd, recv_err, recv_errno);
 }
 
-int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int recv_err, int recv_errno)
+	int transport_tx_sock_error(knet_handle_t knet_h, uint8_t transport, int sockfd, int subsys, int recv_err, int recv_errno)
 {
-	return transport_modules_cmd[transport].transport_tx_sock_error(knet_h, sockfd, recv_err, recv_errno);
+	return transport_modules_cmd[transport].transport_tx_sock_error(knet_h, sockfd, subsys, recv_err, recv_errno);
 }
 
 int transport_rx_is_data(knet_handle_t knet_h, uint8_t transport, int sockfd, struct knet_mmsghdr *msg)

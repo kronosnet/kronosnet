@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2017-2022 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2017-2023 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -15,9 +15,9 @@ input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp |grep -v update-copyrigh
 for i in $input; do
 	startdate=$(git log --follow "$i" | grep ^Date: | tail -n 1 | awk '{print $6}')
 	if [ "$startdate" != "$enddate" ]; then
-		sed -i -e 's#Copyright (C).*Red Hat#Copyright (C) '$startdate'-'$enddate' Red Hat#g' $i
+		sed -i -e 's#[Cc]opyright ([Cc]).*Red Hat#Copyright (C) '$startdate'-'$enddate' Red Hat#g' $i
 	else
-		sed -i -e 's#Copyright (C).*Red Hat#Copyright (C) '$startdate' Red Hat#g' $i
+		sed -i -e 's#[Cc]opyright ([Cc]).*Red Hat#Copyright (C) '$startdate' Red Hat#g' $i
 	fi
 done
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2015-2023 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -111,7 +111,7 @@ retry:
 		dst_link->status.stats.tx_ping_bytes += outlen;
 
 		if (len != outlen) {
-			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
+			err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, KNET_SUB_HEARTBEAT, len, savederrno);
 			switch(err) {
 				case -1: /* unrecoverable error */
 					log_debug(knet_h, KNET_SUB_HEARTBEAT,

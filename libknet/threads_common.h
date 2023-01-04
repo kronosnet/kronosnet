@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2023 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -51,6 +51,6 @@ int set_thread_flush_queue(knet_handle_t knet_h, uint8_t thread_id, uint8_t stat
 int wait_all_threads_flush_queue(knet_handle_t knet_h);
 int set_thread_status(knet_handle_t knet_h, uint8_t thread_id, uint8_t status);
 int wait_all_threads_status(knet_handle_t knet_h, uint8_t status);
-void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu);
+void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu, uint8_t force_restart);
 
 #endif

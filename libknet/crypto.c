@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2012-2023 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -144,7 +144,7 @@ static int crypto_use_config(
 		knet_h->sec_salt_size = 0;
 	}
 
-	force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1);
+	force_pmtud_run(knet_h, KNET_SUB_CRYPTO, 1, 0);
 
 	return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2017-2023 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -59,7 +59,7 @@ int loopback_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_
 	return 0;
 }
 
-int loopback_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+int loopback_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno)
 {
 	return 0;
 }

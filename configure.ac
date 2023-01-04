@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2022 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2023 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
@@ -64,7 +64,7 @@ AC_PROG_GREP
 AC_PROG_SED
 AC_PROG_CPP
 AC_PROG_CC
-AC_PROG_CC_C99
+m4_version_prereq([2.70], [:], [AC_PROG_CC_C99])
 if test "x$ac_cv_prog_cc_c99" = "xno"; then
 	AC_MSG_ERROR(["C99 support is required"])
 fi

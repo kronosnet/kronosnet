@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2023 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -112,7 +112,7 @@ static void test(void)
 
 	printf("Test knet_handle_new hostid 1, proper log_fd, proper log level (DEBUG)\n");
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	(void)knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 	CLEAN_EXIT(CONTINUE);
 }
 

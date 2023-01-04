@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2015-2023 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -228,7 +228,7 @@ retry:
 
 	kernel_mtu = 0;
 
-	err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, len, savederrno);
+	err = transport_tx_sock_error(knet_h, dst_link->transport, dst_link->outsock, KNET_SUB_PMTUD, len, savederrno);
 	switch(err) {
 		case -1: /* unrecoverable error */
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to send pmtu packet (sendto): %d %s", savederrno, strerror(savederrno));
@@ -249,7 +249,7 @@ retry:
 
 	if (len != (ssize_t )data_len) {
 		pthread_mutex_unlock(&dst_link->link_stats_mutex);
-		if (savederrno == EMSGSIZE) {
+		if (savederrno == EMSGSIZE || savederrno == EPERM) {
 			/*
 			 * we cannot hold a lock on kmtu_mutex between resetting
 			 * knet_h->kernel_mtu and here.
@@ -761,7 +761,7 @@ int knet_handle_pmtud_set(knet_handle_t knet_h,
 
 	knet_h->manual_mtu = iface_mtu;
 
-	force_pmtud_run(knet_h, KNET_SUB_PMTUD, 0);
+	force_pmtud_run(knet_h, KNET_SUB_PMTUD, 0, 0);
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 

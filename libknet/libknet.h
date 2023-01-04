@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2022 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2023 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -19,7 +19,7 @@
 /**
  * @file libknet.h
  * @brief kronosnet API include file
- * @copyright Copyright (C) 2010-2022 Red Hat, Inc.  All rights reserved.
+ * @copyright Copyright (C) 2010-2023 Red Hat, Inc.  All rights reserved.
  *
  * Kronosnet is an advanced VPN system for High Availability applications.
  */
@@ -943,11 +943,11 @@ struct knet_handle_stats {
 	uint64_t tx_compressed_packets;
 	/** Number of bytes sent (as if uncompressed, ie actual data bytes) */
 	uint64_t tx_compressed_original_bytes;
-	/** Number of bytes sent on the wire after compresion */
+	/** Number of bytes sent on the wire after compression */
 	uint64_t tx_compressed_size_bytes;
 	/** Average(mean) time take to compress transmitted packets */
 	uint64_t tx_compress_time_ave;
-	/** Minumum time taken to compress transmitted packets */
+	/** Minimum time taken to compress transmitted packets */
 	uint64_t tx_compress_time_min;
 	/** Maximum time taken to compress transmitted packets */
 	uint64_t tx_compress_time_max;
