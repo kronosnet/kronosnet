@@ -87,7 +87,7 @@ fn string_from_bytes(bytes: *const ::std::os::raw::c_char, max_length: usize) ->
     }
 
 
-    let cs = CString::new(&newbytes[0..length as usize])?;
+    let cs = CString::new(&newbytes[0..length])?;
 
     // This is just to convert the error type
     match cs.into_string() {

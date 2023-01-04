@@ -1913,7 +1913,7 @@ pub fn link_get_ping_timers(handle: Handle, host_id: &HostId, link_id: u8) -> Re
 				       &mut c_interval, &mut c_timeout, &mut c_precision)
     };
     if res == 0 {
-	Ok((c_interval as i64, c_timeout as i64, c_precision))
+	Ok((c_interval, c_timeout, c_precision))
     } else {
 	Err(Error::last_os_error())
     }
