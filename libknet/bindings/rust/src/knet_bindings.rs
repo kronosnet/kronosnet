@@ -1748,6 +1748,15 @@ impl AclCheckType {
 fn make_new_sockaddr_storage(ss: &SocketAddr) -> ffi::sockaddr_storage
 {
     // A blank one
+#[cfg(any(target_os="freebsd"))]
+    let mut new_ss = ffi::sockaddr_storage {
+	ss_family: 0,
+	ss_len: 0,
+	__ss_pad1: [0; 6],
+	__ss_align: 0,
+	__ss_pad2: [0; 112],
+    };
+#[cfg(any(target_os="linux"))]
     let mut new_ss = ffi::sockaddr_storage {
 	ss_family: 0,
 	__ss_padding: [0; 118],
