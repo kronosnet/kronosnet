@@ -54,9 +54,9 @@ int loopback_transport_init(knet_handle_t knet_h)
 	return 0;
 }
 
-int loopback_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+transport_sock_error_t loopback_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
-	return 0;
+	return KNET_TRANSPORT_SOCK_ERROR_IGNORE;
 }
 
 transport_sock_error_t loopback_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno)

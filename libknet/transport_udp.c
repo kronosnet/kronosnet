@@ -422,12 +422,12 @@ static int read_errs_from_sock(knet_handle_t knet_h, int sockfd)
 }
 #endif
 
-int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
+transport_sock_error_t udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, int recv_errno)
 {
 	if (recv_errno == EAGAIN) {
 		read_errs_from_sock(knet_h, sockfd);
 	}
-	return 0;
+	return KNET_TRANSPORT_SOCK_ERROR_IGNORE;
 }
 
 transport_sock_error_t udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno)
