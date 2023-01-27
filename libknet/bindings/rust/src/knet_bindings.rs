@@ -362,7 +362,7 @@ fn logging_thread(knet_pipe: i32, sender: Sender<LogMsg>)
 		handle: Handle{knet_handle: logbuf.knet_h as u64}};
 
 	    if let Err(e) = sender.send(rmsg) {
-		println!("Error sending log message: {}", e);
+		println!("Error sending log message: {e}");
 	    }
 	}
     }
@@ -2131,11 +2131,11 @@ impl fmt::Display for LinkStats {
 	// and I don't want to add dependancies here for printing as it
 	// mostly going to be the client's responsibility, so use the Debug option
 	for i in &self.last_up_times {
-	    write!(f, "{:?}", i)?;
+	    write!(f, "{i:?}")?;
 	}
 	write!(f, " Last down times: ")?;
 	for i in &self.last_down_times {
-	    write!(f, "{:?}", i)?;
+	    write!(f, "{i:?}")?;
 	}
 	Ok(())
     }
