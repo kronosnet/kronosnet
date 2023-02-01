@@ -319,7 +319,7 @@ if test "x$enable_rust_bindings" = "xyes"; then
 
 	AC_PATH_PROG([RUSTFMT], [rustfmt], [no])
 	if test "x$RUSTFMT" = xno; then
-		AC_MSG_WARN(["rustfmt command not found (optional)"])
+		AC_MSG_ERROR(["rustfmt command not found (optional)"])
 	fi
 fi
 
