@@ -16,7 +16,6 @@ dstrs="$2"
 filter="$3"
 
 bindgen \
-	--size_t-is-usize \
 	--no-prepend-enum-name \
 	--no-layout-tests \
 	--no-doc-comments \
