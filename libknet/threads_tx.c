@@ -104,14 +104,12 @@ retry:
 				} else {
 					progress = 0;
 				}
-#ifdef DEBUG
-				log_debug(knet_h, KNET_SUB_TX, "Unable to send all (%d/%d) data packets to host %s (%u) link %s:%s (%u)",
+				log_trace(knet_h, KNET_SUB_TX, "Unable to send all (%d/%d) data packets to host %s (%u) link %s:%s (%u)",
 					  sent_msgs, msg_idx,
 					  dst_host->name, dst_host->host_id,
 					  dst_host->link[dst_host->active_links[link_idx]].status.dst_ipaddr,
 					  dst_host->link[dst_host->active_links[link_idx]].status.dst_port,
 					  dst_host->link[dst_host->active_links[link_idx]].link_id);
-#endif
 				goto retry;
 			}
 			if (!progress) {

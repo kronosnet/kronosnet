@@ -2409,6 +2409,7 @@ pub enum LogLevel {
     Warn,
     Info,
     Debug,
+    Trace,
 }
 impl LogLevel {
     pub fn new(level: u8) -> LogLevel {
@@ -2416,7 +2417,8 @@ impl LogLevel {
 	    0 => LogLevel::Err,
 	    1 => LogLevel::Warn,
 	    2 => LogLevel::Info,
-	    _ => LogLevel::Debug, // 3=Debug, but default anything to it too
+	    3 => LogLevel::Debug,
+	    _ => LogLevel::Trace // 4=Trace, but default anything to it too
 	}
     }
     pub fn to_u8(self: &LogLevel) -> u8
@@ -2426,6 +2428,7 @@ impl LogLevel {
 	    LogLevel::Warn => 1,
 	    LogLevel::Info => 2,
 	    LogLevel::Debug => 3,
+	    LogLevel::Trace => 4,
 	}
     }
 }
@@ -2436,6 +2439,7 @@ impl fmt::Display for LogLevel {
 	    LogLevel::Warn => write!(f, "Warn"),
 	    LogLevel::Info => write!(f, "Info"),
 	    LogLevel::Debug => write!(f, "Debug"),
+	    LogLevel::Trace => write!(f, "Trace"),
 	}
     }
 }

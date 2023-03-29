@@ -760,6 +760,14 @@ fn test_metadata_calls(handle: knet::Handle, host: &knet::HostId) -> Result<()>
 	}
     }
 
+    match knet::log_get_loglevel_id("TRACE") {
+	Ok(n) => println!("loglevel ID for TRACE is {n}"),
+	Err(e) => {
+	    println!("knet_log_get_loglevel_id (Trace) failed: {e:?}");
+	    return Err(e);
+	}
+    }
+
     match knet::log_get_loglevel_name(1) {
 	Ok(n) => println!("loglevel name for 1 is {n}"),
 	Err(e) => {
