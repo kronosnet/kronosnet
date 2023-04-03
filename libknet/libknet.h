@@ -2592,13 +2592,14 @@ const char *knet_log_get_subsystem_name(uint8_t subsystem);
 uint8_t knet_log_get_subsystem_id(const char *name);
 
 /*
- * 4 log levels are enough for everybody
+ * 5 log levels are enough for everybody
  */
 
 #define KNET_LOG_ERR         0 /* unrecoverable errors/conditions */
 #define KNET_LOG_WARN        1 /* recoverable errors/conditions */
 #define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
 #define KNET_LOG_DEBUG       3
+#define KNET_LOG_TRACE       4
 
 /*
  * Convert between log level values and names
