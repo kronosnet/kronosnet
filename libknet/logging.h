@@ -35,4 +35,7 @@ log_msg_t LOG_MSG;
 #define log_debug(knet_h, subsys, fmt, args...) \
 	LOG_MSG(knet_h, subsys, KNET_LOG_DEBUG, fmt, ##args)
 
+#define log_trace(knet_h, subsys, fmt, args...) \
+	LOG_MSG(knet_h, subsys, KNET_LOG_TRACE, fmt, ##args)
+
 #endif

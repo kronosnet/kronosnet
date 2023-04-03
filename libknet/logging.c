@@ -99,19 +99,20 @@ static int is_valid_subsystem(uint8_t subsystem)
 	return -1;
 }
 
-static struct pretty_names loglevel_names[KNET_LOG_DEBUG + 1] =
+static struct pretty_names loglevel_names[KNET_LOG_TRACE + 1] =
 {
 	{ "ERROR", KNET_LOG_ERR },
 	{ "WARNING", KNET_LOG_WARN },
 	{ "info", KNET_LOG_INFO },
-	{ "debug", KNET_LOG_DEBUG }
+	{ "debug", KNET_LOG_DEBUG },
+	{ "trace", KNET_LOG_TRACE }
 };
 
 const char *knet_log_get_loglevel_name(uint8_t level)
 {
 	unsigned int i;
 
-	for (i = 0; i <= KNET_LOG_DEBUG; i++) {
+	for (i = 0; i <= KNET_LOG_TRACE; i++) {
 		if (loglevel_names[i].val == level) {
 			errno = 0;
 			return loglevel_names[i].name;
@@ -124,7 +125,7 @@ uint8_t knet_log_get_loglevel_id(const char *name)
 {
 	unsigned int i;
 
-	for (i = 0; i <= KNET_LOG_DEBUG; i++) {
+	for (i = 0; i <= KNET_LOG_TRACE; i++) {
 		if (strcasecmp(name, loglevel_names[i].name) == 0) {
 			errno = 0;
 			return loglevel_names[i].val;
@@ -147,7 +148,7 @@ int knet_log_set_loglevel(knet_handle_t knet_h, uint8_t subsystem,
 		return -1;
 	}
 
-	if (level > KNET_LOG_DEBUG) {
+	if (level > KNET_LOG_TRACE) {
 		errno = EINVAL;
 		return -1;
 	}

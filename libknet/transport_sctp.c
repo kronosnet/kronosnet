@@ -344,9 +344,7 @@ int sctp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, i
 				break;
 		}
 		if (recv_errno == EAGAIN) {
-#ifdef DEBUG
-			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
-#endif
+			log_trace(knet_h, KNET_SUB_TRANSP_SCTP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 			_lock_sleep_relock(knet_h);
 			return 1;
 		}
