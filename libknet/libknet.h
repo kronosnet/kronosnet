@@ -511,6 +511,8 @@ int knet_send_sync(knet_handle_t knet_h,
  *                                           packet
  *            knet_node_id_t *dst_host_ids - array of KNET_MAX_HOST knet_node_id_t
  *                                           where to store the destinations
+ *                                           (uninitialized by caller, callee should never
+ *                                           read it)
  *            size_t *dst_host_ids_entries - number of hosts to send the message
  *
  * dst_host_filter_fn should return

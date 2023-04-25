@@ -420,8 +420,6 @@ static int _get_data_dests(knet_handle_t knet_h, unsigned char* data, size_t inl
 	struct knet_host *dst_host;
 	size_t host_idx;
 
-	memset(dst_host_ids_temp, 0, sizeof(dst_host_ids_temp));
-
 	if (knet_h->dst_host_filter_fn) {
 		*bcast = knet_h->dst_host_filter_fn(
 				knet_h->dst_host_filter_fn_private_data,
@@ -615,7 +613,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	data_checksum = compute_chksum(data, inlen);
 #endif
 
-	memset(dst_host_ids, 0, sizeof(dst_host_ids));
 	err = _get_data_dests(knet_h, data, inlen,
 			      &channel, &bcast, &send_local,
 			      dst_host_ids, &dst_host_ids_entries,
