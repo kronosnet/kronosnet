@@ -177,9 +177,6 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 		goto out_unlock;
 	}
 
-	memset(dst_host_ids_temp, 0, sizeof(dst_host_ids_temp));
-	memset(dst_host_ids, 0, sizeof(dst_host_ids));
-
 	/*
 	 * move this into a separate function to expand on
 	 * extra switching rules
