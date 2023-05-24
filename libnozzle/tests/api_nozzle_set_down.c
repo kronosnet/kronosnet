@@ -51,7 +51,7 @@ static int test(void)
 		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q UP", nozzle->name);
+	         "ifconfig %s | sed -e 's/LOWER_UP/GROT/' | grep -q UP", nozzle->name);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
@@ -80,7 +80,7 @@ static int test(void)
 		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
 #ifdef KNET_BSD
-		 "ifconfig %s | grep -q UP", nozzle->name);
+	         "ifconfig %s | sed -e 's/LOWER_UP/GROT/' | grep -q UP", nozzle->name);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
