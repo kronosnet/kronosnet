@@ -29,9 +29,9 @@ RUST_SHIP_SRCS		= \
 RUST_BUILT_SRCS		= \
 			  src/sys/libnozzle.rs
 
-src/sys/libnozzle.rs: ../../libnozzle.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ NOZZLE
+src/sys/libnozzle.rs: cargo-tree-prep ../../libnozzle.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/libnozzle/libnozzle.h $@ NOZZLE
 
-all-local: cargo-tree-prep target/$(RUST_TARGET_DIR)/nozzle_bindings.rlib
+all-local: target/$(RUST_TARGET_DIR)/nozzle_bindings.rlib
 
 clean-local: cargo-clean

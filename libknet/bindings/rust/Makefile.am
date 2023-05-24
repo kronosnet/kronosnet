@@ -29,9 +29,9 @@ RUST_SHIP_SRCS		= \
 RUST_BUILT_SRCS		= \
 			  src/sys/libknet.rs
 
-src/sys/libknet.rs: ../../libknet.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ KNET
+src/sys/libknet.rs: cargo-tree-prep ../../libknet.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/libknet/libknet.h $@ KNET
 
-all-local: cargo-tree-prep target/$(RUST_TARGET_DIR)/knet_bindings.rlib
+all-local: target/$(RUST_TARGET_DIR)/knet_bindings.rlib
 
 clean-local: cargo-clean
