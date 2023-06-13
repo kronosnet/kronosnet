@@ -399,7 +399,7 @@ if test "x${enable_debug}" = xyes; then
 	RUST_TARGET_DIR="debug"
 else
 	OPT_CFLAGS="-O3"
-	FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=2"
+	FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=3"
 	RUST_FLAGS="--release"
 	RUST_TARGET_DIR="release"
 fi
