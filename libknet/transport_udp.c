@@ -433,7 +433,7 @@ int udp_transport_rx_sock_error(knet_handle_t knet_h, int sockfd, int recv_err, 
 int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, int recv_err, int recv_errno)
 {
 	if (recv_err < 0) {
-		log_debug(knet_h, KNET_SUB_TRANSP_UDP, "tx_sock_error, subsys=%d, recv_err=%d, recv_errno=%d", subsys, recv_err, recv_errno);
+		log_trace(knet_h, KNET_SUB_TRANSP_UDP, "tx_sock_error, subsys=%s, recv_err=%d: %s", knet_log_get_subsystem_name(subsys), recv_err, strerror(recv_errno));
 		if ((recv_errno == EMSGSIZE) || ((recv_errno == EPERM) && ((subsys == KNET_SUB_TX) || (subsys == KNET_SUB_PMTUD)))) {
 			read_errs_from_sock(knet_h, sockfd);
 			return 0;
@@ -441,17 +441,13 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, in
 		if ((recv_errno == EINVAL) || (recv_errno == EPERM) ||
 		    (recv_errno == ENETUNREACH) || (recv_errno == ENETDOWN) ||
 		    (recv_errno == EHOSTUNREACH)) {
-#ifdef DEBUG
 			if ((recv_errno == ENETUNREACH) || (recv_errno == ENETDOWN)) {
-				log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable.", sockfd);
+				log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is unreachable.", sockfd);
 			}
-#endif
 			return -1;
 		}
 		if ((recv_errno == ENOBUFS) || (recv_errno == EAGAIN)) {
-#ifdef DEBUG
-			log_debug(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
-#endif
+			log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Sock: %d is overloaded. Slowing TX down", sockfd);
 			usleep(KNET_THREADS_TIMERES / 16);
 		} else {
 			read_errs_from_sock(knet_h, sockfd);
