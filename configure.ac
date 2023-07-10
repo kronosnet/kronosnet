@@ -188,7 +188,13 @@ cc_supports_flag() {
 	saveCPPFLAGS="$CPPFLAGS"
 	CPPFLAGS="-Werror $@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <stdio.h>], [
+			   #ifdef __USE_FORTIFY_LEVEL
+			   printf("%d\n", __USE_FORTIFY_LEVEL)
+			   #else
+			   printf("hello world\n")
+			   #endif
+			  ])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
 	CPPFLAGS="$saveCPPFLAGS"
@@ -394,12 +400,10 @@ AC_SUBST([TESTDIR])
 if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
 	OPT_CFLAGS="-O0"
-	FORTIFY_CFLAGS=""
 	RUST_FLAGS=""
 	RUST_TARGET_DIR="debug"
 else
 	OPT_CFLAGS="-O3"
-	FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=2"
 	RUST_FLAGS="--release"
 	RUST_TARGET_DIR="release"
 fi
@@ -415,7 +419,17 @@ if test "x${enable_hardening}" = xyes; then
 		annocheck=yes
 	fi
 
-	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie $FORTIFY_CFLAGS -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
+	FORTIFY_CFLAGS=""
+	if test "x${enable_debug}" != xyes; then
+		for j in 3 2; do
+			FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=$j"
+			if cc_supports_flag "$OPT_CFLAGS $FORTIFY_CFLAGS"; then
+				break
+			fi
+		done
+	fi
+
+	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
 	HARDENING_CFLAGS="-fstack-clash-protection -fcf-protection=full -mcet -mstackrealign"
 	EXTRA_HARDENING_CFLAGS=""
 
@@ -434,6 +448,8 @@ if test "x${enable_hardening}" = xyes; then
 			EXTRA_HARDENING_CFLAGS="$EXTRA_HARDENING_CFLAGS $j"
 		fi
 	done
+
+	EXTRA_HARDENING_CFLAGS="$EXTRA_HARDENING_CFLAGS $FORTIFY_CFLAGS"
 
 	# check if annocheck binary is available
 	if test "x${annocheck}" = xyes; then
