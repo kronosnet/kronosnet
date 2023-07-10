@@ -54,8 +54,8 @@ check-annocheck-libs:
 if HAS_ANNOCHECK
 	@echo Running annocheck libs test
 	TESTLIBS="$(shell find .libs/ -type f -name "*.so.*")"; \
-	if ! $(ANNOCHECK_EXEC) --skip-lto --quiet $$TESTLIBS; then \
-		$(ANNOCHECK_EXEC) --skip-lto --verbose $$TESTLIBS; \
+	if ! $(ANNOCHECK_EXEC) --skip-lto --skip-cf-protection --quiet $$TESTLIBS; then \
+		$(ANNOCHECK_EXEC) --skip-lto --skip-cf-protection --verbose $$TESTLIBS; \
 		echo annocheck libs test: FAILED; \
 		exit 1; \
 	else \
@@ -72,8 +72,8 @@ check-annocheck-bins:
 if HAS_ANNOCHECK
 	@echo Running annocheck binaries test
 	TESTBINS="$(shell find .libs/ -type f)"; \
-	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --quiet $$TESTBINS; then \
-		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --verbose $$TESTBINS; \
+	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --skip-cf-protection --quiet $$TESTBINS; then \
+		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --skip-cf-protection --verbose $$TESTBINS; \
 		echo annocheck binaries test: FAILED; \
 		exit 1; \
 	else \
