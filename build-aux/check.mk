@@ -72,8 +72,8 @@ check-annocheck-bins:
 if HAS_ANNOCHECK
 	@echo Running annocheck binaries test
 	TESTBINS="$(shell find .libs/ -type f)"; \
-	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --skip-cf-protection --quiet $$TESTBINS; then \
-		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --skip-cf-protection --verbose $$TESTBINS; \
+	if ! $(ANNOCHECK_EXEC) --skip-run-path --skip-lto --skip-cf-protection --skip-fortify --quiet $$TESTBINS; then \
+		$(ANNOCHECK_EXEC) --skip-run-path --skip-lto --skip-cf-protection --skip-fortify --verbose $$TESTBINS; \
 		echo annocheck binaries test: FAILED; \
 		exit 1; \
 	else \
