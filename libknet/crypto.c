@@ -150,6 +150,56 @@ static int crypto_use_config(
 	return 0;
 }
 
+/*
+ * Try crypt and decrypt operation of buffer of pingbuf size (= simulate ping) and check
+ * if decrypted buffer equals to input buffer.
+ */
+static int crypto_try_new_crypto_instance(
+	knet_handle_t knet_h,
+	struct crypto_instance *test_instance)
+{
+	unsigned char testbuf[KNET_HEADER_ALL_SIZE];
+	unsigned char cryptbuf[KNET_DATABUFSIZE_CRYPT];
+	unsigned char decryptbuf[KNET_DATABUFSIZE_CRYPT];
+	ssize_t crypt_outlen, decrypt_outlen;
+	int err;
+
+	log_debug(knet_h, KNET_SUB_CRYPTO, "Testing if model crypt and decrypt works");
+
+	/*
+	 * ASCII 'U' = 0x55 = 01010101
+	 */
+	memset(testbuf, 'U', sizeof(testbuf));
+	memset(cryptbuf, 0, sizeof(cryptbuf));
+	memset(decryptbuf, 0, sizeof(testbuf));
+
+	err = crypto_modules_cmds[test_instance->model].ops->crypt(knet_h, test_instance, testbuf, sizeof(testbuf), cryptbuf, &crypt_outlen);
+	if (err) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Test of crypt operation failed - unsupported crypto module parameters");
+		return err;
+	}
+
+	err = crypto_modules_cmds[test_instance->model].ops->decrypt(knet_h, test_instance, cryptbuf, crypt_outlen, decryptbuf, &decrypt_outlen, KNET_LOG_ERR);
+	if (err) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Test of decrypt operation failed - unsupported crypto module parameters");
+		return err;
+	}
+
+	if (decrypt_outlen != sizeof(testbuf)) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Test of decrypt operation failed - returned length doesn't match input length");
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (memcmp(testbuf, decryptbuf, decrypt_outlen) != 0) {
+		log_err(knet_h, KNET_SUB_CRYPTO, "Test of decrypt operation failed - returned buffer doesn't match input buffer");
+		errno = EINVAL;
+		return -1;
+	}
+
+	return err;
+}
+
 static int crypto_init(
 	knet_handle_t knet_h,
 	struct knet_handle_crypto_cfg *knet_handle_crypto_cfg,
@@ -223,6 +273,12 @@ static int crypto_init(
 	if (crypto_modules_cmds[model].ops->init(knet_h, new, knet_handle_crypto_cfg)) {
 		savederrno = errno;
 		err = -1;
+		goto out;
+	}
+
+	err = crypto_try_new_crypto_instance(knet_h, new);
+	if (err) {
+		savederrno = errno;
 		goto out;
 	}
 
