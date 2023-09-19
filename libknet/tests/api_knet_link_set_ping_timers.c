@@ -68,8 +68,13 @@ static void test(void)
 	printf("Test knet_link_set_ping_timers with unconfigured link\n");
 	FAIL_ON_SUCCESS(knet_link_set_ping_timers(knet_h1, 1, 0, 1000, 2000, 2048), EINVAL);
 
-	printf("Test knet_link_set_ping_timers with correct values\n");
+	printf("Configure link");
 	FAIL_ON_ERR(knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0));
+
+	printf("Test knet_link_set_ping_timers with too small timeout\n");
+	FAIL_ON_SUCCESS(knet_link_set_ping_timers(knet_h1, 1, 0, 1000, (knet_h1->threads_timer_res / 2000), 2048), EINVAL);
+
+	printf("Test knet_link_set_ping_timers with correct values\n");
 	FAIL_ON_ERR(knet_link_set_ping_timers(knet_h1, 1, 0, 1000, 2000, 2048));
 	if ((knet_h1->host_index[1]->link[0].ping_interval != 1000000) ||
 	    (knet_h1->host_index[1]->link[0].pong_timeout != 2000000) ||
