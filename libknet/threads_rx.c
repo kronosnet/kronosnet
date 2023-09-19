@@ -609,6 +609,17 @@ retry:
 	return 0;
 }
 
+static int _fast_data_up(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link)
+{
+	if (src_link->received_pong) {
+		log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received data during valid ping/pong activity. Force link up.", src_host->host_id, src_link->link_id);
+		_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1, 0);
+		return 1;
+	}
+	// host is not eligible for fast data up
+	return 0;
+}
+
 static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link, struct knet_header *inbuf, ssize_t len, uint64_t decrypt_time)
 {
 	int8_t channel;
@@ -674,8 +685,10 @@ static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, stru
 	}
 
 	if (!src_host->status.reachable) {
-		log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
-		return;
+		if (!_fast_data_up(knet_h, src_host, src_link)) {
+			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
+			return;
+		}
 	}
 
 	if (knet_h->enabled != 1) /* data forward is disabled */
