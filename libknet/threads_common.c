@@ -264,7 +264,10 @@ void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu,
 int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
 				      useconds_t timeres)
 {
-	int savederrno = 0;
+	int savederrno = 0, err = 0;
+	struct knet_host *host;
+	int link_idx;
+	int found = 0;
 
 	if (!_is_valid_handle(knet_h)) {
 		return -1;
@@ -289,6 +292,31 @@ int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
 	}
 
 	if (timeres) {
+		if (timeres > knet_h->threads_timer_res) {
+			for (host = knet_h->host_head; host != NULL; host = host->next) {
+				for (link_idx = 0; link_idx < KNET_MAX_LINK; link_idx++) {
+					if (!host->link[link_idx].configured) {
+						continue;
+					}
+					if (host->link[link_idx].ping_interval < timeres) {
+						log_warn(knet_h, KNET_SUB_HANDLE,
+							 "Requested new threads timer resolution %u is higher than detected link ping interval on host: %u link: %u interval: %llu (ns).",
+							 timeres, host->host_id, link_idx, host->link[link_idx].ping_interval);
+					}
+					if (host->link[link_idx].pong_timeout < timeres) {
+						log_err(knet_h, KNET_SUB_HANDLE,
+							"Requested new threads timer resolution %u is higher than detected link pong time on host: %u link: %u timeout: %llu (ns) and will cause network instability",
+							timeres, host->host_id, link_idx, host->link[link_idx].pong_timeout);
+						found = 1;
+					}
+				}
+			}
+			if (found) {
+				err = -1;
+				savederrno = EINVAL;
+				goto exit_unlock;
+			}
+		}
 		knet_h->threads_timer_res = timeres;
 		log_debug(knet_h, KNET_SUB_HANDLE, "Setting new threads timer resolution to %u usecs", knet_h->threads_timer_res);
 	} else {
@@ -296,8 +324,10 @@ int knet_handle_set_threads_timer_res(knet_handle_t knet_h,
 		log_debug(knet_h, KNET_SUB_HANDLE, "Setting new threads timer resolution to default %u usecs", knet_h->threads_timer_res);
 	}
 
+exit_unlock:
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
-	return 0;
+	errno = err ? savederrno : 0;
+	return err;
 }
 
 int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
