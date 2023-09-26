@@ -914,7 +914,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 
 	if ((interval * 1000) < knet_h->threads_timer_res) {
 		log_warn(knet_h, KNET_SUB_LINK,
-			 "host: %u link: %u interval: %zu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
+			 "host: %u link: %u interval: %lu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
 			 host_id, link_id, interval, strerror(savederrno), (knet_h->threads_timer_res / 1000));
 	}
 
@@ -922,7 +922,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_LINK,
-			"host: %u link: %u pong timeout: %zu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
+			"host: %u link: %u pong timeout: %lu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
 			host_id, link_id, timeout, strerror(savederrno), (knet_h->threads_timer_res / 1000));
 		goto exit_unlock;
 	}
