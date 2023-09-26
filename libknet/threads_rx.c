@@ -252,6 +252,17 @@ static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const
 	return 1;
 }
 
+static int _fast_data_up(knet_handle_t knet_h, struct knet_host *src_host, struct knet_link *src_link)
+{
+	if (src_link->received_pong) {
+		log_debug(knet_h, KNET_SUB_RX, "host: %u link: %u received data during valid ping/pong activity. Force link up.", src_host->host_id, src_link->link_id);
+		_link_updown(knet_h, src_host->host_id, src_link->link_id, src_link->status.enabled, 1, 0);
+		return 1;
+	}
+	// host is not eligible for fast data up
+	return 0;
+}
+
 static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struct knet_mmsghdr *msg)
 {
 	int err = 0, savederrno = 0, stats_err = 0;
@@ -428,9 +439,11 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 		}
 
 		if (!src_host->status.reachable) {
-			pthread_mutex_unlock(&src_link->link_stats_mutex);
-			log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
-			return;
+			if (!_fast_data_up(knet_h, src_host, src_link)) {
+				pthread_mutex_unlock(&src_link->link_stats_mutex);
+				log_debug(knet_h, KNET_SUB_RX, "Source host %u not reachable yet. Discarding packet.", src_host->host_id);
+				return;
+			}
 		}
 
 		inbuf->khp_data_seq_num = ntohs(inbuf->khp_data_seq_num);
