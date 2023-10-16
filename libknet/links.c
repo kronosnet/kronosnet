@@ -894,13 +894,13 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		goto exit_unlock;
 	}
 
-	if ((interval * 1000) < KNET_THREADS_TIMERES) {
+	if ((useconds_t)(interval * 1000) < KNET_THREADS_TIMERES) {
 		log_warn(knet_h, KNET_SUB_LINK,
 			 "host: %u link: %u interval: %lu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
 			 host_id, link_id, interval, strerror(savederrno), (KNET_THREADS_TIMERES / 1000));
 	}
 
-	if ((timeout * 1000) < KNET_THREADS_TIMERES) {
+	if ((useconds_t)(timeout * 1000) < KNET_THREADS_TIMERES) {
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_LINK,
