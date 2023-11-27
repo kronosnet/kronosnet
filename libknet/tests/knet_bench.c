@@ -129,10 +129,10 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 {
 	int i;
 	char *temp = NULL;
-	char port_str[10];
+	char port_str[11];
 
 	memset(port_str, 0, sizeof(port_str));
-	sprintf(port_str, "%d", port);
+	snprintf(port_str, sizeof(port_str), "%d", port);
 
 	for (i = 0; i < onidx; i++) {
 		nodes[i].nodeid = atoi(strtok(nodesinfo[i], ","));
