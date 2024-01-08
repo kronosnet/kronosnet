@@ -13,11 +13,11 @@
 #include "libknet.h"
 
 // Set the path for compress/crypto plugins when running the test program
-void set_plugin_path(knet_handle_t knet_h)
+void set_plugin_path(knet_handle_t *knet_h)
 {
-	struct knet_handle *handle = (struct knet_handle *)knet_h;
 	char *plugins_path = find_plugins_path();
 	if (plugins_path) {
+		struct knet_handle *handle = (struct knet_handle *)knet_h;
 		handle->plugin_path = plugins_path;
 	}
 }

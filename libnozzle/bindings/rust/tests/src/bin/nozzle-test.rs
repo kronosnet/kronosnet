@@ -49,14 +49,14 @@ fn main() -> Result<()>
     };
 
     // Get default state for checking reset_* calls later
-    let saved_mtu = match nozzle::get_mtu(handle) {
+    let saved_mtu = match nozzle::get_mtu(&handle) {
 	Ok(m) => m,
 	Err(e) => {
 	    println!("Error from get_mtu: {e}");
 	    return Err(e);
 	}
     };
-    let saved_mac = match nozzle::get_mac(handle) {
+    let saved_mac = match nozzle::get_mac(&handle) {
 	Ok(m) => m,
 	Err(e) => {
 	    println!("Error from get_mac: {e}");
@@ -65,30 +65,30 @@ fn main() -> Result<()>
     };
 
     // Play with APIs
-    if let Err(e) = nozzle::add_ip(handle, "192.160.100.1", "24") {
+    if let Err(e) = nozzle::add_ip(&handle, "192.160.100.1", "24") {
 	println!("Error from add_ip: {e}");
 	return Err(e);
     }
-    if let Err(e) = nozzle::add_ip(handle, "192.160.100.2", "24") {
+    if let Err(e) = nozzle::add_ip(&handle, "192.160.100.2", "24") {
 	println!("Error from add_ip2: {e}");
 	return Err(e);
     }
-    if let Err(e) = nozzle::add_ip(handle, "192.160.100.3", "24") {
+    if let Err(e) = nozzle::add_ip(&handle, "192.160.100.3", "24") {
 	println!("Error from add_ip3: {e}");
 	return Err(e);
     }
 
-    if let Err(e) = nozzle::set_mac(handle, "AA:00:04:00:22:01") {
+    if let Err(e) = nozzle::set_mac(&handle, "AA:00:04:00:22:01") {
 	println!("Error from set_mac: {e}");
 	return Err(e);
     }
 
-    if let Err(e) = nozzle::set_mtu(handle, 157) {
+    if let Err(e) = nozzle::set_mtu(&handle, 157) {
 	println!("Error from set_mtu: {e}");
 	return Err(e);
     }
 
-    if let Err(e) = nozzle::set_up(handle) {
+    if let Err(e) = nozzle::set_up(&handle) {
 	println!("Error from set_up: {e}");
 	return Err(e);
     }
@@ -121,7 +121,7 @@ fn main() -> Result<()>
 	libc::chmod(up_cstring.as_ptr(), 0o700);
     }
 
-    match nozzle::run_updown(handle, nozzle::Action::Up) {
+    match nozzle::run_updown(&handle, nozzle::Action::Up) {
 	Ok(s) => println!("Returned from Up script: {s}"),
 	Err(e) => {
 	    println!("Error from run_updown: {e}");
@@ -133,7 +133,7 @@ fn main() -> Result<()>
     fs::remove_file(&up_filename)?;
     fs::remove_dir("up.d")?;
 
-    match nozzle::get_ips(handle) {
+    match nozzle::get_ips(&handle) {
 	Ok(ips) => {
 	    print!("Got IPs:");
 	    for i in ips {
@@ -147,22 +147,22 @@ fn main() -> Result<()>
 	}
     }
 
-    match nozzle::get_mtu(handle) {
+    match nozzle::get_mtu(&handle) {
 	Ok(m) => println!("Got mtu: {m}"),
 	Err(e) => {
-	    println!("Error from get_ips: {e}");
+	    println!("Error from get_mtu: {e}");
 	    return Err(e);
 	}
     }
-    match nozzle::get_mac(handle) {
+    match nozzle::get_mac(&handle) {
 	Ok(m) => println!("Got mac: {m}"),
 	Err(e) => {
-	    println!("Error from get_ips: {e}");
+	    println!("Error from get_mac: {e}");
 	    return Err(e);
 	}
     }
 
-    match nozzle::get_fd(handle) {
+    match nozzle::get_fd(&handle) {
 	Ok(f) => println!("Got FD: {f}"),
 	Err(e) => {
 	    println!("Error from get_fd: {e}");
@@ -175,18 +175,18 @@ fn main() -> Result<()>
 	    return Err(Error::new(ErrorKind::Other, "get_handle_by_name returned wrong value"));
 	}
 	Err(e) => {
-	    println!("Error from get_ips: {e}");
+	    println!("Error from get_handle_by_name: {e}");
 	    return Err(e);
 	}
     }
 
-    match nozzle::get_name_by_handle(handle) {
+    match nozzle::get_name_by_handle(&handle) {
 	Ok(n) => if n != nozzle_name {
 	    println!("n: {n}, nozzle_name: {nozzle_name}");
 	    return Err(Error::new(ErrorKind::Other, "get_name_by_handle returned wrong name"));
 	}
 	Err(e) => {
-	    println!("Error from get_ips: {e}");
+	    println!("Error from get_name_by_handle: {e}");
 	    return Err(e);
 	}
     }
@@ -194,51 +194,51 @@ fn main() -> Result<()>
     // Wait a little while in case user wants to check with 'ip' command
     thread::sleep(time::Duration::from_millis(1000));
 
-    if let Err(e) = nozzle::del_ip(handle, "192.160.100.3", "24") {
+    if let Err(e) = nozzle::del_ip(&handle, "192.160.100.3", "24") {
 	println!("Error from del_ip: {e}");
 	return Err(e);
     }
 
-    if let Err(e) = nozzle::reset_mtu(handle) {
+    if let Err(e) = nozzle::reset_mtu(&handle) {
 	println!("Error from reset_mtu: {e}");
 	return Err(e);
     }
-    match nozzle::get_mtu(handle) {
+    match nozzle::get_mtu(&handle) {
 	Ok(m) => {
 	    if m != saved_mtu {
 		println!("Got default MTU of {m}, not  {saved_mtu}");
 	    }
 	}
 	Err(e) => {
-	    println!("Error from get_ips: {e}");
+	    println!("Error from get_mtu: {e}");
 	    return Err(e);
 	}
     }
 
-    if let Err(e) = nozzle::reset_mac(handle) {
+    if let Err(e) = nozzle::reset_mac(&handle) {
 	println!("Error from reset_mac: {e}");
 	return Err(e);
     }
-    match nozzle::get_mac(handle) {
+    match nozzle::get_mac(&handle) {
 	Ok(m) => {
 	    if m != saved_mac {
 		println!("Got default MAC of {m}, not  {saved_mac}");
 	    }
 	}
 	Err(e) => {
-	    println!("Error from get_ips: {e}");
+	    println!("Error from get_mac: {e}");
 	    return Err(e);
 	}
     }
 
 
-    if let Err(e) = nozzle::set_down(handle){
+    if let Err(e) = nozzle::set_down(&handle){
 	println!("Error from set_down: {e}");
 	return Err(e);
     }
 
-    if let Err(e) = nozzle::close(handle) {
-	println!("Error from open: {e}");
+    if let Err(e) = nozzle::close(&handle) {
+	println!("Error from close: {e}");
 	return Err(e);
     }
     Ok(())

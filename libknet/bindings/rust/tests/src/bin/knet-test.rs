@@ -20,7 +20,7 @@ const CHANNEL: i8 = 1;
 
 // Dirty C function to set the plugin path for testing (only)
 extern {
-    fn set_plugin_path(knet_h: knet::Handle);
+    fn set_plugin_path(knet_h: u64);
 }
 
 fn is_memcheck() -> bool
@@ -145,14 +145,14 @@ fn setup_node(our_hostid: &knet::HostId, other_hostid: &knet::HostId, name: &str
 
     // Make sure we use the build-tree plugins if LD_LIBRRAY_PATH points to them
     unsafe {
-	set_plugin_path(knet_handle);
+	set_plugin_path(knet_handle.knet_handle);
     }
 
-    if let Err(e) = knet::host_add(knet_handle, other_hostid) {
+    if let Err(e) = knet::host_add(&knet_handle, other_hostid) {
 	println!("Error from host_add: {e}");
 	return Err(e);
     }
-    if let Err(e) = knet::host_set_name(knet_handle, other_hostid, name) {
+    if let Err(e) = knet::host_set_name(&knet_handle, other_hostid, name) {
 	println!("Error from host_set_name: {e}");
 	return Err(e);
     }
@@ -161,7 +161,7 @@ fn setup_node(our_hostid: &knet::HostId, other_hostid: &knet::HostId, name: &str
 }
 
 // Called by the ACL tests to get a free port for a dynamic link
-fn setup_dynamic_link(handle: knet::Handle, hostid: &knet::HostId, link: u8,
+fn setup_dynamic_link(handle: &knet::Handle, hostid: &knet::HostId, link: u8,
 		      lowest_port: u16) -> Result<()>
 {
     let mut src_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
@@ -190,8 +190,8 @@ fn setup_dynamic_link(handle: knet::Handle, hostid: &knet::HostId, link: u8,
 
 // This is the bit that configures two links on two handles that talk to each other
 // while also making sure they don't clash with anything else on the system
-fn setup_links(handle1: knet::Handle, hostid1: &knet::HostId,
-	       handle2: knet::Handle, hostid2: &knet::HostId) -> Result<u16>
+fn setup_links(handle1: &knet::Handle, hostid1: &knet::HostId,
+	       handle2: &knet::Handle, hostid2: &knet::HostId) -> Result<u16>
 {
     let mut src_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
     let mut dst_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
@@ -240,7 +240,7 @@ fn setup_links(handle1: knet::Handle, hostid1: &knet::HostId,
 }
 
 // Finish configuring links
-fn configure_link(knet_handle: knet::Handle, our_hostid: &knet::HostId, other_hostid: &knet::HostId) -> Result<()>
+fn configure_link(knet_handle: &knet::Handle, our_hostid: &knet::HostId, other_hostid: &knet::HostId) -> Result<()>
 {
     if let Err(e) = knet::handle_enable_sock_notify(knet_handle, our_hostid.to_u16() as u64, Some(sock_notify_fn)) {
 	println!("Error from handle_enable_sock_notify: {e}");
@@ -349,7 +349,7 @@ fn configure_link(knet_handle: knet::Handle, our_hostid: &knet::HostId, other_ho
     Ok(())
 }
 
-fn recv_stuff(handle: knet::Handle, host: knet::HostId) -> Result<()>
+fn recv_stuff(handle: &knet::Handle, host: knet::HostId) -> Result<()>
 {
     let buf = [0u8; 1024];
 
@@ -382,7 +382,7 @@ fn recv_stuff(handle: knet::Handle, host: knet::HostId) -> Result<()>
 }
 
 
-fn close_handle(handle: knet::Handle, remnode: u16) -> Result<()>
+fn close_handle(handle: &knet::Handle, remnode: u16) -> Result<()>
 {
     let other_hostid = knet::HostId::new(remnode);
 
@@ -430,7 +430,7 @@ fn close_handle(handle: knet::Handle, remnode: u16) -> Result<()>
 }
 
 
-fn set_compress(handle: knet::Handle) -> Result<()>
+fn set_compress(handle: &knet::Handle) -> Result<()>
 {
     let compress_config = knet::CompressConfig {
 	compress_model: "zlib".to_string(),
@@ -445,7 +445,7 @@ fn set_compress(handle: knet::Handle) -> Result<()>
     }
 }
 
-fn set_crypto(handle: knet::Handle) -> Result<()>
+fn set_crypto(handle: &knet::Handle) -> Result<()>
 {
     let private_key = [55u8; 2048];
 
@@ -475,7 +475,7 @@ fn set_crypto(handle: knet::Handle) -> Result<()>
 }
 
 
-fn send_messages(handle: knet::Handle, send_quit: bool) -> Result<()>
+fn send_messages(handle: &knet::Handle, send_quit: bool) -> Result<()>
 {
     let mut buf : [u8; 20] = [b'0'; 20];
     for i in 0..10 {
@@ -519,7 +519,7 @@ fn send_messages(handle: knet::Handle, send_quit: bool) -> Result<()>
     Ok(())
 }
 
-fn test_link_host_list(handle: knet::Handle) -> Result<()>
+fn test_link_host_list(handle: &knet::Handle) -> Result<()>
 {
     match knet::host_get_host_list(handle) {
 	Ok(hosts) => {
@@ -548,7 +548,7 @@ fn test_link_host_list(handle: knet::Handle) -> Result<()>
 }
 
 // Try some metadata calls
-fn test_metadata_calls(handle: knet::Handle, host: &knet::HostId) -> Result<()>
+fn test_metadata_calls(handle: &knet::Handle, host: &knet::HostId) -> Result<()>
 {
     if let Err(e) = knet::handle_set_threads_timer_res(handle, 190000) {
 	println!("knet_handle_set_threads_timer_res failed: {e:?}");
@@ -792,7 +792,7 @@ fn test_metadata_calls(handle: knet::Handle, host: &knet::HostId) -> Result<()>
 }
 
 
-fn test_acl(handle: knet::Handle, host: &knet::HostId, low_port: u16) -> Result<()>
+fn test_acl(handle: &knet::Handle, host: &knet::HostId, low_port: u16) -> Result<()>
 {
     if let Err(e) = knet::handle_enable_access_lists(handle, true) {
 	println!("Error from handle_enable_access_lists: {e:?}");
@@ -896,43 +896,43 @@ fn main() -> Result<()>
     // Now test traffic
     let handle1 = setup_node(&host1, &host2, "host2")?;
     let handle2 = setup_node(&host2, &host1, "host1")?;
-    let low_port = setup_links(handle1, &host1, handle2, &host2)?;
-    configure_link(handle1, &host1, &host2)?;
-    configure_link(handle2, &host2, &host1)?;
+    let low_port = setup_links(&handle1, &host1, &handle2, &host2)?;
+    configure_link(&handle1, &host1, &host2)?;
+    configure_link(&handle2, &host2, &host1)?;
 
     // Copy stuff for the threads
-    let handle1_clone = handle1;
-    let handle2_clone = handle2;
+    let handle1_clone = handle1.clone();
+    let handle2_clone = handle2.clone();
     let host1_clone = host1;
     let host2_clone = host2;
 
     // Wait for links to start
     thread::sleep(get_scaled_tmo(10000));
-    test_link_host_list(handle1)?;
-    test_link_host_list(handle2)?;
+    test_link_host_list(&handle1)?;
+    test_link_host_list(&handle2)?;
 
     // Start recv threads for each handle
     let thread_handles = vec![
-	spawn(move || recv_stuff(handle1_clone, host1_clone)),
-	spawn(move || recv_stuff(handle2_clone, host2_clone))
+	spawn(move || recv_stuff(&handle1_clone, host1_clone)),
+	spawn(move || recv_stuff(&handle2_clone, host2_clone))
     ];
 
-    send_messages(handle1, false)?;
-    send_messages(handle2, false)?;
+    send_messages(&handle1, false)?;
+    send_messages(&handle2, false)?;
     thread::sleep(get_scaled_tmo(3000));
 
-    set_crypto(handle1)?;
-    set_crypto(handle2)?;
+    set_crypto(&handle1)?;
+    set_crypto(&handle2)?;
 
-    set_compress(handle1)?;
-    set_compress(handle2)?;
+    set_compress(&handle1)?;
+    set_compress(&handle2)?;
 
     thread::sleep(get_scaled_tmo(3000));
 
-    send_messages(handle1, true)?;
-    send_messages(handle2, true)?;
+    send_messages(&handle1, true)?;
+    send_messages(&handle2, true)?;
 
-    test_acl(handle1, &host2, low_port)?;
+    test_acl(&handle1, &host2, low_port)?;
 
     // Wait for recv threads to finish
     for handle in thread_handles {
@@ -942,36 +942,36 @@ fn main() -> Result<()>
     }
 
     // Try some statses
-    match knet::handle_get_stats(handle1) {
+    match knet::handle_get_stats(&handle1) {
 	Ok(s) => println!("handle stats: {s}"),
 	Err(e) => {
 	    println!("handle_get_stats failed: {e:?}");
 	    return Err(e);
 	}
     }
-    match knet::host_get_status(handle1, &host2) {
+    match knet::host_get_status(&handle1, &host2) {
 	Ok(s) => println!("host status: {s}"),
 	Err(e) => {
 	    println!("host_get_status failed: {e:?}");
 	    return Err(e);
 	}
     }
-    match knet::link_get_status(handle1, &host2, 0) {
+    match knet::link_get_status(&handle1, &host2, 0) {
 	Ok(s) => println!("link status: {s}"),
 	Err(e) => {
 	    println!("link_get_status failed: {e:?}");
 	    return Err(e);
 	}
     }
-    if let Err(e) = knet::handle_clear_stats(handle1, knet::ClearStats::Handle) {
+    if let Err(e) = knet::handle_clear_stats(&handle1, knet::ClearStats::Handle) {
 	println!("handle_clear_stats failed: {e:?}");
 	return Err(e);
     }
 
-    test_metadata_calls(handle1, &knet::HostId::new(2))?;
+    test_metadata_calls(&handle1, &knet::HostId::new(2))?;
 
-    close_handle(handle1, 2)?;
-    close_handle(handle2, 1)?;
+    close_handle(&handle1, 2)?;
+    close_handle(&handle2, 1)?;
 
     // Sleep to see if log thread dies
     thread::sleep(get_scaled_tmo(3000));

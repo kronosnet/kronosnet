@@ -17,10 +17,24 @@ use libc::free;
 use std::fmt;
 
 /// A handle into the nozzle library. Returned from [open] and needed for all other calls
-#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Handle {
     nozzle_handle: ffi::nozzle_t,
+    clone: bool,
 }
+
+impl Clone for Handle {
+    fn clone(&self) -> Handle {
+	Handle {nozzle_handle: self.nozzle_handle, clone: true}
+    }
+}
+
+// Clones count as equivalent
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
+	self.nozzle_handle == other.nozzle_handle
+    }
+}
+
 
 const IFNAMSZ: usize = 16;
 
@@ -43,12 +57,12 @@ pub fn open(devname: &mut String, updownpath: &str) -> Result<Handle>
     } else {
 	let temp = crate::string_from_bytes(c_devname.as_ptr(), IFNAMSZ)?;
 	*devname = temp;
-	Ok(Handle{nozzle_handle: res})
+	Ok(Handle{nozzle_handle: res, clone: false})
     }
 }
 
 /// Deconfigure and destroy a nozzle device
-pub fn close(handle: Handle) -> Result<()>
+pub fn close(handle: &Handle) -> Result<()>
 {
     let res = unsafe {
 	ffi::nozzle_close(handle.nozzle_handle)
@@ -57,6 +71,14 @@ pub fn close(handle: Handle) -> Result<()>
 	Ok(())
     } else {
 	Err(Error::last_os_error())
+    }
+}
+
+impl Drop for Handle {
+    fn drop(&mut self) {
+	if !self.clone {
+	    let _e = close(self);
+	}
     }
 }
 
@@ -80,7 +102,7 @@ impl Action {
 }
 
 /// Run an up/down script before/after configuring a device. See [Action]
-pub fn run_updown(handle: Handle, action: Action) -> Result<String>
+pub fn run_updown(handle: &Handle, action: Action) -> Result<String>
 {
     let c_exec_string : *mut *mut ::std::os::raw::c_char = &mut [0;0].as_mut_ptr();
     let c_action = action.to_u8();
@@ -105,7 +127,7 @@ pub fn run_updown(handle: Handle, action: Action) -> Result<String>
 }
 
 /// Mark nozzle device as "up"
-pub fn set_up(handle: Handle) -> Result<()>
+pub fn set_up(handle: &Handle) -> Result<()>
 {
     let res = unsafe {
 	ffi::nozzle_set_up(handle.nozzle_handle)
@@ -118,7 +140,7 @@ pub fn set_up(handle: Handle) -> Result<()>
 }
 
 /// mark nozzle device as "down"
-pub fn set_down(handle: Handle) -> Result<()>
+pub fn set_down(handle: &Handle) -> Result<()>
 {
     let res = unsafe {
 	ffi::nozzle_set_down(handle.nozzle_handle)
@@ -135,7 +157,7 @@ const PREFIX_CHAR_MAX: usize = 4;
 /// Add an ip address to a nozzle device. multiple addresses can be added to one device.
 /// The prefix is a the number that comes after the ip address when configuring:
 /// eg: 192.168.0.1/24 - the prefix is "24"
-pub fn add_ip(handle: Handle, ipaddr: &str, prefix: &str) -> Result<()>
+pub fn add_ip(handle: &Handle, ipaddr: &str, prefix: &str) -> Result<()>
 {
     let mut c_ipaddr: [c_char; IPADDR_CHAR_MAX] = [0; IPADDR_CHAR_MAX];
     let mut c_prefix: [c_char; PREFIX_CHAR_MAX] = [0; PREFIX_CHAR_MAX];
@@ -154,7 +176,7 @@ pub fn add_ip(handle: Handle, ipaddr: &str, prefix: &str) -> Result<()>
 }
 
 /// remove an ip address from a nozzle device
-pub fn del_ip(handle: Handle, ipaddr: &str, prefix: &str) -> Result<()>
+pub fn del_ip(handle: &Handle, ipaddr: &str, prefix: &str) -> Result<()>
 {
     let mut c_ipaddr: [c_char; IPADDR_CHAR_MAX] = [0; IPADDR_CHAR_MAX];
     let mut c_prefix: [c_char; PREFIX_CHAR_MAX] = [0; PREFIX_CHAR_MAX];
@@ -220,7 +242,7 @@ impl fmt::Display for Ip {
 }
 
 /// Return a Vec of Ip adressess attached to this device
-pub fn get_ips(handle: Handle) -> Result<Vec<Ip>>
+pub fn get_ips(handle: &Handle) -> Result<Vec<Ip>>
 {
     let mut c_ips : &mut ffi::nozzle_ip = &mut ffi::nozzle_ip{ipaddr: [0;129], prefix: [0;5], domain:0, next: null_mut()};
     let res = unsafe {
@@ -242,7 +264,7 @@ pub fn get_ips(handle: Handle) -> Result<Vec<Ip>>
 }
 
 /// Get the MTU of the device
-pub fn get_mtu(handle: Handle) -> Result<i32>
+pub fn get_mtu(handle: &Handle) -> Result<i32>
 {
     let res = unsafe {
 	ffi::nozzle_get_mtu(handle.nozzle_handle)
@@ -255,7 +277,7 @@ pub fn get_mtu(handle: Handle) -> Result<i32>
 }
 
 /// Set the MTU of the device
-pub fn set_mtu(handle: Handle, new_mtu: i32) -> Result<()>
+pub fn set_mtu(handle: &Handle, new_mtu: i32) -> Result<()>
 {
     let res = unsafe {
 	ffi::nozzle_set_mtu(handle.nozzle_handle, new_mtu)
@@ -269,7 +291,7 @@ pub fn set_mtu(handle: Handle, new_mtu: i32) -> Result<()>
 
 
 /// Reset the device's MTU back to the default
-pub fn reset_mtu(handle: Handle) -> Result<()>
+pub fn reset_mtu(handle: &Handle) -> Result<()>
 {
     let res = unsafe {
 	ffi::nozzle_reset_mtu(handle.nozzle_handle)
@@ -282,7 +304,7 @@ pub fn reset_mtu(handle: Handle) -> Result<()>
 }
 
 /// Returns the MAC address of the device
-pub fn get_mac(handle: Handle) -> Result<String>
+pub fn get_mac(handle: &Handle) -> Result<String>
 {
     let mut c_mac: *mut c_char = null_mut();
     let res = unsafe {
@@ -298,7 +320,7 @@ pub fn get_mac(handle: Handle) -> Result<String>
 }
 
 /// Setsthe MAC address of the device
-pub fn set_mac(handle: Handle, ether_addr: &str) -> Result<()>
+pub fn set_mac(handle: &Handle, ether_addr: &str) -> Result<()>
 {
     let mut c_mac: [c_char; 24_usize] = [0; 24_usize]; // Needs to be 8byte aligned
     crate::string_to_bytes(ether_addr, &mut c_mac)?;
@@ -313,7 +335,7 @@ pub fn set_mac(handle: Handle, ether_addr: &str) -> Result<()>
 }
 
 /// Reset the device's MAC address to the defaut
-pub fn reset_mac(handle: Handle) -> Result<()>
+pub fn reset_mac(handle: &Handle) -> Result<()>
 {
     let res = unsafe {
 	ffi::nozzle_reset_mac(handle.nozzle_handle)
@@ -334,14 +356,14 @@ pub fn get_handle_by_name(devname: &str) -> Result<Handle>
 	ffi::nozzle_get_handle_by_name(c_devname.as_ptr())
     };
     if !res.is_null() {
-	Ok(Handle{nozzle_handle:res})
+	Ok(Handle{nozzle_handle:res, clone: true})
     } else {
 	Err(Error::last_os_error())
     }
 }
 
 /// Return the name of the device
-pub fn get_name_by_handle(handle: Handle) -> Result<String>
+pub fn get_name_by_handle(handle: &Handle) -> Result<String>
 {
     let res = unsafe {
 	ffi::nozzle_get_name_by_handle(handle.nozzle_handle)
@@ -354,7 +376,7 @@ pub fn get_name_by_handle(handle: Handle) -> Result<String>
 }
 
 /// Return a unix FD for the device
-pub fn get_fd(handle: Handle) -> Result<i32>
+pub fn get_fd(handle: &Handle) -> Result<i32>
 {
     let res = unsafe {
 	ffi::nozzle_get_fd(handle.nozzle_handle)
