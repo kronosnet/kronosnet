@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2021-2023 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2021-2024 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Christine Caulfield <ccaulfie@redhat.com>
 #          Fabio M. Di Nitto <fabbione@kronosnet.org>
