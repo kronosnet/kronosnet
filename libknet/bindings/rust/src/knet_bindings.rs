@@ -360,7 +360,7 @@ fn logging_thread(knet_pipe: i32, sender: Sender<LogMsg>)
 		msg: crate::string_from_bytes_safe(logbuf.msg.as_ptr(), 254),
 		subsystem: SubSystem::new(logbuf.subsystem),
 		level: LogLevel::new(logbuf.msglevel),
-		handle: Handle{knet_handle: logbuf.knet_h as u64}};
+		handle: Handle{knet_handle: logbuf.knet_h as u64, clone: true}};
 
 	    if let Err(e) = sender.send(rmsg) {
 		println!("Error sending log message: {e}");
@@ -370,11 +370,23 @@ fn logging_thread(knet_pipe: i32, sender: Sender<LogMsg>)
 }
 
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-#[repr(transparent)]
 /// a handle into the knet library, returned from [handle_new]
 pub struct Handle {
-    knet_handle: u64,
+    pub knet_handle: u64,
+    clone: bool, // clone Handles don't trigger knet_handle_free()
+}
+
+impl Clone for Handle {
+    fn clone(&self) -> Handle {
+	Handle {knet_handle: self.knet_handle, clone: true}
+    }
+}
+
+// Clones count as equivalent
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
+	self.knet_handle == other.knet_handle
+    }
 }
 
 // Private version of knet handle, contains all the callback data so
@@ -449,35 +461,50 @@ pub fn handle_new(host_id: &HostId,
 
 	};
 	HANDLE_HASH.lock().unwrap().insert(res as u64, rhandle);
-	Ok(Handle{knet_handle: res as u64})
+	Ok(Handle{knet_handle: res as u64, clone: false})
     }
 }
 
 /// Finish with knet, frees the handle returned by [handle_new]
-pub fn handle_free(handle: Handle) -> Result<()>
+pub fn handle_free(handle: &Handle) -> Result<()>
 {
-    let res = unsafe {
-	ffi::knet_handle_free(handle.knet_handle as ffi::knet_handle_t)
-    };
-
-    if res == 0 {
-	// Close the log fd as knet doesn't "do ownership" and this will shut down
-	// our logging thread.
-	if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(handle.knet_handle)) {
-	    unsafe {
-		libc::close(h.log_fd);
-	    };
-	}
-
-	HANDLE_HASH.lock().unwrap().remove(&handle.knet_handle);
+    if handle_free_knet_handle(handle.knet_handle) == 0 {
 	Ok(())
     } else {
 	Err(Error::last_os_error())
     }
 }
 
+fn handle_free_knet_handle(knet_handle: u64) -> i32
+{
+    let res = unsafe {
+	ffi::knet_handle_free(knet_handle as ffi::knet_handle_t)
+    };
+
+    if res == 0 {
+	// Close the log fd as knet doesn't "do ownership" and this will shut down
+	// our logging thread.
+	if let Some(h) = HANDLE_HASH.lock().unwrap().get_mut(&(knet_handle)) {
+	    unsafe {
+		libc::close(h.log_fd);
+	    };
+	}
+
+	HANDLE_HASH.lock().unwrap().remove(&knet_handle);
+    }
+    res
+}
+
+impl Drop for Handle {
+    fn drop(self: &mut Handle) {
+	if !self.clone {
+	    handle_free_knet_handle(self.knet_handle);
+	}
+    }
+}
+
 /// Enable notifications of socket state changes, set callback to 'None' to disable
-pub fn handle_enable_sock_notify(handle: Handle,
+pub fn handle_enable_sock_notify(handle: &Handle,
 				 private_data: u64,
 				 sock_notify_fn: Option<SockNotifyFn>) -> Result<()>
 {
@@ -508,7 +535,7 @@ pub fn handle_enable_sock_notify(handle: Handle,
 }
 
 /// Add a data FD to knet. if datafd is 0 then knet will allocate one for you.
-pub fn handle_add_datafd(handle: Handle, datafd: i32, channel: i8) -> Result<(i32, i8)>
+pub fn handle_add_datafd(handle: &Handle, datafd: i32, channel: i8) -> Result<(i32, i8)>
 {
     let mut c_datafd = datafd;
     let mut c_channel = channel;
@@ -525,7 +552,7 @@ pub fn handle_add_datafd(handle: Handle, datafd: i32, channel: i8) -> Result<(i3
 }
 
 /// Remove a datafd from knet
-pub fn handle_remove_datafd(handle: Handle, datafd: i32) -> Result<()>
+pub fn handle_remove_datafd(handle: &Handle, datafd: i32) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_remove_datafd(handle.knet_handle as ffi::knet_handle_t,
@@ -539,7 +566,7 @@ pub fn handle_remove_datafd(handle: Handle, datafd: i32) -> Result<()>
 }
 
 /// Returns the channel associated with data fd
-pub fn handle_get_channel(handle: Handle, datafd: i32) -> Result<i8>
+pub fn handle_get_channel(handle: &Handle, datafd: i32) -> Result<i8>
 {
     let mut c_channel = 0i8;
     let res = unsafe {
@@ -554,7 +581,7 @@ pub fn handle_get_channel(handle: Handle, datafd: i32) -> Result<i8>
 }
 
 /// Returns the data FD associated with a channel
-pub fn handle_get_datafd(handle: Handle, channel: i8) -> Result<i32>
+pub fn handle_get_datafd(handle: &Handle, channel: i8) -> Result<i32>
 {
     let mut c_datafd = 0i32;
     let res = unsafe {
@@ -603,7 +630,7 @@ impl fmt::Display for DefragReclaimPolicy {
 }
 
 /// Configure the defrag buffer parameters - applies to all hosts
-pub fn handle_set_host_defrag_bufs(handle: Handle, min_defrag_bufs: u16, max_defrag_bufs: u16,
+pub fn handle_set_host_defrag_bufs(handle: &Handle, min_defrag_bufs: u16, max_defrag_bufs: u16,
 				   shrink_threshold: u8,
 				   reclaim_policy: DefragReclaimPolicy) -> Result<()>
 {
@@ -623,7 +650,7 @@ pub fn handle_set_host_defrag_bufs(handle: Handle, min_defrag_bufs: u16, max_def
 
 /// Get the defrag buffer parameters.
 /// Returns (min_defrag_bufs, max_defrag_bufs, shrink_threshold, usage_samples, usage_samples_timespan, reclaim_policy)
-pub fn handle_get_host_defrag_bufs(handle: Handle) -> Result<(u16, u16, u8, DefragReclaimPolicy)>
+pub fn handle_get_host_defrag_bufs(handle: &Handle) -> Result<(u16, u16, u8, DefragReclaimPolicy)>
 {
     let mut min_defrag_bufs: u16 = 0;
     let mut max_defrag_bufs: u16 = 0;
@@ -645,7 +672,7 @@ pub fn handle_get_host_defrag_bufs(handle: Handle) -> Result<(u16, u16, u8, Defr
 }
 
 /// Receive messages from knet
-pub fn recv(handle: Handle, buf: &[u8], channel: i8) -> Result<isize>
+pub fn recv(handle: &Handle, buf: &[u8], channel: i8) -> Result<isize>
 {
     let res = unsafe {
 	ffi::knet_recv(handle.knet_handle as ffi::knet_handle_t,
@@ -665,7 +692,7 @@ pub fn recv(handle: Handle, buf: &[u8], channel: i8) -> Result<isize>
 }
 
 /// Send messages knet
-pub fn send(handle: Handle, buf: &[u8], channel: i8) -> Result<isize>
+pub fn send(handle: &Handle, buf: &[u8], channel: i8) -> Result<isize>
 {
     let res = unsafe {
 	ffi::knet_send(handle.knet_handle as ffi::knet_handle_t,
@@ -685,7 +712,7 @@ pub fn send(handle: Handle, buf: &[u8], channel: i8) -> Result<isize>
 }
 
 /// Send messages to knet and wait till they have gone
-pub fn send_sync(handle: Handle, buf: &[u8], channel: i8) -> Result<()>
+pub fn send_sync(handle: &Handle, buf: &[u8], channel: i8) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_send_sync(handle.knet_handle as ffi::knet_handle_t,
@@ -705,7 +732,7 @@ pub fn send_sync(handle: Handle, buf: &[u8], channel: i8) -> Result<()>
 }
 
 /// Enable the packet filter. pass 'None' as the callback to disable.
-pub fn handle_enable_filter(handle: Handle,
+pub fn handle_enable_filter(handle: &Handle,
 			    private_data: u64,
 			    filter_fn: Option<FilterFn>) -> Result<()>
 {
@@ -738,7 +765,7 @@ pub fn handle_enable_filter(handle: Handle,
 }
 
 /// Set timer resolution
-pub fn handle_set_threads_timer_res(handle: Handle, timeres: u32) -> Result<()>
+pub fn handle_set_threads_timer_res(handle: &Handle, timeres: u32) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_set_threads_timer_res(handle.knet_handle as ffi::knet_handle_t, timeres)
@@ -751,7 +778,7 @@ pub fn handle_set_threads_timer_res(handle: Handle, timeres: u32) -> Result<()>
 }
 
 /// Get timer resolution
-pub fn handle_get_threads_timer_res(handle: Handle) -> Result<u32>
+pub fn handle_get_threads_timer_res(handle: &Handle) -> Result<u32>
 {
     let mut c_timeres: u32 = 0;
     let res = unsafe {
@@ -767,7 +794,7 @@ pub fn handle_get_threads_timer_res(handle: Handle) -> Result<u32>
 
 
 /// Starts traffic moving. You must call this before knet will do anything.
-pub fn handle_setfwd(handle: Handle, enabled: bool) -> Result<()>
+pub fn handle_setfwd(handle: &Handle, enabled: bool) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_setfwd(handle.knet_handle as ffi::knet_handle_t,
@@ -781,7 +808,7 @@ pub fn handle_setfwd(handle: Handle, enabled: bool) -> Result<()>
 }
 
 /// Enable access control lists
-pub fn handle_enable_access_lists(handle: Handle, enabled: bool) -> Result<()>
+pub fn handle_enable_access_lists(handle: &Handle, enabled: bool) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_enable_access_lists(handle.knet_handle as ffi::knet_handle_t,
@@ -795,7 +822,7 @@ pub fn handle_enable_access_lists(handle: Handle, enabled: bool) -> Result<()>
 }
 
 /// Set frequency that PMTUd will check for MTU changes. value in milliseconds
-pub fn handle_pmtud_setfreq(handle: Handle, interval: u32) -> Result<()>
+pub fn handle_pmtud_setfreq(handle: &Handle, interval: u32) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_pmtud_setfreq(handle.knet_handle as ffi::knet_handle_t,
@@ -809,7 +836,7 @@ pub fn handle_pmtud_setfreq(handle: Handle, interval: u32) -> Result<()>
 }
 
 /// Get frequency that PMTUd will check for MTU changes. value in milliseconds
-pub fn handle_pmtud_getfreq(handle: Handle) -> Result<u32>
+pub fn handle_pmtud_getfreq(handle: &Handle) -> Result<u32>
 {
     let mut c_interval = 0u32;
     let res = unsafe {
@@ -824,7 +851,7 @@ pub fn handle_pmtud_getfreq(handle: Handle) -> Result<u32>
 }
 
 /// Get the current MTU
-pub fn handle_pmtud_get(handle: Handle) -> Result<u32>
+pub fn handle_pmtud_get(handle: &Handle) -> Result<u32>
 {
     let mut c_mtu = 0u32;
     let res = unsafe {
@@ -839,7 +866,7 @@ pub fn handle_pmtud_get(handle: Handle) -> Result<u32>
 }
 
 /// Set the interface MTU (this should not be necessary)
-pub fn handle_pmtud_set(handle: Handle, iface_mtu: u32) -> Result<()>
+pub fn handle_pmtud_set(handle: &Handle, iface_mtu: u32) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_pmtud_set(handle.knet_handle as ffi::knet_handle_t,
@@ -853,7 +880,7 @@ pub fn handle_pmtud_set(handle: Handle, iface_mtu: u32) -> Result<()>
 }
 
 /// Enable notification of MTU changes
-pub fn handle_enable_pmtud_notify(handle: Handle,
+pub fn handle_enable_pmtud_notify(handle: &Handle,
 				  private_data: u64,
 				  pmtud_notify_fn: Option<PmtudNotifyFn>) -> Result<()>
 {
@@ -884,7 +911,7 @@ pub fn handle_enable_pmtud_notify(handle: Handle,
 }
 
 /// Configure cryptographic seetings for packets being transmitted
-pub fn handle_crypto_set_config(handle: Handle, config: &CryptoConfig, config_num: u8) -> Result<()>
+pub fn handle_crypto_set_config(handle: &Handle, config: &CryptoConfig, config_num: u8) -> Result<()>
 {
     let mut crypto_cfg = ffi::knet_handle_crypto_cfg {
 	crypto_model: [0; 16],
@@ -930,7 +957,7 @@ pub enum RxClearTraffic {
 }
 
 /// Enable or disable clear-text traffic when crypto is enabled
-pub fn handle_crypto_rx_clear_traffic(handle: Handle, value: RxClearTraffic) -> Result<()>
+pub fn handle_crypto_rx_clear_traffic(handle: &Handle, value: RxClearTraffic) -> Result<()>
 {
     let c_value : u8 =
 	match value {
@@ -950,7 +977,7 @@ pub fn handle_crypto_rx_clear_traffic(handle: Handle, value: RxClearTraffic) -> 
 }
 
 /// Tell knet which crypto settings to use
-pub fn handle_crypto_use_config(handle: Handle, config_num: u8) -> Result<()>
+pub fn handle_crypto_use_config(handle: &Handle, config_num: u8) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_crypto_use_config(handle.knet_handle as ffi::knet_handle_t,
@@ -965,7 +992,7 @@ pub fn handle_crypto_use_config(handle: Handle, config_num: u8) -> Result<()>
 
 
 /// Set up packet compression
-pub fn handle_compress(handle: Handle, config: &CompressConfig) -> Result<()>
+pub fn handle_compress(handle: &Handle, config: &CompressConfig) -> Result<()>
 {
     let mut compress_cfg = ffi::knet_handle_compress_cfg {
 	compress_model: [0; 16],
@@ -1064,7 +1091,7 @@ impl fmt::Display for HandleStats {
 }
 
 /// Return statistics for this knet handle
-pub fn handle_get_stats(handle: Handle) -> Result<HandleStats>
+pub fn handle_get_stats(handle: &Handle) -> Result<HandleStats>
 {
     let (res, stats) = unsafe {
 	let mut c_stats = HandleStats::new();
@@ -1086,7 +1113,7 @@ pub enum ClearStats {
 }
 
 /// Clear statistics
-pub fn handle_clear_stats(handle: Handle, clear_options: ClearStats) -> Result<()>
+pub fn handle_clear_stats(handle: &Handle, clear_options: ClearStats) -> Result<()>
 {
     let c_value : i32 =
 	match clear_options {
@@ -1191,7 +1218,7 @@ pub fn get_compress_list() -> Result<Vec<CompressInfo>>
 }
 
 /// Enable callback when the onwire version for a node changes
-pub fn handle_enable_onwire_ver_notify(handle: Handle,
+pub fn handle_enable_onwire_ver_notify(handle: &Handle,
 				       private_data: u64,
 				       onwire_notify_fn: Option<OnwireNotifyFn>) -> Result<()>
 {
@@ -1229,7 +1256,7 @@ pub fn handle_enable_onwire_ver_notify(handle: Handle,
 
 
 /// Get the onsure version for a node
-pub fn handle_get_onwire_ver(handle: Handle, host_id: &HostId) -> Result<(u8,u8,u8)>
+pub fn handle_get_onwire_ver(handle: &Handle, host_id: &HostId) -> Result<(u8,u8,u8)>
 {
     let mut onwire_min_ver = 0u8;
     let mut onwire_max_ver = 0u8;
@@ -1249,7 +1276,7 @@ pub fn handle_get_onwire_ver(handle: Handle, host_id: &HostId) -> Result<(u8,u8,
 }
 
 /// Set the onsire version for this node
-pub fn handle_set_onwire_ver(handle: Handle, onwire_ver: u8) -> Result<()>
+pub fn handle_set_onwire_ver(handle: &Handle, onwire_ver: u8) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_set_onwire_ver(handle.knet_handle as ffi::knet_handle_t,
@@ -1263,7 +1290,7 @@ pub fn handle_set_onwire_ver(handle: Handle, onwire_ver: u8) -> Result<()>
 }
 
 /// Set the reconnect interval.
-pub fn handle_set_transport_reconnect_interval(handle: Handle, msecs: u32) -> Result<()>
+pub fn handle_set_transport_reconnect_interval(handle: &Handle, msecs: u32) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_handle_set_transport_reconnect_interval(handle.knet_handle as ffi::knet_handle_t,
@@ -1277,7 +1304,7 @@ pub fn handle_set_transport_reconnect_interval(handle: Handle, msecs: u32) -> Re
 }
 
 /// Get the reconnect interval.
-pub fn handle_get_transport_reconnect_interval(handle: Handle) -> Result<u32>
+pub fn handle_get_transport_reconnect_interval(handle: &Handle) -> Result<u32>
 {
     let mut msecs = 0u32;
     let res = unsafe {
@@ -1292,7 +1319,7 @@ pub fn handle_get_transport_reconnect_interval(handle: Handle) -> Result<u32>
 }
 
 /// Add a new host ID
-pub fn host_add(handle: Handle, host_id: &HostId) -> Result<()>
+pub fn host_add(handle: &Handle, host_id: &HostId) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_host_add(handle.knet_handle as ffi::knet_handle_t,
@@ -1306,7 +1333,7 @@ pub fn host_add(handle: Handle, host_id: &HostId) -> Result<()>
 }
 
 /// Remove a Host ID
-pub fn host_remove(handle: Handle, host_id: &HostId) -> Result<()>
+pub fn host_remove(handle: &Handle, host_id: &HostId) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_host_remove(handle.knet_handle as ffi::knet_handle_t,
@@ -1320,7 +1347,7 @@ pub fn host_remove(handle: Handle, host_id: &HostId) -> Result<()>
 }
 
 /// Set the name of a host
-pub fn host_set_name(handle: Handle, host_id: &HostId, name: &str) -> Result<()>
+pub fn host_set_name(handle: &Handle, host_id: &HostId, name: &str) -> Result<()>
 {
 
     let c_name = CString::new(name)?;
@@ -1338,7 +1365,7 @@ pub fn host_set_name(handle: Handle, host_id: &HostId, name: &str) -> Result<()>
 const KNET_MAX_HOST_LEN:usize = 256;
 const KNET_MAX_PORT_LEN:usize = 6;
 /// Retrieve the name of a host given its ID
-pub fn host_get_name_by_host_id(handle: Handle, host_id: &HostId) -> Result<String>
+pub fn host_get_name_by_host_id(handle: &Handle, host_id: &HostId) -> Result<String>
 {
     let mut c_name: [c_char; KNET_MAX_HOST_LEN] = [0; KNET_MAX_HOST_LEN];
     let res = unsafe {
@@ -1354,7 +1381,7 @@ pub fn host_get_name_by_host_id(handle: Handle, host_id: &HostId) -> Result<Stri
 
 
 /// Return the ID of a host given its name
-pub fn host_get_id_by_host_name(handle: Handle, name: &str) -> Result<HostId>
+pub fn host_get_id_by_host_name(handle: &Handle, name: &str) -> Result<HostId>
 {
 
     let c_name = CString::new(name)?;
@@ -1372,7 +1399,7 @@ pub fn host_get_id_by_host_name(handle: Handle, name: &str) -> Result<HostId>
 
 const KNET_MAX_HOST: usize = 65536;
 /// Return a list of host IDs known to this handle
-pub fn host_get_host_list(handle: Handle) -> Result<Vec<HostId>>
+pub fn host_get_host_list(handle: &Handle) -> Result<Vec<HostId>>
 {
     let mut c_host_ids: [u16; KNET_MAX_HOST] = [0; KNET_MAX_HOST];
     let mut c_host_ids_entries: usize = 0;
@@ -1429,7 +1456,7 @@ impl fmt::Display for LinkPolicy {
 }
 
 /// Set the policy for this host, this only makes sense if multiple links between hosts are configured
-pub fn host_set_policy(handle: Handle, host_id: &HostId, policy: LinkPolicy) -> Result<()>
+pub fn host_set_policy(handle: &Handle, host_id: &HostId, policy: LinkPolicy) -> Result<()>
 {
     let c_value: u8 = policy.to_u8();
 
@@ -1446,7 +1473,7 @@ pub fn host_set_policy(handle: Handle, host_id: &HostId, policy: LinkPolicy) -> 
 
 
 /// Return the current link policy for a node
-pub fn host_get_policy(handle: Handle, host_id: &HostId) -> Result<LinkPolicy>
+pub fn host_get_policy(handle: &Handle, host_id: &HostId) -> Result<LinkPolicy>
 {
     let mut c_value: u8 = 0;
     let res = unsafe {
@@ -1478,7 +1505,7 @@ impl fmt::Display for HostStatus {
 
 
 /// Return the current status of a host
-pub fn host_get_status(handle: Handle, host_id: &HostId) -> Result<HostStatus>
+pub fn host_get_status(handle: &Handle, host_id: &HostId) -> Result<HostStatus>
 {
     let mut c_value = ffi::knet_host_status { reachable:0, remote:0, external:0};
     let res = unsafe {
@@ -1497,7 +1524,7 @@ pub fn host_get_status(handle: Handle, host_id: &HostId) -> Result<HostStatus>
 }
 
 /// Enable callbacks when the status of a host changes
-pub fn host_enable_status_change_notify(handle: Handle,
+pub fn host_enable_status_change_notify(handle: &Handle,
 					private_data: u64,
 					host_status_change_notify_fn: Option<HostStatusChangeNotifyFn>) -> Result<()>
 {
@@ -1616,7 +1643,7 @@ pub fn get_transport_list() -> Result<Vec<TransportInfo>>
 }
 
 /// Configure a link to a host ID. dst_addr may be None for a dynamic link.
-pub fn link_set_config(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_set_config(handle: &Handle, host_id: &HostId, link_id: u8,
 		       transport: TransportId,
 		       src_addr: &SocketAddr, dst_addr: Option<&SocketAddr>, flags: LinkFlags) -> Result<()>
 {
@@ -1654,7 +1681,7 @@ pub fn link_set_config(handle: Handle, host_id: &HostId, link_id: u8,
 
 
 /// Return a link's configuration
-pub fn link_get_config(handle: Handle, host_id: &HostId, link_id: u8) ->
+pub fn link_get_config(handle: &Handle, host_id: &HostId, link_id: u8) ->
 		       Result<(TransportId, Option<SocketAddr>, Option<SocketAddr>, LinkFlags)>
 {
     let mut c_srcaddr = OsSocketAddr::new();
@@ -1680,7 +1707,7 @@ pub fn link_get_config(handle: Handle, host_id: &HostId, link_id: u8) ->
 }
 
 /// Clear a link configuration.
-pub fn link_clear_config(handle: Handle, host_id: &HostId, link_id: u8) -> Result<()>
+pub fn link_clear_config(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_link_clear_config(handle.knet_handle as ffi::knet_handle_t,
@@ -1781,7 +1808,7 @@ fn make_new_sockaddr_storage(ss: &SocketAddr) -> ffi::sockaddr_storage
 
 
 /// Add an ACL to a link, adds the ACL to the end of the list.
-pub fn link_add_acl(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_add_acl(handle: &Handle, host_id: &HostId, link_id: u8,
 		    ss1: &SocketAddr, ss2: &SocketAddr,
 		    check_type: AclCheckType, acceptreject: AclAcceptReject) -> Result<()>
 {
@@ -1804,7 +1831,7 @@ pub fn link_add_acl(handle: Handle, host_id: &HostId, link_id: u8,
 }
 
 /// Insert an ACL anywhere in the ACL list for this host/link
-pub fn link_insert_acl(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_insert_acl(handle: &Handle, host_id: &HostId, link_id: u8,
 		       index: i32,
 		       ss1: &SocketAddr, ss2: &SocketAddr,
 		       check_type: AclCheckType, acceptreject: AclAcceptReject) -> Result<()>
@@ -1829,7 +1856,7 @@ pub fn link_insert_acl(handle: Handle, host_id: &HostId, link_id: u8,
 }
 
 /// Remove an ACL for this host/link
-pub fn link_rm_acl(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_rm_acl(handle: &Handle, host_id: &HostId, link_id: u8,
 		   ss1: &SocketAddr, ss2: &SocketAddr,
 		   check_type: AclCheckType, acceptreject: AclAcceptReject) -> Result<()>
 {
@@ -1852,7 +1879,7 @@ pub fn link_rm_acl(handle: Handle, host_id: &HostId, link_id: u8,
 }
 
 /// Clear out all ACLs from this host/link
-pub fn link_clear_acl(handle: Handle, host_id: &HostId, link_id: u8) -> Result<()>
+pub fn link_clear_acl(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_link_clear_acl(handle.knet_handle as ffi::knet_handle_t,
@@ -1867,7 +1894,7 @@ pub fn link_clear_acl(handle: Handle, host_id: &HostId, link_id: u8) -> Result<(
 
 
 /// Enable/disable a link (you still need to call [handle_setfwd] for traffic to flow
-pub fn link_set_enable(handle: Handle, host_id: &HostId, link_id: u8, enable: bool) -> Result<()>
+pub fn link_set_enable(handle: &Handle, host_id: &HostId, link_id: u8, enable: bool) -> Result<()>
 {
     let res = unsafe {
 	ffi::knet_link_set_enable(handle.knet_handle as ffi::knet_handle_t,
@@ -1881,7 +1908,7 @@ pub fn link_set_enable(handle: Handle, host_id: &HostId, link_id: u8, enable: bo
 }
 
 /// Get the 'enabled' status for a link
-pub fn link_get_enable(handle: Handle, host_id: &HostId, link_id: u8) -> Result<bool>
+pub fn link_get_enable(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<bool>
 {
     let mut c_enable = 0u32;
     let res = unsafe {
@@ -1896,7 +1923,7 @@ pub fn link_get_enable(handle: Handle, host_id: &HostId, link_id: u8) -> Result<
 }
 
 /// Set the ping timers for a link
-pub fn link_set_ping_timers(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_set_ping_timers(handle: &Handle, host_id: &HostId, link_id: u8,
 			    interval: i64, timeout: i64, precision: u32) -> Result<()>
 {
     let res = unsafe {
@@ -1912,7 +1939,7 @@ pub fn link_set_ping_timers(handle: Handle, host_id: &HostId, link_id: u8,
 }
 
 /// Get the ping timers for a link
-pub fn link_get_ping_timers(handle: Handle, host_id: &HostId, link_id: u8) -> Result<(i64, i64, u32)>
+pub fn link_get_ping_timers(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<(i64, i64, u32)>
 {
     let mut c_interval : ffi::time_t = 0;
     let mut c_timeout : ffi::time_t = 0;
@@ -1930,7 +1957,7 @@ pub fn link_get_ping_timers(handle: Handle, host_id: &HostId, link_id: u8) -> Re
 }
 
 /// Set the pong count for a link
-pub fn link_set_pong_count(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_set_pong_count(handle: &Handle, host_id: &HostId, link_id: u8,
 			   pong_count: u8) -> Result<()>
 {
     let res = unsafe {
@@ -1946,7 +1973,7 @@ pub fn link_set_pong_count(handle: Handle, host_id: &HostId, link_id: u8,
 }
 
 /// Get the pong count for a link
-pub fn link_get_pong_count(handle: Handle, host_id: &HostId, link_id: u8) -> Result<u8>
+pub fn link_get_pong_count(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<u8>
 {
     let mut c_pong_count = 0u8;
     let res = unsafe {
@@ -1963,7 +1990,7 @@ pub fn link_get_pong_count(handle: Handle, host_id: &HostId, link_id: u8) -> Res
 
 
 /// Set the link priority (only useful with multiple links to a node)
-pub fn link_set_priority(handle: Handle, host_id: &HostId, link_id: u8,
+pub fn link_set_priority(handle: &Handle, host_id: &HostId, link_id: u8,
 			 priority: u8) -> Result<()>
 {
     let res = unsafe {
@@ -1979,7 +2006,7 @@ pub fn link_set_priority(handle: Handle, host_id: &HostId, link_id: u8,
 }
 
 /// Get the link priority
-pub fn link_get_priority(handle: Handle, host_id: &HostId, link_id: u8) -> Result<u8>
+pub fn link_get_priority(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<u8>
 {
     let mut c_priority = 0u8;
     let res = unsafe {
@@ -1996,7 +2023,7 @@ pub fn link_get_priority(handle: Handle, host_id: &HostId, link_id: u8) -> Resul
 
 const KNET_MAX_LINK: usize = 8;
 /// Get a list of links for this host
-pub fn link_get_link_list(handle: Handle, host_id: &HostId) -> Result<Vec<u8>>
+pub fn link_get_link_list(handle: &Handle, host_id: &HostId) -> Result<Vec<u8>>
 {
     let mut c_link_ids: [u8; KNET_MAX_LINK] = [0; KNET_MAX_LINK];
     let mut c_link_ids_entries: usize = 0;
@@ -2016,7 +2043,7 @@ pub fn link_get_link_list(handle: Handle, host_id: &HostId) -> Result<Vec<u8>>
 }
 
 /// Enable callbacks when a link status changes
-pub fn link_enable_status_change_notify(handle: Handle,
+pub fn link_enable_status_change_notify(handle: &Handle,
 					private_data: u64,
 					link_status_change_notify_fn: Option<LinkStatusChangeNotifyFn>) -> Result<()>
 {
@@ -2348,7 +2375,7 @@ impl LinkStats {
 }
 
 /// Get the status (and stats) of a link
-pub fn link_get_status(handle: Handle, host_id: &HostId, link_id: u8) -> Result<LinkStatus>
+pub fn link_get_status(handle: &Handle, host_id: &HostId, link_id: u8) -> Result<LinkStatus>
 {
     let (res, stats) = unsafe {
 	let mut c_stats : ffi::knet_link_status = ffi::knet_link_status::new();
@@ -2529,7 +2556,7 @@ impl SubSystem {
 }
 
 /// Set the current logging level
-pub fn log_set_loglevel(handle: Handle, subsystem: SubSystem, level: LogLevel) -> Result<()>
+pub fn log_set_loglevel(handle: &Handle, subsystem: SubSystem, level: LogLevel) -> Result<()>
 {
     let c_level = level.to_u8();
     let c_subsys = subsystem.to_u8();
@@ -2545,7 +2572,7 @@ pub fn log_set_loglevel(handle: Handle, subsystem: SubSystem, level: LogLevel) -
 }
 
 /// Get the current logging level
-pub fn log_get_loglevel(handle: Handle, subsystem: SubSystem) -> Result<LogLevel>
+pub fn log_get_loglevel(handle: &Handle, subsystem: SubSystem) -> Result<LogLevel>
 {
     let mut c_level:u8 = 0;
     let c_subsys = subsystem.to_u8();
