@@ -342,8 +342,9 @@ if test "x${enable_hardening}" = xyes; then
 	FORTIFY_CFLAGS=""
 	if test "x${enable_debug}" != xyes; then
 		for j in 3 2; do
-			FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=$j"
-			if cc_supports_flag "$OPT_CFLAGS $FORTIFY_CFLAGS"; then
+			FORTIFY_CFLAGS_TEMP="-D_FORTIFY_SOURCE=$j"
+			if cc_supports_flag "$OPT_CFLAGS $FORTIFY_CFLAGS_TEMP"; then
+				FORTIFY_CFLAGS="$FORTIFY_CFLAGS_TEMP"
 				break
 			fi
 		done
