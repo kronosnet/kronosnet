@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2023 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2024 Red Hat, Inc.  All rights reserved.
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
@@ -342,8 +342,9 @@ if test "x${enable_hardening}" = xyes; then
 	FORTIFY_CFLAGS=""
 	if test "x${enable_debug}" != xyes; then
 		for j in 3 2; do
-			FORTIFY_CFLAGS="-D_FORTIFY_SOURCE=$j"
-			if cc_supports_flag "$OPT_CFLAGS $FORTIFY_CFLAGS"; then
+			FORTIFY_CFLAGS_TEMP="-D_FORTIFY_SOURCE=$j"
+			if cc_supports_flag "$OPT_CFLAGS $FORTIFY_CFLAGS_TEMP"; then
+				FORTIFY_CFLAGS="$FORTIFY_CFLAGS_TEMP"
 				break
 			fi
 		done
