@@ -105,6 +105,20 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 #else
 	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_RECVERR not available in this build/platform");
 #endif
+#ifdef IP_RECVORIGDSTADDR
+	value = 1;
+	if (setsockopt(sock, IPPROTO_IP, IP_RECVORIGDSTADDR, &value, sizeof(value)) <0) {
+		savederrno = errno;
+		err = -1;
+		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set RECVORIGDSTADDR on socket: %s",
+			strerror(savederrno));
+		goto exit_error;
+	}
+	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_RECVORIGDSTADDR enabled on socket: %i", sock);
+
+#else
+	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_RECVORIGDSTADDR not available in this build/platform");
+#endif
 #ifdef IPV6_RECVERR
 	if (kn_link->src_addr.ss_family == AF_INET6) {
 		value = 1;
@@ -458,12 +472,53 @@ transport_sock_error_t udp_transport_tx_sock_error(knet_handle_t knet_h, int soc
 	return KNET_TRANSPORT_SOCK_ERROR_IGNORE;
 }
 
+/*
+ * If the received IP addr doesn't match the destination IP
+ * then weird routing is going on.
+ */
+
+static int dst_addr_is_valid(knet_handle_t knet_h, struct msghdr *msg)
+{
+	struct cmsghdr *cmsg;
+	char addr_str1[KNET_MAX_HOST_LEN];
+	char port_str1[KNET_MAX_PORT_LEN];
+	char addr_str2[KNET_MAX_HOST_LEN];
+	char port_str2[KNET_MAX_PORT_LEN];
+
+	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "CC: In dst_addr_is_valid");
+	for(cmsg = CMSG_FIRSTHDR(msg);
+	    cmsg != NULL;
+	    cmsg = CMSG_NXTHDR(msg, cmsg)) {
+		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_RECVORIGDSTADDR) {
+			if (cmpaddr(msg->msg_name, (struct sockaddr_storage *)CMSG_DATA(cmsg)) != 0) {
+				if (knet_addrtostr(msg->msg_name, msg->msg_namelen,
+						   addr_str1, KNET_MAX_HOST_LEN,
+						   port_str1, KNET_MAX_PORT_LEN) < 0 &&
+				    knet_addrtostr((struct sockaddr_storage *)CMSG_DATA(cmsg), sizeof(struct sockaddr_storage),
+						   addr_str2, KNET_MAX_HOST_LEN,
+						   port_str2, KNET_MAX_PORT_LEN) < 0) {
+					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "RECVORIGDSTADDR: dstaddr (%s:%s) does not match recv addr(%s:%s)\n",
+						 addr_str1, port_str1,
+						 addr_str2, port_str2);
+						}
+				return 1;
+			}
+		}
+	}
+	return 0; /* It's all OK */
+}
+
+
 transport_rx_isdata_t udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	if (msg->msg_len == 0)
 		return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
 
-	return KNET_TRANSPORT_RX_IS_DATA;
+	if (dst_addr_is_valid(knet_h, &msg->msg_hdr) == 0) {
+		return KNET_TRANSPORT_RX_IS_DATA;
+	}
+
+	return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
 }
 
 int udp_transport_link_dyn_connect(knet_handle_t knet_h, int sockfd, struct knet_link *kn_link)
