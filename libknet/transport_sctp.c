@@ -118,7 +118,7 @@ static int _close_connect_socket(knet_handle_t knet_h, struct knet_link *kn_link
 			info->on_rx_epoll = 0;
 		}
 
-		if (_set_fd_tracker(knet_h, info->connect_sock, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL) < 0) {
+		if (_set_fd_tracker(knet_h, info->connect_sock, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL, -1) < 0) {
 			savederrno = errno;
 			err = -1;
 			log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -258,7 +258,7 @@ static int _create_connect_socket(knet_handle_t knet_h, struct knet_link *kn_lin
 		goto exit_error;
 	}
 
-	if (_set_fd_tracker(knet_h, connect_sock, KNET_TRANSPORT_SCTP, SCTP_CONNECT_LINK_INFO, sockaddr_len(&kn_link->src_addr), info) < 0) {
+	if (_set_fd_tracker(knet_h, connect_sock, KNET_TRANSPORT_SCTP, SCTP_CONNECT_LINK_INFO, sockaddr_len(&kn_link->src_addr), info, -1) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -870,7 +870,7 @@ static void _handle_incoming_sctp(knet_handle_t knet_h, int listen_sock)
 
 	if (_set_fd_tracker(knet_h, new_fd, KNET_TRANSPORT_SCTP, SCTP_ACCEPTED_LINK_INFO,
 			    knet_h->knet_transport_fd_tracker[listen_sock].sockaddr_len,
-			    accept_info) < 0) {
+			    accept_info, -1) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -902,7 +902,7 @@ exit_error:
 		 * check the error to make coverity scan happy.
 		 * _set_fd_tracker cannot fail at this stage
 		 */
-		if (_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL) < 0){
+		if (_set_fd_tracker(knet_h, new_fd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL, -1) < 0){
 			log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to update fdtracker for socket %d", new_fd);
 		}
 		free(accept_info);
@@ -976,7 +976,7 @@ static void _handle_listen_sctp_errors(knet_handle_t knet_h)
 			 * check the error to make coverity scan happy.
 			 * _set_fd_tracker cannot fail at this stage
 			 */
-			if (_set_fd_tracker(knet_h, sockfd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL) < 0) {
+			if (_set_fd_tracker(knet_h, sockfd, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL, -1) < 0) {
 				log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to update fdtracker for socket %d", sockfd);
 			}
 			info->accepted_socks[i] = -1;
@@ -1112,7 +1112,7 @@ static sctp_listen_link_info_t *sctp_link_listener_start(knet_handle_t knet_h, s
 		goto exit_error;
 	}
 
-	if (_set_fd_tracker(knet_h, listen_sock, KNET_TRANSPORT_SCTP, SCTP_LISTENER_LINK_INFO, sockaddr_len(&kn_link->src_addr), info) < 0) {
+	if (_set_fd_tracker(knet_h, listen_sock, KNET_TRANSPORT_SCTP, SCTP_LISTENER_LINK_INFO, sockaddr_len(&kn_link->src_addr), info, -1) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -1217,7 +1217,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 		info->on_listener_epoll = 0;
 	}
 
-	if (_set_fd_tracker(knet_h, info->listen_sock, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL) < 0) {
+	if (_set_fd_tracker(knet_h, info->listen_sock, KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL, -1) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",
@@ -1240,7 +1240,7 @@ static int sctp_link_listener_stop(knet_handle_t knet_h, struct knet_link *kn_li
 			info->on_rx_epoll = 0;
 			free(knet_h->knet_transport_fd_tracker[info->accepted_socks[i]].data);
 			close(info->accepted_socks[i]);
-			if (_set_fd_tracker(knet_h, info->accepted_socks[i], KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL) < 0) {
+			if (_set_fd_tracker(knet_h, info->accepted_socks[i], KNET_MAX_TRANSPORTS, SCTP_NO_LINK_INFO, 0, NULL, -1) < 0) {
 				savederrno = errno;
 				err = -1;
 				log_err(knet_h, KNET_SUB_TRANSP_SCTP, "Unable to set fd tracker: %s",

@@ -15,7 +15,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 int _init_socketpair(knet_handle_t knet_h, int *sock);
 void _close_socketpair(knet_handle_t knet_h, int *sock);
 
-int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, socklen_t socklen, void *data);
+int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t data_type, socklen_t socklen, void *data, int ifindex);
 int _is_valid_fd(knet_handle_t knet_h, int sockfd);
 
 int _sendmmsg(int sockfd, int connection_oriented, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);

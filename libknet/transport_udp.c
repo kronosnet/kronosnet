@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
+#include <net/if.h>
 #if defined (IP_RECVERR) || defined (IPV6_RECVERR)
 #include <linux/errqueue.h>
 #endif
@@ -51,9 +52,6 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 	struct epoll_event ev;
 	udp_link_info_t *info;
 	udp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_UDP];
-#if defined (IP_RECVERR) || defined (IPV6_RECVERR)
-	int value;
-#endif
 
 	/*
 	 * Only allocate a new link if the local address is different
@@ -92,7 +90,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 
 #ifdef IP_RECVERR
 	if (kn_link->src_addr.ss_family == AF_INET) {
-		value = 1;
+		int value = 1;
 		if (setsockopt(sock, SOL_IP, IP_RECVERR, &value, sizeof(value)) <0) {
 			savederrno = errno;
 			err = -1;
@@ -105,9 +103,35 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 #else
 	log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_RECVERR not available in this build/platform");
 #endif
+#ifdef IP_PKTINFO
+	if (kn_link->src_addr.ss_family == AF_INET) {
+		int value = 1;
+		if (setsockopt(sock, SOL_IP, IP_PKTINFO, &value, sizeof(value)) <0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set PKTINFO on socket: %s",
+				strerror(savederrno));
+			goto exit_error;
+		}
+		log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IP_PKTINFO enabled on socket: %i", sock);
+	}
+#endif
+#ifdef IPV6_RECVPKTINFO
+	if (kn_link->src_addr.ss_family == AF_INET6) {
+		int value = 1;
+		if (setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &value, sizeof(value)) <0) {
+			savederrno = errno;
+			err = -1;
+			log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set RECVPKTINFO on socket: %s",
+				strerror(savederrno));
+			goto exit_error;
+		}
+		log_debug(knet_h, KNET_SUB_TRANSP_UDP, "IPV6_RECVPKTINFO enabled on socket: %i", sock);
+	}
+#endif
 #ifdef IPV6_RECVERR
 	if (kn_link->src_addr.ss_family == AF_INET6) {
-		value = 1;
+		int value = 1;
 		if (setsockopt(sock, SOL_IPV6, IPV6_RECVERR, &value, sizeof(value)) <0) {
 			savederrno = errno;
 			err = -1;
@@ -128,7 +152,6 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 			strerror(savederrno));
 		goto exit_error;
 	}
-
 	memset(&ev, 0, sizeof(struct epoll_event));
 	ev.events = EPOLLIN;
 	ev.data.fd = sock;
@@ -143,7 +166,7 @@ int udp_transport_link_set_config(knet_handle_t knet_h, struct knet_link *kn_lin
 
 	info->on_epoll = 1;
 
-	if (_set_fd_tracker(knet_h, sock, KNET_TRANSPORT_UDP, 0, sockaddr_len(&kn_link->src_addr), info) < 0) {
+	if (_set_fd_tracker(knet_h, sock, KNET_TRANSPORT_UDP, 0, sockaddr_len(&kn_link->src_addr), info, -1) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set fd tracker: %s",
@@ -218,7 +241,7 @@ int udp_transport_link_clear_config(knet_handle_t knet_h, struct knet_link *kn_l
 		info->on_epoll = 0;
 	}
 
-	if (_set_fd_tracker(knet_h, info->socket_fd, KNET_MAX_TRANSPORTS, 0, sockaddr_len(&kn_link->src_addr), NULL) < 0) {
+	if (_set_fd_tracker(knet_h, info->socket_fd, KNET_MAX_TRANSPORTS, 0, sockaddr_len(&kn_link->src_addr), NULL, -1) < 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_TRANSP_UDP, "Unable to set fd tracker: %s",
@@ -458,10 +481,76 @@ int udp_transport_tx_sock_error(knet_handle_t knet_h, int sockfd, int subsys, in
 	return 0;
 }
 
+/*
+ * If the received IP addr doesn't match the destination IP
+ * then weird routing is going on.
+ */
+static void check_dst_addr_is_valid(knet_handle_t knet_h, int sockfd, struct msghdr *msg)
+{
+#if defined(IP_PKTINFO) || defined(IPV6_PKTINFO)
+        struct cmsghdr *cmsg;
+
+	for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+		int pkt_ifindex = -1;
+		int ifindex = knet_h->knet_transport_fd_tracker[sockfd].ifindex;
+		struct sockaddr_storage dstaddr;
+#ifdef IP_PKTINFO
+		if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_PKTINFO) {
+			struct in_pktinfo *pi = (void*)CMSG_DATA(cmsg);
+			struct sockaddr_in *dstaddr4 = (struct sockaddr_in *)&dstaddr;
+
+			pkt_ifindex = pi->ipi_ifindex;
+			dstaddr4->sin_family = AF_INET;
+			dstaddr4->sin_port = 0; /* unknown to PKTINFO */
+			dstaddr4->sin_addr.s_addr = pi->ipi_addr.s_addr;
+		}
+#endif
+#ifdef IPV6_PKTINFO
+		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+			struct in6_pktinfo *pi = (void*)CMSG_DATA(cmsg);
+			struct sockaddr_in6 *dstaddr6 = (struct sockaddr_in6 *)&dstaddr;
+			memset(dstaddr6, 0, sizeof(struct sockaddr_in6));
+
+			pkt_ifindex = pi->ipi6_ifindex;
+			dstaddr6->sin6_family = AF_INET6;
+			dstaddr6->sin6_port = 0; /* unknown to PKTINFO */
+			memcpy(&dstaddr6->sin6_addr, (char *)&pi->ipi6_addr, sizeof(pi->ipi6_addr));
+		}
+#endif
+		if (ifindex != -1 && pkt_ifindex != -1 && ifindex != pkt_ifindex) {
+				char srcaddr_s[KNET_MAX_HOST_LEN];
+				char srcport_s[KNET_MAX_PORT_LEN];
+				char dstaddr_s[KNET_MAX_HOST_LEN];
+				char dstport_s[KNET_MAX_PORT_LEN];
+				char expected_ifname[IF_NAMESIZE];
+				char used_ifname[IF_NAMESIZE];
+
+				/* Make as detailed a message as we can */
+				if ((if_indextoname(pkt_ifindex, used_ifname) == NULL) ||
+				    (if_indextoname(ifindex, expected_ifname) == NULL)) {
+					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet on ifindex %d when expected ifindex %d", pkt_ifindex, ifindex);
+				} else if (knet_addrtostr(msg->msg_name, msg->msg_namelen,
+							  srcaddr_s, sizeof(srcaddr_s),
+							  srcport_s, sizeof(srcport_s)) != 0) {
+					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet on i/f %s when expected i/f %s", used_ifname, expected_ifname);
+				} else if (knet_addrtostr((struct sockaddr_storage *)&dstaddr, sizeof(dstaddr),
+							  dstaddr_s, sizeof(dstaddr_s),
+							  dstport_s, sizeof(dstport_s)) != 0) {
+					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet from %s on i/f %s when expected %s", srcaddr_s, used_ifname, expected_ifname);
+				} else {
+					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet from %s to %s on i/f %s when expected %s", srcaddr_s, dstaddr_s, used_ifname, expected_ifname);
+				}
+		}
+	}
+#endif
+}
+
 int udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd, struct knet_mmsghdr *msg)
 {
 	if (msg->msg_len == 0)
 		return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
+
+	check_dst_addr_is_valid(knet_h, sockfd, &msg->msg_hdr);
 
 	return KNET_TRANSPORT_RX_IS_DATA;
 }
