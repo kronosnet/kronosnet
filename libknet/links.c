@@ -22,6 +22,25 @@
 #include "host.h"
 #include "threads_common.h"
 #include "links_acl.h"
+#include <ifaddrs.h>
+#include <net/if.h>
+
+static int find_ifindex(struct sockaddr_storage *addr)
+{
+	struct ifaddrs *ifrs, *ifa;
+
+	if (getifaddrs(&ifrs) == 0) {
+		for (ifa = ifrs; ifa != NULL; ifa = ifa->ifa_next) {
+			if (ifa->ifa_addr && cmpaddr(addr, (struct sockaddr_storage *)ifa->ifa_addr) == 0) {
+				int ifindex = if_nametoindex(ifa->ifa_name);
+				freeifaddrs(ifrs);
+				return ifindex;
+			}
+		}
+		freeifaddrs(ifrs);
+	}
+	return -1;
+}
 
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected, unsigned int lock_stats)
@@ -68,6 +87,7 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		if (++link->status.stats.last_up_time_index >= MAX_LINK_EVENTS) {
 			link->status.stats.last_up_time_index = 0;
 		}
+		knet_h->knet_transport_fd_tracker[link->outsock].ifindex = find_ifindex(&link->src_addr);
 	} else {
 		time(&link->status.stats.last_down_times[link->status.stats.last_down_time_index]);
 		link->status.stats.down_count++;
