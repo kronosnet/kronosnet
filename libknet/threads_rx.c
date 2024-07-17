@@ -1131,6 +1131,9 @@ void *_handle_recv_from_links_thread(void *data)
 	struct sockaddr_storage address[PCKT_RX_BUFS];
 	struct knet_mmsghdr msg[PCKT_RX_BUFS];
 	struct iovec iov_in[PCKT_RX_BUFS];
+#if defined(IP_PKTINFO) || defined(IPV6_PKTINFO)
+	unsigned char control_in[CMSG_SPACE(sizeof(struct in6_pktinfo))][PCKT_RX_BUFS];
+#endif
 
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STARTED);
 
@@ -1147,6 +1150,10 @@ void *_handle_recv_from_links_thread(void *data)
 		msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr_storage); /* Real value filled in before actual use */
 		msg[i].msg_hdr.msg_iov = &iov_in[i];
 		msg[i].msg_hdr.msg_iovlen = 1;
+#if defined(IP_PKTINFO) || defined(IPV6_PKTINFO)
+		msg[i].msg_hdr.msg_control = &control_in[0][i];
+		msg[i].msg_hdr.msg_controllen = CMSG_SPACE(sizeof(struct in6_pktinfo)); /* Largest of the two pktinfo structs */
+#endif
 	}
 
 	while (!shutdown_in_progress(knet_h)) {
