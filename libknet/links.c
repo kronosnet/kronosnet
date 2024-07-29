@@ -13,6 +13,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <pthread.h>
+#include <inttypes.h>
 
 #include "netutils.h"
 #include "internals.h"
@@ -934,16 +935,16 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 
 	if ((useconds_t)(interval * 1000) < knet_h->threads_timer_res) {
 		log_warn(knet_h, KNET_SUB_LINK,
-			 "host: %u link: %u interval: %lu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
-			 host_id, link_id, interval, strerror(savederrno), (knet_h->threads_timer_res / 1000));
+			 "host: %u link: %u interval: %" PRIdMAX " too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
+			 host_id, link_id, (intmax_t)interval, strerror(savederrno), (knet_h->threads_timer_res / 1000));
 	}
 
 	if ((useconds_t)(timeout * 1000) < knet_h->threads_timer_res) {
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_LINK,
-			"host: %u link: %u pong timeout: %lu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
-			host_id, link_id, timeout, strerror(savederrno), (knet_h->threads_timer_res / 1000));
+			"host: %u link: %u pong timeout: %" PRIdMAX " too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
+			host_id, link_id, (intmax_t)timeout, strerror(savederrno), (knet_h->threads_timer_res / 1000));
 		goto exit_unlock;
 	}
 
