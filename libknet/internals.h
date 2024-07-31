@@ -151,6 +151,7 @@ struct knet_fd_trackers {
 					     * with this fd */
 	socklen_t sockaddr_len;             /* Size of sockaddr_in[6] structure for this socket */
 	void *data;			    /* pointer to the data */
+	int ifindex;                        /* interface index for this bound address */
 };
 
 #define KNET_MAX_FDS KNET_MAX_HOST * KNET_MAX_LINK * 4
