@@ -880,6 +880,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
 	struct knet_link *link;
+	unsigned long long ping_interval, pong_timeout;
 
 	if (!_is_valid_handle(knet_h)) {
 		return -1;
@@ -890,12 +891,12 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		return -1;
 	}
 
-	if (!interval) {
+	if (interval <= 0) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!timeout) {
+	if (timeout <= 0) {
 		errno = ENOSYS;
 		return -1;
 	}
@@ -932,23 +933,25 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		goto exit_unlock;
 	}
 
-	if ((useconds_t)(interval * 1000) < knet_h->threads_timer_res) {
+	ping_interval = (unsigned long long)interval * 1000; /* microseconds */
+	if (ping_interval < knet_h->threads_timer_res) {
 		log_warn(knet_h, KNET_SUB_LINK,
-			 "host: %u link: %u interval: %lu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
-			 host_id, link_id, interval, strerror(savederrno), (knet_h->threads_timer_res / 1000));
+			 "host: %u link: %u interval: %llu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
+			 host_id, link_id, (unsigned long long)interval, strerror(savederrno), (knet_h->threads_timer_res / 1000));
 	}
 
-	if ((useconds_t)(timeout * 1000) < knet_h->threads_timer_res) {
+	pong_timeout = (unsigned long long)timeout * 1000; /* microseconds */
+	if (pong_timeout < knet_h->threads_timer_res) {
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_LINK,
-			"host: %u link: %u pong timeout: %lu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
-			host_id, link_id, timeout, strerror(savederrno), (knet_h->threads_timer_res / 1000));
+			"host: %u link: %u pong timeout: %llu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
+			host_id, link_id, (unsigned long long)timeout, strerror(savederrno), (knet_h->threads_timer_res / 1000));
 		goto exit_unlock;
 	}
 
-	link->ping_interval = interval * 1000; /* microseconds */
-	link->pong_timeout = timeout * 1000; /* microseconds */
+	link->ping_interval = ping_interval;
+	link->pong_timeout = pong_timeout;
 	link->latency_max_samples = precision;
 
 	log_debug(knet_h, KNET_SUB_LINK,
