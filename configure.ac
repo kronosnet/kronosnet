@@ -506,7 +506,7 @@ if test -n "${SANITIZERS}"; then
 	done
 fi
 
-DEFAULT_CFLAGS="-Werror -Wall -Wextra"
+DEFAULT_CFLAGS="-Werror -Wall -Wextra -Wno-gnu-folding-constant"
 
 # manual overrides
 # generates too much noise for stub APIs
