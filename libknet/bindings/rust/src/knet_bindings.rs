@@ -439,7 +439,7 @@ pub fn handle_new(host_id: &HostId,
 	ffi::knet_handle_new(host_id.host_id,
 			     log_fd,
 			     default_log_level.to_u8(),
-			     flags.bits)
+			     flags.bits())
     };
 
     if res.is_null() {
@@ -1660,7 +1660,7 @@ pub fn link_set_config(handle: &Handle, host_id: &HostId, link_id: u8,
 				      transport.to_u8(),
 				      &mut c_srcaddr,
 				      &mut c_dstaddr,
-				      flags.bits)
+				      flags.bits())
 	}
     } else {
 	unsafe {
@@ -1669,7 +1669,7 @@ pub fn link_set_config(handle: &Handle, host_id: &HostId, link_id: u8,
 				      transport.to_u8(),
 				      &mut c_srcaddr,
 				      null_mut(),
-				      flags.bits)
+				      flags.bits())
 	}
     };
     if res == 0 {
@@ -1700,7 +1700,7 @@ pub fn link_get_config(handle: &Handle, host_id: &HostId, link_id: u8) ->
     };
     if res == 0 {
 	let r_transport = TransportId::new(c_transport);
-	Ok((r_transport, c_srcaddr.into(), c_dstaddr.into(), LinkFlags{bits:c_flags}))
+	Ok((r_transport, c_srcaddr.into(), c_dstaddr.into(), LinkFlags::from_bits(c_flags).unwrap_or(LinkFlags::empty())))
     } else {
 	Err(Error::last_os_error())
     }
