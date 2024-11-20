@@ -268,7 +268,7 @@ fn configure_link(knet_handle: &knet::Handle, our_hostid: &knet::HostId, other_h
 	println!("Error from handle_enable_onwire_ver_notify: {e}");
 	return Err(e);
     }
-    match knet::handle_add_datafd(knet_handle, 0, CHANNEL) {
+    match knet::handle_add_datafd(knet_handle, 0, CHANNEL, knet::DataFdFlags::NONE) {
 	Ok((fd,chan)) => {
 	    println!("Added datafd, fd={fd}, channel={chan}");
 	},

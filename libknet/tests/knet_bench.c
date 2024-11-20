@@ -548,7 +548,7 @@ static void setup_knet(int argc, char *argv[])
 	datafd = 0;
 	channel = -1;
 
-	if (knet_handle_add_datafd(knet_h, &datafd, &channel) < 0) {
+	if (knet_handle_add_datafd(knet_h, &datafd, &channel, 0) < 0) {
 		printf("knet_handle_add_datafd failed: %s\n", strerror(errno));
 		knet_handle_free(knet_h);
 		exit(FAIL);

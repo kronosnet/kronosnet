@@ -62,7 +62,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 	return 0;
 }
 
-int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
+int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel, uint32_t flags)
 {
 	int err = 0, savederrno = 0;
 	int i;
@@ -139,6 +139,7 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 	knet_h->sockfd[*channel].is_created = 0;
 	knet_h->sockfd[*channel].is_socket = 0;
 	knet_h->sockfd[*channel].has_error = 0;
+	knet_h->sockfd[*channel].flags = flags;
 
 	if (*datafd > 0) {
 		int sockopt;

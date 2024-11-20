@@ -92,6 +92,11 @@ typedef uint16_t knet_node_id_t;
 #define KNET_HANDLE_FLAG_PRIVILEGED (1ULL << 0)
 
 /*
+ * Flags that affect what appears (and should be provided) on the datafd
+ */
+#define KNET_DATAFD_FLAG_RX_RETURN_INFO  (1ULL << 0)
+
+/*
  * threads timer resolution (see knet_handle_set_threads_timer_res below)
  */
 
@@ -265,6 +270,15 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
 
 #define KNET_DATAFD_MAX 32
 
+struct knet_datafd_header {
+	/** Size of the structure. Used for backwards compatibilty. Only use fields up to the
+	    size you were compiled with, but advance to the end of the struct using the
+	    size field here */
+	size_t size;
+	/** nodeid of node sending this message */
+	knet_node_id_t src_nodeid;
+};
+
 /**
  * knet_handle_add_datafd
  *
@@ -317,6 +331,8 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
  *            If your application could have 2 channels on one host and one
  *            channel on another host, then you can use dst_host_filter
  *            to manipulate channel values on TX and RX.
+ * flags    - Bitwise OR of any of the following:
+ *          - KNET_ADD_DAFATA_FLAG_RX_RETURN_INFO
  *
  * @return
  * knet_handle_add_datafd returns
@@ -330,8 +346,7 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
  * @retval -1 on error and errno is set.
  *         *datafd and *channel are untouched or empty.
  */
-
-int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel);
+int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel, uint32_t flags);
 
 /**
  * knet_handle_remove_datafd

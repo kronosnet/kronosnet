@@ -278,9 +278,9 @@ static void test(int transport)
 	FAIL_ON_ERR_THR(knet_handle_enable_sock_notify(knet_h[2], 0, &notify_fn));
 
 	channel = datafd = 0;
-	FAIL_ON_ERR_THR(knet_handle_add_datafd(knet_h[1], &datafd, &channel));
+	FAIL_ON_ERR_THR(knet_handle_add_datafd(knet_h[1], &datafd, &channel, 0));
 	channel = datafd = 0;
-	FAIL_ON_ERR_THR(knet_handle_add_datafd(knet_h[2], &datafd, &channel));
+	FAIL_ON_ERR_THR(knet_handle_add_datafd(knet_h[2], &datafd, &channel, 0));
 
 	FAIL_ON_ERR_THR(knet_link_set_enable(knet_h[1], 2, 0, 1));
 	FAIL_ON_ERR_THR(knet_link_set_enable(knet_h[2], 1, 0, 1));

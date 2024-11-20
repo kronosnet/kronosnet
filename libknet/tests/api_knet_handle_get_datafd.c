@@ -68,7 +68,7 @@ static void test(void)
 	old_datafd = 0;
 	channel = -1;
 
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &old_datafd, &channel));
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &old_datafd, &channel, 0));
 
 	FAIL_ON_ERR(knet_handle_get_datafd(knet_h1, channel, &datafd));
 

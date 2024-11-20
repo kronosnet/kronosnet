@@ -148,7 +148,7 @@ static void test(void)
 	datafd = 0;
 	channel = -1;
 
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != ECANCELED)) {
 		printf("knet_send_sync didn't detect datafwd disabled or returned incorrect error: %s\n", strerror(errno));
