@@ -21,4 +21,5 @@ int _is_valid_fd(knet_handle_t knet_h, int sockfd);
 int _sendmmsg(int sockfd, int connection_oriented, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
 int _recvmmsg(int sockfd, struct knet_mmsghdr *msgvec, unsigned int vlen, unsigned int flags);
 
+ssize_t writev_all(knet_handle_t knet_h, int fd, struct iovec *iov, int iovcnt, struct knet_link *local_link, uint8_t log_subsys);
 #endif

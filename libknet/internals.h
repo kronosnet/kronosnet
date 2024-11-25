@@ -152,6 +152,7 @@ struct knet_sock {
 	int in_use;      /* set to 1 if it's use, 0 if free */
 	int has_error;   /* set to 1 if there were errors reading from the sock
 			  * and socket has been removed from epoll */
+	int flags;       /* KNET_DATAFD_FLAGs */
 };
 
 struct knet_fd_trackers {

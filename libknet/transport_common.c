@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <sys/uio.h>
 
 #include "libknet.h"
 #include "compat.h"
@@ -445,4 +446,55 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
 	knet_h->knet_transport_fd_tracker[sockfd].ifindex = ifindex;
 
 	return 0;
+}
+
+/*
+ * Wrapper function for writev that retries until all data is written.
+ */
+ssize_t writev_all(knet_handle_t knet_h, int fd, struct iovec *iov, int iovcnt, struct knet_link *local_link, uint8_t log_subsys)
+{
+    ssize_t total_written = 0;  // Total bytes written
+    ssize_t result;
+    size_t total_bytes = 0;
+    int i;
+
+    for (i=0; i<iovcnt; i++) {
+	    total_bytes += iov[i].iov_len;
+    }
+
+    while (iovcnt > 0) {
+	    result = writev(fd, iov, iovcnt);
+	    if (result < 0) {
+		    /* retry on signal */
+		    if (errno == EINTR) {
+			    continue;
+		    }
+		    /* Other errors */
+		    return -1;
+	    }
+
+	    total_written += result;
+
+	    /* Adjust iovec array to account for the bytes already written */
+	    size_t bytes_left = result;
+	    int old_iovcnt = iovcnt;
+	    for (int i = 0; i < old_iovcnt; i++) {
+		    if (bytes_left >= iov[i].iov_len) {
+			    bytes_left -= iov[i].iov_len;
+			    iov++;
+			    iovcnt--;
+			    if (local_link != NULL) {
+				    local_link->status.stats.tx_data_retries++;
+			    }
+			    log_debug(knet_h, log_subsys, "writev incomplete=%zd bytes of %zu\n", result, total_bytes);
+		    } else {
+			    /* Adjust the current iovec to start at the remaining data */
+			    iov[i].iov_base = (char *)iov[i].iov_base + bytes_left;
+			    iov[i].iov_len -= bytes_left;
+			    break;
+		    }
+	    }
+    }
+
+    return total_written;
 }

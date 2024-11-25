@@ -146,21 +146,28 @@ static int _dispatch_to_local(knet_handle_t knet_h, unsigned char *data, size_t 
 	const unsigned char *buf = data;
 	ssize_t buflen = inlen;
 	struct knet_link *local_link = knet_h->host_index[knet_h->host_id]->link;
+	struct iovec iov_out[2];
+	uint32_t cur_iov = 0;
+	struct knet_datafd_header datafd_hdr;
 
-local_retry:
-	err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
+	if (knet_h->sockfd[channel].flags & KNET_DATAFD_FLAG_RX_RETURN_INFO) {
+		log_debug(knet_h, KNET_SUB_RX,
+			  "Adding header to local packet");
+		datafd_hdr.size = sizeof(datafd_hdr);
+		datafd_hdr.src_nodeid = knet_h->host_id;
+		iov_out[0].iov_base = &datafd_hdr;
+		iov_out[0].iov_len = sizeof(datafd_hdr);
+		cur_iov++;
+	}
+	iov_out[cur_iov].iov_base = (void *)buf;
+	iov_out[cur_iov].iov_len = buflen;
+
+	err = writev_all(knet_h, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, cur_iov+1, local_link, KNET_SUB_TRANSP_LOOPBACK);
 	savederrno = errno;
 	if (err < 0) {
 		log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
 		local_link->status.stats.tx_data_errors++;
 		goto out;
-	}
-	if (err > 0 && err < buflen) {
-		log_debug(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local incomplete=%d bytes of %zu\n", err, inlen);
-		local_link->status.stats.tx_data_retries++;
-		buf += err;
-		buflen -= err;
-		goto local_retry;
 	}
 	if (err == buflen) {
 		local_link->status.stats.tx_data_packets++;

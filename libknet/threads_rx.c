@@ -573,25 +573,28 @@ static int _check_destination(knet_handle_t knet_h, struct knet_header *inbuf, u
 	return 0;
 }
 
-static int _deliver_data(knet_handle_t knet_h, unsigned char *data, ssize_t len, ssize_t header_size, int8_t channel)
+static int _deliver_data(knet_handle_t knet_h, unsigned char *data, ssize_t len, ssize_t header_size, int8_t channel, struct knet_host *src_host, struct knet_link *src_link)
 {
-	struct iovec iov_out[1];
+	struct iovec iov_out[2];
 	ssize_t	outlen = 0;
+	uint32_t cur_iov = 0;
+	struct knet_datafd_header datafd_hdr;
 
 	memset(iov_out, 0, sizeof(iov_out));
 
-retry:
-	iov_out[0].iov_base = (void *) data + outlen;
-	iov_out[0].iov_len = len - (outlen + header_size);
+	if (knet_h->sockfd[channel].flags & KNET_DATAFD_FLAG_RX_RETURN_INFO) {
 
-	outlen = writev(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, 1);
-	if ((outlen > 0) && (outlen < (ssize_t)iov_out[0].iov_len)) {
-		log_debug(knet_h, KNET_SUB_RX,
-			  "Unable to send all data to the application in one go. Expected: %zu Sent: %zd\n",
-			  iov_out[0].iov_len, outlen);
-		goto retry;
+		datafd_hdr.size = sizeof(datafd_hdr);
+		datafd_hdr.src_nodeid = src_host->host_id;
+		iov_out[0].iov_base = &datafd_hdr;
+		iov_out[0].iov_len = sizeof(datafd_hdr);
+		cur_iov++;
 	}
 
+	iov_out[cur_iov].iov_base = (void *) data + outlen;
+	iov_out[cur_iov].iov_len = len - (outlen + header_size);
+
+	outlen = writev_all(knet_h, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, cur_iov+1, src_link, KNET_SUB_RX);
 	if (outlen <= 0) {
 		knet_h->sock_notify_fn(knet_h->sock_notify_fn_private_data,
 				       knet_h->sockfd[channel].sockfd[0],
@@ -716,7 +719,7 @@ static void _process_data(knet_handle_t knet_h, struct knet_host *src_host, stru
 	}
 #endif
 
-	if (_deliver_data(knet_h, data, len, header_size, channel) < 0) {
+	if (_deliver_data(knet_h, data, len, header_size, channel, src_host, src_link) < 0) {
 		return;
 	}
 

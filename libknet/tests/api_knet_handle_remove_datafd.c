@@ -62,7 +62,7 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 	datafd = 0;
 	channel = -1;
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 
 	FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafd));
 

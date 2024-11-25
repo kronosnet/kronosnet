@@ -81,6 +81,15 @@ bitflags! {
 }
 
 bitflags! {
+/// Flags passed into [handle_add_datafd]
+    pub struct DataFdFlags: u32
+    {
+	const NONE = 0;
+	const RX_RETURN_INFO = 1;
+    }
+}
+
+bitflags! {
 /// Flags passed into [link_set_config]
     pub struct LinkFlags: u64
     {
@@ -534,15 +543,16 @@ pub fn handle_enable_sock_notify(handle: &Handle,
     Err(Error::new(ErrorKind::Other, "Rust handle not found"))
 }
 
-/// Add a data FD to knet. if datafd is 0 then knet will allocate one for you.
-pub fn handle_add_datafd(handle: &Handle, datafd: i32, channel: i8) -> Result<(i32, i8)>
+/// Add a data FD to knet (with flags). if datafd is 0 then knet will allocate one for you.
+pub fn handle_add_datafd(handle: &Handle, datafd: i32, channel: i8, flags: DataFdFlags) -> Result<(i32, i8)>
 {
     let mut c_datafd = datafd;
     let mut c_channel = channel;
     let res = unsafe {
 	ffi::knet_handle_add_datafd(handle.knet_handle as ffi::knet_handle_t,
 				    &mut c_datafd,
-				    &mut c_channel)
+				    &mut c_channel,
+				    flags.bits())
     };
     if res == 0 {
 	Ok((c_datafd, c_channel))

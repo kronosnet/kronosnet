@@ -45,7 +45,7 @@ fun_checks		= \
 			  fun_acl_check_test
 
 # checks below need to be executed manually
-# or with a specifi environment
+# or with a specific environment
 
 long_run_checks		= \
 			  fun_pmtud_crypto_test

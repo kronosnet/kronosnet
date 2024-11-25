@@ -72,7 +72,7 @@ static void test(const char *model)
 	datafd = 0;
 	channel = -1;
 
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 

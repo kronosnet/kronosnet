@@ -44,7 +44,7 @@ static void test(void)
 
 	printf("Test knet_handle_add_datafd incorrect knet_h\n");
 
-	if ((!knet_handle_add_datafd(NULL, &datafd, &channel)) || (errno != EINVAL)) {
+	if ((!knet_handle_add_datafd(NULL, &datafd, &channel, 0)) || (errno != EINVAL)) {
 		printf("knet_handle_add_datafd accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);
 	}
@@ -54,21 +54,21 @@ static void test(void)
 	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
 	printf("Test knet_handle_add_datafd with no datafd\n");
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, NULL, &channel), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, NULL, &channel, 0), EINVAL);
 
 	printf("Test knet_handle_add_datafd with no channel\n");
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, NULL), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, NULL, 0), EINVAL);
 
 	printf("Test knet_handle_add_datafd with invalid channel\n");
 	channel = KNET_DATAFD_MAX;
 
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0), EINVAL);
 
 
 	printf("Test knet_handle_add_datafd with no socknotify\n");
 	datafd = 0;
 	channel = -1;
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0), EINVAL);
 
 	printf("Test knet_handle_add_datafd with automatic config values\n");
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
@@ -76,15 +76,15 @@ static void test(void)
 	datafd = 0;
 	channel = -1;
 
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 	printf("got datafd: %d channel: %d\n", datafd, channel);
 
 	printf("Test knet_handle_add_datafd with duplicated datafd\n");
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EEXIST);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0), EEXIST);
 
 	printf("Test knet_handle_add_datafd with busy channel\n");
 	datafd = datafd + 1;
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EBUSY);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0), EBUSY);
 
 	datafd = datafd - 1;
 
@@ -94,13 +94,13 @@ static void test(void)
 	for (i = 0; i < KNET_DATAFD_MAX; i++) {
 		datafdmax[i] = 0;
 		channels[i] = -1;
-		FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafdmax[i], &channels[i]));
+		FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafdmax[i], &channels[i], 0));
 	}
 
 	datafd = 0;
 	channel = -1;
 
-	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel), EBUSY);
+	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0), EBUSY);
 
 	for (i = 0; i < KNET_DATAFD_MAX; i++) {
 		FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafdmax[i]));
