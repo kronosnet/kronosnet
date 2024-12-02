@@ -22,6 +22,25 @@
 #include "host.h"
 #include "threads_common.h"
 #include "links_acl.h"
+#include <ifaddrs.h>
+#include <net/if.h>
+
+static int find_ifindex(struct sockaddr_storage *addr)
+{
+	struct ifaddrs *ifrs, *ifa;
+
+	if (getifaddrs(&ifrs) == 0) {
+		for (ifa = ifrs; ifa != NULL; ifa = ifa->ifa_next) {
+			if (ifa->ifa_addr && cmpaddr(addr, (struct sockaddr_storage *)ifa->ifa_addr) == 0) {
+				int ifindex = if_nametoindex(ifa->ifa_name);
+				freeifaddrs(ifrs);
+				return ifindex;
+			}
+		}
+		freeifaddrs(ifrs);
+	}
+	return -1;
+}
 
 int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		 unsigned int enabled, unsigned int connected, unsigned int lock_stats)
@@ -68,6 +87,7 @@ int _link_updown(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 		if (++link->status.stats.last_up_time_index >= MAX_LINK_EVENTS) {
 			link->status.stats.last_up_time_index = 0;
 		}
+		knet_h->knet_transport_fd_tracker[link->outsock].ifindex = find_ifindex(&link->src_addr);
 	} else {
 		time(&link->status.stats.last_down_times[link->status.stats.last_down_time_index]);
 		link->status.stats.down_count++;
@@ -842,6 +862,7 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 	int savederrno = 0, err = 0;
 	struct knet_host *host;
 	struct knet_link *link;
+	unsigned long long ping_interval, pong_timeout;
 
 	if (!_is_valid_handle(knet_h)) {
 		return -1;
@@ -852,12 +873,12 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		return -1;
 	}
 
-	if (!interval) {
+	if (interval <= 0) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	if (!timeout) {
+	if (timeout <= 0) {
 		errno = ENOSYS;
 		return -1;
 	}
@@ -894,23 +915,25 @@ int knet_link_set_ping_timers(knet_handle_t knet_h, knet_node_id_t host_id, uint
 		goto exit_unlock;
 	}
 
-	if ((useconds_t)(interval * 1000) < KNET_THREADS_TIMERES) {
+	ping_interval = (unsigned long long)interval * 1000; /* microseconds */
+	if (ping_interval < KNET_THREADS_TIMERES) {
 		log_warn(knet_h, KNET_SUB_LINK,
-			 "host: %u link: %u interval: %lu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
-			 host_id, link_id, interval, strerror(savederrno), (KNET_THREADS_TIMERES / 1000));
+			 "host: %u link: %u interval: %llu too small (%s). interval lower than thread_timer_res (%u ms) has no effect",
+			 host_id, link_id, (unsigned long long)interval, strerror(savederrno), (KNET_THREADS_TIMERES / 1000));
 	}
 
-	if ((useconds_t)(timeout * 1000) < KNET_THREADS_TIMERES) {
+	pong_timeout = (unsigned long long)timeout * 1000; /* microseconds */
+	if (pong_timeout < KNET_THREADS_TIMERES) {
 		err = -1;
 		savederrno = EINVAL;
 		log_err(knet_h, KNET_SUB_LINK,
-			"host: %u link: %u pong timeout: %lu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
-			host_id, link_id, timeout, strerror(savederrno), (KNET_THREADS_TIMERES / 1000));
+			"host: %u link: %u pong timeout: %llu too small (%s). timeout cannot be less than thread_timer_res (%u ms)",
+			host_id, link_id, (unsigned long long)timeout, strerror(savederrno), (KNET_THREADS_TIMERES / 1000));
 		goto exit_unlock;
 	}
 
-	link->ping_interval = interval * 1000; /* microseconds */
-	link->pong_timeout = timeout * 1000; /* microseconds */
+	link->ping_interval = ping_interval;
+	link->pong_timeout = pong_timeout;
 	link->latency_max_samples = precision;
 
 	log_debug(knet_h, KNET_SUB_LINK,
