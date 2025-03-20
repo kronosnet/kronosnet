@@ -145,9 +145,9 @@ static int lzo2_decompress(
 {
 	int lzerr = 0, err = 0;
 	int savederrno = 0;
-	lzo_uint decmp_len;
+	lzo_uint decmp_len = *buf_out_len;
 
-	lzerr = lzo1x_decompress(buf_in, buf_in_len, buf_out, &decmp_len, NULL);
+	lzerr = lzo1x_decompress_safe(buf_in, buf_in_len, buf_out, &decmp_len, NULL);
 
 	if (lzerr != LZO_E_OK) {
 		log_err(knet_h, KNET_SUB_LZO2COMP, "lzo2 internal decompression error");
