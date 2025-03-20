@@ -153,6 +153,7 @@ static int _dispatch_to_local(knet_handle_t knet_h, unsigned char *data, size_t 
 	if (knet_h->sockfd[channel].flags & KNET_DATAFD_FLAG_RX_RETURN_INFO) {
 		log_debug(knet_h, KNET_SUB_RX,
 			  "Adding header to local packet");
+		memset(&datafd_hdr, 0, sizeof(datafd_hdr));
 		datafd_hdr.size = sizeof(datafd_hdr);
 		datafd_hdr.src_nodeid = knet_h->host_id;
 		iov_out[0].iov_base = &datafd_hdr;
