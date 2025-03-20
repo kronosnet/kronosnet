@@ -453,48 +453,41 @@ int _set_fd_tracker(knet_handle_t knet_h, int sockfd, uint8_t transport, uint8_t
  */
 ssize_t writev_all(knet_handle_t knet_h, int fd, struct iovec *iov, int iovcnt, struct knet_link *local_link, uint8_t log_subsys)
 {
-    ssize_t total_written = 0;  // Total bytes written
-    ssize_t result;
-    size_t total_bytes = 0;
-    int i;
+	ssize_t total_written = 0; /* Total bytes written */
+	ssize_t written; /* Bytes written by single writev */
+	int iov_index = 0;
 
-    for (i=0; i<iovcnt; i++) {
-	    total_bytes += iov[i].iov_len;
-    }
+	for (;;) {
+		written = writev(fd, iov, iovcnt);
 
-    while (iovcnt > 0) {
-	    result = writev(fd, iov, iovcnt);
-	    if (result < 0) {
-		    /* retry on signal */
-		    if (errno == EINTR) {
-			    continue;
-		    }
-		    /* Other errors */
-		    return -1;
-	    }
+		if (written < 0) {
+			/* retry on signal */
+			if (errno == EINTR) {
+				continue;
+			}
+			/* Other errors */
+			return -1;
+		}
 
-	    total_written += result;
+		total_written += written;
 
-	    /* Adjust iovec array to account for the bytes already written */
-	    size_t bytes_left = result;
-	    int old_iovcnt = iovcnt;
-	    for (int i = 0; i < old_iovcnt; i++) {
-		    if (bytes_left >= iov[i].iov_len) {
-			    bytes_left -= iov[i].iov_len;
-			    iov++;
-			    iovcnt--;
-			    if (local_link != NULL) {
-				    local_link->status.stats.tx_data_retries++;
-			    }
-			    log_debug(knet_h, log_subsys, "writev incomplete=%zd bytes of %zu\n", result, total_bytes);
-		    } else {
-			    /* Adjust the current iovec to start at the remaining data */
-			    iov[i].iov_base = (char *)iov[i].iov_base + bytes_left;
-			    iov[i].iov_len -= bytes_left;
-			    break;
-		    }
-	    }
-    }
+		while ((size_t)written >= iov[iov_index].iov_len) {
+			written -= iov[iov_index].iov_len;
+			iov_index++;
+			if (iov_index >= iovcnt) {
+				/* Everything written */
+				goto out;
+			}
+		}
 
-    return total_written;
+		iov[iov_index].iov_base = (char *)iov[iov_index].iov_base + written;
+		iov[iov_index].iov_len -= written;
+
+		if (local_link != NULL) {
+			local_link->status.stats.tx_data_retries++;
+		}
+	}
+
+out:
+	return total_written;
 }
