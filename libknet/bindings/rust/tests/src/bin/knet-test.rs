@@ -19,7 +19,7 @@ use std::env;
 const CHANNEL: i8 = 1;
 
 // Dirty C function to set the plugin path for testing (only)
-extern {
+extern "C" {
     fn set_plugin_path(knet_h: u64);
 }
 
