@@ -488,7 +488,7 @@ transport_sock_error_t udp_transport_tx_sock_error(knet_handle_t knet_h, int soc
 static void check_dst_addr_is_valid(knet_handle_t knet_h, int sockfd, struct msghdr *msg)
 {
 #if defined(IP_PKTINFO) || defined(IPV6_PKTINFO)
-        struct cmsghdr *cmsg;
+	struct cmsghdr *cmsg;
 
 	for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg)) {
 		int pkt_ifindex = -1;
@@ -551,7 +551,9 @@ transport_rx_isdata_t udp_transport_rx_is_data(knet_handle_t knet_h, int sockfd,
 	if (msg->msg_len == 0)
 		return KNET_TRANSPORT_RX_NOT_DATA_CONTINUE;
 
-	check_dst_addr_is_valid(knet_h, sockfd, &msg->msg_hdr);
+	if ((knet_h->flags & KNET_HANDLE_FLAG_ALLOWIFACEMISMATCH) == 0) {
+		check_dst_addr_is_valid(knet_h, sockfd, &msg->msg_hdr);
+	}
 
 	return KNET_TRANSPORT_RX_IS_DATA;
 }

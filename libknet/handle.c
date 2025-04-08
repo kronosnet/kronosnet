@@ -552,7 +552,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		return NULL;
 	}
 
-	if (flags > KNET_HANDLE_FLAG_PRIVILEGED * 2 - 1) {
+	if (flags > KNET_HANDLE_FLAG_ALLOWIFACEMISMATCH * 2 - 1) {
 		errno = EINVAL;
 		return NULL;
 	}

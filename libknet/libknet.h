@@ -90,6 +90,7 @@ typedef uint16_t knet_node_id_t;
  */
 
 #define KNET_HANDLE_FLAG_PRIVILEGED (1ULL << 0)
+#define KNET_HANDLE_FLAG_ALLOWIFACEMISMATCH (1ULL << 1)
 
 /*
  * Flags that affect what appears (and should be provided) on the datafd
@@ -145,6 +146,8 @@ typedef struct knet_handle *knet_handle_t;
  *            communication sockets.  If disabled, failure to acquire large
  *            enough socket buffers is ignored but logged.  Inadequate buffers
  *            lead to poor performance.
+ *   KNET_HANDLE_FLAG_ALLOWIFACEMISMATCH: skip checks for asymmetric routes
+ *            in case they are intentionally part of the network topology
  *
  * @return
  * on success, a new knet_handle_t is returned.
