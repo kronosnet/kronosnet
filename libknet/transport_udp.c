@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2024 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2025 Red Hat, Inc.  All rights reserved.
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
@@ -528,17 +528,17 @@ static void check_dst_addr_is_valid(knet_handle_t knet_h, int sockfd, struct msg
 				/* Make as detailed a message as we can */
 				if ((if_indextoname(pkt_ifindex, used_ifname) == NULL) ||
 				    (if_indextoname(ifindex, expected_ifname) == NULL)) {
-					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet on ifindex %d when expected ifindex %d", pkt_ifindex, ifindex);
+					log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Received packet on ifindex %d when expected ifindex %d", pkt_ifindex, ifindex);
 				} else if (knet_addrtostr(msg->msg_name, msg->msg_namelen,
 							  srcaddr_s, sizeof(srcaddr_s),
 							  srcport_s, sizeof(srcport_s)) != 0) {
-					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet on i/f %s when expected i/f %s", used_ifname, expected_ifname);
+					log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Received packet on i/f %s when expected i/f %s", used_ifname, expected_ifname);
 				} else if (knet_addrtostr((struct sockaddr_storage *)&dstaddr, sizeof(dstaddr),
 							  dstaddr_s, sizeof(dstaddr_s),
 							  dstport_s, sizeof(dstport_s)) != 0) {
-					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet from %s on i/f %s when expected %s", srcaddr_s, used_ifname, expected_ifname);
+					log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Received packet from %s on i/f %s when expected %s", srcaddr_s, used_ifname, expected_ifname);
 				} else {
-					log_warn(knet_h, KNET_SUB_TRANSP_UDP, "Received packet from %s to %s on i/f %s when expected %s", srcaddr_s, dstaddr_s, used_ifname, expected_ifname);
+					log_trace(knet_h, KNET_SUB_TRANSP_UDP, "Received packet from %s to %s on i/f %s when expected %s", srcaddr_s, dstaddr_s, used_ifname, expected_ifname);
 				}
 		}
 	}
