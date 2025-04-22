@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2024 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2025 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -16,7 +16,7 @@
  *
  * @file libnozzle.h
  * @brief tap interfaces management API include file
- * @copyright Copyright (C) 2010-2024 Red Hat, Inc.  All rights reserved.
+ * @copyright Copyright (C) 2010-2025 Red Hat, Inc.  All rights reserved.
  *
  * nozzle is a commodity library to manage tap (ethernet) interfaces
  */
