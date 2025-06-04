@@ -540,7 +540,7 @@ pub fn handle_enable_sock_notify(handle: &Handle,
 	    return Err(Error::last_os_error());
 	}
     }
-    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+    Err(Error::other("Rust handle not found"))
 }
 
 /// Add a data FD to knet (with flags). if datafd is 0 then knet will allocate one for you.
@@ -770,7 +770,7 @@ pub fn handle_enable_filter(handle: &Handle,
 	}
     };
 
-    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+    Err(Error::other("Rust handle not found"))
 
 }
 
@@ -917,7 +917,7 @@ pub fn handle_enable_pmtud_notify(handle: &Handle,
 	    return Err(Error::last_os_error());
 	}
     }
-    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+    Err(Error::other("Rust handle not found"))
 }
 
 /// Configure cryptographic seetings for packets being transmitted
@@ -932,7 +932,7 @@ pub fn handle_crypto_set_config(handle: &Handle, config: &CryptoConfig, config_n
     };
 
     if config.private_key.len() > 4096 {
-	return Err(Error::new(ErrorKind::Other, "key too long"));
+	return Err(Error::other("key too long"));
     }
 
     crate::string_to_bytes(&config.crypto_model, &mut crypto_cfg.crypto_model)?;
@@ -953,7 +953,7 @@ pub fn handle_crypto_set_config(handle: &Handle, config: &CryptoConfig, config_n
 	Ok(())
     } else {
 	if res == -2 {
-	    Err(Error::new(ErrorKind::Other, "Other cryto error"))
+	    Err(Error::other("Other cryto error"))
 	} else {
 	    Err(Error::last_os_error())
 	}
@@ -1011,7 +1011,7 @@ pub fn handle_compress(handle: &Handle, config: &CompressConfig) -> Result<()>
     };
 
     if config.compress_model.len() > 16 {
-	return Err(Error::new(ErrorKind::Other, "key too long"));
+	return Err(Error::other("key too long"));
     }
 
     crate::string_to_bytes(&config.compress_model, &mut compress_cfg.compress_model)?;
@@ -1239,7 +1239,7 @@ pub fn handle_enable_onwire_ver_notify(handle: &Handle,
 	h.onwire_notify_private_data = private_data;
 	h.onwire_notify_fn = onwire_notify_fn;
     } else {
-	return Err(Error::new(ErrorKind::Other, "Rust handle not found"));
+	return Err(Error::other("Rust handle not found"));
     };
 
     let res = match onwire_notify_fn {
@@ -1561,7 +1561,7 @@ pub fn host_enable_status_change_notify(handle: &Handle,
 	    return Err(Error::last_os_error());
 	}
     }
-    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+    Err(Error::other("Rust handle not found"))
 }
 
 /// Transport types supported in knet
@@ -2080,7 +2080,7 @@ pub fn link_enable_status_change_notify(handle: &Handle,
 	    return Err(Error::last_os_error());
 	}
     }
-    Err(Error::new(ErrorKind::Other, "Rust handle not found"))
+    Err(Error::other("Rust handle not found"))
 
 }
 

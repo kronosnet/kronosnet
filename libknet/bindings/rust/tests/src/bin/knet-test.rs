@@ -185,7 +185,7 @@ fn setup_dynamic_link(handle: &knet::Handle, hostid: &knet::HostId, link: u8,
 	    return Ok(())
 	}
     }
-    Err(Error::new(ErrorKind::Other, "No ports available"))
+    Err(Error::other("No ports available"))
 }
 
 // This is the bit that configures two links on two handles that talk to each other
@@ -211,7 +211,7 @@ fn setup_links(handle1: &knet::Handle, hostid1: &knet::HostId,
 		}
 		// In use - try the next port number
 	    } else {
-		return Err(Error::new(ErrorKind::Other, "Error returned from link_set_config(1) was not an os_error"));
+		return Err(Error::other("Error returned from link_set_config(1) was not an os_error"));
 	    }
 	} else {
 	    // Now try the other handle
@@ -229,14 +229,14 @@ fn setup_links(handle1: &knet::Handle, hostid1: &knet::HostId,
 			knet::link_clear_config(handle1, hostid2, 0)?;
 		    }
 		} else {
-		    return Err(Error::new(ErrorKind::Other, "Error returned from link_set_config(1) was not an os_error"));
+		    return Err(Error::other("Error returned from link_set_config(1) was not an os_error"));
 		}
 	    }
 	    println!("Bound to ports {} & {}",p, p+1);
 	    return Ok(p+2)
 	}
     }
-    Err(Error::new(ErrorKind::Other, "No ports available"))
+    Err(Error::other("No ports available"))
 }
 
 // Finish configuring links
@@ -298,7 +298,7 @@ fn configure_link(knet_handle: &knet::Handle, our_hostid: &knet::HostId, other_h
 	Ok((a,b,c)) => {
 	    if a != 500 || b != 1000 || c != 1024 {
 		println!("get_link_ping_timers returned wrong values {a}, {b},{c} (s/b 500,1000,1024)");
-		return Err(Error::new(ErrorKind::Other, "Error in ping timers"));
+		return Err(Error::other("Error in ping timers"));
 	    }
 	},
 	Err(e) => {
@@ -328,7 +328,7 @@ fn configure_link(knet_handle: &knet::Handle, our_hostid: &knet::HostId, other_h
 	Ok(c) =>
 	    if c != CHANNEL {
 		println!("handle_get_channel returned wrong channel ID: {c}, {CHANNEL}");
-		return Err(Error::new(ErrorKind::Other, "Error in handle_get_channel"));
+		return Err(Error::other("Error in handle_get_channel"));
 	    }
 	Err(e) => {
 	    println!("Error from handle_get_channel: {e}");
@@ -680,7 +680,7 @@ fn test_metadata_calls(handle: &knet::Handle, host: &knet::HostId) -> Result<()>
 	    println!("Returned host id is {n}");
 	    if n != *host {
 		println!("Returned host id is not 2");
-		return Err(Error::new(ErrorKind::Other, "Error in get_id_by_host_name"));
+		return Err(Error::other("Error in get_id_by_host_name"));
 	    }
 	},
 	Err(e) => {

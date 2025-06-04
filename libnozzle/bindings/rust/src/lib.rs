@@ -53,7 +53,7 @@ pub mod nozzle_bindings;
 use std::os::raw::c_char;
 use std::ptr::copy_nonoverlapping;
 use std::ffi::CString;
-use std::io::{Error, Result, ErrorKind};
+use std::io::{Error, Result};
 
 // General internal routine to copy bytes from a C array into a Rust String
 fn string_from_bytes(bytes: *const ::std::os::raw::c_char, max_length: usize) -> Result<String>
@@ -91,7 +91,7 @@ fn string_from_bytes(bytes: *const ::std::os::raw::c_char, max_length: usize) ->
     // This is just to convert the error type
     match cs.into_string() {
 	Ok(s) => Ok(s),
-	Err(_) => Err(Error::new(ErrorKind::Other, "Cannot convert to String")),
+	Err(_) => Err(Error::other("Cannot convert to String")),
     }
 }
 
@@ -108,11 +108,11 @@ fn string_to_bytes(s: &str, bytes: &mut [c_char]) -> Result<()>
 {
     let c_name = match CString::new(s) {
 	Ok(n) => n,
-	Err(_) => return Err(Error::new(ErrorKind::Other, "Rust conversion error")),
+	Err(_) => return Err(Error::other("Rust conversion error")),
     };
 
     if c_name.as_bytes().len() > bytes.len() {
-	return Err(Error::new(ErrorKind::Other, "String too long"));
+	return Err(Error::other("String too long"));
     }
 
     unsafe {
