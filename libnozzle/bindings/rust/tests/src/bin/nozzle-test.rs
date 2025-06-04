@@ -8,7 +8,7 @@
 //
 
 use nozzle_bindings::nozzle_bindings as nozzle;
-use std::io::{Result, Error, ErrorKind, BufWriter, Write};
+use std::io::{Result, Error, BufWriter, Write};
 use std::fmt::Write as fmtwrite;
 use std::{thread, time};
 use std::fs::File;
@@ -30,7 +30,7 @@ fn main() -> Result<()>
 	Some(td) => td,
 	None => {
 	    println!("Error creating temp path for running");
-	    return Err(Error::new(ErrorKind::Other, "Error creating temp path"));
+	    return Err(Error::other("Error creating temp path"));
 	}
     };
     std::env::set_current_dir(tmp_dir)?;
@@ -103,7 +103,7 @@ fn main() -> Result<()>
     let mut up_filename = String::new();
     if let Err(e) = write!(up_filename, "up.d/{nozzle_name}") {
 	eprintln!("Error making up.d filename: {e:?}");
-	return Err(Error::new(ErrorKind::Other, "Error making up.d filename"));
+	return Err(Error::other("Error making up.d filename"));
     }
     match File::create(&up_filename) {
 	Err(e) => {
@@ -172,7 +172,7 @@ fn main() -> Result<()>
 
     match nozzle::get_handle_by_name(&nozzle_name) {
 	Ok(h) => if h != handle {
-	    return Err(Error::new(ErrorKind::Other, "get_handle_by_name returned wrong value"));
+	    return Err(Error::other("get_handle_by_name returned wrong value"));
 	}
 	Err(e) => {
 	    println!("Error from get_handle_by_name: {e}");
@@ -183,7 +183,7 @@ fn main() -> Result<()>
     match nozzle::get_name_by_handle(&handle) {
 	Ok(n) => if n != nozzle_name {
 	    println!("n: {n}, nozzle_name: {nozzle_name}");
-	    return Err(Error::new(ErrorKind::Other, "get_name_by_handle returned wrong name"));
+	    return Err(Error::other("get_name_by_handle returned wrong name"));
 	}
 	Err(e) => {
 	    println!("Error from get_name_by_handle: {e}");
