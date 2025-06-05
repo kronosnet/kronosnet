@@ -8,7 +8,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "libnozzle/libnozzle.h" // Adjust path if necessary based on include paths
+#include "libnozzle.h"
 #include <net/if.h> // For IFNAMSIZ
 
 // Capsule name for nozzle_t
