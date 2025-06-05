@@ -3,6 +3,7 @@
 #
 # Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #          Federico Simoncelli <fsimon@kronosnet.org>
+#          Jules <jules@google.com> (Google AI Agent)
 #
 # This software licensed under GPL-2.0+
 #
@@ -181,6 +182,11 @@ AC_ARG_ENABLE([rust-bindings],
 	[ enable_rust_bindings="no" ])
 AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
 
+AC_ARG_ENABLE([python-bindings],
+	[AS_HELP_STRING([--enable-python-bindings],[python bindings support])],,
+	[ enable_python_bindings="no" ])
+AM_CONDITIONAL([BUILD_PYTHON_BINDINGS], [test x$enable_python_bindings = xyes])
+
 ## local helper functions
 # this function checks if CC support options passed as
 # args. Global CPPFLAGS are ignored during this test.
@@ -327,6 +333,22 @@ if test "x$enable_rust_bindings" = "xyes"; then
 	if test "x$RUSTFMT" = xno; then
 		AC_MSG_ERROR(["rustfmt command not found (optional)"])
 	fi
+fi
+
+# check for python tools to build bindings
+if test "x$enable_python_bindings" = "xyes"; then
+	AC_PATH_PROG([PYTHON3_CONFIG], [python3-config], [no])
+	if test "x$PYTHON3_CONFIG" = xno; then
+		PKG_CHECK_MODULES([PYTHON3], [python3], [
+			PYTHON_CFLAGS=$(pkg-config --cflags python3)
+			PYTHON_LIBS=$(pkg-config --libs python3)
+		], [AC_MSG_ERROR(["python3-config or pkg-config for python3 not found"])])
+	else
+		PYTHON_CFLAGS=$($PYTHON3_CONFIG --cflags)
+		PYTHON_LIBS=$($PYTHON3_CONFIG --ldflags --embed)
+	fi
+	AC_SUBST([PYTHON_CFLAGS])
+	AC_SUBST([PYTHON_LIBS])
 fi
 
 # checks for libnozzle
