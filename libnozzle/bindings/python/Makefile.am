@@ -9,7 +9,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 # Get CFLAGS and LIBS from python3-config or pkg-config (already handled in configure.ac)
-AM_CFLAGS = $(PYTHON_CFLAGS)
+AM_CFLAGS = $(PYTHON_CFLAGS) -I$(top_srcdir)/libnozzle
 AM_LDFLAGS = $(PYTHON_LIBS)
 
 # Define the Python extension module
@@ -49,9 +49,10 @@ TESTS = tests/test_nozzle.py
 # The test script itself is in $(srcdir)/tests/test_nozzle.py
 # We also need access to the source directory for the test script itself.
 AM_TESTS_ENVIRONMENT = \
-    PYTHONPATH="$(abs_builddir)/.libs:$(abs_builddir):$(PYTHONPATH)" \
-    srcdir="$(abs_srcdir)" \
-    PYTHON="$(PYTHON3)" # Ensure python3 is used if system python is older
+	LD_PRELOAD="$(top_builddir)/libnozzle/.libs/libnozzle.so" \
+	PYTHONPATH="$(abs_builddir)/.libs:$(abs_builddir):$(PYTHONPATH)" \
+	srcdir="$(abs_srcdir)" \
+	PYTHON="$(PYTHON3)" # Ensure python3 is used if system python is older
 
 # test_nozzle.py needs to be executable and have the correct shebang.
 # We list it as a source to ensure it's part of the distribution.

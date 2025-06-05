@@ -8,7 +8,7 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "libknet/libknet.h" // Adjust path if necessary based on include paths
+#include "libknet.h"
 
 // Capsule name for knet_handle_t
 #define KNET_HANDLE_T_CAPSULE_NAME "_knet_handle_t"

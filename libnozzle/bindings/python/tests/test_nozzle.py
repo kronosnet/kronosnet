@@ -48,6 +48,7 @@ except ImportError as e:
 TEST_IFACE_PREFIX = "nozpytst"
 UPDOWN_PATH_SCRIPTS = "/tmp/knet_nozzle_test_scripts" # Dummy path, ensure it exists or is not needed by basic open/close
 
+@unittest.skipUnless(os.geteuid() == 0, "requires root privileges")
 class TestNozzle(unittest.TestCase):
 
     def setUp(self):

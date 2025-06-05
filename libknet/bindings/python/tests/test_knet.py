@@ -53,8 +53,8 @@ class TestKnet(unittest.TestCase):
     def test_01_handle_new_and_free(self):
         """Test creating and freeing a knet handle."""
         host_id = 1
-        log_fd = -1  # Typically 0 for stdout/stderr, or -1 to disable, or a real fd.
-                     # Using -1 for basic test to avoid actual logging output.
+        log_fd = 0   # Typically 0 to disable, or a real fd.
+                     # Using 0 for basic test to avoid actual logging output.
         default_log_level = 0 # KNET_LOG_ERR
         flags = 0 # No special flags for basic test
 

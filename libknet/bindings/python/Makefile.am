@@ -9,7 +9,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 # Get CFLAGS and LIBS from python3-config or pkg-config (already handled in configure.ac)
-AM_CFLAGS = $(PYTHON_CFLAGS)
+AM_CFLAGS = $(PYTHON_CFLAGS) -I$(top_srcdir)/libknet
 AM_LDFLAGS = $(PYTHON_LIBS)
 
 # Define the Python extension module
@@ -42,9 +42,10 @@ TESTS = tests/test_knet.py
 # We need to ensure that the compiled Python extension (_knet.so) is findable.
 # It's typically in .libs after compilation by libtool, or in the current directory.
 AM_TESTS_ENVIRONMENT = \
-    PYTHONPATH="$(abs_builddir)/.libs:$(abs_builddir):$(PYTHONPATH)" \
-    srcdir="$(abs_srcdir)" \
-    PYTHON="$(PYTHON3)" # Ensure python3 is used
+	LD_PRELOAD="$(top_builddir)/libknet/.libs/libknet.so" \
+	PYTHONPATH="$(abs_builddir)/.libs:$(abs_builddir):$(PYTHONPATH)" \
+	srcdir="$(abs_srcdir)" \
+	PYTHON="$(PYTHON3)" # Ensure python3 is used
 
 # test_knet.py needs to be executable and have the correct shebang.
 # We list test files as EXTRA_DIST to ensure they are included in source distributions.

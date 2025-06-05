@@ -587,6 +587,7 @@ AC_CONFIG_FILES([
 		libnozzle/libnozzle.pc
 		libnozzle/tests/Makefile
 		libnozzle/bindings/Makefile
+		libnozzle/bindings/python/Makefile
 		libnozzle/bindings/rust/Makefile
 		libnozzle/bindings/rust/Cargo.toml
 		libnozzle/bindings/rust/tests/Makefile
@@ -595,6 +596,7 @@ AC_CONFIG_FILES([
 		libknet/libknet.pc
 		libknet/tests/Makefile
 		libknet/bindings/Makefile
+		libknet/bindings/python/Makefile
 		libknet/bindings/rust/Makefile
 		libknet/bindings/rust/Cargo.toml
 		libknet/bindings/rust/tests/Makefile
