@@ -15,3 +15,7 @@ SUBDIRS			= .
 if BUILD_RUST_BINDINGS
 SUBDIRS			+= rust
 endif
+
+if BUILD_PYTHON_BINDINGS
+SUBDIRS			+= python
+endif
