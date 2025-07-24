@@ -29,7 +29,7 @@ static void test(void)
 
 	setup_logpipes(logfds);
 
-	for (idx = 0; idx < UINT8_MAX; idx++) {
+	for (idx = 0; idx < (int)UINT8_MAX; idx++) {
 		printf("Allocating %d\n", idx);
 		knet_h[idx] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG);
 		if (!knet_h[idx]) {
@@ -49,7 +49,7 @@ static void test(void)
 	}
 	flush_logs(logfds[0], stdout);
 
-	for (idx = 0; idx < UINT8_MAX; idx++) {
+	for (idx = 0; idx < (int)UINT8_MAX; idx++) {
 		printf("Freeing %d\n", idx);
 		knet_handle_free(knet_h[idx]);
 		flush_logs(logfds[0], stdout);
