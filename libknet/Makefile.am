@@ -11,7 +11,11 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+if BUILD_FOR_SOLARIS
+SYMFILE			= libknet_exported_syms.solaris
+else
 SYMFILE			= libknet_exported_syms
+endif
 
 EXTRA_DIST		= $(SYMFILE)
 
@@ -94,7 +98,11 @@ libknet_la_CFLAGS	= $(LIBS) $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
 libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
+if BUILD_FOR_SOLARIS
+			  -Wl,-M $(srcdir)/$(SYMFILE) \
+else
 			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
+endif
 			  -version-info $(libversion)
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
@@ -164,4 +172,14 @@ pkglib_LTLIBRARIES	+= crypto_openssl.la
 crypto_openssl_la_LDFLAGS = $(MODULELDFLAGS)
 crypto_openssl_la_CFLAGS = $(AM_CFLAGS) $(openssl_CFLAGS)
 crypto_openssl_la_LIBADD = $(openssl_LIBS)
+endif
+
+if BUILD_FOR_SOLARIS
+$(SYMFILE): $(wildcard .libs/*.o)
+	echo "LIBKNET {" > $@
+	echo "	global:" >> $@
+	gnm .libs/*.o | sed -n 's/^[^ ]* T knet_/		knet_/p' | sed 's/$$/;/' >> $@
+	echo "	local:" >> $@
+	echo "		*;" >> $@
+	echo "};" >> $@
 endif
