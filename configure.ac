@@ -162,6 +162,13 @@ AC_ARG_ENABLE([runautogen],
 	[ enable_runautogen="no" ])
 AM_CONDITIONAL([BUILD_RUNAUTOGEN], [test x$enable_runautogen = xyes])
 
+# skip building rpm on solaris, but add --enable-rpm and --disable-rpm to override
+AC_ARG_ENABLE([rpm],
+	AS_HELP_STRING([--enable-rpm], [Enable building of RPM packages]),,
+		AS_IF([echo "$host_os" | grep -q '^solaris'], [build_rpm=no], [build_rpm=yes]))
+AM_CONDITIONAL([BUILD_RPM], [test x$build_rpm = xyes])
+AC_MSG_NOTICE([build_rpm is: $build_rpm])
+
 override_rpm_debuginfo_option="yes"
 AC_ARG_ENABLE([rpm-debuginfo],
 	[AS_HELP_STRING([--enable-rpm-debuginfo],[build debuginfo packages])],,
