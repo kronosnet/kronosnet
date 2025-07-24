@@ -19,13 +19,18 @@ AUTOMAKE_OPTIONS	= foreign
 
 ACLOCAL_AMFLAGS		= -I m4
 
-SPEC			= $(PACKAGE_NAME).spec
 
 TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
 EXTRA_DIST		= autogen.sh .version \
-			  NOTES_TO_PACKAGE_MAINTAINERS \
-			  $(SPEC).in build-aux
+			  NOTES_TO_PACKAGE_MAINTAINERS
+if BUILD_RPM
+SPEC			= $(PACKAGE_NAME).spec
+EXTRA_DIST		+= $(SPEC).in
+else
+SPEC			=
+endif
+EXTRA_DIST		+= build-aux
 
 SUBDIRS			= libnozzle libknet
 

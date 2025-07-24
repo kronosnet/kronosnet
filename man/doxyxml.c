@@ -20,6 +20,7 @@
 #define _GNU_SOURCE
 #define _XOPEN_SOURCE
 #define _XOPEN_SOURCE_EXTENDED
+#include "config.h"
 #include <stdlib.h>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -27,6 +28,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <strings.h>
 #include <getopt.h>
 #include <errno.h>
 #include <ctype.h>

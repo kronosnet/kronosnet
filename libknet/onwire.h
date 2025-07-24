@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "config.h"
 #include "libknet.h"
 
 /*

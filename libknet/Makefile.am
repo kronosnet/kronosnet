@@ -11,7 +11,11 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 include $(top_srcdir)/build-aux/check.mk
 
+if BUILD_FOR_SOLARIS
+SYMFILE			= libknet_exported_syms.solaris
+else
 SYMFILE			= libknet_exported_syms
+endif
 
 EXTRA_DIST		= $(SYMFILE)
 
@@ -19,9 +23,6 @@ SUBDIRS			= . tests
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libversion		= 5:0:4
-
-# override global LIBS that pulls in lots of craft we don't need here
-LIBS			=
 
 sources			= \
 			  common.c \
@@ -91,13 +92,17 @@ libknet_la_SOURCES	= $(sources)
 
 AM_CFLAGS		+= $(libqb_CFLAGS)
 
-libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
+libknet_la_CFLAGS	= $(LIBS) $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
 			  -DPLUGINPATH="\"$(pkglibdir)\""
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
 libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
+if BUILD_FOR_SOLARIS
+			  -Wl,-M $(srcdir)/$(SYMFILE) \
+else
 			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
+endif
 			  -version-info $(libversion)
 
 libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
@@ -167,4 +172,14 @@ pkglib_LTLIBRARIES	+= crypto_openssl.la
 crypto_openssl_la_LDFLAGS = $(MODULELDFLAGS)
 crypto_openssl_la_CFLAGS = $(AM_CFLAGS) $(openssl_CFLAGS)
 crypto_openssl_la_LIBADD = $(openssl_LIBS)
+endif
+
+if BUILD_FOR_SOLARIS
+$(SYMFILE): $(wildcard .libs/*.o)
+	echo "LIBKNET {" > $@
+	echo "	global:" >> $@
+	gnm .libs/*.o | sed -n 's/^[^ ]* T knet_/		knet_/p' | sed 's/$$/;/' >> $@
+	echo "	local:" >> $@
+	echo "		*;" >> $@
+	echo "};" >> $@
 endif

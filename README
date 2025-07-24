@@ -43,3 +43,11 @@ Please avoid to use ifconfig_DEFAULT in /etc/rc.conf to use
 DHCP for all interfaces or the dhclient will interfere with
 libnozzle interface management, causing errors on some
 operations such as "ifconfig tap down".
+
+Running on Solaris / Illumos
+----------------------------
+
+Tune socket buffers for the protocol you intend to use:
+
+ndd -set /dev/udp udp_max_buf 8388608
+ndd -set /dev/sctp sctp_max_buf 8388608

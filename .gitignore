@@ -58,3 +58,4 @@ xml-*/
 doxyxml
 *.3
 cov*
+libknet/libknet_exported_syms.solaris
