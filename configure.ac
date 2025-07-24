@@ -21,15 +21,24 @@ AC_INIT([kronosnet],
 AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.13 dist-bzip2 dist-xz color-tests -Wno-portability subdir-objects])
 
+AC_CANONICAL_HOST
+
 LT_PREREQ([2.2.6])
 # --enable-new-dtags: Use RUNPATH instead of RPATH.
 # It is necessary to have this done before libtool does linker detection.
 # See also: https://github.com/kronosnet/kronosnet/issues/107
 # --as-needed: Modern systems have builtin ceil() making -lm superfluous but
 # AC_SEARCH_LIBS can't detect this because it tests with a false prototype
-AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],
-		   [AM_LDFLAGS=-Wl,--enable-new-dtags],
-		   [AC_MSG_ERROR(["Linker support for --enable-new-dtags is required"])])
+case "$host_os" in
+	solaris*)
+		AC_MSG_NOTICE([Skipping --enable-new-dtags check, Solaris' RPATH logic is like RUNPATH on other platforms])
+		;;
+	*)
+		AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],
+				   [AM_LDFLAGS=-Wl,--enable-new-dtags],
+				   [AC_MSG_ERROR(["Linker support for --enable-new-dtags is required on ${host_os}"])])
+		;;
+esac
 AX_CHECK_LINK_FLAG([-Wl,--as-needed], [AM_LDFLAGS="$AM_LDFLAGS -Wl,--as-needed"])
 
 saved_LDFLAGS="$LDFLAGS"
@@ -40,8 +49,6 @@ LDFLAGS="$saved_LDFLAGS"
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([libknet/handle.c])
 AC_CONFIG_HEADERS([config.h])
-
-AC_CANONICAL_HOST
 
 AC_LANG([C])
 
@@ -190,6 +197,7 @@ cc_supports_flag() {
 
 # Checks for libraries.
 AX_PTHREAD(,[AC_MSG_ERROR([POSIX threads support is required])])
+AC_CHECK_LIB([socket], [socket], [LIBS="$LIBS -lsocket"])
 saved_LIBS="$LIBS"
 LIBS=
 AC_SEARCH_LIBS([ceil], [m], , [AC_MSG_ERROR([ceil not found])])
@@ -206,6 +214,8 @@ LIBS="$saved_LIBS"
 AC_CHECK_DECL([RTLD_DI_ORIGIN], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN], 1,
     [define when RTLD_DI_ORIGIN is declared])], ,[[#include <dlfcn.h>]])
 
+AC_CHECK_DECLS([MSG_NOSIGNAL], [], [CFLAGS="$CFLAGS -DMSG_NOSIGNAL=0"], [#include <sys/socket.h>])
+
 # OS detection
 
 AC_MSG_CHECKING([for os in ${host_os}])
@@ -218,10 +228,17 @@ case "$host_os" in
 		AC_DEFINE_UNQUOTED([KNET_BSD], [1], [Compiling for BSD platform])
 		AC_MSG_RESULT([BSD])
 		;;
+	solaris*)
+		AC_DEFINE_UNQUOTED([KNET_SOLARIS], [1], [Compiling for Solaris platform])
+		build_for_solaris=yes
+		AC_MSG_RESULT([Solaris])
+		;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
 		;;
 esac
+
+AM_CONDITIONAL([BUILD_FOR_SOLARIS], [test "x$build_for_solaris" = "xyes"])
 
 # Checks for header files.
 AC_CHECK_HEADERS([sys/epoll.h])
@@ -237,7 +254,20 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 fi
 
 if test "x$enable_libknet_sctp" = xyes; then
-	AC_CHECK_HEADERS([netinet/sctp.h],, [AC_MSG_ERROR(["missing required SCTP headers"])])
+	AC_CHECK_LIB([sctp], [sctp_bindx], [LIBS="$LIBS -lsctp"], [
+		AC_MSG_ERROR([sctp library (-lsctp) not found.])
+	])
+	AC_CACHE_CHECK([for netinet/sctp.h with netinet/in.h included], [ac_cv_have_sctp], [
+		AC_TRY_LINK([
+			#include <netinet/in.h>
+			#include <netinet/sctp.h>
+		], [sctp_assoc_t my_sctp_assoc;],
+		[ac_cv_have_sctp=yes],
+		[AC_MSG_ERROR(["missing required sctp headers"])])
+	])
+	if test "x$ac_cv_have_sctp" = xyes; then
+		AC_DEFINE([HAVE_NETINET_SCTP_H], [1], [define when HAVE_NETINET_SCTP_H is declared])
+	fi
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -350,7 +380,16 @@ if test "x${enable_hardening}" = xyes; then
 		done
 	fi
 
-	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
+	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC"
+case "$host_os" in
+	solaris*)
+		# no support for -pie when linking, but supported during compile
+		;;
+	*)
+		HARDENING_CFLAGS_ANNOCHECK="$HARDENING_CFLAGS_ANNOCHECK -pie"
+		;;
+esac
+	HARDENING_CFLAGS_ANNOCHECK="$HARDENING_CFLAGS_ANNOCHECK -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
 	HARDENING_CFLAGS="-fstack-clash-protection -fcf-protection=full -mcet -mstackrealign"
 	EXTRA_HARDENING_CFLAGS=""
 
@@ -396,6 +435,68 @@ else
 	GDB_CFLAGS="-g"
 fi
 
+# check flags for strdup()
+AC_CACHE_CHECK([for strdup requiring __EXTENSIONS__], [ac_cv_func_strdup], [
+	ac_cv_func_strdup=yes
+	# First, try to link with strdup() using standard flags
+	AC_TRY_LINK([
+		#include <string.h>
+		#include <stdlib.h>
+	], [
+		char *s = strdup("test");
+		free(s);
+	], [ac_cv_func_strdup=yes], [
+		# Failure, try again with -D__EXTENSIONS__
+		CPPFLAGS="$CPPFLAGS -D__EXTENSIONS__"
+		AC_TRY_LINK([
+			#include <string.h>
+			#include <stdlib.h>
+		], [
+			char *s = strdup("test");
+			free(s);
+		],
+		[ac_cv_func_strdup=yes],
+		[AC_MSG_ERROR([no strdup() found])])
+	])
+])
+
+# check flags for CMSG_SPACE()
+AC_CACHE_CHECK([for CMSG_SPACE() requiring _XOPEN_SOURCE], [ac_cv_macro_xopen_source], [
+	# First, try to link with strdup() using standard flags
+	AC_TRY_LINK([#include <sys/socket.h>], [
+		char c[CMSG_SPACE(1)];
+		c[0] = 'J';
+	], [ac_cv_macro_xopen_source=yes], [
+		# Failure, try again with -D_XOPEN_SOURCE
+		CPPFLAGS="$CPPFLAGS -D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED=1"
+		AC_TRY_LINK([#include <sys/socket.h>], [
+			char c[CMSG_SPACE(1)];
+			c[0] = 'J';
+		],
+		[ac_cv_macro_xopen_source=yes],
+		[AC_MSG_ERROR([no CMSG_SPACE() found])])
+	])
+])
+
+# check for character index warning
+AC_CACHE_CHECK([if -Wchar-subscripts warns for int8_t], [ac_cv_int8_t_warn], [
+	saveCFLAGS="$CFLAGS"
+	CFLAGS="-Werror -Wchar-subscripts"
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <stdint.h>], [
+			   char arr[256];
+			   uint8_t i = 200;
+			   arr[i] = 'J';
+			   return 0;
+			  ])],
+			  [ac_cv_int8_t_warn=no],
+			  [ac_cv_int8_t_warn=yes])
+	CFLAGS="$saveCFLAGS"
+])
+if test "x$ac_cv_int8_t_warn" = xyes; then
+	CFLAGS="$CFLAGS -Wno-char-subscripts"
+fi
+
+
 DEFAULT_CFLAGS="-Werror -Wall -Wextra"
 
 # manual overrides
@@ -406,11 +507,26 @@ AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_CFLAGS $DEFAULT_CFLAGS $EXTRA_HARDENING_
 AC_SUBST([AM_LDFLAGS])
 
 AX_PROG_DATE
+case "$host_os" in
+	solaris*)
+		AC_CHECK_PROGS([DATE], [gdate date], [:])
+		AS_IF([test "x$DATE" != "x:"], [
+			ax_cv_prog_date_gnu_date="yes"
+			ax_cv_prog_date_gnu_utc="yes"
+		])
+		;;
+	*)
+		AC_CHECK_PROGS([DATE], [date], [:])
+		;;
+esac
+AS_IF([test "x$DATE" = "x:"],
+        [AC_MSG_ERROR([Date command not found.])])
+
 AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],
-	[UTC_DATE_AT="date -u -d@"],
+	[UTC_DATE_AT="$DATE -u -d@"],
 	[AS_IF([test "x$ax_cv_prog_date_bsd_date" = xyes],
-		[UTC_DATE_AT="date -u -r"],
-		[AC_MSG_ERROR([date utility unable to convert epoch to UTC])])])
+		[UTC_DATE_AT="$DATE -u -r"],
+		[AC_MSG_ERROR([$DATE utility unable to convert epoch to UTC])])])
 AC_SUBST([UTC_DATE_AT])
 
 AC_ARG_VAR([SOURCE_EPOCH],[last modification date of the source])
@@ -440,7 +556,7 @@ AS_IF([test -n "$SOURCE_EPOCH"],
 					 AS_IF([test -n "$SOURCE_EPOCH"],
 						[AC_MSG_RESULT([yes])],
 						[AC_MSG_RESULT([no, using current time and breaking reproducibility])
-						 SOURCE_EPOCH=$(date +%s)])])],
+						 SOURCE_EPOCH=$($DATE +%s)])])],
 			[AC_MSG_RESULT([yes])]
 		 )])
 	])

@@ -7,15 +7,22 @@
 # This software licensed under GPL-2.0+
 #
 
+grep=grep
+nm=nm
+if [ $(uname -s) == "SunOS" ]; then
+	grep=ggrep
+	nm=gnm
+fi
 srcdir="$1"/libknet/tests
 builddir="$2"/libknet/tests
 
-headerapicalls="$(grep knet_ "$srcdir"/../libknet.h | grep -v "^ \*" | grep -v ^struct | grep -v "^[[:space:]]" | grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
+headerapicalls="$($grep knet_ "$srcdir"/../libknet.h | $grep -v "^ \*" | $grep -v ^struct | $grep -v "^[[:space:]]" | $grep -v typedef | sed -e 's/(.*//g' -e 's/^const //g' -e 's/\*//g' | awk '{print $2}')"
 
 # The PowerPC64 ELFv1 ABI defines the address of a function as that of a
 # function descriptor defined in .opd, a data (D) section.  Other ABIs
 # use the entry address of the function itself in the text (T) section.
-exportedapicalls="$(nm -B -D "$builddir"/../.libs/libknet.so | grep ' [DT] ' | awk '{print $3}' | sed -e 's#@@LIBKNET##g')"
+# Filter additional symbols exported by ln(1) on Solaris.
+exportedapicalls="$($nm -B -D "$builddir"/../.libs/libknet.so | $grep ' [DT] ' | awk '{if ($3 != "_edata" && $3 != "_GLOBAL_OFFSET_TABLE_" && $3 != "_PROCEDURE_LINKAGE_TABLE_") {print $3}}' | sed -e 's#@@LIBKNET##g')"
 
 echo "Checking for exported symbols NOT available in header file"
 
@@ -51,13 +58,13 @@ done
 
 echo "Checking for tests with memcheck exceptions"
 
-for i in $(grep -l is_memcheck "$srcdir"/*.c | grep -v test-common); do
+for i in $($grep -l is_memcheck "$srcdir"/*.c | $grep -v test-common); do
 	echo "WARNING: $(basename $i) - has memcheck exception enabled"
 done
 
 echo "Checking for tests with helgrind exceptions"
 
-for i in $(grep -l is_helgrind "$srcdir"/*.c | grep -v test-common); do
+for i in $($grep -l is_helgrind "$srcdir"/*.c | $grep -v test-common); do
 	echo "WARNING: $(basename $i) has helgrind exception enabled"
 done
 

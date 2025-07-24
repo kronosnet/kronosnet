@@ -20,9 +20,6 @@ SUBDIRS			= . tests
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libversion		= 5:0:4
 
-# override global LIBS that pulls in lots of craft we don't need here
-LIBS			=
-
 sources			= \
 			  common.c \
 			  compat.c \
@@ -91,7 +88,7 @@ libknet_la_SOURCES	= $(sources)
 
 AM_CFLAGS		+= $(libqb_CFLAGS)
 
-libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
+libknet_la_CFLAGS	= $(LIBS) $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
 			  -DPLUGINPATH="\"$(pkglibdir)\""
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
