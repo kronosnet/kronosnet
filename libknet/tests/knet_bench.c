@@ -40,7 +40,7 @@ static int show_stats = 0;
 static struct sockaddr_storage allv4;
 static struct sockaddr_storage allv6;
 static int broadcast_test = 1;
-static pthread_t rx_thread = (pthread_t)NULL;
+static pthread_t rx_thread = {0};
 static char *rx_buf[PCKT_FRAG_MAX];
 static int wait_for_perf_rx = 0;
 static char *compresscfg = NULL;
