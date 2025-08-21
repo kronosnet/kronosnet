@@ -472,6 +472,30 @@ int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled)
 	return 0;
 }
 
+int knet_handle_setprio_dscp(knet_handle_t knet_h, uint8_t dscp)
+{
+	int savederrno = 0;
+
+	if (!_is_valid_handle(knet_h)) {
+		return -1;
+	}
+
+	savederrno = get_global_wrlock(knet_h);
+	if (savederrno) {
+		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get write lock: %s",
+			strerror(savederrno));
+		errno = savederrno;
+		return -1;
+	}
+
+	knet_h->prio_dscp = dscp;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
+	errno = 0;
+	return 0;
+}
+
 int knet_handle_get_stats(knet_handle_t knet_h, struct knet_handle_stats *stats, size_t struct_size)
 {
 	int err = 0, savederrno = 0;

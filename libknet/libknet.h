@@ -77,6 +77,7 @@ typedef uint16_t knet_node_id_t;
  * Where possible, set traffic priority to high.
  * On Linux this sets the TOS to INTERACTIVE (6),
  * see tc-prio(8) for more infomation
+ * A dscp value may be configured, see knet_handle_setprio_dscp.
  */
 
 #define KNET_LINK_FLAG_TRAFFICHIPRIO (1ULL << 0)
@@ -575,6 +576,23 @@ int knet_handle_enable_filter(knet_handle_t knet_h,
  */
 
 int knet_handle_setfwd(knet_handle_t knet_h, unsigned int enabled);
+
+/**
+ * knet_handle_setprio_dscp
+ *
+ * @brief Use dscp for IP_TOS on socket to implement KNET_LINK_FLAG_TRAFFICHIPRIO
+ *
+ * knet_h   - pointer to knet_handle_t
+ *
+ * dscp     - dscp value to set on all new sockets
+ *
+ * @return
+ * knet_handle_setfwd returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_handle_setprio_dscp(knet_handle_t knet_h, uint8_t dscp);
 
 /**
  * knet_handle_enable_access_lists
