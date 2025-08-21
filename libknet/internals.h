@@ -182,6 +182,7 @@ struct knet_handle {
 	unsigned int manual_mtu;
 	unsigned int data_mtu;	/* contains the max data size that we can send onwire
 				 * without frags */
+	uint8_t prio_dscp;	/* use this dscp value for KNET_LINK_FLAG_TRAFFICHIPRIO */
 	struct knet_host *host_head;
 	struct knet_host *host_index[KNET_MAX_HOST];
 	knet_transport_t transports[KNET_MAX_TRANSPORTS+1];
