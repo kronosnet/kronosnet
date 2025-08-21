@@ -90,7 +90,8 @@ knet_man3_MANS = \
 		knet_handle_get_onwire_ver.3 \
 		knet_handle_set_onwire_ver.3 \
 		knet_handle_get_host_defrag_bufs.3 \
-		knet_handle_set_host_defrag_bufs.3
+		knet_handle_set_host_defrag_bufs.3 \
+		knet_handle_setprio_dscp.3
 
 if BUILD_LIBNOZZLE
 nozzle_man3_MANS = \

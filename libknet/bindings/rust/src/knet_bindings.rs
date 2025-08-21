@@ -2596,3 +2596,17 @@ pub fn log_get_loglevel(handle: &Handle, subsystem: SubSystem) -> Result<LogLeve
 	Err(Error::last_os_error())
     }
 }
+
+/// Use dscp for IP_TOS on socket to implement KNET_LINK_FLAG_TRAFFICHIPRIO
+pub fn handle_setprio_dscp(handle: &Handle, dscp: u8) -> Result<()>
+{
+    let res = unsafe {
+	ffi::knet_handle_setprio_dscp(handle.knet_handle as ffi::knet_handle_t,
+				      dscp)
+    };
+    if res == 0 {
+	Ok(())
+    } else {
+	Err(Error::last_os_error())
+    }
+}
