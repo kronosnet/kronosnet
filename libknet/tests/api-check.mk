@@ -83,7 +83,8 @@ api_checks		= \
 			  api_knet_handle_get_onwire_ver_test \
 			  api_knet_handle_set_onwire_ver_test \
 			  api_knet_handle_get_host_defrag_bufs_test \
-			  api_knet_handle_set_host_defrag_bufs_test
+			  api_knet_handle_set_host_defrag_bufs_test \
+			  api_knet_handle_setprio_dscp_test
 
 api_knet_handle_new_test_SOURCES = api_knet_handle_new.c \
 				   test-common.c
@@ -316,3 +317,5 @@ api_knet_handle_get_host_defrag_bufs_test_SOURCES = api_knet_handle_get_host_def
 
 api_knet_handle_set_host_defrag_bufs_test_SOURCES = api_knet_handle_set_host_defrag_bufs.c \
 						    test-common.c
+api_knet_handle_setprio_dscp_test_SOURCES = api_knet_handle_setprio_dscp.c \
+					     test-common.c

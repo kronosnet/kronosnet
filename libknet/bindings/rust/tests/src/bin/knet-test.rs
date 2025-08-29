@@ -968,6 +968,11 @@ fn main() -> Result<()>
 	return Err(e);
     }
 
+    if let Err(e) = knet::handle_setprio_dscp(&handle1, 1u8) {
+	println!("handle_setprio_dscp failed: {e:?}");
+	return Err(e);
+    }
+
     test_metadata_calls(&handle1, &knet::HostId::new(2))?;
 
     close_handle(&handle1, 2)?;
