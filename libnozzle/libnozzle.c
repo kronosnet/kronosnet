@@ -610,8 +610,8 @@ out_error:
 int nozzle_close(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
-	nozzle_t temp = lib_cfg.head;
-	nozzle_t prev = lib_cfg.head;
+	nozzle_t temp;
+	nozzle_t prev;
 	struct nozzle_ip *ip, *ip_next;
 
 	savederrno = pthread_mutex_lock(&config_mutex);
@@ -626,6 +626,8 @@ int nozzle_close(nozzle_t nozzle)
 		goto out_clean;
 	}
 
+	temp = lib_cfg.head;
+	prev = lib_cfg.head;
 	while ((temp) && (temp != nozzle)) {
 		prev = temp;
 		temp = temp->next;

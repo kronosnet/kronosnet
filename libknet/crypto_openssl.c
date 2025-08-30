@@ -195,6 +195,12 @@ static int encrypt_openssl(
 	char		sslerr[SSLERR_BUF_SIZE];
 
 	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory: %s", sslerr);
+		err = -1;
+		goto out;
+	}
 
 	if (!RAND_bytes(salt, SALT_SIZE)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
@@ -206,7 +212,12 @@ static int encrypt_openssl(
 	/*
 	 * add warning re keylength
 	 */
-	EVP_EncryptInit_ex(ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
+	if (EVP_EncryptInit_ex(ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt) <= 0) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "EVP_EncryptInit_ex failed: %s", sslerr);
+		err = -1;
+		goto out;
+	}
 
 	for (i=0; i<iovcnt; i++) {
 		if (!EVP_EncryptUpdate(ctx,
@@ -259,11 +270,23 @@ static int decrypt_openssl (
 	}
 
 	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory: %s", sslerr);
+		err = -1;
+		goto out;
+	}
+
 
 	/*
 	 * add warning re keylength
 	 */
-	EVP_DecryptInit_ex(ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
+	if (EVP_DecryptInit_ex(ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt) <= 0) {
+		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
+		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "EVP_DecryptInit_ex failed: %s", sslerr);
+		err = -1;
+		goto out;
+	}
 
 	if (!EVP_DecryptUpdate(ctx, buf_out, &tmplen1, data, datalen)) {
 		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
