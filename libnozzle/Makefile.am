@@ -36,14 +36,26 @@ libnozzle_la_SOURCES	= $(sources)
 
 libnozzle_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) $(libnl_CFLAGS) $(libnlroute_CFLAGS)
 
-EXTRA_libnozzle_la_DEPENDENCIES	= $(SYMFILE)
-
+if BUILD_FOR_SOLARIS
 libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
-			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
+			  -Wl,-M$(abs_srcdir)/$(SYMFILE) \
 			  -version-info $(libnozzleversion)
+else
+libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
+			  -Wl,-version-script,$(abs_srcdir)/$(SYMFILE) \
+			  -version-info $(libnozzleversion)
+endif
 
-libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(libnl_LIBS) $(libnlroute_LIBS)
+libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(socket_LIBS) $(libnl_LIBS) $(libnlroute_LIBS)
 
 check-local: check-annocheck-libs
+
+$(SYMFILE): $(wildcard $(top_builddir)/libnozzle/.libs/*.o)
+	echo "LIBNOZZLE {" > $@
+	echo "  global:" >> $@
+	$(NM) $(top_builddir)/libnozzle/.libs/*.o | $(SED) -n 's/^[^ ]* T nozzle_/               nozzle_/p' | $(SED) 's/$$/;/' | sort -u >> $@
+	echo "  local:" >> $@
+	echo "          *;" >> $@
+	echo "};" >> $@
 
 endif
