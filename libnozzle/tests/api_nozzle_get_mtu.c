@@ -50,8 +50,13 @@ static int test(void)
 		goto out_clean;
 	}
 
-	printf("Setting MTU to 9000\n");
+#ifdef KNET_SOLARIS
+	// Solaris doesn't allow MTU > 1500
+	expected_mtu = 900;
+#else
 	expected_mtu = 9000;
+#endif
+	printf("Setting MTU to %d\n", expected_mtu);
 	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
 		printf("Unable to set MTU to %d\n", expected_mtu);
 		err = -1;

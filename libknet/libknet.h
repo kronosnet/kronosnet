@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <limits.h>
+#include <sys/socket.h>
 
 /**
  * @file libknet.h

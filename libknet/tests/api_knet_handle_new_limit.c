@@ -25,7 +25,7 @@ static void test(void)
 {
 	knet_handle_t knet_h[UINT8_MAX + 1];
 	int logfds[2];
-	int idx;
+	unsigned int idx;
 
 	setup_logpipes(logfds);
 

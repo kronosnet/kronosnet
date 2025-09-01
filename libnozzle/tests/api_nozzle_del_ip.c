@@ -86,7 +86,7 @@ static int test(void)
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/24", nozzle->name, testipv4_1);
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
@@ -117,7 +117,7 @@ static int test(void)
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/24", nozzle->name, testipv4_1);
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
@@ -158,6 +158,9 @@ static int test(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 inet6 | grep -q %s", nozzle->name, testipv6_1);
+#endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -186,6 +189,9 @@ static int test(void)
 #endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
+#endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s inet6 | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
@@ -225,6 +231,9 @@ static int test(void)
 #endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
+#endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s inet6 | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {

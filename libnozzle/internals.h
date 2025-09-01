@@ -14,6 +14,9 @@
 #ifdef KNET_LINUX
 #include <netlink/netlink.h>
 #endif
+#ifdef KNET_SOLARIS
+#include <sys/sockio.h>
+#endif
 #include <net/if.h>
 #include "libnozzle.h"
 
@@ -54,9 +57,22 @@ struct nozzle_iface {
 	char updownpath[UPDOWN_PATH_MAX]; /* path to up/down scripts if configured */
 
 	struct nozzle_iface *next;
+
+#ifdef KNET_SOLARIS
+	int ip_fd;
+	int ip6_fd;
+#endif
 };
 
+#ifdef KNET_SOLARIS
+#define ifname ifr.lifr_name
+#define ifmtu ifr.lifr_mtu
+#define ifflags ifr.lifr_flags
+#else
 #define ifname ifr.ifr_name
+#define ifmtu ifr.ifr_mtu
+#define ifflags ifr.ifr_flags
+#endif
 
 int execute_bin_sh_command(const char *command, char **error_string);
 

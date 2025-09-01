@@ -20,7 +20,15 @@
  */
 
 #ifndef s6_addr32
-#define s6_addr32 __u6_addr.__u6_addr32
+# ifdef KNET_SOLARIS
+#  define s6_addr32 _S6_un._S6_u32
+# else
+#  define s6_addr32 __u6_addr.__u6_addr32
+# endif
+#endif
+
+#ifndef SOL_IP
+# define SOL_IP IPPROTO_IP
 #endif
 
 int cmpaddr(const struct sockaddr_storage *ss1, const struct sockaddr_storage *ss2);
