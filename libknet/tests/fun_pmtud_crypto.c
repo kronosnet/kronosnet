@@ -15,7 +15,11 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <sys/ioctl.h>
+#ifdef KNET_SOLARIS
+#include <sys/sockio.h>
+#else
 #include <net/ethernet.h>
+#endif
 #include <ifaddrs.h>
 #include <net/if.h>
 
@@ -45,7 +49,7 @@ static int default_mtu = 0;
 #ifdef KNET_LINUX
 const char *loopback = "lo";
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 const char *loopback = "lo0";
 #endif
 

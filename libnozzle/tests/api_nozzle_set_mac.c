@@ -16,7 +16,11 @@
 #include <stdint.h>
 #include <limits.h>
 #include <sys/socket.h>
+#ifdef KNET_SOLARIS
+#include <sys/ethernet.h>
+#else
 #include <net/ethernet.h>
+#endif
 
 #ifdef KNET_LINUX
 #include <linux/if_tun.h>
