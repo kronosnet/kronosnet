@@ -350,7 +350,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		log_debug(knet_h, KNET_SUB_TRANSPORT, "PMTUDISC not available in this build/platform");
 #endif
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 #ifdef IP_DONTFRAG
 		value = 1;
 		if (setsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, sizeof(value)) <0) {

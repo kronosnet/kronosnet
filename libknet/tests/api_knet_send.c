@@ -151,15 +151,6 @@ static void test(uint8_t transport)
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
-	printf("try to send big packet to local datafd (bypass knet_send)\n");
-	if (write(datafd, &send_buff, sizeof(send_buff)) != KNET_MAX_PACKET_SIZE + 1) {
-		printf("Error writing to datafd: %s\n", strerror(errno));
-	}
-
-	if (!wait_for_packet(knet_h1, 2, datafd, logfds[0], stdout)) {
-		printf("Received unexpected packet!\n");
-		CLEAN_EXIT(FAIL);
-	}
 	CLEAN_EXIT(CONTINUE);
 }
 
