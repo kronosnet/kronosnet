@@ -87,8 +87,8 @@ static void test(void)
 	memset(&out_addr, 0, sizeof(struct sockaddr_storage));
 
 	addrv6.sin6_family = AF_INET6;
-	addrv6.sin6_addr.s6_addr16[0] = htons(0xfd00); /* fd00::1 */
-	addrv6.sin6_addr.s6_addr16[7] = htons(0x0001);
+	addrv6.sin6_addr.s6_addr32[0] = htonl(0xfd000000); /* fd00::1 */
+	addrv6.sin6_addr.s6_addr32[3] = htonl(0x00000001);
 	addrv6.sin6_port = htons(50000);
 
 	if (knet_strtoaddr("fd00::1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {

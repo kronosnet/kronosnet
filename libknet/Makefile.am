@@ -18,7 +18,7 @@ EXTRA_DIST		= $(SYMFILE)
 SUBDIRS			= . tests
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libversion		= 6:0:5
+libknetversion		= 6:0:5
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
@@ -89,18 +89,24 @@ lib_LTLIBRARIES		= libknet.la
 
 libknet_la_SOURCES	= $(sources)
 
-AM_CFLAGS		+= $(libqb_CFLAGS)
+AM_CFLAGS		+= $(XOPEN_CPPFLAGS) $(libqb_CFLAGS)
 
 libknet_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) \
 			  -DPLUGINPATH="\"$(pkglibdir)\""
 
 EXTRA_libknet_la_DEPENDENCIES	= $(SYMFILE)
 
+if BUILD_FOR_SOLARIS
 libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
-			  -Wl,--version-script=$(srcdir)/$(SYMFILE) \
-			  -version-info $(libversion)
+			  -Wl,-M$(abs_srcdir)/$(SYMFILE) \
+			  -version-info $(libknetversion)
+else
+libknet_la_LDFLAGS	= $(AM_LDFLAGS) \
+			  -Wl,--version-script=$(abs_srcdir)/$(SYMFILE) \
+			  -version-info $(libknetversion)
+endif
 
-libknet_la_LIBADD	= $(PTHREAD_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
+libknet_la_LIBADD	= $(PTHREAD_LIBS) $(socket_LIBS) $(dl_LIBS) $(rt_LIBS) $(m_LIBS)
 
 check-local: check-annocheck-libs
 

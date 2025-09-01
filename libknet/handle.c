@@ -155,7 +155,7 @@ static void _close_socks(knet_handle_t knet_h)
 static int _init_buffers(knet_handle_t knet_h)
 {
 	int savederrno = 0;
-	int i;
+	unsigned int i;
 	size_t bufsize;
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
@@ -288,7 +288,7 @@ exit_fail:
 
 static void _destroy_buffers(knet_handle_t knet_h)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		free(knet_h->send_to_links_buf[i]);

@@ -10,6 +10,11 @@
 #ifndef __KNET_ONWIRE_H__
 #define __KNET_ONWIRE_H__
 
+#include <stdint.h>
+
+#include "config.h"
+#include "libknet.h"
+
 /*
  * data structures to define network packets.
  * Start from knet_header at the bottom
