@@ -113,6 +113,7 @@ static void destroy_iface(nozzle_t nozzle)
 	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
+	ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 #endif
 
 	free(nozzle);
