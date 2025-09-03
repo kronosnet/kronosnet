@@ -364,12 +364,22 @@ fi
 
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
-	if `echo $host_os | grep -q linux`; then
-		PKG_CHECK_MODULES([libnl], [libnl-3.0])
-		PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 >= 3.3], [],
-			[PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 < 3.3],
-					   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
-	fi
+	case $host_os in
+		*linux*)
+			PKG_CHECK_MODULES([libnl], [libnl-3.0])
+			PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 >= 3.3], [],
+				[PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 < 3.3],
+						   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
+			;;
+		*solaris*)
+			saved_LIBS="$LIBS"
+			AC_SEARCH_LIBS([dlpi_open], [dlpi], , [AC_MSG_ERROR([dlpi_open not found])])
+			AC_SUBST([dlpi_LIBS], [$LIBS])
+			LIBS="$saved_LIBS"
+			;;
+		*)
+			;;
+	esac
 fi
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html

@@ -73,8 +73,8 @@ Running on Solaris / Illumos
 
 Tune socket buffers for the protocol you intend to use:
 
-ndd -set /dev/udp udp_max_buf 8388608
-ndd -set /dev/sctp sctp_max_buf 8388608
+ipadm set-prop -p max_buf=8388608 sctp
+ipadm set-prop -p max_buf=8388608 udp
 
 Rust Bindings
 -------------
