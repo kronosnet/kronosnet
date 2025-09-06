@@ -39,10 +39,10 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 
 	printf("Test knet_handle_pmtud_setfreq with 0 (incorrect)\n");
-	FAIL_ON_SUCCESS(knet_handle_pmtud_setfreq(NULL, 0), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_pmtud_setfreq(knet_h1, 0), EINVAL);
 
 	printf("Test knet_handle_pmtud_setfreq with 86401 (incorrect)\n");
-	FAIL_ON_SUCCESS(knet_handle_pmtud_setfreq(NULL, 86401), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_pmtud_setfreq(knet_h1, 86401), EINVAL);
 
 	printf("Test knet_handle_pmtud_setfreq with 1 (correct)\n");
 	FAIL_ON_ERR(knet_handle_pmtud_setfreq(knet_h1, 1));

@@ -65,6 +65,7 @@ void need_tun(void)
 	close(fd);
 #ifdef KNET_BSD
 	ioctl(ioctlfd, SIOCIFDESTROY, &ifr);
+	ioctl(ioctlfd, SIOCGIFFLAGS, &ifr);
 	close(ioctlfd);
 #endif
 }

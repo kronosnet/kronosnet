@@ -113,6 +113,7 @@ static void destroy_iface(nozzle_t nozzle)
 	memmove(ifname, nozzle->name, IFNAMSIZ);
 
 	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
+	ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 #endif
 
 	free(nozzle);
@@ -490,23 +491,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 #ifdef KNET_BSD
 	if (!strlen(devname)) {
-		/*
-		 * FreeBSD 13 kernel has changed how the tap module
-		 * works and tap0 cannot be removed from the system.
-		 * This means that tap0 settings are never reset to default
-		 * and nozzle cannot control the default state of the device
-		 * when taking over.
-		 * nozzle expects some parameters to be default when opening
-		 * a tap device (such as random mac address, default MTU, no
-		 * other attributes, etc.)
-		 *
-		 * For 13 and higher, simply skip tap0 as usable device.
-		 */
-#if __FreeBSD__ >= 13
-		for (i = 1; i < 256; i++) {
-#else
 		for (i = 0; i < 256; i++) {
-#endif
 			memset(&ifr, 0, sizeof(struct ifreq));
 
 			snprintf(curnozzle, sizeof(curnozzle) - 1, "tap%u", i);
@@ -524,6 +509,7 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 			/* For some reason we can't open that device, keep trying
 			   but don't leave debris */
 			(void)ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
+			(void)ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
 		}
 		snprintf(curnozzle, sizeof(curnozzle) -1 , "tap%u", i);
 	} else {
@@ -610,8 +596,8 @@ out_error:
 int nozzle_close(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
-	nozzle_t temp = lib_cfg.head;
-	nozzle_t prev = lib_cfg.head;
+	nozzle_t temp;
+	nozzle_t prev;
 	struct nozzle_ip *ip, *ip_next;
 
 	savederrno = pthread_mutex_lock(&config_mutex);
@@ -626,6 +612,8 @@ int nozzle_close(nozzle_t nozzle)
 		goto out_clean;
 	}
 
+	temp = lib_cfg.head;
+	prev = lib_cfg.head;
 	while ((temp) && (temp != nozzle)) {
 		prev = temp;
 		temp = temp->next;

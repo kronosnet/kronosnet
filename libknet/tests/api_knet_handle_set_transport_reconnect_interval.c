@@ -42,6 +42,7 @@ static void test(void)
 	printf("Test knet_handle_set_transport_reconnect_interval with correct values\n");
 	FAIL_ON_ERR(knet_handle_set_transport_reconnect_interval(knet_h1, 2000));
 
+	// coverity[MISSING_LOCK:SUPPRESS] use out of the main library is 'OK' here. ish
 	if (knet_h1->reconnect_int != 2000) {
 		printf("knet_handle_set_transport_reconnect_interval failed to set correct value\n");
 		CLEAN_EXIT(FAIL);
