@@ -187,7 +187,7 @@ void prep_tx_bufs_v1(knet_handle_t knet_h,
 			 */
 			iov_out[frag_idx][0].iov_base = (void *)knet_h->send_to_links_buf[frag_idx];
 			iov_out[frag_idx][0].iov_len = KNET_HEADER_DATA_V1_SIZE;
-			iov_out[frag_idx][1].iov_base = data + (temp_data_mtu * frag_idx);
+			iov_out[frag_idx][1].iov_base = (char *)data + (temp_data_mtu * frag_idx);
 
 			/*
 			 * set the len

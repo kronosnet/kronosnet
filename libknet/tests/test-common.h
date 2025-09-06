@@ -24,10 +24,22 @@
 #define CONTINUE 101
 
 /* For *BSD compatibility */
-#ifndef s6_addr16
+#ifndef s6_addr8
 #define s6_addr8  __u6_addr.__u6_addr8
-#define s6_addr16 __u6_addr.__u6_addr16
-#define s6_addr32 __u6_addr.__u6_addr32
+#endif
+#ifndef s6_addr16
+# ifdef KNET_SOLARIS
+#  define s6_addr16 _S6_un._S6_u16
+# else
+#  define s6_addr16 __u6_addr.__u6_addr16
+# endif
+#endif
+#ifndef s6_addr32
+# ifdef KNET_SOLARIS
+#  define s6_addr32 _S6_un._S6_u32
+# else
+#  define s6_addr32 __u6_addr.__u6_addr32
+# endif
 #endif
 
 /*
