@@ -65,9 +65,12 @@ void need_tun(void)
 #endif
 		exit(SKIP);
 	}
-	close(fd);
 #ifdef KNET_BSD
 	memset(&ifr, 0, sizeof(struct ifreq));
+	ioctl(fd, TAPGIFNAME, &ifr);
+#endif
+	close(fd);
+#ifdef KNET_BSD
 	ioctl(ioctlfd, SIOCIFDESTROY, &ifr);
 	ioctl(ioctlfd, SIOCGIFFLAGS, &ifr);
 	close(ioctlfd);
