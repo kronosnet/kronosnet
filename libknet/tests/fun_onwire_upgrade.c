@@ -129,6 +129,8 @@ static void test(void)
 	flush_logs(logfds[0], stdout);
 	sleep(seconds);
 	flush_logs(logfds[0], stdout);
+	sleep(seconds);
+	flush_logs(logfds[0], stdout);
 
 	printf("Test onwire upgrade from %u to %u (all but one node - phase 2, node should be kicked out and remaining nodes should upgrade)\n", knet_h[1]->onwire_max_ver, knet_h[1]->onwire_max_ver + 1);
 

@@ -88,7 +88,7 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	test_sleep(knet_h1, 1);
+	test_sleep(knet_h1, 10);
 	flush_logs(logfds[0], stdout);
 
 	if (knet_h1->data_mtu != data_mtu - 64) {
@@ -102,7 +102,7 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	test_sleep(knet_h1, 1);
+	test_sleep(knet_h1, 15);
 	flush_logs(logfds[0], stdout);
 
 	if (knet_h1->data_mtu != data_mtu) {
