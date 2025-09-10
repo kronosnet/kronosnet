@@ -207,14 +207,14 @@ void make_local_ips(char *testipv4_1, char *testipv4_2, char *testipv6_1, char *
 	snprintf(testipv6_1,
 		 IPBUFSIZE - 1,
 		 "fe%02x:%x%x::1",
-		 pid[1],
+		 pid[1] & 0x7f,
 		 pid[2],
 		 pid[0]);
 
 	snprintf(testipv6_2,
 		 IPBUFSIZE - 1,
 		 "fe%02x:%x%x:1::1",
-		 pid[1],
+		 pid[1] & 0x7f,
 		 pid[2],
 		 pid[0]);
 }
