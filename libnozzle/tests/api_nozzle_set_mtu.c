@@ -55,8 +55,13 @@ static int test(void)
 		goto out_clean;
 	}
 
-	printf("Setting MTU to 9000\n");
+#ifdef KNET_SOLARIS
+	// Solaris doesn't allow MTU > 1500
+	expected_mtu = 900;
+#else
 	expected_mtu = 9000;
+#endif
+	printf("Setting MTU to %d\n", expected_mtu);
 	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
 		printf("Unable to set MTU to %d\n", expected_mtu);
 		err = -1;
@@ -152,6 +157,9 @@ static int test_ipv6(void)
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 inet6| grep -q %s", nozzle->name, testipv6_1);
+#endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
@@ -183,7 +191,7 @@ static int test_ipv6(void)
 #ifdef KNET_LINUX
 	if (!err) {
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 	if (err) {
 #endif
 		printf("Unable to verify IP address\n");
@@ -203,6 +211,9 @@ static int test_ipv6(void)
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_2);
+#endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 inet6| grep -q %s", nozzle->name, testipv6_2);
 #endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_2);
@@ -238,6 +249,9 @@ static int test_ipv6(void)
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 inet6| grep -q %s", nozzle->name, testipv6_1);
+#endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
@@ -257,6 +271,9 @@ static int test_ipv6(void)
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_2);
+#endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:3 inet6| grep -q %s", nozzle->name, testipv6_2);
 #endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_2);

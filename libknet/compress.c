@@ -44,7 +44,7 @@ static compress_model_t compress_modules_cmds[KNET_MAX_COMPRESS_METHODS + 1] = {
 	{ NULL, KNET_MAX_COMPRESS_METHODS, 0, 0, NULL }
 };
 
-static int max_model = 0;
+static unsigned int max_model = 0;
 static struct timespec last_load_failure;
 
 static int compress_get_model(const char *model)
@@ -378,7 +378,7 @@ void compress_fini(
 	int all)
 {
 	int savederrno = 0;
-	int idx = 0;
+	unsigned int idx = 0;
 
 	savederrno = pthread_rwlock_wrlock(&shlib_rwlock);
 	if (savederrno) {
@@ -424,7 +424,7 @@ int compress(
 
 int decompress(
 	knet_handle_t knet_h,
-	int compress_model,
+	unsigned int compress_model,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,

@@ -27,7 +27,7 @@ int compress(
 
 int decompress(
 	knet_handle_t knet_h,
-	int compress_model,
+	unsigned int compress_model,
 	const unsigned char *buf_in,
 	const ssize_t buf_in_len,
 	unsigned char *buf_out,
