@@ -25,6 +25,16 @@ Architecture
 Please refer to the google shared drive Presentations directory for
 diagrams and fancy schemas
 
+Dependancies
+------------
+kronosnet has few obligatory dependancies, though it is strongly recommended
+that you build it with at least one crypto library enabled.
+
+It does, however, require libqb for both the doxygen2man tool (for creating
+the API man pages) and headers for list manipulation.
+You can get these from installing libqb from source or libqb-devel package, and
+your distro might provide doxgen2man as its own package.
+
 Running on FreeBSD
 -----------------------
 
