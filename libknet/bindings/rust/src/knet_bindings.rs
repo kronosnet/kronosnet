@@ -1800,6 +1800,13 @@ fn make_new_sockaddr_storage(ss: &SocketAddr) -> ffi::sockaddr_storage
 	__ss_padding: [0; 118],
 	__ss_align: 0,
     };
+#[cfg(target_os="illumos")]
+    let mut new_ss = ffi::sockaddr_storage {
+	ss_family: 0,
+	_ss_pad1: [0; 6],
+	_ss_align: 0.0,
+	_ss_pad2: [0; 240],
+    };
     let p_new_ss : *mut ffi::sockaddr_storage = &mut new_ss;
 
     // Rust only fills in what it thinks is necessary

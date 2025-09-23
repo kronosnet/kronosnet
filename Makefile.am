@@ -50,6 +50,11 @@ distclean-local:
 
 ## make rpm/srpm section.
 
+if BUILD_FOR_SOLARIS
+$(SPEC): $(SPEC).in .version config.status
+	echo "RPM NOT SUPPORTED. skipping"
+	touch $(SPEC)
+else
 $(SPEC): $(SPEC).in .version config.status
 	rm -f $@-t $@
 	date="`LC_ALL=C $(UTC_DATE_AT)$(SOURCE_EPOCH) "+%a %b %d %Y"`" && \
@@ -172,6 +177,7 @@ endif
 	chmod a-w $@-t
 	mv $@-t $@
 	rm -f $@-t*
+endif
 
 $(TARGZFILE):
 	$(MAKE) dist

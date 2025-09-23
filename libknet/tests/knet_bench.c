@@ -39,7 +39,7 @@ static int show_stats = 0;
 static struct sockaddr_storage allv4;
 static struct sockaddr_storage allv6;
 static int broadcast_test = 1;
-static pthread_t rx_thread = (pthread_t)NULL;
+static pthread_t rx_thread = {0};
 static char *rx_buf[PCKT_FRAG_MAX];
 static int wait_for_perf_rx = 0;
 static char *compresscfg = NULL;
@@ -692,7 +692,7 @@ static void *_rx_thread(void *args)
 	uint64_t rx_bytes = 0;
 	unsigned int current_pckt_size = 0;
 
-	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+	for (i = 0; (unsigned int)i < PCKT_FRAG_MAX; i++) {
 		rx_buf[i] = malloc(KNET_MAX_PACKET_SIZE);
 		if (!rx_buf[i]) {
 			printf("RXT: Unable to malloc!\nHALTING RX THREAD!\n");
@@ -835,7 +835,7 @@ static void setup_data_txrx_common(void)
 static void stop_rx_thread(void)
 {
 	void *retval;
-	int i;
+	unsigned int i;
 
 	if (rx_thread) {
 		printf("[info]: shutting down rx thread\n");
@@ -912,7 +912,7 @@ retry:
 
 static int setup_send_buffers_common(struct knet_mmsghdr *msg, struct iovec *iov_out, char *tx_buf[])
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < PCKT_FRAG_MAX; i++) {
 		tx_buf[i] = malloc(KNET_MAX_PACKET_SIZE);
@@ -936,7 +936,7 @@ static void send_perf_data_by_size(void)
 	struct iovec iov_out[PCKT_FRAG_MAX];
 	char ctrl_message[16];
 	int sent_msgs;
-	int i;
+	unsigned int i;
 	uint64_t total_pkts_to_tx;
 	uint64_t packets_to_send;
 	uint32_t packetsize = 64;
@@ -1221,7 +1221,7 @@ static void send_perf_data_by_time(void)
 	struct iovec iov_out[PCKT_FRAG_MAX];
 	char ctrl_message[16];
 	int sent_msgs;
-	int i;
+	unsigned int i;
 	uint32_t packetsize = 64;
 	struct timespec clock_start, clock_end;
 	unsigned long long time_diff = 0;
