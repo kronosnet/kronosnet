@@ -111,7 +111,7 @@ AC_ARG_ENABLE([man],
 AM_CONDITIONAL([BUILD_MAN], [test x$enable_man = xyes])
 
 AC_ARG_ENABLE([libknet-sctp],
-	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
+	[AS_HELP_STRING([--enable-libknet-sctp],[enable libknet SCTP support])],
 	[ enable_libknet_sctp="yes" ])
 AM_CONDITIONAL([BUILD_SCTP], [test x$enable_libknet_sctp = xyes])
 
@@ -257,6 +257,7 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 fi
 
 if test "x$enable_libknet_sctp" = xyes; then
+	AC_MSG_WARN([SCTP support is deprecated and will be removed in kronosnet 2.0])
 	AC_CHECK_HEADERS([netinet/sctp.h],,
 			 AC_CACHE_CHECK([for netinet/sctp.h with netinet/in.h included], [ac_cv_have_sctp], [
 				ac_cv_have_sctp=no
