@@ -16,7 +16,6 @@
 %global dirty @dirty@
 
 # set defaults from ./configure invokation
-%@sctp@ sctp
 %@nss@ nss
 %@openssl@ openssl
 %@gcrypt@ gcrypt
@@ -53,9 +52,6 @@ BuildRequires: gcc libqb-devel make
 # required to build man pages
 %if %{with buildman}
 BuildRequires: doxygen doxygen2man
-%endif
-%if %{with sctp}
-BuildRequires: lksctp-tools-devel
 %endif
 %if %{with nss}
 %if 0%{?suse_version}
@@ -125,11 +121,6 @@ BuildRequires: autoconf automake libtool
 	--enable-man \
 %else
 	--disable-man \
-%endif
-%if %{with sctp}
-	--enable-libknet-sctp \
-%else
-	--disable-libknet-sctp \
 %endif
 %if %{with nss}
 	--enable-crypto-nss \

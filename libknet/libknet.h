@@ -1712,7 +1712,6 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
 
 #define KNET_TRANSPORT_LOOPBACK 0
 #define KNET_TRANSPORT_UDP      1
-#define KNET_TRANSPORT_SCTP     2
 #define KNET_MAX_TRANSPORTS     UINT8_MAX
 
 /*
@@ -1730,7 +1729,7 @@ int knet_addrtostr(const struct sockaddr_storage *ss, socklen_t sslen,
  * Transport information returned from knet_get_transport_list()
  */
 struct knet_transport_info {
-	/** Transport name. UDP, SCTP, etc... */
+	/** Transport name. UDP, etc... */
 	const char *name;
 	/** value that can be used for knet_link_set_config() */
 	uint8_t id;
@@ -1781,7 +1780,7 @@ const char *knet_get_transport_name_by_id(uint8_t transport);
  *
  * @brief Get a transport ID from its name
  *
- * name      - transport name (UDP/SCTP/etc)
+ * name      - transport name (UDP/etc)
  *
  * @return
  * knet_get_transport_name_by_id returns:
@@ -2591,7 +2590,6 @@ int knet_link_enable_status_change_notify(knet_handle_t knet_h,
 #define KNET_SUB_TRANSP_BASE   40 /* Base log level for transports */
 #define KNET_SUB_TRANSP_LOOPBACK (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_LOOPBACK)
 #define KNET_SUB_TRANSP_UDP      (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_UDP)
-#define KNET_SUB_TRANSP_SCTP     (KNET_SUB_TRANSP_BASE + KNET_TRANSPORT_SCTP)
 
 #define KNET_SUB_NSSCRYPTO     60 /* crypto_nss.c */
 #define KNET_SUB_OPENSSLCRYPTO 61 /* crypto_openssl.c */

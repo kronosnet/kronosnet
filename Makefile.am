@@ -93,11 +93,6 @@ $(SPEC): $(SPEC).in .version config.status
 		$(abs_srcdir)/$@.in > $@-t; \
 	fi; \
 	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
-if BUILD_SCTP
-	sed -i -e "s#@sctp@#bcond_without#g" $@-t
-else
-	sed -i -e "s#@sctp@#bcond_with#g" $@-t
-endif
 if BUILD_CRYPTO_NSS
 	sed -i -e "s#@nss@#bcond_without#g" $@-t
 else

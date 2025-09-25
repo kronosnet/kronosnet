@@ -38,7 +38,6 @@ static struct pretty_names subsystem_names[KNET_MAX_SUBSYSTEMS] =
 	{ "rx", KNET_SUB_RX },
 	{ "loopback", KNET_SUB_TRANSP_LOOPBACK },
 	{ "udp", KNET_SUB_TRANSP_UDP },
-	{ "sctp", KNET_SUB_TRANSP_SCTP },
 	{ "nsscrypto", KNET_SUB_NSSCRYPTO },
 	{ "opensslcrypto", KNET_SUB_OPENSSLCRYPTO },
 	{ "gcryptcrypto", KNET_SUB_GCRYPTCRYPTO },

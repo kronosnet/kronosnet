@@ -46,8 +46,7 @@ sources			= \
 			  transports.c \
 			  transport_common.c \
 			  transport_loopback.c \
-			  transport_udp.c \
-			  transport_sctp.c
+			  transport_udp.c
 
 include_HEADERS		= libknet.h
 
@@ -81,8 +80,7 @@ noinst_HEADERS		= \
 			  transports.h \
 			  transport_common.h \
 			  transport_loopback.h \
-			  transport_udp.h \
-			  transport_sctp.h
+			  transport_udp.h
 
 lib_LTLIBRARIES		= libknet.la
 

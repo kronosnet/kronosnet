@@ -42,11 +42,6 @@ knet requires big socket buffers and you need to set:
 kern.ipc.maxsockbuf=18388608
 in /etc/sysctl.conf or knet will fail to run.
 
-For version 12 (or lower), knet requires also:
-net.inet.sctp.blackhole=1
-in /etc/sysctl.conf or knet will fail to work with SCTP.
-This sysctl is obsoleted in version 13.
-
 libnozzle requires if_tap.ko loaded in the kernel.
 
 Please avoid using ifconfig_DEFAULT in /etc/rc.conf to use
@@ -83,7 +78,6 @@ Running on Solaris / Illumos
 
 Tune socket buffers for the protocol you intend to use:
 
-ipadm set-prop -p max_buf=8388608 sctp
 ipadm set-prop -p max_buf=8388608 udp
 
 Rust Bindings

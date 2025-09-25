@@ -110,11 +110,6 @@ AC_ARG_ENABLE([man],
 	[ enable_man="yes" ])
 AM_CONDITIONAL([BUILD_MAN], [test x$enable_man = xyes])
 
-AC_ARG_ENABLE([libknet-sctp],
-	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
-	[ enable_libknet_sctp="yes" ])
-AM_CONDITIONAL([BUILD_SCTP], [test x$enable_libknet_sctp = xyes])
-
 AC_ARG_ENABLE([functional-tests],
 	[AS_HELP_STRING([--disable-functional-tests],[disable execution of functional tests, useful for old and slow arches])],,
 	[ enable_functional_tests="yes" ])
@@ -267,26 +262,6 @@ fi
 
 if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes; then
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
-fi
-
-if test "x$enable_libknet_sctp" = xyes; then
-	AC_CHECK_HEADERS([netinet/sctp.h],,
-			 AC_CACHE_CHECK([for netinet/sctp.h with netinet/in.h included], [ac_cv_have_sctp], [
-				ac_cv_have_sctp=no
-				AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
-						   #include <netinet/in.h>
-						   #include <netinet/sctp.h>
-						   ], [
-						       sctp_assoc_t my_sctp_assoc;
-						   ])],
-						   [ac_cv_have_sctp=yes],
-						   [AC_MSG_ERROR(["missing required SCTP headers"])])
-				])
-			 AC_CHECK_LIB([sctp], [sctp_bindx], [sctp_LIBS="-lsctp"])
-			 if test "x$ac_cv_have_sctp" = xyes; then
-				 AC_DEFINE([HAVE_NETINET_SCTP_H], [1], [define when HAVE_NETINET_SCTP_H is declared])
-			 fi
-	)
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.

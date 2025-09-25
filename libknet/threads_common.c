@@ -77,10 +77,6 @@ static struct pretty_names thread_names[KNET_THREAD_MAX] =
 	{ "RX", KNET_THREAD_RX },
 	{ "HB", KNET_THREAD_HB },
 	{ "PMTUD", KNET_THREAD_PMTUD },
-#ifdef HAVE_NETINET_SCTP_H
-	{ "SCTP_LISTEN", KNET_THREAD_SCTP_LISTEN },
-	{ "SCTP_CONN", KNET_THREAD_SCTP_CONN },
-#endif
 	{ "DST_LINK", KNET_THREAD_DST_LINK }
 };
 
