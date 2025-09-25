@@ -18,7 +18,7 @@ if BUILD_LIBNOZZLE
 
 SUBDIRS			= . tests
 
-libversion		= 1:0:0
+libnozzleversion	= 1:0:0
 
 sources			= libnozzle.c \
 			  internals.c
@@ -40,12 +40,17 @@ libnozzle_la_CFLAGS	= $(AM_CFLAGS) $(PTHREAD_CFLAGS) $(libnl_CFLAGS) $(libnlrout
 
 EXTRA_libnozzle_la_DEPENDENCIES	= $(SYMFILE)
 
+if BUILD_FOR_SOLARIS
 libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
-			  -Wl,-version-script,$(srcdir)/$(SYMFILE) \
-			  -version-info $(libversion)
+			  -Wl,-M$(abs_srcdir)/$(SYMFILE) \
+			  -version-info $(libnozzleversion)
+else
+libnozzle_la_LDFLAGS	= $(AM_LDFLAGS) \
+			  -Wl,-version-script,$(abs_srcdir)/$(SYMFILE) \
+			  -version-info $(libnozzleversion)
+endif
 
-libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(libnl_LIBS) $(libnlroute_LIBS)
+libnozzle_la_LIBADD	= $(PTHREAD_LIBS) $(socket_LIBS) $(libnl_LIBS) $(libnlroute_LIBS) $(dlpi_LIBS)
 
 check-local: check-annocheck-libs
-
 endif

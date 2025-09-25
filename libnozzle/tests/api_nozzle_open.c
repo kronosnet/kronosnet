@@ -62,7 +62,7 @@ static int test_multi_eth(void)
 	if (nozzle2) {
 		nozzle_close(nozzle2);
 	}
-
+#ifndef KNET_SOLARIS
 	printf("Testing error conditions\n");
 
 	printf("Open same device twice\n");
@@ -88,7 +88,7 @@ static int test_multi_eth(void)
 		err = -1;
 		goto out_clean;
 	}
-
+#endif
 out_clean:
 	if (nozzle1) {
 		nozzle_close(nozzle1);
@@ -106,7 +106,9 @@ static int test(void)
 	char device_name[2*IFNAMSIZ];
 	char fakepath[PATH_MAX];
 	size_t size = IFNAMSIZ;
+#ifndef KNET_SOLARIS
 	uint8_t randombyte = get_random_byte();
+#endif
 
 	memset(device_name, 0, sizeof(device_name));
 
@@ -124,7 +126,7 @@ static int test(void)
 		return -1;
 	}
 #endif
-#ifdef KNET_BSD
+#if KNET_BSD
 	printf("Creating tap%u nozzle interface:\n", randombyte);
 	snprintf(device_name, IFNAMSIZ, "tap%u", randombyte);
 	if (test_iface(device_name, size, NULL) < 0) {

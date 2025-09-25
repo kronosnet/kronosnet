@@ -22,14 +22,23 @@ AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.13 dist-bzip2 dist-xz color-tests -Wno-portability subdir-objects])
 
 LT_PREREQ([2.2.6])
+
+AC_CANONICAL_HOST
 # --enable-new-dtags: Use RUNPATH instead of RPATH.
 # It is necessary to have this done before libtool does linker detection.
 # See also: https://github.com/kronosnet/kronosnet/issues/107
 # --as-needed: Modern systems have builtin ceil() making -lm superfluous but
 # AC_SEARCH_LIBS can't detect this because it tests with a false prototype
-AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],
-		   [AM_LDFLAGS=-Wl,--enable-new-dtags],
-		   [AC_MSG_ERROR(["Linker support for --enable-new-dtags is required"])])
+case "$host_os" in
+	solaris*)
+		AC_MSG_NOTICE([Skipping --enable-new-dtags check, Solaris' RPATH logic is like RUNPATH on other platforms])
+		;;
+	*)
+		AX_CHECK_LINK_FLAG([-Wl,--enable-new-dtags],
+				   [AM_LDFLAGS=-Wl,--enable-new-dtags],
+				   [AC_MSG_ERROR(["Linker support for --enable-new-dtags is required"])])
+		;;
+esac
 AX_CHECK_LINK_FLAG([-Wl,--as-needed], [AM_LDFLAGS="$AM_LDFLAGS -Wl,--as-needed"])
 
 saved_LDFLAGS="$LDFLAGS"
@@ -40,8 +49,6 @@ LDFLAGS="$saved_LDFLAGS"
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([libknet/handle.c])
 AC_CONFIG_HEADERS([config.h])
-
-AC_CANONICAL_HOST
 
 AC_LANG([C])
 
@@ -104,7 +111,7 @@ AC_ARG_ENABLE([man],
 AM_CONDITIONAL([BUILD_MAN], [test x$enable_man = xyes])
 
 AC_ARG_ENABLE([libknet-sctp],
-	[AS_HELP_STRING([--disable-libknet-sctp],[disable libknet SCTP support])],,
+	[AS_HELP_STRING([--enable-libknet-sctp],[enable libknet SCTP support])],
 	[ enable_libknet_sctp="yes" ])
 AM_CONDITIONAL([BUILD_SCTP], [test x$enable_libknet_sctp = xyes])
 
@@ -206,8 +213,14 @@ LIBS="$saved_LIBS"
 AC_CHECK_DECL([RTLD_DI_ORIGIN], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN], 1,
     [define when RTLD_DI_ORIGIN is declared])], ,[[#include <dlfcn.h>]])
 
+AC_CHECK_DECLS([MSG_NOSIGNAL], [], [CFLAGS="$CFLAGS -DMSG_NOSIGNAL=0"], [#include <sys/socket.h>])
+
+AC_CHECK_LIB([socket], [socket],
+	     [AC_SUBST([socket_LIBS], [-lsocket])])
+
 # OS detection
 
+build_for_solaris=no
 AC_MSG_CHECKING([for os in ${host_os}])
 case "$host_os" in
 	*linux*)
@@ -218,10 +231,17 @@ case "$host_os" in
 		AC_DEFINE_UNQUOTED([KNET_BSD], [1], [Compiling for BSD platform])
 		AC_MSG_RESULT([BSD])
 		;;
+	solaris*)
+		AC_DEFINE_UNQUOTED([KNET_SOLARIS], [1], [Compiling for Solaris platform])
+		AC_MSG_RESULT([Solaris])
+		build_for_solaris=yes
+		;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
 		;;
 esac
+
+AM_CONDITIONAL([BUILD_FOR_SOLARIS], [test "x$build_for_solaris" = "xyes"])
 
 # Checks for header files.
 AC_CHECK_HEADERS([sys/epoll.h])
@@ -237,7 +257,24 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 fi
 
 if test "x$enable_libknet_sctp" = xyes; then
-	AC_CHECK_HEADERS([netinet/sctp.h],, [AC_MSG_ERROR(["missing required SCTP headers"])])
+	AC_MSG_WARN([SCTP support is deprecated and will be removed in kronosnet 2.0])
+	AC_CHECK_HEADERS([netinet/sctp.h],,
+			 AC_CACHE_CHECK([for netinet/sctp.h with netinet/in.h included], [ac_cv_have_sctp], [
+				ac_cv_have_sctp=no
+				AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+						   #include <netinet/in.h>
+						   #include <netinet/sctp.h>
+						   ], [
+						       sctp_assoc_t my_sctp_assoc;
+						   ])],
+						   [ac_cv_have_sctp=yes],
+						   [AC_MSG_ERROR(["missing required SCTP headers"])])
+				])
+			 AC_CHECK_LIB([sctp], [sctp_bindx], [sctp_LIBS="-lsctp"])
+			 if test "x$ac_cv_have_sctp" = xyes; then
+				 AC_DEFINE([HAVE_NETINET_SCTP_H], [1], [define when HAVE_NETINET_SCTP_H is declared])
+			 fi
+	)
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -295,12 +332,23 @@ AM_CONDITIONAL([BUILD_DOXYXML], [test "x$build_doxy" = "xyes"])
 
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
-	if `echo $host_os | grep -q linux`; then
-		PKG_CHECK_MODULES([libnl], [libnl-3.0])
-		PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 >= 3.3], [],
-			[PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 < 3.3],
-					   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
-	fi
+	case $host_os in
+		*linux*)
+			PKG_CHECK_MODULES([libnl], [libnl-3.0])
+			PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 >= 3.3], [],
+				[PKG_CHECK_MODULES([libnlroute], [libnl-route-3.0 < 3.3],
+						   [AC_DEFINE_UNQUOTED([LIBNL3_WORKAROUND], [1], [Enable libnl < 3.3 build workaround])], [])])
+			;;
+		*solaris*)
+			saved_LIBS="$LIBS"
+			AC_SEARCH_LIBS([dlpi_open], [dlpi], , [AC_MSG_ERROR([dlpi_open not found])])
+			AC_SUBST([dlpi_LIBS], [$LIBS])
+			LIBS="$saved_LIBS"
+			AC_CHECK_HEADERS([net/if_tun.h],, [AC_MSG_ERROR([net/if_tun.h not found])])
+			;;
+		*)
+			;;
+	esac
 fi
 
 # local options
@@ -328,6 +376,33 @@ else
 	OPT_CFLAGS="-O3"
 fi
 
+# check flags for CMSG_SPACE()
+AC_CACHE_CHECK([for CMSG_SPACE() requiring _XOPEN_SOURCE], [ac_cv_macro_xopen_source], [
+	ac_cv_macro_xopen_source=yes
+	saveCPPFLAGS="$CPPFLAGS"
+	CPPFLAGS="-Werror $CPPFLAGS"
+	# First, try to link with strdup() using standard flags
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+		#include <sys/socket.h>
+	], [
+	        unsigned char c = CMSG_SPACE(1);
+	])], [ac_cv_macro_xopen_source=no], [
+		# Failure, try again with -D_XOPEN_SOURCE
+		XOPEN_CPPFLAGS="-D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED=1"
+		CPPFLAGS="$CPPFLAGS $XOPEN_CPPFLAGS"
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+			#include <sys/socket.h>
+		], [
+		        unsigned char c = CMSG_SPACE(1);
+		],
+		[ac_cv_macro_xopen_source=yes],
+		[AC_MSG_ERROR([no CMSG_SPACE() found])])])
+	])
+	CPPFLAGS="$saveCPPFLAGS"
+])
+
+AC_SUBST([XOPEN_CPPFLAGS])
+
 # Check for availablility of hardening options
 
 annocheck=no
@@ -350,7 +425,16 @@ if test "x${enable_hardening}" = xyes; then
 		done
 	fi
 
-	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC -pie -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
+	HARDENING_CFLAGS_ANNOCHECK="$ANNOPLUGIN -fPIC -DPIC"
+	case "$host_os" in
+		solaris*)
+			# no support for -pie when linking, but supported during compile
+			;;
+		*)
+			HARDENING_CFLAGS_ANNOCHECK="$HARDENING_CFLAGS_ANNOCHECK -pie"
+			;;
+	esac
+	HARDENING_CFLAGS_ANNOCHECK="$HARDENING_CFLAGS_ANNOCHECK -fstack-protector-strong -fexceptions -D_GLIBCXX_ASSERTIONS -Wl,-z,now"
 	HARDENING_CFLAGS="-fstack-clash-protection -fcf-protection=full -mcet -mstackrealign"
 	EXTRA_HARDENING_CFLAGS=""
 
@@ -400,7 +484,25 @@ DEFAULT_CFLAGS="-Werror -Wall -Wextra"
 
 # manual overrides
 # generates too much noise for stub APIs
-UNWANTED_CFLAGS="-Wno-unused-parameter"
+UNWANTED_CFLAGS="-Wno-unused-parameter -Wno-gnu-folding-constant"
+
+# check for character index warning
+AC_CACHE_CHECK([if -Wchar-subscripts warns for int8_t], [ac_cv_int8_t_warn], [
+	saveCFLAGS="$CFLAGS"
+	CFLAGS="-Werror -Wchar-subscripts"
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <stdint.h>], [
+			   char arr[256];
+			   uint8_t i = 200;
+			   arr[i] = 'J';
+			   return 0;
+			  ])],
+			  [ac_cv_int8_t_warn=no],
+			  [ac_cv_int8_t_warn=yes])
+	CFLAGS="$saveCFLAGS"
+])
+if test "x$ac_cv_int8_t_warn" = xyes; then
+	UNWANTED_CFLAGS="$UNWANTED_CFLAGS -Wno-char-subscripts"
+fi
 
 AC_SUBST([AM_CFLAGS],["$OPT_CFLAGS $GDB_CFLAGS $DEFAULT_CFLAGS $EXTRA_HARDENING_CFLAGS $UNWANTED_CFLAGS"])
 AC_SUBST([AM_LDFLAGS])

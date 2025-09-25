@@ -107,6 +107,9 @@ static int test(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
+#endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -129,6 +132,9 @@ static int test(void)
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_2);
 #endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 | grep -q %s", nozzle->name, testipv4_2);
+#endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -143,7 +149,7 @@ static int test(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
 
-	err = nozzle_del_ip(nozzle, testipv4_1, "24");
+	err = nozzle_del_ip(nozzle, testipv4_2, "24");
 	if (err < 0) {
 		printf("Unable to delete IP address\n");
 		err = -1;
@@ -152,7 +158,7 @@ static int test(void)
 
 	printf("Deleting ip: %s/24\n", testipv4_2);
 
-	err = nozzle_del_ip(nozzle, testipv4_2, "24");
+	err = nozzle_del_ip(nozzle, testipv4_1, "24");
 	if (err < 0) {
 		printf("Unable to delete IP address\n");
 		err = -1;
@@ -172,6 +178,9 @@ static int test(void)
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
+#endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 inet6| grep -q %s", nozzle->name, testipv6_1);
 #endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
@@ -221,7 +230,7 @@ static int test(void)
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q %s/64", nozzle->name, testipv6_1);
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
@@ -252,6 +261,9 @@ static int test(void)
 #endif
 #ifdef KNET_BSD
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv6_1);
+#endif
+#ifdef KNET_SOLARIS
+		 "ifconfig %s:1 inet6 | grep -q %s", nozzle->name, testipv6_1);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {

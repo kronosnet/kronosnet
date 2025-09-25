@@ -46,6 +46,7 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_remove(knet_h1, 1));
 
 	printf("Test knet_handle_free with invalid knet_h (part 2)\n");
+	// coverity[BAD_FREE:SUPPRESS] - deliberate bad handle
 	FAIL_ON_SUCCESS(knet_handle_free(knet_h1 + 1), EINVAL);
 
 	FAIL_ON_ERR(knet_handle_free(knet_h1));

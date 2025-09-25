@@ -15,7 +15,7 @@ EXTRA_DIST		= \
 			  api-test-coverage \
 			  api-check.mk
 
-AM_CPPFLAGS		= -I$(top_srcdir)/libknet
+AM_CPPFLAGS		= -I$(top_srcdir)/libknet $(XOPEN_CPPFLAGS)
 AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libqb_CFLAGS)
 LIBS			= $(top_builddir)/libknet/libknet.la \
 			  $(PTHREAD_LIBS) $(dl_LIBS)

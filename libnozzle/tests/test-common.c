@@ -22,7 +22,9 @@
 #include <sys/ioctl.h>
 #include <net/if_tap.h>
 #endif
-
+#ifdef KNET_SOLARIS
+#include <libdlpi.h>
+#endif
 #include "test-common.h"
 
 void need_root(void)
@@ -42,6 +44,11 @@ void need_tun(void)
 #ifdef KNET_BSD
 	const char *tundev = "/dev/tap";
 	struct ifreq ifr;
+#endif
+#ifdef KNET_SOLARIS
+	const char *tundev = "/dev/tun";
+#endif
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 	int ioctlfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
 
 	if (ioctlfd < 0) {
@@ -53,7 +60,7 @@ void need_tun(void)
 	fd = open(tundev, O_RDWR);
 	if (fd < 0) {
 		printf("Failed to open %s (errno=%d); this test requires TUN support\n", tundev, errno);
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		close(ioctlfd);
 #endif
 		exit(SKIP);
@@ -65,6 +72,7 @@ void need_tun(void)
 	close(fd);
 #ifdef KNET_BSD
 	ioctl(ioctlfd, SIOCIFDESTROY, &ifr);
+	ioctl(ioctlfd, SIOCGIFFLAGS, &ifr);
 	close(ioctlfd);
 #endif
 }
@@ -102,6 +110,16 @@ int test_iface(char *name, size_t size, const char *updownpath)
 
 int is_if_in_system(char *name)
 {
+#ifdef KNET_SOLARIS
+	dlpi_handle_t dlpi_handle;
+
+	int err = dlpi_open(name, &dlpi_handle, 0);
+	if (err != DLPI_SUCCESS) {
+		return 0;
+	}
+	dlpi_close(dlpi_handle);
+	return 1;
+#else
 	struct ifaddrs *ifap = NULL;
 	struct ifaddrs *ifa;
 	int found = 0;
@@ -123,6 +141,7 @@ int is_if_in_system(char *name)
 
 	freeifaddrs(ifap);
 	return found;
+#endif
 }
 
 int get_random_byte(void)
@@ -187,15 +206,15 @@ void make_local_ips(char *testipv4_1, char *testipv4_2, char *testipv6_1, char *
 
 	snprintf(testipv6_1,
 		 IPBUFSIZE - 1,
-		 "fd%x:%x%x::1",
-		 pid[1],
+		 "fe%02x:%x%x::1",
+		 pid[1] & 0x7f,
 		 pid[2],
 		 pid[0]);
 
 	snprintf(testipv6_2,
 		 IPBUFSIZE - 1,
-		 "fd%x:%x%x:1::1",
-		 pid[1],
+		 "fe%02x:%x%x:1::1",
+		 pid[1] & 0x7f,
 		 pid[2],
 		 pid[0]);
 }

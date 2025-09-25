@@ -50,7 +50,7 @@ static int test(void)
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		 "ifconfig %s | grep -q UP", nozzle->name);
 #endif
 	err = execute_bin_sh_command(verifycmd, &error_string);

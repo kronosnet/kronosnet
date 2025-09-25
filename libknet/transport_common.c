@@ -165,7 +165,6 @@ static int _configure_sockbuf(knet_handle_t knet_h, int sock, int option, int fo
 int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, const char *type)
 {
 	int err = 0, savederrno = 0;
-	int value;
 
 	if (_fdset_cloexec(sock)) {
 		savederrno = errno;
@@ -202,7 +201,8 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 	if (flags & KNET_LINK_FLAG_TRAFFICHIPRIO) {
 #ifdef KNET_LINUX
 #ifdef SO_PRIORITY
-		value = 6; /* TC_PRIO_INTERACTIVE */
+		int value = 6; /* TC_PRIO_INTERACTIVE */
+
 		if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &value, sizeof(value)) < 0) {
 			savederrno = errno;
 			err = -1;
@@ -215,18 +215,35 @@ int _configure_common_socket(knet_handle_t knet_h, int sock, uint64_t flags, con
 		log_debug(knet_h, KNET_SUB_TRANSPORT, "TC_PRIO_INTERACTIVE not available in this build/platform");
 #endif
 #endif
-#if defined(IP_TOS) && defined(IPTOS_LOWDELAY)
-		value = IPTOS_LOWDELAY;
-		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &value, sizeof(value)) < 0) {
-			savederrno = errno;
-			err = -1;
-			log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
-				type, strerror(savederrno));
-			goto exit_error;
-		}
-		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPTOS_LOWDELAY enabled on socket: %i", sock);
+#if defined(IP_TOS)
+		if (knet_h->prio_dscp) {
+			/* dscp is the 6 highest bits of TOS IP header field, RFC 2474 */
+			int value = (knet_h->prio_dscp & 0x3f) << 2;
+
+			if (setsockopt(sock, IPPROTO_IP, IP_TOS, &value, sizeof(value)) < 0) {
+				savederrno = errno;
+				err = -1;
+				log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
+					type, strerror(savederrno));
+				goto exit_error;
+			}
+			log_debug(knet_h, KNET_SUB_TRANSPORT, "dscp %d set on socket: %i", knet_h->prio_dscp, sock);
+		} else {
+#if defined(IPTOS_LOWDELAY)
+			int value = IPTOS_LOWDELAY;
+
+			if (setsockopt(sock, IPPROTO_IP, IP_TOS, &value, sizeof(value)) < 0) {
+				savederrno = errno;
+				err = -1;
+				log_err(knet_h, KNET_SUB_TRANSPORT, "Unable to set %s priority: %s",
+					type, strerror(savederrno));
+				goto exit_error;
+			}
+			log_debug(knet_h, KNET_SUB_TRANSPORT, "IPTOS_LOWDELAY enabled on socket: %i", sock);
 #else
-		log_debug(knet_h, KNET_SUB_TRANSPORT, "IPTOS_LOWDELAY not available in this build/platform");
+			log_debug(knet_h, KNET_SUB_TRANSPORT, "IPTOS_LOWDELAY not available in this build/platform");
+#endif
+		}
 #endif
 	}
 
@@ -332,7 +349,7 @@ int _configure_transport_socket(knet_handle_t knet_h, int sock, struct sockaddr_
 		log_debug(knet_h, KNET_SUB_TRANSPORT, "PMTUDISC not available in this build/platform");
 #endif
 #endif
-#ifdef KNET_BSD
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
 #ifdef IP_DONTFRAG
 		value = 1;
 		if (setsockopt(sock, IPPROTO_IP, IP_DONTFRAG, &value, sizeof(value)) <0) {

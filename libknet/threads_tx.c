@@ -667,7 +667,7 @@ void *_handle_send_to_links_thread(void *data)
 	knet_h->recv_from_sock_buf->khp_data_frag_seq = 0;
 	knet_h->recv_from_sock_buf->kh_node = htons(knet_h->host_id);
 
-	for (i = 0; i < PCKT_FRAG_MAX; i++) {
+	for (i = 0; i < (int)PCKT_FRAG_MAX; i++) {
 		knet_h->send_to_links_buf[i]->kh_version = KNET_HEADER_VERSION;
 		knet_h->send_to_links_buf[i]->khp_data_frag_seq = i + 1;
 		knet_h->send_to_links_buf[i]->kh_node = htons(knet_h->host_id);

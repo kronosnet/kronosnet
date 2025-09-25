@@ -9,7 +9,23 @@
 
 LIBNOZZLE {
 	global:
-		nozzle_*;
+		nozzle_add_ip;
+		nozzle_close;
+		nozzle_del_ip;
+		nozzle_get_fd;
+		nozzle_get_handle_by_name;
+		nozzle_get_ips;
+		nozzle_get_mac;
+		nozzle_get_mtu;
+		nozzle_get_name_by_handle;
+		nozzle_open;
+		nozzle_reset_mac;
+		nozzle_reset_mtu;
+		nozzle_run_updown;
+		nozzle_set_down;
+		nozzle_set_mac;
+		nozzle_set_mtu;
+		nozzle_set_up;
 	local:
 		*;
 };

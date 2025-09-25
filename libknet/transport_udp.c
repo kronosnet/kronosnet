@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/in_systm.h>
 #include <netinet/ip_icmp.h>
 #include <net/if.h>
 #if defined (IP_RECVERR) || defined (IPV6_RECVERR)

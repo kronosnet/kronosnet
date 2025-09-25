@@ -25,7 +25,17 @@ Architecture
 Please refer to the google shared drive Presentations directory for
 diagrams and fancy schemas
 
-Running knet on FreeBSD
+Dependancies
+------------
+kronosnet has few obligatory dependancies, though it is strongly recommended
+that you build it with at least one crypto library enabled.
+
+It does, however, require libqb for both the doxygen2man tool (for creating
+the API man pages) and headers for list manipulation.
+You can get these from installing libqb from source or libqb-devel package, and
+your distro might provide doxgen2man as its own package.
+
+Running on FreeBSD
 -----------------------
 
 knet requires big socket buffers and you need to set:
@@ -43,3 +53,35 @@ Please avoid to use ifconfig_DEFAULT in /etc/rc.conf to use
 DHCP for all interfaces or the dhclient will interfere with
 libnozzle interface management, causing errors on some
 operations such as "ifconfig tap down".
+
+Building on Solaris / Illumos
+-----------------------------
+
+tested on SunOS openindiana-x86-64 5.11 illumos-5b6ecd7fe9:
+
+# pkg install autoconf automake libtool pkg-config \
+      gcc-14 gnu-binutils gnu-coreutils gnu-make \
+      check system/mozilla-nss doxygen \
+      header-tun tun
+
+optional:
+
+# pkg install developer/clang-20
+
+GNU tools must be preferred:
+
+# export PATH=/usr/gnu/bin:$PATH
+
+mozilla-nss is currently broken in oi-userland and does not ship pkg-config files
+
+# ./autogen.sh && ./configure --disable-crypto-nss
+
+# make all -j && make check
+
+Running on Solaris / Illumos
+----------------------------
+
+Tune socket buffers for the protocol you intend to use:
+
+ipadm set-prop -p max_buf=8388608 sctp
+ipadm set-prop -p max_buf=8388608 udp
