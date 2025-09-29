@@ -90,7 +90,6 @@ int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
 				../transports.c \
 				../transport_common.c \
 				../transport_loopback.c \
-				../transport_sctp.c \
 				../transport_udp.c \
 				../links_acl.c \
 				../links_acl_ip.c \

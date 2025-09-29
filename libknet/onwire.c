@@ -17,7 +17,6 @@
 #include "logging.h"
 #include "common.h"
 #include "transport_udp.h"
-#include "transport_sctp.h"
 
 /*
  * unencrypted packet looks like:
@@ -118,12 +117,11 @@ size_t calc_max_data_outlen(knet_handle_t knet_h, size_t inlen)
  * set the lowest possible value as failsafe for all links.
  * KNET_PMTUD_MIN_MTU_V4 < KNET_PMTUD_MIN_MTU_V6
  * KNET_PMTUD_OVERHEAD_V6 > KNET_PMTUD_OVERHEAD_V4
- * KNET_PMTUD_SCTP_OVERHEAD > KNET_PMTUD_UDP_OVERHEAD
  */
 
 size_t calc_min_mtu(knet_handle_t knet_h)
 {
-	return calc_max_data_outlen(knet_h, KNET_PMTUD_MIN_MTU_V4 - (KNET_PMTUD_OVERHEAD_V6 + KNET_PMTUD_SCTP_OVERHEAD));
+	return calc_max_data_outlen(knet_h, KNET_PMTUD_MIN_MTU_V4 - (KNET_PMTUD_OVERHEAD_V6));
 }
 
 int knet_handle_enable_onwire_ver_notify(knet_handle_t knet_h,

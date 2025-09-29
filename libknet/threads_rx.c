@@ -1077,10 +1077,8 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 	 * - msg_recv < 0 -> error from this run
 	 *   msg_recv = 0 -> error from previous run and error on socket needs to be cleared
 	 * - per-transport message data
-	 *   example: msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION or msg_len for SCTP == EOF,
+	 *   example: msg[i].msg_hdr.msg_flags & MSG_NOTIFICATION,
 	 *            but for UDP it is perfectly legal to receive a 0 bytes message.. go figure
-	 * - NOTE: on SCTP MSG_NOTIFICATION we get msg_recv == PCKT_FRAG_MAX messages and no
-	 *         errno set. That means the error api needs to be able to abort the loop below.
 	 */
 
 	if (msg_recv <= 0) {
@@ -1110,13 +1108,6 @@ static void _handle_recv_from_links(knet_handle_t knet_h, int sockfd, struct kne
 				break;
 			case KNET_TRANSPORT_RX_IS_DATA: /* packet is data and should be parsed as such */
 				_parse_recv_from_links(knet_h, sockfd, &msg[i]);
-				break;
-			case KNET_TRANSPORT_RX_OOB_DATA_CONTINUE:
-				log_debug(knet_h, KNET_SUB_RX, "Transport is processing sock OOB data, continue");
-				break;
-			case KNET_TRANSPORT_RX_OOB_DATA_STOP:
-				log_debug(knet_h, KNET_SUB_RX, "Transport has completed processing sock OOB data, stop");
-				goto exit_unlock;
 				break;
 		}
 	}

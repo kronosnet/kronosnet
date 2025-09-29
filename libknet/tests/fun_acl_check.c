@@ -102,12 +102,8 @@ int dyn_knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 		}
 		savederrno = errno;
 		if ((err < 0) && (savederrno != EADDRINUSE)) {
-			if (savederrno == EPROTONOSUPPORT && transport == KNET_TRANSPORT_SCTP) {
-				return -2;
-			} else {
-				printf("Unable to configure link: %s\n", strerror(savederrno));
-				goto out;
-			}
+			printf("Unable to configure link: %s\n", strerror(savederrno));
+			goto out;
 		}
 		if (!err) {
 			printf("Using port %u\n", port);
@@ -394,11 +390,6 @@ int main(int argc, char *argv[])
 {
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
-
-#ifdef HAVE_NETINET_SCTP_H
-	printf("Testing with SCTP currently disabled\n");
-	//test(KNET_TRANSPORT_SCTP);
-#endif
 
 	return PASS;
 }

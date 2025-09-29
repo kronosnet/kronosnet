@@ -83,7 +83,7 @@ struct knet_link {
 	uint8_t received_pong;
 	struct timespec ping_last;
 	/* used by PMTUD thread as temp per-link variables and should always contain the onwire_len value! */
-	uint32_t proto_overhead;		/* IP + UDP/SCTP overhead. NOT to be confused
+	uint32_t proto_overhead;		/* IP + UDP overhead. NOT to be confused
 						   with stats.proto_overhead that includes also knet headers
 						   and crypto headers */
 	struct timespec pmtud_last;
@@ -156,7 +156,7 @@ struct knet_sock {
 };
 
 struct knet_fd_trackers {
-	uint8_t transport;		    /* transport type (UDP/SCTP...) */
+	uint8_t transport;		    /* transport type (UDP...) */
 	uint8_t data_type;		    /* internal use for transport to define what data are associated
 					     * with this fd */
 	socklen_t sockaddr_len;             /* Size of sockaddr_in[6] structure for this socket */
@@ -341,7 +341,7 @@ void _fini_shlib_tracker(void);
  */
 
 /*
- * for now knet supports only IP protocols (udp/sctp)
+ * for now knet supports only IP protocols (udp)
  * in future there might be others like ARP
  * or TIPC.
  * keep this around as transport information
@@ -352,7 +352,7 @@ void _fini_shlib_tracker(void);
 #define TRANSPORT_PROTO_IP_PROTO 1
 
 /*
- * some transports like SCTP can filter incoming
+ * some transports (none that are supported though!) can filter incoming
  * connections before knet has to process
  * any packets.
  * GENERIC_ACL -> packet has to be read and filterted
@@ -390,9 +390,6 @@ typedef enum {
 	KNET_TRANSPORT_RX_NOT_DATA_CONTINUE = 0,
 	KNET_TRANSPORT_RX_NOT_DATA_STOP = 1,
 	KNET_TRANSPORT_RX_IS_DATA = 2,
-	/* These two are only really used by SCTP */
-	KNET_TRANSPORT_RX_OOB_DATA_CONTINUE = 3,
-	KNET_TRANSPORT_RX_OOB_DATA_STOP = 4
 } transport_rx_isdata_t;
 
 

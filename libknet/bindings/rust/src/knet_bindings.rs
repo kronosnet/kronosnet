@@ -1568,13 +1568,11 @@ pub fn host_enable_status_change_notify(handle: &Handle,
 pub enum TransportId {
     Loopback,
     Udp,
-    Sctp,
 }
 impl TransportId {
     pub fn new(id: u8) -> TransportId
     {
 	match id {
-	    2 => TransportId::Sctp,
 	    1 => TransportId::Udp,
 	    _ => TransportId::Loopback,
 	}
@@ -1584,7 +1582,6 @@ impl TransportId {
 	match self {
 	    TransportId::Loopback => 0,
 	    TransportId::Udp => 1,
-	    TransportId::Sctp => 2,
 	}
     }
 
@@ -1592,7 +1589,6 @@ impl TransportId {
     {
 	match self {
 	    TransportId::Udp => "UDP".to_string(),
-	    TransportId::Sctp => "SCTP".to_string(),
 	    TransportId::Loopback => "Loopback".to_string()
 	}
     }
@@ -1600,7 +1596,6 @@ impl TransportId {
     {
 	match name.as_str() {
 	    "UDP" => TransportId::Udp,
-	    "SCTP" => TransportId::Sctp,
 	    "Loopback" => TransportId::Loopback,
 	    _ => TransportId::Loopback,
 	}
@@ -2512,7 +2507,6 @@ pub enum SubSystem
     TranspBase,
     TranspLoopback,
     TranspUdp,
-    TranspSctp,
 
     NssCrypto,
     OpensslCrypto,
@@ -2548,7 +2542,6 @@ impl SubSystem {
 	    SubSystem::TranspBase => ffi::KNET_SUB_TRANSP_BASE,
 	    SubSystem::TranspLoopback => ffi::KNET_SUB_TRANSP_LOOPBACK,
 	    SubSystem::TranspUdp => ffi::KNET_SUB_TRANSP_UDP,
-	    SubSystem::TranspSctp => ffi::KNET_SUB_TRANSP_SCTP,
 	    SubSystem::NssCrypto => ffi::KNET_SUB_NSSCRYPTO,
 	    SubSystem::OpensslCrypto => ffi::KNET_SUB_OPENSSLCRYPTO,
 	    SubSystem::Zlibcomp => ffi::KNET_SUB_ZLIBCOMP,

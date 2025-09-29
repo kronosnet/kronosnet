@@ -94,7 +94,7 @@ static void test(uint8_t transport)
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	if (_knet_link_set_config(knet_h1, 1, 0, transport, 0, AF_INET, 0, &lo) < 0 ) {
-		int exit_status = transport == KNET_TRANSPORT_SCTP && errno == EPROTONOSUPPORT ? SKIP : FAIL;
+		int exit_status = FAIL;
 		printf("Unable to configure link: %s\n", strerror(errno));
 		CLEAN_EXIT(exit_status);
 	}
@@ -158,11 +158,6 @@ int main(int argc, char *argv[])
 {
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
-
-#ifdef HAVE_NETINET_SCTP_H
-	printf("Testing with SCTP\n");
-	test(KNET_TRANSPORT_SCTP);
-#endif
 
 	return PASS;
 }

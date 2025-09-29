@@ -492,10 +492,10 @@ static int _handle_check_pmtud(knet_handle_t knet_h, struct knet_host *dst_host,
 	}
 
 	/*
-	 * status.proto_overhead should include all IP/(UDP|SCTP)/knet headers
+	 * status.proto_overhead should include all IP/(UDP)/knet headers
 	 *
 	 * please note that it is not the same as link->proto_overhead that
-	 * includes only either UDP or SCTP (at the moment) overhead.
+	 * includes only UDP (at the moment) overhead.
 	 */
 	switch (dst_link->dst_addr.ss_family) {
 		case AF_INET6:
