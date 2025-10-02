@@ -76,6 +76,7 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 retry:
 		cur = &msg[prev_sent];
 
+		// coverity[INTEGER_OVERFLOW:SUPPRESS] - sent_msgs errors are not added to prev_sent because of transport_tx_sock_error() handling
 		sent_msgs = _sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
 				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport),
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -703,6 +704,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, int sockfd, uint8_t onwi
 	msg.msg_iov = &iov_in;
 	msg.msg_iovlen = 1;
 
+	// coverity[MISSING_LOCK:SUPPRESS] - already locked in calling function
 	if ((channel >= 0) &&
 	    (channel < KNET_DATAFD_MAX) &&
 	    (!knet_h->sockfd[channel].is_socket)) {

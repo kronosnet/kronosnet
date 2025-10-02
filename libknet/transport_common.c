@@ -506,5 +506,6 @@ ssize_t writev_all(knet_handle_t knet_h, int fd, struct iovec *iov, int iovcnt, 
 	}
 
 out:
+	// coverity[INTEGER_OVERFLOW:SUPPRESS] - it hasn't overflowed, really.
 	return total_written;
 }
