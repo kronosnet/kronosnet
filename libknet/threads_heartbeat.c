@@ -59,6 +59,7 @@ static void _handle_check_each(knet_handle_t knet_h, struct knet_host *dst_host,
 
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
+	// coverity[MISSING_LOCK:SUPPRESS] - hb_mutex is held by calling fn
 	if ((diff_ping >= (dst_link->ping_interval * 1000llu)) || (!timed)) {
 		memmove(&knet_h->pingbuf->khp_ping_time[0], &clock_now, sizeof(struct timespec));
 		knet_h->pingbuf->khp_ping_link = dst_link->link_id;
@@ -191,6 +192,7 @@ static void _adjust_pong_timeouts(knet_handle_t knet_h)
 				dst_link->pong_timeout_backoff--;
 			}
 
+			// coverity[MISSING_LOCK:SUPPRESS] - lock is taken in parent function
 			dst_link->pong_timeout_adj = (dst_link->pong_timeout * dst_link->pong_timeout_backoff) + (dst_link->status.latency * KNET_LINK_PONG_TIMEOUT_LAT_MUL);
 		}
 	}

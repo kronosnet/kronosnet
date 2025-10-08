@@ -76,6 +76,7 @@ static int _dispatch_to_links(knet_handle_t knet_h, struct knet_host *dst_host, 
 retry:
 		cur = &msg[prev_sent];
 
+		// coverity[INTEGER_OVERFLOW:SUPPRESS] - sent_msgs errors are not added to prev_sent because of transport_tx_sock_error() handling
 		sent_msgs = _sendmmsg(dst_host->link[dst_host->active_links[link_idx]].outsock,
 				      transport_get_connection_oriented(knet_h, dst_host->link[dst_host->active_links[link_idx]].transport),
 				      &cur[0], msgs_to_send - prev_sent, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -237,6 +238,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 					local_link = knet_h->host_index[knet_h->host_id]->link;
 
 				local_retry:
+					// coverity[INTEGER_OVERFLOW:SUPPRESS] - buflen is passsed in as a size_t so can't be negative
 					err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
 					if (err < 0) {
 						log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
@@ -595,6 +597,7 @@ static void _handle_send_to_links(knet_handle_t knet_h, struct msghdr *msg, int 
 	 */
 	msg->msg_namelen = knet_h->knet_transport_fd_tracker[sockfd].sockaddr_len;
 
+	// coverity[MISSING_LOCK:SUPPRESS] - already locked in calling function
 	if ((channel >= 0) &&
 	    (channel < KNET_DATAFD_MAX) &&
 	    (!knet_h->sockfd[channel].is_socket)) {
