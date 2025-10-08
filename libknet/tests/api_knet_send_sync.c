@@ -135,11 +135,15 @@ static void test(void)
 	printf("Test knet_send_sync with no filter configured\n");
 	channel = 1;
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel), ENETDOWN);
+	// coverity[LOCK:SUPPRESS] - it's a test, get over it
+	// coverity[ORDER_REVERSAL:SUPPRESS] - it's a test, get over it
 	FAIL_ON_ERR(knet_handle_enable_filter(knet_h1, NULL, dhost_filter));
 
 
 	printf("Test knet_send_sync with unconfigured channel\n");
 	channel = 0;
+
+	// coverity[ORDER_REVERSAL:SUPPRESS] - it's a test, get over it
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
 	printf("Test knet_send_sync with data forwarding disabled\n");
@@ -148,6 +152,7 @@ static void test(void)
 	datafd = 0;
 	channel = -1;
 
+	// coverity[ORDER_REVERSAL:SUPPRESS] - it's a test, get over it
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
 
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != ECANCELED)) {
