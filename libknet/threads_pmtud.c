@@ -205,6 +205,7 @@ restart:
 		return -1;
 	}
 
+	// coverity[ORDER_REVERSAL:SUPPRESS] - This is the normal lock ordering
 	savederrno = pthread_mutex_lock(&knet_h->tx_mutex);
 	if (savederrno) {
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
@@ -349,6 +350,7 @@ retry:
 
 		knet_h->pmtud_waiting = 1;
 
+		// coverity[BAD_CHECK_OF_WAIT_COND:SUPPRESS] no wait loop needed here
 		ret = pthread_cond_timedwait(&knet_h->pmtud_cond, &knet_h->pmtud_mutex, &ts);
 
 		knet_h->pmtud_waiting = 0;

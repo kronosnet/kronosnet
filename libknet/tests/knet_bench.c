@@ -722,6 +722,7 @@ static void *_rx_thread(void *args)
 	memset(&clock_start, 0, sizeof(clock_start));
 	memset(&clock_end, 0, sizeof(clock_start));
 
+	// coverity[MISSING_LOCK:SUPPRESS] - It's a test, get over it.
 	while (!bench_shutdown_in_progress) {
 		if (epoll_wait(rx_epoll, events, KNET_EPOLL_MAX_EVENTS, 1) >= 1) {
 			msg_recv = _recvmmsg(datafd, &msg[0], PCKT_FRAG_MAX, MSG_DONTWAIT | MSG_NOSIGNAL);

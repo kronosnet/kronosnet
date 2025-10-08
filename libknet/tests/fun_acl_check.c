@@ -67,6 +67,7 @@ static int reply_pipe[2];
 
 static int knet_send_str(knet_handle_t knet_h, char *str)
 {
+	// coverity[LOCK:SUPPRESS] - it's a test, get over it
 	return knet_send_sync(knet_h, str, strlen(str)+1, 0);
 }
 

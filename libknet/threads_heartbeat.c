@@ -62,6 +62,7 @@ static void send_ping(knet_handle_t knet_h, struct knet_host *dst_host, struct k
 
 	timespec_diff(dst_link->ping_last, clock_now, &diff_ping);
 
+	// coverity[MISSING_LOCK:SUPPRESS] - hb_mutex is held by calling fn
 	if ((diff_ping >= (dst_link->ping_interval * 1000llu)) || (!timed)) {
 		if (pthread_mutex_lock(&knet_h->onwire_mutex)) {
 			log_debug(knet_h, KNET_SUB_HEARTBEAT, "Unable to get onwire mutex lock");

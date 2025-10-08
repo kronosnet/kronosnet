@@ -206,6 +206,7 @@ int setup_logpipes(int *logfds)
 		exit(FAIL);
 	}
 
+	// coverity[ORDER_REVERSAL:SUPPRESS] - it's a test, get over it
 	return PASS;
 }
 
@@ -393,6 +394,7 @@ static int contains_plugins(char *path)
 		return 0;
 	}
 
+	// coverity[UNINIT:SUPPRESS] - it's supposed to be...
 	n = scandir(path, &namelist, dir_filter, alphasort);
 	if (n == -1) {
 		return 0;
