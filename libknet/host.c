@@ -157,8 +157,11 @@ int knet_host_remove(knet_handle_t knet_h, knet_node_id_t host_id)
 	/*
 	 * removing host from list
 	 */
+	// coverity[NULL_FIELD:SUPPRESS] - host_head is not going to be NULL
 	if (knet_h->host_head->host_id == host_id) {
+		// coverity[NULL_FIELD:SUPPRESS] - host_head is not going to be NULL
 		removed = knet_h->host_head;
+		// coverity[NULL_FIELD:SUPPRESS] - host_head is not going to be NULL
 		knet_h->host_head = removed->next;
 	} else {
 		for (host = knet_h->host_head; host->next != NULL; host = host->next) {
