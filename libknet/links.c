@@ -278,6 +278,7 @@ int knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t l
 	link->pong_timeout_backoff = KNET_LINK_PONG_TIMEOUT_BACKOFF;
 	link->pong_timeout_adj = link->pong_timeout * link->pong_timeout_backoff; /* microseconds */
 	link->latency_max_samples = KNET_LINK_DEFAULT_PING_PRECISION;
+	// coverity[MISSING_LOCK:SUPPRESS] - global_wrlock is definitely held here
 	link->latency_cur_samples = 0;
 	link->flags = flags;
 
