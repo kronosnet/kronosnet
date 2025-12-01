@@ -223,6 +223,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
 
+	// coverity[UNINIT:SUPPRESS] - va_start is a macro, that's the C standard
 	va_start(ap, fmt);
 #ifdef __clang__
 #pragma clang diagnostic push
