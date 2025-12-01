@@ -49,7 +49,7 @@ static int get_ipaddress(const char *buf, struct sockaddr_storage *addr)
 static int read_2ip(const char *buf, const char *delim, struct sockaddr_storage *addr, struct sockaddr_storage *addr2)
 {
 	char tmpbuf[BUFLEN];
-	char *deli;
+	const char *deli;
 
 	deli = strstr(buf, delim);
 	if (!deli) {
