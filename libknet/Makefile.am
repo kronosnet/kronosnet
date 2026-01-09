@@ -20,6 +20,10 @@ SUBDIRS			= . tests
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 libknetversion		= 6:0:5
 
+if BUILD_WSDISSECTOR
+SUBDIRS			+= wireshark
+endif
+
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			=
 

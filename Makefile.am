@@ -165,6 +165,11 @@ if BUILD_MAN
 else
 	sed -i -e "s#@buildman@#bcond_with#g" $@-t
 endif
+if BUILD_WSDISSECTOR
+	sed -i -e "s#@buildwsdissector@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@buildwsdissector@#bcond_with#g" $@-t
+endif
 if INSTALL_TESTS
 	sed -i -e "s#@installtests@#bcond_without#g" $@-t
 else
