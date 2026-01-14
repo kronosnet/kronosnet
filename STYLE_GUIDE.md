@@ -68,7 +68,7 @@ While this is a preference, it is understood that this limit may be exceeded in 
 ---
 ## Copyright
 
-Copyright (C) 2025 Red Hat, Inc.  All rights reserved.
+Copyright (C) 2025-2026 Red Hat, Inc.  All rights reserved.
 
 Author: Jules <AI Agent>
 AI Driver Seat: Fabio M. Di Nitto <fabbione@kronosnet.org>

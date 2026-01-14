@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2025 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2026 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -28,6 +28,7 @@ static void test(void)
 
 	printf("Test knet_host_set_name incorrect knet_h\n");
 
+	// coverity[CHECKED_RETURN:SUPPRESS] - it's a test , get over it
 	if ((!knet_host_set_name(NULL, 1, "test")) || (errno != EINVAL)) {
 		printf("knet_host_set_name accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
 		exit(FAIL);

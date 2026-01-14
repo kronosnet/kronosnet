@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2025 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2016-2026 Red Hat, Inc.  All rights reserved.
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *          Federico Simoncelli <fsimon@kronosnet.org>
@@ -39,9 +39,11 @@ int shutdown_in_progress(knet_handle_t knet_h)
 
 static int _pmtud_reschedule(knet_handle_t knet_h)
 {
+	// coverity[MISSING_LOCK:SUPPRESS] - lock is taken before fn call
 	if (knet_h->pmtud_running) {
 		knet_h->pmtud_abort = 1;
 
+		// coverity[MISSING_LOCK:SUPPRESS] - lock is taken before fn call
 		if (knet_h->pmtud_waiting) {
 			pthread_cond_signal(&knet_h->pmtud_cond);
 		}

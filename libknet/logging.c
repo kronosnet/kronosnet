@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2025 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2010-2026 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
@@ -223,6 +223,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
 
+	// coverity[UNINIT:SUPPRESS] - va_start is a macro, that's the C standard
 	va_start(ap, fmt);
 #ifdef __clang__
 #pragma clang diagnostic push

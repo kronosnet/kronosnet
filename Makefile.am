@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010-2025 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2010-2026 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -25,6 +25,8 @@ TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
 EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
+			  STYLE_GUIDE.md \
+			  m4/pkg_check_var.m4 \
 			  $(SPEC).in build-aux
 
 SUBDIRS			= libnozzle libknet
