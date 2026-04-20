@@ -271,6 +271,12 @@ if test "x$ac_cv_header_sys_epoll_h" = xyes && test "x$ac_cv_func_kevent" = xyes
 	AC_MSG_ERROR([Both epoll and kevent available on this OS, please contact the maintainers to fix the code])
 fi
 
+AC_CHECK_FUNCS([explicit_bzero])
+# explicit_bzero is required for secure memory wiping
+if test "x$ac_cv_func_explicit_bzero" = xno; then
+	AC_MSG_ERROR([explicit_bzero is required but not available on this system])
+fi
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_TYPE_PID_T

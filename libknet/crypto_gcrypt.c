@@ -411,9 +411,19 @@ static void gcryptcrypto_fini(
 
 	if (gcryptcrypto_instance) {
 		if (gcryptcrypto_instance->private_key) {
+			/*
+			 * Securely wipe private key from memory before freeing
+			 * Use hash_private_key_len as it's the maximum of crypt and hash key lengths
+			 */
+			explicit_bzero(gcryptcrypto_instance->private_key,
+				       gcryptcrypto_instance->hash_private_key_len);
 			free(gcryptcrypto_instance->private_key);
 			gcryptcrypto_instance->private_key = NULL;
 		}
+		/*
+		 * Wipe the instance structure itself before freeing
+		 */
+		explicit_bzero(gcryptcrypto_instance, sizeof(struct gcryptcrypto_instance));
 		free(gcryptcrypto_instance);
 		crypto_instance->model_instance = NULL;
 	}

@@ -597,6 +597,11 @@ static void opensslcrypto_fini(
 
 	if (opensslcrypto_instance) {
 		if (opensslcrypto_instance->private_key) {
+			/*
+			 * Securely wipe private key from memory before freeing
+			 */
+			explicit_bzero(opensslcrypto_instance->private_key,
+				       opensslcrypto_instance->private_key_len);
 			free(opensslcrypto_instance->private_key);
 			opensslcrypto_instance->private_key = NULL;
 		}
@@ -608,6 +613,10 @@ static void opensslcrypto_fini(
 			EVP_MAC_free(opensslcrypto_instance->crypto_hash_mac);
 		}
 #endif
+		/*
+		 * Wipe the instance structure itself before freeing
+		 */
+		explicit_bzero(opensslcrypto_instance, sizeof(struct opensslcrypto_instance));
 		free(opensslcrypto_instance);
 		crypto_instance->model_instance = NULL;
 	}
