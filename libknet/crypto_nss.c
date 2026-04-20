@@ -11,6 +11,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <nss.h>
 #include <nspr.h>
 #include <pk11pub.h>
@@ -782,6 +783,12 @@ static void nsscrypto_fini(
 			PK11_FreeSymKey(nsscrypto_instance->nss_sym_key_sign);
 			nsscrypto_instance->nss_sym_key_sign = NULL;
 		}
+		/*
+		 * Wipe the instance structure itself before freeing.
+		 * PK11_FreeSymKey() already handles secure wiping of key material,
+		 * but we still wipe metadata like key lengths and cipher types.
+		 */
+		explicit_bzero(nsscrypto_instance, sizeof(struct nsscrypto_instance));
 		free(nsscrypto_instance);
 		crypto_instance->model_instance = NULL;
 	}
