@@ -217,14 +217,15 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 			return;
 
 	if (knet_h->logfd <= 0)
-		goto out;
+		return;
+
+	// coverity[UNINIT:SUPPRESS] - va_start initializes ap
+	va_start(ap, fmt);
 
 	memset(&msg, 0, sizeof(struct knet_log_msg));
 	msg.subsystem = subsystem;
 	msg.msglevel = msglevel;
 	msg.knet_h = knet_h;
-
-	va_start(ap, fmt);
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
