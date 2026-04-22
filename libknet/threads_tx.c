@@ -150,6 +150,7 @@ static int _dispatch_to_local(knet_handle_t knet_h, unsigned char *data, size_t 
 	struct iovec iov_out[2];
 	uint32_t cur_iov = 0;
 	struct knet_datafd_header datafd_hdr;
+	int sockfd_idx;
 
 	if (knet_h->sockfd[channel].flags & KNET_DATAFD_FLAG_RX_RETURN_INFO) {
 		memset(&datafd_hdr, 0, sizeof(datafd_hdr));
@@ -162,7 +163,9 @@ static int _dispatch_to_local(knet_handle_t knet_h, unsigned char *data, size_t 
 	iov_out[cur_iov].iov_base = (void *)buf;
 	iov_out[cur_iov].iov_len = buflen;
 
-	err = writev_all(knet_h, knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], iov_out, cur_iov+1, local_link, KNET_SUB_TRANSP_LOOPBACK);
+	// coverity[MISSING_LOCK:SUPPRESS] - global_rwlock is held by caller
+	sockfd_idx = knet_h->sockfd[channel].is_created;
+	err = writev_all(knet_h, knet_h->sockfd[channel].sockfd[sockfd_idx], iov_out, cur_iov+1, local_link, KNET_SUB_TRANSP_LOOPBACK);
 	savederrno = errno;
 	if (err < 0) {
 		log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
