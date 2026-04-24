@@ -42,6 +42,7 @@ struct gcryptcrypto_instance {
 	size_t crypt_private_key_len;
 	size_t hash_private_key_len;
 	int crypto_cipher_type;
+	int crypto_cipher_mode;
 	int crypto_hash_type;
 };
 
@@ -69,7 +70,7 @@ static int encrypt_gcrypt(
 	unsigned char	 inbuf[KNET_DATABUFSIZE_CRYPT];
 	unsigned char	 *data = buf_out + SALT_SIZE;
 
-	gerr = gcry_cipher_open(&handle, instance->crypto_cipher_type, GCRY_CIPHER_MODE_CBC, GCRY_CIPHER_SECURE);
+	gerr = gcry_cipher_open(&handle, instance->crypto_cipher_type, instance->crypto_cipher_mode, GCRY_CIPHER_SECURE);
 	if (gerr) {
 		log_err(knet_h, KNET_SUB_GCRYPTCRYPTO,
 			"Unable to allocate gcrypt cipher context: %s/%s",
@@ -111,15 +112,21 @@ static int encrypt_gcrypt(
 	}
 
 	/*
-	 * init the pad buffer (PKCS# standard)
-	 * https://en.m.wikipedia.org/wiki/Padding_(cryptography)
+	 * Apply padding for block ciphers (CBC mode)
+	 * CTR mode is a stream cipher and doesn't need padding
 	 */
+	if (instance->crypto_cipher_mode == GCRY_CIPHER_MODE_CBC) {
+		/*
+		 * init the pad buffer (PKCS# standard)
+		 * https://en.m.wikipedia.org/wiki/Padding_(cryptography)
+		 */
 
-	pad_len = (crypto_instance->sec_block_size - (output_len % crypto_instance->sec_block_size));
+		pad_len = (crypto_instance->sec_block_size - (output_len % crypto_instance->sec_block_size));
 
-	memset(inbuf + output_len, pad_len, pad_len);
+		memset(inbuf + output_len, pad_len, pad_len);
 
-	output_len = output_len + pad_len;
+		output_len = output_len + pad_len;
+	}
 
 	/*
 	 * some ciphers methods require _final to be called
@@ -174,7 +181,7 @@ static int decrypt_gcrypt(
 		goto out_err;
 	}
 
-	gerr = gcry_cipher_open(&handle, instance->crypto_cipher_type, GCRY_CIPHER_MODE_CBC, GCRY_CIPHER_SECURE);
+	gerr = gcry_cipher_open(&handle, instance->crypto_cipher_type, instance->crypto_cipher_mode, GCRY_CIPHER_SECURE);
 	if (gerr) {
 		log_err(knet_h, KNET_SUB_GCRYPTCRYPTO,
 			"Unable to allocate gcrypt cipher context: %s/%s",
@@ -213,10 +220,18 @@ static int decrypt_gcrypt(
 	}
 
 	/*
-	 * drop the padding size based on PCKS standards
-	 * (see also crypt above)
+	 * Remove padding for block ciphers (CBC mode)
+	 * CTR mode is a stream cipher and doesn't use padding
 	 */
-	*buf_out_len = datalen - buf_out[datalen - 1];
+	if (instance->crypto_cipher_mode == GCRY_CIPHER_MODE_CBC) {
+		/*
+		 * drop the padding size based on PCKS standards
+		 * (see also crypt above)
+		 */
+		*buf_out_len = datalen - buf_out[datalen - 1];
+	} else {
+		*buf_out_len = datalen;
+	}
 
 out_err:
 	if (handle) {
@@ -506,8 +521,41 @@ static int gcryptcrypto_init(
 
 	if (strcmp(knet_handle_crypto_cfg->crypto_cipher_type, "none") == 0) {
 		gcryptcrypto_instance->crypto_cipher_type = 0;
+		gcryptcrypto_instance->crypto_cipher_mode = 0;
 	} else {
-		gcryptcrypto_instance->crypto_cipher_type = gcry_cipher_map_name(knet_handle_crypto_cfg->crypto_cipher_type);
+		char cipher_name[32];
+		char *mode_suffix;
+
+		/*
+		 * Detect cipher mode from the cipher name and strip mode suffix
+		 * CTR mode cipher names contain "-ctr" (e.g., "aes128-ctr" or "aes-128-ctr")
+		 * Default to CBC mode for compatibility
+		 */
+		strncpy(cipher_name, knet_handle_crypto_cfg->crypto_cipher_type, sizeof(cipher_name) - 1);
+		cipher_name[sizeof(cipher_name) - 1] = '\0';
+
+		mode_suffix = strstr(cipher_name, "-ctr");
+		if (mode_suffix) {
+			gcryptcrypto_instance->crypto_cipher_mode = GCRY_CIPHER_MODE_CTR;
+			*mode_suffix = '\0'; /* Strip "-ctr" from cipher name */
+		} else {
+			gcryptcrypto_instance->crypto_cipher_mode = GCRY_CIPHER_MODE_CBC;
+		}
+
+		/*
+		 * Normalize cipher name for gcrypt compatibility
+		 * gcrypt expects non-hyphenated format (aes128, aes192, aes256)
+		 * Convert OpenSSL hyphenated format (aes-128, aes-192, aes-256) to gcrypt format
+		 */
+		if (strcmp(cipher_name, "aes-128") == 0) {
+			strncpy(cipher_name, "aes128", sizeof(cipher_name) - 1);
+		} else if (strcmp(cipher_name, "aes-192") == 0) {
+			strncpy(cipher_name, "aes192", sizeof(cipher_name) - 1);
+		} else if (strcmp(cipher_name, "aes-256") == 0) {
+			strncpy(cipher_name, "aes256", sizeof(cipher_name) - 1);
+		}
+
+		gcryptcrypto_instance->crypto_cipher_type = gcry_cipher_map_name(cipher_name);
 		if (!gcryptcrypto_instance->crypto_cipher_type) {
 			log_err(knet_h, KNET_SUB_GCRYPTCRYPTO, "unknown crypto cipher type requested");
 			savederrno = EINVAL;
@@ -576,7 +624,16 @@ static int gcryptcrypto_init(
 		}
 
 		crypto_instance->sec_salt_size = SALT_SIZE;
-		crypto_instance->sec_block_size = block_size;
+		/*
+		 * CTR mode is a stream cipher and doesn't require padding,
+		 * so set sec_block_size to 0 to avoid MTU overhead calculation.
+		 * CBC mode requires PKCS padding, so set sec_block_size to block_size.
+		 */
+		if (gcryptcrypto_instance->crypto_cipher_mode == GCRY_CIPHER_MODE_CTR) {
+			crypto_instance->sec_block_size = 0;
+		} else {
+			crypto_instance->sec_block_size = block_size;
+		}
 	}
 
 	return 0;
