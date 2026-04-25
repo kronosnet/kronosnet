@@ -658,7 +658,37 @@ static int opensslcrypto_init(
 	if (strcmp(knet_handle_crypto_cfg->crypto_cipher_type, "none") == 0) {
 		opensslcrypto_instance->crypto_cipher_type = NULL;
 	} else {
-		opensslcrypto_instance->crypto_cipher_type = EVP_get_cipherbyname(knet_handle_crypto_cfg->crypto_cipher_type);
+		char cipher_name[32];
+		const char *cipher_to_use;
+
+		/*
+		 * Normalize cipher name for OpenSSL compatibility
+		 * OpenSSL expects hyphenated format (aes-128-ctr) but also accepts
+		 * legacy format (aes128 for CBC mode).
+		 * Convert non-hyphenated format with mode suffix (aes128-ctr) to OpenSSL format (aes-128-ctr)
+		 * but leave legacy format (aes128) unchanged as OpenSSL maps it to AES-128-CBC.
+		 */
+		if ((strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes128-", 7) == 0) ||
+		    (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes192-", 7) == 0) ||
+		    (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes256-", 7) == 0)) {
+			/* Non-hyphenated format with mode suffix - normalize to OpenSSL format */
+			if (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes128-", 7) == 0) {
+				snprintf(cipher_name, sizeof(cipher_name), "aes-128-%s",
+					 knet_handle_crypto_cfg->crypto_cipher_type + 7);
+			} else if (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes192-", 7) == 0) {
+				snprintf(cipher_name, sizeof(cipher_name), "aes-192-%s",
+					 knet_handle_crypto_cfg->crypto_cipher_type + 7);
+			} else {  /* aes256- */
+				snprintf(cipher_name, sizeof(cipher_name), "aes-256-%s",
+					 knet_handle_crypto_cfg->crypto_cipher_type + 7);
+			}
+			cipher_to_use = cipher_name;
+		} else {
+			/* Already in correct format or legacy format (aes128) - use as-is */
+			cipher_to_use = knet_handle_crypto_cfg->crypto_cipher_type;
+		}
+
+		opensslcrypto_instance->crypto_cipher_type = EVP_get_cipherbyname(cipher_to_use);
 		if (!opensslcrypto_instance->crypto_cipher_type) {
 			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto cipher type requested");
 			savederrno = ENXIO;
@@ -711,7 +741,20 @@ static int opensslcrypto_init(
 		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
 
 		crypto_instance->sec_salt_size = SALT_SIZE;
-		crypto_instance->sec_block_size = block_size;
+		/*
+		 * CTR mode is a stream cipher and doesn't require padding,
+		 * so set sec_block_size to 0 to avoid MTU overhead calculation.
+		 * CBC mode requires PKCS padding, so set sec_block_size to block_size.
+		 */
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
+		if (EVP_CIPHER_mode(opensslcrypto_instance->crypto_cipher_type) == EVP_CIPH_CTR_MODE) {
+#else
+		if (EVP_CIPHER_get_mode(opensslcrypto_instance->crypto_cipher_type) == EVP_CIPH_CTR_MODE) {
+#endif
+			crypto_instance->sec_block_size = 0;
+		} else {
+			crypto_instance->sec_block_size = block_size;
+		}
 	}
 
 	return 0;
