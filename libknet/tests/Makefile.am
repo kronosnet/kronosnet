@@ -41,6 +41,7 @@ int_checks		= \
 
 fun_checks		= \
 			  fun_config_crypto_test \
+			  fun_config_crypto_ctr_test \
 			  fun_onwire_upgrade_test \
 			  fun_acl_check_test
 
@@ -117,6 +118,9 @@ fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
 
 fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 				 test-common.c
+
+fun_config_crypto_ctr_test_SOURCES = fun_config_crypto_ctr_test.c \
+				     test-common.c
 
 fun_onwire_upgrade_test_SOURCES = fun_onwire_upgrade.c \
 				  test-common.c

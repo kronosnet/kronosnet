@@ -5,10 +5,27 @@
  *
  * This software licensed under LGPL-2.0+
  */
+
+/*
+ * OpenSSL Version Support
+ *
+ * This module maintains compatibility with OpenSSL 1.1.1+ to support
+ * RHEL 8 (EOL 2029) which still ships OpenSSL 1.1.1.
+ *
+ * While OpenSSL 1.x is officially EOL upstream, kronosnet must support
+ * RHEL 8 for enterprise users. Version checks (OPENSSL_VERSION_NUMBER < 0x30000000L)
+ * are necessary to handle API differences between OpenSSL 1.x and 3.x:
+ * - EVP_CIPHER_mode() vs EVP_CIPHER_get_mode()
+ * - HMAC API changes
+ *
+ * OpenSSL 1.x support can be removed after RHEL 8 reaches EOL in 2029.
+ */
+
 #define KNET_MODULE
 
 #include "config.h"
 
+#include <ctype.h>
 #include <string.h>
 #include <errno.h>
 #include <dlfcn.h>
@@ -584,6 +601,9 @@ static void opensslcrypto_fini(
 			opensslcrypto_instance->private_key = NULL;
 		}
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		if (opensslcrypto_instance->crypto_cipher_type) {
+			EVP_CIPHER_free((EVP_CIPHER *)opensslcrypto_instance->crypto_cipher_type);
+		}
 		if (opensslcrypto_instance->crypto_hash_mac) {
 			EVP_MAC_free(opensslcrypto_instance->crypto_hash_mac);
 		}
@@ -658,9 +678,65 @@ static int opensslcrypto_init(
 	if (strcmp(knet_handle_crypto_cfg->crypto_cipher_type, "none") == 0) {
 		opensslcrypto_instance->crypto_cipher_type = NULL;
 	} else {
-		opensslcrypto_instance->crypto_cipher_type = EVP_get_cipherbyname(knet_handle_crypto_cfg->crypto_cipher_type);
+		char cipher_name[32];
+		const char *cipher_to_use;
+
+		/*
+		 * Normalize cipher name for OpenSSL compatibility
+		 * OpenSSL expects hyphenated format (aes-128-ctr) but also accepts
+		 * legacy format (aes128 for CBC mode).
+		 * Convert non-hyphenated format with mode suffix (aes128-ctr) to OpenSSL format (aes-128-ctr)
+		 * but leave legacy format (aes128) unchanged as OpenSSL maps it to AES-128-CBC.
+		 */
+		if ((strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes128-", 7) == 0) ||
+		    (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes192-", 7) == 0) ||
+		    (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes256-", 7) == 0)) {
+			/* Non-hyphenated format with mode suffix - normalize to OpenSSL format */
+			const char *mode = NULL;
+			if (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes128-", 7) == 0) {
+				mode = knet_handle_crypto_cfg->crypto_cipher_type + 7;
+				snprintf(cipher_name, sizeof(cipher_name), "aes-128-%s", mode);
+			} else if (strncmp(knet_handle_crypto_cfg->crypto_cipher_type, "aes192-", 7) == 0) {
+				mode = knet_handle_crypto_cfg->crypto_cipher_type + 7;
+				snprintf(cipher_name, sizeof(cipher_name), "aes-192-%s", mode);
+			} else {  /* aes256- */
+				mode = knet_handle_crypto_cfg->crypto_cipher_type + 7;
+				snprintf(cipher_name, sizeof(cipher_name), "aes-256-%s", mode);
+			}
+			/* Validate mode - only CBC and CTR are supported */
+			if (strcmp(mode, "ctr") != 0 && strcmp(mode, "cbc") != 0) {
+				log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unsupported cipher mode '%s' (only CBC and CTR are supported)", mode);
+				savederrno = ENXIO;
+				goto out_err;
+			}
+			cipher_to_use = cipher_name;
+		} else {
+			/* Hyphenated format - validate supported modes */
+			const char *mode_start = strrchr(knet_handle_crypto_cfg->crypto_cipher_type, '-');
+			if (mode_start && strlen(mode_start) > 3 && isalpha(mode_start[1])) {
+				/* Has a mode suffix - check if it's supported */
+				if (strcmp(mode_start, "-ctr") != 0 && strcmp(mode_start, "-cbc") != 0) {
+					log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unsupported cipher mode '%s' (only CBC and CTR are supported)", mode_start + 1);
+					savederrno = ENXIO;
+					goto out_err;
+				}
+			}
+			/* Already in correct format or legacy format (aes128) - use as-is */
+			cipher_to_use = knet_handle_crypto_cfg->crypto_cipher_type;
+		}
+
+		/*
+		 * Fetch the cipher. OpenSSL 3.x uses EVP_CIPHER_fetch() which returns
+		 * a reference-counted cipher that must be freed with EVP_CIPHER_free().
+		 * OpenSSL 1.x uses EVP_get_cipherbyname() which returns a static reference.
+		 */
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		opensslcrypto_instance->crypto_cipher_type = EVP_CIPHER_fetch(NULL, cipher_to_use, NULL);
+#else
+		opensslcrypto_instance->crypto_cipher_type = EVP_get_cipherbyname(cipher_to_use);
+#endif
 		if (!opensslcrypto_instance->crypto_cipher_type) {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown crypto cipher type requested");
+			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unknown or unsupported crypto cipher type '%s'", knet_handle_crypto_cfg->crypto_cipher_type);
 			savederrno = ENXIO;
 			goto out_err;
 		}
@@ -708,10 +784,45 @@ static int opensslcrypto_init(
 	if (opensslcrypto_instance->crypto_cipher_type) {
 		size_t block_size;
 
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
 		block_size = EVP_CIPHER_block_size(opensslcrypto_instance->crypto_cipher_type);
+#else
+		block_size = EVP_CIPHER_get_block_size(opensslcrypto_instance->crypto_cipher_type);
+#endif
 
 		crypto_instance->sec_salt_size = SALT_SIZE;
-		crypto_instance->sec_block_size = block_size;
+		/*
+		 * sec_block_size is used by onwire.c for MTU overhead calculations:
+		 *   if (sec_block_size) {
+		 *       pad_len = sec_block_size - (outlen % sec_block_size);
+		 *       outlen = outlen + pad_len;
+		 *   }
+		 *
+		 * sec_block_size represents the PADDING OVERHEAD added by the cipher,
+		 * NOT the cipher's block size itself.
+		 *
+		 * CTR mode (stream cipher):
+		 *   - EVP_CIPHER_get_block_size() returns 1 (minimal cipher block)
+		 *   - But CTR adds NO padding (100 bytes → 100 bytes encrypted)
+		 *   - Setting sec_block_size=1 would incorrectly add 1 byte to MTU calculation
+		 *   - Setting sec_block_size=0 means "no padding overhead", which is correct
+		 *   - The if (sec_block_size) check in onwire.c skips padding calculation
+		 *
+		 * CBC mode (block cipher):
+		 *   - EVP_CIPHER_get_block_size() returns 16 (AES block size)
+		 *   - CBC adds PKCS padding to align to block boundaries
+		 *   - Setting sec_block_size=16 correctly accounts for padding overhead
+		 *   - Example: 100 bytes → 112 bytes (adds 12 bytes padding to reach 112 % 16 == 0)
+		 */
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
+		if (EVP_CIPHER_mode(opensslcrypto_instance->crypto_cipher_type) == EVP_CIPH_CTR_MODE) {
+#else
+		if (EVP_CIPHER_get_mode(opensslcrypto_instance->crypto_cipher_type) == EVP_CIPH_CTR_MODE) {
+#endif
+			crypto_instance->sec_block_size = 0;
+		} else {
+			crypto_instance->sec_block_size = block_size;
+		}
 	}
 
 	return 0;

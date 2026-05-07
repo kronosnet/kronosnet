@@ -64,28 +64,40 @@ enum nsscrypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
 	CRYPTO_CIPHER_TYPE_AES256 = 1,
 	CRYPTO_CIPHER_TYPE_AES192 = 2,
-	CRYPTO_CIPHER_TYPE_AES128 = 3
+	CRYPTO_CIPHER_TYPE_AES128 = 3,
+	CRYPTO_CIPHER_TYPE_AES256_CTR = 4,
+	CRYPTO_CIPHER_TYPE_AES192_CTR = 5,
+	CRYPTO_CIPHER_TYPE_AES128_CTR = 6
 };
 
 CK_MECHANISM_TYPE cipher_to_nss[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
 	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES256 */
 	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES192 */
-	CKM_AES_CBC_PAD			/* CRYPTO_CIPHER_TYPE_AES128 */
+	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES128 */
+	CKM_AES_CTR,			/* CRYPTO_CIPHER_TYPE_AES256_CTR */
+	CKM_AES_CTR,			/* CRYPTO_CIPHER_TYPE_AES192_CTR */
+	CKM_AES_CTR			/* CRYPTO_CIPHER_TYPE_AES128_CTR */
 };
 
 size_t nsscipher_key_len[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
 	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256 */
 	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192 */
-	AES_128_KEY_LENGTH		/* CRYPTO_CIPHER_TYPE_AES128 */
+	AES_128_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES128 */
+	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256_CTR */
+	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192_CTR */
+	AES_128_KEY_LENGTH		/* CRYPTO_CIPHER_TYPE_AES128_CTR */
 };
 
 size_t nsscypher_block_len[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
 	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES256 */
 	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES192 */
-	AES_BLOCK_SIZE			/* CRYPTO_CIPHER_TYPE_AES128 */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES128 */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES256_CTR */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES192_CTR */
+	AES_BLOCK_SIZE			/* CRYPTO_CIPHER_TYPE_AES128_CTR */
 };
 
 /*
@@ -143,14 +155,25 @@ struct nsscrypto_instance {
 
 static int nssstring_to_crypto_cipher_type(const char* crypto_cipher_type)
 {
+	/*
+	 * Normalize cipher name for NSS compatibility
+	 * NSS expects non-hyphenated format (aes128-ctr)
+	 * Convert OpenSSL hyphenated format (aes-128-ctr) to NSS format
+	 */
 	if (strcmp(crypto_cipher_type, "none") == 0) {
 		return CRYPTO_CIPHER_TYPE_NONE;
-	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
+	} else if ((strcmp(crypto_cipher_type, "aes256") == 0) || (strcmp(crypto_cipher_type, "aes-256") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES256;
-	} else if (strcmp(crypto_cipher_type, "aes192") == 0) {
+	} else if ((strcmp(crypto_cipher_type, "aes192") == 0) || (strcmp(crypto_cipher_type, "aes-192") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES192;
-	} else if (strcmp(crypto_cipher_type, "aes128") == 0) {
+	} else if ((strcmp(crypto_cipher_type, "aes128") == 0) || (strcmp(crypto_cipher_type, "aes-128") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES128;
+	} else if ((strcmp(crypto_cipher_type, "aes256-ctr") == 0) || (strcmp(crypto_cipher_type, "aes-256-ctr") == 0)) {
+		return CRYPTO_CIPHER_TYPE_AES256_CTR;
+	} else if ((strcmp(crypto_cipher_type, "aes192-ctr") == 0) || (strcmp(crypto_cipher_type, "aes-192-ctr") == 0)) {
+		return CRYPTO_CIPHER_TYPE_AES192_CTR;
+	} else if ((strcmp(crypto_cipher_type, "aes128-ctr") == 0) || (strcmp(crypto_cipher_type, "aes-128-ctr") == 0)) {
+		return CRYPTO_CIPHER_TYPE_AES128_CTR;
 	}
 	return -1;
 }
@@ -367,16 +390,37 @@ static int encrypt_nss(
 		goto out;
 	}
 
-	crypt_param.type = siBuffer;
-	crypt_param.data = salt;
-	crypt_param.len = SALT_SIZE;
+	/*
+	 * CTR mode requires special parameter structure (CK_AES_CTR_PARAMS)
+	 * CBC mode uses IV directly via PK11_ParamFromIV
+	 */
+	if (cipher_to_nss[instance->crypto_cipher_type] == CKM_AES_CTR) {
+		CK_AES_CTR_PARAMS ctr_params;
 
-	nss_sec_param = PK11_ParamFromIV(cipher_to_nss[instance->crypto_cipher_type],
-					 &crypt_param);
-	if (nss_sec_param == NULL) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to set up PKCS11 param (err %d): %s",
-			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-		goto out;
+		/* Use full 128-bit counter */
+		ctr_params.ulCounterBits = 128;
+		/* Copy the IV/nonce to the counter block */
+		memcpy(ctr_params.cb, salt, SALT_SIZE);
+
+		nss_sec_param = SECITEM_AllocItem(NULL, NULL, sizeof(ctr_params));
+		if (nss_sec_param == NULL) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to allocate sec param for CTR mode");
+			goto out;
+		}
+		memcpy(nss_sec_param->data, &ctr_params, sizeof(ctr_params));
+	} else {
+		/* CBC mode - use IV directly */
+		crypt_param.type = siBuffer;
+		crypt_param.data = salt;
+		crypt_param.len = SALT_SIZE;
+
+		nss_sec_param = PK11_ParamFromIV(cipher_to_nss[instance->crypto_cipher_type],
+						 &crypt_param);
+		if (nss_sec_param == NULL) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Failure to set up PKCS11 param (err %d): %s",
+				PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+			goto out;
+		}
 	}
 
 	/*
@@ -442,6 +486,7 @@ static int decrypt_nss (
 	struct nsscrypto_instance *instance = crypto_instance->model_instance;
 	PK11Context*	decrypt_context = NULL;
 	SECItem		decrypt_param;
+	SECItem		*nss_sec_param = NULL;
 	int		tmp1_outlen = 0;
 	unsigned int	tmp2_outlen = 0;
 	unsigned char	*salt = (unsigned char *)buf_in;
@@ -454,14 +499,39 @@ static int decrypt_nss (
 		goto out;
 	}
 
-	/* Create cipher context for decryption */
-	decrypt_param.type = siBuffer;
-	decrypt_param.data = salt;
-	decrypt_param.len = SALT_SIZE;
+	/*
+	 * CTR mode requires special parameter structure (CK_AES_CTR_PARAMS)
+	 * CBC mode uses IV directly
+	 */
+	if (cipher_to_nss[instance->crypto_cipher_type] == CKM_AES_CTR) {
+		CK_AES_CTR_PARAMS ctr_params;
 
-	decrypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
-						     CKA_DECRYPT,
-						     instance->nss_sym_key, &decrypt_param);
+		/* Use full 128-bit counter */
+		ctr_params.ulCounterBits = 128;
+		/* Copy the IV/nonce to the counter block */
+		memcpy(ctr_params.cb, salt, SALT_SIZE);
+
+		nss_sec_param = SECITEM_AllocItem(NULL, NULL, sizeof(ctr_params));
+		if (nss_sec_param == NULL) {
+			log_err(knet_h, KNET_SUB_NSSCRYPTO, "Unable to allocate sec param for CTR mode");
+			goto out;
+		}
+		memcpy(nss_sec_param->data, &ctr_params, sizeof(ctr_params));
+
+		decrypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
+							     CKA_DECRYPT,
+							     instance->nss_sym_key, nss_sec_param);
+	} else {
+		/* CBC mode - use IV directly */
+		decrypt_param.type = siBuffer;
+		decrypt_param.data = salt;
+		decrypt_param.len = SALT_SIZE;
+
+		decrypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
+							     CKA_DECRYPT,
+							     instance->nss_sym_key, &decrypt_param);
+	}
+
 	if (!decrypt_context) {
 		log_err(knet_h, KNET_SUB_NSSCRYPTO, "PK11_CreateContext (decrypt) failed (err %d): %s",
 			PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
@@ -500,7 +570,9 @@ out:
 	if (decrypt_context) {
 		PK11_DestroyContext(decrypt_context, PR_TRUE);
 	}
-
+	if (nss_sec_param) {
+		SECITEM_FreeItem(nss_sec_param, PR_TRUE);
+	}
 	return err;
 }
 
@@ -809,7 +881,7 @@ static int nsscrypto_init(
 
 	nsscrypto_instance->crypto_cipher_type = nssstring_to_crypto_cipher_type(knet_handle_crypto_cfg->crypto_cipher_type);
 	if (nsscrypto_instance->crypto_cipher_type < 0) {
-		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown crypto cipher type requested");
+		log_err(knet_h, KNET_SUB_NSSCRYPTO, "unknown or unsupported crypto cipher type '%s' (only CBC and CTR modes are supported)", knet_handle_crypto_cfg->crypto_cipher_type);
 		savederrno = ENXIO;
 		goto out_err;
 	}
@@ -854,7 +926,34 @@ static int nsscrypto_init(
 		}
 
 		crypto_instance->sec_salt_size = SALT_SIZE;
-		crypto_instance->sec_block_size = block_size;
+		/*
+		 * sec_block_size is used by onwire.c for MTU overhead calculations:
+		 *   if (sec_block_size) {
+		 *       pad_len = sec_block_size - (outlen % sec_block_size);
+		 *       outlen = outlen + pad_len;
+		 *   }
+		 *
+		 * sec_block_size represents the PADDING OVERHEAD added by the cipher,
+		 * NOT the cipher's block size itself.
+		 *
+		 * CTR mode (stream cipher):
+		 *   - PK11_GetBlockSize() would return 16 (AES block size)
+		 *   - But CTR adds NO padding (100 bytes → 100 bytes encrypted)
+		 *   - Setting sec_block_size=16 would incorrectly add padding to MTU calculation
+		 *   - Setting sec_block_size=0 means "no padding overhead", which is correct
+		 *   - The if (sec_block_size) check in onwire.c skips padding calculation
+		 *
+		 * CBC mode (block cipher):
+		 *   - PK11_GetBlockSize() returns 16 (AES block size)
+		 *   - CBC adds PKCS padding to align to block boundaries
+		 *   - Setting sec_block_size=16 correctly accounts for padding overhead
+		 *   - Example: 100 bytes → 112 bytes (adds 12 bytes padding to reach 112 % 16 == 0)
+		 */
+		if (nsscrypto_instance->crypto_cipher_type >= CRYPTO_CIPHER_TYPE_AES256_CTR) {
+			crypto_instance->sec_block_size = 0;
+		} else {
+			crypto_instance->sec_block_size = block_size;
+		}
 	}
 
 	return 0;
