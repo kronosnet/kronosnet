@@ -884,23 +884,71 @@ static void _handle_dynip(knet_handle_t knet_h, struct knet_host *src_host, stru
  */
 static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const struct knet_mmsghdr *msg)
 {
-	if (knet_h->use_access_lists) {
-		if (!check_validate(knet_h, src_link, msg->msg_hdr.msg_name)) {
-			char src_ipaddr[KNET_MAX_HOST_LEN];
-			char src_port[KNET_MAX_PORT_LEN];
+	const struct sockaddr_storage *src_addr = msg->msg_hdr.msg_name;
+	char src_ipaddr[KNET_MAX_HOST_LEN];
+	char src_port[KNET_MAX_PORT_LEN];
+	int has_acl;
 
-			memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
-			memset(src_port, 0, KNET_MAX_PORT_LEN);
-			if (knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+	/*
+	 * ACL validation to prevent link ID spoofing (CVE-2026-15812)
+	 *
+	 * Static links (KNET_LINK_STATIC):
+	 *   Always validate - dst_addr is auto-configured in ACL during knet_link_set_config()
+	 *
+	 * Dynamic links (KNET_LINK_DYNIP):
+	 *   - If use_access_lists = 0: skip validation (user explicitly disabled)
+	 *   - If use_access_lists = 1 (default):
+	 *     - If no ACL configured: reject with specific message
+	 *     - If ACL configured: validate source address
+	 *
+	 * This ensures all links require proper ACL configuration unless explicitly opted out.
+	 */
+
+	if (src_link->dynamic == KNET_LINK_STATIC) {
+		/* Static links: always validate */
+		if (!check_validate(knet_h, src_link, (struct sockaddr_storage *)src_addr)) {
+			if (knet_addrtostr(src_addr, sockaddr_len(src_addr),
 					   src_ipaddr, KNET_MAX_HOST_LEN,
 					   src_port, KNET_MAX_PORT_LEN) < 0) {
-
 				log_warn(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
 			} else {
 				log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s", src_ipaddr, src_port);
 			}
 			return 0;
 		}
+	} else {
+		/* Dynamic links */
+		if (knet_h->use_access_lists) {
+			/* Check if link has ACL configured */
+			has_acl = (src_link->access_list_match_entry_head != NULL) &&
+				  (*(void **)src_link->access_list_match_entry_head != NULL);
+
+			if (!has_acl) {
+				/* No ACL configured - reject */
+				if (knet_addrtostr(src_addr, sockaddr_len(src_addr),
+						   src_ipaddr, KNET_MAX_HOST_LEN,
+						   src_port, KNET_MAX_PORT_LEN) < 0) {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected: dynamic link has no ACL configured");
+				} else {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s: dynamic link has no ACL configured",
+						 src_ipaddr, src_port);
+				}
+				return 0;
+			}
+
+			/* ACL configured - validate */
+			if (!check_validate(knet_h, src_link, (struct sockaddr_storage *)src_addr)) {
+				if (knet_addrtostr(src_addr, sockaddr_len(src_addr),
+						   src_ipaddr, KNET_MAX_HOST_LEN,
+						   src_port, KNET_MAX_PORT_LEN) < 0) {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+				} else {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s", src_ipaddr, src_port);
+				}
+				return 0;
+			}
+		}
+		/* else: use_access_lists = 0, skip validation */
 	}
 	return 1;
 }
@@ -972,6 +1020,14 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 					return;
 					break;
 			}
+		}
+
+		/*
+		 * Validate link_id bounds and configuration (CVE-2026-15812)
+		 * Logging is done in get_link_from_pong_v1() to distinguish failure cases
+		 */
+		if (!src_link) {
+			return;
 		}
 		if (!_check_rx_acl(knet_h, src_link, msg)) {
 			return;

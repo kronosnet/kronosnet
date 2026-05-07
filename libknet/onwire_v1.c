@@ -110,7 +110,24 @@ void process_pong_v1(knet_handle_t knet_h, struct knet_host *src_host, struct kn
 
 struct knet_link *get_link_from_pong_v1(knet_handle_t knet_h, struct knet_host *src_host, struct knet_header *inbuf)
 {
-	return &src_host->link[inbuf->khp_ping_v1_link];
+	uint8_t link_id = inbuf->khp_ping_v1_link;
+
+	/*
+	 * Bounds check and configuration validation (CVE-2026-15812)
+	 * Additional source address validation in threads_rx.c _check_rx_acl()
+	 */
+	if (link_id >= KNET_MAX_LINK) {
+		log_warn(knet_h, KNET_SUB_RX, "Invalid link_id in packet: %u (max: %u)",
+			 link_id, KNET_MAX_LINK - 1);
+		return NULL;
+	}
+
+	if (!src_host->link[link_id].configured) {
+		log_warn(knet_h, KNET_SUB_RX, "Invalid link_id in packet (unconfigured): %u", link_id);
+		return NULL;
+	}
+
+	return &src_host->link[link_id];
 }
 
 void prep_pmtud_v1(knet_handle_t knet_h, struct knet_link *dst_link, uint8_t onwire_ver, size_t onwire_len, size_t data_len)
