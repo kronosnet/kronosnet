@@ -18,7 +18,7 @@ EXTRA_DIST		= $(SYMFILE)
 SUBDIRS			= . tests
 
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-libknetversion		= 6:0:5
+libknetversion		= 7:0:6
 
 if BUILD_WSDISSECTOR
 SUBDIRS			+= wireshark

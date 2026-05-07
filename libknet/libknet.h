@@ -1104,7 +1104,83 @@ struct knet_crypto_info {
 int knet_get_crypto_list(struct knet_crypto_info *crypto_list,
 			 size_t *crypto_list_entries);
 
+/**
+ * Structure returned from knet_get_crypto_cipher_list() containing
+ * information about supported cipher modes
+ */
+struct knet_crypto_cipher_info {
+	/** Cipher name (e.g., "aes-256-ctr", "aes256", "aes128-ctr") */
+	const char *name;
+	/** Cipher mode: "cbc" or "ctr" */
+	const char *mode;
+	/** Key size in bits (128, 192, or 256) */
+	int key_bits;
+	/** Currently unused padding */
+	char pad[256];
+};
 
+/**
+ * knet_get_crypto_cipher_list
+ *
+ * @brief Get a list of commonly supported cipher modes
+ *
+ * This function returns cipher modes that are supported across all
+ * crypto backends (OpenSSL, NSS, libgcrypt). The list represents the
+ * intersection of capabilities, not backend-specific features.
+ *
+ * cipher_list - array of struct knet_crypto_cipher_info
+ *               If NULL then only the number of structs is returned in cipher_list_entries
+ *               to allow the caller to allocate sufficient space.
+ *               It is safe to allocate 32 structs to avoid calling this function twice.
+ *
+ * cipher_list_entries - returns the number of ciphers in cipher_list
+ *
+ * @return
+ * knet_get_crypto_cipher_list returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_get_crypto_cipher_list(struct knet_crypto_cipher_info *cipher_list,
+				 size_t *cipher_list_entries);
+
+/**
+ * Structure returned from knet_get_crypto_hash_list() containing
+ * information about supported hash algorithms
+ */
+struct knet_crypto_hash_info {
+	/** Hash algorithm name (e.g., "sha256", "sha512") */
+	const char *name;
+	/** Hash output size in bits */
+	int hash_bits;
+	/** Currently unused padding */
+	char pad[256];
+};
+
+/**
+ * knet_get_crypto_hash_list
+ *
+ * @brief Get a list of commonly supported hash algorithms
+ *
+ * This function returns hash algorithms that are supported across all
+ * crypto backends (OpenSSL, NSS, libgcrypt). The list represents the
+ * intersection of capabilities, not backend-specific features.
+ *
+ * hash_list - array of struct knet_crypto_hash_info
+ *             If NULL then only the number of structs is returned in hash_list_entries
+ *             to allow the caller to allocate sufficient space.
+ *             It is safe to allocate 16 structs to avoid calling this function twice.
+ *
+ * hash_list_entries - returns the number of hash algorithms in hash_list
+ *
+ * @return
+ * knet_get_crypto_hash_list returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_get_crypto_hash_list(struct knet_crypto_hash_info *hash_list,
+			       size_t *hash_list_entries);
 
 /**
  * Structure returned from get_compress_list() containing
