@@ -157,16 +157,16 @@ static int nssstring_to_crypto_cipher_type(const char* crypto_cipher_type)
 {
 	/*
 	 * Normalize cipher name for NSS compatibility
-	 * NSS expects non-hyphenated format (aes128-ctr)
-	 * Convert OpenSSL hyphenated format (aes-128-ctr) to NSS format
+	 * NSS expects non-hyphenated format (aes128-ctr) but also accepts
+	 * OpenSSL hyphenated format with explicit mode suffix (aes-128-cbc, aes-128-ctr)
 	 */
 	if (strcmp(crypto_cipher_type, "none") == 0) {
 		return CRYPTO_CIPHER_TYPE_NONE;
-	} else if ((strcmp(crypto_cipher_type, "aes256") == 0) || (strcmp(crypto_cipher_type, "aes-256") == 0)) {
+	} else if ((strcmp(crypto_cipher_type, "aes256") == 0) || (strcmp(crypto_cipher_type, "aes-256") == 0) || (strcmp(crypto_cipher_type, "aes-256-cbc") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES256;
-	} else if ((strcmp(crypto_cipher_type, "aes192") == 0) || (strcmp(crypto_cipher_type, "aes-192") == 0)) {
+	} else if ((strcmp(crypto_cipher_type, "aes192") == 0) || (strcmp(crypto_cipher_type, "aes-192") == 0) || (strcmp(crypto_cipher_type, "aes-192-cbc") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES192;
-	} else if ((strcmp(crypto_cipher_type, "aes128") == 0) || (strcmp(crypto_cipher_type, "aes-128") == 0)) {
+	} else if ((strcmp(crypto_cipher_type, "aes128") == 0) || (strcmp(crypto_cipher_type, "aes-128") == 0) || (strcmp(crypto_cipher_type, "aes-128-cbc") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES128;
 	} else if ((strcmp(crypto_cipher_type, "aes256-ctr") == 0) || (strcmp(crypto_cipher_type, "aes-256-ctr") == 0)) {
 		return CRYPTO_CIPHER_TYPE_AES256_CTR;
