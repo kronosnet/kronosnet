@@ -139,6 +139,76 @@ static void test(const char *model, const char *model2)
 		CLEAN_EXIT(FAIL);
 	}
 
+	printf("Test knet_handle_crypto_set_config with %s/aes128-gcm/sha1 (unsupported mode)\n", model);
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128-gcm", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	FAIL_ON_SUCCESS(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1), ENXIO);
+	if (current != knet_h1->crypto_instance[1]) {
+		printf("knet_handle_crypto_set_config failed to preserve config after rejecting unsupported mode\n");
+		CLEAN_EXIT(FAIL);
+	}
+
+	printf("Test knet_handle_crypto_set_config with %s/aes-128-ofb/sha1 (unsupported mode, hyphenated)\n", model);
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes-128-ofb", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	FAIL_ON_SUCCESS(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1), ENXIO);
+	if (current != knet_h1->crypto_instance[1]) {
+		printf("knet_handle_crypto_set_config failed to preserve config after rejecting unsupported mode\n");
+		CLEAN_EXIT(FAIL);
+	}
+
+	printf("Test knet_handle_crypto_set_config with %s/aes256-ecb/sha256 (unsupported mode)\n", model);
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes256-ecb", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha256", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	FAIL_ON_SUCCESS(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1), ENXIO);
+	if (current != knet_h1->crypto_instance[1]) {
+		printf("knet_handle_crypto_set_config failed to preserve config after rejecting unsupported mode\n");
+		CLEAN_EXIT(FAIL);
+	}
+
+	printf("Test knet_handle_crypto_set_config with %s/aes192-xts/sha1 (unsupported mode)\n", model);
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes192-xts", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	FAIL_ON_SUCCESS(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1), ENXIO);
+	if (current != knet_h1->crypto_instance[1]) {
+		printf("knet_handle_crypto_set_config failed to preserve config after rejecting unsupported mode\n");
+		CLEAN_EXIT(FAIL);
+	}
+
+	printf("Test knet_handle_crypto_set_config with %s/aes128-ctr/sha1 (supported CTR mode)\n", model);
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128-ctr", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha1", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
+
+	printf("Test knet_handle_crypto_set_config with %s/aes-256-ctr/sha256 (supported CTR mode, hyphenated)\n", model);
+	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
+	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes-256-ctr", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
+	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha256", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
+	knet_handle_crypto_cfg.private_key_len = 2000;
+
+	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
+
 	printf("Test knet_handle_crypto_set_config with %s/aes128/none and normal key\n", model);
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);

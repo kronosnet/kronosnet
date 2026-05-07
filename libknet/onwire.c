@@ -35,7 +35,10 @@
  *                  | data_len                                                        |
  *                                              | app MTU    |
  *
- * knet_h->sec_block_size is >= 0 if encryption will pad the data
+ * knet_h->sec_block_size represents PADDING OVERHEAD added by the cipher:
+ *   - 0 = no padding (stream ciphers like CTR mode)
+ *   - 16 = block cipher with PKCS padding (CBC mode with AES)
+ *   - Used below: if (sec_block_size) to skip padding calculation when 0
  * knet_h->sec_salt_size is >= 0 if encryption is enabled
  * knet_h->sec_hash_size is >= 0 if signing is enabled
  */
