@@ -25,6 +25,8 @@
 #include <net/if_tun.h>
 #include <stropts.h>
 #include <libdlpi.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #else
 #include <net/ethernet.h>
 #endif
@@ -328,11 +330,6 @@ static int _set_ip(nozzle_t nozzle,
 	struct nl_cache *cache = NULL;
 	int ifindex;
 #endif
-#ifdef KNET_SOLARIS
-	char cmdline[4096];
-	char proto[6];
-	char *error_string = NULL;
-#endif
 
 	if (!strchr(ipaddr, ':')) {
 		fam = AF_INET;
@@ -589,56 +586,221 @@ out:
 #endif
 #ifdef KNET_SOLARIS
 	/*
-	 * TODO: port to use ioctl and such, drop shell forking here
+	 * Solaris implementation using ioctl
 	 */
-	memset(cmdline, 0, sizeof(cmdline));
-
 	if (fam == AF_INET) {
-		snprintf(proto, sizeof(proto), "inet");
+		struct lifreq lifr;
+		struct sockaddr_in *sin_addr, *sin_mask, *sin_bcast;
+		int prefix_len;
+		uint32_t mask;
+
+		memset(&lifr, 0, sizeof(lifr));
+		strncpy(lifr.lifr_name, nozzle->name, LIFNAMSIZ);
+
+		/* Parse prefix length */
+		prefix_len = atoi(prefix);
+		if (prefix_len <= 0 || prefix_len > 32) {
+			if (broadcast) {
+				free(broadcast);
+			}
+			errno = EINVAL;
+			return -1;
+		}
+
+		if (command == IP_ADD) {
+			/* For secondary addresses, create logical interface first */
+			if (secondary) {
+				/* SIOCLIFADDIF with zero address */
+				memset(&lifr.lifr_addr, 0, sizeof(lifr.lifr_addr));
+				if (ioctl(nozzle->ip_fd, SIOCLIFADDIF, &lifr) < 0) {
+					if (broadcast) {
+						free(broadcast);
+					}
+					return -1;
+				}
+				/* lifr_name is updated by SIOCLIFADDIF with new logical if name */
+			}
+
+			/* Set netmask */
+			sin_mask = (struct sockaddr_in *)&lifr.lifr_addr;
+			sin_mask->sin_family = AF_INET;
+			mask = htonl(~((1 << (32 - prefix_len)) - 1));
+			sin_mask->sin_addr.s_addr = mask;
+
+			if (ioctl(nozzle->ip_fd, SIOCSLIFNETMASK, &lifr) < 0) {
+				err = -1;
+				if (secondary) {
+					/* Clean up the logical interface we created */
+					(void)ioctl(nozzle->ip_fd, SIOCLIFREMOVEIF, &lifr);
+				}
+				if (broadcast) {
+					free(broadcast);
+				}
+				return err;
+			}
+
+			/* Set address */
+			sin_addr = (struct sockaddr_in *)&lifr.lifr_addr;
+			sin_addr->sin_family = AF_INET;
+			if (inet_pton(AF_INET, ipaddr, &sin_addr->sin_addr) <= 0) {
+				if (secondary) {
+					(void)ioctl(nozzle->ip_fd, SIOCLIFREMOVEIF, &lifr);
+				}
+				if (broadcast) {
+					free(broadcast);
+				}
+				errno = EINVAL;
+				return -1;
+			}
+
+			err = ioctl(nozzle->ip_fd, SIOCSLIFADDR, &lifr);
+			if (err < 0) {
+				if (secondary) {
+					(void)ioctl(nozzle->ip_fd, SIOCLIFREMOVEIF, &lifr);
+				}
+				if (broadcast) {
+					free(broadcast);
+				}
+				return -1;
+			}
+
+			/* Set broadcast address if provided */
+			if (broadcast) {
+				sin_bcast = (struct sockaddr_in *)&lifr.lifr_broadaddr;
+				sin_bcast->sin_family = AF_INET;
+				if (inet_pton(AF_INET, broadcast, &sin_bcast->sin_addr) <= 0) {
+					free(broadcast);
+					errno = EINVAL;
+					return -1;
+				}
+
+				err = ioctl(nozzle->ip_fd, SIOCSLIFBRDADDR, &lifr);
+				free(broadcast);
+				/* Non-fatal if broadcast fails */
+			}
+		} else {
+			/* Delete address */
+			if (secondary) {
+				/* Set the address to delete so Solaris can find the right logical interface */
+				sin_addr = (struct sockaddr_in *)&lifr.lifr_addr;
+				sin_addr->sin_family = AF_INET;
+				if (inet_pton(AF_INET, ipaddr, &sin_addr->sin_addr) <= 0) {
+					if (broadcast) {
+						free(broadcast);
+					}
+					errno = EINVAL;
+					return -1;
+				}
+				err = ioctl(nozzle->ip_fd, SIOCLIFREMOVEIF, &lifr);
+			} else {
+				/* Primary IPv4: set to 0.0.0.0 */
+				sin_addr = (struct sockaddr_in *)&lifr.lifr_addr;
+				sin_addr->sin_family = AF_INET;
+				sin_addr->sin_addr.s_addr = 0;
+				err = ioctl(nozzle->ip_fd, SIOCSLIFADDR, &lifr);
+			}
+
+			if (broadcast) {
+				free(broadcast);
+			}
+		}
 	} else {
-		snprintf(proto, sizeof(proto), "inet6");
+		/* IPv6 */
+		struct lifreq lifr;
+		struct sockaddr_in6 *sin6_addr, *sin6_mask;
+		int prefix_len;
+		int i;
+
+		memset(&lifr, 0, sizeof(lifr));
+		strncpy(lifr.lifr_name, nozzle->name, LIFNAMSIZ);
+
+		/* Parse prefix length */
+		prefix_len = atoi(prefix);
+		if (prefix_len <= 0 || prefix_len > 128) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		if (command == IP_ADD) {
+			/* For secondary addresses, create logical interface first */
+			if (secondary) {
+				/* SIOCLIFADDIF with zero address */
+				memset(&lifr.lifr_addr, 0, sizeof(lifr.lifr_addr));
+				if (ioctl(nozzle->ip6_fd, SIOCLIFADDIF, &lifr) < 0) {
+					return -1;
+				}
+			}
+
+			/* Set prefix mask */
+			sin6_mask = (struct sockaddr_in6 *)&lifr.lifr_addr;
+			sin6_mask->sin6_family = AF_INET6;
+
+			/* Convert prefix length to mask */
+			for (i = 0; i < 16; i++) {
+				if (prefix_len >= 8) {
+					sin6_mask->sin6_addr.s6_addr[i] = 0xff;
+					prefix_len -= 8;
+				} else if (prefix_len > 0) {
+					sin6_mask->sin6_addr.s6_addr[i] = (0xff << (8 - prefix_len)) & 0xff;
+					prefix_len = 0;
+				} else {
+					sin6_mask->sin6_addr.s6_addr[i] = 0;
+				}
+			}
+
+			if (ioctl(nozzle->ip6_fd, SIOCSLIFNETMASK, &lifr) < 0) {
+				if (secondary) {
+					(void)ioctl(nozzle->ip6_fd, SIOCLIFREMOVEIF, &lifr);
+				}
+				return -1;
+			}
+
+			/* Reset prefix_len for address setting */
+			prefix_len = atoi(prefix);
+
+			/* Set address */
+			sin6_addr = (struct sockaddr_in6 *)&lifr.lifr_addr;
+			sin6_addr->sin6_family = AF_INET6;
+			if (inet_pton(AF_INET6, ipaddr, &sin6_addr->sin6_addr) <= 0) {
+				if (secondary) {
+					(void)ioctl(nozzle->ip6_fd, SIOCLIFREMOVEIF, &lifr);
+				}
+				errno = EINVAL;
+				return -1;
+			}
+
+			err = ioctl(nozzle->ip6_fd, SIOCSLIFADDR, &lifr);
+			if (err < 0) {
+				if (secondary) {
+					(void)ioctl(nozzle->ip6_fd, SIOCLIFREMOVEIF, &lifr);
+				}
+				return -1;
+			}
+		} else {
+			/* Delete address */
+			if (secondary) {
+				/* Set the address to delete so Solaris can find the right logical interface */
+				sin6_addr = (struct sockaddr_in6 *)&lifr.lifr_addr;
+				sin6_addr->sin6_family = AF_INET6;
+				if (inet_pton(AF_INET6, ipaddr, &sin6_addr->sin6_addr) <= 0) {
+					errno = EINVAL;
+					return -1;
+				}
+				err = ioctl(nozzle->ip6_fd, SIOCLIFREMOVEIF, &lifr);
+			} else {
+				/* Primary IPv6: set to :: */
+				sin6_addr = (struct sockaddr_in6 *)&lifr.lifr_addr;
+				sin6_addr->sin6_family = AF_INET6;
+				memset(&sin6_addr->sin6_addr, 0, sizeof(sin6_addr->sin6_addr));
+				err = ioctl(nozzle->ip6_fd, SIOCSLIFADDR, &lifr);
+			}
+		}
 	}
 
-	if (command == IP_ADD) {
-		char *addif = "";
-		// Solaris needs a new logical i/f for each address
-		if (secondary) {
-			addif = "addif";
-		}
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ifconfig %s %s %s %s/%s",
-			 nozzle->name, proto, addif, ipaddr, prefix);
-		if (broadcast) {
-			snprintf(cmdline + strlen(cmdline),
-				 sizeof(cmdline) - strlen(cmdline) -1,
-				 " broadcast %s", broadcast);
-		}
-	} else {
-		/* If this is the first IP (on tap0) then we can't use removeif,
-		 * we need to set the IP to 0
-		 */
-		char *removeif = "removeif";
-		if ((!secondary) && (fam == AF_INET)) {
-			ipaddr="0.0.0.0";
-			removeif = "";
-		}
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ifconfig %s %s %s %s",
-			 nozzle->name, proto, removeif, ipaddr);
-	}
-	if (broadcast) {
-		free(broadcast);
+	if (err < 0) {
+		err = -1;
 	}
 
-	/*
-	 * temporary workaround as we port libnozzle to BSD ioctl
-	 * for IP address management
-	 */
-	err = execute_bin_sh_command(cmdline, &error_string);
-	if (error_string) {
-		free(error_string);
-		error_string = NULL;
-	}
 	return err;
 #endif
 }
@@ -743,8 +905,6 @@ int solaris_setup_tap(nozzle_t nozzle, char *devname, int namelen)
 		close(nozzle->ip_fd);
 		nozzle->ip_fd = -1;
 		return -EIO;
-	} else {
-		nozzle->ip6_fd = -1;
 	}
 
 	return tap_fd;
@@ -1651,7 +1811,14 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix)
 	if ((ip->domain == AF_INET6) && (get_iface_mtu(nozzle) < 1280)) {
 		err = 0;
 	} else {
-		err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, 0);
+		int secondary = 0;
+#ifdef KNET_SOLARIS
+		/* On Solaris, all IPv6 addresses are secondary logical interfaces */
+		if (ip->domain == AF_INET6) {
+			secondary = 1;
+		}
+#endif
+		err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, secondary);
 		savederrno = errno;
 	}
 
