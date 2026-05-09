@@ -48,6 +48,7 @@
 #include <netlink/netlink.h>
 #include <netlink/route/addr.h>
 #include <netlink/route/link.h>
+#include <netlink/errno.h>
 #endif
 #ifdef KNET_BSD
 #include <net/if_dl.h>
@@ -68,6 +69,54 @@ static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 /*
  * internal helpers
  */
+
+#ifdef KNET_LINUX
+/*
+ * Convert libnl error codes to errno values for better error reporting.
+ * libnl functions return negative NLE_* error codes, which need translation
+ * to standard errno values that applications expect.
+ */
+static int nlerr_to_errno(int nlerr)
+{
+	if (nlerr >= 0)
+		return 0;
+
+	/*
+	 * NLE_* error codes are small negative integers.
+	 * Kernel errors passed through netlink are already errno values.
+	 * Use NLE_MAX as threshold to distinguish between the two.
+	 */
+	if (-nlerr > NLE_MAX) {
+		/* Already an errno value from kernel */
+		return -nlerr;
+	}
+
+	/* Map common NLE_* codes to errno values */
+	switch (-nlerr) {
+	case NLE_NOMEM:
+		return ENOMEM;
+	case NLE_EXIST:
+		return EEXIST;
+	case NLE_INVAL:
+		return EINVAL;
+	case NLE_NOADDR:
+		return EADDRNOTAVAIL;
+	case NLE_NODEV:
+		return ENODEV;
+	case NLE_BUSY:
+		return EBUSY;
+	case NLE_PERM:
+		return EPERM;
+	case NLE_OBJ_NOTFOUND:
+		return ENOENT;
+	case NLE_RANGE:
+		return ERANGE;
+	default:
+		/* Generic fallback for unmapped errors */
+		return EINVAL;
+	}
+}
+#endif
 
 static void lib_fini(void)
 {
@@ -288,6 +337,8 @@ static int _set_ip(nozzle_t nozzle,
 	}
 
 #ifdef KNET_LINUX
+	int nlerr;
+
 	addr = rtnl_addr_alloc();
 	if (!addr) {
 		errno = ENOMEM;
@@ -295,8 +346,9 @@ static int _set_ip(nozzle_t nozzle,
 		goto out;
 	}
 
-	if (rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache) < 0) {
-		errno = ENOMEM;
+	nlerr = rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache);
+	if (nlerr < 0) {
+		errno = nlerr_to_errno(nlerr);
 		err = -1;
 		goto out;
 	}
@@ -310,27 +362,31 @@ static int _set_ip(nozzle_t nozzle,
 
 	rtnl_addr_set_ifindex(addr, ifindex);
 
-	if (nl_addr_parse(ipaddr, fam, &local_addr) < 0) {
-		errno = EINVAL;
+	nlerr = nl_addr_parse(ipaddr, fam, &local_addr);
+	if (nlerr < 0) {
+		errno = nlerr_to_errno(nlerr);
 		err = -1;
 		goto out;
 	}
 
-	if (rtnl_addr_set_local(addr, local_addr) < 0) {
-		errno = EINVAL;
+	nlerr = rtnl_addr_set_local(addr, local_addr);
+	if (nlerr < 0) {
+		errno = nlerr_to_errno(nlerr);
 		err = -1;
 		goto out;
 	}
 
 	if (broadcast) {
-		if (nl_addr_parse(broadcast, fam, &bcast_addr) < 0) {
-			errno = EINVAL;
+		nlerr = nl_addr_parse(broadcast, fam, &bcast_addr);
+		if (nlerr < 0) {
+			errno = nlerr_to_errno(nlerr);
 			err = -1;
 			goto out;
 		}
 
-		if (rtnl_addr_set_broadcast(addr, bcast_addr) < 0) {
-			errno = EINVAL;
+		nlerr = rtnl_addr_set_broadcast(addr, bcast_addr);
+		if (nlerr < 0) {
+			errno = nlerr_to_errno(nlerr);
 			err = -1;
 			goto out;
 		}
@@ -339,14 +395,16 @@ static int _set_ip(nozzle_t nozzle,
 	rtnl_addr_set_prefixlen(addr, atoi(prefix));
 
 	if (command == IP_ADD) {
-		if (rtnl_addr_add(lib_cfg.nlsock, addr, 0) < 0) {
-			errno = EINVAL;
+		nlerr = rtnl_addr_add(lib_cfg.nlsock, addr, 0);
+		if (nlerr < 0) {
+			errno = nlerr_to_errno(nlerr);
 			err = -1;
 			goto out;
 		}
 	} else {
-		if (rtnl_addr_delete(lib_cfg.nlsock, addr, 0) < 0) {
-			errno = EINVAL;
+		nlerr = rtnl_addr_delete(lib_cfg.nlsock, addr, 0);
+		if (nlerr < 0) {
+			errno = nlerr_to_errno(nlerr);
 			err = -1;
 			goto out;
 		}
@@ -629,13 +687,16 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	if (!lib_init) {
 		lib_cfg.head = NULL;
 #ifdef KNET_LINUX
+		int nlerr;
+
 		lib_cfg.nlsock = nl_socket_alloc();
 		if (!lib_cfg.nlsock) {
 			savederrno = errno;
 			goto out_error;
 		}
-		if (nl_connect(lib_cfg.nlsock, NETLINK_ROUTE) < 0) {
-			savederrno = EBUSY;
+		nlerr = nl_connect(lib_cfg.nlsock, NETLINK_ROUTE);
+		if (nlerr < 0) {
+			savederrno = nlerr_to_errno(nlerr);
 			goto out_error;
 		}
 		lib_cfg.ioctlfd = socket(AF_INET, SOCK_STREAM, 0);
