@@ -53,6 +53,11 @@
 #ifdef KNET_BSD
 #include <net/if_dl.h>
 #include <sys/sockio.h>
+#include <netinet/in.h>
+#include <netinet/in_var.h>
+#include <netinet6/in6_var.h>
+#include <netinet6/nd6.h>
+#include <arpa/inet.h>
 #endif
 
 #include "libnozzle.h"
@@ -126,6 +131,10 @@ static void lib_fini(void)
 		nl_socket_free(lib_cfg.nlsock);
 #endif
 		close(lib_cfg.ioctlfd);
+#ifdef KNET_BSD
+		close(lib_cfg.ip_fd);
+		close(lib_cfg.ip6_fd);
+#endif
 		lib_init = 0;
 	}
 }
@@ -319,7 +328,7 @@ static int _set_ip(nozzle_t nozzle,
 	struct nl_cache *cache = NULL;
 	int ifindex;
 #endif
-#if defined(KNET_BSD) || defined(KNET_SOLARIS)
+#ifdef KNET_SOLARIS
 	char cmdline[4096];
 	char proto[6];
 	char *error_string = NULL;
@@ -427,7 +436,158 @@ out:
 	}
 	return err;
 #endif
-#if defined(KNET_BSD) || defined(KNET_SOLARIS)
+#ifdef KNET_BSD
+	/*
+	 * FreeBSD implementation using ioctl
+	 */
+	if (fam == AF_INET) {
+		struct in_aliasreq ifra;
+		int prefix_len;
+		uint32_t mask;
+
+		memset(&ifra, 0, sizeof(ifra));
+		strncpy(ifra.ifra_name, nozzle->name, IFNAMSIZ);
+
+		/* Parse prefix length */
+		prefix_len = atoi(prefix);
+		if (prefix_len <= 0 || prefix_len > 32) {
+			if (broadcast) {
+				free(broadcast);
+			}
+			errno = EINVAL;
+			return -1;
+		}
+
+		if (command == IP_ADD) {
+			/* Set address */
+			ifra.ifra_addr.sin_family = AF_INET;
+			ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
+			if (inet_pton(AF_INET, ipaddr, &ifra.ifra_addr.sin_addr) <= 0) {
+				if (broadcast) {
+					free(broadcast);
+				}
+				errno = EINVAL;
+				return -1;
+			}
+
+			/* Set netmask */
+			ifra.ifra_mask.sin_family = AF_INET;
+			ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
+			mask = htonl(~((1 << (32 - prefix_len)) - 1));
+			ifra.ifra_mask.sin_addr.s_addr = mask;
+
+			/* Set broadcast address */
+			if (broadcast) {
+				ifra.ifra_broadaddr.sin_family = AF_INET;
+				ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
+				if (inet_pton(AF_INET, broadcast, &ifra.ifra_broadaddr.sin_addr) <= 0) {
+					free(broadcast);
+					errno = EINVAL;
+					return -1;
+				}
+			}
+
+			err = ioctl(lib_cfg.ip_fd, SIOCAIFADDR, &ifra);
+		} else {
+			/* Delete address */
+			struct ifreq ifr;
+			struct sockaddr_in *sin;
+
+			memset(&ifr, 0, sizeof(ifr));
+			strncpy(ifr.ifr_name, nozzle->name, IFNAMSIZ);
+
+			sin = (struct sockaddr_in *)&ifr.ifr_addr;
+			sin->sin_family = AF_INET;
+			sin->sin_len = sizeof(struct sockaddr_in);
+			if (inet_pton(AF_INET, ipaddr, &sin->sin_addr) <= 0) {
+				if (broadcast) {
+					free(broadcast);
+				}
+				errno = EINVAL;
+				return -1;
+			}
+
+			err = ioctl(lib_cfg.ip_fd, SIOCDIFADDR, &ifr);
+		}
+
+		if (broadcast) {
+			free(broadcast);
+		}
+	} else {
+		/* IPv6 */
+		struct in6_aliasreq ifra6;
+		struct sockaddr_in6 *sin6_addr, *sin6_mask;
+		int prefix_len;
+		int i;
+
+		memset(&ifra6, 0, sizeof(ifra6));
+		strncpy(ifra6.ifra_name, nozzle->name, IFNAMSIZ);
+
+		/* Parse prefix length */
+		prefix_len = atoi(prefix);
+		if (prefix_len <= 0 || prefix_len > 128) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		if (command == IP_ADD) {
+			/* Set address */
+			sin6_addr = &ifra6.ifra_addr;
+			sin6_addr->sin6_family = AF_INET6;
+			sin6_addr->sin6_len = sizeof(struct sockaddr_in6);
+			if (inet_pton(AF_INET6, ipaddr, &sin6_addr->sin6_addr) <= 0) {
+				errno = EINVAL;
+				return -1;
+			}
+
+			/* Set prefix mask */
+			sin6_mask = &ifra6.ifra_prefixmask;
+			sin6_mask->sin6_family = AF_INET6;
+			sin6_mask->sin6_len = sizeof(struct sockaddr_in6);
+
+			/* Convert prefix length to mask */
+			for (i = 0; i < 16; i++) {
+				if (prefix_len >= 8) {
+					sin6_mask->sin6_addr.s6_addr[i] = 0xff;
+					prefix_len -= 8;
+				} else if (prefix_len > 0) {
+					sin6_mask->sin6_addr.s6_addr[i] = (0xff << (8 - prefix_len)) & 0xff;
+					prefix_len = 0;
+				} else {
+					sin6_mask->sin6_addr.s6_addr[i] = 0;
+				}
+			}
+
+			/* Set address lifetime to infinity */
+			ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
+			ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
+
+			err = ioctl(lib_cfg.ip6_fd, SIOCAIFADDR_IN6, &ifra6);
+		} else {
+			/* Delete address */
+			struct in6_ifreq ifr6;
+
+			memset(&ifr6, 0, sizeof(ifr6));
+			strncpy(ifr6.ifr_name, nozzle->name, IFNAMSIZ);
+
+			ifr6.ifr_addr.sin6_family = AF_INET6;
+			ifr6.ifr_addr.sin6_len = sizeof(struct sockaddr_in6);
+			if (inet_pton(AF_INET6, ipaddr, &ifr6.ifr_addr.sin6_addr) <= 0) {
+				errno = EINVAL;
+				return -1;
+			}
+
+			err = ioctl(lib_cfg.ip6_fd, SIOCDIFADDR_IN6, &ifr6);
+		}
+	}
+
+	if (err < 0) {
+		err = -1;
+	}
+
+	return err;
+#endif
+#ifdef KNET_SOLARIS
 	/*
 	 * TODO: port to use ioctl and such, drop shell forking here
 	 */
@@ -441,12 +601,10 @@ out:
 
 	if (command == IP_ADD) {
 		char *addif = "";
-#ifdef KNET_SOLARIS
 		// Solaris needs a new logical i/f for each address
 		if (secondary) {
 			addif = "addif";
 		}
-#endif
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ifconfig %s %s %s %s/%s",
 			 nozzle->name, proto, addif, ipaddr, prefix);
@@ -455,19 +613,7 @@ out:
 				 sizeof(cmdline) - strlen(cmdline) -1,
 				 " broadcast %s", broadcast);
 		}
-#ifdef KNET_BSD
-		if ((secondary) && (fam == AF_INET)) {
-			snprintf(cmdline + strlen(cmdline),
-				 sizeof(cmdline) - strlen(cmdline) -1,
-				 " alias");
-		}
-#endif
 	} else {
-#ifdef KNET_BSD
-		snprintf(cmdline, sizeof(cmdline)-1,
-				 "ifconfig %s %s %s/%s delete",
-				 nozzle->name, proto, ipaddr, prefix);
-#elif KNET_SOLARIS
 		/* If this is the first IP (on tap0) then we can't use removeif,
 		 * we need to set the IP to 0
 		 */
@@ -479,7 +625,6 @@ out:
 		snprintf(cmdline, sizeof(cmdline)-1,
 			 "ifconfig %s %s %s %s",
 			 nozzle->name, proto, removeif, ipaddr);
-#endif
 	}
 	if (broadcast) {
 		free(broadcast);
@@ -703,14 +848,37 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 #endif
 #ifdef KNET_BSD
 		lib_cfg.ioctlfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
-#endif
-#ifdef KNET_SOLARIS
-		lib_cfg.ioctlfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-#endif
 		if (lib_cfg.ioctlfd < 0) {
 			savederrno = errno;
 			goto out_error;
 		}
+		lib_cfg.ip_fd = socket(AF_INET, SOCK_DGRAM, 0);
+		if (lib_cfg.ip_fd < 0) {
+			savederrno = errno;
+			close(lib_cfg.ioctlfd);
+			goto out_error;
+		}
+		lib_cfg.ip6_fd = socket(AF_INET6, SOCK_DGRAM, 0);
+		if (lib_cfg.ip6_fd < 0) {
+			savederrno = errno;
+			close(lib_cfg.ioctlfd);
+			close(lib_cfg.ip_fd);
+			goto out_error;
+		}
+#endif
+#ifdef KNET_SOLARIS
+		lib_cfg.ioctlfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+		if (lib_cfg.ioctlfd < 0) {
+			savederrno = errno;
+			goto out_error;
+		}
+#endif
+#ifndef KNET_BSD
+		if (lib_cfg.ioctlfd < 0) {
+			savederrno = errno;
+			goto out_error;
+		}
+#endif
 		lib_init = 1;
 	}
 
