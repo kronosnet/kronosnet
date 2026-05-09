@@ -716,6 +716,18 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	memmove(ifname, devname, IFNAMSIZ);
 	ifflags = IFF_TAP | IFF_NO_PI;
 
+	/*
+	 * Use IFF_TUN_EXCL to prevent race conditions when creating named devices.
+	 * Without this flag, another process could create the same device name
+	 * between our check and creation, leading to unexpected behavior.
+	 * Available since Linux 3.4. Fallback to non-exclusive if not supported.
+	 */
+	if (strlen(devname) > 0) {
+#ifdef IFF_TUN_EXCL
+		ifflags |= IFF_TUN_EXCL;
+#endif
+	}
+
 	if (ioctl(nozzle->fd, TUNSETIFF, &ifr) < 0) {
 		savederrno = errno;
 		goto out_error;
