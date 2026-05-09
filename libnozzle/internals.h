@@ -26,6 +26,10 @@ struct nozzle_lib_config {
 #ifdef KNET_LINUX
 	struct nl_sock *nlsock;
 #endif
+#ifdef KNET_BSD
+	int ip_fd;
+	int ip6_fd;
+#endif
 };
 
 #define MACADDR_CHAR_MAX   18
