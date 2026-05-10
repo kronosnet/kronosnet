@@ -1227,6 +1227,97 @@ pub fn get_compress_list() -> Result<Vec<CompressInfo>>
     }
 }
 
+/// Crypto cipher info returned from [get_crypto_cipher_list]
+pub struct CryptoCipherInfo
+{
+    pub name: String,
+    pub mode: String,
+    pub key_bits: i32,
+}
+impl CryptoCipherInfo
+{
+    pub fn new(c_info: ffi::knet_crypto_cipher_info) -> CryptoCipherInfo
+    {
+	let name_cstr = unsafe {CStr::from_ptr(c_info.name) };
+	let name = match name_cstr.to_str() {
+	    Ok(s) => s.to_string(),
+	    Err(e) => e.to_string(),
+	};
+	let mode_cstr = unsafe {CStr::from_ptr(c_info.mode) };
+	let mode = match mode_cstr.to_str() {
+	    Ok(s) => s.to_string(),
+	    Err(e) => e.to_string(),
+	};
+	CryptoCipherInfo {name,
+			  mode,
+			  key_bits: c_info.key_bits}
+    }
+}
+
+/// Get a list of valid crypto cipher options
+pub fn get_crypto_cipher_list() -> Result<Vec<CryptoCipherInfo>>
+{
+    let mut list_entries: usize = 32;
+    let mut c_list : [ffi::knet_crypto_cipher_info; 32] =
+	[ ffi::knet_crypto_cipher_info{name: null(), mode: null(), key_bits: 0, pad:[0; 256]}; 32];
+
+    let res = unsafe {
+	ffi::knet_get_crypto_cipher_list(&mut c_list[0],
+				      &mut list_entries)
+    };
+    if res == 0 {
+	let mut retvec = Vec::<CryptoCipherInfo>::new();
+	for i in c_list.iter().take(list_entries) {
+	    retvec.push(CryptoCipherInfo::new(*i));
+	}
+	Ok(retvec)
+    } else {
+	Err(Error::last_os_error())
+    }
+}
+
+/// Crypto hash info returned from [get_crypto_hash_list]
+pub struct CryptoHashInfo
+{
+    pub name: String,
+    pub hash_bits: i32,
+}
+impl CryptoHashInfo
+{
+    pub fn new(c_info: ffi::knet_crypto_hash_info) -> CryptoHashInfo
+    {
+	let cstr = unsafe {CStr::from_ptr(c_info.name) };
+	let name = match cstr.to_str() {
+	    Ok(s) => s.to_string(),
+	    Err(e) => e.to_string(),
+	};
+	CryptoHashInfo {name,
+			hash_bits: c_info.hash_bits}
+    }
+}
+
+/// Get a list of valid crypto hash options
+pub fn get_crypto_hash_list() -> Result<Vec<CryptoHashInfo>>
+{
+    let mut list_entries: usize = 16;
+    let mut c_list : [ffi::knet_crypto_hash_info; 16] =
+	[ ffi::knet_crypto_hash_info{name: null(), hash_bits: 0, pad:[0; 256]}; 16];
+
+    let res = unsafe {
+	ffi::knet_get_crypto_hash_list(&mut c_list[0],
+				    &mut list_entries)
+    };
+    if res == 0 {
+	let mut retvec = Vec::<CryptoHashInfo>::new();
+	for i in c_list.iter().take(list_entries) {
+	    retvec.push(CryptoHashInfo::new(*i));
+	}
+	Ok(retvec)
+    } else {
+	Err(Error::last_os_error())
+    }
+}
+
 /// Enable callback when the onwire version for a node changes
 pub fn handle_enable_onwire_ver_notify(handle: &Handle,
 				       private_data: u64,
