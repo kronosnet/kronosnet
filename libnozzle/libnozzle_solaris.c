@@ -69,36 +69,30 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 	int fam;
 	int err = 0;
 	char *broadcast = NULL;
+	int prefix_len;
 
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
+	fam = _determine_family(ipaddr);
+
+	prefix_len = _validate_prefix(fam, prefix);
+	if (prefix_len < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
-	} else {
-		fam = AF_INET6;
 	}
 
 	if (fam == AF_INET) {
 		struct lifreq lifr;
 		struct sockaddr_in *sin_addr, *sin_mask, *sin_bcast;
-		int prefix_len;
 		uint32_t mask;
 
 		memset(&lifr, 0, sizeof(lifr));
 		strncpy(lifr.lifr_name, nozzle->name, LIFNAMSIZ);
-
-		/* Parse prefix length */
-		prefix_len = atoi(prefix);
-		if (prefix_len <= 0 || prefix_len > 32) {
-			if (broadcast) {
-				free(broadcast);
-			}
-			errno = EINVAL;
-			return -1;
-		}
 
 		/* For secondary addresses, create logical interface first */
 		if (secondary) {
@@ -116,7 +110,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		/* Set netmask */
 		sin_mask = (struct sockaddr_in *)&lifr.lifr_addr;
 		sin_mask->sin_family = AF_INET;
-		mask = htonl(~((1 << (32 - prefix_len)) - 1));
+		mask = _ipv4_prefix_to_netmask(prefix_len);
 		sin_mask->sin_addr.s_addr = mask;
 
 		if (ioctl(lib_cfg.ip_fd, SIOCSLIFNETMASK, &lifr) < 0) {
@@ -174,18 +168,9 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		/* IPv6 */
 		struct lifreq lifr;
 		struct sockaddr_in6 *sin6_addr, *sin6_mask;
-		int prefix_len;
-		int i;
 
 		memset(&lifr, 0, sizeof(lifr));
 		strncpy(lifr.lifr_name, nozzle->name, LIFNAMSIZ);
-
-		/* Parse prefix length */
-		prefix_len = atoi(prefix);
-		if (prefix_len <= 0 || prefix_len > 128) {
-			errno = EINVAL;
-			return -1;
-		}
 
 		/* For secondary addresses, create logical interface first */
 		if (secondary) {
@@ -200,18 +185,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		sin6_mask = (struct sockaddr_in6 *)&lifr.lifr_addr;
 		sin6_mask->sin6_family = AF_INET6;
 
-		/* Convert prefix length to mask */
-		for (i = 0; i < 16; i++) {
-			if (prefix_len >= 8) {
-				sin6_mask->sin6_addr.s6_addr[i] = 0xff;
-				prefix_len -= 8;
-			} else if (prefix_len > 0) {
-				sin6_mask->sin6_addr.s6_addr[i] = (0xff << (8 - prefix_len)) & 0xff;
-				prefix_len = 0;
-			} else {
-				sin6_mask->sin6_addr.s6_addr[i] = 0;
-			}
-		}
+		_ipv6_prefix_to_mask(prefix_len, &sin6_mask->sin6_addr);
 
 		if (ioctl(lib_cfg.ip6_fd, SIOCSLIFNETMASK, &lifr) < 0) {
 			if (secondary) {
@@ -219,9 +193,6 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 			}
 			return -1;
 		}
-
-		/* Reset prefix_len for address setting */
-		prefix_len = atoi(prefix);
 
 		/* Set address */
 		sin6_addr = (struct sockaddr_in6 *)&lifr.lifr_addr;
@@ -256,15 +227,18 @@ int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 	int err = 0;
 	char *broadcast = NULL;
 
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
+	fam = _determine_family(ipaddr);
+
+	if (_validate_prefix(fam, prefix) < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
-	} else {
-		fam = AF_INET6;
 	}
 
 	if (fam == AF_INET) {

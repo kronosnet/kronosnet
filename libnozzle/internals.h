@@ -12,6 +12,7 @@
 #include "config.h"
 
 #include <limits.h>
+#include <netinet/in.h>
 
 #ifdef KNET_LINUX
 #include <netlink/netlink.h>
@@ -111,6 +112,11 @@ int find_ip(nozzle_t nozzle,
 	    struct nozzle_ip **ip, struct nozzle_ip **ip_prev);
 
 char *generate_v4_broadcast(const char *ipaddr, const char *prefix);
+
+int _determine_family(const char *ipaddr);
+int _validate_prefix(int family, const char *prefix);
+uint32_t _ipv4_prefix_to_netmask(int prefix_len);
+void _ipv6_prefix_to_mask(int prefix_len, struct in6_addr *mask);
 
 /*
  * Platform-specific functions

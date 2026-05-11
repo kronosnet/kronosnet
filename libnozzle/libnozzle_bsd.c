@@ -72,34 +72,29 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 	int fam;
 	int err = 0;
 	char *broadcast = NULL;
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
+	int prefix_len;
+
+	fam = _determine_family(ipaddr);
+
+	prefix_len = _validate_prefix(fam, prefix);
+	if (prefix_len < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
-	} else {
-		fam = AF_INET6;
 	}
 
 	if (fam == AF_INET) {
 		struct in_aliasreq ifra;
-		int prefix_len;
 		uint32_t mask;
 
 		memset(&ifra, 0, sizeof(ifra));
 		strncpy(ifra.ifra_name, nozzle->name, IFNAMSIZ);
-
-		/* Parse prefix length */
-		prefix_len = atoi(prefix);
-		if (prefix_len <= 0 || prefix_len > 32) {
-			if (broadcast) {
-				free(broadcast);
-			}
-			errno = EINVAL;
-			return -1;
-		}
 
 		/* Set address */
 		ifra.ifra_addr.sin_family = AF_INET;
@@ -115,7 +110,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		/* Set netmask */
 		ifra.ifra_mask.sin_family = AF_INET;
 		ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
-		mask = htonl(~((1 << (32 - prefix_len)) - 1));
+		mask = _ipv4_prefix_to_netmask(prefix_len);
 		ifra.ifra_mask.sin_addr.s_addr = mask;
 
 		/* Set broadcast address */
@@ -138,18 +133,9 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		/* IPv6 */
 		struct in6_aliasreq ifra6;
 		struct sockaddr_in6 *sin6_addr, *sin6_mask;
-		int prefix_len;
-		int i;
 
 		memset(&ifra6, 0, sizeof(ifra6));
 		strncpy(ifra6.ifra_name, nozzle->name, IFNAMSIZ);
-
-		/* Parse prefix length */
-		prefix_len = atoi(prefix);
-		if (prefix_len <= 0 || prefix_len > 128) {
-			errno = EINVAL;
-			return -1;
-		}
 
 		/* Set address */
 		sin6_addr = &ifra6.ifra_addr;
@@ -165,18 +151,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		sin6_mask->sin6_family = AF_INET6;
 		sin6_mask->sin6_len = sizeof(struct sockaddr_in6);
 
-		/* Convert prefix length to mask */
-		for (i = 0; i < 16; i++) {
-			if (prefix_len >= 8) {
-				sin6_mask->sin6_addr.s6_addr[i] = 0xff;
-				prefix_len -= 8;
-			} else if (prefix_len > 0) {
-				sin6_mask->sin6_addr.s6_addr[i] = (0xff << (8 - prefix_len)) & 0xff;
-				prefix_len = 0;
-			} else {
-				sin6_mask->sin6_addr.s6_addr[i] = 0;
-			}
-		}
+		_ipv6_prefix_to_mask(prefix_len, &sin6_mask->sin6_addr);
 
 		/* Set address lifetime to infinity */
 		ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
@@ -197,15 +172,19 @@ int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 	int fam;
 	int err = 0;
 	char *broadcast = NULL;
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
+
+	fam = _determine_family(ipaddr);
+
+	if (_validate_prefix(fam, prefix) < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
-	} else {
-		fam = AF_INET6;
 	}
 
 	if (fam == AF_INET) {
