@@ -75,33 +75,13 @@ static int nlerr_to_errno(int nlerr)
 	}
 }
 
-int _platform_init(struct nozzle_lib_config *lib_cfg)
-{
-	lib_cfg->nlsock = nl_socket_alloc();
-	if (!lib_cfg->nlsock) {
-		errno = ENOMEM;
-		return -1;
-	}
+enum netlink_addr_operation {
+	NETLINK_ADDR_ADD,
+	NETLINK_ADDR_DELETE
+};
 
-	if (nl_connect(lib_cfg->nlsock, NETLINK_ROUTE) < 0) {
-		nl_socket_free(lib_cfg->nlsock);
-		lib_cfg->nlsock = NULL;
-		errno = EBUSY;
-		return -1;
-	}
-
-	return 0;
-}
-
-void _platform_fini(struct nozzle_lib_config *lib_cfg)
-{
-	if (lib_cfg->nlsock) {
-		nl_socket_free(lib_cfg->nlsock);
-		lib_cfg->nlsock = NULL;
-	}
-}
-
-int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+static int _netlink_modify_addr(nozzle_t nozzle, const char *ipaddr, const char *prefix,
+				 enum netlink_addr_operation operation)
 {
 	struct rtnl_addr *addr = NULL;
 	struct nl_addr *local_addr = NULL;
@@ -121,7 +101,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		return -1;
 	}
 
-	if (fam == AF_INET) {
+	if (fam == AF_INET && operation == NETLINK_ADDR_ADD) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
@@ -184,7 +164,11 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 
 	rtnl_addr_set_prefixlen(addr, prefix_len);
 
-	nlerr = rtnl_addr_add(lib_cfg.nlsock, addr, 0);
+	if (operation == NETLINK_ADDR_ADD) {
+		nlerr = rtnl_addr_add(lib_cfg.nlsock, addr, 0);
+	} else {
+		nlerr = rtnl_addr_delete(lib_cfg.nlsock, addr, 0);
+	}
 	if (nlerr < 0) {
 		errno = nlerr_to_errno(nlerr);
 		err = -1;
@@ -210,93 +194,40 @@ out:
 	return err;
 }
 
-int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+int _platform_init(struct nozzle_lib_config *lib_cfg)
 {
-	struct rtnl_addr *addr = NULL;
-	struct nl_addr *local_addr = NULL;
-	struct nl_cache *cache = NULL;
-	char *broadcast = NULL;
-	int fam;
-	int ifindex;
-	int nlerr;
-	int err = 0;
-	int prefix_len;
-
-	fam = _determine_family(ipaddr);
-
-	prefix_len = _validate_prefix(fam, prefix);
-	if (prefix_len < 0) {
+	lib_cfg->nlsock = nl_socket_alloc();
+	if (!lib_cfg->nlsock) {
+		errno = ENOMEM;
 		return -1;
 	}
 
-	if (fam == AF_INET) {
-		broadcast = generate_v4_broadcast(ipaddr, prefix);
-		if (!broadcast) {
-			errno = EINVAL;
-			return -1;
-		}
+	if (nl_connect(lib_cfg->nlsock, NETLINK_ROUTE) < 0) {
+		nl_socket_free(lib_cfg->nlsock);
+		lib_cfg->nlsock = NULL;
+		errno = EBUSY;
+		return -1;
 	}
 
-	addr = rtnl_addr_alloc();
-	if (!addr) {
-		errno = ENOMEM;
-		err = -1;
-		goto out;
-	}
+	return 0;
+}
 
-	nlerr = rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache);
-	if (nlerr < 0) {
-		errno = nlerr_to_errno(nlerr);
-		err = -1;
-		goto out;
+void _platform_fini(struct nozzle_lib_config *lib_cfg)
+{
+	if (lib_cfg->nlsock) {
+		nl_socket_free(lib_cfg->nlsock);
+		lib_cfg->nlsock = NULL;
 	}
+}
 
-	ifindex = rtnl_link_name2i(cache, nozzle->name);
-	if (ifindex == 0) {
-		errno = ENOENT;
-		err = -1;
-		goto out;
-	}
+int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+{
+	return _netlink_modify_addr(nozzle, ipaddr, prefix, NETLINK_ADDR_ADD);
+}
 
-	rtnl_addr_set_ifindex(addr, ifindex);
-
-	nlerr = nl_addr_parse(ipaddr, fam, &local_addr);
-	if (nlerr < 0) {
-		errno = nlerr_to_errno(nlerr);
-		err = -1;
-		goto out;
-	}
-
-	nlerr = rtnl_addr_set_local(addr, local_addr);
-	if (nlerr < 0) {
-		errno = nlerr_to_errno(nlerr);
-		err = -1;
-		goto out;
-	}
-
-	rtnl_addr_set_prefixlen(addr, prefix_len);
-
-	nlerr = rtnl_addr_delete(lib_cfg.nlsock, addr, 0);
-	if (nlerr < 0) {
-		errno = nlerr_to_errno(nlerr);
-		err = -1;
-		goto out;
-	}
-
-out:
-	if (addr) {
-		rtnl_addr_put(addr);
-	}
-	if (local_addr) {
-		nl_addr_put(local_addr);
-	}
-	if (cache) {
-		nl_cache_put(cache);
-	}
-	if (broadcast) {
-		free(broadcast);
-	}
-	return err;
+int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+{
+	return _netlink_modify_addr(nozzle, ipaddr, prefix, NETLINK_ADDR_DELETE);
 }
 
 int _platform_create_tap(nozzle_t nozzle, char *devname, size_t devname_size)

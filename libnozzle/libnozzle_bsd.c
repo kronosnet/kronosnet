@@ -67,29 +67,17 @@ void _platform_fini(struct nozzle_lib_config *lib_cfg)
 	}
 }
 
-int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+enum bsd_addr_operation {
+	BSD_ADDR_ADD,
+	BSD_ADDR_DELETE
+};
+
+static int _bsd_modify_ipv4(nozzle_t nozzle, const char *ipaddr, int prefix_len,
+			     const char *broadcast, enum bsd_addr_operation operation)
 {
-	int fam;
-	int err = 0;
-	char *broadcast = NULL;
-	int prefix_len;
+	int err;
 
-	fam = _determine_family(ipaddr);
-
-	prefix_len = _validate_prefix(fam, prefix);
-	if (prefix_len < 0) {
-		return -1;
-	}
-
-	if (fam == AF_INET) {
-		broadcast = generate_v4_broadcast(ipaddr, prefix);
-		if (!broadcast) {
-			errno = EINVAL;
-			return -1;
-		}
-	}
-
-	if (fam == AF_INET) {
+	if (operation == BSD_ADDR_ADD) {
 		struct in_aliasreq ifra;
 		uint32_t mask;
 
@@ -100,9 +88,6 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		ifra.ifra_addr.sin_family = AF_INET;
 		ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
 		if (inet_pton(AF_INET, ipaddr, &ifra.ifra_addr.sin_addr) <= 0) {
-			if (broadcast) {
-				free(broadcast);
-			}
 			errno = EINVAL;
 			return -1;
 		}
@@ -118,19 +103,39 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 			ifra.ifra_broadaddr.sin_family = AF_INET;
 			ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
 			if (inet_pton(AF_INET, broadcast, &ifra.ifra_broadaddr.sin_addr) <= 0) {
-				free(broadcast);
 				errno = EINVAL;
 				return -1;
 			}
 		}
 
 		err = ioctl(lib_cfg.ip_fd, SIOCAIFADDR, &ifra);
-
-		if (broadcast) {
-			free(broadcast);
-		}
 	} else {
-		/* IPv6 */
+		struct ifreq ifr;
+		struct sockaddr_in *sin;
+
+		memset(&ifr, 0, sizeof(ifr));
+		strncpy(ifr.ifr_name, nozzle->name, IFNAMSIZ);
+
+		sin = (struct sockaddr_in *)&ifr.ifr_addr;
+		sin->sin_family = AF_INET;
+		sin->sin_len = sizeof(struct sockaddr_in);
+		if (inet_pton(AF_INET, ipaddr, &sin->sin_addr) <= 0) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		err = ioctl(lib_cfg.ip_fd, SIOCDIFADDR, &ifr);
+	}
+
+	return (err < 0) ? -1 : 0;
+}
+
+static int _bsd_modify_ipv6(nozzle_t nozzle, const char *ipaddr, int prefix_len,
+			     enum bsd_addr_operation operation)
+{
+	int err;
+
+	if (operation == BSD_ADDR_ADD) {
 		struct in6_aliasreq ifra6;
 		struct sockaddr_in6 *sin6_addr, *sin6_mask;
 
@@ -158,61 +163,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
 
 		err = ioctl(lib_cfg.ip6_fd, SIOCAIFADDR_IN6, &ifra6);
-	}
-
-	if (err < 0) {
-		err = -1;
-	}
-
-	return err;
-}
-
-int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
-{
-	int fam;
-	int err = 0;
-	char *broadcast = NULL;
-
-	fam = _determine_family(ipaddr);
-
-	if (_validate_prefix(fam, prefix) < 0) {
-		return -1;
-	}
-
-	if (fam == AF_INET) {
-		broadcast = generate_v4_broadcast(ipaddr, prefix);
-		if (!broadcast) {
-			errno = EINVAL;
-			return -1;
-		}
-	}
-
-	if (fam == AF_INET) {
-		/* Delete address */
-		struct ifreq ifr;
-		struct sockaddr_in *sin;
-
-		memset(&ifr, 0, sizeof(ifr));
-		strncpy(ifr.ifr_name, nozzle->name, IFNAMSIZ);
-
-		sin = (struct sockaddr_in *)&ifr.ifr_addr;
-		sin->sin_family = AF_INET;
-		sin->sin_len = sizeof(struct sockaddr_in);
-		if (inet_pton(AF_INET, ipaddr, &sin->sin_addr) <= 0) {
-			if (broadcast) {
-				free(broadcast);
-			}
-			errno = EINVAL;
-			return -1;
-		}
-
-		err = ioctl(lib_cfg.ip_fd, SIOCDIFADDR, &ifr);
-
-		if (broadcast) {
-			free(broadcast);
-		}
 	} else {
-		/* Delete address */
 		struct in6_ifreq ifr6;
 
 		memset(&ifr6, 0, sizeof(ifr6));
@@ -228,8 +179,64 @@ int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		err = ioctl(lib_cfg.ip6_fd, SIOCDIFADDR_IN6, &ifr6);
 	}
 
-	if (err < 0) {
-		err = -1;
+	return (err < 0) ? -1 : 0;
+}
+
+int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+{
+	int fam;
+	int err;
+	char *broadcast = NULL;
+	int prefix_len;
+
+	fam = _determine_family(ipaddr);
+
+	prefix_len = _validate_prefix(fam, prefix);
+	if (prefix_len < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
+		broadcast = generate_v4_broadcast(ipaddr, prefix);
+		if (!broadcast) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		err = _bsd_modify_ipv4(nozzle, ipaddr, prefix_len, broadcast, BSD_ADDR_ADD);
+		free(broadcast);
+	} else {
+		err = _bsd_modify_ipv6(nozzle, ipaddr, prefix_len, BSD_ADDR_ADD);
+	}
+
+	return err;
+}
+
+int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary)
+{
+	int fam;
+	int err;
+	char *broadcast = NULL;
+	int prefix_len;
+
+	fam = _determine_family(ipaddr);
+
+	prefix_len = _validate_prefix(fam, prefix);
+	if (prefix_len < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
+		broadcast = generate_v4_broadcast(ipaddr, prefix);
+		if (!broadcast) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		err = _bsd_modify_ipv4(nozzle, ipaddr, prefix_len, broadcast, BSD_ADDR_DELETE);
+		free(broadcast);
+	} else {
+		err = _bsd_modify_ipv6(nozzle, ipaddr, prefix_len, BSD_ADDR_DELETE);
 	}
 
 	return err;
