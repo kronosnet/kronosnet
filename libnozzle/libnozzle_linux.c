@@ -112,15 +112,21 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 	int ifindex;
 	int nlerr;
 	int err = 0;
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
+	int prefix_len;
+
+	fam = _determine_family(ipaddr);
+
+	prefix_len = _validate_prefix(fam, prefix);
+	if (prefix_len < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
-	} else {
-		fam = AF_INET6;
 	}
 
 	addr = rtnl_addr_alloc();
@@ -176,7 +182,7 @@ int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		}
 	}
 
-	rtnl_addr_set_prefixlen(addr, atoi(prefix));
+	rtnl_addr_set_prefixlen(addr, prefix_len);
 
 	nlerr = rtnl_addr_add(lib_cfg.nlsock, addr, 0);
 	if (nlerr < 0) {
@@ -214,15 +220,21 @@ int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 	int ifindex;
 	int nlerr;
 	int err = 0;
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
+	int prefix_len;
+
+	fam = _determine_family(ipaddr);
+
+	prefix_len = _validate_prefix(fam, prefix);
+	if (prefix_len < 0) {
+		return -1;
+	}
+
+	if (fam == AF_INET) {
 		broadcast = generate_v4_broadcast(ipaddr, prefix);
 		if (!broadcast) {
 			errno = EINVAL;
 			return -1;
 		}
-	} else {
-		fam = AF_INET6;
 	}
 
 	addr = rtnl_addr_alloc();
@@ -262,7 +274,7 @@ int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, in
 		goto out;
 	}
 
-	rtnl_addr_set_prefixlen(addr, atoi(prefix));
+	rtnl_addr_set_prefixlen(addr, prefix_len);
 
 	nlerr = rtnl_addr_delete(lib_cfg.nlsock, addr, 0);
 	if (nlerr < 0) {
