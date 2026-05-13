@@ -38,7 +38,7 @@ static void test(void)
 		TEST_EXIT(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_handle_set_host_defrag_bufs with invalid min_defrag_bufs (0)");
 	FAIL_ON_SUCCESS(knet_handle_set_host_defrag_bufs(knet_h1, 0, max_defrag_bufs, shrink_threshold, reclaim_policy), EINVAL);

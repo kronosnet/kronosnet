@@ -36,7 +36,7 @@ static void test(void)
 		TEST_EXIT(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_handle_get_onwire_ver with invalid host_id");
 	FAIL_ON_SUCCESS(knet_handle_get_onwire_ver(knet_h1, 199, &onwire_min_ver, &onwire_max_ver, &onwire_ver), EINVAL);

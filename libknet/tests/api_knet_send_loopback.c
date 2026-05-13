@@ -71,7 +71,7 @@ static void test(void)
 	memset(send_buff, 0, sizeof(send_buff));
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 
 	log_test(logfd, "Test configuring multiple links with loopback");
@@ -82,24 +82,24 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
 
-	if (_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
+	if (_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
 		log_test(logfd, "Managed to configure two LOOPBACK links - this is wrong");
 		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test configuring UDP link after loopback");
 
-	if (_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd) == 0) {
+	if (_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd) == 0) {
 		log_test(logfd, "Managed to configure UDP and LOOPBACK links together: %s", strerror(errno));
 		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test configuring UDP link before loopback");
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
-	if (_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	if (_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
 		log_test(logfd, "Managed to configure LOOPBACK link after UDP: %s", strerror(errno));
 		TEST_EXIT_CLEAN(FAIL);
 	}
@@ -107,7 +107,7 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 1));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));

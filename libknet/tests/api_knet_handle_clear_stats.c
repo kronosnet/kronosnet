@@ -61,7 +61,7 @@ static void test(void)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_send with valid data");
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
@@ -73,7 +73,7 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 

@@ -61,7 +61,7 @@ static void test(uint8_t transport)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 1));
 
@@ -95,7 +95,7 @@ static void test(uint8_t transport)
 
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
-	if (_knet_link_set_config(knet_h1, 1, 0, transport, 0, AF_INET, 0, &lo, logfd) < 0 ) {
+	if (_ts_knet_link_set_config(knet_h1, 1, 0, transport, 0, AF_INET, 0, &lo, logfd) < 0 ) {
 		int exit_status = FAIL;
 		log_test(logfd, "Unable to configure link: %s", strerror(errno));
 		TEST_EXIT_CLEAN(exit_status);

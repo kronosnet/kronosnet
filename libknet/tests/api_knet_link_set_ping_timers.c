@@ -49,7 +49,7 @@ static void test(void)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_link_set_ping_timers with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_set_ping_timers(knet_h1, 1, 0, 1000, 2000, 2048), EINVAL);

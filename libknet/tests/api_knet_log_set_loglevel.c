@@ -37,7 +37,7 @@ static void test(void)
 		TEST_EXIT(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_INFO, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_INFO, knet_h);
 
 	log_test(logfd, "Test knet_log_set_loglevel incorrect subsystem");
 	FAIL_ON_SUCCESS(knet_log_set_loglevel(knet_h1, KNET_SUB_UNKNOWN - 1, KNET_LOG_DEBUG), EINVAL);

@@ -42,7 +42,7 @@ static void test(void)
 		TEST_EXIT(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_link_get_link_list with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_get_link_list(knet_h1, 1, link_ids, &link_ids_entries), EINVAL);
@@ -62,7 +62,7 @@ static void test(void)
 	}
 
 	log_test(logfd, "Test knet_link_get_link_list with 1 link");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_get_link_list(knet_h1, 1, link_ids, &link_ids_entries));
 	if ((link_ids_entries != 1) || (link_ids[0] != 0)) {
 		log_test(logfd, "knet_link_get_link_list returned incorrect values");

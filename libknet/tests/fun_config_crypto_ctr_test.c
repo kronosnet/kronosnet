@@ -72,7 +72,7 @@ static void test_ctr_mode(const char *model, const char *cipher)
 
 	log_test(logfd, "=== Test %s with %s/sha256 ===", model, cipher);
 
-	knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	_ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -103,7 +103,7 @@ static void test_ctr_mode(const char *model, const char *cipher)
 
 	/* Set up loopback link */
 	FAIL_ON_ERR(knet_host_add(knet_h[1], 1));
-	FAIL_ON_ERR(_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 1));
 	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, 10, logfd, stdout));

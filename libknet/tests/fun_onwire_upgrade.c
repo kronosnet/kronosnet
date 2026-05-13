@@ -32,7 +32,7 @@ static int test_logfd;
 
 static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, uint8_t max, int seconds, int logfd, FILE *std)
 {
-	if (knet_handle_disconnect_links(knet_h, logfd) < 0) {
+	if (_ts_knet_handle_disconnect_links(knet_h, logfd) < 0) {
 		return -1;
 	}
 
@@ -57,7 +57,7 @@ static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, 
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
-	if (knet_handle_reconnect_links(knet_h, logfd) < 0) {
+	if (_ts_knet_handle_reconnect_links(knet_h, logfd) < 0) {
 		return -1;
 	}
 
@@ -94,7 +94,7 @@ static void test(void)
 	}
 
 
-	knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
+	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 
 
 	for (i = 1; i <= TESTNODES; i++) {
@@ -103,7 +103,7 @@ static void test(void)
 	}
 
 
-	knet_handle_join_nodes(knet_h, TESTNODES, 1, AF_INET, KNET_TRANSPORT_UDP, logfd);
+	_ts_knet_handle_join_nodes(knet_h, TESTNODES, 1, AF_INET, KNET_TRANSPORT_UDP, logfd);
 
 
 	log_test(logfd, "Test normal onwire upgrade from %u to %u", knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1);

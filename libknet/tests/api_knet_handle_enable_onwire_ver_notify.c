@@ -46,7 +46,7 @@ static void test(void)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_handle_enable_onwire_ver_notify with no private_data");
 	FAIL_ON_ERR(knet_handle_enable_onwire_ver_notify(knet_h1, NULL, onwire_ver_notify));

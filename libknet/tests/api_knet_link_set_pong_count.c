@@ -48,7 +48,7 @@ static void test(void)
 		TEST_EXIT(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_link_set_pong_count with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_set_pong_count(knet_h1, 1, 0, 2), EINVAL);

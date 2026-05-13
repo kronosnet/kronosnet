@@ -36,7 +36,7 @@ static void test(void)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	knet_h1->onwire_min_ver = 2;
 	knet_h1->onwire_max_ver = 3;

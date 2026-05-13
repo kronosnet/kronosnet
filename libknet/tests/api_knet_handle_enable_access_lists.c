@@ -37,7 +37,7 @@ static void test(void)
 
 
 	log_test(logfd, "Test knet_handle_enable_access_lists with invalid param (2) ");
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 	FAIL_ON_SUCCESS(knet_handle_enable_access_lists(knet_h1, 2), EINVAL);
 
 	log_test(logfd, "Test knet_handle_enable_access_lists with valid param (1) ");

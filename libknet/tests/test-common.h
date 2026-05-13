@@ -54,7 +54,7 @@
 
 #define TEST_EXIT_CLEAN(r) \
 	do { \
-		knet_handle_stop_everything(knet_h, TESTNODES, logfd); \
+		_ts_knet_handle_stop_everything(knet_h, TESTNODES, logfd); \
 		if (r == CONTINUE) { \
 			stop_logging(); \
 			return; \
@@ -118,24 +118,24 @@
 int is_memcheck(void);
 int is_helgrind(void);
 
-knet_handle_t knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[]);
+knet_handle_t _ts_knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[]);
 
 /*
  * knet_link_set_config wrapper required to find a free port
  */
 
-int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
-			  uint8_t transport, uint64_t flags, int family, int dynamic,
-			  struct sockaddr_storage *lo, int logfd);
+int _ts_knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
+			     uint8_t transport, uint64_t flags, int family, int dynamic,
+			     struct sockaddr_storage *lo, int logfd);
 
 /*
  * functional test helpers
  */
-void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, int logfd);
-void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd, uint8_t log_level);
-void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd);
-int knet_handle_disconnect_links(knet_handle_t knet_h, int logfd);
-int knet_handle_reconnect_links(knet_handle_t knet_h, int logfd);
+void _ts_knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, int logfd);
+void _ts_knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd, uint8_t log_level);
+void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd);
+int _ts_knet_handle_disconnect_links(knet_handle_t knet_h, int logfd);
+int _ts_knet_handle_reconnect_links(knet_handle_t knet_h, int logfd);
 
 /*
  * high level logging functions.
