@@ -115,7 +115,7 @@ static void test(void)
 
 	log_test(logfd, "Test knet_handle_new hostid 1, proper log_fd, proper log level (DEBUG)");
 
-	(void)knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	(void)_ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 	TEST_EXIT_CLEAN(CONTINUE);
 }
 

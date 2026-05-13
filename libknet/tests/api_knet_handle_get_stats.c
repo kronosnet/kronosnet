@@ -43,7 +43,7 @@ static void test(void)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_handle_get_stats with NULL structure pointer");
 	FAIL_ON_SUCCESS(knet_handle_get_stats(knet_h1, NULL, 0), EINVAL);

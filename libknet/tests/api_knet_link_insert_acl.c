@@ -50,7 +50,7 @@ static void test(void)
 		TEST_EXIT(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_link_insert_acl with unconfigured host");
 	FAIL_ON_SUCCESS(knet_link_insert_acl(knet_h1, 1, 0, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT), EINVAL);
@@ -79,12 +79,12 @@ static void test(void)
 	FAIL_ON_SUCCESS(knet_link_insert_acl(knet_h1, 1, 0, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT + CHECK_REJECT + 1), EINVAL);
 
 	log_test(logfd, "Test knet_link_insert_acl with point to point link");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_SUCCESS(knet_link_insert_acl(knet_h1, 1, 0, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT), EINVAL);
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
 
 	log_test(logfd, "Test knet_link_insert_acl with dynamic link");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo, logfd));
 
 	host = knet_h1->host_index[1];
 	link = &host->link[0];

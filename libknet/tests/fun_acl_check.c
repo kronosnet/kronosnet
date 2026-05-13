@@ -55,7 +55,7 @@ static int test_logfd;
 			if (recv_thread) { \
 				pthread_join(recv_thread, (void**)&thread_err); \
 			} \
-			knet_handle_stop_everything(knet_h, TESTNODES, logfd); \
+			_ts_knet_handle_stop_everything(knet_h, TESTNODES, logfd); \
 			stop_logging(); \
 			close(reply_pipe[0]); \
 			close(reply_pipe[1]); \
@@ -264,7 +264,7 @@ static void test(int transport)
 
 	// Initial setup gubbins
 	msgs_recvd = 0;
-	knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
+	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 
 	FAIL_ON_ERR_THR(knet_host_add(knet_h[2], 1));
 	FAIL_ON_ERR_THR(knet_host_add(knet_h[1], 2));

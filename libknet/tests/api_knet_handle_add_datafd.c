@@ -53,7 +53,7 @@ static void test(void)
 	}
 
 
-	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	log_test(logfd, "Test knet_handle_add_datafd with no datafd");
 	FAIL_ON_SUCCESS(knet_handle_add_datafd(knet_h1, NULL, &channel), EINVAL);

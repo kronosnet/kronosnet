@@ -346,7 +346,7 @@ static char *find_plugins_path(int logfd)
 }
 
 
-knet_handle_t knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[])
+knet_handle_t _ts_knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[])
 {
 	knet_handle_t knet_h = knet_handle_new_ex(1, logfd, log_level, 0);
 	char *plugins_path;
@@ -367,7 +367,7 @@ knet_handle_t knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet
 	}
 }
 
-int knet_handle_reconnect_links(knet_handle_t knet_h, int logfd)
+int _ts_knet_handle_reconnect_links(knet_handle_t knet_h, int logfd)
 {
 	size_t i, j;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
@@ -407,7 +407,7 @@ int knet_handle_reconnect_links(knet_handle_t knet_h, int logfd)
 	return 0;
 }
 
-int knet_handle_disconnect_links(knet_handle_t knet_h, int logfd)
+int _ts_knet_handle_disconnect_links(knet_handle_t knet_h, int logfd)
 {
 	size_t i, j;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
@@ -483,7 +483,7 @@ int make_local_sockaddr6(struct sockaddr_storage *lo, int offset, int logfd)
 	return _make_local_sockaddr(lo, offset, AF_INET6, logfd);
 }
 
-int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
+int _ts_knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			  uint8_t transport, uint64_t flags, int family, int dynamic,
 			  struct sockaddr_storage *lo, int logfd)
 {
@@ -579,7 +579,7 @@ try_again:
  * functional tests helpers
  */
 
-void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd, uint8_t log_level)
+void _ts_knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd, uint8_t log_level)
 {
 	uint8_t i;
 	char *plugins_path = find_plugins_path(logfd);
@@ -599,14 +599,14 @@ void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd
 	}
 
 	if (i < numnodes) {
-		knet_handle_stop_everything(knet_h, i, logfd);
+		_ts_knet_handle_stop_everything(knet_h, i, logfd);
 		exit(FAIL);
 	}
 
 	return;
 }
 
-void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd)
+void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd)
 {
 	uint8_t i, x, j;
 	struct sockaddr_storage src, dst;
@@ -626,7 +626,7 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 
 			if (knet_host_add(knet_h[i], j) < 0) {
 				log_test(logfd, "Unable to add host: %s", strerror(errno));
-				knet_handle_stop_everything(knet_h, numnodes, logfd);
+				_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
 				exit(FAIL);
 			}
 
@@ -636,13 +636,13 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 				while (i + x + offset++ < 65535 && res != 0) {
 					if (_make_local_sockaddr(&src, i + x + offset, family, logfd) < 0) {
 						log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-						knet_handle_stop_everything(knet_h, numnodes, logfd);
+						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
 						exit(FAIL);
 					}
 
 					if (_make_local_sockaddr(&dst, j + x + offset, family, logfd) < 0) {
 						log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-						knet_handle_stop_everything(knet_h, numnodes, logfd);
+						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
 						exit(FAIL);
 					}
 
@@ -651,7 +651,7 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 				log_test(logfd, "joining node %u with node %u via link %u src offset: %u dst offset: %u", i, j, x, i+x, j+x);
 				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
 					log_test(logfd, "unable to enable link: %s", strerror(errno));
-					knet_handle_stop_everything(knet_h, numnodes, logfd);
+					_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
 					exit(FAIL);
 				}
 			}
@@ -877,7 +877,7 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 /* Shutdown all nodes and links attached to an array of knet handles.
  * Mostly stolen from corosync code (that I wrote, before anyone complains about licences)
  */
-void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, int logfd)
+void _ts_knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, int logfd)
 {
 	int res = 0;
 	int h;

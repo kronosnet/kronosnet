@@ -43,7 +43,7 @@ static void test(const char *model)
 	}
 
 
-	knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
+	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 
 
 	/*
@@ -62,7 +62,7 @@ static void test(const char *model)
 		FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h[i], KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
 	}
 
-	knet_handle_join_nodes(knet_h, TESTNODES, 1, AF_INET, KNET_TRANSPORT_UDP, logfd);
+	_ts_knet_handle_join_nodes(knet_h, TESTNODES, 1, AF_INET, KNET_TRANSPORT_UDP, logfd);
 
 
 	/*

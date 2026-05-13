@@ -113,7 +113,7 @@ static void test_mtu(int logfd, const char *model, const char *crypto, const cha
 	size_t calculated_iface_mtu = 0, detected_iface_mtu = 0;
 
 
-	knet_h[1] = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+	knet_h[1] = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 
 	log_test(logfd, "Test knet_send with %s and valid data", model);
@@ -135,7 +135,7 @@ static void test_mtu(int logfd, const char *model, const char *crypto, const cha
 
 	FAIL_ON_ERR(knet_host_add(knet_h[1], 1));
 
-	FAIL_ON_ERR(_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 
 	FAIL_ON_ERR(knet_link_set_pong_count(knet_h[1], 1, 0, 1));
 
@@ -163,7 +163,7 @@ static void test_mtu(int logfd, const char *model, const char *crypto, const cha
 		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	knet_handle_stop_everything(knet_h, TESTNODES, logfd);
+	_ts_knet_handle_stop_everything(knet_h, TESTNODES, logfd);
 }
 
 static void test(const char *model, const char *crypto, const char *hash)
