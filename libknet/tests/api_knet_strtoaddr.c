@@ -39,35 +39,19 @@ static void test(void)
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid host");
 
-	if (!knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)) ||
-	    (errno != EINVAL)) {
-		log_test(logfd, "knet_strtoaddr accepted invalid host or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)), EINVAL);
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid port");
 
-	if (!knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)) ||
-	    (errno != EINVAL)) {
-		log_test(logfd, "knet_strtoaddr accepted invalid port or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)), EINVAL);
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid addr");
 
-	if (!knet_strtoaddr("127.0.0.1", "50000", NULL, sizeof(struct sockaddr_storage)) ||
-	    (errno != EINVAL)) {
-		log_test(logfd, "knet_strtoaddr accepted invalid addr or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_strtoaddr("127.0.0.1", "50000", NULL, sizeof(struct sockaddr_storage)), EINVAL);
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid size");
 
-	if (!knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0) ||
-	    (errno != EINVAL)) {
-		log_test(logfd, "knet_strtoaddr accepted invalid size or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0), EINVAL);
 
 	addrv4.sin_family = AF_INET;
 	addrv4.sin_addr.s_addr = htonl(0xc0a80001); /* 192.168.0.1 */

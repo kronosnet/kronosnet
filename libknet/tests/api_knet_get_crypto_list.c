@@ -35,10 +35,7 @@ static void test(void)
 
 	log_test(logfd, "Test knet_handle_get_crypto_list with no entries_list");
 
-	if ((!knet_get_crypto_list(crypto_list, NULL)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_get_crypto_list accepted invalid list_entries or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_get_crypto_list(crypto_list, NULL), EINVAL);
 
 	log_test(logfd, "Test knet_get_crypto_list with no crypto_list (get number of entries)");
 

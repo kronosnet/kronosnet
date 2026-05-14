@@ -35,10 +35,7 @@ static void test(void)
 
 	log_test(logfd, "Test knet_get_transport_list with no entries_list");
 
-	if ((!knet_get_transport_list(transport_list, NULL)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_get_transport_list accepted invalid list_entries or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_get_transport_list(transport_list, NULL), EINVAL);
 
 	log_test(logfd, "Test knet_get_transport_list with no transport_list (get number of entries)");
 

@@ -37,39 +37,27 @@ static void test(void)
 
 	log_test(logfd, "Checking knet_addrtostr with invalid ss");
 
-	if (!knet_addrtostr(NULL, sizeof(struct sockaddr_storage),
-			    addr_str, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		log_test(logfd, "knet_addrtostr accepted invalid ss or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(NULL, sizeof(struct sockaddr_storage),
+					       addr_str, KNET_MAX_HOST_LEN,
+					       port_str, KNET_MAX_PORT_LEN), EINVAL);
 
 	log_test(logfd, "Checking knet_addrtostr with invalid sslen");
 
-	if (!knet_addrtostr(&addr, 0,
-			    addr_str, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		log_test(logfd, "knet_addrtostr accepted invalid sslen or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(&addr, 0,
+					       addr_str, KNET_MAX_HOST_LEN,
+					       port_str, KNET_MAX_PORT_LEN), EINVAL);
 
 	log_test(logfd, "Checking knet_addrtostr with invalid addr_str");
 
-	if (!knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
-			    NULL, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		log_test(logfd, "knet_addrtostr accepted invalid addr_str or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
+					       NULL, KNET_MAX_HOST_LEN,
+					       port_str, KNET_MAX_PORT_LEN), EINVAL);
 
 	log_test(logfd, "Checking knet_addrtostr with invalid port_str");
 
-	if (!knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
-			    addr_str, KNET_MAX_HOST_LEN,
-			    NULL, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		log_test(logfd, "knet_addrtostr accepted invalid addr_str or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
+					       addr_str, KNET_MAX_HOST_LEN,
+					       NULL, KNET_MAX_PORT_LEN), EINVAL);
 
 	addrv4 = (struct sockaddr_in *)&addr;
 	addrv4->sin_family = AF_INET;
