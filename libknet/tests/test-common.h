@@ -115,6 +115,37 @@
 	} while(0)
 
 /*
+ * NOCLEAN variants for tests that don't create knet handles.
+ * These skip knet_h cleanup and directly call TEST_EXIT.
+ */
+#define FAIL_ON_ERR_NOCLEAN(fn) \
+	do { \
+		int _foe_res; \
+		log_test(logfd, "FOE: %s", #fn); \
+		if ((_foe_res = fn) != 0) { \
+			int savederrno = errno; \
+			log_test(logfd, "*** FAIL on line %d. %s failed: %s", __LINE__, #fn, strerror(savederrno)); \
+			TEST_EXIT(FAIL); \
+		} \
+	} while(0)
+
+#define FAIL_ON_SUCCESS_NOCLEAN(fn, errcode) \
+	do { \
+		int _fos_res; \
+		log_test(logfd, "FOS: %s", #fn); \
+		if (((_fos_res = fn) == 0) || \
+		    ((_fos_res == -1) && (errno != errcode))) { \
+			int savederrno = errno; \
+			if (_fos_res == -2) { \
+				TEST_EXIT(SKIP); \
+			} else { \
+				log_test(logfd, "*** FAIL on line %d. %s did not return correct error: %s", __LINE__, #fn, strerror(savederrno)); \
+				TEST_EXIT(FAIL); \
+			} \
+		} \
+	} while(0)
+
+/*
  * Helper macro to print test result and exit.
  * Handles PASS, FAIL, SKIP, and ERROR.
  * Requires TEST_NAME to be defined in the test file.
