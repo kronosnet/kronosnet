@@ -13,46 +13,16 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#ifdef KNET_SOLARIS
-#include <sys/sockio.h>
-#include <sys/ethernet.h>
-#include <net/if_types.h>
-#include <net/if_tun.h>
-#include <stropts.h>
-#include <libdlpi.h>
-#else
-#include <net/ethernet.h>
-#endif
+#include <sys/socket.h>
 #include <pthread.h>
 #include <limits.h>
 #include <stdio.h>
 #include <net/if.h>
-#include <ifaddrs.h>
 #include <stdint.h>
-
-#ifdef KNET_LINUX
-#include <linux/if_tun.h>
-/*
- * libnl3 < 3.3 includes kernel headers directly
- * causing conflicts with net/if.h included above
- */
-#ifdef LIBNL3_WORKAROUND
-#define _LINUX_IF_H 1
-#endif
-#include <netinet/ether.h>
-#include <netlink/netlink.h>
-#include <netlink/route/addr.h>
-#include <netlink/route/link.h>
-#endif
-#ifdef KNET_BSD
-#include <net/if_dl.h>
-#include <sys/sockio.h>
-#endif
 
 #include "libnozzle.h"
 #include "internals.h"
@@ -62,7 +32,7 @@
  * locking should be handled at external API functions
  */
 static int lib_init = 0;
-static struct nozzle_lib_config lib_cfg;
+struct nozzle_lib_config lib_cfg;
 static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
@@ -72,10 +42,7 @@ static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void lib_fini(void)
 {
 	if (lib_cfg.head == NULL) {
-#ifdef KNET_LINUX
-		nl_close(lib_cfg.nlsock);
-		nl_socket_free(lib_cfg.nlsock);
-#endif
+		_platform_fini(&lib_cfg);
 		close(lib_cfg.ioctlfd);
 		lib_init = 0;
 	}
@@ -107,23 +74,13 @@ static int is_valid_nozzle(const nozzle_t nozzle)
 
 static void destroy_iface(nozzle_t nozzle)
 {
-#ifdef KNET_BSD
-	struct ifreq ifr;
-#endif
-
 	if (!nozzle)
 		return;
 
 	if (nozzle->fd >= 0)
 		close(nozzle->fd);
 
-#ifdef KNET_BSD
-	memset(&ifr, 0, sizeof(struct ifreq));
-	memmove(ifname, nozzle->name, IFNAMSIZ);
-
-	ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
-	ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
-#endif
+	_platform_destroy_tap(nozzle);
 
 	free(nozzle);
 
@@ -134,122 +91,12 @@ static void destroy_iface(nozzle_t nozzle)
 
 static int get_iface_mtu(const nozzle_t nozzle)
 {
-	int err = 0, savederrno = 0;
-#ifdef KNET_SOLARIS
-	struct lifreq ifr;
-#else
-	struct ifreq ifr;
-#endif
-	memset(&ifr, 0, sizeof(ifr));
-	memmove(ifname, nozzle->name, IFNAMSIZ);
-
-#ifdef KNET_SOLARIS
-	err = ioctl(lib_cfg.ioctlfd, SIOCGLIFMTU, &ifr);
-#else
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFMTU, &ifr);
-#endif
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	err = ifmtu;
-out_clean:
-	errno = savederrno;
-	return err;
+	return _platform_get_mtu(nozzle);
 }
 
 static int get_iface_mac(const nozzle_t nozzle, char **ether_addr)
 {
-	int err = 0, savederrno = 0;
-#ifdef  KNET_SOLARIS
-	struct lifreq ifr;
-	dlpi_handle_t dlpi_handle;
-	dlpi_info_t dlpi_if_info;
-#else
-	struct ifreq ifr;
-#endif
-	char mac[MACADDR_CHAR_MAX];
-#ifdef KNET_BSD
-	struct ifaddrs *ifap = NULL;
-	struct ifaddrs *ifa;
-	int found = 0;
-#endif
-
-	memset(&mac, 0, MACADDR_CHAR_MAX);
-	memset(&ifr, 0, sizeof(struct ifreq));
-	memmove(ifname, nozzle->name, IFNAMSIZ);
-
-#ifdef KNET_LINUX
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	ether_ntoa_r((struct ether_addr *)ifr.ifr_hwaddr.sa_data, mac);
-#endif
-#ifdef KNET_SOLARIS
-	err = dlpi_open(nozzle->name, &dlpi_handle, 0);
-	if (err != DLPI_SUCCESS) {
-		err = -1;
-		goto out_clean;
-
-	}
-	err = dlpi_info(dlpi_handle, &dlpi_if_info, 0);
-
-	if (err != DLPI_SUCCESS) {
-		err = -1;
-		dlpi_close(dlpi_handle);
-		goto out_clean;
-	}
-	dlpi_close(dlpi_handle);
-	ether_ntoa_r((struct ether_addr *)dlpi_if_info.di_physaddr, mac);
-#endif
-#ifdef KNET_BSD
-	/*
-	 * there is no ioctl to get the ether address of an interface on FreeBSD
-	 * (not to be confused with hwaddr). Use workaround described here:
-	 * https://lists.freebsd.org/pipermail/freebsd-hackers/2004-June/007394.html
-	 */
-	err = getifaddrs(&ifap);
-	if (err < 0) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	ifa = ifap;
-
-	while (ifa) {
-		if (!strncmp(nozzle->name, ifa->ifa_name, IFNAMSIZ)) {
-			found = 1;
-			break;
-		}
-		ifa=ifa->ifa_next;
-	}
-
-	if (found) {
-		ether_ntoa_r((struct ether_addr *)LLADDR((struct sockaddr_dl *)ifa->ifa_addr), mac);
-	} else {
-		errno = EINVAL;
-		err = -1;
-	}
-
-	freeifaddrs(ifap);
-
-	if (err) {
-		goto out_clean;
-	}
-
-#endif
-	*ether_addr = strdup(mac);
-	if (!*ether_addr) {
-		savederrno = errno;
-		err = -1;
-	}
-out_clean:
-	errno = savederrno;
-	return err;
+	return _platform_get_mac(nozzle, ether_addr);
 }
 
 #define IP_ADD 1
@@ -260,294 +107,12 @@ static int _set_ip(nozzle_t nozzle,
 		   const char *ipaddr, const char *prefix,
 		   int secondary)
 {
-	int fam;
-	int err = 0;
-	char *broadcast = NULL;
-#ifdef KNET_LINUX
-	struct rtnl_addr *addr = NULL;
-	struct nl_addr *local_addr = NULL;
-	struct nl_addr *bcast_addr = NULL;
-	struct nl_cache *cache = NULL;
-	int ifindex;
-#endif
-#if defined(KNET_BSD) || defined(KNET_SOLARIS)
-	char cmdline[4096];
-	char proto[6];
-	char *error_string = NULL;
-#endif
-
-	if (!strchr(ipaddr, ':')) {
-		fam = AF_INET;
-		broadcast = generate_v4_broadcast(ipaddr, prefix);
-		if (!broadcast) {
-			errno = EINVAL;
-			return -1;
-		}
-	} else {
-		fam = AF_INET6;
-	}
-
-#ifdef KNET_LINUX
-	addr = rtnl_addr_alloc();
-	if (!addr) {
-		errno = ENOMEM;
-		err = -1;
-		goto out;
-	}
-
-	if (rtnl_link_alloc_cache(lib_cfg.nlsock, AF_UNSPEC, &cache) < 0) {
-		errno = ENOMEM;
-		err = -1;
-		goto out;
-	}
-
-	ifindex = rtnl_link_name2i(cache, nozzle->name);
-	if (ifindex == 0) {
-		errno = ENOENT;
-		err = -1;
-		goto out;
-	}
-
-	rtnl_addr_set_ifindex(addr, ifindex);
-
-	if (nl_addr_parse(ipaddr, fam, &local_addr) < 0) {
-		errno = EINVAL;
-		err = -1;
-		goto out;
-	}
-
-	if (rtnl_addr_set_local(addr, local_addr) < 0) {
-		errno = EINVAL;
-		err = -1;
-		goto out;
-	}
-
-	if (broadcast) {
-		if (nl_addr_parse(broadcast, fam, &bcast_addr) < 0) {
-			errno = EINVAL;
-			err = -1;
-			goto out;
-		}
-
-		if (rtnl_addr_set_broadcast(addr, bcast_addr) < 0) {
-			errno = EINVAL;
-			err = -1;
-			goto out;
-		}
-	}
-
-	rtnl_addr_set_prefixlen(addr, atoi(prefix));
-
 	if (command == IP_ADD) {
-		if (rtnl_addr_add(lib_cfg.nlsock, addr, 0) < 0) {
-			errno = EINVAL;
-			err = -1;
-			goto out;
-		}
+		return _platform_add_ip(nozzle, ipaddr, prefix, secondary);
 	} else {
-		if (rtnl_addr_delete(lib_cfg.nlsock, addr, 0) < 0) {
-			errno = EINVAL;
-			err = -1;
-			goto out;
-		}
+		return _platform_del_ip(nozzle, ipaddr, prefix, secondary);
 	}
-out:
-	if (addr) {
-		rtnl_addr_put(addr);
-	}
-	if (local_addr) {
-		nl_addr_put(local_addr);
-	}
-	if (bcast_addr) {
-		nl_addr_put(bcast_addr);
-	}
-	if (cache) {
-		nl_cache_put(cache);
-	}
-	if (broadcast) {
-		free(broadcast);
-	}
-	return err;
-#endif
-#if defined(KNET_BSD) || defined(KNET_SOLARIS)
-	/*
-	 * TODO: port to use ioctl and such, drop shell forking here
-	 */
-	memset(cmdline, 0, sizeof(cmdline));
-
-	if (fam == AF_INET) {
-		snprintf(proto, sizeof(proto), "inet");
-	} else {
-		snprintf(proto, sizeof(proto), "inet6");
-	}
-
-	if (command == IP_ADD) {
-		char *addif = "";
-#ifdef KNET_SOLARIS
-		// Solaris needs a new logical i/f for each address
-		if (secondary) {
-			addif = "addif";
-		}
-#endif
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ifconfig %s %s %s %s/%s",
-			 nozzle->name, proto, addif, ipaddr, prefix);
-		if (broadcast) {
-			snprintf(cmdline + strlen(cmdline),
-				 sizeof(cmdline) - strlen(cmdline) -1,
-				 " broadcast %s", broadcast);
-		}
-#ifdef KNET_BSD
-		if ((secondary) && (fam == AF_INET)) {
-			snprintf(cmdline + strlen(cmdline),
-				 sizeof(cmdline) - strlen(cmdline) -1,
-				 " alias");
-		}
-#endif
-	} else {
-#ifdef KNET_BSD
-		snprintf(cmdline, sizeof(cmdline)-1,
-				 "ifconfig %s %s %s/%s delete",
-				 nozzle->name, proto, ipaddr, prefix);
-#elif KNET_SOLARIS
-		/* If this is the first IP (on tap0) then we can't use removeif,
-		 * we need to set the IP to 0
-		 */
-		char *removeif = "removeif";
-		if ((!secondary) && (fam == AF_INET)) {
-			ipaddr="0.0.0.0";
-			removeif = "";
-		}
-		snprintf(cmdline, sizeof(cmdline)-1,
-			 "ifconfig %s %s %s %s",
-			 nozzle->name, proto, removeif, ipaddr);
-#endif
-	}
-	if (broadcast) {
-		free(broadcast);
-	}
-
-	/*
-	 * temporary workaround as we port libnozzle to BSD ioctl
-	 * for IP address management
-	 */
-	err = execute_bin_sh_command(cmdline, &error_string);
-	if (error_string) {
-		free(error_string);
-		error_string = NULL;
-	}
-	return err;
-#endif
 }
-
-
-#ifdef KNET_SOLARIS
-// Most of this taken from openconnect
-static int link_proto(nozzle_t nozzle, int unit_nr,
-		      const char *devname, uint64_t flags)
-{
-	int ip_fd, mux_id, tap2_fd;
-	struct lifreq ifr;
-
-	tap2_fd = open("/dev/tap", O_RDWR);
-	if (tap2_fd < 0) {
-		return -EIO;
-	}
-	if (ioctl(tap2_fd, I_PUSH, "ip") < 0) {
-		close(tap2_fd);
-		return -EIO;
-	}
-
-	sprintf(ifr.lifr_name, "tap%d", unit_nr);
-	ifr.lifr_ppa = unit_nr;
-	ifr.lifr_flags = flags;
-
-	// We need to do this, but it is allowed to fail.
-	// No I don't understand it.
-	(void)ioctl(tap2_fd, SIOCSLIFNAME, &ifr);
-
-	ip_fd = open(devname, O_RDWR);
-	if (ip_fd < 0) {
-		close(tap2_fd);
-		return -1;
-	}
-
-	mux_id = ioctl(ip_fd, I_LINK, tap2_fd);
-	if (mux_id < 0) {
-		close(tap2_fd);
-		close(ip_fd);
-		return -1;
-	}
-
-	close(tap2_fd);
-
-	return ip_fd;
-}
-
-int solaris_setup_tap(nozzle_t nozzle, char *devname, int namelen)
-{
-	int tap_fd = -1;
-	static char tap_name[80];
-	int unit_nr;
-
-	tap_fd = open("/dev/tap", O_RDWR);
-	if (tap_fd < 0) {
-		return -EIO;
-	}
-
-	unit_nr = ioctl(tap_fd, TUNNEWPPA, -1);
-	if (unit_nr < 0) {
-		close(tap_fd);
-		return -EIO;
-	}
-
-	if (ioctl(tap_fd, I_SRDOPT, RMSGD) < 0) {
-		close(tap_fd);
-		return -EIO;
-	}
-
-	if (strlen(devname) == 0) {
-		sprintf(tap_name, "tap%d", unit_nr);
-		strncpy(devname, tap_name, namelen);
-	} else {
-		if (sscanf(devname, "tap%d", &unit_nr) == 1) {
-			struct strioctl strioc_ppa;
-			int ppa = unit_nr;
-			int newppa;
-			memset(&strioc_ppa, 0, sizeof(strioc_ppa));
-
-			strioc_ppa.ic_cmd = TUNNEWPPA;
-			strioc_ppa.ic_timout = 0;
-			strioc_ppa.ic_len = sizeof(ppa);
-			strioc_ppa.ic_dp = (char *)&ppa;
-			if ((newppa = ioctl(tap_fd, I_STR, &strioc_ppa)) < 0) {
-				return -errno;
-			}
-		} else {
-			return -EIO;
-		}
-	}
-
-	nozzle->ip_fd = link_proto(nozzle, unit_nr, "/dev/udp", IFF_IPV4);
-	if (nozzle->ip_fd < 0) {
-		close(tap_fd);
-		return -EIO;
-	}
-
-	nozzle->ip6_fd = link_proto(nozzle, unit_nr, "/dev/udp6", IFF_IPV6);
-	if (nozzle->ip6_fd < 0) {
-		close(tap_fd);
-		close(nozzle->ip_fd);
-		nozzle->ip_fd = -1;
-		return -EIO;
-	} else {
-		nozzle->ip6_fd = -1;
-	}
-
-	return tap_fd;
-}
-
-#endif
 
 /*
  * Exported public API
@@ -558,15 +123,6 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 	int savederrno = 0;
 	nozzle_t nozzle = NULL;
 	char *temp_mac = NULL;
-#ifdef KNET_LINUX
-	struct ifreq ifr;
-#endif
-#ifdef KNET_BSD
-	uint16_t i;
-	long int nozzlenum = 0;
-	char curnozzle[IFNAMSIZ];
-	struct ifreq ifr;
-#endif
 
 	if (devname == NULL) {
 		errno = EINVAL;
@@ -583,30 +139,6 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 		errno = E2BIG;
 		return NULL;
 	}
-
-#ifdef KNET_BSD
-	/*
-	 * BSD does not support named devices like Linux
-	 * but it is possible to force a nozzleX device number
-	 * where X is 0 to 255.
-	 */
-	if (strlen(devname)) {
-		if (strncmp(devname, "tap", 3)) {
-			errno = EINVAL;
-			return NULL;
-		}
-		errno = 0;
-		nozzlenum = strtol(devname+3, NULL, 10);
-		if (errno) {
-			errno = EINVAL;
-			return NULL;
-		}
-		if ((nozzlenum < 0) || (nozzlenum > 255)) {
-			errno = EINVAL;
-			return NULL;
-		}
-	}
-#endif
 
 	if (updownpath) {
 		/* only absolute paths */
@@ -628,28 +160,19 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 	if (!lib_init) {
 		lib_cfg.head = NULL;
-#ifdef KNET_LINUX
-		lib_cfg.nlsock = nl_socket_alloc();
-		if (!lib_cfg.nlsock) {
+
+		if (_platform_init(&lib_cfg) < 0) {
 			savederrno = errno;
 			goto out_error;
 		}
-		if (nl_connect(lib_cfg.nlsock, NETLINK_ROUTE) < 0) {
-			savederrno = EBUSY;
-			goto out_error;
-		}
-		lib_cfg.ioctlfd = socket(AF_INET, SOCK_STREAM, 0);
-#endif
-#ifdef KNET_BSD
-		lib_cfg.ioctlfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
-#endif
-#ifdef KNET_SOLARIS
-		lib_cfg.ioctlfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-#endif
+
+		lib_cfg.ioctlfd = socket(NOZZLE_SOCKET_DOMAIN, SOCK_DGRAM, 0);
 		if (lib_cfg.ioctlfd < 0) {
 			savederrno = errno;
+			_platform_fini(&lib_cfg);
 			goto out_error;
 		}
+
 		lib_init = 1;
 	}
 
@@ -661,74 +184,10 @@ nozzle_t nozzle_open(char *devname, size_t devname_size, const char *updownpath)
 
 	memset(nozzle, 0, sizeof(struct nozzle_iface));
 
-#ifdef KNET_BSD
-	if (!strlen(devname)) {
-		for (i = 0; i < 256; i++) {
-			memset(&ifr, 0, sizeof(ifr));
-
-			snprintf(curnozzle, sizeof(curnozzle) - 1, "tap%u", i);
-			memmove(ifr.ifr_name, curnozzle, IFNAMSIZ);
-			if (ioctl(lib_cfg.ioctlfd, SIOCIFCREATE2, &ifr) < 0) {
-			        continue;
-			}
-			snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/tap%u", i);
-			nozzle->fd = open(curnozzle, O_RDWR);
-			savederrno = errno;
-			if (nozzle->fd > 0) {
-				break;
-			}
-			/* For some reason we can't open that device, keep trying
-			   but don't leave debris */
-			(void)ioctl(lib_cfg.ioctlfd, SIOCIFDESTROY, &ifr);
-			(void)ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
-		}
-		snprintf(curnozzle, sizeof(curnozzle) -1 , "tap%u", i);
-	} else {
-		memmove(ifr.ifr_name, devname, IFNAMSIZ);
-		if (ioctl(lib_cfg.ioctlfd, SIOCIFCREATE2, &ifr) < 0) {
-			goto out_error;
-		}
-		snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/%s", devname);
-		nozzle->fd = open(curnozzle, O_RDWR);
-		savederrno = errno;
-		snprintf(curnozzle, sizeof(curnozzle) - 1, "%s", devname);
-	}
-	if (nozzle->fd < 0) {
-		savederrno = EBUSY;
-		goto out_error;
-	}
-	memmove(devname, curnozzle, IFNAMSIZ);
-	memmove(nozzle->name, curnozzle, IFNAMSIZ);
-#endif
-
-#ifdef KNET_SOLARIS
-	nozzle->fd = solaris_setup_tap(nozzle, devname, devname_size);
-	memmove(nozzle->name, devname, IFNAMSIZ);
-#endif
-
-#ifdef KNET_LINUX
-	if ((nozzle->fd = open("/dev/net/tun", O_RDWR)) < 0) {
+	if (_platform_create_tap(nozzle, devname, devname_size) < 0) {
 		savederrno = errno;
 		goto out_error;
 	}
-
-	memset(&ifr, 0, sizeof(struct ifreq));
-	memmove(ifname, devname, IFNAMSIZ);
-	ifflags = IFF_TAP | IFF_NO_PI;
-
-	if (ioctl(nozzle->fd, TUNSETIFF, &ifr) < 0) {
-		savederrno = errno;
-		goto out_error;
-	}
-
-	if ((strlen(devname) > 0) && (strcmp(devname, ifname) != 0)) {
-		savederrno = EBUSY;
-		goto out_error;
-	}
-
-	memmove(devname, ifname, IFNAMSIZ);
-	memmove(nozzle->name, ifname, IFNAMSIZ);
-#endif
 	nozzle->default_mtu = get_iface_mtu(nozzle);
 	if (nozzle->default_mtu < 0) {
 		savederrno = errno;
@@ -805,10 +264,8 @@ int nozzle_close(nozzle_t nozzle)
 		free(ip);
 		ip = ip_next;
 	}
-#ifdef KNET_SOLARIS
-	close(nozzle->ip_fd);
-	close(nozzle->ip6_fd);
-#endif
+
+	_platform_close_tap(nozzle);
 
 	destroy_iface(nozzle);
 
@@ -897,11 +354,7 @@ out_clean:
 int nozzle_set_up(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
-#ifdef KNET_SOLARIS
-	struct lifreq ifr;
-#else
-	struct ifreq ifr;
-#endif
+	nozzle_ifreq ifr;
 
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
@@ -946,11 +399,7 @@ out_clean:
 int nozzle_set_down(nozzle_t nozzle)
 {
 	int err = 0, savederrno = 0;
-#ifdef KNET_SOLARIS
-	struct lifreq ifr;
-#else
-	struct ifreq ifr;
-#endif
+	nozzle_ifreq ifr;
 
 	savederrno = pthread_mutex_lock(&config_mutex);
 	if (savederrno) {
@@ -1050,11 +499,6 @@ out_clean:
 int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 {
 	int err = 0, savederrno = 0;
-#ifdef KNET_SOLARIS
-	dlpi_handle_t dlpi_handle;
-#else
-	struct ifreq ifr;
-#endif
 
 	if (!ether_addr) {
 		errno = EINVAL;
@@ -1073,51 +517,9 @@ int nozzle_set_mac(nozzle_t nozzle, const char *ether_addr)
 		goto out_clean;
 	}
 
-#ifdef KNET_LINUX
-	memset(&ifr, 0, sizeof(struct ifreq));
-	memmove(ifname, nozzle->name, IFNAMSIZ);
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFHWADDR, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
-
-	memmove(ifr.ifr_hwaddr.sa_data, ether_aton(ether_addr), ETH_ALEN);
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFHWADDR, &ifr);
+	err = _platform_set_mac(nozzle, ether_addr);
 	savederrno = errno;
-#endif
-#ifdef KNET_BSD
-	memset(&ifr, 0, sizeof(struct ifreq));
-	memmove(ifname, nozzle->name, IFNAMSIZ);
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFADDR, &ifr);
-	if (err) {
-		savederrno = errno;
-		goto out_clean;
-	}
 
-	memmove(ifr.ifr_addr.sa_data, ether_aton(ether_addr), ETHER_ADDR_LEN);
-	ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
-
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFLLADDR, &ifr);
-	savederrno = errno;
-#endif
-#ifdef KNET_SOLARIS
-	err = dlpi_open(nozzle->name, &dlpi_handle, 0);
-	if (err != DLPI_SUCCESS) {
-		err = -1;
-		goto out_clean;
-	}
-	err = dlpi_set_physaddr(dlpi_handle, DL_CURR_PHYS_ADDR,
-				ether_aton(ether_addr), ETHERADDRL);
-
-	if (err != DLPI_SUCCESS) {
-		err = -1;
-		dlpi_close(dlpi_handle);
-		goto out_clean;
-	}
-	dlpi_close(dlpi_handle);
-#endif
 out_clean:
 	pthread_mutex_unlock(&config_mutex);
 	errno = savederrno;
@@ -1213,11 +615,7 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
 {
 	int err = 0, savederrno = 0;
 	struct nozzle_ip *tmp_ip;
-#ifdef KNET_SOLARIS
-	struct lifreq ifr;
-#else
-	struct ifreq ifr;
-#endif
+	nozzle_ifreq ifr;
 
 	if (!mtu) {
 		errno = EINVAL;
@@ -1246,25 +644,17 @@ int nozzle_set_mtu(nozzle_t nozzle, const int mtu)
 	memmove(ifname, nozzle->name, IFNAMSIZ);
 	ifmtu = mtu;
 
-#ifdef KNET_SOLARIS
-	err = ioctl(nozzle->ip_fd, SIOCSLIFMTU, &ifr);
-#else
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFMTU, &ifr);
-#endif
+	err = ioctl(NOZZLE_IOCTL_FD, NOZZLE_SET_MTU, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
 	}
 
 	if ((nozzle->current_mtu < 1280) && (mtu >= 1280)) {
-#ifdef KNET_SOLARIS
-		int secondary = 1;
-#else
-		int secondary = 0;
-#endif
 		tmp_ip = nozzle->ip;
 		while(tmp_ip) {
 			if (tmp_ip->domain == AF_INET6) {
+				int secondary = NOZZLE_IPV6_IS_SECONDARY(tmp_ip->domain);
 				err = _set_ip(nozzle, IP_ADD, tmp_ip->ipaddr, tmp_ip->prefix, secondary);
 				if (err) {
 					savederrno = errno;
@@ -1342,11 +732,7 @@ int nozzle_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix)
 		/* We make all Solaris IP6 addresses secondary's (using addif)
 		 * otherwise we can't remove the last one
 		 */
-		if (nozzle->ip
-#ifdef KNET_SOLARIS
-		   || ip->domain == AF_INET6
-#endif
-			) {
+		if (nozzle->ip || NOZZLE_IPV6_IS_SECONDARY(ip->domain)) {
 			secondary = 1;
 		}
 		err = _set_ip(nozzle, IP_ADD, ipaddr, prefix, secondary);
@@ -1410,7 +796,9 @@ int nozzle_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix)
 	if ((ip->domain == AF_INET6) && (get_iface_mtu(nozzle) < 1280)) {
 		err = 0;
 	} else {
-		err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, 0);
+		/* On Solaris, all IPv6 addresses are secondary logical interfaces */
+		int secondary = NOZZLE_IPV6_IS_SECONDARY(ip->domain);
+		err = _set_ip(nozzle, IP_DEL, ipaddr, prefix, secondary);
 		savederrno = errno;
 	}
 

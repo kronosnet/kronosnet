@@ -19,6 +19,9 @@ if BUILD_LIBNOZZLE
 SUBDIRS			= . tests bindings
 
 sources			= libnozzle.c \
+			  libnozzle_linux.c \
+			  libnozzle_bsd.c \
+			  libnozzle_solaris.c \
 			  internals.c
 
 include_HEADERS		= libnozzle.h
