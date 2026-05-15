@@ -28,6 +28,6 @@ kronosnet_la_SOURCES		= \
 				  ../common.c \
 				  ../logging.c \
 				  ../threads_common.c
-kronosnet_la_CFLAGS		= $(wireshark_CFLAGS) -DPLUGINPATH="\"$(pkglibdir)\"" -DWIRESHARK_BUILD=1
+kronosnet_la_CFLAGS		= $(libqb_CFLAGS) $(wireshark_CFLAGS) -DPLUGINPATH="\"$(pkglibdir)\"" -DWIRESHARK_BUILD=1
 kronosnet_la_LDFLAGS		= -module -avoid-version -export-dynamic
 kronosnet_la_LIBADD		= $(wireshark_LIBS)
