@@ -12,6 +12,7 @@ Makefile
 .libs
 .version
 .dirstamp
+.claude
 
 # build-aux/release.mk related litter
 /.tarball-version
