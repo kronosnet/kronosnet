@@ -512,3 +512,108 @@ int knet_get_crypto_list(struct knet_crypto_info *crypto_list, size_t *crypto_li
 		errno = 0;
 	return err;
 }
+
+int knet_get_crypto_cipher_list(struct knet_crypto_cipher_info *cipher_list, size_t *cipher_list_entries)
+{
+	size_t i;
+	/*
+	 * This list represents cipher modes supported across ALL crypto backends
+	 * (OpenSSL, NSS, libgcrypt). It is the intersection of capabilities, not
+	 * backend-specific features.
+	 *
+	 * Naming conventions vary by backend:
+	 *   - OpenSSL uses hyphenated format: "aes-128-cbc", "aes-256-ctr"
+	 *   - NSS/gcrypt use non-hyphenated for CBC: "aes128", "aes256"
+	 *   - NSS/gcrypt use hyphenated for CTR: "aes128-ctr", "aes256-ctr"
+	 *
+	 * Both name variants are included as separate entries to simplify application
+	 * logic - applications can iterate and match against a single name field.
+	 *
+	 * When adding support for new cipher modes, they must be verified to work
+	 * on all three backends before adding to this list.
+	 */
+	static const struct {
+		const char *name;
+		const char *mode;
+		int key_bits;
+	} common_ciphers[] = {
+		/* AES-128 CBC - both naming conventions */
+		{ "aes-128-cbc", "cbc", 128 },
+		{ "aes128",      "cbc", 128 },
+		/* AES-192 CBC - both naming conventions */
+		{ "aes-192-cbc", "cbc", 192 },
+		{ "aes192",      "cbc", 192 },
+		/* AES-256 CBC - both naming conventions */
+		{ "aes-256-cbc", "cbc", 256 },
+		{ "aes256",      "cbc", 256 },
+		/* AES-128 CTR - both naming conventions */
+		{ "aes-128-ctr", "ctr", 128 },
+		{ "aes128-ctr",  "ctr", 128 },
+		/* AES-192 CTR - both naming conventions */
+		{ "aes-192-ctr", "ctr", 192 },
+		{ "aes192-ctr",  "ctr", 192 },
+		/* AES-256 CTR - both naming conventions */
+		{ "aes-256-ctr", "ctr", 256 },
+		{ "aes256-ctr",  "ctr", 256 },
+	};
+	static const size_t num_ciphers = sizeof(common_ciphers) / sizeof(common_ciphers[0]);
+
+	if (!cipher_list_entries) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (cipher_list) {
+		for (i = 0; i < num_ciphers; i++) {
+			memset(&cipher_list[i], 0, sizeof(struct knet_crypto_cipher_info));
+			cipher_list[i].name = common_ciphers[i].name;
+			cipher_list[i].mode = common_ciphers[i].mode;
+			cipher_list[i].key_bits = common_ciphers[i].key_bits;
+		}
+	}
+
+	*cipher_list_entries = num_ciphers;
+	errno = 0;
+	return 0;
+}
+
+int knet_get_crypto_hash_list(struct knet_crypto_hash_info *hash_list, size_t *hash_list_entries)
+{
+	size_t i;
+	/*
+	 * This list represents hash algorithms supported across ALL crypto backends
+	 * (OpenSSL, NSS, libgcrypt). It is the intersection of capabilities, not
+	 * backend-specific features.
+	 *
+	 * When adding support for new hash algorithms, they must be verified to work
+	 * on all three backends before adding to this list.
+	 */
+	static const struct {
+		const char *name;
+		int hash_bits;
+	} common_hashes[] = {
+		{ "md5",    128 },
+		{ "sha1",   160 },
+		{ "sha256", 256 },
+		{ "sha384", 384 },
+		{ "sha512", 512 },
+	};
+	static const size_t num_hashes = sizeof(common_hashes) / sizeof(common_hashes[0]);
+
+	if (!hash_list_entries) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (hash_list) {
+		for (i = 0; i < num_hashes; i++) {
+			memset(&hash_list[i], 0, sizeof(struct knet_crypto_hash_info));
+			hash_list[i].name = common_hashes[i].name;
+			hash_list[i].hash_bits = common_hashes[i].hash_bits;
+		}
+	}
+
+	*hash_list_entries = num_hashes;
+	errno = 0;
+	return 0;
+}

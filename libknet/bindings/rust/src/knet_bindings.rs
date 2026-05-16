@@ -1150,15 +1150,14 @@ pub struct CryptoInfo
 }
 impl CryptoInfo
 {
-    pub fn new(c_info: ffi::knet_crypto_info) -> CryptoInfo
+    pub fn new(c_info: ffi::knet_crypto_info) -> Result<CryptoInfo>
     {
 	let cstr = unsafe {CStr::from_ptr(c_info.name) };
-	let name = match cstr.to_str() {
-	    Ok(s) => s.to_string(),
-	    Err(e) => e.to_string(),
-	};
-	CryptoInfo {properties: 0,
-		    name}
+	let name = cstr.to_str()
+	    .map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+	    .to_string();
+	Ok(CryptoInfo {properties: 0,
+		       name})
     }
 }
 
@@ -1176,7 +1175,7 @@ pub fn get_crypto_list() -> Result<Vec<CryptoInfo>>
     if res == 0 {
 	let mut retvec = Vec::<CryptoInfo>::new();
 	for i in c_list.iter().take(list_entries) {
-	    retvec.push(CryptoInfo::new(*i));
+	    retvec.push(CryptoInfo::new(*i)?);
 	}
 	Ok(retvec)
     } else {
@@ -1193,15 +1192,14 @@ pub struct CompressInfo
 }
 impl CompressInfo
 {
-    pub fn new(c_info: ffi::knet_compress_info) -> CompressInfo
+    pub fn new(c_info: ffi::knet_compress_info) -> Result<CompressInfo>
     {
 	let cstr = unsafe {CStr::from_ptr(c_info.name) };
-	let name = match cstr.to_str() {
-	    Ok(s) => s.to_string(),
-	    Err(e) => e.to_string(),
-	};
-	CompressInfo {properties: 0,
-		      name}
+	let name = cstr.to_str()
+	    .map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+	    .to_string();
+	Ok(CompressInfo {properties: 0,
+			 name})
     }
 }
 
@@ -1219,7 +1217,95 @@ pub fn get_compress_list() -> Result<Vec<CompressInfo>>
     if res == 0 {
 	let mut retvec = Vec::<CompressInfo>::new();
 	for i in c_list.iter().take(list_entries) {
-	    retvec.push(CompressInfo::new(*i));
+	    retvec.push(CompressInfo::new(*i)?);
+	}
+	Ok(retvec)
+    } else {
+	Err(Error::last_os_error())
+    }
+}
+
+/// Crypto cipher info returned from [get_crypto_cipher_list]
+pub struct CryptoCipherInfo
+{
+    pub name: String,
+    pub mode: String,
+    pub key_bits: i32,
+}
+impl CryptoCipherInfo
+{
+    pub fn new(c_info: ffi::knet_crypto_cipher_info) -> Result<CryptoCipherInfo>
+    {
+	let name_cstr = unsafe {CStr::from_ptr(c_info.name) };
+	let name = name_cstr.to_str()
+	    .map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+	    .to_string();
+	let mode_cstr = unsafe {CStr::from_ptr(c_info.mode) };
+	let mode = mode_cstr.to_str()
+	    .map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+	    .to_string();
+	Ok(CryptoCipherInfo {name,
+			     mode,
+			     key_bits: c_info.key_bits})
+    }
+}
+
+/// Get a list of valid crypto cipher options
+pub fn get_crypto_cipher_list() -> Result<Vec<CryptoCipherInfo>>
+{
+    let mut list_entries: usize = 32;
+    let mut c_list : [ffi::knet_crypto_cipher_info; 32] =
+	[ ffi::knet_crypto_cipher_info{name: null(), mode: null(), key_bits: 0, pad:[0; 256]}; 32];
+
+    let res = unsafe {
+	ffi::knet_get_crypto_cipher_list(&mut c_list[0],
+				      &mut list_entries)
+    };
+    if res == 0 {
+	let mut retvec = Vec::<CryptoCipherInfo>::new();
+	for i in c_list.iter().take(list_entries) {
+	    retvec.push(CryptoCipherInfo::new(*i)?);
+	}
+	Ok(retvec)
+    } else {
+	Err(Error::last_os_error())
+    }
+}
+
+/// Crypto hash info returned from [get_crypto_hash_list]
+pub struct CryptoHashInfo
+{
+    pub name: String,
+    pub hash_bits: i32,
+}
+impl CryptoHashInfo
+{
+    pub fn new(c_info: ffi::knet_crypto_hash_info) -> Result<CryptoHashInfo>
+    {
+	let cstr = unsafe {CStr::from_ptr(c_info.name) };
+	let name = cstr.to_str()
+	    .map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+	    .to_string();
+	Ok(CryptoHashInfo {name,
+			   hash_bits: c_info.hash_bits})
+    }
+}
+
+/// Get a list of valid crypto hash options
+pub fn get_crypto_hash_list() -> Result<Vec<CryptoHashInfo>>
+{
+    let mut list_entries: usize = 16;
+    let mut c_list : [ffi::knet_crypto_hash_info; 16] =
+	[ ffi::knet_crypto_hash_info{name: null(), hash_bits: 0, pad:[0; 256]}; 16];
+
+    let res = unsafe {
+	ffi::knet_get_crypto_hash_list(&mut c_list[0],
+				    &mut list_entries)
+    };
+    if res == 0 {
+	let mut retvec = Vec::<CryptoHashInfo>::new();
+	for i in c_list.iter().take(list_entries) {
+	    retvec.push(CryptoHashInfo::new(*i)?);
 	}
 	Ok(retvec)
     } else {
@@ -1613,16 +1699,15 @@ pub struct TransportInfo
 // Controversially implementing name_by_id and id_by_name here
 impl TransportInfo
 {
-    pub fn new(c_info: ffi::knet_transport_info) -> TransportInfo
+    pub fn new(c_info: ffi::knet_transport_info) -> Result<TransportInfo>
     {
 	let cstr = unsafe {CStr::from_ptr(c_info.name) };
-	let name = match cstr.to_str() {
-	    Ok(s) => s.to_string(),
-	    Err(e) => e.to_string(),
-	};
-	TransportInfo {properties: 0,
-		       id: TransportId::new(c_info.id),
-		       name}
+	let name = cstr.to_str()
+	    .map_err(|e| Error::new(ErrorKind::InvalidData, e))?
+	    .to_string();
+	Ok(TransportInfo {properties: 0,
+			  id: TransportId::new(c_info.id),
+			  name})
     }
 }
 
@@ -1639,7 +1724,7 @@ pub fn get_transport_list() -> Result<Vec<TransportInfo>>
     if res == 0 {
 	let mut retvec = Vec::<TransportInfo>::new();
 	for i in c_list.iter().take(list_entries) {
-	    retvec.push(TransportInfo::new(*i));
+	    retvec.push(TransportInfo::new(*i)?);
 	}
 	Ok(retvec)
     } else {

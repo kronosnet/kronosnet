@@ -890,6 +890,35 @@ fn main() -> Result<()>
 	    return Err(e);
 	}
     }
+
+    match knet::get_crypto_cipher_list() {
+	Ok(l) => {
+	    print!("Crypto ciphers:");
+	    for i in &l {
+		print!(" {}:{} ({}bits)", i.name, i.mode, i.key_bits);
+	    }
+	    println!();
+	}
+	Err(e) => {
+	    println!("get_crypto_cipher_list failed: {e:?}");
+	    return Err(e);
+	}
+    }
+
+    match knet::get_crypto_hash_list() {
+	Ok(l) => {
+	    print!("Crypto hashes:");
+	    for i in &l {
+		print!(" {} ({}bits)", i.name, i.hash_bits);
+	    }
+	    println!();
+	}
+	Err(e) => {
+	    println!("get_crypto_hash_list failed: {e:?}");
+	    return Err(e);
+	}
+    }
+
     let host1 = knet::HostId::new(1);
     let host2 = knet::HostId::new(2);
 
