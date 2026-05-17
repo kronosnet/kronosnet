@@ -856,6 +856,7 @@ out_pmtud:
 			log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
 			break;
 		}
+		// coverity[INCONSISTENT_UNION_ACCESS:SUPPRESS] - switch/case ensures correct union field access
 		src_link->last_recv_mtu = inbuf->khp_pmtud_size;
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
