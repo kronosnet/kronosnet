@@ -37,8 +37,22 @@ static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, 
 		return -1;
 	}
 
+	/*
+	 * Acquire write lock to ensure RX threads (which hold read lock during
+	 * packet processing at threads_rx.c:1035) are not reading onwire version
+	 * fields while we modify them. This prevents the race where RX threads
+	 * see stale values and reject packets as "higher than maximum version".
+	 */
+	if (pthread_rwlock_wrlock(&knet_h->global_rwlock) != 0) {
+		printf("Failed to acquire global write lock\n");
+		return -1;
+	}
+
 	knet_h->onwire_min_ver = min;
 	knet_h->onwire_max_ver = max;
+
+	pthread_rwlock_unlock(&knet_h->global_rwlock);
+
 	if (knet_handle_reconnect_links(knet_h) < 0) {
 		return -1;
 	}
