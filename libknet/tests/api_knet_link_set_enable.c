@@ -28,7 +28,7 @@ static void test_udp(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct sockaddr_storage src, dst;
 
 	if (make_local_sockaddr(&src, 0, logfd) < 0) {
@@ -43,10 +43,7 @@ static void test_udp(void)
 
 	log_test(logfd, "Test knet_link_set_enable incorrect knet_h");
 
-	if ((!knet_link_set_enable(NULL, 1, 0, 1)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_link_set_enable accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_link_set_enable(NULL, 1, 0, 1), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 

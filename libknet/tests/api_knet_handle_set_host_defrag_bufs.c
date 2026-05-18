@@ -26,17 +26,14 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint16_t min_defrag_bufs = KNET_MIN_DEFRAG_BUFS_DEFAULT, max_defrag_bufs = KNET_MAX_DEFRAG_BUFS_DEFAULT;
 	uint8_t shrink_threshold = KNET_SHRINK_THRESHOLD_DEFAULT;
 	defrag_bufs_reclaim_policy_t reclaim_policy = RECLAIM_POLICY_ABSOLUTE;
 
 	log_test(logfd, "Test knet_handle_set_host_defrag_bufs incorrect knet_h");
 
-	if ((!knet_handle_set_host_defrag_bufs(NULL, min_defrag_bufs, max_defrag_bufs, shrink_threshold, reclaim_policy)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_set_host_defrag_bufs accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_set_host_defrag_bufs(NULL, min_defrag_bufs, max_defrag_bufs, shrink_threshold, reclaim_policy), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 

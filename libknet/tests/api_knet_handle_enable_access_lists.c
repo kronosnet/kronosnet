@@ -26,14 +26,11 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	log_test(logfd, "Test knet_handle_enable_access_lists with invalid knet_h");
 
-	if ((!knet_handle_enable_access_lists(NULL, 0)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_enable_access_lists accepted invalid knet_h parameter");
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_enable_access_lists(NULL, 0), EINVAL);
 
 
 	log_test(logfd, "Test knet_handle_enable_access_lists with invalid param (2) ");

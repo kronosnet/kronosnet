@@ -88,7 +88,7 @@ static void test(const char *model)
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd, stdout));
 
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
@@ -103,7 +103,7 @@ static void test(const char *model)
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
 
-	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfd, stdout));
+	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd, stdout));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;

@@ -71,6 +71,17 @@ int is_helgrind(void)
 	return 0;
 }
 
+static int adjust_timeout_for_valgrind(int seconds, int logfd)
+{
+	if (is_memcheck() || is_helgrind()) {
+		int adjusted = seconds * 16;
+		log_test(logfd, "Running under valgrind, adjusting timeout from %d to %d seconds",
+			 seconds, adjusted);
+		return adjusted;
+	}
+	return seconds;
+}
+
 static int setup_logpipes(int *logfds)
 {
 	if (pipe2(logfds, O_CLOEXEC | O_NONBLOCK) < 0) {
@@ -462,7 +473,7 @@ static int _make_local_sockaddr(struct sockaddr_storage *lo, int offset, int fam
 		port = 0;
 	} else {
 		/* Use the pid if we can. but makes sure its in a sensible range */
-		port = (getpid() + offset) % (65536-1024) + 1024;
+		port = (getpid() + offset) % (TEST_PORT_MAX - TEST_PORT_BASE) + TEST_PORT_BASE;
 	}
 	sprintf(portstr, "%u", port);
 	memset(lo, 0, sizeof(struct sockaddr_storage));
@@ -492,7 +503,7 @@ int _ts_knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8
 	uint32_t port;
 	char portstr[32];
 
-	for (port = 1025; port < 65536; port++) {
+	for (port = TEST_PORT_MIN; port < TEST_PORT_MAX; port++) {
 		sprintf(portstr, "%u", port);
 		memset(lo, 0, sizeof(struct sockaddr_storage));
 		if (family == AF_INET6) {
@@ -531,14 +542,10 @@ out:
 
 void test_sleep(int logfd, int seconds)
 {
-	if (is_memcheck() || is_helgrind()) {
-		log_test(logfd, "Test suite is running under valgrind, adjusting sleep timers");
-		seconds = seconds * 16;
-	}
+	seconds = adjust_timeout_for_valgrind(seconds, logfd);
 	log_test(logfd, "Sleeping for %d second%s", seconds, seconds == 1 ? "" : "s");
 	sleep(seconds);
 }
-
 
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std)
 {
@@ -546,10 +553,7 @@ int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FI
 	struct timeval tv;
 	int err = 0, i = 0;
 
-	if (is_memcheck() || is_helgrind()) {
-		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_packet timeout");
-		seconds = seconds * 16;
-	}
+	seconds = adjust_timeout_for_valgrind(seconds, logfd);
 
 try_again:
 	FD_ZERO(&rfds);
@@ -635,7 +639,7 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 			for (x = 0; x < numlinks; x++) {
 				res = -1;
 				offset = 0;
-				while (i + x + offset++ < 65535 && res != 0) {
+				while (i + x + offset++ < TEST_PORT_MAX && res != 0) {
 					if (_make_local_sockaddr(&src, i + x + offset, family, logfd) < 0) {
 						log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
 						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
@@ -661,7 +665,7 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 	}
 
 	for (i = 1; i <= numnodes; i++) {
-		wait_for_nodes_state(knet_h[i], numnodes, 1, 600, logfd, stdout);
+		wait_for_nodes_state(knet_h[i], numnodes, 1, TEST_TIMEOUT_LONG, logfd, stdout);
 	}
 	return;
 }
@@ -734,11 +738,13 @@ static void host_notify_callback(void *private_data,
 	}
 }
 
-static int wait_for_reply(int seconds, int pipefd)
+int wait_for_reply(int seconds, int pipefd, int logfd)
 {
 	int res;
 	struct pollfd pfds;
 	char tmpbuf[32];
+
+	seconds = adjust_timeout_for_valgrind(seconds, logfd);
 
 	pfds.fd = pipefd;
 	pfds.events = POLLIN | POLLERR | POLLHUP;
@@ -752,7 +758,7 @@ static int wait_for_reply(int seconds, int pipefd)
 				return 0;
 			}
 		} else {
-			log_test(callback_logfd, "Error on pipe poll revent = 0x%x", pfds.revents);
+			log_test(logfd, "Error on pipe poll revent = 0x%x", pfds.revents);
 			errno = EIO;
 		}
 	}
@@ -766,7 +772,7 @@ static int wait_for_reply(int seconds, int pipefd)
 
 /* Wait for a cluster of 'numnodes' to come up/go down */
 int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
-			 uint8_t state, uint32_t timeout,
+			 uint8_t state, uint32_t seconds,
 			 int logfd, FILE *std)
 {
 	int res, savederrno = 0;
@@ -808,7 +814,7 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 		return 0;
 	}
 
-	res = wait_for_reply(timeout, state_wait_pipe[0]);
+	res = wait_for_reply(seconds, state_wait_pipe[0], logfd);
 	if (res == -1) {
 		savederrno = errno;
 		log_test(logfd, "Error waiting for nodes status reply: %s", strerror(errno));
@@ -827,11 +833,6 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	int savederrno = 0;
 
 	callback_logfd = logfd;
-
-	if (is_memcheck() || is_helgrind()) {
-		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_host timeout");
-		seconds = seconds * 16;
-	}
 
 	if (host_wait_pipe[0] == 0) {
 		res = pipe(host_wait_pipe);
@@ -861,7 +862,7 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 		return 0;
 	}
 
-	res = wait_for_reply(seconds, host_wait_pipe[0]);
+	res = wait_for_reply(seconds, host_wait_pipe[0], logfd);
 	if (res == -1) {
 		savederrno = errno;
 		log_test(logfd, "Error waiting for host status reply: %s", strerror(errno));
@@ -890,6 +891,10 @@ void _ts_knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, i
 	size_t num_links;
 
 	for (h=1; h<numnodes+1; h++) {
+		if (!knet_h[h]) {
+			continue;
+		}
+
 		res = knet_handle_setfwd(knet_h[h], 0);
 		if (res) {
 			log_test(logfd, "knet_handle_setfwd failed: %s", strerror(errno));

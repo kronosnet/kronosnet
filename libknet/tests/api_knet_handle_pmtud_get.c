@@ -26,15 +26,12 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	unsigned int data_mtu;
 
 	log_test(logfd, "Test knet_handle_pmtud_get incorrect knet_h");
 
-	if ((!knet_handle_pmtud_get(NULL, &data_mtu)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_pmtud_get accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_pmtud_get(NULL, &data_mtu), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

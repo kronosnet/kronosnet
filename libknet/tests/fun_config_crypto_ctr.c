@@ -106,7 +106,7 @@ static void test_ctr_mode(const char *model, const char *cipher)
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 1));
-	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, 10, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, TEST_TIMEOUT_SHORT, logfd, stdout));
 
 	/* Send encrypted data */
 	send_len = knet_send(knet_h[1], send_buff, KNET_MAX_PACKET_SIZE, channel);
@@ -121,7 +121,7 @@ static void test_ctr_mode(const char *model, const char *cipher)
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 0));
-	FAIL_ON_ERR(wait_for_packet(knet_h[1], 10, datafd, logfd, stdout));
+	FAIL_ON_ERR(wait_for_packet(knet_h[1], TEST_TIMEOUT_SHORT, datafd, logfd, stdout));
 
 	/* Receive and verify encrypted data */
 	recv_len = knet_recv(knet_h[1], recv_buff, KNET_MAX_PACKET_SIZE, channel);

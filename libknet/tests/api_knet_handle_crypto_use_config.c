@@ -27,17 +27,14 @@ static void test(const char *model, const char *model2)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 
 	log_test(logfd, "Test knet_handle_crypto_use_config incorrect knet_h");
 
-	if ((!knet_handle_crypto_use_config(NULL, 1)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_crypto_use_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(NULL, 1), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 

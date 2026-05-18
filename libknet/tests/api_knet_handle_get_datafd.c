@@ -38,16 +38,13 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0, old_datafd;
 	int8_t channel = 0;
 
 	log_test(logfd, "Test knet_handle_get_datafd incorrect knet_h");
 
-	if ((!knet_handle_get_datafd(NULL, channel, &datafd)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_get_datafd accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_get_datafd(NULL, channel, &datafd), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

@@ -28,7 +28,7 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_host *host;
 	struct knet_link *link;
 	struct sockaddr_storage lo, lo6;
@@ -45,10 +45,7 @@ static void test(void)
 
 	log_test(logfd, "Test knet_link_add_acl incorrect knet_h");
 
-	if ((!knet_link_add_acl(NULL, 1, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_link_add_acl accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_link_add_acl(NULL, 1, 0, &lo, &lo, CHECK_TYPE_ADDRESS, CHECK_ACCEPT), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 

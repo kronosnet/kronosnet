@@ -28,7 +28,7 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t link_ids_entries = 0;
 	struct sockaddr_storage lo;
@@ -37,10 +37,7 @@ static void test(void)
 
 	log_test(logfd, "Test knet_link_get_link_list incorrect knet_h");
 
-	if ((!knet_link_get_link_list(NULL, 1, link_ids, &link_ids_entries)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_link_get_link_list accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_link_get_link_list(NULL, 1, link_ids, &link_ids_entries), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 

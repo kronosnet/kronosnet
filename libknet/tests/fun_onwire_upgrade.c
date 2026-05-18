@@ -88,12 +88,6 @@ static void test(void)
 	int i,j;
 	int seconds = 10;
 
-	if (is_memcheck() || is_helgrind()) {
-		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_host timeout");
-		seconds = seconds * 16;
-	}
-
-
 	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 
 
