@@ -89,12 +89,11 @@ static void test(int datafd_flag)
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd));
 
 	memset(recv_buff, 0, KNET_MAX_PACKET_SIZE);
 	memset(send_buff, 1, sizeof(send_buff));
 
-//	if (writev(knet_h1->sockfd[channel].sockfd[1], iov_out, 1) != sizeof(send_buff)) {
 	if (knet_send(knet_h1, send_buff, sizeof(send_buff), channel) != sizeof(send_buff)) {
 		log_test(logfd, "Unable to write data: %s", strerror(errno));
 		TEST_EXIT_CLEAN(FAIL);

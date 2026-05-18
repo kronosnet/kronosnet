@@ -30,13 +30,13 @@
 
 static int test_logfd;
 
-static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, uint8_t max, int seconds, int logfd, FILE *std)
+static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, uint8_t max, int seconds, int logfd)
 {
 	if (_ts_knet_handle_disconnect_links(knet_h, logfd) < 0) {
 		return -1;
 	}
 
-	if (wait_for_nodes_state(knet_h, TESTNODES, 0, seconds, logfd, std) < 0) {
+	if (wait_for_nodes_state(knet_h, TESTNODES, 0, seconds, logfd) < 0) {
 		log_test(logfd, "Failed waiting for nodes 0");
 		return -1;
 	}
@@ -62,7 +62,7 @@ static int upgrade_onwire_max_ver(knet_handle_t knet_h, int nodes, uint8_t min, 
 	}
 
 	if (nodes) {
-		if (wait_for_nodes_state(knet_h, nodes, 1, seconds, logfd, std) < 0) {
+		if (wait_for_nodes_state(knet_h, nodes, 1, seconds, logfd) < 0) {
 			log_test(logfd, "Failed waiting for nodes 1");
 			return -1;
 		}
@@ -104,7 +104,7 @@ static void test(void)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		FAIL_ON_ERR(upgrade_onwire_max_ver(knet_h[i], TESTNODES, knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1, seconds,
-						   logfd, stdout));
+						   logfd));
 	}
 
 	test_sleep(logfd, seconds);
@@ -119,7 +119,7 @@ static void test(void)
 
 	for (i = 1; i < TESTNODES; i++) {
 		FAIL_ON_ERR(upgrade_onwire_max_ver(knet_h[i], TESTNODES, knet_h[i]->onwire_ver, knet_h[i]->onwire_ver + 1, seconds,
-						   logfd, stdout));
+						   logfd));
 	}
 
 	test_sleep(logfd, seconds);
@@ -134,7 +134,7 @@ static void test(void)
 
 	for (i = 1; i < TESTNODES; i++) {
 		FAIL_ON_ERR(upgrade_onwire_max_ver(knet_h[i], TESTNODES - 1, knet_h[i]->onwire_max_ver, knet_h[i]->onwire_max_ver + 1, seconds,
-						   logfd, stdout));
+						   logfd));
 	}
 
 	test_sleep(logfd, seconds);
@@ -180,7 +180,7 @@ static void test(void)
 	log_test(logfd, "Testing node rejoining one version lower (cluster should reject the node)");
 
 	FAIL_ON_ERR(upgrade_onwire_max_ver(knet_h[TESTNODES], 0, knet_h[1]->onwire_min_ver - 1, knet_h[1]->onwire_max_ver - 1, seconds,
-					   logfd, stdout));
+					   logfd));
 
 	/*
 	 * need more time here for membership to settle
@@ -223,7 +223,7 @@ static void test(void)
 	log_test(logfd, "Testing node rejoining with proper version (cluster should reform)");
 
 	FAIL_ON_ERR(upgrade_onwire_max_ver(knet_h[TESTNODES], TESTNODES, knet_h[1]->onwire_min_ver, knet_h[1]->onwire_max_ver, seconds,
-					   logfd, stdout));
+					   logfd));
 
         /*
 	 * need more time here for membership to settle

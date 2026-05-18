@@ -19,8 +19,11 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_get_crypto_hash_list"
+
 static void test(void)
 {
+	int logfd;
 	struct knet_crypto_hash_info hash_list[16];
 	size_t hash_list_entries;
 	size_t hash_list_entries1;
@@ -28,51 +31,49 @@ static void test(void)
 	size_t crypto_list_entries;
 	size_t i, j;
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
 	struct knet_handle_crypto_cfg crypto_cfg;
 	unsigned char test_key[2000];
 	int ret;
 
+	logfd = start_logging(stdout);
+
 	memset(hash_list, 0, sizeof(hash_list));
 
-	printf("Test knet_get_crypto_hash_list with no entries_list\n");
+	log_test(logfd, "Test knet_get_crypto_hash_list with no entries_list");
 
-	if ((!knet_get_crypto_hash_list(hash_list, NULL)) || (errno != EINVAL)) {
-		printf("knet_get_crypto_hash_list accepted invalid list_entries or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_get_crypto_hash_list(hash_list, NULL), EINVAL);
 
-	printf("Test knet_get_crypto_hash_list with no hash_list (get number of entries)\n");
+	log_test(logfd, "Test knet_get_crypto_hash_list with no hash_list (get number of entries)");
 
 	if (knet_get_crypto_hash_list(NULL, &hash_list_entries) < 0) {
-		printf("knet_get_crypto_hash_list returned error instead of number of entries: %s\n", strerror(errno));
-		exit(FAIL);
+		log_test(logfd, "knet_get_crypto_hash_list returned error instead of number of entries: %s", strerror(errno));
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Test knet_get_crypto_hash_list with valid data\n");
+	log_test(logfd, "Test knet_get_crypto_hash_list with valid data");
 
 	if (knet_get_crypto_hash_list(hash_list, &hash_list_entries1) < 0) {
-		printf("knet_get_crypto_hash_list failed: %s\n", strerror(errno));
-		exit(FAIL);
+		log_test(logfd, "knet_get_crypto_hash_list failed: %s", strerror(errno));
+		TEST_EXIT(FAIL);
 	}
 
 	if (hash_list_entries != hash_list_entries1) {
-		printf("knet_get_crypto_hash_list returned a different number of entries: %d, %d\n",
+		log_test(logfd, "knet_get_crypto_hash_list returned a different number of entries: %d, %d",
 		       (int)hash_list_entries, (int)hash_list_entries1);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	for (i=0; i<hash_list_entries; i++) {
-		printf("Detected hash: %s (hash_bits: %d)\n",
+		log_test(logfd, "Detected hash: %s (hash_bits: %d)",
 		       hash_list[i].name, hash_list[i].hash_bits);
 	}
 
-	printf("\nTest that all returned hashes work with all crypto modules\n");
+	log_test(logfd, "Test that all returned hashes work with all crypto modules");
 
 	/* Get list of crypto modules */
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
-		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		exit(FAIL);
+		log_test(logfd, "knet_get_crypto_list failed: %s", strerror(errno));
+		TEST_EXIT(FAIL);
 	}
 
 	/* Prepare test key */
@@ -80,17 +81,14 @@ static void test(void)
 
 	/* Test each hash with each crypto module */
 	for (i = 0; i < crypto_list_entries; i++) {
-		printf("\nTesting crypto module: %s\n", crypto_list[i].name);
+		log_test(logfd, "Testing crypto module: %s", crypto_list[i].name);
 
 		for (j = 0; j < hash_list_entries; j++) {
 			/* Create handle */
-			setup_logpipes(logfds);
-			knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+			knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 			if (!knet_h1) {
-				printf("  FAIL: %s - couldn't create handle\n", hash_list[j].name);
-				flush_logs(logfds[0], stdout);
-				close_logpipes(logfds);
-				exit(FAIL);
+				log_test(logfd, "  FAIL: %s - couldn't create handle", hash_list[j].name);
+				TEST_EXIT(FAIL);
 			}
 
 			/* Configure crypto */
@@ -103,27 +101,27 @@ static void test(void)
 
 			ret = knet_handle_crypto_set_config(knet_h1, &crypto_cfg, 1);
 			if (ret < 0) {
-				printf("  FAIL: %s - crypto configuration failed\n", hash_list[j].name);
-				flush_logs(logfds[0], stdout);
+				log_test(logfd, "  FAIL: %s - crypto configuration failed", hash_list[j].name);
 				knet_handle_free(knet_h1);
-				close_logpipes(logfds);
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 
-			printf("  PASS: %s\n", hash_list[j].name);
+			log_test(logfd, "  PASS: %s", hash_list[j].name);
 
 			knet_handle_free(knet_h1);
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
 		}
 	}
 
-	printf("\nAll hashes successfully configured with all crypto modules\n");
+	log_test(logfd, "All hashes successfully configured with all crypto modules");
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet get crypto hash list\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

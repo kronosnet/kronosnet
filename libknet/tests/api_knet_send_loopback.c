@@ -110,7 +110,7 @@ static void test(void)
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd));
 
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
@@ -125,7 +125,7 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
 
-	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd, stdout));
+	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;
@@ -172,7 +172,7 @@ static void test(void)
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
-	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd, stdout));
+	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;
