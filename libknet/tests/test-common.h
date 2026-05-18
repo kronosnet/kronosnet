@@ -331,6 +331,19 @@ int is_helgrind(void);
  */
 
 /*
+ * find_plugins_path() - Locate crypto/compress plugins in build tree
+ *
+ * Searches LD_LIBRARY_PATH for directory containing knet plugins.
+ * Used by _ts_knet_handle_start() to set plugin path for handles.
+ *
+ * Parameters:
+ *   logfd - log file descriptor for diagnostics
+ *
+ * Returns: pointer to plugin path string, or NULL if not found
+ */
+char *find_plugins_path(int logfd);
+
+/*
  * _ts_knet_handle_start() - Create and configure knet handle for testing
  *
  * Creates knet handle with logging, sets plugin path, starts threads.
