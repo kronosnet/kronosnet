@@ -257,8 +257,8 @@ static void test(int transport)
 	FAIL_ON_ERR_THR(pthread_create(&recv_thread, NULL, recv_messages, (void *)knet_h[1]));
 
 	// Let everything settle down
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
 
 	/*
 	 * TESTING STARTS HERE
@@ -286,11 +286,11 @@ static void test(int transport)
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "0Address blocked - this should NOT get through"));
 
 	// Unblock and check again
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd));
 	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
 
 	log_test(logfd, "Testing Address unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
@@ -305,11 +305,11 @@ static void test(int transport)
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "0Netmask blocked - this should NOT get through"));
 
 	// Unblock and check again
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd));
 	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
 
 	log_test(logfd, "Testing Netmask unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
@@ -324,11 +324,11 @@ static void test(int transport)
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "0Range blocked - this should NOT get through"));
 
 	// Unblock and check again
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd));
 	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
 
 	log_test(logfd, "Testing Range unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Range unblocked - this should get through"));
@@ -336,8 +336,8 @@ static void test(int transport)
 
 	// Finish up - disable ACLS to make sure the QUIT message gets through
 	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd, stdout));
-	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd, stdout));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
+	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
 
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "QUIT"));
 

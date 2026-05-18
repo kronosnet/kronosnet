@@ -71,7 +71,7 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_QUICK, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_QUICK, logfd));
 
 	FAIL_ON_ERR(knet_handle_pmtud_get(knet_h1, &data_mtu));
 

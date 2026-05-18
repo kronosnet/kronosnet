@@ -185,7 +185,7 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd));
 	dhost_filter_ret = 2;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != E2BIG)) {
 		log_test(logfd, "knet_send_sync didn't detect 2+ host_ids from dst_host_filter or returned incorrect error: %s", strerror(errno));

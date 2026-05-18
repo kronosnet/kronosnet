@@ -546,7 +546,7 @@ void test_sleep(int logfd, int seconds)
 	sleep(seconds);
 }
 
-int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std)
+int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd)
 {
 	fd_set rfds;
 	struct timeval tv;
@@ -568,7 +568,6 @@ try_again:
 	 * before failing.
 	 */
 	if ((!err) && (i < seconds)) {
-		flush_logs(logfd, std);
 		i++;
 		goto try_again;
 	}
@@ -664,7 +663,7 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 	}
 
 	for (i = 1; i <= numnodes; i++) {
-		wait_for_nodes_state(knet_h[i], numnodes, 1, TEST_TIMEOUT_LONG, logfd, stdout);
+		wait_for_nodes_state(knet_h[i], numnodes, 1, TEST_TIMEOUT_LONG, logfd);
 	}
 	return;
 }
@@ -772,7 +771,7 @@ int wait_for_reply(int seconds, int pipefd, int logfd)
 /* Wait for a cluster of 'numnodes' to come up/go down */
 int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 			 uint8_t state, uint32_t seconds,
-			 int logfd, FILE *std)
+			 int logfd)
 {
 	int res, savederrno = 0;
 
@@ -809,7 +808,6 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 	if (count_nodes(knet_h) == target) {
 		log_test(logfd, "target already reached");
 		knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
-		flush_logs(logfd, std);
 		return 0;
 	}
 
@@ -820,13 +818,12 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 	}
 
 	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
-	flush_logs(logfd, std);
 	errno = savederrno;
 	return res;
 }
 
 /* Wait for a single node to come up */
-int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std)
+int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd)
 {
 	int res = 0;
 	int savederrno = 0;
@@ -857,7 +854,6 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	/* Check it's not already reachable */
 	if (knet_h->host_index[host_id]->status.reachable == 1) {
 		knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
-		flush_logs(logfd, std);
 		return 0;
 	}
 
@@ -870,7 +866,6 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
 
 	/* Still wait for it to settle */
-	flush_logs(logfd, std);
 	test_sleep(logfd, 1);
 	errno = savederrno;
 	return res;
