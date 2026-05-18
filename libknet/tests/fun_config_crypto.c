@@ -22,6 +22,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "fun_config_crypto"
+
 #undef TESTNODES
 #define TESTNODES 2
 
@@ -76,7 +78,7 @@ static void test(const char *model)
 	for (i = 1; i <= TESTNODES; i++) {
 		if (knet_handle_crypto_set_config(knet_h[i], &knet_handle_crypto_cfg, 2) < 0) {
 			log_test(logfd, "knet_handle_crypto_set_config (2) failed with correct config: %s", strerror(errno));
-			clean_exit(knet_h, TESTNODES, FAIL, logfd);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 	}
 
@@ -86,7 +88,7 @@ static void test(const char *model)
 	for (i = 1; i <= TESTNODES; i++) {
 		if (knet_handle_crypto_use_config(knet_h[i], 2) < 0) {
 			log_test(logfd, "knet_handle_crypto_use_config (2) failed with correct config: %s", strerror(errno));
-			clean_exit(knet_h, TESTNODES, FAIL, logfd);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 		for (x = 1; x <= TESTNODES; x++) {
 			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
@@ -145,7 +147,7 @@ static void test(const char *model)
 		}
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
@@ -154,21 +156,23 @@ int main(int argc, char *argv[])
 	size_t crypto_list_entries;
 	size_t i;
 
+	printf("[TEST] %s: Test Config crypto\n", TEST_NAME);
+
 	memset(crypto_list, 0, sizeof(crypto_list));
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	for (i=0; i < crypto_list_entries; i++) {
 		test(crypto_list[i].name);
 	}
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

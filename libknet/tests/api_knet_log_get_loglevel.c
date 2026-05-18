@@ -21,6 +21,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_loglevel"
+
 static void test(void)
 {
 	int logfd;
@@ -33,7 +35,7 @@ static void test(void)
 
 	if ((!knet_log_get_loglevel(NULL, KNET_SUB_UNKNOWN, &level)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_log_get_loglevel accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_INFO, knet_h);
@@ -48,15 +50,17 @@ static void test(void)
 	FAIL_ON_ERR(knet_log_get_loglevel(knet_h1, KNET_SUB_UNKNOWN, &level));
 	if (knet_h1->log_levels[KNET_SUB_UNKNOWN] != level) {
 		log_test(logfd, "knet_log_get_loglevel failed to get the right value");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get loglevel\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

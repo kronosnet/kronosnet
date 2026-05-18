@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_enable_sock_notify"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -42,7 +44,7 @@ static void test(void)
 
 	if ((!knet_handle_enable_sock_notify(NULL, NULL, sock_notify)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_enable_sock_notify accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -53,7 +55,7 @@ static void test(void)
 
 	if (knet_h1->sock_notify_fn_private_data != NULL) {
 		log_test(logfd, "knet_handle_enable_sock_notify failed to unset private_data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_enable_sock_notify with private_data");
@@ -61,7 +63,7 @@ static void test(void)
 
 	if (knet_h1->sock_notify_fn_private_data != &private_data) {
 		log_test(logfd, "knet_handle_enable_sock_notify failed to set private_data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_enable_sock_notify with no sock_notify fn");
@@ -71,15 +73,17 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, NULL, sock_notify));
 
 	if (knet_h1->sock_notify_fn != &sock_notify) {
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle enable sock notify\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

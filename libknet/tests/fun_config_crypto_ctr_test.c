@@ -22,6 +22,8 @@
 #include "crypto_model.h"
 #include "test-common.h"
 
+#define TEST_NAME "fun_config_crypto_ctr_test"
+
 /*
  * Test AES-CTR mode support across all available crypto backends
  *
@@ -80,7 +82,7 @@ static void test_ctr_mode(const char *model, const char *cipher)
 
 	if (knet_handle_crypto_set_config(knet_h[1], &knet_handle_crypto_cfg, 1) < 0) {
 		log_test(logfd, "SKIP: %s with %s not supported or failed: %s", model, cipher, strerror(errno));
-		CLEAN_EXIT(CONTINUE);
+		TEST_EXIT_CLEAN(CONTINUE);
 		return;
 	}
 
@@ -110,12 +112,12 @@ static void test_ctr_mode(const char *model, const char *cipher)
 	send_len = knet_send(knet_h[1], send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		log_test(logfd, "knet_send failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
 		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 0));
@@ -127,20 +129,20 @@ static void test_ctr_mode(const char *model, const char *cipher)
 		log_test(logfd, "knet_recv received only %d bytes: %s", recv_len, strerror(errno));
 		if ((is_helgrind()) && (recv_len == -1) && (errno == EAGAIN)) {
 			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
-			CLEAN_EXIT(CONTINUE);
+			TEST_EXIT_CLEAN(CONTINUE);
 			return;
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "recv and send buffers are different!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "=== %s with %s data transmission successful ===", model, cipher);
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 	return;
 }
 
@@ -160,10 +162,12 @@ int main(void)
 	size_t i;
 	int j;
 
+	printf("[TEST] %s: Test AES-CTR mode support across crypto backends\n", TEST_NAME);
+
 #ifdef KNET_BSD
 	if (is_memcheck() || is_helgrind()) {
 		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 #endif
 
@@ -173,12 +177,12 @@ int main(void)
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	/* Test each available backend with both naming formats */
@@ -193,5 +197,5 @@ int main(void)
 
 	printf("=== All CTR mode tests completed ===\n");
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

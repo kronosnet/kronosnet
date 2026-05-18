@@ -18,6 +18,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_add"
+
 static void test(void)
 {
 	int logfd;
@@ -31,7 +33,7 @@ static void test(void)
 
 	if ((!knet_host_add(NULL, 1)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_add accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -45,22 +47,24 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_get_host_list(knet_h1, host_ids, &host_ids_entries));
 	if (host_ids_entries != 1) {
 		log_test(logfd, "Too many hosts?");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 	if (host_ids[0] != 1) {
 		log_test(logfd, "Unable to find host id 1 in host list");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_host_add adding host 1 again");
 	FAIL_ON_SUCCESS(knet_host_add(knet_h1, 1), EEXIST);
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host add\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

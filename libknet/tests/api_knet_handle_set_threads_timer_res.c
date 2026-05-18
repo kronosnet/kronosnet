@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_set_threads_timer_res"
+
 static void test(void)
 {
 	int logfd;
@@ -29,19 +31,19 @@ static void test(void)
 
 	if (make_local_sockaddr(&src, 0, logfd) < 0) {
 		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (make_local_sockaddr(&dst, 1, logfd) < 0) {
 		log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_set_threads_timer_res incorrect knet_h");
 
 	if ((!knet_handle_set_threads_timer_res(NULL, 0)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_set_threads_timer_res accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -61,14 +63,16 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_set_threads_timer_res(knet_h1, 20000));
 	if (knet_h1->threads_timer_res != 20000) {
 		log_test(logfd, "knet_handle_set_threads_timer_res did not set timeres to correct value: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle set threads timer res\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

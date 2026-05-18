@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_clear_stats"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -55,7 +57,7 @@ static void test(void)
 
 	if (!knet_handle_clear_stats(NULL, 0) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_clear_stats accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -82,11 +84,11 @@ static void test(void)
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		log_test(logfd, "knet_send failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfd, stdout));
@@ -98,14 +100,14 @@ static void test(void)
 
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
 			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
-			CLEAN_EXIT(PASS);
+			TEST_EXIT_CLEAN(PASS);
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "recv and send buffers are different!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	/* A sanity check on the stats */
@@ -142,14 +144,16 @@ static void test(void)
 		       link_status.stats.rx_data_packets,
 		       link_status.stats.rx_data_bytes);
 
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle clear stats\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

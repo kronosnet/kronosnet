@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_get_stats"
+
 static void test(void)
 {
 	int logfd;
@@ -37,7 +39,7 @@ static void test(void)
 
 	if ((!knet_handle_get_stats(NULL, &stats, sizeof(struct knet_handle_stats))) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_get_stats accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -53,18 +55,20 @@ static void test(void)
 
 	if (memcmp(&test_byte_array[1], ref_byte_array, sizeof(struct knet_handle_stats))) {
 		log_test(logfd, "knet_handle_get_stats corrupted memory after stats structure");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_get_stats with valid input");
 	FAIL_ON_ERR(knet_handle_get_stats(knet_h1, &stats, sizeof(struct knet_handle_stats)));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle get stats\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

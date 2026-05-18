@@ -20,6 +20,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_recv"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -49,7 +51,7 @@ static void test(int datafd_flag)
 	log_test(logfd, "Test knet_recv incorrect knet_h");
 	if ((!knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_recv accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -98,7 +100,7 @@ static void test(int datafd_flag)
 //	if (writev(knet_h1->sockfd[channel].sockfd[1], iov_out, 1) != sizeof(send_buff)) {
 	if (knet_send(knet_h1, send_buff, sizeof(send_buff), channel) != sizeof(send_buff)) {
 		log_test(logfd, "Unable to write data: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 retry:
@@ -109,7 +111,7 @@ retry:
 			sleep(1);
 			goto retry;
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (datafd_flag == KNET_DATAFD_FLAG_RX_RETURN_INFO) {
@@ -118,37 +120,39 @@ retry:
 
 		if (datafd_hdr->size != sizeof(struct knet_datafd_header)) {
 			log_test(logfd, "sizeof knet_datafd_header is wrong; got %zu, should be %zu", datafd_hdr->size, sizeof(struct knet_datafd_header));
-			CLEAN_EXIT(FAIL);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 		if (datafd_hdr->src_nodeid != 1) {
 			log_test(logfd, "knet_datafd_header has wrong nodeid; got %d, should be %d", datafd_hdr->src_nodeid, 1);
-			CLEAN_EXIT(FAIL);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 		log_test(logfd, "got header. size = %zu, nodeid = %d", datafd_hdr->size, datafd_hdr->src_nodeid);
 
 		if (memcmp(recv_buff+datafd_hdr->size, send_buff, sizeof(send_buff))) {
 			log_test(logfd, "knet_recv received bad data");
-			CLEAN_EXIT(FAIL);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 	} else {
 		if (recv_len != sizeof(send_buff)) {
 			log_test(logfd, "knet_recv received only %zd bytes: %s", recv_len, strerror(errno));
-			CLEAN_EXIT(FAIL);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 
 		if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE/2)) {
 			log_test(logfd, "knet_recv received bad data");
-			CLEAN_EXIT(FAIL);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet recv\n", TEST_NAME);
+
 	test(0);
 
 	test(KNET_DATAFD_FLAG_RX_RETURN_INFO);
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

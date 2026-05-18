@@ -18,6 +18,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_subsystem_name"
+
 static void test(void)
 {
 	int logfd;
@@ -30,8 +32,7 @@ static void test(void)
 	if (strcmp(res, "nsscrypto")) {
 		log_test(logfd, "knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: nsscrypto",
 		       res);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Testing knet_log_get_subsystem_name bad lookup (within boundaries)");
@@ -39,8 +40,7 @@ static void test(void)
 	if (strcmp(res, "unknown")) {
 		log_test(logfd, "knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common",
 		       res);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Testing knet_log_get_subsystem_name bad lookup (outside boundaries)");
@@ -48,8 +48,7 @@ static void test(void)
 	if (strcmp(res, "unknown")) {
 		log_test(logfd, "knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common",
 		       res);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	stop_logging();
@@ -57,7 +56,9 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get subsystem name\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

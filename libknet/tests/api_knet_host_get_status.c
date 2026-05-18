@@ -20,6 +20,8 @@
 #include "host.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_get_status"
+
 static void test(void)
 {
 	int logfd;
@@ -34,7 +36,7 @@ static void test(void)
 
 	if ((!knet_host_get_status(NULL, 1, &status)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_get_status accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -50,12 +52,14 @@ static void test(void)
 	log_test(logfd, "Test knet_host_get_status with correct values");
 	FAIL_ON_ERR(knet_host_get_status(knet_h1, 1, &status));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host get status\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

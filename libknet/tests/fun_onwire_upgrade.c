@@ -23,6 +23,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "fun_onwire_upgrade"
+
 #undef TESTNODES
 #define TESTNODES 3
 
@@ -156,7 +158,7 @@ static void test(void)
 				 * be able to reach any other node
 				 */
 				if (knet_h[i]->host_index[j]->status.reachable != 0) {
-					clean_exit(knet_h, TESTNODES, FAIL, logfd);
+					TEST_EXIT_CLEAN(FAIL);
 				}
 			} else {
 				/*
@@ -165,11 +167,11 @@ static void test(void)
 				 */
 				if (j == TESTNODES) {
 					if (knet_h[i]->host_index[j]->status.reachable != 0) {
-						clean_exit(knet_h, TESTNODES, FAIL, logfd);
+						TEST_EXIT_CLEAN(FAIL);
 					}
 				} else {
 					if (knet_h[i]->host_index[j]->status.reachable != 1) {
-						clean_exit(knet_h, TESTNODES, FAIL, logfd);
+						TEST_EXIT_CLEAN(FAIL);
 					}
 				}
 			}
@@ -204,7 +206,7 @@ static void test(void)
 				 * be able to reach any other node
 				 */
 				if (knet_h[i]->host_index[j]->status.reachable != 0) {
-					clean_exit(knet_h, TESTNODES, FAIL, logfd);
+					TEST_EXIT_CLEAN(FAIL);
 				}
 			} else {
 				/*
@@ -213,11 +215,11 @@ static void test(void)
 				 */
 				if (j == TESTNODES) {
 					if (knet_h[i]->host_index[j]->status.reachable != 0) {
-						clean_exit(knet_h, TESTNODES, FAIL, logfd);
+						TEST_EXIT_CLEAN(FAIL);
 					}
 				} else {
 					if (knet_h[i]->host_index[j]->status.reachable != 1) {
-						clean_exit(knet_h, TESTNODES, FAIL, logfd);
+						TEST_EXIT_CLEAN(FAIL);
 					}
 				}
 			}
@@ -241,7 +243,7 @@ static void test(void)
 				continue;
 			}
 			if ((knet_h[i]->host_index[j]->status.reachable != 1) || (knet_h[i]->onwire_ver != knet_h[1]->onwire_max_ver)) {
-				clean_exit(knet_h, TESTNODES, FAIL, logfd);
+				TEST_EXIT_CLEAN(FAIL);
 			}
 		}
 	}
@@ -250,7 +252,7 @@ static void test(void)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		if (knet_handle_set_onwire_ver(knet_h[i], knet_h[i]->onwire_min_ver) < 0) {
-			clean_exit(knet_h, TESTNODES, FAIL, logfd);
+			TEST_EXIT_CLEAN(FAIL);
 		}
 	}
 
@@ -266,17 +268,19 @@ static void test(void)
 				continue;
 			}
 			if ((knet_h[i]->host_index[j]->status.reachable != 1) || (knet_h[i]->onwire_ver != knet_h[1]->onwire_min_ver)) {
-				clean_exit(knet_h, TESTNODES, FAIL, logfd);
+				TEST_EXIT_CLEAN(FAIL);
 			}
 		}
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test Onwire upgrade\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

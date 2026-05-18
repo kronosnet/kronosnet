@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_get_transport_list"
+
 static void test(void)
 {
 	int logfd;
@@ -35,31 +37,27 @@ static void test(void)
 
 	if ((!knet_get_transport_list(transport_list, NULL)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_get_transport_list accepted invalid list_entries or returned incorrect error: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Test knet_get_transport_list with no transport_list (get number of entries)");
 
 	if (knet_get_transport_list(NULL, &transport_list_entries) < 0) {
 		log_test(logfd, "knet_get_transport_list returned error instead of number of entries: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Test knet_get_transport_list with valid data");
 
 	if (knet_get_transport_list(transport_list, &transport_list_entries1) < 0) {
 		log_test(logfd, "knet_get_transport_list failed: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (transport_list_entries != transport_list_entries1) {
 		log_test(logfd, "knet_get_transport_list returned a different number of entries: %d, %d",
 		       (int)transport_list_entries, (int)transport_list_entries1);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	for (i=0; i<transport_list_entries; i++) {
@@ -72,7 +70,9 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet get transport list\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_priority"
+
 static void test(void)
 {
 	int logfd;
@@ -34,7 +36,7 @@ static void test(void)
 
 	if ((!knet_link_get_priority(NULL, 1, 0, &priority)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_get_priority accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -58,15 +60,17 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_get_priority(knet_h1, 1, 0, &priority));
 	if (priority != 1) {
 		log_test(logfd, "knet_link_get_priority failed to get correct values");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get priority\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

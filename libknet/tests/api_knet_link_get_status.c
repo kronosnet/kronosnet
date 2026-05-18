@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_status"
+
 static void test(void)
 {
 	int logfd;
@@ -36,7 +38,7 @@ static void test(void)
 
 	if ((!knet_link_get_status(NULL, 1, 0, &status, sizeof(struct knet_link_status))) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_get_status accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -58,12 +60,14 @@ static void test(void)
 	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_get_status(knet_h1, 1, 0, &status, sizeof(struct knet_link_status)));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get status\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

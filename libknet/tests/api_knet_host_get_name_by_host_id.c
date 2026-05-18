@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_get_name_by_host_id"
+
 static void test(void)
 {
 	int logfd;
@@ -31,7 +33,7 @@ static void test(void)
 
 	if ((!knet_host_get_name_by_host_id(NULL, 1, name)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_get_name_by_host_id accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -51,12 +53,14 @@ static void test(void)
 	log_test(logfd, "Retrieved hostname:");
 	log_test(logfd, "%.253s", name);
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host get name by host id\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

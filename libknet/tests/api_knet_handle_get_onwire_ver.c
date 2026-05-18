@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_get_onwire_ver"
+
 static void test(void)
 {
 	int logfd;
@@ -31,7 +33,7 @@ static void test(void)
 
 	if ((!knet_handle_get_onwire_ver(NULL, 1, &onwire_min_ver, &onwire_max_ver, &onwire_ver)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_get_onwire_ver accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -53,24 +55,26 @@ static void test(void)
 
 	if (onwire_min_ver != knet_h1->onwire_min_ver) {
 		log_test(logfd, "knet_handle_get_onwire_ver returned invalid onwire_min_ver");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (onwire_max_ver != knet_h1->onwire_max_ver) {
 		log_test(logfd, "knet_handle_get_onwire_ver returned invalid onwire_max_ver");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (onwire_ver != knet_h1->onwire_ver) {
 		log_test(logfd, "knet_handle_get_onwire_ver returned invalid onwire_ver");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle get onwire ver\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

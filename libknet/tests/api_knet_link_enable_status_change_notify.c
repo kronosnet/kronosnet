@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_enable_status_change_notify"
+
 static int private_data;
 
 static void link_notify(void *priv_data,
@@ -42,7 +44,7 @@ static void test(void)
 
 	if ((!knet_link_enable_status_change_notify(NULL, NULL, link_notify)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_enable_status_change_notify accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -51,35 +53,37 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_enable_status_change_notify(knet_h1, NULL, link_notify));
 	if (knet_h1->link_status_change_notify_fn_private_data != NULL) {
 		log_test(logfd, "knet_link_enable_status_change_notify failed to unset private_data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 	log_test(logfd, "Test knet_link_enable_status_change_notify with private_data");
 
 	FAIL_ON_ERR(knet_link_enable_status_change_notify(knet_h1, &private_data, NULL));
 	if (knet_h1->link_status_change_notify_fn_private_data != &private_data) {
 		log_test(logfd, "knet_link_enable_status_change_notify failed to set private_data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_enable_status_change_notify with no link_notify fn");
 	FAIL_ON_ERR(knet_link_enable_status_change_notify(knet_h1, NULL, NULL));
 	if (knet_h1->link_status_change_notify_fn != NULL) {
 		log_test(logfd, "knet_link_enable_status_change_notify failed to unset link_notify fn");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_enable_status_change_notify with link_notify fn");
 	FAIL_ON_ERR(knet_link_enable_status_change_notify(knet_h1, NULL, link_notify));
 	if (knet_h1->link_status_change_notify_fn != &link_notify) {
 		log_test(logfd, "knet_link_enable_status_change_notify failed to set link_notify fn");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link enable status change notify\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

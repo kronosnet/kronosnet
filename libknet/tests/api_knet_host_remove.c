@@ -19,6 +19,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_remove"
+
 static void test(void)
 {
 	int logfd;
@@ -33,7 +35,7 @@ static void test(void)
 
 	if ((!knet_host_remove(NULL, 1)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_remove accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -50,7 +52,7 @@ static void test(void)
 
 	if ((!knet_host_remove(knet_h1, 1)) || (errno != EBUSY)) {
 		log_test(logfd, "knet_host_remove accepted invalid request to remove host with link enabled or returned incorrect error: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 0));
@@ -63,15 +65,17 @@ static void test(void)
 
 	if (host_ids_entries) {
 		log_test(logfd, "Too many hosts?");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host remove\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

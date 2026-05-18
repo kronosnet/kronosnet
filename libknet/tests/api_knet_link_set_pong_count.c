@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_set_pong_count"
+
 static void test(void)
 {
 	int logfd;
@@ -31,19 +33,19 @@ static void test(void)
 
 	if (make_local_sockaddr(&src, 0, logfd) < 0) {
 		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (make_local_sockaddr(&dst, 1, logfd) < 0) {
 		log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_set_pong_count incorrect knet_h");
 
 	if ((!knet_link_set_pong_count(NULL, 1, 0, 2)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_set_pong_count accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -66,14 +68,16 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_set_pong_count(knet_h1, 1, 0, 3));
 	if (knet_h1->host_index[1]->link[0].pong_count != 3) {
 		log_test(logfd, "knet_link_set_pong_count failed to set correct values");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link set pong count\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

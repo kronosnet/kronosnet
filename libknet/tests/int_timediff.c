@@ -17,6 +17,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "int_timediff"
+
 #define timespec_set(x, sec, nsec) \
 do { \
 	x.tv_sec = sec; \
@@ -40,8 +42,7 @@ static void check_timespec_diff(void)
 
 	if (diff != 10000) {
 		log_test(logfd, "Failure!");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	timespec_set(end, start.tv_sec + 5, start.tv_nsec - 5000);
@@ -51,8 +52,7 @@ static void check_timespec_diff(void)
 
 	if (diff != 4999995000llu) {
 		log_test(logfd, "Failure!");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	stop_logging();
@@ -60,7 +60,9 @@ static void check_timespec_diff(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test Timediff\n", TEST_NAME);
+
 	check_timespec_diff();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

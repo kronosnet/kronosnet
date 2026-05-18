@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_ping_timers"
+
 static void test(void)
 {
 	int logfd;
@@ -35,7 +37,7 @@ static void test(void)
 
 	if ((!knet_link_get_ping_timers(NULL, 1, 0, &interval, &timeout, &precision)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_get_ping_timers accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -69,14 +71,16 @@ static void test(void)
 	    (timeout != KNET_LINK_DEFAULT_PING_TIMEOUT) ||
 	    (precision != KNET_LINK_DEFAULT_PING_PRECISION)) {
 		log_test(logfd, "knet_link_get_ping_timers failed to set values");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get ping timers\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

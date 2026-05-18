@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_get_threads_timer_res"
+
 static void test(void)
 {
 	int logfd;
@@ -31,7 +33,7 @@ static void test(void)
 
 	if ((!knet_handle_get_threads_timer_res(NULL, &timeres)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_get_threads_timer_res accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -43,7 +45,7 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_get_threads_timer_res(knet_h1, &timeres));
 	if (timeres != knet_h1->threads_timer_res) {
 		log_test(logfd, "knet_handle_get_threads_timer_res did not get timeres correct value: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_get_threads_timer_res with valid timeres");
@@ -51,15 +53,17 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_get_threads_timer_res(knet_h1, &timeres));
 	if (timeres != knet_h1->threads_timer_res) {
 		log_test(logfd, "knet_handle_get_threads_timer_res did not get timeres correct value: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle get threads timer res\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

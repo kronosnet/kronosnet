@@ -18,6 +18,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_subsystem_id"
+
 static void test(void)
 {
 	int logfd;
@@ -30,8 +32,7 @@ static void test(void)
 	if (res != KNET_SUB_NSSCRYPTO) {
 		log_test(logfd, "knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d",
 		       res, KNET_SUB_NSSCRYPTO);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Testing knet_log_get_subsystem_id bad lookup");
@@ -39,8 +40,7 @@ static void test(void)
 	if (res != KNET_SUB_UNKNOWN) {
 		log_test(logfd, "knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d",
 		       res, KNET_SUB_UNKNOWN);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	stop_logging();
@@ -48,7 +48,9 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get subsystem id\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

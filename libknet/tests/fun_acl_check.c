@@ -23,6 +23,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "fun_acl_check"
+
 
 /*
  * Keep track of how many messages got through:
@@ -58,10 +60,10 @@ static int test_logfd;
 			close(reply_pipe[0]); \
 			close(reply_pipe[1]); \
 			if (_foethr_res == -2) { \
-				exit(SKIP); \
+				TEST_EXIT(SKIP); \
 			} else { \
 				log_test(logfd, "*** FAIL on line %d %s failed: %s", __LINE__, #fn, strerror(savederrno)); \
-				exit(FAIL); \
+				TEST_EXIT(FAIL); \
 			} \
 		} \
 	} while(0)
@@ -378,20 +380,22 @@ static void test(int transport)
 	pthread_join(recv_thread, (void**)&thread_err);
 	if (*thread_err) {
 		log_test(logfd, "Thread returned %d", *thread_err);
-		clean_exit(knet_h, TESTNODES, FAIL, logfd);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (msgs_recvd != CORRECT_NUM_MSGS) {
 		log_test(logfd, "*** FAIL Recv thread got %d messages, expected %d", msgs_recvd, CORRECT_NUM_MSGS);
-		clean_exit(knet_h, TESTNODES, FAIL, logfd);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	clean_exit(knet_h, TESTNODES, PASS, logfd);
+	TEST_EXIT_CLEAN(PASS);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test ACL check\n", TEST_NAME);
+
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_set_config"
+
 static void test(void)
 {
 	int logfd;
@@ -36,7 +38,7 @@ static void test(void)
 
 	if (make_local_sockaddr(&lo, -1, logfd) < 0) {
 		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 	snprintf(lo_portstr, sizeof(lo_portstr), "%d", ntohs(lo_in->sin_port));
 
@@ -44,7 +46,7 @@ static void test(void)
 
 	if ((!knet_link_set_config(NULL, 1, 0, KNET_TRANSPORT_UDP, &lo, &lo, 0)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_set_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -72,7 +74,7 @@ static void test(void)
 	link = &host->link[0];
 	if (link->access_list_match_entry_head) {
 		log_test(logfd, "found access lists for dynamic dst_addr!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_link_get_status(knet_h1, 1, 0, &link_status, sizeof(struct knet_link_status)));
@@ -86,7 +88,7 @@ static void test(void)
 		log_test(logfd, "sport: %s", link_status.src_port);
 		log_test(logfd, "enabled: %d, dynamic: %u",
 		       link_status.enabled, knet_h1->host_index[1]->link[0].dynamic);
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_set_config with dynamic link (0) and static link (1)");
@@ -108,7 +110,7 @@ static void test(void)
 	link = &host->link[0];
 	if (!link->access_list_match_entry_head) {
 		log_test(logfd, "Unable to find default access lists for static dst_addr!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_link_get_status(knet_h1, 1, 0, &link_status, sizeof(struct knet_link_status)));
@@ -124,15 +126,17 @@ static void test(void)
 		log_test(logfd, "sport: %s", link_status.src_port);
 		log_test(logfd, "enabled: %d, dynamic: %u",
 		       link_status.enabled, knet_h1->host_index[1]->link[0].dynamic);
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link set config\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

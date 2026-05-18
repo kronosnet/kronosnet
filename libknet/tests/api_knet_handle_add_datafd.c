@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_add_datafd"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -47,7 +49,7 @@ static void test(void)
 
 	if ((!knet_handle_add_datafd(NULL, &datafd, &channel, 0)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_add_datafd accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -106,12 +108,14 @@ static void test(void)
 		FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafdmax[i]));
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle add datafd\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

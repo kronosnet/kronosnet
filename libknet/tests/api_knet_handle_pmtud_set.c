@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_pmtud_set"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -46,7 +48,7 @@ static void test(void)
 
 	if ((!knet_handle_pmtud_set(NULL, iface_mtu)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_pmtud_set accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -91,7 +93,7 @@ static void test(void)
 
 	if (knet_h1->data_mtu != data_mtu - 64) {
 		log_test(logfd, "knet_handle_pmtud_set failed to set the value");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_pmtud_set with iface_mtu 0");
@@ -104,14 +106,16 @@ static void test(void)
 
 	if (knet_h1->data_mtu != data_mtu) {
 		log_test(logfd, "knet_handle_pmtud_set failed to redetect MTU: detected mtu: %u data_mtu: %u ", knet_h1->data_mtu, data_mtu);
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle pmtud set\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

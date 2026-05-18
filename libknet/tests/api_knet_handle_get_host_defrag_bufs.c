@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_get_host_defrag_bufs"
+
 static void test(void)
 {
 	int logfd;
@@ -33,7 +35,7 @@ static void test(void)
 
 	if ((!knet_handle_get_host_defrag_bufs(NULL, &min_defrag_bufs, &max_defrag_bufs, &shrink_threshold, &reclaim_policy)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_get_host_defrag_bufs accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -59,7 +61,7 @@ static void test(void)
 	    (shrink_threshold != KNET_SHRINK_THRESHOLD_DEFAULT) ||
 	    (reclaim_policy != RECLAIM_POLICY_ABSOLUTE)) {
 		log_test(logfd, "knet_handle_get_host_defrag_bufs returned incorrect default data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	knet_h1->defrag_bufs_reclaim_policy = RECLAIM_POLICY_AVERAGE;
@@ -72,14 +74,16 @@ static void test(void)
 	    (shrink_threshold != KNET_SHRINK_THRESHOLD_DEFAULT) ||
 	    (reclaim_policy != RECLAIM_POLICY_AVERAGE)) {
 		log_test(logfd, "knet_handle_get_host_defrag_bufs returned incorrect default data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle get host defrag bufs\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

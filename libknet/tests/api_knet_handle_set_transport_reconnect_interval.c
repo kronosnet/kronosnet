@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_set_transport_reconnect_interval"
+
 static void test(void)
 {
 	int logfd;
@@ -30,7 +32,7 @@ static void test(void)
 
 	if ((!knet_handle_set_transport_reconnect_interval(NULL, 1000)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_set_transport_reconnect_interval accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -45,15 +47,17 @@ static void test(void)
 	// coverity[MISSING_LOCK:SUPPRESS] use out of the main library is 'OK' here. ish
 	if (knet_h1->reconnect_int != 2000) {
 		log_test(logfd, "knet_handle_set_transport_reconnect_interval failed to set correct value");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle set transport reconnect interval\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }
