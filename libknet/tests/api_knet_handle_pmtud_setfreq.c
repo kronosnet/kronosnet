@@ -21,34 +21,33 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_handle_pmtud_setfreq incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+
+	log_test(logfd, "Test knet_handle_pmtud_setfreq incorrect knet_h");
 
 	if ((!knet_handle_pmtud_setfreq(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_pmtud_setfreq accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_pmtud_setfreq accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_handle_pmtud_setfreq with 0 (incorrect)\n");
+	log_test(logfd, "Test knet_handle_pmtud_setfreq with 0 (incorrect)");
 	FAIL_ON_SUCCESS(knet_handle_pmtud_setfreq(knet_h1, 0), EINVAL);
 
-	printf("Test knet_handle_pmtud_setfreq with 86401 (incorrect)\n");
+	log_test(logfd, "Test knet_handle_pmtud_setfreq with 86401 (incorrect)");
 	FAIL_ON_SUCCESS(knet_handle_pmtud_setfreq(knet_h1, 86401), EINVAL);
 
-	printf("Test knet_handle_pmtud_setfreq with 1 (correct)\n");
+	log_test(logfd, "Test knet_handle_pmtud_setfreq with 1 (correct)");
 	FAIL_ON_ERR(knet_handle_pmtud_setfreq(knet_h1, 1));
 
 	if (knet_h1->pmtud_interval != 1) {
-		printf("knet_handle_pmtud_setfreq failed to set the value\n");
+		log_test(logfd, "knet_handle_pmtud_setfreq failed to set the value");
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);

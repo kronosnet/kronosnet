@@ -21,27 +21,35 @@
 
 static void test(void)
 {
+	int logfd;
 	const char *name = NULL;
 
-	printf("Test knet_get_transport_name_by_id with incorrect transport\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Test knet_get_transport_name_by_id with incorrect transport");
 
 	if ((knet_get_transport_name_by_id(KNET_MAX_TRANSPORTS) != NULL) || (errno != EINVAL)) {
-		printf("knet_get_transport_name_by_id accepted invalid transport or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_name_by_id accepted invalid transport or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_transport_name_by_id with correct values\n");
+	log_test(logfd, "Test knet_get_transport_name_by_id with correct values");
 
 	name = knet_get_transport_name_by_id(KNET_TRANSPORT_UDP);
 	if (!name) {
-		printf("knet_get_transport_name_by_id failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_name_by_id failed: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
 	if (strcmp(name, "UDP")) {
-		printf("knet_get_transport_name_by_id failed to get UDP transport name\n");
+		log_test(logfd, "knet_get_transport_name_by_id failed to get UDP transport name");
+		stop_logging();
 		exit(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])

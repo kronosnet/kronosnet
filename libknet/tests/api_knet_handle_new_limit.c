@@ -23,39 +23,36 @@
 
 static void test(void)
 {
+	int logfd;
 	knet_handle_t knet_h[UINT8_MAX + 1];
-	int logfds[2];
 	unsigned int idx;
 
-	setup_logpipes(logfds);
+	logfd = start_logging(stdout);
+
 
 	for (idx = 0; idx < UINT8_MAX; idx++) {
-		printf("Allocating %d\n", idx);
-		knet_h[idx] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG, 0);
+		log_test(logfd, "Allocating %d", idx);
+		knet_h[idx] = knet_handle_new(1, logfd, KNET_LOG_DEBUG, 0);
 		if (!knet_h[idx]) {
-			printf("knet_handle_new[%d] failed: %s\n", idx, strerror(errno));
-			flush_logs(logfds[0], stdout);
-			close_logpipes(logfds);
+			log_test(logfd, "knet_handle_new[%d] failed: %s", idx, strerror(errno));
+		stop_logging();
 			exit(FAIL);
 		}
-		flush_logs(logfds[0], stdout);
 	}
 
-	printf("forcing UINT8_T MAX\n");
-	knet_h[UINT8_MAX] = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG, 0);
+	log_test(logfd, "forcing UINT8_T MAX");
+	knet_h[UINT8_MAX] = knet_handle_new(1, logfd, KNET_LOG_DEBUG, 0);
 	if (knet_h[UINT8_MAX]) {
-		printf("off by one somewhere\n");
+		log_test(logfd, "off by one somewhere");
 		knet_handle_free(knet_h[UINT8_MAX]);
 	}
-	flush_logs(logfds[0], stdout);
 
 	for (idx = 0; idx < UINT8_MAX; idx++) {
-		printf("Freeing %d\n", idx);
+		log_test(logfd, "Freeing %d", idx);
 		knet_handle_free(knet_h[idx]);
-		flush_logs(logfds[0], stdout);
 	}
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])

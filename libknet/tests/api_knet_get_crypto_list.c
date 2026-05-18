@@ -21,43 +21,52 @@
 
 static void test(void)
 {
+	int logfd;
 	struct knet_crypto_info crypto_list[16];
 	size_t crypto_list_entries;
 	size_t crypto_list_entries1;
 	size_t i;
 
+	logfd = start_logging(stdout);
+
 	memset(crypto_list, 0, sizeof(crypto_list));
 
-	printf("Test knet_handle_get_crypto_list with no entries_list\n");
+	log_test(logfd, "Test knet_handle_get_crypto_list with no entries_list");
 
 	if ((!knet_get_crypto_list(crypto_list, NULL)) || (errno != EINVAL)) {
-		printf("knet_get_crypto_list accepted invalid list_entries or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_crypto_list accepted invalid list_entries or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_crypto_list with no crypto_list (get number of entries)\n");
+	log_test(logfd, "Test knet_get_crypto_list with no crypto_list (get number of entries)");
 
 	if (knet_get_crypto_list(NULL, &crypto_list_entries) < 0) {
-		printf("knet_handle_get_crypto_list returned error instead of number of entries: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_get_crypto_list returned error instead of number of entries: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_crypto_list with valid data\n");
+	log_test(logfd, "Test knet_get_crypto_list with valid data");
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries1) < 0) {
-		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_crypto_list failed: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
 	if (crypto_list_entries != crypto_list_entries1) {
-		printf("knet_get_crypto_list returned a different number of entries: %d, %d\n",
+		log_test(logfd, "knet_get_crypto_list returned a different number of entries: %d, %d",
 		       (int)crypto_list_entries, (int)crypto_list_entries1);
+		stop_logging();
 		exit(FAIL);
 	}
 
 	for (i=0; i<crypto_list_entries; i++) {
-		printf("Detected crypto: %s\n", crypto_list[i].name);
+		log_test(logfd, "Detected crypto: %s", crypto_list[i].name);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])

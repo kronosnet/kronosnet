@@ -21,29 +21,37 @@
 
 static void test(void)
 {
+	int logfd;
 	uint8_t id;
 
-	printf("Test knet_get_transport_id_by_name with no name\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Test knet_get_transport_id_by_name with no name");
 
 	if ((knet_get_transport_id_by_name(NULL) != KNET_MAX_TRANSPORTS) || (errno != EINVAL)) {
-		printf("knet_get_transport_id_by_name accepted invalid transport or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_id_by_name accepted invalid transport or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_transport_id_by_name with incorrect name\n");
+	log_test(logfd, "Test knet_get_transport_id_by_name with incorrect name");
 
 	if ((knet_get_transport_id_by_name("ARP") != KNET_MAX_TRANSPORTS) || (errno != EINVAL)) {
-		printf("knet_get_transport_id_by_name accepted invalid transport or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_id_by_name accepted invalid transport or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_transport_id_by_name with correct values\n");
+	log_test(logfd, "Test knet_get_transport_id_by_name with correct values");
 
 	id = knet_get_transport_id_by_name("UDP");
 	if (id != KNET_TRANSPORT_UDP) {
-		printf("knet_get_transport_id_by_name failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_id_by_name failed: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])

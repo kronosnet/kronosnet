@@ -20,40 +20,39 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
 
-	printf("Test knet_host_add incorrect knet_h\n");
+	log_test(logfd, "Test knet_host_add incorrect knet_h");
 
 	if ((!knet_host_add(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_host_add accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_add accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_host_add with hostid 1\n");
+	log_test(logfd, "Test knet_host_add with hostid 1");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	printf("Test verify host_id 1 is in the host list\n");
+	log_test(logfd, "Test verify host_id 1 is in the host list");
 	FAIL_ON_ERR(knet_host_get_host_list(knet_h1, host_ids, &host_ids_entries));
 	if (host_ids_entries != 1) {
-		printf("Too many hosts?\n");
+		log_test(logfd, "Too many hosts?");
 		CLEAN_EXIT(FAIL);
 	}
 	if (host_ids[0] != 1) {
-		printf("Unable to find host id 1 in host list\n");
+		log_test(logfd, "Unable to find host id 1 in host list");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_host_add adding host 1 again\n");
+	log_test(logfd, "Test knet_host_add adding host 1 again");
 	FAIL_ON_SUCCESS(knet_host_add(knet_h1, 1), EEXIST);
 
 	CLEAN_EXIT(CONTINUE);

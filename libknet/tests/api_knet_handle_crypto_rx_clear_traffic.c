@@ -22,34 +22,34 @@
 
 static void test()
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_handle_crypto_rx_clear_traffic incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic incorrect knet_h");
 
 	if ((!knet_handle_crypto_rx_clear_traffic(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_rx_clear_traffic accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_crypto_rx_clear_traffic accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_crypto_rx_clear_traffic with invalid value\n");
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic with invalid value");
 	FAIL_ON_SUCCESS(knet_handle_crypto_rx_clear_traffic(knet_h1, 2), EINVAL);
 
-	printf("Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC\n");
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC");
 	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h1, KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC));
 	if (knet_h1->crypto_only != KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC) {
-		printf("knet_handle_crypto_rx_clear_traffic failed to set correct value\n");
+		log_test(logfd, "knet_handle_crypto_rx_clear_traffic failed to set correct value");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC\n");
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC");
 	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h1, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
 	if (knet_h1->crypto_only != KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC) {
-		printf("knet_handle_crypto_rx_clear_traffic failed to set correct value\n");
+		log_test(logfd, "knet_handle_crypto_rx_clear_traffic failed to set correct value");
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);

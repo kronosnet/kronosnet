@@ -21,49 +21,48 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
 	struct sockaddr_storage lo;
 
-	printf("Test knet_host_add incorrect knet_h\n");
+	log_test(logfd, "Test knet_host_add incorrect knet_h");
 
 	if ((!knet_host_remove(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_host_remove accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_remove accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_host_remove with unconfigured host_id\n");
+	log_test(logfd, "Test knet_host_remove with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_host_remove(knet_h1, 1), EINVAL);
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	printf("Test knet_host_remove with configured host_id and links\n");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo));
+	log_test(logfd, "Test knet_host_remove with configured host_id and links");
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 1, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 
 	if ((!knet_host_remove(knet_h1, 1)) || (errno != EBUSY)) {
-		printf("knet_host_remove accepted invalid request to remove host with link enabled or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_remove accepted invalid request to remove host with link enabled or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 0));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
 
-	printf("Test knet_host_remove with configured host_id (no links)\n");
+	log_test(logfd, "Test knet_host_remove with configured host_id (no links)");
 	FAIL_ON_ERR(knet_host_remove(knet_h1, 1));
 
 	FAIL_ON_ERR(knet_host_get_host_list(knet_h1, host_ids, &host_ids_entries));
 
 	if (host_ids_entries) {
-		printf("Too many hosts?\n");
+		log_test(logfd, "Too many hosts?");
 		CLEAN_EXIT(FAIL);
 	}
 

@@ -23,28 +23,30 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
 	struct rlimit cur;
-	int logfds[2];
 
-	printf("Test knet_handle_new hostid 1, no logging\n");
+	log_test(logfd, "Test knet_handle_new hostid 1, no logging");
 
 	knet_h1 = knet_handle_new(1, 0, 0, 0);
 	if (!knet_h1) {
-		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
+		log_test(logfd, "Unable to init knet_handle! err: %s", strerror(errno));
 		exit(FAIL);
 	}
 
 	if (knet_handle_free(knet_h1) != 0) {
-		printf("Unable to free knet_handle\n");
+		log_test(logfd, "Unable to free knet_handle");
 		exit(FAIL);
 	}
 
-	printf("Test knet_handle_new hostid -1, no logging\n");
+	log_test(logfd, "Test knet_handle_new hostid -1, no logging");
 
 	knet_h1 = knet_handle_new(-1, 0, 0, 0);
 	if (!knet_h1) {
-		printf("Unable to init knet_handle! err: %s\n", strerror(errno));
+		log_test(logfd, "Unable to init knet_handle! err: %s", strerror(errno));
 		exit(FAIL);
 	}
 
@@ -53,35 +55,35 @@ static void test(void)
 	 */
 
 	if (knet_h1->host_id != 65535) {
-		printf("host_id size might have changed!\n");
+		log_test(logfd, "host_id size might have changed!");
 		knet_handle_free(knet_h1);
 		exit(FAIL);
 	}
 
 	if (knet_handle_free(knet_h1) != 0) {
-		printf("Unable to free knet_handle\n");
+		log_test(logfd, "Unable to free knet_handle");
 		exit(FAIL);
 	}
 
 	if (getrlimit(RLIMIT_NOFILE, &cur) < 0) {
-		printf("Unable to get current fd limit: %s\n", strerror(errno));
+		log_test(logfd, "Unable to get current fd limit: %s", strerror(errno));
 		exit(SKIP);
 	}
 
 	/*
 	 * passing a bad fd and it should fail
 	 */
-	printf("Test knet_handle_new hostid 1, incorrect log_fd (-1)\n");
+	log_test(logfd, "Test knet_handle_new hostid 1, incorrect log_fd (-1)");
 
 	knet_h1 = knet_handle_new(1, -1, 0, 0);
 
 	if ((!knet_h1) && (errno != EINVAL)) {
-		printf("knet_handle_new returned incorrect errno on incorrect log_fd\n");
+		log_test(logfd, "knet_handle_new returned incorrect errno on incorrect log_fd");
 		exit(FAIL);
 	}
 
 	if (knet_h1) {
-		printf("knet_handle_new accepted an incorrect (-1) log_fd\n");
+		log_test(logfd, "knet_handle_new accepted an incorrect (-1) log_fd");
 		knet_handle_free(knet_h1);
 		exit(FAIL);
 	}
@@ -89,30 +91,29 @@ static void test(void)
 	/*
 	 * passing a bad fd and it should fail
 	 */
-	printf("Test knet_handle_new hostid 1, incorrect log_fd (max_fd + 1)\n");
+	log_test(logfd, "Test knet_handle_new hostid 1, incorrect log_fd (max_fd + 1)");
 
 	knet_h1 = knet_handle_new(1, (int) cur.rlim_max, 0, 0);
 
 	if ((knet_h1) || (errno != EINVAL)) {
-		printf("knet_handle_new accepted an incorrect (max_fd + 1) log_fd or returned incorrect errno on incorrect log_fd: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_new accepted an incorrect (max_fd + 1) log_fd or returned incorrect errno on incorrect log_fd: %s", strerror(errno));
 		knet_handle_free(knet_h1);
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	printf("Test knet_handle_new hostid 1, proper log_fd, invalid log level (DEBUG + 1)\n");
+	log_test(logfd, "Test knet_handle_new hostid 1, proper log_fd, invalid log level (DEBUG + 1)");
 
-	knet_h1 = knet_handle_new(1, logfds[1], KNET_LOG_DEBUG + 1 ,0);
+	knet_h1 = knet_handle_new(1, logfd, KNET_LOG_DEBUG + 1 ,0);
 	if ((knet_h1) || (errno != EINVAL)) {
-		printf("knet_handle_new accepted an incorrect log level or returned incorrect errno on incorrect log level: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_new accepted an incorrect log level or returned incorrect errno on incorrect log level: %s", strerror(errno));
 		knet_h[1] = knet_h1;
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_handle_new hostid 1, proper log_fd, proper log level (DEBUG)\n");
+	log_test(logfd, "Test knet_handle_new hostid 1, proper log_fd, proper log level (DEBUG)");
 
-	(void)knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	(void)knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 	CLEAN_EXIT(CONTINUE);
 }
 

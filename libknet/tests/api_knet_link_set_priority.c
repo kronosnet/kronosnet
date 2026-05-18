@@ -23,47 +23,47 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
 	struct sockaddr_storage src, dst;
 
-	if (make_local_sockaddr(&src, 0) < 0) {
-		printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
+	if (make_local_sockaddr(&src, 0, logfd) < 0) {
+		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	if (make_local_sockaddr(&dst, 1) < 0) {
-		printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
+	if (make_local_sockaddr(&dst, 1, logfd) < 0) {
+		log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	printf("Test knet_link_set_priority incorrect knet_h\n");
+	log_test(logfd, "Test knet_link_set_priority incorrect knet_h");
 
 	if ((!knet_link_set_priority(NULL, 1, 0, 1)) || (errno != EINVAL)) {
-		printf("knet_link_set_priority accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_link_set_priority accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_link_set_priority with unconfigured host_id\n");
+	log_test(logfd, "Test knet_link_set_priority with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_set_priority(knet_h1, 1, 0, 1), EINVAL);
 
-	printf("Test knet_link_set_priority with incorrect linkid\n");
+	log_test(logfd, "Test knet_link_set_priority with incorrect linkid");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_link_set_priority(knet_h1, 1, KNET_MAX_LINK, 2), EINVAL);
 
-	printf("Test knet_link_set_priority with unconfigured link\n");
+	log_test(logfd, "Test knet_link_set_priority with unconfigured link");
 	FAIL_ON_SUCCESS(knet_link_set_priority(knet_h1, 1, 0, 1), EINVAL);
 
-	printf("Test knet_link_set_priority with correct values\n");
+	log_test(logfd, "Test knet_link_set_priority with correct values");
 	FAIL_ON_ERR(knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, &src, &dst, 0));
 	FAIL_ON_ERR(knet_link_set_priority(knet_h1, 1, 0, 3));
 	if (knet_h1->host_index[1]->link[0].priority != 3) {
-		printf("knet_link_set_priority failed to set correct values\n");
+		log_test(logfd, "knet_link_set_priority failed to set correct values");
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);

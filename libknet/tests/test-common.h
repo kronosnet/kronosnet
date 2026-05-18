@@ -37,72 +37,68 @@
  */
 #define TESTNODES 1
 
-#define FAIL_ON_ERR(fn)					  \
-	printf("FOE: %s\n", #fn);			  \
-	if ((res = fn) != 0) {				  \
-	  int savederrno = errno;			  \
-	  knet_handle_stop_everything(knet_h, TESTNODES); \
-	  stop_logthread();				  \
-	  flush_logs(logfds[0], stdout);		  \
-	  close_logpipes(logfds);			  \
-	  if (res == -2) {				  \
-		  exit(SKIP);				  \
-	  } else {					  \
-		  printf("*** FAIL on line %d. %s failed: %s\n", __LINE__ , #fn, strerror(savederrno)); \
-		  exit(FAIL);				  \
-	  }						  \
-	} else {					  \
-		flush_logs(logfds[0], stdout);		  \
-	}
+/*
+ * Test logging macro - writes to knet logging infrastructure
+ * with NULL handle (displayed as [testsuite]: message)
+ * Parameters: logfd - the write end of the log pipe, fmt - printf-style format string
+ */
+#define log_test(logfd, fmt, ...) \
+	do { \
+		struct knet_log_msg _log_msg; \
+		memset(&_log_msg, 0, sizeof(_log_msg)); \
+		snprintf(_log_msg.msg, KNET_MAX_LOG_MSG_SIZE, fmt, ##__VA_ARGS__); \
+		if (write(logfd, &_log_msg, sizeof(_log_msg)) != sizeof(_log_msg)) { \
+			fprintf(stderr, "Failed to write to log pipe\n"); \
+		} \
+	} while(0)
 
-/* As above but allow a SKIP to continue */
-#define FAIL_ON_ERR_ONLY(fn)				  \
-	printf("FOEO: %s\n", #fn);			  \
-	if ((res = fn) == -1) {				  \
-	  int savederrno = errno;			  \
-	  knet_handle_stop_everything(knet_h, TESTNODES); \
-	  stop_logthread();				  \
-	  flush_logs(logfds[0], stdout);		  \
-	  close_logpipes(logfds);			  \
-	  printf("*** FAIL on line %d. %s failed: %s\n", __LINE__ , #fn, strerror(savederrno)); \
-	  exit(FAIL);							\
-	} else {					  \
-		flush_logs(logfds[0], stdout);		  \
-	}
+#define CLEAN_EXIT(r) \
+	clean_exit(knet_h, TESTNODES, r, logfd)
 
-/* Voted "Best macro name of 2022" */
-#define FAIL_ON_SUCCESS(fn, errcode)			  \
-	printf("FOS: %s\n", #fn);			  \
-	if (((res = fn) == 0) ||			  \
-	    ((res == -1) && (errno != errcode))) {	  \
-	  int savederrno = errno;			  \
-	  knet_handle_stop_everything(knet_h, TESTNODES); \
-	  stop_logthread();				  \
-	  flush_logs(logfds[0], stdout);		  \
-	  close_logpipes(logfds);			  \
-	  if (res == -2) {				  \
-		  exit(SKIP);				  \
-	  } else {					  \
-		  printf("*** FAIL on line %d. %s did not return correct error: %s\n", __LINE__ , #fn, strerror(savederrno)); \
-		  exit(FAIL);				  \
-	  }						  \
-	} else {					  \
-		flush_logs(logfds[0], stdout);		  \
-	}
+#define FAIL_ON_ERR(fn) \
+	do { \
+		int _foe_res; \
+		log_test(logfd, "FOE: %s", #fn); \
+		if ((_foe_res = fn) != 0) { \
+			int savederrno = errno; \
+			log_test(logfd, "*** FAIL on line %d. %s failed: %s", __LINE__, #fn, strerror(savederrno)); \
+			CLEAN_EXIT(FAIL); \
+		} \
+	} while(0)
 
-#define CLEAN_EXIT(r)					\
-	clean_exit(knet_h, TESTNODES, logfds, r)
+#define FAIL_ON_SUCCESS(fn, errcode) \
+	do { \
+		int _fos_res; \
+		log_test(logfd, "FOS: %s", #fn); \
+		if (((_fos_res = fn) == 0) || \
+		    ((_fos_res == -1) && (errno != errcode))) { \
+			int savederrno = errno; \
+			if (_fos_res == -2) { \
+				clean_exit(knet_h, TESTNODES, SKIP, logfd); \
+			} else { \
+				log_test(logfd, "*** FAIL on line %d. %s did not return correct error: %s", __LINE__, #fn, strerror(savederrno)); \
+				CLEAN_EXIT(FAIL); \
+			} \
+		} \
+	} while(0)
 
-void clean_exit(knet_handle_t *knet_h, int testnodes, int *logfds, int exit_status);
+#define FAIL_ON_ERR_ONLY(fn) \
+	do { \
+		int _foeo_res; \
+		log_test(logfd, "FOEO: %s", #fn); \
+		if ((_foeo_res = fn) == -1) { \
+			int savederrno = errno; \
+			log_test(logfd, "*** FAIL on line %d. %s failed: %s", __LINE__, #fn, strerror(savederrno)); \
+			CLEAN_EXIT(FAIL); \
+		} \
+	} while(0)
 
-int execute_shell(const char *command, char **error_string);
+void clean_exit(knet_handle_t *knet_h, int testnodes, int exit_status, int logfd);
 
 int is_memcheck(void);
 int is_helgrind(void);
 
-void set_scheduler(int policy);
-
-knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level, knet_handle_t knet_h_array[]);
+knet_handle_t knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[]);
 
 /*
  * knet_link_set_config wrapper required to find a free port
@@ -110,44 +106,33 @@ knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level, knet_handle_t 
 
 int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			  uint8_t transport, uint64_t flags, int family, int dynamic,
-			  struct sockaddr_storage *lo);
+			  struct sockaddr_storage *lo, int logfd);
 
 /*
  * functional test helpers
  */
-void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes);
-void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level);
-void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport);
-int knet_handle_disconnect_links(knet_handle_t knet_h);
-int knet_handle_reconnect_links(knet_handle_t knet_h);
+void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, int logfd);
+void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd, uint8_t log_level);
+void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd);
+int knet_handle_disconnect_links(knet_handle_t knet_h, int logfd);
+int knet_handle_reconnect_links(knet_handle_t knet_h, int logfd);
 
 /*
- * high level logging function.
+ * high level logging functions.
  * automatically setup logpipes and start/stop logging thread.
  *
- * start_logging exit(FAIL) on error or fd to pass to knet_handle_new
- * and it will install an atexit handle to close logging properly
- *
- * WARNING: DO NOT use start_logging for api_ or int_ testing.
- * while start_logging would work just fine, the output
- * of the logs is more complex to read because of the way
- * the thread would interleave the output of printf from api_/int_ testing
- * with knet logs. Functionally speaking you get the exact same logs,
- * but a lot harder to read due to the thread latency in printing logs.
+ * start_logging() - exits on error, returns logfd to pass to knet_handle_new
+ *                   registers atexit handler for automatic cleanup
+ * stop_logging()  - manually stops logging (safe to call multiple times)
  */
 int start_logging(FILE *std);
+void stop_logging(void);
 
-int setup_logpipes(int *logfds);
-void close_logpipes(int *logfds);
-void flush_logs(int logfd, FILE *std);
-int start_logthread(int logfd, FILE *std);
-int stop_logthread(void);
-int make_local_sockaddr(struct sockaddr_storage *lo, int offset);
-int make_local_sockaddr6(struct sockaddr_storage *lo, int offset);
+int make_local_sockaddr(struct sockaddr_storage *lo, int offset, int logfd);
+int make_local_sockaddr6(struct sockaddr_storage *lo, int offset, int logfd);
 int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std);
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std);
-void test_sleep(knet_handle_t knet_h, int seconds);
-char *find_plugins_path(void);
+void test_sleep(knet_handle_t knet_h, int seconds, int logfd);
 int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 			 uint8_t state, uint32_t timeout,
 			 int logfd, FILE *std);

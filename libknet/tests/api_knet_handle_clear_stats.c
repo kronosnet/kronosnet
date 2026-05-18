@@ -35,8 +35,10 @@ static void sock_notify(void *pvt_data,
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
 	struct knet_link_status link_status;
@@ -45,23 +47,21 @@ static void test(void)
 	ssize_t send_len = 0;
 	int recv_len = 0;
 	int savederrno;
-	int res;
 	struct sockaddr_storage lo;
 
 	memset(send_buff, 0, sizeof(send_buff));
 
-	printf("Test knet_handle_clear_stats incorrect knet_h\n");
+	log_test(logfd, "Test knet_handle_clear_stats incorrect knet_h");
 
 	if (!knet_handle_clear_stats(NULL, 0) || (errno != EINVAL)) {
-		printf("knet_handle_clear_stats accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_clear_stats accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_send with valid data\n");
+	log_test(logfd, "Test knet_send with valid data");
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 
 	datafd = 0;
@@ -71,17 +71,17 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfds[0], stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));
 
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
-		printf("knet_send failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_send failed: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
@@ -89,22 +89,22 @@ static void test(void)
 		CLEAN_EXIT(FAIL);
 	}
 
-	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfds[0], stdout));
+	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfd, stdout));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;
 	if (recv_len != send_len) {
-		printf("knet_recv received only %d bytes: %s (errno: %d)\n", recv_len, strerror(errno), errno);
+		log_test(logfd, "knet_recv received only %d bytes: %s (errno: %d)", recv_len, strerror(errno), errno);
 
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
-			printf("helgrind exception. this is normal due to possible timeouts\n");
+			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
 			CLEAN_EXIT(PASS);
 		}
 		CLEAN_EXIT(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
-		printf("recv and send buffers are different!\n");
+		log_test(logfd, "recv and send buffers are different!");
 		CLEAN_EXIT(FAIL);
 	}
 
@@ -117,14 +117,14 @@ static void test(void)
 	    link_status.stats.rx_data_bytes < KNET_MAX_PACKET_SIZE ||
 	    link_status.stats.tx_data_bytes > KNET_MAX_PACKET_SIZE*2 ||
 	    link_status.stats.rx_data_bytes > KNET_MAX_PACKET_SIZE*2) {
-	    printf("stats look wrong: tx_packets: %" PRIu64 " (%" PRIu64 " bytes), rx_packets: %" PRIu64 " (%" PRIu64 " bytes)\n",
+	    log_test(logfd, "stats look wrong: tx_packets: %" PRIu64 " (%" PRIu64 " bytes), rx_packets: %" PRIu64 " (%" PRIu64 " bytes)",
 		   link_status.stats.tx_data_packets,
 		   link_status.stats.tx_data_bytes,
 		   link_status.stats.rx_data_packets,
 		   link_status.stats.rx_data_bytes);
 	}
 
-	printf("Test knet_clear_stats (link)\n");
+	log_test(logfd, "Test knet_clear_stats (link)");
 	FAIL_ON_ERR(knet_handle_clear_stats(knet_h1, KNET_CLEARSTATS_HANDLE_AND_LINK));
 
 /* Check they've been cleared */
@@ -136,7 +136,7 @@ static void test(void)
 	    link_status.stats.rx_data_bytes != 0 ||
 	    link_status.stats.tx_data_bytes != 0 ||
 	    link_status.stats.rx_data_bytes != 0) {
-		printf("stats not cleared: tx_packets: %" PRIu64 " (%" PRIu64 " bytes), rx_packets: %" PRIu64 " (%" PRIu64 " bytes)\n",
+		log_test(logfd, "stats not cleared: tx_packets: %" PRIu64 " (%" PRIu64 " bytes), rx_packets: %" PRIu64 " (%" PRIu64 " bytes)",
 		       link_status.stats.tx_data_packets,
 		       link_status.stats.tx_data_bytes,
 		       link_status.stats.rx_data_packets,

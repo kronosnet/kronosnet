@@ -21,31 +21,30 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_handle_setprio_dscp incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+
+	log_test(logfd, "Test knet_handle_setprio_dscp incorrect knet_h");
 
 	if ((!knet_handle_setprio_dscp(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_setprio_dscp accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_setprio_dscp accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_handle_setprio_dscp with 100 (incorrect)\n");
+	log_test(logfd, "Test knet_handle_setprio_dscp with 100 (incorrect)");
 	FAIL_ON_SUCCESS(knet_handle_setprio_dscp(knet_h1, 100), EINVAL);
 
-	printf("Test knet_handle_setprio_dscp with 40 (correct)\n");
+	log_test(logfd, "Test knet_handle_setprio_dscp with 40 (correct)");
 	FAIL_ON_ERR(knet_handle_setprio_dscp(knet_h1, 40));
 
 	if (knet_h1->prio_dscp != 40) {
-		printf("knet_handle_setprio_dscp failed to set the value\n");
+		log_test(logfd, "knet_handle_setprio_dscp failed to set the value");
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);

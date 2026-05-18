@@ -52,9 +52,8 @@ static void sock_notify(void *pvt_data,
 
 static void test_ctr_mode(const char *model, const char *cipher)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
+	knet_handle_t knet_h[2];
+	int logfd;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int datafd = 0;
 	int8_t channel = 0;
@@ -64,13 +63,14 @@ static void test_ctr_mode(const char *model, const char *cipher)
 	ssize_t send_len = 0;
 	int recv_len = 0;
 
-	printf("Test %s with %s/sha256\n", model, cipher);
-
 	memset(send_buff, 0, sizeof(send_buff));
 	memset(recv_buff, 0, sizeof(recv_buff));
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "=== Test %s with %s/sha256 ===", model, cipher);
+
+	knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -78,68 +78,70 @@ static void test_ctr_mode(const char *model, const char *cipher)
 	strncpy(knet_handle_crypto_cfg.crypto_hash_type, "sha256", sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 	knet_handle_crypto_cfg.private_key_len = 2000;
 
-	if (knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1) < 0) {
-		printf("SKIP: %s with %s not supported or failed: %s\n\n", model, cipher, strerror(errno));
-		flush_logs(logfds[0], stdout);
+	if (knet_handle_crypto_set_config(knet_h[1], &knet_handle_crypto_cfg, 1) < 0) {
+		log_test(logfd, "SKIP: %s with %s not supported or failed: %s", model, cipher, strerror(errno));
 		CLEAN_EXIT(CONTINUE);
+		return;
 	}
 
-	printf("%s with %s configured successfully\n", model, cipher);
+	log_test(logfd, "%s with %s configured successfully", model, cipher);
 
 	/* Activate crypto config */
-	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 1));
+	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h[1], 1));
 
-	printf("%s with %s activated successfully\n", model, cipher);
+	log_test(logfd, "%s with %s activated successfully", model, cipher);
 
 	/* Configure for data transmission test */
-	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h1, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
-	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
+	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h[1], KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
+	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h[1], &private_data, sock_notify));
 
 	datafd = 0;
 	channel = -1;
-	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
+	FAIL_ON_ERR(knet_handle_add_datafd(knet_h[1], &datafd, &channel, 0));
 
 	/* Set up loopback link */
-	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
-	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
-	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfds[0], stdout));
+	FAIL_ON_ERR(knet_host_add(knet_h[1], 1));
+	FAIL_ON_ERR(_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
+	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 1, 0, 1));
+	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 1));
+	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, 10, logfd, stdout));
 
 	/* Send encrypted data */
-	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
+	send_len = knet_send(knet_h[1], send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
-		printf("knet_send failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_send failed: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
-		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
+		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
-	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
-	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfds[0], stdout));
+	FAIL_ON_ERR(knet_handle_setfwd(knet_h[1], 0));
+	FAIL_ON_ERR(wait_for_packet(knet_h[1], 10, datafd, logfd, stdout));
 
 	/* Receive and verify encrypted data */
-	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	recv_len = knet_recv(knet_h[1], recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (recv_len != send_len) {
-		printf("knet_recv received only %d bytes: %s\n", recv_len, strerror(errno));
+		log_test(logfd, "knet_recv received only %d bytes: %s", recv_len, strerror(errno));
 		if ((is_helgrind()) && (recv_len == -1) && (errno == EAGAIN)) {
-			printf("helgrind exception. this is normal due to possible timeouts\n");
+			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
 			CLEAN_EXIT(CONTINUE);
+			return;
 		}
 		CLEAN_EXIT(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
-		printf("recv and send buffers are different!\n");
+		log_test(logfd, "recv and send buffers are different!");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("%s with %s data transmission successful\n\n", model, cipher);
+	log_test(logfd, "=== %s with %s data transmission successful ===", model, cipher);
 
 	CLEAN_EXIT(CONTINUE);
+	return;
 }
 
 int main(void)
@@ -167,6 +169,8 @@ int main(void)
 
 	memset(crypto_list, 0, sizeof(crypto_list));
 
+	printf("=== AES-CTR Mode Support Test ===\n");
+
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
 		return FAIL;
@@ -177,23 +181,14 @@ int main(void)
 		return SKIP;
 	}
 
-	printf("=== AES-CTR Mode Support Test ===\n\n");
-
 	/* Test each available backend with both naming formats */
 	for (i = 0; i < crypto_list_entries; i++) {
-		printf("--- Testing %s backend ---\n\n", crypto_list[i].name);
-
-		printf("Testing hyphenated format (aes-NNN-ctr):\n");
 		for (j = 0; hyphenated_ciphers[j] != NULL; j++) {
 			test_ctr_mode(crypto_list[i].name, hyphenated_ciphers[j]);
 		}
-
-		printf("Testing non-hyphenated format (aesNNN-ctr):\n");
 		for (j = 0; non_hyphenated_ciphers[j] != NULL; j++) {
 			test_ctr_mode(crypto_list[i].name, non_hyphenated_ciphers[j]);
 		}
-
-		printf("\n");
 	}
 
 	printf("=== All CTR mode tests completed ===\n");

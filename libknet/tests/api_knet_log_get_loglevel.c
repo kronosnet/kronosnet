@@ -23,31 +23,31 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	uint8_t level;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_log_get_loglevel incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+	uint8_t level;
+
+	log_test(logfd, "Test knet_log_get_loglevel incorrect knet_h");
 
 	if ((!knet_log_get_loglevel(NULL, KNET_SUB_UNKNOWN, &level)) || (errno != EINVAL)) {
-		printf("knet_log_get_loglevel accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_log_get_loglevel accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_INFO, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_INFO, knet_h);
 
-	printf("Test knet_log_get_loglevel incorrect subsystem\n");
+	log_test(logfd, "Test knet_log_get_loglevel incorrect subsystem");
 	FAIL_ON_SUCCESS(knet_log_get_loglevel(knet_h1, KNET_SUB_UNKNOWN - 1, &level), EINVAL);
 
-	printf("Test knet_log_get_loglevel incorrect log level\n");
+	log_test(logfd, "Test knet_log_get_loglevel incorrect log level");
 	FAIL_ON_SUCCESS(knet_log_get_loglevel(knet_h1, KNET_SUB_UNKNOWN, NULL), EINVAL);
 
-	printf("Test knet_log_get_loglevel with valid parameters\n");
+	log_test(logfd, "Test knet_log_get_loglevel with valid parameters");
 	FAIL_ON_ERR(knet_log_get_loglevel(knet_h1, KNET_SUB_UNKNOWN, &level));
 	if (knet_h1->log_levels[KNET_SUB_UNKNOWN] != level) {
-		printf("knet_log_get_loglevel failed to get the right value\n");
+		log_test(logfd, "knet_log_get_loglevel failed to get the right value");
 		CLEAN_EXIT(FAIL);
 	}
 

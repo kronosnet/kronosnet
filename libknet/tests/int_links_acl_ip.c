@@ -104,7 +104,7 @@ static int _ipcheck_addip(void *fd_tracker_match_entry_head,
 	return ipcheck_addip(fd_tracker_match_entry_head, -1, ss1, ss2, type, acceptreject);
 }
 
-static int default_rules(int load)
+static int default_rules(int load, int logfd)
 {
 	int ret;
 	check_type_t type;
@@ -121,7 +121,7 @@ static int default_rules(int load)
 	}
 
 	while (rules[i] != NULL) {
-		printf("Parsing rule: %s\n", rules[i]);
+		log_test(logfd, "Parsing rule: %s", rules[i]);
 		memset(&addr1, 0, sizeof(struct sockaddr_storage));
 		memset(&addr2, 0, sizeof(struct sockaddr_storage));
 		/*
@@ -232,10 +232,18 @@ static const char *after_insert_tests[100] = {
 
 int test(void)
 {
+	int logfd;
 	int i = 0;
 	int expected;
 	struct sockaddr_storage saddr;
 	struct acl_match_entry *match_entry;
+
+	logfd = start_logging(stdout);
+
+	if (default_rules(1, logfd) < 0) {
+		stop_logging();
+		return FAIL;
+	}
 
 	/*
 	 * default tests
@@ -252,13 +260,15 @@ int test(void)
 				expected = 0;
 				break;
 			default:
-				fprintf(stderr, "Unknown record type on line %d: %s\n", i, tests[i]);
+				log_test(logfd, "Unknown record type on line %d: %s", i, tests[i]);
+				stop_logging();
 				return FAIL;
 				break;
 		}
 
 		if (get_ipaddress(tests[i]+1, &saddr)) {
-				fprintf(stderr, "Cannot parse address %s\n", tests[i]+1);
+				log_test(logfd, "Cannot parse address %s", tests[i]+1);
+				stop_logging();
 				return FAIL;
 		}
 
@@ -269,7 +279,8 @@ int test(void)
 		}
 
 		if (ipcheck_validate(&match_entry, &saddr) != expected) {
-			fprintf(stderr, "Failed to check access list for ip: %s\n", tests[i]);
+			log_test(logfd, "Failed to check access list for ip: %s", tests[i]);
+			stop_logging();
 			return FAIL;
 		}
 		i++;
@@ -280,22 +291,26 @@ int test(void)
 	 */
 
 	if (get_ipaddress("192.168.2.1", &saddr)) {
-		fprintf(stderr, "Cannot parse address 192.168.2.1\n");
+		log_test(logfd, "Cannot parse address 192.168.2.1");
+		stop_logging();
 		return FAIL;
 	}
 
 	if (ipcheck_addip(&match_entry_v4, 3, &saddr, &saddr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
-		fprintf(stderr, "Unable to insert address in position 3 192.168.2.1\n");
+		log_test(logfd, "Unable to insert address in position 3 192.168.2.1");
+		stop_logging();
 		return FAIL;
 	}
 
 	if (get_ipaddress("3ffe:1::1", &saddr)) {
-		fprintf(stderr, "Cannot parse address 3ffe:1::1\n");
+		log_test(logfd, "Cannot parse address 3ffe:1::1");
+		stop_logging();
 		return FAIL;
 	}
 
 	if (ipcheck_addip(&match_entry_v6, 3, &saddr, &saddr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
-		fprintf(stderr, "Unable to insert address in position 3 3ffe:1::1\n");
+		log_test(logfd, "Unable to insert address in position 3 3ffe:1::1");
+		stop_logging();
 		return FAIL;
 	}
 
@@ -311,13 +326,15 @@ int test(void)
 				expected = 0;
 				break;
 			default:
-				fprintf(stderr, "Unknown record type on line %d: %s\n", i, after_insert_tests[i]);
+				log_test(logfd, "Unknown record type on line %d: %s", i, after_insert_tests[i]);
+				stop_logging();
 				return FAIL;
 				break;
 		}
 
 		if (get_ipaddress(after_insert_tests[i]+1, &saddr)) {
-				fprintf(stderr, "Cannot parse address %s\n", after_insert_tests[i]+1);
+				log_test(logfd, "Cannot parse address %s", after_insert_tests[i]+1);
+				stop_logging();
 				return FAIL;
 		}
 
@@ -328,32 +345,55 @@ int test(void)
 		}
 
 		if (ipcheck_validate(&match_entry, &saddr) != expected) {
-			fprintf(stderr, "Failed to check access list for ip: %s\n", after_insert_tests[i]);
+			log_test(logfd, "Failed to check access list for ip: %s", after_insert_tests[i]);
+			stop_logging();
 			return FAIL;
 		}
 		i++;
 	}
+
+	/*
+	 * test memory leaks with ipcheck_rmip
+	 */
+	if (default_rules(0, logfd) < 0) {
+		stop_logging();
+		return FAIL;
+	}
+
+	/*
+	 * test memory leaks with ipcheck_rmall
+	 */
+	if (default_rules(1, logfd) < 0) {
+		stop_logging();
+		return FAIL;
+	}
+
+	stop_logging();
 	return PASS;
 }
 
 int main(int argc, char *argv[])
 {
+	int logfd;
 	struct sockaddr_storage saddr;
 	struct acl_match_entry *match_entry;
 	int ret = PASS;
 	int i;
 
-	if (default_rules(1) < 0) {
-		return -1;
-	}
-
 	if (argc > 1) {
 		/*
 		 * run manual check against default access lists
 		 */
+		logfd = start_logging(stdout);
+
+		if (default_rules(1, logfd) < 0) {
+			stop_logging();
+			return -1;
+		}
+
 		for (i=1; i<argc; i++) {
 			if (get_ipaddress(argv[i], &saddr)) {
-				fprintf(stderr, "Cannot parse address %s\n", argv[i]);
+				log_test(logfd, "Cannot parse address %s", argv[i]);
 				ret = FAIL;
 				goto out;
 			} else {
@@ -371,29 +411,32 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+
+		/*
+		 * test memory leaks with ipcheck_rmip
+		 */
+		if (default_rules(0, logfd) < 0) {
+			stop_logging();
+			return FAIL;
+		}
+
+		/*
+		 * test memory leaks with ipcheck_rmall
+		 */
+		if (default_rules(1, logfd) < 0) {
+			stop_logging();
+			return FAIL;
+		}
+out:
+		ipcheck_rmall(&match_entry_v4);
+		ipcheck_rmall(&match_entry_v6);
+		stop_logging();
 	} else {
 		/*
 		 * run automatic tests
 		 */
 		ret = test();
 	}
-
-	/*
-	 * test memory leaks with ipcheck_rmip
-	 */
-	if (default_rules(0) < 0) {
-		return FAIL;
-	}
-
-	/*
-	 * test memory leaks with ipcheck_rmall
-	 */
-	if (default_rules(1) < 0) {
-		return FAIL;
-	}
-out:
-	ipcheck_rmall(&match_entry_v4);
-	ipcheck_rmall(&match_entry_v6);
 
 	return ret;
 }

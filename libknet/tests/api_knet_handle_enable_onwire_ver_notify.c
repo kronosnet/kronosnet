@@ -31,46 +31,46 @@ static void onwire_ver_notify(void *priv_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_handle_enable_onwire_ver_notify incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+
+	log_test(logfd, "Test knet_handle_enable_onwire_ver_notify incorrect knet_h");
 
 	if ((!knet_handle_enable_onwire_ver_notify(NULL, NULL, onwire_ver_notify)) || (errno != EINVAL)) {
-		printf("knet_handle_enable_onwire_ver_notify accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_enable_onwire_ver_notify accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_enable_onwire_ver_notify with no private_data\n");
+	log_test(logfd, "Test knet_handle_enable_onwire_ver_notify with no private_data");
 	FAIL_ON_ERR(knet_handle_enable_onwire_ver_notify(knet_h1, NULL, onwire_ver_notify));
 	if (knet_h1->onwire_ver_notify_fn_private_data != NULL) {
-		printf("knet_handle_enable_onwire_ver_notify failed to unset private_data");
+		log_test(logfd, "knet_handle_enable_onwire_ver_notify failed to unset private_data");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_handle_enable_onwire_ver_notify with private_data\n");
+	log_test(logfd, "Test knet_handle_enable_onwire_ver_notify with private_data");
 	FAIL_ON_ERR(knet_handle_enable_onwire_ver_notify(knet_h1, &private_data, NULL));
 	if (knet_h1->onwire_ver_notify_fn_private_data != &private_data) {
-		printf("knet_handle_enable_onwire_ver_notify failed to set private_data");
+		log_test(logfd, "knet_handle_enable_onwire_ver_notify failed to set private_data");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_handle_enable_onwire_ver_notify with no onwire_ver_notify fn\n");
+	log_test(logfd, "Test knet_handle_enable_onwire_ver_notify with no onwire_ver_notify fn");
 	FAIL_ON_ERR(knet_handle_enable_onwire_ver_notify(knet_h1, NULL, NULL));
 	if (knet_h1->onwire_ver_notify_fn != NULL) {
-		printf("knet_handle_enable_onwire_ver_notify failed to unset onwire_ver_notify fn");
+		log_test(logfd, "knet_handle_enable_onwire_ver_notify failed to unset onwire_ver_notify fn");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_handle_enable_onwire_ver_notify with onwire_ver_notify fn\n");
+	log_test(logfd, "Test knet_handle_enable_onwire_ver_notify with onwire_ver_notify fn");
 	FAIL_ON_ERR(knet_handle_enable_onwire_ver_notify(knet_h1, NULL, onwire_ver_notify));
 	if (knet_h1->onwire_ver_notify_fn != &onwire_ver_notify) {
-		printf("knet_handle_enable_onwire_ver_notify failed to set onwire_ver_notify fn");
+		log_test(logfd, "knet_handle_enable_onwire_ver_notify failed to set onwire_ver_notify fn");
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);
