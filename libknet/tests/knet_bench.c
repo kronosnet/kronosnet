@@ -27,6 +27,8 @@
 #include "threads_common.h"
 #include "test-common.h"
 
+#define TEST_NAME "knet_bench"
+
 #define MAX_NODES 128
 
 static int senderid = -1;
@@ -51,6 +53,8 @@ static int use_pckt_verification = 0;
 
 static int bench_shutdown_in_progress = 0;
 static pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int logfd = 0;
 
 #define TEST_PING 0
 #define TEST_PING_AND_DATA 1
@@ -139,7 +143,7 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 		nodes[i].nodeid = atoi(strtok(nodesinfo[i], ","));
 		if ((nodes[i].nodeid < 0) || (nodes[i].nodeid > KNET_MAX_HOST)) {
 			printf("Invalid nodeid: %d (0 - %d)\n", nodes[i].nodeid, KNET_MAX_HOST);
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 		if (thisnodeid == nodes[i].nodeid) {
 			*thisidx = i;
@@ -150,7 +154,7 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 
 			if (nodes[i].links == KNET_MAX_LINK) {
 				printf("Too many links configured. Max %d\n", KNET_MAX_LINK);
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 
 			slash = strstr(temp, "/");
@@ -159,7 +163,7 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 				transport = knet_get_transport_id_by_name(temp);
 				if (transport == KNET_MAX_TRANSPORTS) {
 					printf("Unknown transport: %s\n", temp);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				nodes[i].transport[nodes[i].links] = transport;
 				temp = slash + 1;
@@ -171,7 +175,7 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 					   &nodes[i].address[nodes[i].links],
 					   sizeof(struct sockaddr_storage)) < 0) {
 				printf("Unable to convert %s to sockaddress\n", temp);
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 			nodes[i].links++;
 		}
@@ -190,7 +194,7 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 	for (i = 1; i < onidx; i++) {
 		if (nodes[0].links != nodes[i].links) {
 			printf("knet_bench does not support unbalanced link configuration\n");
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 	}
 
@@ -235,7 +239,6 @@ static int ping_dst_host_filter(void *pvt_data,
 
 static void setup_knet(int argc, char *argv[])
 {
-	int logfd = 0;
 	int rv;
 	char *policystr = NULL, *protostr = NULL;
 	char *othernodeinfo[MAX_NODES];
@@ -264,7 +267,7 @@ static void setup_knet(int argc, char *argv[])
 		switch(rv) {
 			case 'h':
 				print_help();
-				exit(PASS);
+				TEST_EXIT(PASS);
 				break;
 			case 'a':
 				machine_output = 1;
@@ -278,14 +281,14 @@ static void setup_knet(int argc, char *argv[])
 			case 'c':
 				if (cryptocfg) {
 					printf("Error: -c can only be specified once\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				cryptocfg = optarg;
 				break;
 			case 'p':
 				if (policystr) {
 					printf("Error: -p can only be specified once\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				if (optarg) {
 					policystr = optarg;
@@ -308,13 +311,13 @@ static void setup_knet(int argc, char *argv[])
 				}
 				if (!policyfound) {
 					printf("Error: invalid policy %s specified. -p accepts active|passive|rr\n", policystr);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				break;
 		        case 'P':
 				if (protostr) {
 					printf("Error: -P can only be specified once\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				if (optarg) {
 					protostr = optarg;
@@ -329,13 +332,13 @@ static void setup_knet(int argc, char *argv[])
 				}
 				if (!protofound) {
 					printf("Error: invalid protocol %s specified. -P accepts udp|sctp\n", policystr);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				break;
 			case 't':
 				if (thisnodeid >= 0) {
 					printf("Error: -t can only be specified once\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				thisnodeid = atoi(optarg);
 				if ((thisnodeid < 0) || (thisnodeid > 65536)) {
@@ -346,7 +349,7 @@ static void setup_knet(int argc, char *argv[])
 			case 'n':
 				if (onidx == MAX_NODES) {
 					printf("Error: too many other nodes. Max %d\n", MAX_NODES);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				othernodeinfo[onidx] = optarg;
 				onidx++;
@@ -355,13 +358,13 @@ static void setup_knet(int argc, char *argv[])
 				port = atoi(optarg);
 				if ((port < 1) || (port > 65536)) {
 					printf("Error: port %d out of range (1 - 65536)\n", port);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				break;
 			case 'o':
 				if (globallistener) {
 					printf("Error: -l cannot be used with -o\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				portoffset = 1;
 				break;
@@ -369,13 +372,13 @@ static void setup_knet(int argc, char *argv[])
 				pmtud_interval = atoi(optarg);
 				if (pmtud_interval < 1) {
 					printf("Error: pmtud interval %d out of range (> 0)\n", pmtud_interval);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				break;
 			case 'l':
 				if (portoffset) {
 					printf("Error: -o cannot be used with -l\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				globallistener = 1;
 				break;
@@ -385,7 +388,7 @@ static void setup_knet(int argc, char *argv[])
 			case 's':
 				if (senderid >= 0) {
 					printf("Error: -s can only be specified once\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				senderid = atoi(optarg);
 				if ((senderid < 0) || (senderid > 65536)) {
@@ -409,7 +412,7 @@ static void setup_knet(int argc, char *argv[])
 					}
 				} else {
 					printf("Error: -T requires an option\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				break;
 			case 'S':
@@ -420,7 +423,7 @@ static void setup_knet(int argc, char *argv[])
 				force_packet_size = (uint32_t)atoi(optarg);
 				if ((force_packet_size < 64) || (force_packet_size > 65536)) {
 					printf("Unsupported packet size %u (accepted 64 - 65536)\n", force_packet_size);
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				break;
 			case 'v':
@@ -439,7 +442,7 @@ static void setup_knet(int argc, char *argv[])
 			case 'z':
 				if (compresscfg) {
 					printf("Error: -c can only be specified once\n");
-					exit(FAIL);
+					TEST_EXIT(FAIL);
 				}
 				compresscfg = optarg;
 				break;
@@ -473,7 +476,7 @@ static void setup_knet(int argc, char *argv[])
 		}
 		if (i == onidx) {
 			printf("Unable to find senderid in nodelist\n");
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 	}
 
@@ -510,9 +513,17 @@ static void setup_knet(int argc, char *argv[])
 			strncpy(knet_handle_crypto_cfg.crypto_hash_type, cryptohash, sizeof(knet_handle_crypto_cfg.crypto_hash_type) - 1);
 		}
 		knet_handle_crypto_cfg.private_key_len = KNET_MAX_KEY_LEN;
-		if (knet_handle_crypto(knet_h, &knet_handle_crypto_cfg)) {
-			printf("Unable to init crypto\n");
-			exit(FAIL);
+		if (knet_handle_crypto_set_config(knet_h, &knet_handle_crypto_cfg, 1)) {
+			printf("Unable to set crypto config\n");
+			TEST_EXIT(FAIL);
+		}
+		if (knet_handle_crypto_use_config(knet_h, 1)) {
+			printf("Unable to use crypto config\n");
+			TEST_EXIT(FAIL);
+		}
+		if (knet_handle_crypto_rx_clear_traffic(knet_h, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC)) {
+			printf("Unable to disable clear traffic on RX\n");
+			TEST_EXIT(FAIL);
 		}
 	}
 
@@ -523,7 +534,7 @@ static void setup_knet(int argc, char *argv[])
 		knet_handle_compress_cfg.compress_threshold = atoi(strtok(NULL, ":"));
 		if (knet_handle_compress(knet_h, &knet_handle_compress_cfg)) {
 			printf("Unable to configure compress\n");
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 	}
 
@@ -555,12 +566,12 @@ static void setup_knet(int argc, char *argv[])
 
 		if (knet_host_add(knet_h, nodes[i].nodeid) < 0) {
 			printf("knet_host_add failed: %s\n", strerror(errno));
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 
 		if (knet_host_set_policy(knet_h, nodes[i].nodeid, policy) < 0) {
 			printf("knet_host_set_policy failed: %s\n", strerror(errno));
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 
 		for (link_idx = 0; link_idx < nodes[i].links; link_idx++) {
@@ -604,7 +615,7 @@ static void setup_knet(int argc, char *argv[])
 						 nodes[i].transport[link_idx], src,
 						 &nodes[i].address[link_idx], 0) < 0) {
 				printf("Unable to configure link: %s\n", strerror(errno));
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 			if (portoffset) {
 				if (nodes[thisidx].address[link_idx].ss_family == AF_INET) {
@@ -621,15 +632,15 @@ static void setup_knet(int argc, char *argv[])
 			}
 			if (knet_link_set_enable(knet_h, nodes[i].nodeid, link_idx, 1) < 0) {
 				printf("knet_link_set_enable failed: %s\n", strerror(errno));
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 			if (knet_link_set_ping_timers(knet_h, nodes[i].nodeid, link_idx, 1000, 10000, 2048) < 0) {
 				printf("knet_link_set_ping_timers failed: %s\n", strerror(errno));
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 			if (knet_link_set_pong_count(knet_h, nodes[i].nodeid, link_idx, 2) < 0) {
 				printf("knet_link_set_pong_count failed: %s\n", strerror(errno));
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 		}
 	}
@@ -801,12 +812,12 @@ static void *_rx_thread(void *args)
 
 							if (msg[i].msg_len != recv_pckt->len) {
 								printf("Wrong packet len received: %u expected: %u!\n", msg[i].msg_len, recv_pckt->len);
-								exit(FAIL);
+								TEST_EXIT(FAIL);
 							}
 							chksum = compute_chsum((const unsigned char *)msg[i].msg_hdr.msg_iov->iov_base + sizeof(struct pckt_ver), msg[i].msg_len - sizeof(struct pckt_ver));
 							if (recv_pckt->chksum != chksum){
 								printf("Wrong packet checksum received: %u expected: %u!\n", recv_pckt->chksum, chksum);
-								exit(FAIL);
+								TEST_EXIT(FAIL);
 							}
 						}
 						rx_pkts++;
@@ -829,12 +840,12 @@ static void setup_data_txrx_common(void)
 	if (!rx_thread) {
 		if (knet_handle_enable_filter(knet_h, NULL, ping_dst_host_filter)) {
 			printf("Unable to enable dst_host_filter: %s\n", strerror(errno));
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 		printf("[info]: setting up rx thread\n");
 		if (pthread_create(&rx_thread, 0, _rx_thread, NULL)) {
 			printf("Unable to start rx thread\n");
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 	}
 }
@@ -978,7 +989,7 @@ static void send_perf_data_by_size(void)
 			sent_msgs = send_messages(&msg[0], packets_to_send);
 			if (sent_msgs < 0) {
 				printf("Something went wrong, aborting\n");
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 			total_pkts_to_tx = total_pkts_to_tx - sent_msgs;
 		}
@@ -1262,7 +1273,7 @@ static void send_perf_data_by_time(void)
 			sent_msgs = send_messages(&msg[0], PCKT_FRAG_MAX);
 			if (sent_msgs < 0) {
 				printf("Something went wrong, aborting\n");
-				exit(FAIL);
+				TEST_EXIT(FAIL);
 			}
 			if (clock_gettime(CLOCK_MONOTONIC, &clock_end) != 0) {
 				printf("[info]: unable to get end time!\n");
@@ -1317,7 +1328,7 @@ static void cleanup_all(void)
 		stop_rx_thread();
 	}
 	knet_h_tmp[1] = knet_h;
-	_ts_knet_handle_stop_everything(knet_h_tmp, 1, -1);
+	_ts_knet_handle_stop_everything(knet_h_tmp, 1, logfd);
 }
 
 static void sigint_handler(int signum)

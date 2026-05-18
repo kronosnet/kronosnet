@@ -140,7 +140,7 @@ static void test(const char *model)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		for (x = 0; x < seconds; x++){
-			sleep(1);
+			test_sleep(knet_h[1]->logfd, 1);
 		}
 		for (x = 1; x <= TESTNODES; x++) {
 			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);

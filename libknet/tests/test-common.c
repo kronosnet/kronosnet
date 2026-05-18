@@ -528,12 +528,13 @@ out:
 	return err;
 }
 
-void test_sleep(knet_handle_t knet_h, int seconds, int logfd)
+void test_sleep(int logfd, int seconds)
 {
 	if (is_memcheck() || is_helgrind()) {
 		log_test(logfd, "Test suite is running under valgrind, adjusting sleep timers");
 		seconds = seconds * 16;
 	}
+	log_test(logfd, "Sleeping for %d second%s", seconds, seconds == 1 ? "" : "s");
 	sleep(seconds);
 }
 
@@ -869,7 +870,7 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 
 	/* Still wait for it to settle */
 	flush_logs(logfd, std);
-	test_sleep(knet_h, 1, logfd);
+	test_sleep(logfd, 1);
 	errno = savederrno;
 	return res;
 }

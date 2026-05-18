@@ -134,7 +134,7 @@ static void test_sctp(void)
 	}
 
 	log_test(logfd, "Wait 2 seconds for sockets to connect");
-	test_sleep(knet_h1, 2);
+	test_sleep(logfd, 2);
 
 	log_test(logfd, "Test knet_link_set_enable with correct values (0)");
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 0));

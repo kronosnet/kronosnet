@@ -101,7 +101,6 @@ out_clean:
 	return err;
 }
 
-#define TESTNODES 1
 static void test_mtu(int logfd, const char *model, const char *crypto, const char *hash)
 {
 	knet_handle_t knet_h[TESTNODES+1];

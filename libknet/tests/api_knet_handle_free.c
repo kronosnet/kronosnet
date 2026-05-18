@@ -21,7 +21,6 @@
 
 #define TEST_NAME "api_knet_handle_free"
 
-#define TESTNODES 1
 static void test(void)
 {
 	int logfd;
