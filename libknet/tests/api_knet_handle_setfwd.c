@@ -21,36 +21,36 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
+	int logfd;
 
-	printf("Test knet_handle_setfwd with invalid knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+
+	log_test(logfd, "Test knet_handle_setfwd with invalid knet_h");
 
 	if ((!knet_handle_setfwd(NULL, 0)) || (errno != EINVAL)) {
-		printf("knet_handle_setfwd accepted invalid knet_h parameter\n");
+		log_test(logfd, "knet_handle_setfwd accepted invalid knet_h parameter");
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	printf("Test knet_handle_setfwd with invalid param (2) \n");
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	log_test(logfd, "Test knet_handle_setfwd with invalid param (2) ");
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 	FAIL_ON_SUCCESS(knet_handle_setfwd(knet_h1, 2), EINVAL);
 
-	printf("Test knet_handle_setfwd with valid param (1) \n");
+	log_test(logfd, "Test knet_handle_setfwd with valid param (1) ");
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
 	if (knet_h1->enabled != 1) {
-		printf("knet_handle_setfwd failed to set correct value");
+		log_test(logfd, "knet_handle_setfwd failed to set correct value");
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_handle_setfwd with valid param (0) \n");
+	log_test(logfd, "Test knet_handle_setfwd with valid param (0) ");
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
 
 	if (knet_h1->enabled != 0) {
-		printf("knet_handle_setfwd failed to set correct value");
+		log_test(logfd, "knet_handle_setfwd failed to set correct value");
 		CLEAN_EXIT(FAIL);
 	}
 

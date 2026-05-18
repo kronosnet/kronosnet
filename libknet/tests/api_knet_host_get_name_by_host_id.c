@@ -21,35 +21,35 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
 	char name[KNET_MAX_HOST_LEN];
 
-	printf("Test knet_host_get_name_by_host_id incorrect knet_h\n");
+	log_test(logfd, "Test knet_host_get_name_by_host_id incorrect knet_h");
 
 	if ((!knet_host_get_name_by_host_id(NULL, 1, name)) || (errno != EINVAL)) {
-		printf("knet_host_get_name_by_host_id accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_get_name_by_host_id accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_host_get_name_by_host_id with incorrect hostid 1\n");
+	log_test(logfd, "Test knet_host_get_name_by_host_id with incorrect hostid 1");
 	FAIL_ON_SUCCESS(knet_host_get_name_by_host_id(knet_h1, 1, name), EINVAL);
 
-	printf("Test knet_host_get_name_by_host_id with incorrect name\n");
+	log_test(logfd, "Test knet_host_get_name_by_host_id with incorrect name");
 	FAIL_ON_SUCCESS(knet_host_get_name_by_host_id(knet_h1, 1, NULL), EINVAL);
 
-	printf("Test knet_host_get_name_by_host_id with correct values for hostid 1: ");
+	log_test(logfd, "Test knet_host_get_name_by_host_id with correct values for hostid 1");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(knet_host_get_name_by_host_id(knet_h1, 1, name));
 
-	printf("%s\n", name);
+	log_test(logfd, "Retrieved hostname:");
+	log_test(logfd, "%.253s", name);
 
 	CLEAN_EXIT(CONTINUE);
 }

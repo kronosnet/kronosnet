@@ -36,8 +36,10 @@ static void sock_notify(void *pvt_data,
 
 static void test(const char *model)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
 	struct knet_handle_stats stats;
@@ -46,19 +48,16 @@ static void test(const char *model)
 	ssize_t send_len = 0;
 	int recv_len = 0;
 	int savederrno;
-	int res;
 	struct sockaddr_storage lo;
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
 
 	memset(send_buff, 0, sizeof(send_buff));
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_send with %s and valid data\n", model);
+	log_test(logfd, "Test knet_send with %s and valid data", model);
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, model, sizeof(knet_handle_compress_cfg.compress_model) - 1);
@@ -76,42 +75,42 @@ static void test(const char *model)
 
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfds[0], stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));
 
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
-		printf("knet_send failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_send failed: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
-		printf("knet_send sent only %zd bytes: %s\n", send_len, strerror(errno));
+		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
 
-	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfds[0], stdout));
+	FAIL_ON_ERR(wait_for_packet(knet_h1, 10, datafd, logfd, stdout));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	savederrno = errno;
 	if (recv_len != send_len) {
-		printf("knet_recv received only %d bytes: %s (errno: %d)\n", recv_len, strerror(errno), errno);
+		log_test(logfd, "knet_recv received only %d bytes: %s (errno: %d)", recv_len, strerror(errno), errno);
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
-			printf("helgrind exception. this is normal due to possible timeouts\n");
+			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
 			CLEAN_EXIT(PASS);
 		}
 		CLEAN_EXIT(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
-		printf("recv and send buffers are different!\n");
+		log_test(logfd, "recv and send buffers are different!");
 		CLEAN_EXIT(FAIL);
 	}
 
@@ -122,7 +121,7 @@ static void test(const char *model)
 		if (stats.tx_compressed_packets != 0 ||
 		    stats.rx_compressed_packets != 0) {
 
-			printf("stats look wrong: s/b all 0 for model 'none' tx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp), rx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp)\n",
+			log_test(logfd, "stats look wrong: s/b all 0 for model 'none' tx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp), rx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp)",
 			       stats.tx_compressed_packets,
 			       stats.tx_compressed_size_bytes,
 			       stats.tx_compressed_original_bytes,
@@ -135,7 +134,7 @@ static void test(const char *model)
 		    stats.rx_compressed_packets != 1 ||
 		    stats.tx_compressed_original_bytes < stats.tx_compressed_size_bytes ||
 		    stats.tx_compressed_original_bytes < stats.tx_compressed_size_bytes) {
-			printf("stats look wrong: tx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp), rx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp)\n",
+			log_test(logfd, "stats look wrong: tx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp), rx_packets: %" PRIu64 " (%" PRIu64 "/%" PRIu64 " comp/uncomp)",
 			       stats.tx_compressed_packets,
 			       stats.tx_compressed_size_bytes,
 			       stats.tx_compressed_original_bytes,

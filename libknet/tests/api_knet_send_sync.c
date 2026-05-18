@@ -94,45 +94,45 @@ static int dhost_filter(void *pvt_data,
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	struct sockaddr_storage lo;
-	int res;
 
 	memset(send_buff, 0, sizeof(send_buff));
 
-	printf("Test knet_send_sync incorrect knet_h\n");
+	log_test(logfd, "Test knet_send_sync incorrect knet_h");
 
 	if ((!knet_send_sync(NULL, send_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
-		printf("knet_send_sync accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_send_sync with no send_buff\n");
+	log_test(logfd, "Test knet_send_sync with no send_buff");
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, NULL, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_send_sync with invalid send_buff len (0)\n");
+	log_test(logfd, "Test knet_send_sync with invalid send_buff len (0)");
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, 0, channel), EINVAL);
 
-	printf("Test knet_send_sync with invalid send_buff len (> KNET_MAX_PACKET_SIZE)\n");
+	log_test(logfd, "Test knet_send_sync with invalid send_buff len (> KNET_MAX_PACKET_SIZE)");
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE + 1, channel), EINVAL);
 
-	printf("Test knet_send_sync with invalid channel (-1)\n");
+	log_test(logfd, "Test knet_send_sync with invalid channel (-1)");
 	channel = -1;
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_send_sync with invalid channel (KNET_DATAFD_MAX)\n");
+	log_test(logfd, "Test knet_send_sync with invalid channel (KNET_DATAFD_MAX)");
 	channel = KNET_DATAFD_MAX;
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_send_sync with no filter configured\n");
+	log_test(logfd, "Test knet_send_sync with no filter configured");
 	channel = 1;
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel), ENETDOWN);
 	// coverity[LOCK:SUPPRESS] - it's a test, get over it
@@ -140,13 +140,13 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_enable_filter(knet_h1, NULL, dhost_filter));
 
 
-	printf("Test knet_send_sync with unconfigured channel\n");
+	log_test(logfd, "Test knet_send_sync with unconfigured channel");
 	channel = 0;
 
 	// coverity[ORDER_REVERSAL:SUPPRESS] - it's a test, get over it
 	FAIL_ON_SUCCESS(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_send_sync with data forwarding disabled\n");
+	log_test(logfd, "Test knet_send_sync with data forwarding disabled");
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 
 	datafd = 0;
@@ -156,52 +156,52 @@ static void test(void)
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
 
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != ECANCELED)) {
-		printf("knet_send_sync didn't detect datafwd disabled or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync didn't detect datafwd disabled or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_send_sync with broken dst_host_filter\n");
+	log_test(logfd, "Test knet_send_sync with broken dst_host_filter");
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 	dhost_filter_ret = -1;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != EFAULT)) {
-		printf("knet_send_sync didn't detect fatal error from dst_host_filter or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync didn't detect fatal error from dst_host_filter or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_send_sync with dst_host_filter returning no host_ids_entries\n");
+	log_test(logfd, "Test knet_send_sync with dst_host_filter returning no host_ids_entries");
 	dhost_filter_ret = 0;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != EINVAL)) {
-		printf("knet_send_sync didn't detect 0 host_ids from dst_host_filter or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync didn't detect 0 host_ids from dst_host_filter or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_send_sync with host down\n");
+	log_test(logfd, "Test knet_send_sync with host down");
 	dhost_filter_ret = 1;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != EHOSTDOWN)) {
-		printf("knet_send_sync didn't detect hostdown or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync didn't detect hostdown or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_send_sync with dst_host_filter returning too many host_ids_entries\n");
+	log_test(logfd, "Test knet_send_sync with dst_host_filter returning too many host_ids_entries");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfds[0], stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));
 	dhost_filter_ret = 2;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != E2BIG)) {
-		printf("knet_send_sync didn't detect 2+ host_ids from dst_host_filter or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync didn't detect 2+ host_ids from dst_host_filter or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
-	printf("Test knet_send_sync with dst_host_filter returning mcast packets\n");
+	log_test(logfd, "Test knet_send_sync with dst_host_filter returning mcast packets");
 	dhost_filter_ret = 3;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != E2BIG)) {
-		printf("knet_send_sync didn't detect mcast packet from dst_host_filter or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_send_sync didn't detect mcast packet from dst_host_filter or returned incorrect error: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 
 
-	printf("Test knet_send_sync with valid data\n");
+	log_test(logfd, "Test knet_send_sync with valid data");
 	dhost_filter_ret = 1;
 	FAIL_ON_ERR(knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel));
 

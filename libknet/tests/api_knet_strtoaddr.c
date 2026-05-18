@@ -22,45 +22,52 @@
 
 static void test(void)
 {
+	int logfd;
 	struct sockaddr_storage out_addr;
 	struct sockaddr_in *out_addrv4 = (struct sockaddr_in *)&out_addr;
 	struct sockaddr_in6 *out_addrv6 = (struct sockaddr_in6 *)&out_addr;
 	struct sockaddr_in addrv4;
 	struct sockaddr_in6 addrv6;
 
+	logfd = start_logging(stdout);
+
 	memset(&out_addr, 0, sizeof(struct sockaddr_storage));
 	memset(&addrv4, 0, sizeof(struct sockaddr_in));
 	memset(&addrv6, 0, sizeof(struct sockaddr_in6));
 
-	printf("Checking knet_strtoaddr with invalid host\n");
+	log_test(logfd, "Checking knet_strtoaddr with invalid host");
 
 	if (!knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid host or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_strtoaddr accepted invalid host or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Checking knet_strtoaddr with invalid port\n");
+	log_test(logfd, "Checking knet_strtoaddr with invalid port");
 
 	if (!knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid port or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_strtoaddr accepted invalid port or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Checking knet_strtoaddr with invalid addr\n");
+	log_test(logfd, "Checking knet_strtoaddr with invalid addr");
 
 	if (!knet_strtoaddr("127.0.0.1", "50000", NULL, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid addr or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_strtoaddr accepted invalid addr or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Checking knet_strtoaddr with invalid size\n");
+	log_test(logfd, "Checking knet_strtoaddr with invalid size");
 
 	if (!knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0) ||
 	    (errno != EINVAL)) {
-		printf("knet_strtoaddr accepted invalid size or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_strtoaddr accepted invalid size or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
@@ -68,21 +75,23 @@ static void test(void)
 	addrv4.sin_addr.s_addr = htonl(0xc0a80001); /* 192.168.0.1 */
 	addrv4.sin_port = htons(50000);
 
-	printf("Checking knet_strtoaddr with valid data (192.168.0.1:50000)\n");
+	log_test(logfd, "Checking knet_strtoaddr with valid data (192.168.0.1:50000)");
 
 	if (knet_strtoaddr("192.168.0.1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {
-		printf("Unable to convert 192.168.0.1:50000\n");
+		log_test(logfd, "Unable to convert 192.168.0.1:50000");
+		stop_logging();
 		exit(FAIL);
 	}
 
 	if (out_addrv4->sin_family != addrv4.sin_family ||
 	    out_addrv4->sin_port != addrv4.sin_port ||
 	    out_addrv4->sin_addr.s_addr != addrv4.sin_addr.s_addr) {
-		printf("Check on 192.168.0.1:50000 failed\n");
+		log_test(logfd, "Check on 192.168.0.1:50000 failed");
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Checking knet_strtoaddr with valid data ([fd00::1]:50000)\n");
+	log_test(logfd, "Checking knet_strtoaddr with valid data ([fd00::1]:50000)");
 
 	memset(&out_addr, 0, sizeof(struct sockaddr_storage));
 
@@ -92,7 +101,8 @@ static void test(void)
 	addrv6.sin6_port = htons(50000);
 
 	if (knet_strtoaddr("fd00::1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {
-		printf("Unable to convert fd00::1:50000\n");
+		log_test(logfd, "Unable to convert fd00::1:50000");
+		stop_logging();
 		exit(FAIL);
 	}
 
@@ -100,10 +110,13 @@ static void test(void)
 	    out_addrv6->sin6_port != addrv6.sin6_port ||
 	    memcmp(&out_addrv6->sin6_addr, &addrv6.sin6_addr, sizeof(struct in6_addr))) {
 
-		printf("Check on fd00::1:50000 failed\n");
+		log_test(logfd, "Check on fd00::1:50000 failed");
+		stop_logging();
 		exit(FAIL);
 	}
 
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])

@@ -128,7 +128,7 @@ api_knet_get_compress_list_test_SOURCES = api_knet_get_compress_list.c \
 					  test-common.c
 
 api_knet_handle_clear_stats_test_SOURCES = api_knet_handle_clear_stats.c \
-					  test-common.c
+					   test-common.c
 
 api_knet_get_transport_list_test_SOURCES = api_knet_get_transport_list.c \
 					   test-common.c
@@ -158,7 +158,7 @@ api_knet_send_crypto_test_SOURCES = api_knet_send_crypto.c \
 				    test-common.c
 
 api_knet_send_loopback_test_SOURCES = api_knet_send_loopback.c \
-			     test-common.c
+				      test-common.c
 
 api_knet_send_sync_test_SOURCES = api_knet_send_sync.c \
 				  test-common.c
@@ -226,9 +226,11 @@ api_knet_log_set_loglevel_test_SOURCES = api_knet_log_set_loglevel.c \
 api_knet_log_get_loglevel_test_SOURCES = api_knet_log_get_loglevel.c \
 					 test-common.c
 
-api_knet_strtoaddr_test_SOURCES = api_knet_strtoaddr.c
+api_knet_strtoaddr_test_SOURCES = api_knet_strtoaddr.c \
+				  test-common.c
 
-api_knet_addrtostr_test_SOURCES = api_knet_addrtostr.c
+api_knet_addrtostr_test_SOURCES = api_knet_addrtostr.c \
+				  test-common.c
 
 api_knet_link_set_config_test_SOURCES = api_knet_link_set_config.c \
 					test-common.c
@@ -291,4 +293,4 @@ api_knet_handle_crypto_rx_clear_traffic_test_SOURCES = api_knet_handle_crypto_rx
 						       test-common.c
 
 api_knet_handle_setprio_dscp_test_SOURCES = api_knet_handle_setprio_dscp.c \
-					     test-common.c
+					    test-common.c

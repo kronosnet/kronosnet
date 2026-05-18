@@ -21,34 +21,33 @@
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_host_set_policy incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2];
+
+	log_test(logfd, "Test knet_host_set_policy incorrect knet_h");
 
 	if ((!knet_host_set_policy(NULL, 1, KNET_LINK_POLICY_PASSIVE)) || (errno != EINVAL)) {
-		printf("knet_host_set_policy accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_set_policy accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_host_set_policy incorrect host_id\n");
+	log_test(logfd, "Test knet_host_set_policy incorrect host_id");
 	FAIL_ON_SUCCESS(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_PASSIVE), EINVAL);
 
-	printf("Test knet_host_set_policy incorrect policy\n");
+	log_test(logfd, "Test knet_host_set_policy incorrect policy");
 	FAIL_ON_SUCCESS(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_RR + 1), EINVAL);
 
-	printf("Test knet_host_set_policy correct policy\n");
+	log_test(logfd, "Test knet_host_set_policy correct policy");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_RR));
 	if (knet_h1->host_index[1]->link_handler_policy != KNET_LINK_POLICY_RR) {
-		printf("knet_host_set_policy failed to set RR policy for host 1: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_set_policy failed to set RR policy for host 1: %s", strerror(errno));
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);

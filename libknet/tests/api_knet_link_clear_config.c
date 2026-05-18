@@ -23,37 +23,37 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
 	struct sockaddr_storage lo;
 
-	printf("Test knet_link_clear_config incorrect knet_h\n");
+	log_test(logfd, "Test knet_link_clear_config incorrect knet_h");
 
 	if ((!knet_link_clear_config(NULL, 1, 0)) || (errno != EINVAL)) {
-		printf("knet_link_clear_config accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_link_clear_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_link_clear_config with unconfigured host_id\n");
+	log_test(logfd, "Test knet_link_clear_config with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_clear_config(knet_h1, 1, 0), EINVAL);
 
-	printf("Test knet_link_clear_config with incorrect linkid\n");
+	log_test(logfd, "Test knet_link_clear_config with incorrect linkid");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_link_clear_config(knet_h1, 1, KNET_MAX_LINK), EINVAL);
 
-	printf("Test knet_link_clear_config with unconfigured linkid\n");
+	log_test(logfd, "Test knet_link_clear_config with unconfigured linkid");
 	FAIL_ON_SUCCESS(knet_link_clear_config(knet_h1, 1, 0), EINVAL);
 
-	printf("Test knet_link_clear_config with enabled linkid\n");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	log_test(logfd, "Test knet_link_clear_config with enabled linkid");
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 	FAIL_ON_SUCCESS(knet_link_clear_config(knet_h1, 1, 0), EBUSY);
 
-	printf("Test knet_link_clear_config with correct data\n");
+	log_test(logfd, "Test knet_link_clear_config with correct data");
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 0));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
 

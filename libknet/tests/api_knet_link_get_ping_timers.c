@@ -23,52 +23,52 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
 	time_t interval = 0, timeout = 0;
 	unsigned int precision = 0;
 	struct sockaddr_storage lo;
 
-	printf("Test knet_link_get_ping_timers incorrect knet_h\n");
+	log_test(logfd, "Test knet_link_get_ping_timers incorrect knet_h");
 
 	if ((!knet_link_get_ping_timers(NULL, 1, 0, &interval, &timeout, &precision)) || (errno != EINVAL)) {
-		printf("knet_link_get_ping_timers accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_link_get_ping_timers accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_link_get_ping_timers with unconfigured host_id\n");
+	log_test(logfd, "Test knet_link_get_ping_timers with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_get_ping_timers(knet_h1, 1, 0, &interval, &timeout, &precision), EINVAL);
 
-	printf("Test knet_link_get_ping_timers with incorrect linkid\n");
+	log_test(logfd, "Test knet_link_get_ping_timers with incorrect linkid");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_link_get_ping_timers(knet_h1, 1, KNET_MAX_LINK, &interval, &timeout, &precision), EINVAL);
 
-	printf("Test knet_link_get_ping_timers with incorrect interval\n");
+	log_test(logfd, "Test knet_link_get_ping_timers with incorrect interval");
 	FAIL_ON_SUCCESS(knet_link_get_ping_timers(knet_h1, 1, 0, NULL, &timeout, &precision), EINVAL);
 
-	printf("Test knet_link_get_ping_timers with incorrect timeout\n");
+	log_test(logfd, "Test knet_link_get_ping_timers with incorrect timeout");
 	FAIL_ON_SUCCESS(knet_link_get_ping_timers(knet_h1, 1, 0, &interval, NULL, &precision), EINVAL);
 
-	printf("Test knet_link_get_ping_timers with incorrect interval\n");
+	log_test(logfd, "Test knet_link_get_ping_timers with incorrect interval");
 	FAIL_ON_SUCCESS(knet_link_get_ping_timers(knet_h1, 1, 0, &interval, &timeout, NULL), EINVAL);
 
-	printf("Test knet_link_get_ping_timers with unconfigured link\n");
+	log_test(logfd, "Test knet_link_get_ping_timers with unconfigured link");
 	FAIL_ON_SUCCESS(knet_link_get_ping_timers(knet_h1, 1, 0, &interval, &timeout, &precision), EINVAL);
 
-	printf("Test knet_link_get_ping_timers with correct values\n");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	log_test(logfd, "Test knet_link_get_ping_timers with correct values");
+	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_get_ping_timers(knet_h1, 1, 0, &interval, &timeout, &precision));
 
-	printf("DEFAULT: int: %ld timeout: %ld prec: %u\n", (long int)interval, (long int)timeout, precision);
+	log_test(logfd, "DEFAULT: int: %ld timeout: %ld prec: %u", (long int)interval, (long int)timeout, precision);
 	if ((interval != KNET_LINK_DEFAULT_PING_INTERVAL) ||
 	    (timeout != KNET_LINK_DEFAULT_PING_TIMEOUT) ||
 	    (precision != KNET_LINK_DEFAULT_PING_PRECISION)) {
-		printf("knet_link_get_ping_timers failed to set values\n");
+		log_test(logfd, "knet_link_get_ping_timers failed to set values");
 		CLEAN_EXIT(FAIL);
 	}
 	CLEAN_EXIT(CONTINUE);

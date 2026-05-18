@@ -1317,7 +1317,7 @@ static void cleanup_all(void)
 		stop_rx_thread();
 	}
 	knet_h_tmp[1] = knet_h;
-	knet_handle_stop_everything(knet_h_tmp, 1);
+	knet_handle_stop_everything(knet_h_tmp, 1, -1);
 }
 
 static void sigint_handler(int signum)

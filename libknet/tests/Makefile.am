@@ -80,6 +80,7 @@ check-api-test-coverage:
 pckt_test_SOURCES	= pckt_test.c
 
 int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
+				test-common.c \
 				../common.c \
 				../compat.c \
 				../logging.c \
@@ -96,7 +97,8 @@ int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
 				../links_acl_loopback.c \
 				../lib_config.c
 
-int_timediff_test_SOURCES = int_timediff.c
+int_timediff_test_SOURCES = int_timediff.c \
+			    test-common.c
 
 knet_bench_test_SOURCES	= knet_bench.c \
 			  test-common.c \

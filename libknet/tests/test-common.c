@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <dirent.h>
@@ -37,118 +38,8 @@ struct log_thread_data {
 };
 static struct log_thread_data data;
 static char plugin_path[PATH_MAX];
-
-static int _read_pipe(int fd, char **file, size_t *length)
-{
-	char buf[4096];
-	int n;
-	int done = 0;
-
-	*file = NULL;
-	*length = 0;
-
-	memset(buf, 0, sizeof(buf));
-
-	while (!done) {
-
-		n = read(fd, buf, sizeof(buf));
-
-		if (n < 0) {
-			if (errno == EINTR)
-				continue;
-
-			if (*file)
-				free(*file);
-
-			return n;
-		}
-
-		if (n == 0 && (!*length))
-			return 0;
-
-		if (n == 0)
-			done = 1;
-
-		if (*file)
-			*file = realloc(*file, (*length) + n + done);
-		else
-			*file = malloc(n + done);
-
-		if (!*file)
-			return -1;
-
-		memmove((*file) + (*length), buf, n);
-		*length += (done + n);
-	}
-
-	/* Null terminator */
-	(*file)[(*length) - 1] = 0;
-
-	return 0;
-}
-
-int execute_shell(const char *command, char **error_string)
-{
-	pid_t pid;
-	int status, err = 0;
-	int fd[2];
-	size_t size = 0;
-
-	if ((command == NULL) || (!error_string)) {
-		errno = EINVAL;
-		return FAIL;
-	}
-
-	*error_string = NULL;
-
-	err = pipe(fd);
-	if (err)
-		goto out_clean;
-
-	pid = fork();
-	if (pid < 0) {
-		err = pid;
-		goto out_clean;
-	}
-
-	if (pid) { /* parent */
-
-		close(fd[1]);
-		err = _read_pipe(fd[0], error_string, &size);
-		if (err)
-			goto out_clean0;
-
-		waitpid(pid, &status, 0);
-		if (!WIFEXITED(status)) {
-			err = -1;
-			goto out_clean0;
-		}
-		if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-			err = WEXITSTATUS(status);
-			goto out_clean0;
-		}
-		goto out_clean0;
-	} else { /* child */
-		close(0);
-		close(1);
-		close(2);
-
-		close(fd[0]);
-		dup2(fd[1], 1);
-		dup2(fd[1], 2);
-		close(fd[1]);
-
-		execlp("/bin/sh", "/bin/sh", "-c", command, NULL);
-		exit(FAIL);
-	}
-
-out_clean:
-	close(fd[1]);
-out_clean0:
-	close(fd[0]);
-
-	return err;
-}
+static struct timeval log_start_time;
+static int log_start_time_init = 0;
 
 int is_memcheck(void)
 {
@@ -180,37 +71,23 @@ int is_helgrind(void)
 	return 0;
 }
 
-void set_scheduler(int policy)
-{
-	struct sched_param sched_param;
-	int err;
-
-	err = sched_get_priority_max(policy);
-	if (err < 0) {
-		printf("Could not get maximum scheduler priority\n");
-		exit(FAIL);
-	}
-	sched_param.sched_priority = err;
-	err = sched_setscheduler(0, policy, &sched_param);
-	if (err < 0) {
-		printf("Could not set priority\n");
-		exit(FAIL);
-	}
-	return;
-}
-
-int setup_logpipes(int *logfds)
+static int setup_logpipes(int *logfds)
 {
 	if (pipe2(logfds, O_CLOEXEC | O_NONBLOCK) < 0) {
 		printf("Unable to setup logging pipe\n");
 		exit(FAIL);
 	}
 
+	if (!log_start_time_init) {
+		gettimeofday(&log_start_time, NULL);
+		log_start_time_init = 1;
+	}
+
 	// coverity[ORDER_REVERSAL:SUPPRESS] - it's a test, get over it
 	return PASS;
 }
 
-void close_logpipes(int *logfds)
+static void close_logpipes(int *logfds)
 {
 	close(logfds[0]);
 	logfds[0] = 0;
@@ -218,10 +95,12 @@ void close_logpipes(int *logfds)
 	logfds[1] = 0;
 }
 
-void flush_logs(int logfd, FILE *std)
+static void flush_logs(int logfd, FILE *std)
 {
 	struct knet_log_msg msg;
 	int len;
+	struct timeval now, elapsed;
+	long elapsed_sec, elapsed_usec;
 
 	while (1) {
 		len = read(logfd, &msg, sizeof(msg));
@@ -235,10 +114,22 @@ void flush_logs(int logfd, FILE *std)
 
 		msg.msg[sizeof(msg.msg) - 1] = 0;
 
-		fprintf(std, "[knet]: [%s] %s: %.*s\n",
-			knet_log_get_loglevel_name(msg.msglevel),
-			knet_log_get_subsystem_name(msg.subsystem),
-			KNET_MAX_LOG_MSG_SIZE, msg.msg);
+		gettimeofday(&now, NULL);
+		timersub(&now, &log_start_time, &elapsed);
+		elapsed_sec = elapsed.tv_sec;
+		elapsed_usec = elapsed.tv_usec / 1000; /* convert to milliseconds */
+
+		if (msg.subsystem == (KNET_SUB_UNKNOWN - 1) && msg.msglevel == 0) {
+			fprintf(std, "[%6ld.%03ld] [testsuite]: %.*s\n",
+				elapsed_sec, elapsed_usec,
+				KNET_MAX_LOG_MSG_SIZE, msg.msg);
+		} else {
+			fprintf(std, "[%6ld.%03ld] [%s] %s: %.*s\n",
+				elapsed_sec, elapsed_usec,
+				knet_log_get_loglevel_name(msg.msglevel),
+				knet_log_get_subsystem_name(msg.subsystem),
+				KNET_MAX_LOG_MSG_SIZE, msg.msg);
+		}
 	}
 }
 
@@ -267,7 +158,7 @@ static void *_logthread(void *args)
 	}
 }
 
-int start_logthread(int logfd, FILE *std)
+static int start_logthread(int logfd, FILE *std)
 {
 	int savederrno = 0;
 
@@ -294,7 +185,7 @@ int start_logthread(int logfd, FILE *std)
 	return 0;
 }
 
-int stop_logthread(void)
+static int stop_logthread(void)
 {
 	int savederrno = 0;
 	void *retval;
@@ -315,11 +206,25 @@ int stop_logthread(void)
 	return 0;
 }
 
-static void stop_logging(void)
+void stop_logging(void)
 {
-	stop_logthread();
-	flush_logs(log_fds[0], stdout);
-	close_logpipes(log_fds);
+	int savederrno = 0;
+
+	savederrno = pthread_mutex_lock(&log_mutex);
+	if (savederrno) {
+		printf("Unable to get log_mutex lock\n");
+		return;
+	}
+
+	if (log_init) {
+		stop_logthread();
+		flush_logs(log_fds[0], stdout);
+		close_logpipes(log_fds);
+		log_start_time_init = 0;
+		log_init = 0;
+	}
+
+	pthread_mutex_unlock(&log_mutex);
 }
 
 int start_logging(FILE *std)
@@ -350,6 +255,7 @@ int start_logging(FILE *std)
 
 	pthread_mutex_unlock(&log_mutex);
 
+	// coverity[MISSING_LOCK:SUPPRESS] - log_fds[1] is set while holding lock and doesn't change after init
 	return log_fds[1];
 }
 
@@ -419,7 +325,7 @@ static int contains_plugins(char *path)
 
 
 /* libtool sets LD_LIBRARY_PATH to the build tree when running test in-tree */
-char *find_plugins_path(void)
+static char *find_plugins_path(int logfd)
 {
 	char *ld_libs_env = getenv("LD_LIBRARY_PATH");
 	if (ld_libs_env) {
@@ -429,7 +335,7 @@ char *find_plugins_path(void)
 			if (contains_plugins(str)) {
 				strncpy(plugin_path, str, sizeof(plugin_path)-1);
 				free(ld_libs);
-				printf("Using plugins from %s\n", plugin_path);
+				log_test(logfd, "Using plugins from %.200s", plugin_path);
 				return plugin_path;
 			}
 			str = strtok(NULL, ":");
@@ -440,30 +346,28 @@ char *find_plugins_path(void)
 }
 
 
-knet_handle_t knet_handle_start(int logfds[2], uint8_t log_level, knet_handle_t knet_h_array[])
+knet_handle_t knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[])
 {
-	knet_handle_t knet_h = knet_handle_new_ex(1, logfds[1], log_level, 0);
+	knet_handle_t knet_h = knet_handle_new_ex(1, logfd, log_level, 0);
 	char *plugins_path;
 
 	if (knet_h) {
-		printf("knet_handle_new at %p\n", knet_h);
-		plugins_path = find_plugins_path();
+		log_test(logfd, "knet_handle_new at %p", knet_h);
+		plugins_path = find_plugins_path(logfd);
 		/* Use plugins from the build tree */
 		if (plugins_path) {
 			knet_h->plugin_path = plugins_path;
 		}
 		knet_h_array[1] = knet_h;
-		flush_logs(logfds[0], stdout);
 		return knet_h;
 	} else {
-		printf("knet_handle_new failed: %s\n", strerror(errno));
-		flush_logs(logfds[0], stdout);
-		close_logpipes(logfds);
+		log_test(logfd, "knet_handle_new failed: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 }
 
-int knet_handle_reconnect_links(knet_handle_t knet_h)
+int knet_handle_reconnect_links(knet_handle_t knet_h, int logfd)
 {
 	size_t i, j;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
@@ -477,23 +381,23 @@ int knet_handle_reconnect_links(knet_handle_t knet_h)
 	}
 
 	if (knet_host_get_host_list(knet_h, host_ids, &host_ids_entries) < 0) {
-		printf("knet_host_get_host_list failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_host_get_host_list failed: %s", strerror(errno));
 		return -1;
 	}
 
 	for (i = 0; i < host_ids_entries; i++) {
 		if (knet_link_get_link_list(knet_h, host_ids[i], link_ids, &link_ids_entries)) {
-			printf("knet_link_get_link_list failed: %s\n", strerror(errno));
+			log_test(logfd, "knet_link_get_link_list failed: %s", strerror(errno));
 			return -1;
 		}
 		for (j = 0; j < link_ids_entries; j++) {
 			if (knet_link_get_enable(knet_h, host_ids[i], link_ids[j], &enabled)) {
-				printf("knet_link_get_enable failed: %s\n", strerror(errno));
+				log_test(logfd, "knet_link_get_enable failed: %s", strerror(errno));
 				return -1;
 			}
 			if (!enabled) {
 				if (knet_link_set_enable(knet_h, host_ids[i], j, 1)) {
-					printf("knet_link_set_enable failed: %s\n", strerror(errno));
+					log_test(logfd, "knet_link_set_enable failed: %s", strerror(errno));
 					return -1;
 				}
 			}
@@ -503,7 +407,47 @@ int knet_handle_reconnect_links(knet_handle_t knet_h)
 	return 0;
 }
 
-static int _make_local_sockaddr(struct sockaddr_storage *lo, int offset, int family)
+int knet_handle_disconnect_links(knet_handle_t knet_h, int logfd)
+{
+	size_t i, j;
+	knet_node_id_t host_ids[KNET_MAX_HOST];
+	uint8_t link_ids[KNET_MAX_LINK];
+	size_t host_ids_entries = 0, link_ids_entries = 0;
+	unsigned int enabled;
+
+	if (!knet_h) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (knet_host_get_host_list(knet_h, host_ids, &host_ids_entries) < 0) {
+		log_test(logfd, "knet_host_get_host_list failed: %s", strerror(errno));
+		return -1;
+	}
+
+	for (i = 0; i < host_ids_entries; i++) {
+		if (knet_link_get_link_list(knet_h, host_ids[i], link_ids, &link_ids_entries)) {
+			log_test(logfd, "knet_link_get_link_list failed: %s", strerror(errno));
+			return -1;
+		}
+		for (j = 0; j < link_ids_entries; j++) {
+			if (knet_link_get_enable(knet_h, host_ids[i], link_ids[j], &enabled)) {
+				log_test(logfd, "knet_link_get_enable failed: %s", strerror(errno));
+				return -1;
+			}
+			if (enabled) {
+				if (knet_link_set_enable(knet_h, host_ids[i], j, 0)) {
+					log_test(logfd, "knet_link_set_enable failed: %s", strerror(errno));
+					return -1;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int _make_local_sockaddr(struct sockaddr_storage *lo, int offset, int family, int logfd)
 {
 	in_port_t port;
 	char portstr[32];
@@ -521,7 +465,7 @@ static int _make_local_sockaddr(struct sockaddr_storage *lo, int offset, int fam
 	}
 	sprintf(portstr, "%u", port);
 	memset(lo, 0, sizeof(struct sockaddr_storage));
-	printf("Using port %u\n", port);
+	log_test(logfd, "Using port %u", port);
 
 	if (family == AF_INET6) {
 		return knet_strtoaddr("::1", portstr, lo, sizeof(struct sockaddr_storage));
@@ -529,19 +473,19 @@ static int _make_local_sockaddr(struct sockaddr_storage *lo, int offset, int fam
 	return knet_strtoaddr("127.0.0.1", portstr, lo, sizeof(struct sockaddr_storage));
 }
 
-int make_local_sockaddr(struct sockaddr_storage *lo, int offset)
+int make_local_sockaddr(struct sockaddr_storage *lo, int offset, int logfd)
 {
-	return _make_local_sockaddr(lo, offset, AF_INET);
+	return _make_local_sockaddr(lo, offset, AF_INET, logfd);
 }
 
-int make_local_sockaddr6(struct sockaddr_storage *lo, int offset)
+int make_local_sockaddr6(struct sockaddr_storage *lo, int offset, int logfd)
 {
-	return _make_local_sockaddr(lo, offset, AF_INET6);
+	return _make_local_sockaddr(lo, offset, AF_INET6, logfd);
 }
 
 int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t link_id,
 			  uint8_t transport, uint64_t flags, int family, int dynamic,
-			  struct sockaddr_storage *lo)
+			  struct sockaddr_storage *lo, int logfd)
 {
 	int err = 0, savederrno = 0;
 	uint32_t port;
@@ -556,7 +500,7 @@ int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t 
 			err = knet_strtoaddr("127.0.0.1", portstr, lo, sizeof(struct sockaddr_storage));
 		}
 		if (err < 0) {
-			printf("Unable to convert loopback to sockaddr: %s\n", strerror(errno));
+			log_test(logfd, "Unable to convert loopback to sockaddr: %s", strerror(errno));
 			goto out;
 		}
 		errno = 0;
@@ -567,27 +511,27 @@ int _knet_link_set_config(knet_handle_t knet_h, knet_node_id_t host_id, uint8_t 
 		}
 		savederrno = errno;
 		if ((err < 0)  && (savederrno != EADDRINUSE)) {
-			printf("Unable to configure link: %s\n", strerror(savederrno));
+			log_test(logfd, "Unable to configure link: %s", strerror(savederrno));
 			goto out;
 		}
 		if (!err) {
-			printf("Using port %u\n", port);
+			log_test(logfd, "Using port %u", port);
 			goto out;
 		}
 	}
 
 	if (err) {
-		printf("No more ports available\n");
+		log_test(logfd, "No more ports available");
 	}
 out:
 	errno = savederrno;
 	return err;
 }
 
-void test_sleep(knet_handle_t knet_h, int seconds)
+void test_sleep(knet_handle_t knet_h, int seconds, int logfd)
 {
 	if (is_memcheck() || is_helgrind()) {
-		printf("Test suite is running under valgrind, adjusting sleep timers\n");
+		log_test(logfd, "Test suite is running under valgrind, adjusting sleep timers");
 		seconds = seconds * 16;
 	}
 	sleep(seconds);
@@ -601,7 +545,7 @@ int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FI
 	int err = 0, i = 0;
 
 	if (is_memcheck() || is_helgrind()) {
-		printf("Test suite is running under valgrind, adjusting wait_for_packet timeout\n");
+		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_packet timeout");
 		seconds = seconds * 16;
 	}
 
@@ -635,18 +579,18 @@ try_again:
  * functional tests helpers
  */
 
-void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfds[2], uint8_t log_level)
+void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd, uint8_t log_level)
 {
 	uint8_t i;
-	char *plugins_path = find_plugins_path();
+	char *plugins_path = find_plugins_path(logfd);
 
 	for (i = 1; i <= numnodes; i++) {
-		knet_h[i] = knet_handle_new_ex(i, logfds[1], log_level, 0);
+		knet_h[i] = knet_handle_new_ex(i, logfd, log_level, 0);
 		if (!knet_h[i]) {
-			printf("failed to create handle: %s\n", strerror(errno));
+			log_test(logfd, "failed to create handle: %s", strerror(errno));
 			break;
 		} else {
-			printf("knet_h[%u] at %p\n", i, knet_h[i]);
+			log_test(logfd, "knet_h[%u] at %p", i, knet_h[i]);
 		}
 		/* Use plugins from the build tree */
 		if (plugins_path) {
@@ -655,14 +599,14 @@ void knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int logfd
 	}
 
 	if (i < numnodes) {
-		knet_handle_stop_everything(knet_h, i);
+		knet_handle_stop_everything(knet_h, i, logfd);
 		exit(FAIL);
 	}
 
 	return;
 }
 
-void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport)
+void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd)
 {
 	uint8_t i, x, j;
 	struct sockaddr_storage src, dst;
@@ -678,11 +622,11 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 				continue;
 			}
 
-			printf("host %u adding host: %u\n", i, j);
+			log_test(logfd, "host %u adding host: %u", i, j);
 
 			if (knet_host_add(knet_h[i], j) < 0) {
-				printf("Unable to add host: %s\n", strerror(errno));
-				knet_handle_stop_everything(knet_h, numnodes);
+				log_test(logfd, "Unable to add host: %s", strerror(errno));
+				knet_handle_stop_everything(knet_h, numnodes, logfd);
 				exit(FAIL);
 			}
 
@@ -690,24 +634,24 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 				res = -1;
 				offset = 0;
 				while (i + x + offset++ < 65535 && res != 0) {
-					if (_make_local_sockaddr(&src, i + x + offset, family) < 0) {
-						printf("Unable to convert src to sockaddr: %s\n", strerror(errno));
-						knet_handle_stop_everything(knet_h, numnodes);
+					if (_make_local_sockaddr(&src, i + x + offset, family, logfd) < 0) {
+						log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
+						knet_handle_stop_everything(knet_h, numnodes, logfd);
 						exit(FAIL);
 					}
 
-					if (_make_local_sockaddr(&dst, j + x + offset, family) < 0) {
-						printf("Unable to convert dst to sockaddr: %s\n", strerror(errno));
-						knet_handle_stop_everything(knet_h, numnodes);
+					if (_make_local_sockaddr(&dst, j + x + offset, family, logfd) < 0) {
+						log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
+						knet_handle_stop_everything(knet_h, numnodes, logfd);
 						exit(FAIL);
 					}
 
 					res = knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0);
 				}
-				printf("joining node %u with node %u via link %u src offset: %u dst offset: %u\n", i, j, x, i+x, j+x);
+				log_test(logfd, "joining node %u with node %u via link %u src offset: %u dst offset: %u", i, j, x, i+x, j+x);
 				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
-					printf("unable to enable link: %s\n", strerror(errno));
-					knet_handle_stop_everything(knet_h, numnodes);
+					log_test(logfd, "unable to enable link: %s", strerror(errno));
+					knet_handle_stop_everything(knet_h, numnodes, logfd);
 					exit(FAIL);
 				}
 			}
@@ -715,7 +659,7 @@ void knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t nu
 	}
 
 	for (i = 1; i <= numnodes; i++) {
-		wait_for_nodes_state(knet_h[i], numnodes, 1, 600, knet_h[1]->logfd, stdout);
+		wait_for_nodes_state(knet_h[i], numnodes, 1, 600, logfd, stdout);
 	}
 	return;
 }
@@ -725,6 +669,7 @@ static int target=0;
 
 static int state_wait_pipe[2] = {0,0};
 static int host_wait_pipe[2] = {0,0};
+static int callback_logfd = -1;
 
 static int count_nodes(knet_handle_t knet_h)
 {
@@ -752,7 +697,7 @@ static void nodes_notify_callback(void *private_data,
 	if (nodes == target) {
 		res = write(state_wait_pipe[1], ".", 1);
 		if (res != 1) {
-			printf("***FAILed to signal wait_for_nodes_state: %s\n", strerror(errno));
+			log_test(callback_logfd, "***FAILed to signal wait_for_nodes_state: %s", strerror(errno));
 		}
 	}
 }
@@ -782,7 +727,7 @@ static void host_notify_callback(void *private_data,
 	if (knet_h->host_index[host_id]->status.reachable == 1) {
 		res = write(host_wait_pipe[1], ".", 1);
 		if (res != 1) {
-			printf("***FAILed to signal wait_for_host: %s\n", strerror(errno));
+			log_test(callback_logfd, "***FAILed to signal wait_for_host: %s", strerror(errno));
 		}
 	}
 }
@@ -805,7 +750,7 @@ static int wait_for_reply(int seconds, int pipefd)
 				return 0;
 			}
 		} else {
-			printf("Error on pipe poll revent = 0x%x\n", pfds.revents);
+			log_test(callback_logfd, "Error on pipe poll revent = 0x%x", pfds.revents);
 			errno = EIO;
 		}
 	}
@@ -824,16 +769,18 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 {
 	int res, savederrno = 0;
 
+	callback_logfd = logfd;
+
 	if (state_wait_pipe[0] == 0) {
 		res = pipe(state_wait_pipe);
 		if (res == -1) {
 			savederrno = errno;
-			printf("Error creating host reply pipe: %s\n", strerror(errno));
+			log_test(logfd, "Error creating host reply pipe: %s", strerror(errno));
 			errno = savederrno;
 			return -1;
 		}
 		if (atexit(finish_state_pipes)) {
-			printf("Unable to register atexit handler to close pipes: %s\n",
+			log_test(logfd, "Unable to register atexit handler to close pipes: %s",
 			       strerror(errno));
 			exit(FAIL);
 		}
@@ -853,7 +800,7 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 
 	/* Check we haven't already got all the nodes in the correct state */
 	if (count_nodes(knet_h) == target) {
-		fprintf(stderr, "target already reached\n");
+		log_test(logfd, "target already reached");
 		knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
 		flush_logs(logfd, std);
 		return 0;
@@ -862,7 +809,7 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 	res = wait_for_reply(timeout, state_wait_pipe[0]);
 	if (res == -1) {
 		savederrno = errno;
-		printf("Error waiting for nodes status reply: %s\n", strerror(errno));
+		log_test(logfd, "Error waiting for nodes status reply: %s", strerror(errno));
 	}
 
 	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
@@ -877,8 +824,10 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	int res = 0;
 	int savederrno = 0;
 
+	callback_logfd = logfd;
+
 	if (is_memcheck() || is_helgrind()) {
-		printf("Test suite is running under valgrind, adjusting wait_for_host timeout\n");
+		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_host timeout");
 		seconds = seconds * 16;
 	}
 
@@ -886,12 +835,12 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 		res = pipe(host_wait_pipe);
 		if (res == -1) {
 			savederrno = errno;
-			printf("Error creating host reply pipe: %s\n", strerror(errno));
+			log_test(logfd, "Error creating host reply pipe: %s", strerror(errno));
 			errno = savederrno;
 			return -1;
 		}
 		if (atexit(finish_state_pipes)) {
-			printf("Unable to register atexit handler to close pipes: %s\n",
+			log_test(logfd, "Unable to register atexit handler to close pipes: %s",
 			       strerror(errno));
 			exit(FAIL);
 		}
@@ -913,24 +862,22 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	res = wait_for_reply(seconds, host_wait_pipe[0]);
 	if (res == -1) {
 		savederrno = errno;
-		printf("Error waiting for host status reply: %s\n", strerror(errno));
+		log_test(logfd, "Error waiting for host status reply: %s", strerror(errno));
 	}
 
 	knet_host_enable_status_change_notify(knet_h, (void *)(long)0, NULL);
 
 	/* Still wait for it to settle */
 	flush_logs(logfd, std);
-	test_sleep(knet_h, 1);
+	test_sleep(knet_h, 1, logfd);
 	errno = savederrno;
 	return res;
 }
 
-void clean_exit(knet_handle_t *knet_h, int testnodes, int *logfds, int exit_status)
+void clean_exit(knet_handle_t *knet_h, int testnodes, int exit_status, int logfd)
 {
-	knet_handle_stop_everything(knet_h, testnodes);
-	stop_logthread();
-	flush_logs(logfds[0], stdout);
-	close_logpipes(logfds);
+	knet_handle_stop_everything(knet_h, testnodes, logfd);
+	stop_logging();
 	if (exit_status != CONTINUE) {
 		exit(exit_status);
 	}
@@ -939,7 +886,7 @@ void clean_exit(knet_handle_t *knet_h, int testnodes, int *logfds, int exit_stat
 /* Shutdown all nodes and links attached to an array of knet handles.
  * Mostly stolen from corosync code (that I wrote, before anyone complains about licences)
  */
-void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes)
+void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, int logfd)
 {
 	int res = 0;
 	int h;
@@ -952,12 +899,12 @@ void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes)
 	for (h=1; h<numnodes+1; h++) {
 		res = knet_handle_setfwd(knet_h[h], 0);
 		if (res) {
-			perror("knet_handle_setfwd failed");
+			log_test(logfd, "knet_handle_setfwd failed: %s", strerror(errno));
 		}
 
 		res = knet_host_get_host_list(knet_h[h], nodes, &num_nodes);
 		if (res) {
-			perror("Cannot get knet node list for shutdown");
+			log_test(logfd, "Cannot get knet node list for shutdown: %s", strerror(errno));
 			continue;
 		}
 
@@ -966,29 +913,29 @@ void knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes)
 
 			res = knet_link_get_link_list(knet_h[h], nodes[i], links, &num_links);
 			if (res) {
-				fprintf(stderr, "Cannot get knet link list for node %u  %s\n", nodes[i], strerror(errno));
+				log_test(logfd, "Cannot get knet link list for node %u: %s", nodes[i], strerror(errno));
 				goto finalise_error;
 			}
 			for (j=0; j<num_links; j++) {
 				res = knet_link_set_enable(knet_h[h], nodes[i], links[j], 0);
 				if (res) {
-					fprintf(stderr, "knet_link_set_enable(node %u, link %d) failed: %s\n", nodes[i], links[j], strerror(errno));
+					log_test(logfd, "knet_link_set_enable(node %u, link %d) failed: %s", nodes[i], links[j], strerror(errno));
 				}
 				res = knet_link_clear_config(knet_h[h], nodes[i], links[j]);
 				if (res) {
-					fprintf(stderr, "knet_link_clear_config(node %u, link %d) failed: %s\n", nodes[i], links[j], strerror(errno));
+					log_test(logfd, "knet_link_clear_config(node %u, link %d) failed: %s", nodes[i], links[j], strerror(errno));
 				}
 			}
 			res = knet_host_remove(knet_h[h], nodes[i]);
 			if (res) {
-				fprintf(stderr, "knet_host_remove(node %u) failed: %s\n", nodes[i], strerror(errno));
+				log_test(logfd, "knet_host_remove(node %u) failed: %s", nodes[i], strerror(errno));
 			}
 		}
 
 	finalise_error:
 		res = knet_handle_free(knet_h[h]);
 		if (res) {
-			fprintf(stderr, "knet_handle_free failed: %s\n", strerror(errno));
+			log_test(logfd, "knet_handle_free failed: %s", strerror(errno));
 		}
 	}
 }

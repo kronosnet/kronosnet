@@ -21,44 +21,53 @@
 
 static void test(void)
 {
+	int logfd;
 	struct knet_transport_info transport_list[KNET_MAX_TRANSPORTS];
 	size_t transport_list_entries;
 	size_t transport_list_entries1;
 	size_t i;
 
+	logfd = start_logging(stdout);
+
 	memset(transport_list, 0, sizeof(transport_list));
 
-	printf("Test knet_get_transport_list with no entries_list\n");
+	log_test(logfd, "Test knet_get_transport_list with no entries_list");
 
 	if ((!knet_get_transport_list(transport_list, NULL)) || (errno != EINVAL)) {
-		printf("knet_get_transport_list accepted invalid list_entries or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_list accepted invalid list_entries or returned incorrect error: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_transport_list with no transport_list (get number of entries)\n");
+	log_test(logfd, "Test knet_get_transport_list with no transport_list (get number of entries)");
 
 	if (knet_get_transport_list(NULL, &transport_list_entries) < 0) {
-		printf("knet_get_transport_list returned error instead of number of entries: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_list returned error instead of number of entries: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
-	printf("Test knet_get_transport_list with valid data\n");
+	log_test(logfd, "Test knet_get_transport_list with valid data");
 
 	if (knet_get_transport_list(transport_list, &transport_list_entries1) < 0) {
-		printf("knet_get_transport_list failed: %s\n", strerror(errno));
+		log_test(logfd, "knet_get_transport_list failed: %s", strerror(errno));
+		stop_logging();
 		exit(FAIL);
 	}
 
 	if (transport_list_entries != transport_list_entries1) {
-		printf("knet_get_transport_list returned a different number of entries: %d, %d\n",
+		log_test(logfd, "knet_get_transport_list returned a different number of entries: %d, %d",
 		       (int)transport_list_entries, (int)transport_list_entries1);
+		stop_logging();
 		exit(FAIL);
 	}
 
 	for (i=0; i<transport_list_entries; i++) {
-		printf("Detected transport: %s id: %d properties: %u\n",
+		log_test(logfd, "Detected transport: %s id: %d properties: %u",
 			transport_list[i].name, transport_list[i].id, transport_list[i].properties);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])

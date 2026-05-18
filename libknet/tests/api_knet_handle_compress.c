@@ -21,70 +21,70 @@
 
 static void test(void)
 {
+	int logfd;
+
+	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
-	setup_logpipes(logfds);
 
-	printf("Test knet_handle_compress incorrect knet_h\n");
+	log_test(logfd, "Test knet_handle_compress incorrect knet_h");
 	if ((!knet_handle_compress(NULL, &knet_handle_compress_cfg)) || (errno != EINVAL)) {
-		printf("knet_handle_compress accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
+		log_test(logfd, "knet_handle_compress accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
 		exit(FAIL);
 	}
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_compress with invalid cfg\n");
+	log_test(logfd, "Test knet_handle_compress with invalid cfg");
 	FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, NULL), EINVAL);
 
-	printf("Test knet_handle_compress with un-initialized cfg\n");
+	log_test(logfd, "Test knet_handle_compress with un-initialized cfg");
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, &knet_handle_compress_cfg), EINVAL);
 
-	printf("Test knet_handle_compress with none compress model (disable compress)\n");
+	log_test(logfd, "Test knet_handle_compress with none compress model (disable compress)");
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, "none", sizeof(knet_handle_compress_cfg.compress_model) - 1);
 	FAIL_ON_ERR(knet_handle_compress(knet_h1, &knet_handle_compress_cfg));
 
 #if WITH_COMPRESS_BZIP2 > 0
-	printf("Test knet_handle_compress with bzip2 (no default) with negative level (-3)\n");
-        memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
-        strncpy(knet_handle_compress_cfg.compress_model, "bzip2", sizeof(knet_handle_compress_cfg.compress_model) - 1);
-        knet_handle_compress_cfg.compress_level = -3;
+	log_test(logfd, "Test knet_handle_compress with bzip2 (no default) with negative level (-3)");
+	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
+	strncpy(knet_handle_compress_cfg.compress_model, "bzip2", sizeof(knet_handle_compress_cfg.compress_model) - 1);
+	knet_handle_compress_cfg.compress_level = -3;
 
-        FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, &knet_handle_compress_cfg), EINVAL);
+	FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, &knet_handle_compress_cfg), EINVAL);
 #endif
-	printf("Test knet_handle_compress with zlib compress and not effective compression level (0)\n");
+	log_test(logfd, "Test knet_handle_compress with zlib compress and not effective compression level (0)");
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, "zlib", sizeof(knet_handle_compress_cfg.compress_model) - 1);
 	knet_handle_compress_cfg.compress_level = 0;
 	FAIL_ON_ERR(knet_handle_compress(knet_h1, &knet_handle_compress_cfg));
 
-	printf("Test knet_handle_compress with zlib compress and negative level (-2)\n");
+	log_test(logfd, "Test knet_handle_compress with zlib compress and negative level (-2)");
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, "zlib", sizeof(knet_handle_compress_cfg.compress_model) - 1);
 	knet_handle_compress_cfg.compress_level = -2;
 	FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, &knet_handle_compress_cfg), EINVAL);
 
-	printf("Test knet_handle_compress with zlib compress and excessive compress level\n");
+	log_test(logfd, "Test knet_handle_compress with zlib compress and excessive compress level");
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, "zlib", sizeof(knet_handle_compress_cfg.compress_model) - 1);
 	knet_handle_compress_cfg.compress_level = 10;
 	FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, &knet_handle_compress_cfg), EINVAL);
 
 
-	printf("Test knet_handle_compress with zlib compress and excessive compress threshold\n");
+	log_test(logfd, "Test knet_handle_compress with zlib compress and excessive compress threshold");
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, "zlib", sizeof(knet_handle_compress_cfg.compress_model) - 1);
 	knet_handle_compress_cfg.compress_level = 1;
 	knet_handle_compress_cfg.compress_threshold = KNET_MAX_PACKET_SIZE +1;
 	FAIL_ON_SUCCESS(knet_handle_compress(knet_h1, &knet_handle_compress_cfg), EINVAL);
 
-	printf("Test knet_handle_compress with zlib compress model normal compress level and threshold\n");
+	log_test(logfd, "Test knet_handle_compress with zlib compress model normal compress level and threshold");
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 	strncpy(knet_handle_compress_cfg.compress_model, "zlib", sizeof(knet_handle_compress_cfg.compress_model) - 1);
 	knet_handle_compress_cfg.compress_level = 1;
