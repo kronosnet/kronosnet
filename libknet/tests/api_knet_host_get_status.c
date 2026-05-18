@@ -27,17 +27,14 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_host_status status;
 
 	log_test(logfd, "Test knet_host_get_status incorrect knet_h");
 
 	memset(&status, 0, sizeof(struct knet_host_status));
 
-	if ((!knet_host_get_status(NULL, 1, &status)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_host_get_status accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_host_get_status(NULL, 1, &status), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

@@ -26,14 +26,11 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	log_test(logfd, "Test knet_host_set_policy incorrect knet_h");
 
-	if ((!knet_host_set_policy(NULL, 1, KNET_LINK_POLICY_PASSIVE)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_host_set_policy accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_host_set_policy(NULL, 1, KNET_LINK_POLICY_PASSIVE), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

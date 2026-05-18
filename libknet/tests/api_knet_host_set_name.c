@@ -26,16 +26,13 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	char longhostname[KNET_MAX_HOST_LEN+2];
 
 	log_test(logfd, "Test knet_host_set_name incorrect knet_h");
 
 	// coverity[CHECKED_RETURN:SUPPRESS] - it's a test , get over it
-	if ((!knet_host_set_name(NULL, 1, "test")) || (errno != EINVAL)) {
-		log_test(logfd, "knet_host_set_name accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_host_set_name(NULL, 1, "test"), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

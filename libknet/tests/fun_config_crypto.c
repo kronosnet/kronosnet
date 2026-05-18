@@ -37,12 +37,6 @@ static void test(const char *model)
 	int i,x;
 	int seconds = 10;
 
-	if (is_memcheck() || is_helgrind()) {
-		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_host timeout");
-		seconds = seconds * 16;
-	}
-
-
 	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 
 
@@ -91,7 +85,7 @@ static void test(const char *model)
 			TEST_EXIT_CLEAN(FAIL);
 		}
 		for (x = 1; x <= TESTNODES; x++) {
-			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
+			wait_for_nodes_state(knet_h[x], TESTNODES, 1, TEST_TIMEOUT_LONG, knet_h[1]->logfd, stdout);
 		}
 	}
 
@@ -100,7 +94,7 @@ static void test(const char *model)
 
 	for (i = 1; i <= TESTNODES; i++) {
 		FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h[i], 1));
-		wait_for_nodes_state(knet_h[i], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
+		wait_for_nodes_state(knet_h[i], TESTNODES, 1, TEST_TIMEOUT_LONG, knet_h[1]->logfd, stdout);
 	}
 
 	log_test(logfd, "Testing disable crypto config and allow clear traffic");
@@ -143,7 +137,7 @@ static void test(const char *model)
 			test_sleep(knet_h[1]->logfd, 1);
 		}
 		for (x = 1; x <= TESTNODES; x++) {
-			wait_for_nodes_state(knet_h[x], TESTNODES, 1, 600, knet_h[1]->logfd, stdout);
+			wait_for_nodes_state(knet_h[x], TESTNODES, 1, TEST_TIMEOUT_LONG, knet_h[1]->logfd, stdout);
 		}
 	}
 

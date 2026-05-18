@@ -25,16 +25,13 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t host_ids_entries;
 
 	log_test(logfd, "Test knet_host_get_host_list incorrect knet_h");
 
-	if ((!knet_host_get_host_list(NULL, host_ids, &host_ids_entries)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_host_get_host_list accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_host_get_host_list(NULL, host_ids, &host_ids_entries), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

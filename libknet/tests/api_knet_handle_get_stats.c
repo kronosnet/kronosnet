@@ -28,7 +28,7 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_stats test_byte_array[2];
 	struct knet_handle_stats ref_byte_array[2];
 	struct knet_handle_stats stats;
@@ -37,10 +37,7 @@ static void test(void)
 
 	memset(&stats, 0, sizeof(struct knet_handle_stats));
 
-	if ((!knet_handle_get_stats(NULL, &stats, sizeof(struct knet_handle_stats))) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_get_stats accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_get_stats(NULL, &stats, sizeof(struct knet_handle_stats)), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

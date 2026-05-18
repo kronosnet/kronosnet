@@ -202,40 +202,6 @@ static int dhost_filter(void *pvt_data,
 	return 0;
 }
 
-/* This used to be a pthread condition variable, but
-   there was a race where it could be triggered before
-   the main thread was waiting for it.
-   Go old-fashioned.
-*/
-static int wait_for_reply(int seconds)
-{
-	struct pollfd pfds;
-	char tmpbuf[32];
-	int res;
-
-	pfds.fd = reply_pipe[0];
-	pfds.events = POLLIN | POLLERR | POLLHUP;
-	pfds.revents = 0;
-
-	res = poll(&pfds, 1, seconds*1000);
-	if (res == 1) {
-		if (pfds.revents & POLLIN) {
-			res = read(reply_pipe[0], tmpbuf, sizeof(tmpbuf));
-			if (res > 0) {
-				return 0;
-			}
-		} else {
-			log_test(test_logfd, "Error on pipe poll revent = 0x%x", pfds.revents);
-			errno = EIO;
-		}
-	}
-	if (res == 0) {
-		errno = ETIMEDOUT;
-		return -1;
-	}
-
-	return -1;
-}
 
 static void test(int transport)
 {
@@ -251,11 +217,6 @@ static void test(int transport)
 	int datafd;
 	int8_t channel;
 	int seconds = 90; // dynamic tests take longer than normal tests
-
-	if (is_memcheck() || is_helgrind()) {
-		log_test(logfd, "Test suite is running under valgrind, adjusting wait_for_host timeout");
-		seconds = seconds * 16;
-	}
 
 	memset(knet_h, 0, sizeof(knet_h));
 	memset(reply_pipe, 0, sizeof(reply_pipe));
@@ -308,7 +269,7 @@ static void test(int transport)
 	// No ACL
 	log_test(logfd, "Testing No ACL - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1No ACL - this should get through"));
-	FAIL_ON_ERR_THR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
 
 	// Block traffic from this address.
 	memset(&ss1, 0, sizeof(ss1));
@@ -333,7 +294,7 @@ static void test(int transport)
 
 	log_test(logfd, "Testing Address unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
-	FAIL_ON_ERR_THR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
 
 	// Block traffic using a netmask
 	knet_strtoaddr("127.0.0.1","0", &ss1, sizeof(ss1));
@@ -352,7 +313,7 @@ static void test(int transport)
 
 	log_test(logfd, "Testing Netmask unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
-	FAIL_ON_ERR_THR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
 
 	// Block traffic from a range
 	knet_strtoaddr("127.0.0.0", "0", &ss1, sizeof(ss1));
@@ -371,7 +332,7 @@ static void test(int transport)
 
 	log_test(logfd, "Testing Range unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Range unblocked - this should get through"));
-	FAIL_ON_ERR_THR(wait_for_reply(seconds));
+	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
 
 	// Finish up - disable ACLS to make sure the QUIT message gets through
 	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));

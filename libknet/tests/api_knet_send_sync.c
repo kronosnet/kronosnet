@@ -99,7 +99,7 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	char send_buff[KNET_MAX_PACKET_SIZE];
@@ -109,10 +109,7 @@ static void test(void)
 
 	log_test(logfd, "Test knet_send_sync incorrect knet_h");
 
-	if ((!knet_send_sync(NULL, send_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_send_sync accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_send_sync(NULL, send_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -188,7 +185,7 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd, stdout));
 	dhost_filter_ret = 2;
 	if ((knet_send_sync(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel) == sizeof(send_buff)) || (errno != E2BIG)) {
 		log_test(logfd, "knet_send_sync didn't detect 2+ host_ids from dst_host_filter or returned incorrect error: %s", strerror(errno));

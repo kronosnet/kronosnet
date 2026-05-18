@@ -28,7 +28,7 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct sockaddr_storage lo, get_src, get_dst;
 	uint8_t dynamic = 0, transport = 0;
 	uint64_t flags;
@@ -38,10 +38,7 @@ static void test(void)
 	memset(&get_src, 0, sizeof(struct sockaddr_storage));
 	memset(&get_dst, 0, sizeof(struct sockaddr_storage));
 
-	if ((!knet_link_get_config(NULL, 1, 0, &transport, &get_src, &get_dst, &dynamic, &flags)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_link_get_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_link_get_config(NULL, 1, 0, &transport, &get_src, &get_dst, &dynamic, &flags), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);

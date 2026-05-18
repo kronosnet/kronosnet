@@ -38,6 +38,20 @@
 #define TESTNODES 1
 
 /*
+ * Test timeout constants (in seconds)
+ */
+#define TEST_TIMEOUT_LONG       600    /* Long operations like node state convergence */
+#define TEST_TIMEOUT_SHORT      10     /* Short operations like packet wait */
+#define TEST_TIMEOUT_QUICK      4      /* Quick operations like PMTUD */
+
+/*
+ * Port range constants for test links
+ */
+#define TEST_PORT_BASE          1024   /* Base of user port range */
+#define TEST_PORT_MIN           (TEST_PORT_BASE + 1)   /* Minimum port for scanning */
+#define TEST_PORT_MAX           65535  /* Maximum port value */
+
+/*
  * Test logging macro - writes to knet logging infrastructure
  * with NULL handle (displayed as [testsuite]: message)
  * Parameters: logfd - the write end of the log pipe, fmt - printf-style format string
@@ -153,9 +167,10 @@ int make_local_sockaddr(struct sockaddr_storage *lo, int offset, int logfd);
 int make_local_sockaddr6(struct sockaddr_storage *lo, int offset, int logfd);
 int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd, FILE *std);
 int wait_for_packet(knet_handle_t knet_h, int seconds, int datafd, int logfd, FILE *std);
+int wait_for_reply(int seconds, int pipefd, int logfd);
 void test_sleep(int logfd, int seconds);
 int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
-			 uint8_t state, uint32_t timeout,
+			 uint8_t state, uint32_t seconds,
 			 int logfd, FILE *std);
 
 #endif

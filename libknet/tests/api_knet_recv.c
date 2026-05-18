@@ -39,7 +39,7 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	char recv_buff[KNET_MAX_PACKET_SIZE];
@@ -48,10 +48,7 @@ static void test(void)
 	struct sockaddr_storage lo;
 
 	log_test(logfd, "Test knet_recv incorrect knet_h");
-	if ((!knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_recv accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -91,7 +88,7 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
-	FAIL_ON_ERR(wait_for_host(knet_h1, 1, 10, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd, stdout));
 
 	memset(recv_buff, 0, KNET_MAX_PACKET_SIZE);
 	memset(send_buff, 1, sizeof(send_buff));

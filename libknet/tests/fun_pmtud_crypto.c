@@ -140,7 +140,7 @@ static void test_mtu(int logfd, const char *model, const char *crypto, const cha
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 1, 0, 1));
 
-	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, 4, logfd, stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, TEST_TIMEOUT_QUICK, logfd, stdout));
 
 
 	FAIL_ON_ERR(knet_handle_pmtud_get(knet_h[1], &data_mtu));

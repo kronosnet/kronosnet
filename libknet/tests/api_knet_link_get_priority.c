@@ -28,16 +28,13 @@ static void test(void)
 	int logfd;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t priority = 0;
 	struct sockaddr_storage lo;
 
 	log_test(logfd, "Test knet_link_get_priority incorrect knet_h");
 
-	if ((!knet_link_get_priority(NULL, 1, 0, &priority)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_link_get_priority accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_link_get_priority(NULL, 1, 0, &priority), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 

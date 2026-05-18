@@ -25,7 +25,7 @@
 static void test(const char *model, const char *model2)
 {
 	int logfd;
-	knet_handle_t knet_h[2];
+	knet_handle_t knet_h[2] = {0};
 	knet_handle_t knet_h1;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	struct crypto_instance *current = NULL;
@@ -36,10 +36,7 @@ static void test(const char *model, const char *model2)
 
 	log_test(logfd, "Test knet_handle_crypto incorrect knet_h");
 
-	if ((!knet_handle_crypto(NULL, &knet_handle_crypto_cfg)) || (errno != EINVAL)) {
-		log_test(logfd, "knet_handle_crypto accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_crypto(NULL, &knet_handle_crypto_cfg), EINVAL);
 
 	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
