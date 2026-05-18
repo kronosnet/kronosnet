@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_get_transport_reconnect_interval"
+
 static void test(void)
 {
 	int logfd;
@@ -31,7 +33,7 @@ static void test(void)
 
 	if ((!knet_handle_get_transport_reconnect_interval(NULL, &msecs)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_get_transport_reconnect_interval accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -45,14 +47,16 @@ static void test(void)
 
 	if (msecs != KNET_TRANSPORT_DEFAULT_RECONNECT_INTERVAL) {
 		log_test(logfd, "knet_handle_get_transport_reconnect_interval failed to set correct value");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle get transport reconnect interval\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_compress"
+
 static void test(void)
 {
 	int logfd;
@@ -32,7 +34,7 @@ static void test(void)
 	log_test(logfd, "Test knet_handle_compress incorrect knet_h");
 	if ((!knet_handle_compress(NULL, &knet_handle_compress_cfg)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_compress accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -91,7 +93,7 @@ static void test(void)
 	knet_handle_compress_cfg.compress_threshold = 64;
 	FAIL_ON_ERR(knet_handle_compress(knet_h1, &knet_handle_compress_cfg));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
@@ -100,25 +102,27 @@ int main(int argc, char *argv[])
 	size_t compress_list_entries;
 	size_t i;
 
+	printf("[TEST] %s: Test knet handle compress\n", TEST_NAME);
+
 	memset(compress_list, 0, sizeof(compress_list));
 
 	if (knet_get_compress_list(compress_list, &compress_list_entries) < 0) {
 		printf("knet_get_compress_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (compress_list_entries == 0) {
 		printf("no compression modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	for (i=0; i < compress_list_entries; i++) {
 		if (!strcmp(compress_list[i].name, "zlib")) {
 			test();
-			return PASS;
+			TEST_EXIT(PASS);
 		}
 	}
 
 	printf("WARNING: zlib support not builtin the library. Unable to test/verify internal compress API calls\n");
-	return SKIP;
+	TEST_EXIT(SKIP);
 }

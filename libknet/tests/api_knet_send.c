@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_send"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -55,7 +57,7 @@ static void test(uint8_t transport)
 
 	if ((!knet_send(NULL, send_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_send accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -96,7 +98,7 @@ static void test(uint8_t transport)
 	if (_knet_link_set_config(knet_h1, 1, 0, transport, 0, AF_INET, 0, &lo, logfd) < 0 ) {
 		int exit_status = transport == KNET_TRANSPORT_SCTP && errno == EPROTONOSUPPORT ? SKIP : FAIL;
 		log_test(logfd, "Unable to configure link: %s", strerror(errno));
-		CLEAN_EXIT(exit_status);
+		TEST_EXIT_CLEAN(exit_status);
 	}
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
@@ -106,12 +108,12 @@ static void test(uint8_t transport)
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		log_test(logfd, "knet_send failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff) - 1) {
 		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
@@ -123,14 +125,14 @@ static void test(uint8_t transport)
 		log_test(logfd, "knet_recv received only %d bytes: %s (errno: %d)", recv_len, strerror(errno), errno);
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
 			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
-			CLEAN_EXIT(PASS);
+			TEST_EXIT_CLEAN(PASS);
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "recv and send buffers are different!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	/* A sanity check on the stats */
@@ -151,11 +153,13 @@ static void test(uint8_t transport)
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet send\n", TEST_NAME);
+
 	printf("Testing with UDP\n");
 	test(KNET_TRANSPORT_UDP);
 
@@ -164,5 +168,5 @@ int main(int argc, char *argv[])
 	test(KNET_TRANSPORT_SCTP);
 #endif
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -20,6 +20,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_recv"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -43,13 +45,12 @@ static void test(void)
 	char recv_buff[KNET_MAX_PACKET_SIZE];
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t recv_len = 0;
-	struct iovec iov_out[1];
 	struct sockaddr_storage lo;
 
 	log_test(logfd, "Test knet_recv incorrect knet_h");
 	if ((!knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_recv accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -95,35 +96,37 @@ static void test(void)
 	memset(recv_buff, 0, KNET_MAX_PACKET_SIZE);
 	memset(send_buff, 1, sizeof(send_buff));
 
-	iov_out[0].iov_base = (void *)send_buff;
-	iov_out[0].iov_len = sizeof(send_buff);
-
-	if (writev(knet_h1->sockfd[channel].sockfd[1], iov_out, 1) != sizeof(send_buff)) {
+//	if (writev(knet_h1->sockfd[channel].sockfd[1], iov_out, 1) != sizeof(send_buff)) {
+	if (knet_send(knet_h1, send_buff, sizeof(send_buff), channel) != sizeof(send_buff)) {
 		log_test(logfd, "Unable to write data: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
+
+	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (recv_len <= 0) {
 		log_test(logfd, "knet_recv failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (recv_len != sizeof(send_buff)) {
 		log_test(logfd, "knet_recv received only %zd bytes: %s", recv_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "knet_recv received bad data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet recv\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

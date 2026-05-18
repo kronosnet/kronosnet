@@ -53,8 +53,15 @@
 		} \
 	} while(0)
 
-#define CLEAN_EXIT(r) \
-	clean_exit(knet_h, TESTNODES, r, logfd)
+#define TEST_EXIT_CLEAN(r) \
+	do { \
+		knet_handle_stop_everything(knet_h, TESTNODES, logfd); \
+		if (r == CONTINUE) { \
+			stop_logging(); \
+			return; \
+		} \
+		TEST_EXIT(r); \
+	} while(0)
 
 #define FAIL_ON_ERR(fn) \
 	do { \
@@ -63,7 +70,7 @@
 		if ((_foe_res = fn) != 0) { \
 			int savederrno = errno; \
 			log_test(logfd, "*** FAIL on line %d. %s failed: %s", __LINE__, #fn, strerror(savederrno)); \
-			CLEAN_EXIT(FAIL); \
+			TEST_EXIT_CLEAN(FAIL); \
 		} \
 	} while(0)
 
@@ -75,10 +82,10 @@
 		    ((_fos_res == -1) && (errno != errcode))) { \
 			int savederrno = errno; \
 			if (_fos_res == -2) { \
-				clean_exit(knet_h, TESTNODES, SKIP, logfd); \
+				TEST_EXIT_CLEAN(SKIP); \
 			} else { \
 				log_test(logfd, "*** FAIL on line %d. %s did not return correct error: %s", __LINE__, #fn, strerror(savederrno)); \
-				CLEAN_EXIT(FAIL); \
+				TEST_EXIT_CLEAN(FAIL); \
 			} \
 		} \
 	} while(0)
@@ -90,11 +97,24 @@
 		if ((_foeo_res = fn) == -1) { \
 			int savederrno = errno; \
 			log_test(logfd, "*** FAIL on line %d. %s failed: %s", __LINE__, #fn, strerror(savederrno)); \
-			CLEAN_EXIT(FAIL); \
+			TEST_EXIT_CLEAN(FAIL); \
 		} \
 	} while(0)
 
-void clean_exit(knet_handle_t *knet_h, int testnodes, int exit_status, int logfd);
+/*
+ * Helper macro to print test result and exit.
+ * Handles PASS, FAIL, SKIP, and ERROR.
+ * Requires TEST_NAME to be defined in the test file.
+ */
+#define TEST_EXIT(result) \
+	do { \
+		stop_logging(); \
+		if (result == PASS) printf("[PASS] %s\n", TEST_NAME); \
+		else if (result == FAIL) printf("[FAIL] %s\n", TEST_NAME); \
+		else if (result == SKIP) printf("[SKIP] %s\n", TEST_NAME); \
+		else if (result == ERROR) printf("[ERROR] %s\n", TEST_NAME); \
+		exit(result); \
+	} while(0)
 
 int is_memcheck(void);
 int is_helgrind(void);

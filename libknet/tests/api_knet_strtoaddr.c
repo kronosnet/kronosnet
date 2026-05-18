@@ -20,6 +20,8 @@
 #include "libknet.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_strtoaddr"
+
 static void test(void)
 {
 	int logfd;
@@ -40,8 +42,7 @@ static void test(void)
 	if (!knet_strtoaddr(NULL, "50000", &out_addr, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
 		log_test(logfd, "knet_strtoaddr accepted invalid host or returned incorrect error: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid port");
@@ -49,8 +50,7 @@ static void test(void)
 	if (!knet_strtoaddr("127.0.0.1", NULL, &out_addr, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
 		log_test(logfd, "knet_strtoaddr accepted invalid port or returned incorrect error: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid addr");
@@ -58,8 +58,7 @@ static void test(void)
 	if (!knet_strtoaddr("127.0.0.1", "50000", NULL, sizeof(struct sockaddr_storage)) ||
 	    (errno != EINVAL)) {
 		log_test(logfd, "knet_strtoaddr accepted invalid addr or returned incorrect error: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Checking knet_strtoaddr with invalid size");
@@ -67,8 +66,7 @@ static void test(void)
 	if (!knet_strtoaddr("127.0.0.1", "50000", &out_addr, 0) ||
 	    (errno != EINVAL)) {
 		log_test(logfd, "knet_strtoaddr accepted invalid size or returned incorrect error: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	addrv4.sin_family = AF_INET;
@@ -79,16 +77,14 @@ static void test(void)
 
 	if (knet_strtoaddr("192.168.0.1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {
 		log_test(logfd, "Unable to convert 192.168.0.1:50000");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (out_addrv4->sin_family != addrv4.sin_family ||
 	    out_addrv4->sin_port != addrv4.sin_port ||
 	    out_addrv4->sin_addr.s_addr != addrv4.sin_addr.s_addr) {
 		log_test(logfd, "Check on 192.168.0.1:50000 failed");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Checking knet_strtoaddr with valid data ([fd00::1]:50000)");
@@ -102,8 +98,7 @@ static void test(void)
 
 	if (knet_strtoaddr("fd00::1", "50000", &out_addr, sizeof(struct sockaddr_storage))) {
 		log_test(logfd, "Unable to convert fd00::1:50000");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (out_addrv6->sin6_family != addrv6.sin6_family ||
@@ -111,8 +106,7 @@ static void test(void)
 	    memcmp(&out_addrv6->sin6_addr, &addrv6.sin6_addr, sizeof(struct in6_addr))) {
 
 		log_test(logfd, "Check on fd00::1:50000 failed");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -122,7 +116,9 @@ static void test(void)
 int main(int argc, char *argv[])
 {
 
+	printf("[TEST] %s: Test knet strtoaddr\n", TEST_NAME);
+
 	test();
 
-	exit(PASS);
+	TEST_EXIT(PASS);
 }

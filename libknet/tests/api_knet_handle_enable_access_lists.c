@@ -19,6 +19,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_enable_access_lists"
+
 static void test(void)
 {
 	int logfd;
@@ -30,7 +32,7 @@ static void test(void)
 
 	if ((!knet_handle_enable_access_lists(NULL, 0)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_enable_access_lists accepted invalid knet_h parameter");
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -43,7 +45,7 @@ static void test(void)
 
 	if (knet_h1->use_access_lists != 1) {
 		log_test(logfd, "knet_handle_enable_access_lists failed to set correct value");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_enable_access_lists with valid param (0) ");
@@ -51,15 +53,17 @@ static void test(void)
 
 	if (knet_h1->use_access_lists != 0) {
 		log_test(logfd, "knet_handle_enable_access_lists failed to set correct value");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle enable access lists\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

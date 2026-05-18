@@ -18,6 +18,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_loglevel_name"
+
 static void test(void)
 {
 	int logfd;
@@ -30,16 +32,14 @@ static void test(void)
 	if (strcmp(res, "debug")) {
 		log_test(logfd, "knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: debug",
 		       res);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	res = knet_log_get_loglevel_name(KNET_LOG_TRACE);
 	if (strcmp(res, "trace")) {
 		log_test(logfd, "knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: debug",
 		       res);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Testing knet_log_get_loglevel_name bad lookup");
@@ -47,8 +47,7 @@ static void test(void)
 	if (strcmp(res, "ERROR")) {
 		log_test(logfd, "knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: ERROR",
 		       res);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	stop_logging();
@@ -56,7 +55,9 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get loglevel name\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

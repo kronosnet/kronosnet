@@ -20,6 +20,8 @@
 #include "crypto_model.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_crypto_use_config"
+
 static void test(const char *model, const char *model2)
 {
 	int logfd;
@@ -34,7 +36,7 @@ static void test(const char *model, const char *model2)
 
 	if ((!knet_handle_crypto_use_config(NULL, 1)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_crypto_use_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -70,7 +72,7 @@ static void test(const char *model, const char *model2)
 	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 2));
 	if (knet_h1->crypto_in_use_config != 2) {
 		log_test(logfd, "knet_handle_crypto_set_config failed to set crypto in-use config to 2");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Shutdown crypto");
@@ -80,7 +82,7 @@ static void test(const char *model, const char *model2)
 	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 0));
 	if (knet_h1->crypto_in_use_config != 0) {
 		log_test(logfd, "knet_handle_crypto_set_config failed to set crypto in-use config to 2");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
@@ -92,15 +94,15 @@ static void test(const char *model, const char *model2)
 	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
 	if (knet_h1->crypto_instance[1]) {
 		log_test(logfd, "knet_handle_crypto_set_config failed to wipe first config but reported success");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 2));
 	if (knet_h1->crypto_instance[2]) {
 		log_test(logfd, "knet_handle_crypto_set_config failed to wipe first config but reported success");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
@@ -109,21 +111,23 @@ int main(int argc, char *argv[])
 	size_t crypto_list_entries;
 	size_t i;
 
+	printf("[TEST] %s: Test knet handle crypto use config\n", TEST_NAME);
+
 	memset(crypto_list, 0, sizeof(crypto_list));
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	for (i=0; i < crypto_list_entries; i++) {
 		test(crypto_list[i].name, crypto_list[0].name);
 	}
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

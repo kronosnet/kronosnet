@@ -874,15 +874,6 @@ int wait_for_host(knet_handle_t knet_h, uint16_t host_id, int seconds, int logfd
 	return res;
 }
 
-void clean_exit(knet_handle_t *knet_h, int testnodes, int exit_status, int logfd)
-{
-	knet_handle_stop_everything(knet_h, testnodes, logfd);
-	stop_logging();
-	if (exit_status != CONTINUE) {
-		exit(exit_status);
-	}
-}
-
 /* Shutdown all nodes and links attached to an array of knet handles.
  * Mostly stolen from corosync code (that I wrote, before anyone complains about licences)
  */

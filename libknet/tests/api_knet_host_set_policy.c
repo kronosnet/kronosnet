@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_set_policy"
+
 static void test(void)
 {
 	int logfd;
@@ -30,7 +32,7 @@ static void test(void)
 
 	if ((!knet_host_set_policy(NULL, 1, KNET_LINK_POLICY_PASSIVE)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_set_policy accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -48,14 +50,16 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_RR));
 	if (knet_h1->host_index[1]->link_handler_policy != KNET_LINK_POLICY_RR) {
 		log_test(logfd, "knet_host_set_policy failed to set RR policy for host 1: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host set policy\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

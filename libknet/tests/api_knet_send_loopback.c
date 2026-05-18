@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_send_loopback"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -84,14 +86,14 @@ static void test(void)
 
 	if (_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
 		log_test(logfd, "Managed to configure two LOOPBACK links - this is wrong");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test configuring UDP link after loopback");
 
 	if (_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd) == 0) {
 		log_test(logfd, "Managed to configure UDP and LOOPBACK links together: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test configuring UDP link before loopback");
@@ -99,7 +101,7 @@ static void test(void)
 	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	if (_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
 		log_test(logfd, "Managed to configure LOOPBACK link after UDP: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 	log_test(logfd, "Test knet_send with valid data");
 
@@ -113,12 +115,12 @@ static void test(void)
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		log_test(logfd, "knet_send failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
 		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
@@ -131,14 +133,14 @@ static void test(void)
 		log_test(logfd, "knet_recv received only %d bytes: %s (errno: %d)", recv_len, strerror(errno), errno);
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
 			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
-			CLEAN_EXIT(PASS);
+			TEST_EXIT_CLEAN(PASS);
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "recv and send buffers are different!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	/* A sanity check on the stats */
@@ -161,12 +163,12 @@ static void test(void)
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		log_test(logfd, "knet_send failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
 		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
@@ -178,22 +180,24 @@ static void test(void)
 		log_test(logfd, "knet_recv received only %d bytes: %s (errno: %d)", recv_len, strerror(errno), errno);
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
 			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
-			CLEAN_EXIT(PASS);
+			TEST_EXIT_CLEAN(PASS);
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "recv and send buffers are different!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet send loopback\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

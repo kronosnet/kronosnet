@@ -23,6 +23,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "int_links_acl_ip"
+
 static struct acl_match_entry *match_entry_v4;
 static struct acl_match_entry *match_entry_v6;
 
@@ -241,8 +243,7 @@ int test(void)
 	logfd = start_logging(stdout);
 
 	if (default_rules(1, logfd) < 0) {
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	/*
@@ -261,15 +262,13 @@ int test(void)
 				break;
 			default:
 				log_test(logfd, "Unknown record type on line %d: %s", i, tests[i]);
-				stop_logging();
-				return FAIL;
+				TEST_EXIT(FAIL);
 				break;
 		}
 
 		if (get_ipaddress(tests[i]+1, &saddr)) {
 				log_test(logfd, "Cannot parse address %s", tests[i]+1);
-				stop_logging();
-				return FAIL;
+				TEST_EXIT(FAIL);
 		}
 
 		if (saddr.ss_family == AF_INET) {
@@ -280,8 +279,7 @@ int test(void)
 
 		if (ipcheck_validate(&match_entry, &saddr) != expected) {
 			log_test(logfd, "Failed to check access list for ip: %s", tests[i]);
-			stop_logging();
-			return FAIL;
+			TEST_EXIT(FAIL);
 		}
 		i++;
 	}
@@ -292,26 +290,22 @@ int test(void)
 
 	if (get_ipaddress("192.168.2.1", &saddr)) {
 		log_test(logfd, "Cannot parse address 192.168.2.1");
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (ipcheck_addip(&match_entry_v4, 3, &saddr, &saddr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
 		log_test(logfd, "Unable to insert address in position 3 192.168.2.1");
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (get_ipaddress("3ffe:1::1", &saddr)) {
 		log_test(logfd, "Cannot parse address 3ffe:1::1");
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (ipcheck_addip(&match_entry_v6, 3, &saddr, &saddr, CHECK_TYPE_ADDRESS, CHECK_ACCEPT) < 0) {
 		log_test(logfd, "Unable to insert address in position 3 3ffe:1::1");
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	while (after_insert_tests[i] != NULL) {
@@ -327,15 +321,13 @@ int test(void)
 				break;
 			default:
 				log_test(logfd, "Unknown record type on line %d: %s", i, after_insert_tests[i]);
-				stop_logging();
-				return FAIL;
+				TEST_EXIT(FAIL);
 				break;
 		}
 
 		if (get_ipaddress(after_insert_tests[i]+1, &saddr)) {
 				log_test(logfd, "Cannot parse address %s", after_insert_tests[i]+1);
-				stop_logging();
-				return FAIL;
+				TEST_EXIT(FAIL);
 		}
 
 		if (saddr.ss_family == AF_INET) {
@@ -346,8 +338,7 @@ int test(void)
 
 		if (ipcheck_validate(&match_entry, &saddr) != expected) {
 			log_test(logfd, "Failed to check access list for ip: %s", after_insert_tests[i]);
-			stop_logging();
-			return FAIL;
+			TEST_EXIT(FAIL);
 		}
 		i++;
 	}
@@ -356,20 +347,16 @@ int test(void)
 	 * test memory leaks with ipcheck_rmip
 	 */
 	if (default_rules(0, logfd) < 0) {
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	/*
 	 * test memory leaks with ipcheck_rmall
 	 */
 	if (default_rules(1, logfd) < 0) {
-		stop_logging();
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
-
-	stop_logging();
-	return PASS;
+	TEST_EXIT(PASS);
 }
 
 int main(int argc, char *argv[])
@@ -379,6 +366,8 @@ int main(int argc, char *argv[])
 	struct acl_match_entry *match_entry;
 	int ret = PASS;
 	int i;
+
+	printf("[TEST] %s: Test Links acl ip\n", TEST_NAME);
 
 	if (argc > 1) {
 		/*
@@ -416,16 +405,14 @@ int main(int argc, char *argv[])
 		 * test memory leaks with ipcheck_rmip
 		 */
 		if (default_rules(0, logfd) < 0) {
-			stop_logging();
-			return FAIL;
+			TEST_EXIT(FAIL);
 		}
 
 		/*
 		 * test memory leaks with ipcheck_rmall
 		 */
 		if (default_rules(1, logfd) < 0) {
-			stop_logging();
-			return FAIL;
+			TEST_EXIT(FAIL);
 		}
 out:
 		ipcheck_rmall(&match_entry_v4);
@@ -438,5 +425,5 @@ out:
 		ret = test();
 	}
 
-	return ret;
+	TEST_EXIT(ret);
 }

@@ -21,6 +21,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_new_limit"
+
 static void test(void)
 {
 	int logfd;
@@ -35,8 +37,7 @@ static void test(void)
 		knet_h[idx] = knet_handle_new_ex(1, logfd, KNET_LOG_DEBUG, 0);
 		if (!knet_h[idx]) {
 			log_test(logfd, "knet_handle_new[%d] failed: %s", idx, strerror(errno));
-		stop_logging();
-			exit(FAIL);
+			TEST_EXIT(FAIL);
 		}
 	}
 
@@ -57,11 +58,13 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle new limit\n", TEST_NAME);
+
 	if ((is_memcheck()) || (is_helgrind())) {
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

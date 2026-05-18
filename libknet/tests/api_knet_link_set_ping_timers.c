@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_set_ping_timers"
+
 static void test(void)
 {
 	int logfd;
@@ -31,19 +33,19 @@ static void test(void)
 
 	if (make_local_sockaddr(&src, 0, logfd) < 0) {
 		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (make_local_sockaddr(&dst, 1, logfd) < 0) {
 		log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_set_ping_timers incorrect knet_h");
 
 	if ((!knet_link_set_ping_timers(NULL, 1, 0, 1000, 2000, 2048)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_set_ping_timers accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -80,14 +82,16 @@ static void test(void)
 	    (knet_h1->host_index[1]->link[0].pong_timeout != 2000000) ||
 	    (knet_h1->host_index[1]->link[0].latency_max_samples != 2048)) {
 		log_test(logfd, "knet_link_set_ping_timers failed to set values");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link set ping timers\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

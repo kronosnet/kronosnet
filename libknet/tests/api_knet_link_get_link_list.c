@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_link_list"
+
 static void test(void)
 {
 	int logfd;
@@ -37,7 +39,7 @@ static void test(void)
 
 	if ((!knet_link_get_link_list(NULL, 1, link_ids, &link_ids_entries)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_get_link_list accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -56,7 +58,7 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_get_link_list(knet_h1, 1, link_ids, &link_ids_entries));
 	if (link_ids_entries != 0) {
 		log_test(logfd, "knet_link_get_link_list returned incorrect number of links");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_get_link_list with 1 link");
@@ -64,14 +66,16 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_get_link_list(knet_h1, 1, link_ids, &link_ids_entries));
 	if ((link_ids_entries != 1) || (link_ids[0] != 0)) {
 		log_test(logfd, "knet_link_get_link_list returned incorrect values");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get link list\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

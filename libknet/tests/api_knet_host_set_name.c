@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_set_name"
+
 static void test(void)
 {
 	int logfd;
@@ -32,7 +34,7 @@ static void test(void)
 	// coverity[CHECKED_RETURN:SUPPRESS] - it's a test , get over it
 	if ((!knet_host_set_name(NULL, 1, "test")) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_set_name accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -47,14 +49,14 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_set_name(knet_h1, 1, "test"));
 	if (strcmp("test", knet_h1->host_index[1]->name)) {
 		log_test(logfd, "knet_host_set_name failed to copy name");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_host_set_name with correct values (name change)");
 	FAIL_ON_ERR(knet_host_set_name(knet_h1, 1, "tes"));
 	if (strcmp("tes", knet_h1->host_index[1]->name)) {
 		log_test(logfd, "knet_host_set_name failed to change name");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_host_set_name with NULL name");
@@ -65,7 +67,7 @@ static void test(void)
 
 	if ((!knet_host_set_name(knet_h1, 2, "tes")) || (errno != EEXIST)) {
 		log_test(logfd, "knet_host_set_name accepted duplicated name or returned incorrect error: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	knet_host_remove(knet_h1, 2);
@@ -77,15 +79,17 @@ static void test(void)
 
 	if ((!knet_host_set_name(knet_h1, 1, longhostname)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_host_set_name accepted invalid (too long) name or returned incorrect error: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host set name\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

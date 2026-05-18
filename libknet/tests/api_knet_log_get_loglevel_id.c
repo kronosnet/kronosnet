@@ -18,6 +18,8 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_loglevel_id"
+
 static void test(void)
 {
 	int logfd;
@@ -30,8 +32,7 @@ static void test(void)
 	if (res != KNET_LOG_DEBUG) {
 		log_test(logfd, "knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d",
 		       res, KNET_LOG_DEBUG);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Testing knet_log_get_loglevel_id bad lookup");
@@ -39,8 +40,7 @@ static void test(void)
 	if (res != KNET_LOG_ERR) {
 		log_test(logfd, "knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d",
 		       res, KNET_LOG_ERR);
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	stop_logging();
@@ -48,7 +48,9 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get loglevel id\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

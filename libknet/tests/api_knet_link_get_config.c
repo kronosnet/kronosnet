@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_config"
+
 static void test(void)
 {
 	int logfd;
@@ -38,7 +40,7 @@ static void test(void)
 
 	if ((!knet_link_get_config(NULL, 1, 0, &transport, &get_src, &get_dst, &dynamic, &flags)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_get_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 
@@ -78,7 +80,7 @@ static void test(void)
 
 	if (dynamic) {
 		log_test(logfd, "knet_link_get_config returned invalid dynamic status");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 
@@ -89,14 +91,14 @@ static void test(void)
 
 	if (transport != KNET_TRANSPORT_UDP) {
 		log_test(logfd, "knet_link_get_config returned incorrect transport: %d", transport);
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if ((dynamic) ||
 	    (memcmp(&lo, &get_src, sizeof(struct sockaddr_storage))) ||
 	    (memcmp(&lo, &get_dst, sizeof(struct sockaddr_storage)))) {
 		log_test(logfd, "knet_link_get_config returned invalid data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_get_config with correct parameters for dynamic link");
@@ -109,7 +111,7 @@ static void test(void)
 	if ((!dynamic) ||
 	    (memcmp(&lo, &get_src, sizeof(struct sockaddr_storage)))) {
 		log_test(logfd, "knet_link_get_config returned invalid data");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_link_get_config NULL transport ptr");
@@ -121,14 +123,16 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_get_config(knet_h1, 1, 0, &transport, &get_src, &get_dst, &dynamic, &flags));
 	if (flags != KNET_LINK_FLAG_TRAFFICHIPRIO) {
 		log_test(logfd, "knet_link_get_config returned no flags");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get config\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

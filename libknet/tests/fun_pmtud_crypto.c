@@ -31,6 +31,8 @@
 #include "onwire.h"
 #include "test-common.h"
 
+#define TEST_NAME "fun_pmtud_crypto"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -99,14 +101,6 @@ out_clean:
 	return err;
 }
 
-static void exit_local(int exit_code)
-{
-	set_iface_mtu(default_mtu);
-	close(iface_fd);
-	iface_fd = 0;
-	exit(exit_code);
-}
-
 #define TESTNODES 1
 static void test_mtu(int logfd, const char *model, const char *crypto, const char *hash)
 {
@@ -161,12 +155,12 @@ static void test_mtu(int logfd, const char *model, const char *crypto, const cha
 
 	if (expected_mtu != data_mtu) {
 		log_test(logfd, "Wrong MTU detected! interface mtu: %zu knet mtu: %u expected mtu: %u", detected_iface_mtu, data_mtu, expected_mtu);
-		clean_exit(knet_h, TESTNODES, FAIL, logfd);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if ((detected_iface_mtu - calculated_iface_mtu) >= knet_h[1]->sec_block_size) {
 		log_test(logfd, "Wrong MTU detected! real iface mtu: %zu calculated: %zu", detected_iface_mtu, calculated_iface_mtu);
-		clean_exit(knet_h, TESTNODES, FAIL, logfd);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	knet_handle_stop_everything(knet_h, TESTNODES, logfd);
@@ -201,40 +195,42 @@ int main(int argc, char *argv[])
 	struct knet_crypto_info crypto_list[16];
 	size_t crypto_list_entries;
 
+	printf("[TEST] %s: Test PMTUD crypto\n", TEST_NAME);
+
 #ifdef KNET_BSD
 	if (is_memcheck() || is_helgrind()) {
 		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 #endif
 
 	if (geteuid() != 0) {
 		printf("This test requires root privileges\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	iface_fd = fd_init();
 	if (iface_fd < 0) {
 		printf("fd_init failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	default_mtu = get_iface_mtu();
 	if (default_mtu < 0) {
 		printf("get_iface_mtu failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	memset(crypto_list, 0, sizeof(crypto_list));
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	test(crypto_list[0].name, "aes128", "sha1");
@@ -242,5 +238,7 @@ int main(int argc, char *argv[])
 	test(crypto_list[0].name, "aes256", "sha1");
 	test(crypto_list[0].name, "aes256", "sha256");
 
-	exit_local(PASS);
+	set_iface_mtu(default_mtu);
+	close(iface_fd);
+	TEST_EXIT(PASS);
 }

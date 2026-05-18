@@ -20,6 +20,8 @@
 #include "crypto_model.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_crypto"
+
 static void test(const char *model, const char *model2)
 {
 	int logfd;
@@ -36,7 +38,7 @@ static void test(const char *model, const char *model2)
 
 	if ((!knet_handle_crypto(NULL, &knet_handle_crypto_cfg)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_handle_crypto accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -111,7 +113,7 @@ static void test(const char *model, const char *model2)
 
 	if (current == knet_h1->crypto_instance[1]) {
 		log_test(logfd, "knet_handle_crypto failed to install new correct config: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_crypto reconfig with %s/aes128/sha1 and normal key", model);
@@ -128,7 +130,7 @@ static void test(const char *model, const char *model2)
 
 	if (current == knet_h1->crypto_instance[1]) {
 		log_test(logfd, "knet_handle_crypto failed to install new correct config: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_crypto reconfig with %s/aes129/sha1 and normal key", model);
@@ -145,7 +147,7 @@ static void test(const char *model, const char *model2)
 
 	if (current != knet_h1->crypto_instance[1]) {
 		log_test(logfd, "knet_handle_crypto failed to restore correct config: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	log_test(logfd, "Test knet_handle_crypto with %s/aes128/none and normal key", model);
@@ -181,7 +183,7 @@ static void test(const char *model, const char *model2)
 
 	FAIL_ON_ERR(knet_handle_crypto(knet_h1, &knet_handle_crypto_cfg));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
@@ -190,21 +192,23 @@ int main(int argc, char *argv[])
 	size_t crypto_list_entries;
 	size_t i;
 
+	printf("[TEST] %s: Test knet handle crypto\n", TEST_NAME);
+
 	memset(crypto_list, 0, sizeof(crypto_list));
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	for (i=0; i < crypto_list_entries; i++) {
 		test(crypto_list[i].name, crypto_list[0].name);
 	}
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

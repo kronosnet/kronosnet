@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_get_transport_name_by_id"
+
 static void test(void)
 {
 	int logfd;
@@ -30,8 +32,7 @@ static void test(void)
 
 	if ((knet_get_transport_name_by_id(KNET_MAX_TRANSPORTS) != NULL) || (errno != EINVAL)) {
 		log_test(logfd, "knet_get_transport_name_by_id accepted invalid transport or returned incorrect error: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	log_test(logfd, "Test knet_get_transport_name_by_id with correct values");
@@ -39,14 +40,12 @@ static void test(void)
 	name = knet_get_transport_name_by_id(KNET_TRANSPORT_UDP);
 	if (!name) {
 		log_test(logfd, "knet_get_transport_name_by_id failed: %s", strerror(errno));
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	if (strcmp(name, "UDP")) {
 		log_test(logfd, "knet_get_transport_name_by_id failed to get UDP transport name");
-		stop_logging();
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	stop_logging();
@@ -54,7 +53,9 @@ static void test(void)
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet get transport name by id\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

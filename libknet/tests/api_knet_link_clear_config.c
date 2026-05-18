@@ -21,6 +21,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_clear_config"
+
 static void test(void)
 {
 	int logfd;
@@ -33,7 +35,7 @@ static void test(void)
 
 	if ((!knet_link_clear_config(NULL, 1, 0)) || (errno != EINVAL)) {
 		log_test(logfd, "knet_link_clear_config accepted invalid knet_h or returned incorrect error: %s", strerror(errno));
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	knet_h1 = knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
@@ -57,12 +59,14 @@ static void test(void)
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 0));
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link clear config\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

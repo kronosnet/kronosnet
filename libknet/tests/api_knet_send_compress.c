@@ -22,6 +22,8 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_send_compress"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -86,12 +88,12 @@ static void test(const char *model)
 	send_len = knet_send(knet_h1, send_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (send_len <= 0) {
 		log_test(logfd, "knet_send failed: %s", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (send_len != sizeof(send_buff)) {
 		log_test(logfd, "knet_send sent only %zd bytes: %s", send_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 0));
@@ -104,14 +106,14 @@ static void test(const char *model)
 		log_test(logfd, "knet_recv received only %d bytes: %s (errno: %d)", recv_len, strerror(errno), errno);
 		if ((is_helgrind()) && (recv_len == -1) && (savederrno == EAGAIN)) {
 			log_test(logfd, "helgrind exception. this is normal due to possible timeouts");
-			CLEAN_EXIT(PASS);
+			TEST_EXIT_CLEAN(PASS);
 		}
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
 		log_test(logfd, "recv and send buffers are different!");
-		CLEAN_EXIT(FAIL);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	/* A sanity check on the stats */
@@ -144,7 +146,7 @@ static void test(const char *model)
 
 		}
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
@@ -153,16 +155,18 @@ int main(int argc, char *argv[])
 	size_t compress_list_entries;
 	size_t i;
 
+	printf("[TEST] %s: Test knet send compress\n", TEST_NAME);
+
 	memset(compress_list, 0, sizeof(compress_list));
 
 	if (knet_get_compress_list(compress_list, &compress_list_entries) < 0) {
 		printf("knet_get_compress_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (compress_list_entries == 0) {
 		printf("no compression modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	test("none");
@@ -171,5 +175,5 @@ int main(int argc, char *argv[])
 		test(compress_list[i].name);
 	}
 
-	return PASS;
+	TEST_EXIT(PASS);
 }
