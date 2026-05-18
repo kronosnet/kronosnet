@@ -108,7 +108,7 @@ retry:
 	if (recv_len <= 0) {
 		log_test(logfd, "knet_recv failed: %s", strerror(errno));
 		if (errno == EAGAIN && ++retry_cnt < 3) {
-			sleep(1);
+			test_sleep(logfd, 1);
 			goto retry;
 		}
 		TEST_EXIT_CLEAN(FAIL);

@@ -113,13 +113,13 @@ static void test(void)
 						   logfd, stdout));
 	}
 
-	sleep(seconds);
+	test_sleep(logfd, seconds);
 
 	for (i = 1; i <= TESTNODES; i++) {
 		log_test(logfd, "node %u, onwire: %u min: %u max: %u", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
 	}
 
-	sleep(seconds);
+	test_sleep(logfd, seconds);
 
 	log_test(logfd, "Test onwire upgrade from %u to %u (all but one node)", knet_h[1]->onwire_ver, knet_h[1]->onwire_ver + 1);
 
@@ -128,13 +128,13 @@ static void test(void)
 						   logfd, stdout));
 	}
 
-	sleep(seconds);
+	test_sleep(logfd, seconds);
 
 	for (i = 1; i <= TESTNODES; i++) {
 		log_test(logfd, "node %u, onwire: %u min: %u max: %u", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
 	}
 
-	sleep(seconds * 2);
+	test_sleep(logfd, seconds * 2);
 
 	log_test(logfd, "Test onwire upgrade from %u to %u (all but one node - phase 2, node should be kicked out and remaining nodes should upgrade)", knet_h[1]->onwire_max_ver, knet_h[1]->onwire_max_ver + 1);
 
@@ -143,7 +143,7 @@ static void test(void)
 						   logfd, stdout));
 	}
 
-	sleep(seconds);
+	test_sleep(logfd, seconds);
 
 	for (i = 1; i <= TESTNODES; i++) {
 		log_test(logfd, "node %u, onwire: %u min: %u max: %u", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
@@ -178,7 +178,7 @@ static void test(void)
 		}
 	}
 
-	sleep(seconds);
+	test_sleep(logfd, seconds);
 
 	/*
 	 * CHANGE THIS TEST if we decide to support downgrades
@@ -191,7 +191,7 @@ static void test(void)
 	/*
 	 * need more time here for membership to settle
 	 */
-	sleep(seconds * 2);
+	test_sleep(logfd, seconds * 2);
 
 	for (i = 1; i <= TESTNODES; i++) {
 		log_test(logfd, "node %u, onwire: %u min: %u max: %u", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
@@ -234,7 +234,7 @@ static void test(void)
         /*
 	 * need more time here for membership to settle
 	 */
-	sleep(seconds * 2);
+	test_sleep(logfd, seconds * 2);
 
 	for (i = 1; i <= TESTNODES; i++) {
 		log_test(logfd, "node %u, onwire: %u min: %u max: %u", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);
@@ -259,7 +259,7 @@ static void test(void)
 	/*
 	 * need more time here for membership to settle
 	 */
-	sleep(seconds * 2);
+	test_sleep(logfd, seconds * 2);
 
 	for (i = 1; i <= TESTNODES; i++) {
 		log_test(logfd, "node %u, onwire: %u min: %u max: %u", i, knet_h[i]->onwire_ver, knet_h[i]->onwire_min_ver, knet_h[i]->onwire_max_ver);

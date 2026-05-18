@@ -121,7 +121,7 @@ fun_pmtud_crypto_test_SOURCES = fun_pmtud_crypto.c \
 fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 				 test-common.c
 
-fun_config_crypto_ctr_test_SOURCES = fun_config_crypto_ctr_test.c \
+fun_config_crypto_ctr_test_SOURCES = fun_config_crypto_ctr.c \
 				     test-common.c
 
 fun_onwire_upgrade_test_SOURCES = fun_onwire_upgrade.c \

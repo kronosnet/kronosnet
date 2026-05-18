@@ -89,7 +89,7 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	test_sleep(knet_h1, 10, logfd);
+	test_sleep(logfd, 10);
 
 	if (knet_h1->data_mtu != data_mtu - 64) {
 		log_test(logfd, "knet_handle_pmtud_set failed to set the value");
@@ -102,7 +102,7 @@ static void test(void)
 	/*
 	 * wait for PMTUd to pick up the change
 	 */
-	test_sleep(knet_h1, 15, logfd);
+	test_sleep(logfd, 15);
 
 	if (knet_h1->data_mtu != data_mtu) {
 		log_test(logfd, "knet_handle_pmtud_set failed to redetect MTU: detected mtu: %u data_mtu: %u ", knet_h1->data_mtu, data_mtu);
