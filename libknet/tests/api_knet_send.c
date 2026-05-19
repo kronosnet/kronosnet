@@ -92,11 +92,7 @@ static void test(uint8_t transport)
 
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
-	if (_ts_knet_link_set_config(knet_h1, 1, 0, transport, 0, AF_INET, 0, &lo, logfd) < 0 ) {
-		int exit_status = FAIL;
-		log_test(logfd, "Unable to configure link: %s", strerror(errno));
-		TEST_EXIT_CLEAN(exit_status);
-	}
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, transport, 0, AF_INET, 0, &lo, logfd));
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
