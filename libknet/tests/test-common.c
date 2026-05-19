@@ -954,6 +954,124 @@ void _ts_knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, i
 }
 
 /*
+ * Packet injector: Create a packet and inject it into a link's socket
+ *
+ * This allows testing RX validation without network-level packet manipulation.
+ * The caller provides a seq_num to avoid packet deduplication in the RX thread.
+ *
+ * Returns 0 on success, -1 on error
+ */
+int inject_packet(knet_handle_t knet_h,
+		  uint8_t packet_type,
+		  knet_node_id_t src_host_id,
+		  uint8_t actual_link_id,
+		  uint8_t claimed_link_id,
+		  uint8_t frag_num,
+		  uint8_t frag_seq,
+		  seq_num_t seq_num,
+		  const char *payload,
+		  size_t payload_len)
+{
+	struct knet_header *packet;
+	size_t packet_len;
+	struct knet_host *src_host;
+	struct knet_link *src_link;
+	ssize_t sent;
+	socklen_t addrlen;
+	struct timespec timestamp;
+
+	/* Determine packet size based on type */
+	switch (packet_type) {
+	case KNET_HEADER_TYPE_DATA:
+		packet_len = KNET_HEADER_DATA_SIZE + payload_len;
+		break;
+	case KNET_HEADER_TYPE_PING:
+		packet_len = KNET_HEADER_PING_SIZE;
+		break;
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+
+	packet = malloc(packet_len);
+	if (!packet) {
+		return -1;
+	}
+
+	memset(packet, 0, packet_len);
+
+	/* Fill in common packet header */
+	packet->kh_version = 0;
+	packet->kh_type = packet_type;
+	packet->kh_node = htons(src_host_id);
+
+	/* Fill in type-specific payload */
+	switch (packet_type) {
+	case KNET_HEADER_TYPE_DATA:
+		packet->khp_data_seq_num = htons(seq_num);
+		packet->khp_data_compress = 0;
+		packet->khp_data_bcast = 0;
+		packet->khp_data_channel = 0;
+		packet->khp_data_frag_num = frag_num;
+		packet->khp_data_frag_seq = frag_seq;
+
+		/* Copy payload */
+		if (payload && payload_len > 0) {
+			memcpy(packet->khp_data_userdata, payload, payload_len);
+		}
+		break;
+	case KNET_HEADER_TYPE_PING:
+		packet->khp_ping_link = claimed_link_id;
+		clock_gettime(CLOCK_MONOTONIC, &timestamp);
+		memmove(&packet->khp_ping_time[0], &timestamp, sizeof(struct timespec));
+		packet->khp_ping_seq_num = htons(seq_num);
+		packet->khp_ping_timed = 1;
+		break;
+	}
+
+	/* Get the source host and link to determine where to inject */
+	src_host = knet_h->host_index[src_host_id];
+	if (!src_host) {
+		free(packet);
+		return -1;
+	}
+
+	src_link = &src_host->link[actual_link_id];
+
+	/* Check if link is properly configured */
+	if (src_link->outsock < 0) {
+		free(packet);
+		return -1;
+	}
+
+	/* Determine address length based on address family */
+	switch (src_link->dst_addr.ss_family) {
+	case AF_INET:
+		addrlen = sizeof(struct sockaddr_in);
+		break;
+	case AF_INET6:
+		addrlen = sizeof(struct sockaddr_in6);
+		break;
+	default:
+		free(packet);
+		return -1;
+	}
+
+	/* Inject the packet by sending to ourselves (loopback) */
+	sent = sendto(src_link->outsock, packet, packet_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+		      (struct sockaddr *)&src_link->dst_addr,
+		      addrlen);
+
+	free(packet);
+
+	if (sent != (ssize_t)packet_len) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  * Install a runtime log filter callback
  * Thread-safe via mutex protection
  */

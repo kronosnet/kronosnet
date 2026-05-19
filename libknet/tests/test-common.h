@@ -557,6 +557,22 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 			 int logfd);
 
 /*
+ * Packet injection helper for testing RX validation
+ * Creates and injects a packet with specified fragment parameters
+ * Returns 0 on success, -1 on error
+ */
+int inject_packet(knet_handle_t knet_h,
+		  uint8_t packet_type,
+		  knet_node_id_t src_host_id,
+		  uint8_t actual_link_id,
+		  uint8_t claimed_link_id,
+		  uint8_t frag_num,
+		  uint8_t frag_seq,
+		  seq_num_t seq_num,
+		  const char *payload,
+		  size_t payload_len);
+
+/*
  * Log filter callback type
  * Called by log thread for each log line. Return 1 to set pattern_found flag.
  */
