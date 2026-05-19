@@ -20,77 +20,71 @@
 #include "libknet.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_addrtostr"
+
 static void test(void)
 {
+	int logfd;
 	struct sockaddr_storage addr;
 	struct sockaddr_in *addrv4;
 	struct sockaddr_in6 *addrv6;
 	char addr_str[KNET_MAX_HOST_LEN];
 	char port_str[KNET_MAX_PORT_LEN];
 
+	logfd = start_logging(stdout);
+
 	memset(&addr, 0, sizeof(struct sockaddr_storage));
 
-	printf("Checking knet_addrtostr with invalid ss\n");
+	log_test(logfd, "Checking knet_addrtostr with invalid ss");
 
-	if (!knet_addrtostr(NULL, sizeof(struct sockaddr_storage),
-			    addr_str, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid ss or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(NULL, sizeof(struct sockaddr_storage),
+					       addr_str, KNET_MAX_HOST_LEN,
+					       port_str, KNET_MAX_PORT_LEN), EINVAL);
 
-	printf("Checking knet_addrtostr with invalid sslen\n");
+	log_test(logfd, "Checking knet_addrtostr with invalid sslen");
 
-	if (!knet_addrtostr(&addr, 0,
-			    addr_str, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid sslen or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(&addr, 0,
+					       addr_str, KNET_MAX_HOST_LEN,
+					       port_str, KNET_MAX_PORT_LEN), EINVAL);
 
-	printf("Checking knet_addrtostr with invalid addr_str\n");
+	log_test(logfd, "Checking knet_addrtostr with invalid addr_str");
 
-	if (!knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
-			    NULL, KNET_MAX_HOST_LEN,
-			    port_str, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid addr_str or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
+					       NULL, KNET_MAX_HOST_LEN,
+					       port_str, KNET_MAX_PORT_LEN), EINVAL);
 
-	printf("Checking knet_addrtostr with invalid port_str\n");
+	log_test(logfd, "Checking knet_addrtostr with invalid port_str");
 
-	if (!knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
-			    addr_str, KNET_MAX_HOST_LEN,
-			    NULL, KNET_MAX_PORT_LEN) || (errno != EINVAL)) {
-		printf("knet_addrtostr accepted invalid addr_str or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
+					       addr_str, KNET_MAX_HOST_LEN,
+					       NULL, KNET_MAX_PORT_LEN), EINVAL);
 
 	addrv4 = (struct sockaddr_in *)&addr;
 	addrv4->sin_family = AF_INET;
 	addrv4->sin_addr.s_addr = htonl(0xc0a80001); /* 192.168.0.1 */
 	addrv4->sin_port = htons(50000);
 
-	printf("Checking knet_addrtostr with valid data (192.168.0.1:50000)\n");
+	log_test(logfd, "Checking knet_addrtostr with valid data (192.168.0.1:50000)");
 
 	if (knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
 			     addr_str, KNET_MAX_HOST_LEN,
 			     port_str, KNET_MAX_PORT_LEN) < 0) {
-		printf("Unable to convert 192.168.0.1:50000\n");
-		exit(FAIL);
+		log_test(logfd, "Unable to convert 192.168.0.1:50000");
+		TEST_EXIT(FAIL);
 	}
 
 	if (strcmp(addr_str, "192.168.0.1") != 0) {
-		printf("Wrong address conversion: %s\n", addr_str);
-		exit(EXIT_FAILURE);
+		log_test(logfd, "Wrong address conversion. Expected: 192.168.0.1. Got:");
+		log_test(logfd, "%.253s", addr_str);
+		TEST_EXIT(FAIL);
 	}
 
 	if (strcmp(port_str, "50000") != 0) {
-		printf("Wrong port conversion: %s\n", port_str);
-		exit(EXIT_FAILURE);
+		log_test(logfd, "Wrong port conversion: %s", port_str);
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Checking knet_addrtostr with valid data ([fd00::1]:50000)\n");
+	log_test(logfd, "Checking knet_addrtostr with valid data ([fd00::1]:50000)");
 
 	memset(&addr, 0, sizeof(struct sockaddr_storage));
 
@@ -103,25 +97,30 @@ static void test(void)
 	if (knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
 			     addr_str, KNET_MAX_HOST_LEN,
 			     port_str, KNET_MAX_PORT_LEN) < 0) {
-		printf("Unable to convert [fd00::1]:50000\n");
-		exit(FAIL);
+		log_test(logfd, "Unable to convert [fd00::1]:50000");
+		TEST_EXIT(FAIL);
 	}
 
 	if (strcmp(addr_str, "fd00::1") != 0) {
-		printf("Wrong address conversion: %s\n", addr_str);
-		exit(FAIL);
+		log_test(logfd, "Wrong address conversion. Expected: fd00::1. Got:");
+		log_test(logfd, "%.253s", addr_str);
+		TEST_EXIT(FAIL);
 	}
 
 	if (strcmp(port_str, "50000") != 0) {
-		printf("Wrong port conversion: %s\n", port_str);
-		exit(EXIT_FAILURE);
+		log_test(logfd, "Wrong port conversion: %s", port_str);
+		TEST_EXIT(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
 
+	printf("[TEST] %s: Test knet addrtostr\n", TEST_NAME);
+
 	test();
 
-	exit(PASS);
+	TEST_EXIT(PASS);
 }

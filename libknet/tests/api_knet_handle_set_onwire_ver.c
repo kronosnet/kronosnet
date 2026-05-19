@@ -19,57 +19,58 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_set_onwire_ver"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_handle_set_onwire_ver incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	if ((!knet_handle_set_onwire_ver(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_set_onwire_ver accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_handle_set_onwire_ver incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_handle_set_onwire_ver(NULL, 1), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
 	knet_h1->onwire_min_ver = 2;
 	knet_h1->onwire_max_ver = 3;
 
-	printf("Test knet_handle_set_onwire_ver with invalid onwire_ver (1)\n");
+	log_test(logfd, "Test knet_handle_set_onwire_ver with invalid onwire_ver (1)");
 	FAIL_ON_SUCCESS(knet_handle_set_onwire_ver(knet_h1, 1), EINVAL);
 
-	printf("Test knet_handle_set_onwire_ver with invalid onwire_ver (4)\n");
+	log_test(logfd, "Test knet_handle_set_onwire_ver with invalid onwire_ver (4)");
 	FAIL_ON_SUCCESS(knet_handle_set_onwire_ver(knet_h1, 4), EINVAL);
 
-	printf("Test knet_handle_set_onwire_ver with valid onwire_ver (2)\n");
+	log_test(logfd, "Test knet_handle_set_onwire_ver with valid onwire_ver (2)");
 	if (knet_handle_set_onwire_ver(knet_h1, 2) < 0) {
-		printf("knet_handle_set_onwire_ver did not accepted valid onwire_ver\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_set_onwire_ver did not accepted valid onwire_ver");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (knet_h1->onwire_force_ver != 2) {
-		printf("knet_handle_set_onwire_ver did not set correct onwire_ver\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_set_onwire_ver did not set correct onwire_ver");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 
-	printf("Test knet_handle_set_onwire_ver reset (0)\n");
+	log_test(logfd, "Test knet_handle_set_onwire_ver reset (0)");
 	FAIL_ON_ERR(knet_handle_set_onwire_ver(knet_h1, 0));
 
 	if (knet_h1->onwire_force_ver != 0) {
-		printf("knet_handle_set_onwire_ver did not set correct onwire_ver\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_set_onwire_ver did not set correct onwire_ver");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle set onwire ver\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

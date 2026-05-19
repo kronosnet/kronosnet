@@ -19,44 +19,42 @@
 
 #include "test-common.h"
 
-#define TESTNODES 1
+#define TEST_NAME "api_knet_handle_free"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
+	int logfd;
 
-	setup_logpipes(logfds);
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	printf("Test knet_handle_free with invalid knet_h (part 1)\n");
-	if ((!knet_handle_free(NULL)) || (errno != EINVAL)) {
-		printf("knet_handle_free failed to detect invalid parameter\n");
-		exit(FAIL);
-	}
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	log_test(logfd, "Test knet_handle_free with invalid knet_h (part 1)");
+	FAIL_ON_SUCCESS(knet_handle_free(NULL), EINVAL);
 
-	printf("Test knet_handle_free with one host configured\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_handle_free with one host configured");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 
-	if ((!knet_handle_free(knet_h1)) || (errno != EBUSY)) {
-		CLEAN_EXIT(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_free(knet_h1), EBUSY);
 
 	FAIL_ON_ERR(knet_host_remove(knet_h1, 1));
 
-	printf("Test knet_handle_free with invalid knet_h (part 2)\n");
+	log_test(logfd, "Test knet_handle_free with invalid knet_h (part 2)");
 	// coverity[BAD_FREE:SUPPRESS] - deliberate bad handle
 	FAIL_ON_SUCCESS(knet_handle_free(knet_h1 + 1), EINVAL);
 
 	FAIL_ON_ERR(knet_handle_free(knet_h1));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle free\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

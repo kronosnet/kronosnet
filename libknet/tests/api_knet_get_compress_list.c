@@ -19,50 +19,56 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_get_compress_list"
+
 static void test(void)
 {
+	int logfd;
 	struct knet_compress_info compress_list[16];
 	size_t compress_list_entries;
 	size_t compress_list_entries1;
 	size_t i;
 
+	logfd = start_logging(stdout);
+
 	memset(compress_list, 0, sizeof(compress_list));
 
-	printf("Test knet_get_compress_list with no entries_list\n");
+	log_test(logfd, "Test knet_get_compress_list with no entries_list");
 
-	if ((!knet_get_compress_list(compress_list, NULL)) || (errno != EINVAL)) {
-		printf("knet_get_compress_list accepted invalid list_entries or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS_NOCLEAN(knet_get_compress_list(compress_list, NULL), EINVAL);
 
-	printf("Test knet_get_compress_list with no compress_list (get number of entries)\n");
+	log_test(logfd, "Test knet_get_compress_list with no compress_list (get number of entries)");
 
 	if (knet_get_compress_list(NULL, &compress_list_entries) < 0) {
-		printf("knet_handle_get_compress_list returned error instead of number of entries: %s\n", strerror(errno));
-		exit(FAIL);
+		log_test(logfd, "knet_handle_get_compress_list returned error instead of number of entries: %s", strerror(errno));
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Test knet_get_compress_list with valid data\n");
+	log_test(logfd, "Test knet_get_compress_list with valid data");
 
 	if (knet_get_compress_list(compress_list, &compress_list_entries1) < 0) {
-		printf("knet_get_compress_list failed: %s\n", strerror(errno));
-		exit(FAIL);
+		log_test(logfd, "knet_get_compress_list failed: %s", strerror(errno));
+		TEST_EXIT(FAIL);
 	}
 
 	if (compress_list_entries != compress_list_entries1) {
-		printf("knet_get_compress_list returned a different number of entries: %d, %d\n",
+		log_test(logfd, "knet_get_compress_list returned a different number of entries: %d, %d",
 		       (int)compress_list_entries, (int)compress_list_entries1);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	for (i=0; i<compress_list_entries; i++) {
-		printf("Detected compress: %s\n", compress_list[i].name);
+		log_test(logfd, "Detected compress: %s", compress_list[i].name);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet get compress list\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

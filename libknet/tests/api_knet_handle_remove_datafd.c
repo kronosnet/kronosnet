@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_remove_datafd"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -33,32 +35,29 @@ static void sock_notify(void *pvt_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 
-	printf("Test knet_handle_remove_datafd incorrect knet_h\n");
+	log_test(logfd, "Test knet_handle_remove_datafd incorrect knet_h");
 
-	if ((!knet_handle_remove_datafd(NULL, datafd)) || (errno != EINVAL)) {
-		printf("knet_handle_remove_datafd accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_remove_datafd(NULL, datafd), EINVAL);
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_remove_datafd with no datafd\n");
+	log_test(logfd, "Test knet_handle_remove_datafd with no datafd");
 	datafd = 0;
 	FAIL_ON_SUCCESS(knet_handle_remove_datafd(knet_h1, datafd), EINVAL);
 
-	printf("Test knet_handle_remove_datafd with invalid datafd\n");
+	log_test(logfd, "Test knet_handle_remove_datafd with invalid datafd");
 	datafd = 10;
 	FAIL_ON_SUCCESS(knet_handle_remove_datafd(knet_h1, datafd), EINVAL);
 
-	printf("Test knet_handle_remove_datafd with valid datafd\n");
+	log_test(logfd, "Test knet_handle_remove_datafd with valid datafd");
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 	datafd = 0;
 	channel = -1;
@@ -66,12 +65,14 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafd));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle remove datafd\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -31,6 +31,8 @@
 #include "onwire.h"
 #include "test-common.h"
 
+#define TEST_NAME "fun_pmtud_crypto"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -99,34 +101,21 @@ out_clean:
 	return err;
 }
 
-static void exit_local(int exit_code)
-{
-	set_iface_mtu(default_mtu);
-	close(iface_fd);
-	iface_fd = 0;
-	exit(exit_code);
-}
-
-#define TESTNODES 1
-static void test_mtu(const char *model, const char *crypto, const char *hash)
+static void test_mtu(int logfd, const char *model, const char *crypto, const char *hash)
 {
 	knet_handle_t knet_h[TESTNODES+1];
-	int logfds[2];
 	int datafd = 0;
 	int8_t channel = 0;
 	struct sockaddr_storage lo;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	unsigned int data_mtu, expected_mtu;
 	size_t calculated_iface_mtu = 0, detected_iface_mtu = 0;
-	int res;
 
-	setup_logpipes(logfds);
 
-	knet_h[1] = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h[1] = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
 
-	printf("Test knet_send with %s and valid data\n", model);
+	log_test(logfd, "Test knet_send with %s and valid data", model);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
@@ -149,15 +138,14 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 
 	FAIL_ON_ERR(knet_host_add(knet_h[1], 1));
 
-	FAIL_ON_ERR(_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h[1], 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 
 	FAIL_ON_ERR(knet_link_set_pong_count(knet_h[1], 1, 0, 1));
 
 	FAIL_ON_ERR(knet_link_set_enable(knet_h[1], 1, 0, 1));
 
-	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, 4, logfds[0], stdout));
+	FAIL_ON_ERR(wait_for_host(knet_h[1], 1, TEST_TIMEOUT_QUICK, logfd));
 
-	flush_logs(logfds[0], stdout);
 
 	FAIL_ON_ERR(knet_handle_pmtud_get(knet_h[1], &data_mtu));
 
@@ -169,28 +157,30 @@ static void test_mtu(const char *model, const char *crypto, const char *hash)
 	expected_mtu = calc_max_data_outlen(knet_h[1], detected_iface_mtu - 28);
 
 	if (expected_mtu != data_mtu) {
-		printf("Wrong MTU detected! interface mtu: %zu knet mtu: %u expected mtu: %u\n", detected_iface_mtu, data_mtu, expected_mtu);
-		clean_exit(knet_h, TESTNODES, logfds, FAIL);
+		log_test(logfd, "Wrong MTU detected! interface mtu: %zu knet mtu: %u expected mtu: %u", detected_iface_mtu, data_mtu, expected_mtu);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if ((detected_iface_mtu - calculated_iface_mtu) >= knet_h[1]->sec_block_size) {
-		printf("Wrong MTU detected! real iface mtu: %zu calculated: %zu\n", detected_iface_mtu, calculated_iface_mtu);
-		clean_exit(knet_h, TESTNODES, logfds, FAIL);
+		log_test(logfd, "Wrong MTU detected! real iface mtu: %zu calculated: %zu", detected_iface_mtu, calculated_iface_mtu);
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	knet_handle_stop_everything(knet_h, TESTNODES);
-	close_logpipes(logfds);
+	_ts_knet_handle_stop_everything(knet_h, TESTNODES, logfd);
 }
 
 static void test(const char *model, const char *crypto, const char *hash)
 {
+	int logfd;
 	int i = 576;
 	int max = 65535;
 
+	logfd = start_logging(stdout);
+
 	while (i <= max) {
-		printf("Setting interface MTU to: %i\n", i);
+		log_test(logfd, "Setting interface MTU to: %i", i);
 		set_iface_mtu(i);
-		test_mtu(model, crypto, hash);
+		test_mtu(logfd, model, crypto, hash);
 		if (i == max) {
 			break;
 		}
@@ -199,6 +189,8 @@ static void test(const char *model, const char *crypto, const char *hash)
 			i = max;
 		}
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
@@ -206,40 +198,42 @@ int main(int argc, char *argv[])
 	struct knet_crypto_info crypto_list[16];
 	size_t crypto_list_entries;
 
+	printf("[TEST] %s: Test PMTUD crypto\n", TEST_NAME);
+
 #ifdef KNET_BSD
 	if (is_memcheck() || is_helgrind()) {
 		printf("valgrind-freebsd cannot run this test properly. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 #endif
 
 	if (geteuid() != 0) {
 		printf("This test requires root privileges\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	iface_fd = fd_init();
 	if (iface_fd < 0) {
 		printf("fd_init failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	default_mtu = get_iface_mtu();
 	if (default_mtu < 0) {
 		printf("get_iface_mtu failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	memset(crypto_list, 0, sizeof(crypto_list));
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	test(crypto_list[0].name, "aes128", "sha1");
@@ -247,5 +241,7 @@ int main(int argc, char *argv[])
 	test(crypto_list[0].name, "aes256", "sha1");
 	test(crypto_list[0].name, "aes256", "sha256");
 
-	exit_local(PASS);
+	set_iface_mtu(default_mtu);
+	close(iface_fd);
+	TEST_EXIT(PASS);
 }

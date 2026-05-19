@@ -21,49 +21,50 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_status"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_link_status status;
 	struct sockaddr_storage lo;
 
-	printf("Test knet_link_get_status incorrect knet_h\n");
+	log_test(logfd, "Test knet_link_get_status incorrect knet_h");
 
 	memset(&status, 0, sizeof(struct knet_link_status));
 
-	if ((!knet_link_get_status(NULL, 1, 0, &status, sizeof(struct knet_link_status))) || (errno != EINVAL)) {
-		printf("knet_link_get_status accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_link_get_status(NULL, 1, 0, &status, sizeof(struct knet_link_status)), EINVAL);
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_link_get_status with unconfigured host_id\n");
+	log_test(logfd, "Test knet_link_get_status with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_get_status(knet_h1, 1, 0, &status, sizeof(struct knet_link_status)), EINVAL);
 
-	printf("Test knet_link_get_status with incorrect linkid\n");
+	log_test(logfd, "Test knet_link_get_status with incorrect linkid");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_link_get_status(knet_h1, 1, KNET_MAX_LINK, &status, sizeof(struct knet_link_status)), EINVAL);
 
-	printf("Test knet_link_get_status with incorrect status\n");
+	log_test(logfd, "Test knet_link_get_status with incorrect status");
 	FAIL_ON_SUCCESS(knet_link_get_status(knet_h1, 1, 0, NULL, 0), EINVAL);
 
-	printf("Test knet_link_get_status with unconfigured link\n");
+	log_test(logfd, "Test knet_link_get_status with unconfigured link");
 	FAIL_ON_SUCCESS(knet_link_get_status(knet_h1, 1, 0, &status, sizeof(struct knet_link_status)), EINVAL);
 
-	printf("Test knet_link_get_status with correct values\n");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	log_test(logfd, "Test knet_link_get_status with correct values");
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_get_status(knet_h1, 1, 0, &status, sizeof(struct knet_link_status)));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get status\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

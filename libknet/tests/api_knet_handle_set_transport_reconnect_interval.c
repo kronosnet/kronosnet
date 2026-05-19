@@ -19,41 +19,42 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_set_transport_reconnect_interval"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_handle_set_transport_reconnect_interval with incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	if ((!knet_handle_set_transport_reconnect_interval(NULL, 1000)) || (errno != EINVAL)) {
-		printf("knet_handle_set_transport_reconnect_interval accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_handle_set_transport_reconnect_interval with incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_handle_set_transport_reconnect_interval(NULL, 1000), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_set_transport_reconnect_interval with incorrect msecs\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_handle_set_transport_reconnect_interval with incorrect msecs");
 	FAIL_ON_SUCCESS(knet_handle_set_transport_reconnect_interval(knet_h1, 0), EINVAL);
 
-	printf("Test knet_handle_set_transport_reconnect_interval with correct values\n");
+	log_test(logfd, "Test knet_handle_set_transport_reconnect_interval with correct values");
 	FAIL_ON_ERR(knet_handle_set_transport_reconnect_interval(knet_h1, 2000));
 
 	// coverity[MISSING_LOCK:SUPPRESS] use out of the main library is 'OK' here. ish
 	if (knet_h1->reconnect_int != 2000) {
-		printf("knet_handle_set_transport_reconnect_interval failed to set correct value\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_set_transport_reconnect_interval failed to set correct value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle set transport reconnect interval\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

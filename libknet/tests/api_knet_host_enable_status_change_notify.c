@@ -19,6 +19,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_enable_status_change_notify"
+
 static int private_data;
 
 static void host_notify(void *priv_data,
@@ -32,54 +34,53 @@ static void host_notify(void *priv_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
 
-	printf("Test knet_host_enable_status_change_notify incorrect knet_h\n");
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	if ((!knet_host_enable_status_change_notify(NULL, NULL, host_notify)) || (errno != EINVAL)) {
-		printf("knet_host_enable_status_change_notify accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_host_enable_status_change_notify incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_host_enable_status_change_notify(NULL, NULL, host_notify), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_host_enable_status_change_notify with no private_data\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_host_enable_status_change_notify with no private_data");
 	FAIL_ON_ERR(knet_host_enable_status_change_notify(knet_h1, NULL, host_notify));
 	if (knet_h1->host_status_change_notify_fn_private_data != NULL) {
-		printf("knet_host_enable_status_change_notify failed to unset private_data");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_host_enable_status_change_notify failed to unset private_data");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Test knet_host_enable_status_change_notify with private_data\n");
+	log_test(logfd, "Test knet_host_enable_status_change_notify with private_data");
 	FAIL_ON_ERR(knet_host_enable_status_change_notify(knet_h1, &private_data, NULL));
 	if (knet_h1->host_status_change_notify_fn_private_data != &private_data) {
-		printf("knet_host_enable_status_change_notify failed to set private_data");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_host_enable_status_change_notify failed to set private_data");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Test knet_host_enable_status_change_notify with no host_notify fn\n");
+	log_test(logfd, "Test knet_host_enable_status_change_notify with no host_notify fn");
 	FAIL_ON_ERR(knet_host_enable_status_change_notify(knet_h1, NULL, NULL));
 	if (knet_h1->host_status_change_notify_fn != NULL) {
-		printf("knet_host_enable_status_change_notify failed to unset host_notify fn");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_host_enable_status_change_notify failed to unset host_notify fn");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Test knet_host_enable_status_change_notify with host_notify fn\n");
+	log_test(logfd, "Test knet_host_enable_status_change_notify with host_notify fn");
 	FAIL_ON_ERR(knet_host_enable_status_change_notify(knet_h1, NULL, host_notify));
 	if (knet_h1->host_status_change_notify_fn != &host_notify) {
-		printf("knet_host_enable_status_change_notify failed to set host_notify fn");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_host_enable_status_change_notify failed to set host_notify fn");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host enable status change notify\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

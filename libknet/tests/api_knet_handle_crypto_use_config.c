@@ -20,33 +20,32 @@
 #include "crypto_model.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_crypto_use_config"
+
 static void test(const char *model, const char *model2)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+
+	logfd = start_logging(stdout);
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 
-	printf("Test knet_handle_crypto_use_config incorrect knet_h\n");
+	log_test(logfd, "Test knet_handle_crypto_use_config incorrect knet_h");
 
-	if ((!knet_handle_crypto_use_config(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_use_config accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(NULL, 1), EINVAL);
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_crypto_use_config with invalid config num\n");
+	log_test(logfd, "Test knet_handle_crypto_use_config with invalid config num");
 	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, KNET_MAX_CRYPTO_INSTANCES + 1), EINVAL);
 
-	printf("Test knet_handle_crypto_use_config with un-initialized cfg\n");
+	log_test(logfd, "Test knet_handle_crypto_use_config with un-initialized cfg");
 	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, 1), EINVAL);
 	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, 2), EINVAL);
 
-	printf("Test knet_handle_crypto_set_config with %s/aes128/sha1 and normal key\n", model);
+	log_test(logfd, "Test knet_handle_crypto_set_config with %s/aes128/sha1 and normal key", model);
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
@@ -54,11 +53,11 @@ static void test(const char *model, const char *model2)
 	knet_handle_crypto_cfg.private_key_len = 2000;
 	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
 
-	printf("Test knet_handle_crypto_use_config with un-initialized cfg (part 2)\n");
+	log_test(logfd, "Test knet_handle_crypto_use_config with un-initialized cfg (part 2)");
 	FAIL_ON_SUCCESS(knet_handle_crypto_use_config(knet_h1, 2), EINVAL);
 	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 1));
 
-	printf("Test knet_handle_crypto_set_config for second config with %s/aes128/sha1 and normal key\n", model);
+	log_test(logfd, "Test knet_handle_crypto_set_config for second config with %s/aes128/sha1 and normal key", model);
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 	strncpy(knet_handle_crypto_cfg.crypto_model, model, sizeof(knet_handle_crypto_cfg.crypto_model) - 1);
 	strncpy(knet_handle_crypto_cfg.crypto_cipher_type, "aes128", sizeof(knet_handle_crypto_cfg.crypto_cipher_type) - 1);
@@ -66,21 +65,21 @@ static void test(const char *model, const char *model2)
 	knet_handle_crypto_cfg.private_key_len = 2000;
 	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 2));
 
-	printf("Test knet_handle_crypto_use_config with valid data\n");
+	log_test(logfd, "Test knet_handle_crypto_use_config with valid data");
 	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 2));
 	if (knet_h1->crypto_in_use_config != 2) {
-		printf("knet_handle_crypto_set_config failed to set crypto in-use config to 2\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_crypto_set_config failed to set crypto in-use config to 2");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Shutdown crypto\n");
+	log_test(logfd, "Shutdown crypto");
 
-	printf("Test knet_handle_crypto_use_config with valid data\n");
+	log_test(logfd, "Test knet_handle_crypto_use_config with valid data");
 
 	FAIL_ON_ERR(knet_handle_crypto_use_config(knet_h1, 0));
 	if (knet_h1->crypto_in_use_config != 0) {
-		printf("knet_handle_crypto_set_config failed to set crypto in-use config to 2\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_crypto_set_config failed to set crypto in-use config to 2");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
@@ -91,16 +90,16 @@ static void test(const char *model, const char *model2)
 
 	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 1));
 	if (knet_h1->crypto_instance[1]) {
-		printf("knet_handle_crypto_set_config failed to wipe first config but reported success\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_crypto_set_config failed to wipe first config but reported success");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &knet_handle_crypto_cfg, 2));
 	if (knet_h1->crypto_instance[2]) {
-		printf("knet_handle_crypto_set_config failed to wipe first config but reported success\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_crypto_set_config failed to wipe first config but reported success");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
@@ -109,21 +108,23 @@ int main(int argc, char *argv[])
 	size_t crypto_list_entries;
 	size_t i;
 
+	printf("[TEST] %s: Test knet handle crypto use config\n", TEST_NAME);
+
 	memset(crypto_list, 0, sizeof(crypto_list));
 
 	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
 		printf("knet_get_crypto_list failed: %s\n", strerror(errno));
-		return FAIL;
+		TEST_EXIT(FAIL);
 	}
 
 	if (crypto_list_entries == 0) {
 		printf("no crypto modules detected. Skipping\n");
-		return SKIP;
+		TEST_EXIT(SKIP);
 	}
 
 	for (i=0; i < crypto_list_entries; i++) {
 		test(crypto_list[i].name, crypto_list[0].name);
 	}
 
-	return PASS;
+	TEST_EXIT(PASS);
 }
