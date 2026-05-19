@@ -41,6 +41,13 @@ static char plugin_path[PATH_MAX];
 static struct timeval log_start_time;
 static int log_start_time_init = 0;
 
+/* Log filter state for runtime pattern matching */
+static pthread_mutex_t log_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
+static log_filter_fn log_filter_callback = NULL;
+static int log_filter_logfd = -1;
+static void *log_filter_private_data = NULL;
+static int log_pattern_found = 0;
+
 int is_memcheck(void)
 {
 	char *val;
@@ -112,6 +119,7 @@ static void flush_logs(int logfd, FILE *std)
 	int len;
 	struct timeval now, elapsed;
 	long elapsed_sec, elapsed_usec;
+	char log_line[1024];
 
 	while (1) {
 		len = read(logfd, &msg, sizeof(msg));
@@ -131,16 +139,29 @@ static void flush_logs(int logfd, FILE *std)
 		elapsed_usec = elapsed.tv_usec / 1000; /* convert to milliseconds */
 
 		if (msg.subsystem == (KNET_SUB_UNKNOWN - 1) && msg.msglevel == 0) {
-			fprintf(std, "[%6ld.%03ld] [testsuite]: %.*s\n",
-				elapsed_sec, elapsed_usec,
-				KNET_MAX_LOG_MSG_SIZE, msg.msg);
+			snprintf(log_line, sizeof(log_line),
+				 "[%6ld.%03ld] [testsuite]: %.*s",
+				 elapsed_sec, elapsed_usec,
+				 KNET_MAX_LOG_MSG_SIZE, msg.msg);
 		} else {
-			fprintf(std, "[%6ld.%03ld] [%s] %s: %.*s\n",
-				elapsed_sec, elapsed_usec,
-				knet_log_get_loglevel_name(msg.msglevel),
-				knet_log_get_subsystem_name(msg.subsystem),
-				KNET_MAX_LOG_MSG_SIZE, msg.msg);
+			snprintf(log_line, sizeof(log_line),
+				 "[%6ld.%03ld] [%s] %s: %.*s",
+				 elapsed_sec, elapsed_usec,
+				 knet_log_get_loglevel_name(msg.msglevel),
+				 knet_log_get_subsystem_name(msg.subsystem),
+				 KNET_MAX_LOG_MSG_SIZE, msg.msg);
 		}
+
+		fprintf(std, "%s\n", log_line);
+
+		/* Check log filter if installed */
+		pthread_mutex_lock(&log_filter_mutex);
+		if (log_filter_callback != NULL) {
+			if (log_filter_callback(log_filter_logfd, log_line, log_filter_private_data)) {
+				log_pattern_found = 1;
+			}
+		}
+		pthread_mutex_unlock(&log_filter_mutex);
 	}
 }
 
@@ -930,4 +951,34 @@ void _ts_knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, i
 			log_test(logfd, "knet_handle_free failed: %s", strerror(errno));
 		}
 	}
+}
+
+/*
+ * Install a runtime log filter callback
+ * Thread-safe via mutex protection
+ */
+void install_log_filter(int logfd, log_filter_fn filter_fn, void *private_data)
+{
+	pthread_mutex_lock(&log_filter_mutex);
+	log_filter_callback = filter_fn;
+	log_filter_logfd = logfd;
+	log_filter_private_data = private_data;
+	log_pattern_found = 0; /* Reset flag when installing new filter */
+	pthread_mutex_unlock(&log_filter_mutex);
+}
+
+/*
+ * Check if log filter found a pattern match
+ * Returns current value and resets the flag
+ */
+int check_log_pattern_found(void)
+{
+	int found;
+
+	pthread_mutex_lock(&log_filter_mutex);
+	found = log_pattern_found;
+	log_pattern_found = 0; /* Reset after reading */
+	pthread_mutex_unlock(&log_filter_mutex);
+
+	return found;
 }
