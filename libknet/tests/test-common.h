@@ -555,4 +555,27 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 			 uint8_t state, uint32_t seconds,
 			 int logfd);
 
+/*
+ * Log filter callback type
+ * Called by log thread for each log line. Return 1 to set pattern_found flag.
+ */
+typedef int (*log_filter_fn)(int logfd, const char *log_line, void *private_data);
+
+/*
+ * Install a runtime log filter
+ * The filter callback is invoked for each log line by the log thread.
+ * Thread-safe via mutex protection.
+ *
+ * filter_fn: callback function to check log lines (NULL to disable filtering)
+ * private_data: opaque pointer passed to filter callback
+ */
+void install_log_filter(int logfd, log_filter_fn filter_fn, void *private_data);
+
+/*
+ * Check if log filter found a match
+ * Returns 1 if filter callback returned 1 for any log line, 0 otherwise
+ * Resets the found flag after reading it.
+ */
+int check_log_pattern_found(void);
+
 #endif
