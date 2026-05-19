@@ -24,6 +24,7 @@
 #include <poll.h>
 
 #include "libknet.h"
+#include "internals.h"
 #include "test-common.h"
 
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -634,16 +635,18 @@ void _ts_knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int l
 
 void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd)
 {
-	uint8_t i, x, j;
-	struct sockaddr_storage src, dst;
-	int offset = 0;
-	int res;
+	uint8_t i, x, j, tmp_peer;
+	struct sockaddr_storage lo;
+
+	/*
+	 * Phase 1: Add all peers and allocate ports with temporary configurations
+	 * This binds ports without races - ports stay bound throughout
+	 */
+	log_test(logfd, "Phase 1: Adding peers and allocating ports for %u nodes with %u links each", numnodes, numlinks);
 
 	for (i = 1; i <= numnodes; i++) {
+		/* Add all peer nodes first */
 		for (j = 1; j <= numnodes; j++) {
-			/*
-			 * don´t connect to itself
-			 */
 			if (j == i) {
 				continue;
 			}
@@ -655,26 +658,68 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 				_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
 				exit(FAIL);
 			}
+		}
+
+		/* Configure links with temporary dst (use first peer as temporary dst) */
+		tmp_peer = (i == 1) ? 2 : 1;
+		for (x = 0; x < numlinks; x++) {
+			/*
+			 * Use _ts_knet_link_set_config to find available port
+			 * Configure to temporary peer to bind the src port
+			 * Port stays bound - we'll update dst in Phase 2
+			 */
+			if (_ts_knet_link_set_config(knet_h[i], tmp_peer, x, transport, 0, family, 0, &lo, logfd) < 0) {
+				log_test(logfd, "Unable to allocate port for node %u link %u: %s", i, x, strerror(errno));
+				_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
+				exit(FAIL);
+			}
+
+			/*
+			 * Hack: Clear the configured flag to allow reconfiguration to actual peer
+			 * Port/socket stays bound, but API will allow reconfiguring to different host_id
+			 */
+			pthread_rwlock_wrlock(&knet_h[i]->global_rwlock);
+			knet_h[i]->host_index[tmp_peer]->link[x].configured = 0;
+			pthread_rwlock_unlock(&knet_h[i]->global_rwlock);
+		}
+	}
+
+	/*
+	 * Phase 2: Update link configurations with correct dst addresses
+	 * All ports are now allocated and bound, just update destinations
+	 */
+	log_test(logfd, "Phase 2: Updating link destinations");
+
+	for (i = 1; i <= numnodes; i++) {
+		tmp_peer = (i == 1) ? 2 : 1;
+		for (j = 1; j <= numnodes; j++) {
+			if (j == i) {
+				continue;
+			}
 
 			for (x = 0; x < numlinks; x++) {
-				res = -1;
-				offset = 0;
-				while (i + x + offset++ < TEST_PORT_MAX && res != 0) {
-					if (_make_local_sockaddr(&src, i + x + offset, family, logfd) < 0) {
-						log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
-						exit(FAIL);
-					}
+				uint8_t tmp_peer_j = (j == 1) ? 2 : 1;
+				struct sockaddr_storage src, dst;
 
-					if (_make_local_sockaddr(&dst, j + x + offset, family, logfd) < 0) {
-						log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
-						exit(FAIL);
-					}
+				/*
+				 * Copy addresses from link structures to local vars
+				 * - src: node i's link x src_addr (bound in Phase 1)
+				 * - dst: node j's link x src_addr (bound in Phase 1)
+				 * Local copies required - passing pointers directly causes internal state issues
+				 */
+				memcpy(&src, &knet_h[i]->host_index[tmp_peer]->link[x].src_addr, sizeof(struct sockaddr_storage));
+				memcpy(&dst, &knet_h[j]->host_index[tmp_peer_j]->link[x].src_addr, sizeof(struct sockaddr_storage));
 
-					res = knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0);
+				/*
+				 * Update link configuration with correct dst
+				 * Second call to knet_link_set_config updates the existing link
+				 */
+				if (knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0) < 0) {
+					log_test(logfd, "Unable to configure link: %s", strerror(errno));
+					_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
+					exit(FAIL);
 				}
-				log_test(logfd, "joining node %u with node %u via link %u src offset: %u dst offset: %u", i, j, x, i+x, j+x);
+
 				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
 					log_test(logfd, "unable to enable link: %s", strerror(errno));
 					_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
@@ -687,6 +732,7 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 	for (i = 1; i <= numnodes; i++) {
 		wait_for_nodes_state(knet_h[i], numnodes, 1, TEST_TIMEOUT_LONG, logfd);
 	}
+
 	return;
 }
 
