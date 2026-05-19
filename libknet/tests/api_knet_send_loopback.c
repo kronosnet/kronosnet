@@ -84,25 +84,16 @@ static void test(void)
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
 
-	if (_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
-		log_test(logfd, "Managed to configure two LOOPBACK links - this is wrong");
-		TEST_EXIT_CLEAN(FAIL);
-	}
+	FAIL_ON_SUCCESS(_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd), EINVAL);
 
 	log_test(logfd, "Test configuring UDP link after loopback");
 
-	if (_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd) == 0) {
-		log_test(logfd, "Managed to configure UDP and LOOPBACK links together: %s", strerror(errno));
-		TEST_EXIT_CLEAN(FAIL);
-	}
+	FAIL_ON_SUCCESS(_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd), EINVAL);
 
 	log_test(logfd, "Test configuring UDP link before loopback");
 	FAIL_ON_ERR(knet_link_clear_config(knet_h1, 1, 0));
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
-	if (_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd) == 0) {
-		log_test(logfd, "Managed to configure LOOPBACK link after UDP: %s", strerror(errno));
-		TEST_EXIT_CLEAN(FAIL);
-	}
+	FAIL_ON_SUCCESS(_ts_knet_link_set_config(knet_h1, 1, 1, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd), EINVAL);
 	log_test(logfd, "Test knet_send with valid data");
 
 	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 1));
