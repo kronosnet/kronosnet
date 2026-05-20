@@ -56,6 +56,7 @@ noinst_PROGRAMS		= \
 noinst_SCRIPTS		= \
 			  api-test-coverage
 
+.NOTPARALLEL:
 TESTS			= $(check_PROGRAMS)
 
 if INSTALL_TESTS

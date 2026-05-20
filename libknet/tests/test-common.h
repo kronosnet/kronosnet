@@ -555,4 +555,43 @@ int wait_for_nodes_state(knet_handle_t knet_h, size_t numnodes,
 			 uint8_t state, uint32_t seconds,
 			 int logfd);
 
+/*
+ * Packet injection helper for testing RX validation
+ * Creates and injects a packet with specified fragment parameters
+ * Returns 0 on success, -1 on error
+ */
+int inject_packet(knet_handle_t knet_h,
+		  uint8_t packet_type,
+		  knet_node_id_t src_host_id,
+		  uint8_t actual_link_id,
+		  uint8_t claimed_link_id,
+		  uint8_t frag_num,
+		  uint8_t frag_seq,
+		  seq_num_t seq_num,
+		  const char *payload,
+		  size_t payload_len);
+
+/*
+ * Log filter callback type
+ * Called by log thread for each log line. Return 1 to set pattern_found flag.
+ */
+typedef int (*log_filter_fn)(int logfd, const char *log_line, void *private_data);
+
+/*
+ * Install a runtime log filter
+ * The filter callback is invoked for each log line by the log thread.
+ * Thread-safe via mutex protection.
+ *
+ * filter_fn: callback function to check log lines (NULL to disable filtering)
+ * private_data: opaque pointer passed to filter callback
+ */
+void install_log_filter(int logfd, log_filter_fn filter_fn, void *private_data);
+
+/*
+ * Check if log filter found a match
+ * Returns 1 if filter callback returned 1 for any log line, 0 otherwise
+ * Resets the found flag after reading it.
+ */
+int check_log_pattern_found(void);
+
 #endif

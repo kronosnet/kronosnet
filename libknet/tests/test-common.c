@@ -24,6 +24,7 @@
 #include <poll.h>
 
 #include "libknet.h"
+#include "internals.h"
 #include "test-common.h"
 
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -40,6 +41,13 @@ static struct log_thread_data data;
 static char plugin_path[PATH_MAX];
 static struct timeval log_start_time;
 static int log_start_time_init = 0;
+
+/* Log filter state for runtime pattern matching */
+static pthread_mutex_t log_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
+static log_filter_fn log_filter_callback = NULL;
+static int log_filter_logfd = -1;
+static void *log_filter_private_data = NULL;
+static int log_pattern_found = 0;
 
 int is_memcheck(void)
 {
@@ -112,6 +120,7 @@ static void flush_logs(int logfd, FILE *std)
 	int len;
 	struct timeval now, elapsed;
 	long elapsed_sec, elapsed_usec;
+	char log_line[1024];
 
 	while (1) {
 		len = read(logfd, &msg, sizeof(msg));
@@ -131,17 +140,30 @@ static void flush_logs(int logfd, FILE *std)
 		elapsed_usec = elapsed.tv_usec / 1000; /* convert to milliseconds */
 
 		if (!msg.knet_h) {
-			fprintf(std, "[%6ld.%03ld] [testsuite]: %.*s\n",
-				elapsed_sec, elapsed_usec,
-				KNET_MAX_LOG_MSG_SIZE, msg.msg);
+			snprintf(log_line, sizeof(log_line),
+				 "[%6ld.%03ld] [testsuite]: %.*s",
+				 elapsed_sec, elapsed_usec,
+				 KNET_MAX_LOG_MSG_SIZE, msg.msg);
 		} else {
-			fprintf(std, "[%6ld.%03ld] [knet: %p]: [%s] %s: %.*s\n",
-				elapsed_sec, elapsed_usec,
-				msg.knet_h,
-				knet_log_get_loglevel_name(msg.msglevel),
-				knet_log_get_subsystem_name(msg.subsystem),
-				KNET_MAX_LOG_MSG_SIZE, msg.msg);
+			snprintf(log_line, sizeof(log_line),
+				 "[%6ld.%03ld] [knet: %p]: [%s] %s: %.*s",
+				 elapsed_sec, elapsed_usec,
+				 msg.knet_h,
+				 knet_log_get_loglevel_name(msg.msglevel),
+				 knet_log_get_subsystem_name(msg.subsystem),
+				 KNET_MAX_LOG_MSG_SIZE, msg.msg);
 		}
+
+		fprintf(std, "%s\n", log_line);
+
+		/* Check log filter if installed */
+		pthread_mutex_lock(&log_filter_mutex);
+		if (log_filter_callback != NULL) {
+			if (log_filter_callback(log_filter_logfd, log_line, log_filter_private_data)) {
+				log_pattern_found = 1;
+			}
+		}
+		pthread_mutex_unlock(&log_filter_mutex);
 	}
 }
 
@@ -613,16 +635,18 @@ void _ts_knet_handle_start_nodes(knet_handle_t knet_h[], uint8_t numnodes, int l
 
 void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_t numlinks, int family, uint8_t transport, int logfd)
 {
-	uint8_t i, x, j;
-	struct sockaddr_storage src, dst;
-	int offset = 0;
-	int res;
+	uint8_t i, x, j, tmp_peer;
+	struct sockaddr_storage lo;
+
+	/*
+	 * Phase 1: Add all peers and allocate ports with temporary configurations
+	 * This binds ports without races - ports stay bound throughout
+	 */
+	log_test(logfd, "Phase 1: Adding peers and allocating ports for %u nodes with %u links each", numnodes, numlinks);
 
 	for (i = 1; i <= numnodes; i++) {
+		/* Add all peer nodes first */
 		for (j = 1; j <= numnodes; j++) {
-			/*
-			 * don´t connect to itself
-			 */
 			if (j == i) {
 				continue;
 			}
@@ -634,26 +658,68 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 				_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
 				exit(FAIL);
 			}
+		}
+
+		/* Configure links with temporary dst (use first peer as temporary dst) */
+		tmp_peer = (i == 1) ? 2 : 1;
+		for (x = 0; x < numlinks; x++) {
+			/*
+			 * Use _ts_knet_link_set_config to find available port
+			 * Configure to temporary peer to bind the src port
+			 * Port stays bound - we'll update dst in Phase 2
+			 */
+			if (_ts_knet_link_set_config(knet_h[i], tmp_peer, x, transport, 0, family, 0, &lo, logfd) < 0) {
+				log_test(logfd, "Unable to allocate port for node %u link %u: %s", i, x, strerror(errno));
+				_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
+				exit(FAIL);
+			}
+
+			/*
+			 * Hack: Clear the configured flag to allow reconfiguration to actual peer
+			 * Port/socket stays bound, but API will allow reconfiguring to different host_id
+			 */
+			pthread_rwlock_wrlock(&knet_h[i]->global_rwlock);
+			knet_h[i]->host_index[tmp_peer]->link[x].configured = 0;
+			pthread_rwlock_unlock(&knet_h[i]->global_rwlock);
+		}
+	}
+
+	/*
+	 * Phase 2: Update link configurations with correct dst addresses
+	 * All ports are now allocated and bound, just update destinations
+	 */
+	log_test(logfd, "Phase 2: Updating link destinations");
+
+	for (i = 1; i <= numnodes; i++) {
+		tmp_peer = (i == 1) ? 2 : 1;
+		for (j = 1; j <= numnodes; j++) {
+			if (j == i) {
+				continue;
+			}
 
 			for (x = 0; x < numlinks; x++) {
-				res = -1;
-				offset = 0;
-				while (i + x + offset++ < TEST_PORT_MAX && res != 0) {
-					if (_make_local_sockaddr(&src, i + x + offset, family, logfd) < 0) {
-						log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
-						exit(FAIL);
-					}
+				uint8_t tmp_peer_j = (j == 1) ? 2 : 1;
+				struct sockaddr_storage src, dst;
 
-					if (_make_local_sockaddr(&dst, j + x + offset, family, logfd) < 0) {
-						log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-						_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
-						exit(FAIL);
-					}
+				/*
+				 * Copy addresses from link structures to local vars
+				 * - src: node i's link x src_addr (bound in Phase 1)
+				 * - dst: node j's link x src_addr (bound in Phase 1)
+				 * Local copies required - passing pointers directly causes internal state issues
+				 */
+				memcpy(&src, &knet_h[i]->host_index[tmp_peer]->link[x].src_addr, sizeof(struct sockaddr_storage));
+				memcpy(&dst, &knet_h[j]->host_index[tmp_peer_j]->link[x].src_addr, sizeof(struct sockaddr_storage));
 
-					res = knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0);
+				/*
+				 * Update link configuration with correct dst
+				 * Second call to knet_link_set_config updates the existing link
+				 */
+				if (knet_link_set_config(knet_h[i], j, x, transport, &src, &dst, 0) < 0) {
+					log_test(logfd, "Unable to configure link: %s", strerror(errno));
+					_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
+					exit(FAIL);
 				}
-				log_test(logfd, "joining node %u with node %u via link %u src offset: %u dst offset: %u", i, j, x, i+x, j+x);
+
 				if (knet_link_set_enable(knet_h[i], j, x, 1) < 0) {
 					log_test(logfd, "unable to enable link: %s", strerror(errno));
 					_ts_knet_handle_stop_everything(knet_h, numnodes, logfd);
@@ -666,6 +732,7 @@ void _ts_knet_handle_join_nodes(knet_handle_t knet_h[], uint8_t numnodes, uint8_
 	for (i = 1; i <= numnodes; i++) {
 		wait_for_nodes_state(knet_h[i], numnodes, 1, TEST_TIMEOUT_LONG, logfd);
 	}
+
 	return;
 }
 
@@ -931,4 +998,153 @@ void _ts_knet_handle_stop_everything(knet_handle_t knet_h[], uint8_t numnodes, i
 			log_test(logfd, "knet_handle_free failed: %s", strerror(errno));
 		}
 	}
+}
+
+/*
+ * Packet injector: Create a packet and inject it into a link's socket
+ *
+ * This allows testing RX validation without network-level packet manipulation.
+ * The caller provides a seq_num to avoid packet deduplication in the RX thread.
+ *
+ * Returns 0 on success, -1 on error
+ */
+int inject_packet(knet_handle_t knet_h,
+		  uint8_t packet_type,
+		  knet_node_id_t src_host_id,
+		  uint8_t actual_link_id,
+		  uint8_t claimed_link_id,
+		  uint8_t frag_num,
+		  uint8_t frag_seq,
+		  seq_num_t seq_num,
+		  const char *payload,
+		  size_t payload_len)
+{
+	struct knet_header *packet;
+	size_t packet_len;
+	struct knet_host *src_host;
+	struct knet_link *src_link;
+	ssize_t sent;
+	socklen_t addrlen;
+	struct timespec timestamp;
+
+	/* Determine packet size based on type */
+	switch (packet_type) {
+	case KNET_HEADER_TYPE_DATA:
+		packet_len = KNET_HEADER_DATA_V1_SIZE + payload_len;
+		break;
+	case KNET_HEADER_TYPE_PING:
+		packet_len = KNET_HEADER_PING_V1_SIZE;
+		break;
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+
+	packet = malloc(packet_len);
+	if (!packet) {
+		return -1;
+	}
+
+	memset(packet, 0, packet_len);
+
+	/* Fill in common packet header */
+	packet->kh_version = KNET_HEADER_ONWIRE_MAX_VER;
+	packet->kh_type = packet_type;
+	packet->kh_node = htons(src_host_id);
+	packet->kh_max_ver = KNET_HEADER_ONWIRE_MAX_VER;
+
+	/* Fill in type-specific payload */
+	switch (packet_type) {
+	case KNET_HEADER_TYPE_DATA:
+		packet->khp_data_v1_seq_num = htons(seq_num);
+		packet->khp_data_v1_compress = 0;
+		packet->khp_data_v1_bcast = 0;
+		packet->khp_data_v1_channel = 0;
+		packet->khp_data_v1_frag_num = frag_num;
+		packet->khp_data_v1_frag_seq = frag_seq;
+
+		/* Copy payload */
+		if (payload && payload_len > 0) {
+			memcpy(packet->khp_data_v1_userdata, payload, payload_len);
+		}
+		break;
+	case KNET_HEADER_TYPE_PING:
+		packet->khp_ping_v1_link = claimed_link_id;
+		clock_gettime(CLOCK_MONOTONIC, &timestamp);
+		memmove(&packet->khp_ping_v1_time[0], &timestamp, sizeof(struct timespec));
+		packet->khp_ping_v1_seq_num = htons(seq_num);
+		packet->khp_ping_v1_timed = 1;
+		break;
+	}
+
+	/* Get the source host and link to determine where to inject */
+	src_host = knet_h->host_index[src_host_id];
+	if (!src_host) {
+		free(packet);
+		return -1;
+	}
+
+	src_link = &src_host->link[actual_link_id];
+
+	/* Check if link is properly configured */
+	if (src_link->outsock < 0) {
+		free(packet);
+		return -1;
+	}
+
+	/* Determine address length based on address family */
+	switch (src_link->dst_addr.ss_family) {
+	case AF_INET:
+		addrlen = sizeof(struct sockaddr_in);
+		break;
+	case AF_INET6:
+		addrlen = sizeof(struct sockaddr_in6);
+		break;
+	default:
+		free(packet);
+		return -1;
+	}
+
+	/* Inject the packet by sending to ourselves (loopback) */
+	sent = sendto(src_link->outsock, packet, packet_len, MSG_DONTWAIT | MSG_NOSIGNAL,
+		      (struct sockaddr *)&src_link->dst_addr,
+		      addrlen);
+
+	free(packet);
+
+	if (sent != (ssize_t)packet_len) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * Install a runtime log filter callback
+ * Thread-safe via mutex protection
+ */
+void install_log_filter(int logfd, log_filter_fn filter_fn, void *private_data)
+{
+	pthread_mutex_lock(&log_filter_mutex);
+	log_filter_callback = filter_fn;
+	log_filter_logfd = logfd;
+	log_filter_private_data = private_data;
+	log_pattern_found = 0; /* Reset flag when installing new filter */
+	pthread_mutex_unlock(&log_filter_mutex);
+}
+
+/*
+ * Check if log filter found a pattern match
+ * Returns current value and resets the flag
+ */
+int check_log_pattern_found(void)
+{
+	int found;
+
+	pthread_mutex_lock(&log_filter_mutex);
+	found = log_pattern_found;
+	log_pattern_found = 0; /* Reset after reading */
+	pthread_mutex_unlock(&log_filter_mutex);
+
+	return found;
 }
