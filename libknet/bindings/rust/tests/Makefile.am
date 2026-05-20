@@ -29,6 +29,7 @@ endif
 
 AM_TESTS_ENVIRONMENT=LD_LIBRARY_PATH="$(abs_top_builddir)/libknet/.libs"
 
+.NOTPARALLEL:
 TESTS			= $(check_SCRIPTS)
 
 clean-local: cargo-clean
