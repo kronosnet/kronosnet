@@ -45,7 +45,8 @@ int_checks		= \
 			  int_buffer_management_test
 
 sec_checks		= \
-			  sec_acl_link_id_spoofing_test
+			  sec_acl_link_id_spoofing_test \
+			  sec_frag_sequence_test
 
 fun_checks		= \
 			  fun_config_crypto_test \
@@ -148,5 +149,8 @@ int_buffer_management_test_SOURCES = int_buffer_management.c \
 
 sec_acl_link_id_spoofing_test_SOURCES = sec_acl_link_id_spoofing.c \
 					test-common.c
+
+sec_frag_sequence_test_SOURCES = sec_frag_sequence.c \
+				 test-common.c
 
 CLEANFILES = knet_test_unix_stream.*

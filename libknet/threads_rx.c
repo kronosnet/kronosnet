@@ -126,6 +126,33 @@ static int pckt_defrag(knet_handle_t knet_h, struct knet_header *inbuf, ssize_t 
 	struct knet_host_defrag_buf *defrag_buf;
 	int defrag_buf_idx;
 
+	/*
+	 * Validate total fragment count (CVE-2026-15813)
+	 * frag_map array has PCKT_FRAG_MAX (255) elements indexed 0-254.
+	 * Since frag_seq is 1-based and used as array index, maximum valid
+	 * value is PCKT_FRAG_MAX-1 (254).
+	 */
+	if (inbuf->khp_data_frag_num == 0 || inbuf->khp_data_frag_num >= PCKT_FRAG_MAX) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Invalid fragment count: %u (valid range: 1-%u)",
+			 inbuf->khp_data_frag_num, PCKT_FRAG_MAX - 1);
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * Validate fragment sequence number to prevent buffer overflow.
+	 * frag_seq is used as array index into frag_map[PCKT_FRAG_MAX].
+	 * Also ensure frag_seq is within the declared fragment count.
+	 */
+	if (inbuf->khp_data_frag_seq == 0 || inbuf->khp_data_frag_seq > inbuf->khp_data_frag_num) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Invalid fragment sequence %u (total frags: %u)",
+			 inbuf->khp_data_frag_seq, inbuf->khp_data_frag_num);
+		errno = EINVAL;
+		return -1;
+	}
+
 	defrag_buf_idx = find_pckt_defrag_buf(knet_h, inbuf);
 	if (defrag_buf_idx < 0) {
 		return 1;
