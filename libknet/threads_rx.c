@@ -336,6 +336,33 @@ static int _pckt_defrag(knet_handle_t knet_h, struct knet_host *src_host, seq_nu
 	struct knet_host_defrag_buf *defrag_buf;
 	int defrag_buf_idx;
 
+	/*
+	 * Validate total fragment count
+	 * frag_map array has PCKT_FRAG_MAX (255) elements indexed 0-254.
+	 * Since frag_seq is 1-based and used as array index, maximum valid
+	 * value is PCKT_FRAG_MAX-1 (254).
+	 */
+	if (frags == 0 || frags >= PCKT_FRAG_MAX) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Invalid fragment count: %u (valid range: 1-%u)",
+			 frags, PCKT_FRAG_MAX - 1);
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * Validate fragment sequence number to prevent buffer overflow.
+	 * frag_seq is used as array index into frag_map[PCKT_FRAG_MAX].
+	 * Also ensure frag_seq is within the declared fragment count.
+	 */
+	if (frag_seq == 0 || frag_seq > frags) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Invalid fragment sequence %u (total frags: %u)",
+			 frag_seq, frags);
+		errno = EINVAL;
+		return -1;
+	}
+
 	defrag_buf_idx = _find_pckt_defrag_buf(knet_h, src_host, seq_num);
 	if (defrag_buf_idx < 0) {
 		return 1;
