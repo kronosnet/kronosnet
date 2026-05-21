@@ -487,6 +487,18 @@ static int _decompress_data(knet_handle_t knet_h, uint8_t decompress_type, unsig
 		clock_gettime(CLOCK_MONOTONIC, &end_time);
 		timespec_diff(start_time, end_time, &decompress_time);
 
+		/*
+		 * Sanity check decompressed size against buffer capacity
+		 */
+		if (!err) {
+			if ((size_t)decmp_outlen > KNET_DATABUFSIZE) {
+				log_warn(knet_h, KNET_SUB_COMPRESS,
+					 "Decompressed size %zd exceeds buffer size %zu, rejecting packet",
+					 decmp_outlen, (size_t)KNET_DATABUFSIZE);
+				return -1;
+			}
+		}
+
 		stats_err = pthread_mutex_lock(&knet_h->handle_stats_mutex);
 		if (stats_err < 0) {
 			log_err(knet_h, KNET_SUB_RX, "Unable to get mutex lock: %s", strerror(stats_err));
