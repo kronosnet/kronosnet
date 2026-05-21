@@ -38,7 +38,8 @@ endif
 int_checks		= \
 			  int_links_acl_ip_test \
 			  int_timediff_test \
-			  int_decompress_bufsize_test
+			  int_decompress_bufsize_test \
+			  int_seq_wraparound_stress_test
 
 fun_checks		= \
 			  fun_config_crypto_test \
@@ -128,3 +129,6 @@ fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 
 fun_acl_check_test_SOURCES = fun_acl_check.c \
 			     test-common.c
+
+int_seq_wraparound_stress_test_SOURCES = int_seq_wraparound_stress.c \
+					  test-common.c
