@@ -580,25 +580,28 @@ static void _reclaim_old_defrag_bufs(knet_handle_t knet_h, struct knet_host *hos
 	int i;
 
 	head = seq_num + 1;
-	if (knet_h->defrag_bufs_max > host->allocated_defrag_bufs) {
-		tail = seq_num - (knet_h->defrag_bufs_max + 1);
-	} else {
-		tail = seq_num - (host->allocated_defrag_bufs + 1);
-	}
+	tail = seq_num - (host->allocated_defrag_bufs + 1);
 
 	/*
-	 * expire old defrag buffers
+	 * Reclaim defrag buffers outside the valid window
 	 */
 	for (i = 0; i < host->allocated_defrag_bufs; i++) {
 		if (host->defrag_bufs[i].in_use) {
 			/*
-			 * head has done a rollover to 0+
+			 * Wraparound case: tail wrapped due to subtraction underflow.
+			 * This occurs when seq_num < (allocated_defrag_bufs + 1).
+			 * Valid window wraps: [tail+1..SEQ_MAX] and [0..seq_num].
+			 * Reclaim the gap in the middle: [head..tail].
 			 */
 			if (tail > head) {
 				if ((host->defrag_bufs[i].pckt_seq >= head) && (host->defrag_bufs[i].pckt_seq <= tail)) {
 					host->defrag_bufs[i].in_use = 0;
 				}
 			} else {
+				/*
+				 * Normal case: valid window is contiguous [tail+1..seq_num].
+				 * Reclaim outside the window: [head..SEQ_MAX] or [0..tail].
+				 */
 				if ((host->defrag_bufs[i].pckt_seq >= head) || (host->defrag_bufs[i].pckt_seq <= tail)){
 					host->defrag_bufs[i].in_use = 0;
 				}
@@ -639,7 +642,7 @@ int _seq_num_lookup(knet_handle_t knet_h, struct knet_host *host, seq_num_t seq_
 		_clear_cbuffers(host, seq_num);
 	}
 
-	_reclaim_old_defrag_bufs(knet_h, host, *dst_seq_num);
+	_reclaim_old_defrag_bufs(knet_h, host, seq_num);
 
 	if (seq_num < *dst_seq_num) {
 		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
