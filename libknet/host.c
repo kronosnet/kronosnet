@@ -604,10 +604,16 @@ int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, i
 
 	_reclaim_old_defrag_bufs(host, seq_num);
 
+	/*
+	 * Calculate sequence distance with proper wraparound handling.
+	 * Use modular arithmetic to avoid overflow near SEQ_MAX boundary.
+	 */
 	if (seq_num < *dst_seq_num) {
-		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
+		/* Wraparound case: seq_num wrapped to beginning of range */
+		seq_dist = (SEQ_MAX - *dst_seq_num) + seq_num + 1;
 	} else {
-		seq_dist = *dst_seq_num - seq_num;
+		/* Normal case: seq_num >= dst_seq_num */
+		seq_dist = seq_num - *dst_seq_num;
 	}
 
 	head = seq_num % KNET_CBUFFER_SIZE;
