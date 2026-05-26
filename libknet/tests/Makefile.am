@@ -40,7 +40,8 @@ int_checks		= \
 			  int_timediff_test \
 			  int_decompress_bufsize_test \
 			  int_seq_wraparound_stress_test \
-			  int_defrag_edge_cases_test
+			  int_defrag_edge_cases_test \
+			  int_buffer_management_test
 
 fun_checks		= \
 			  fun_config_crypto_test \
@@ -140,4 +141,7 @@ int_seq_wraparound_stress_test_SOURCES = int_seq_wraparound_stress.c \
 					  test-common.c
 
 int_defrag_edge_cases_test_SOURCES = int_defrag_edge_cases.c \
+				      test-common.c
+
+int_buffer_management_test_SOURCES = int_buffer_management.c \
 				      test-common.c
