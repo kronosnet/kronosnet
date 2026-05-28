@@ -305,16 +305,29 @@ struct knet_datafd_header {
  *            Applications using their own functions to write to the
  *            datafd should NOT write more than KNET_MAX_PACKET_SIZE.
  *
- *            Please refer to handle.c on how to set up a socketpair.
+ *            datafd can be 0, and knet_handle_add_datafd will create an internal
+ *            socketpair for communication (valid for both testing and production).
+ *            A value higher than 0 provides a user-managed file descriptor.
+ *            A negative number will return an error.
+ *            On exit knet_handle_free will cleanup socketpairs created by
+ *            knet_handle_add_datafd, but will not close user-provided fds.
  *
- *            datafd can be 0, and knet_handle_add_datafd will create a properly
- *            populated socket pair the same way as ping_test, or a value
- *            higher than 0. A negative number will return an error.
- *            On exit knet_handle_free will take care to cleanup the
- *            socketpair only if they have been created by knet_handle_add_datafd.
+ *            SUPPORTED file descriptor types (user-provided):
+ *            - TAP devices (e.g., from libnozzle) - PRIMARY use case
+ *            - Regular sockets (must be bound or connected)
+ *            - Character devices (opened with O_RDWR)
+ *            - Any bidirectional file descriptor
  *
- *            It is possible to pass either sockets or normal fds.
- *            User provided datafd will be marked as non-blocking and close-on-exec.
+ *            UNSUPPORTED file descriptor types:
+ *            - User-created socketpairs - will NOT work (knet needs both ends
+ *              but API only accepts one fd). Use datafd=0 for knet-managed pairs.
+ *            - Pipes (all types) - each pipe fd only supports unidirectional
+ *              data flow, knet requires bidirectional I/O on the same fd
+ *            - Unconnected sockets
+ *
+ *            REQUIREMENT: The file descriptor MUST be bidirectional - knet needs
+ *            to both read and write using the SAME fd. User provided datafd will
+ *            be marked as non-blocking and close-on-exec.
  *
  * *channel - This value is analogous to the tag in VLAN tagging.
  *            A negative value will auto-allocate a channel.
@@ -334,7 +347,7 @@ struct knet_datafd_header {
  *            channel on another host, then you can use dst_host_filter
  *            to manipulate channel values on TX and RX.
  * flags    - Bitwise OR of any of the following:
- *          - KNET_ADD_DAFATA_FLAG_RX_RETURN_INFO
+ *          - KNET_DATAFD_FLAG_RX_RETURN_INFO
  *
  * @return
  * knet_handle_add_datafd returns
