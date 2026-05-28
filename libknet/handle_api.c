@@ -14,7 +14,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/uio.h>
+#include <sys/un.h>
 
 #include "internals.h"
 #include "crypto.h"
@@ -163,7 +166,113 @@ int knet_handle_add_datafd(knet_handle_t knet_h, int *datafd, int8_t *channel)
 		knet_h->sockfd[*channel].sockfd[1] = 0;
 
 		if (!getsockopt(knet_h->sockfd[*channel].sockfd[0], SOL_SOCKET, SO_TYPE, &sockopt, &sockoptlen)) {
+			struct sockaddr_storage addr;
+			socklen_t addrlen;
+			int peername_err;
+
 			knet_h->sockfd[*channel].is_socket = 1;
+
+			/*
+			 * Validate socket connectivity and type.
+			 * For stream/seqpacket/dgram sockets, knet needs either:
+			 * - connected socket (getpeername succeeds), OR
+			 * - bound socket (getsockname succeeds)
+			 * Unconnected/unbound sockets will fail at runtime.
+			 */
+			memset(&addr, 0, sizeof(addr));
+			addrlen = sizeof(addr);
+			peername_err = getpeername(knet_h->sockfd[*channel].sockfd[0], (struct sockaddr *)&addr, &addrlen);
+			if (peername_err == 0) {
+				/* Socket is connected - check for unsupported AF_UNIX socketpairs */
+				/*
+				 * Platform-specific socketpair detection:
+				 * - Linux: addrlen=2, ss_family=AF_UNIX, sun_path[0]=0
+				 * - BSD: addrlen=16, ss_family=AF_UNIX, sun_path[0]=0
+				 * - Solaris/Illumos: addrlen=0, ss_family=0
+				 */
+				if (addrlen == 0) {
+					/* Solaris/Illumos: getpeername() returns addrlen=0 for unnamed socketpairs */
+					savederrno = EINVAL;
+					err = -1;
+					log_err(knet_h, KNET_SUB_HANDLE,
+						"User-provided AF_UNIX socketpairs are not supported. "
+						"Use datafd=0 for knet-managed socketpairs or provide a TAP device.");
+					goto out_unlock;
+				}
+				if (addr.ss_family == AF_UNIX) {
+					struct sockaddr_un *un_addr = (struct sockaddr_un *)&addr;
+					/* Linux/BSD: unnamed socketpairs have empty sun_path */
+					if (un_addr->sun_path[0] == '\0') {
+						savederrno = EINVAL;
+						err = -1;
+						log_err(knet_h, KNET_SUB_HANDLE,
+							"User-provided AF_UNIX socketpairs are not supported. "
+							"Use datafd=0 for knet-managed socketpairs or provide a TAP device.");
+						goto out_unlock;
+					}
+				}
+			} else if (errno == ENOTCONN) {
+				/* Socket is not connected - check if it's at least bound */
+				addrlen = sizeof(addr);
+				if (getsockname(knet_h->sockfd[*channel].sockfd[0], (struct sockaddr *)&addr, &addrlen) != 0) {
+					savederrno = EINVAL;
+					err = -1;
+					log_err(knet_h, KNET_SUB_HANDLE,
+						"User-provided socket must be connected or bound. "
+						"Unconnected/unbound sockets cannot send or receive data.");
+					goto out_unlock;
+				}
+				/* For AF_UNIX sockets, check if sun_path is empty (unbound) */
+				if (addr.ss_family == AF_UNIX) {
+					struct sockaddr_un *un_addr = (struct sockaddr_un *)&addr;
+					if (un_addr->sun_path[0] == '\0') {
+						savederrno = EINVAL;
+						err = -1;
+						log_err(knet_h, KNET_SUB_HANDLE,
+							"User-provided AF_UNIX socket must be connected or bound. "
+							"Unconnected/unbound sockets cannot send or receive data.");
+						goto out_unlock;
+					}
+				}
+			}
+		} else {
+			/*
+			 * Not a socket - validate non-socket file descriptors.
+			 * Reject unidirectional pipes (O_RDONLY or O_WRONLY).
+			 * knet needs bidirectional I/O (O_RDWR).
+			 */
+			struct stat st;
+
+			if (fstat(knet_h->sockfd[*channel].sockfd[0], &st) != 0) {
+				savederrno = errno;
+				err = -1;
+				log_err(knet_h, KNET_SUB_HANDLE,
+					"Unable to inspect file descriptor: %s",
+					strerror(savederrno));
+				goto out_unlock;
+			}
+
+			if (S_ISFIFO(st.st_mode)) {
+				/*
+				 * Pipes are not supported as datafd.
+				 *
+				 * While BSD/Solaris pipes report O_RDWR on both ends (unlike Linux where
+				 * one end is O_RDONLY and the other is O_WRONLY), the actual data flow
+				 * is still unidirectional in each direction:
+				 * - Data written to fd[0] can only be read from fd[1]
+				 * - Data written to fd[1] can only be read from fd[0]
+				 *
+				 * knet requires true bidirectional I/O on a single file descriptor
+				 * (write and read from the same fd), which pipes cannot provide.
+				 */
+				savederrno = EINVAL;
+				err = -1;
+				log_err(knet_h, KNET_SUB_HANDLE,
+					"Pipes are not supported. "
+					"knet requires bidirectional I/O on the same file descriptor.");
+				goto out_unlock;
+			}
+			/* Other fd types (TAP devices, char devices) are accepted */
 		}
 	} else {
 		if (_init_socketpair(knet_h, knet_h->sockfd[*channel].sockfd)) {
