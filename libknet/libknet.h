@@ -244,7 +244,9 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
  *            datafd should NOT write more than KNET_MAX_PACKET_SIZE.
  *
  *            datafd can be 0, and knet_handle_add_datafd will create an internal
- *            socketpair for communication (valid for both testing and production).
+ *            SOCK_DGRAM AF_UNIX socketpair for communication (valid for both
+ *            testing and production). SOCK_DGRAM provides atomic message boundaries,
+ *            ensuring each write becomes one distinct read on the other end.
  *            A value higher than 0 provides a user-managed file descriptor.
  *            A negative number will return an error.
  *            On exit knet_handle_free will cleanup socketpairs created by
