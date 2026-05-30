@@ -40,6 +40,7 @@ Running on FreeBSD
 
 knet requires big socket buffers and you need to set:
 kern.ipc.maxsockbuf=18388608
+net.local.dgram.maxdgram=131072
 in /etc/sysctl.conf or knet will fail to run.
 
 libnozzle requires if_tap.ko loaded in the kernel.
@@ -79,6 +80,12 @@ Running on Solaris / Illumos
 Tune socket buffers for the protocol you intend to use:
 
 ipadm set-prop -p max_buf=8388608 udp
+
+For KNET_DATAFD_FLAG_RX_RETURN_INFO support (datagrams >64KB), add to /etc/system and reboot:
+
+set strmsgsz=131072
+
+This increases the TL (loopback transport) TIDU size for Unix domain sockets
 
 Rust Bindings
 -------------
