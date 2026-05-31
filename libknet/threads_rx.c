@@ -1211,11 +1211,6 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const
 		return -1;
 	}
 
-	if (buff_len > KNET_MAX_PACKET_SIZE) {
-		errno = EINVAL;
-		return -1;
-	}
-
 	if (channel < 0) {
 		errno = EINVAL;
 		return -1;
@@ -1238,6 +1233,24 @@ ssize_t knet_recv(knet_handle_t knet_h, char *buff, const size_t buff_len, const
 		savederrno = EINVAL;
 		err = -1;
 		goto out_unlock;
+	}
+
+	/*
+	 * When KNET_DATAFD_FLAG_RX_RETURN_INFO is set, knet sends header + packet data.
+	 * Maximum size is sizeof(struct knet_datafd_header) + KNET_MAX_PACKET_SIZE.
+	 */
+	if (knet_h->sockfd[channel].flags & KNET_DATAFD_FLAG_RX_RETURN_INFO) {
+		if (buff_len > KNET_MAX_PACKET_SIZE + sizeof(struct knet_datafd_header)) {
+			savederrno = EINVAL;
+			err = -1;
+			goto out_unlock;
+		}
+	} else {
+		if (buff_len > KNET_MAX_PACKET_SIZE) {
+			savederrno = EINVAL;
+			err = -1;
+			goto out_unlock;
+		}
 	}
 
 	memset(&iov_in, 0, sizeof(iov_in));

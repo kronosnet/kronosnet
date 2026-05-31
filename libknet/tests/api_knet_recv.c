@@ -42,10 +42,9 @@ static void test(int datafd_flag)
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
-	char recv_buff[KNET_MAX_PACKET_SIZE];
-	char send_buff[KNET_MAX_PACKET_SIZE-sizeof(struct knet_datafd_header)];
+	char recv_buff[KNET_MAX_PACKET_SIZE+sizeof(struct knet_datafd_header)];
+	char send_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t recv_len = 0;
-	int retry_cnt = 0;
 	struct sockaddr_storage lo;
 
 	log_test(logfd, "Test knet_recv incorrect knet_h");
@@ -59,9 +58,6 @@ static void test(int datafd_flag)
 
 	log_test(logfd, "Test knet_recv with invalid recv_buff len (0)");
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, 0, channel), EINVAL);
-
-	log_test(logfd, "Test knet_recv with invalid recv_buff len (> KNET_MAX_PACKET_SIZE)");
-	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE + 1, channel), EINVAL);
 
 	log_test(logfd, "Test knet_recv with invalid channel (-1)");
 	channel = -1;
@@ -84,6 +80,14 @@ static void test(int datafd_flag)
 
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, datafd_flag));
 
+	if (datafd_flag == KNET_DATAFD_FLAG_RX_RETURN_INFO) {
+		log_test(logfd, "Test knet_recv with invalid recv_buff len (> KNET_MAX_PACKET_SIZE + header) with RX_RETURN_INFO flag");
+		FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE + sizeof(struct knet_datafd_header) + 1, channel), EINVAL);
+	} else {
+		log_test(logfd, "Test knet_recv with invalid recv_buff len (> KNET_MAX_PACKET_SIZE) without RX_RETURN_INFO flag");
+		FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE + 1, channel), EINVAL);
+	}
+
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
 
@@ -91,7 +95,7 @@ static void test(int datafd_flag)
 	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
 	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd));
 
-	memset(recv_buff, 0, KNET_MAX_PACKET_SIZE);
+	memset(recv_buff, 0, sizeof(recv_buff));
 	memset(send_buff, 1, sizeof(send_buff));
 
 	if (knet_send(knet_h1, send_buff, sizeof(send_buff), channel) != sizeof(send_buff)) {
@@ -99,14 +103,15 @@ static void test(int datafd_flag)
 		TEST_EXIT_CLEAN(FAIL);
 	}
 
-retry:
-	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd));
+
+	if (datafd_flag == KNET_DATAFD_FLAG_RX_RETURN_INFO) {
+		recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE + sizeof(struct knet_datafd_header), channel);
+	} else {
+		recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
+	}
 	if (recv_len <= 0) {
 		log_test(logfd, "knet_recv failed: %s", strerror(errno));
-		if (errno == EAGAIN && ++retry_cnt < 3) {
-			test_sleep(logfd, 1);
-			goto retry;
-		}
 		TEST_EXIT_CLEAN(FAIL);
 	}
 
