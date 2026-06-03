@@ -152,6 +152,7 @@ static int _dispatch_to_local(knet_handle_t knet_h, unsigned char *data, size_t 
 	struct knet_datafd_header datafd_hdr;
 	int sockfd_idx;
 
+	// coverity[MISSING_LOCK:SUPPRESS] - global_rwlock held by _handle_send_to_links_thread
 	if (knet_h->sockfd[channel].flags & KNET_DATAFD_FLAG_RX_RETURN_INFO) {
 		memset(&datafd_hdr, 0, sizeof(datafd_hdr));
 		datafd_hdr.size = sizeof(datafd_hdr);

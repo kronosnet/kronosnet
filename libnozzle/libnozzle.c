@@ -107,6 +107,40 @@ static int _set_ip(nozzle_t nozzle,
 		   const char *ipaddr, const char *prefix,
 		   int secondary)
 {
+	char *endptr;
+	long prefix_val;
+	int fam;
+
+	if (!strchr(ipaddr, ':')) {
+		fam = AF_INET;
+	} else {
+		fam = AF_INET6;
+	}
+
+	/*
+	 * Validate prefix length before use. strtol() provides proper error
+	 * detection for invalid input, overflow, and trailing garbage.
+	 */
+	errno = 0;
+	prefix_val = strtol(prefix, &endptr, 10);
+
+	if (errno != 0 || endptr == prefix || *endptr != '\0') {
+		/* Error, no digits found, or trailing garbage */
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (prefix_val <= 0 || prefix_val > 128) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((fam == AF_INET && prefix_val > 32) ||
+	    (fam == AF_INET6 && prefix_val > 128)) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	if (command == IP_ADD) {
 		return _platform_add_ip(nozzle, ipaddr, prefix, secondary);
 	} else {

@@ -80,6 +80,45 @@ struct node {
 	struct sockaddr_storage address[KNET_MAX_LINK];
 };
 
+/*
+ * Safe integer parsing with error checking
+ */
+static int safe_atoi(const char *str, int *result, const char *field_name)
+{
+	char *endptr;
+	long value;
+
+	if (!str || !result) {
+		return -1;
+	}
+
+	errno = 0;
+	value = strtol(str, &endptr, 10);
+
+	if (errno != 0) {
+		printf("Error parsing %s: %s\n", field_name, strerror(errno));
+		return -1;
+	}
+
+	if (endptr == str) {
+		printf("Error parsing %s: no digits found in '%s'\n", field_name, str);
+		return -1;
+	}
+
+	if (*endptr != '\0') {
+		printf("Error parsing %s: invalid characters in '%s'\n", field_name, str);
+		return -1;
+	}
+
+	if (value < INT_MIN || value > INT_MAX) {
+		printf("Error parsing %s: value %ld out of range\n", field_name, value);
+		return -1;
+	}
+
+	*result = (int)value;
+	return 0;
+}
+
 struct pckt_ver {
 	uint32_t len;
 	uint32_t chksum;
@@ -139,7 +178,10 @@ static void parse_nodes(char *nodesinfo[MAX_NODES], int onidx, int port, struct 
 	snprintf(port_str, sizeof(port_str), "%d", port);
 
 	for (i = 0; i < onidx; i++) {
-		nodes[i].nodeid = atoi(strtok(nodesinfo[i], ","));
+		char *nodeid_str = strtok(nodesinfo[i], ",");
+		if (safe_atoi(nodeid_str, &nodes[i].nodeid, "node ID") < 0) {
+			exit(FAIL);
+		}
 		if ((nodes[i].nodeid < 0) || (nodes[i].nodeid > KNET_MAX_HOST)) {
 			printf("Invalid nodeid: %d (0 - %d)\n", nodes[i].nodeid, KNET_MAX_HOST);
 			TEST_EXIT(FAIL);
@@ -335,7 +377,9 @@ static void setup_knet(int argc, char *argv[])
 					printf("Error: -t can only be specified once\n");
 					TEST_EXIT(FAIL);
 				}
-				thisnodeid = atoi(optarg);
+				if (safe_atoi(optarg, &thisnodeid, "node ID") < 0) {
+					exit(FAIL);
+				}
 				if ((thisnodeid < 0) || (thisnodeid > 65536)) {
 					printf("Error: -t nodeid out of range %d (1 - 65536)\n", thisnodeid);
                                         exit(FAIL);
@@ -350,7 +394,9 @@ static void setup_knet(int argc, char *argv[])
 				onidx++;
 				break;
 			case 'b':
-				port = atoi(optarg);
+				if (safe_atoi(optarg, &port, "port") < 0) {
+					exit(FAIL);
+				}
 				if ((port < 1) || (port > 65536)) {
 					printf("Error: port %d out of range (1 - 65536)\n", port);
 					TEST_EXIT(FAIL);
@@ -364,7 +410,9 @@ static void setup_knet(int argc, char *argv[])
 				portoffset = 1;
 				break;
 			case 'm':
-				pmtud_interval = atoi(optarg);
+				if (safe_atoi(optarg, &pmtud_interval, "PMTUD interval") < 0) {
+					exit(FAIL);
+				}
 				if (pmtud_interval < 1) {
 					printf("Error: pmtud interval %d out of range (> 0)\n", pmtud_interval);
 					TEST_EXIT(FAIL);
@@ -385,7 +433,9 @@ static void setup_knet(int argc, char *argv[])
 					printf("Error: -s can only be specified once\n");
 					TEST_EXIT(FAIL);
 				}
-				senderid = atoi(optarg);
+				if (safe_atoi(optarg, &senderid, "sender ID") < 0) {
+					exit(FAIL);
+				}
 				if ((senderid < 0) || (senderid > 65536)) {
 					printf("Error: -s nodeid out of range %d (1 - 65536)\n", senderid);
                                         exit(FAIL);
@@ -410,17 +460,27 @@ static void setup_knet(int argc, char *argv[])
 					TEST_EXIT(FAIL);
 				}
 				break;
-			case 'S':
-				perf_by_size_size = (uint64_t)atoi(optarg) * ONE_GIGABYTE;
-				perf_by_time_secs = (uint64_t)atoi(optarg);
+			case 'S': {
+				int temp_val;
+				if (safe_atoi(optarg, &temp_val, "size/time value") < 0) {
+					exit(FAIL);
+				}
+				perf_by_size_size = (uint64_t)temp_val * ONE_GIGABYTE;
+				perf_by_time_secs = (uint64_t)temp_val;
 				break;
-			case 'x':
-				force_packet_size = (uint32_t)atoi(optarg);
+			}
+			case 'x': {
+				int temp_val;
+				if (safe_atoi(optarg, &temp_val, "packet size") < 0) {
+					exit(FAIL);
+				}
+				force_packet_size = (uint32_t)temp_val;
 				if ((force_packet_size < 64) || (force_packet_size > 65536)) {
 					printf("Unsupported packet size %u (accepted 64 - 65536)\n", force_packet_size);
 					TEST_EXIT(FAIL);
 				}
 				break;
+			}
 			case 'v':
 				use_pckt_verification = 1;
 				break;
@@ -429,7 +489,9 @@ static void setup_knet(int argc, char *argv[])
 				break;
 			case 'X':
 				if (optarg) {
-					show_stats = atoi(optarg);
+					if (safe_atoi(optarg, &show_stats, "stats interval") < 0) {
+						exit(FAIL);
+					}
 				} else {
 					show_stats = 1;
 				}
@@ -528,10 +590,26 @@ static void setup_knet(int argc, char *argv[])
 	}
 
 	if (compresscfg) {
+		int compress_level, compress_threshold;
+		char *level_str, *threshold_str;
+
 		memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 		snprintf(knet_handle_compress_cfg.compress_model, 16, "%s", strtok(compresscfg, ":"));
-		knet_handle_compress_cfg.compress_level = atoi(strtok(NULL, ":"));
-		knet_handle_compress_cfg.compress_threshold = atoi(strtok(NULL, ":"));
+
+		level_str = strtok(NULL, ":");
+		if (!level_str || safe_atoi(level_str, &compress_level, "compression level") < 0) {
+			printf("Error parsing compression level\n");
+			exit(FAIL);
+		}
+		knet_handle_compress_cfg.compress_level = compress_level;
+
+		threshold_str = strtok(NULL, ":");
+		if (!threshold_str || safe_atoi(threshold_str, &compress_threshold, "compression threshold") < 0) {
+			printf("Error parsing compression threshold\n");
+			exit(FAIL);
+		}
+		knet_handle_compress_cfg.compress_threshold = compress_threshold;
+
 		if (knet_handle_compress(knet_h, &knet_handle_compress_cfg)) {
 			printf("Unable to configure compress\n");
 			TEST_EXIT(FAIL);

@@ -121,11 +121,17 @@ Any modification to an internal or external API MUST be accompanied by new or up
 
 **FreeBSD**:
 - Requires `kern.ipc.maxsockbuf=18388608` in `/etc/sysctl.conf`
+- Requires `net.local.dgram.maxdgram=131072` in `/etc/sysctl.conf`
 - Requires `if_tap.ko` kernel module for libnozzle
 
 **Solaris/Illumos**:
 - GNU tools must be in PATH first: `export PATH=/usr/gnu/bin:$PATH`
 - Tune socket buffers: `ipadm set-prop -p max_buf=8388608 udp`
+- For Unix domain sockets with KNET_DATAFD_FLAG_RX_RETURN_INFO support (>64KB datagrams), add to `/etc/system` and reboot:
+  ```
+  set strmsgsz=131072
+  ```
+  This sets the TIDU (Transport Interface Data Unit) size for the TL (loopback transport) module
 
 ## Rust Bindings
 

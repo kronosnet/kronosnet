@@ -1016,6 +1016,7 @@ int inject_packet(knet_handle_t knet_h,
 		  uint8_t frag_num,
 		  uint8_t frag_seq,
 		  seq_num_t seq_num,
+		  uint8_t compress_type,
 		  const char *payload,
 		  size_t payload_len)
 {
@@ -1057,7 +1058,7 @@ int inject_packet(knet_handle_t knet_h,
 	switch (packet_type) {
 	case KNET_HEADER_TYPE_DATA:
 		packet->khp_data_v1_seq_num = htons(seq_num);
-		packet->khp_data_v1_compress = 0;
+		packet->khp_data_v1_compress = compress_type;
 		packet->khp_data_v1_bcast = 0;
 		packet->khp_data_v1_channel = 0;
 		packet->khp_data_v1_frag_num = frag_num;

@@ -377,7 +377,7 @@ int _init_socketpair(knet_handle_t knet_h, int *sock)
 	int err = 0, savederrno = 0;
 	int i;
 
-	if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sock) != 0) {
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sock) != 0) {
 		savederrno = errno;
 		err = -1;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to initialize socketpair: %s",

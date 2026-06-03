@@ -568,6 +568,7 @@ int inject_packet(knet_handle_t knet_h,
 		  uint8_t frag_num,
 		  uint8_t frag_seq,
 		  seq_num_t seq_num,
+		  uint8_t compress_type,
 		  const char *payload,
 		  size_t payload_len);
 
