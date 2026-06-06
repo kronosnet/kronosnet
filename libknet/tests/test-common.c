@@ -1015,6 +1015,7 @@ int inject_packet(knet_handle_t knet_h,
 		  uint8_t frag_num,
 		  uint8_t frag_seq,
 		  seq_num_t seq_num,
+		  uint8_t compress_type,
 		  const char *payload,
 		  size_t payload_len)
 {
@@ -1047,7 +1048,7 @@ int inject_packet(knet_handle_t knet_h,
 	memset(packet, 0, packet_len);
 
 	/* Fill in common packet header */
-	packet->kh_version = 0;
+	packet->kh_version = KNET_HEADER_VERSION;
 	packet->kh_type = packet_type;
 	packet->kh_node = htons(src_host_id);
 
@@ -1055,7 +1056,7 @@ int inject_packet(knet_handle_t knet_h,
 	switch (packet_type) {
 	case KNET_HEADER_TYPE_DATA:
 		packet->khp_data_seq_num = htons(seq_num);
-		packet->khp_data_compress = 0;
+		packet->khp_data_compress = compress_type;
 		packet->khp_data_bcast = 0;
 		packet->khp_data_channel = 0;
 		packet->khp_data_frag_num = frag_num;
