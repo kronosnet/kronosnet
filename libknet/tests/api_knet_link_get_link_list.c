@@ -26,12 +26,12 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t link_ids[KNET_MAX_LINK];
 	size_t link_ids_entries = 0;
 	struct sockaddr_storage lo;
+
+	logfd = start_logging(stdout);
 
 	memset(&link_ids, 1, sizeof(link_ids));
 

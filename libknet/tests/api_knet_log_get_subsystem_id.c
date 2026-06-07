@@ -23,9 +23,9 @@
 static void test(void)
 {
 	int logfd;
+	uint8_t res;
 
 	logfd = start_logging(stdout);
-	uint8_t res;
 
 	log_test(logfd, "Testing knet_log_get_subsystem_id normal lookup");
 	res = knet_log_get_subsystem_id("nsscrypto");

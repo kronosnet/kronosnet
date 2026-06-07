@@ -30,12 +30,12 @@
 static void test(const char *model)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h[TESTNODES + 1];
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int i,x;
 	int seconds = 10;
+
+	logfd = start_logging(stdout);
 
 	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 

@@ -24,12 +24,12 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint16_t min_defrag_bufs, max_defrag_bufs;
 	uint8_t shrink_threshold;
 	defrag_bufs_reclaim_policy_t reclaim_policy;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_get_host_defrag_bufs incorrect knet_h");
 

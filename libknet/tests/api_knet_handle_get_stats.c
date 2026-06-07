@@ -26,12 +26,12 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_stats test_byte_array[2];
 	struct knet_handle_stats ref_byte_array[2];
 	struct knet_handle_stats stats;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_get_stats incorrect knet_h");
 

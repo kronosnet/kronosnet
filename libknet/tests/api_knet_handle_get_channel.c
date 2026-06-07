@@ -36,11 +36,11 @@ static void sock_notify(void *pvt_data,
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0, old_channel = 0;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_get_channel incorrect knet_h");
 	FAIL_ON_SUCCESS(knet_handle_get_channel(NULL, datafd, &channel), EINVAL);

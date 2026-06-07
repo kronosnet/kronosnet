@@ -36,13 +36,13 @@ static void sock_notify(void *pvt_data,
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	unsigned int iface_mtu = 0, data_mtu;
 	int datafd = 0;
 	int8_t channel = 0;
 	struct sockaddr_storage lo;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_pmtud_set incorrect knet_h");
 

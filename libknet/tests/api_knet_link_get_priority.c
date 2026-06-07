@@ -26,11 +26,11 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t priority = 0;
 	struct sockaddr_storage lo;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_link_get_priority incorrect knet_h");
 
