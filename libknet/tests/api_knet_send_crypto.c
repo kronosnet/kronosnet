@@ -39,7 +39,7 @@ static void sock_notify(void *pvt_data,
 static void test(const char *model)
 {
 	int logfd;
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	struct knet_handle_stats stats;

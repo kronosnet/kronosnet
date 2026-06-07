@@ -26,7 +26,7 @@
 static void test(void)
 {
 	int logfd;
-	knet_handle_t knet_h[UINT8_MAX + 1];
+	knet_handle_t knet_h[UINT8_MAX + 1] = {0};
 	unsigned int idx;
 
 	logfd = start_logging(stdout);

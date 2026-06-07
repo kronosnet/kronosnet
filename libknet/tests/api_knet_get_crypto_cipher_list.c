@@ -30,7 +30,7 @@ static void test(void)
 	struct knet_crypto_info crypto_list[16];
 	size_t crypto_list_entries;
 	size_t i, j;
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_crypto_cfg crypto_cfg;
 	unsigned char test_key[2000];
 	int ret;
