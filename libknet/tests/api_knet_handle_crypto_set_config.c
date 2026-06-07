@@ -25,11 +25,11 @@
 static void test(const char *model, const char *model2)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	struct crypto_instance *current = NULL;
+
+	logfd = start_logging(stdout);
 
 	memset(&knet_handle_crypto_cfg, 0, sizeof(struct knet_handle_crypto_cfg));
 

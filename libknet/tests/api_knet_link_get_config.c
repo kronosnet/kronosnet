@@ -26,12 +26,12 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct sockaddr_storage lo, get_src, get_dst;
 	uint8_t dynamic = 0, transport = 0;
 	uint64_t flags;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_link_get_config incorrect knet_h");
 

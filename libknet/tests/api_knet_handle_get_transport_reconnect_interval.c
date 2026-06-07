@@ -24,10 +24,10 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint32_t msecs = 0;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_get_transport_reconnect_interval with incorrect knet_h");
 

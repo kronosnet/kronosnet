@@ -42,8 +42,6 @@ static void sock_notify(void *pvt_data,
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h[2] = {0};
 	knet_handle_t knet_h1;
 	int datafd = 0, i;
@@ -51,6 +49,22 @@ static void test(void)
 	int datafdmax[KNET_DATAFD_MAX];
 	int8_t channels[KNET_DATAFD_MAX];
 	struct sockaddr_storage lo;
+	int sp[2];
+	int unconnected_sock;
+	int pipefd[2];
+	int chardev_fd;
+	int add_result;
+	int saved_errno;
+	int listen_sock, client_sock, server_sock;
+	struct sockaddr_in addr;
+	socklen_t addrlen;
+	int dgram_sock1, dgram_sock2;
+	struct sockaddr_in addr1, addr2;
+	char send_buf[4096];
+	char recv_buf[4096];
+	ssize_t send_len, recv_len;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_add_datafd incorrect knet_h");
 
@@ -113,7 +127,6 @@ static void test(void)
 	}
 
 	log_test(logfd, "Test knet_handle_add_datafd with user-provided AF_UNIX socketpair (should fail)");
-	int sp[2];
 	FAIL_ON_ERR(socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sp));
 	datafd = sp[0];
 	channel = -1;
@@ -132,7 +145,6 @@ static void test(void)
 	log_test(logfd, "Correctly rejected user-provided DGRAM socketpair");
 
 	log_test(logfd, "Test knet_handle_add_datafd with unconnected SOCK_STREAM socket (should fail)");
-	int unconnected_sock;
 	FAIL_ON_ERR_ONLY(unconnected_sock = socket(AF_UNIX, SOCK_STREAM, 0));
 	datafd = unconnected_sock;
 	channel = -1;
@@ -149,7 +161,6 @@ static void test(void)
 	log_test(logfd, "Correctly rejected unbound SOCK_DGRAM socket");
 
 	log_test(logfd, "Test knet_handle_add_datafd with pipe (should fail)");
-	int pipefd[2];
 	FAIL_ON_ERR(pipe(pipefd));
 	datafd = pipefd[0];
 	channel = -1;
@@ -159,14 +170,13 @@ static void test(void)
 	log_test(logfd, "Correctly rejected pipe (knet requires bidirectional I/O on single fd)");
 
 	log_test(logfd, "Test knet_handle_add_datafd with character device /dev/null (validates fd type acceptance)");
-	int chardev_fd;
 	FAIL_ON_ERR_ONLY(chardev_fd = open("/dev/null", O_RDWR));
 	datafd = chardev_fd;
 	channel = -1;
 
 	/* This may fail at epoll/kqueue stage (EPERM/ENODEV/EOPNOTSUPP) but should pass fd validation */
-	int add_result = knet_handle_add_datafd(knet_h1, &datafd, &channel);
-	int saved_errno = errno;
+	add_result = knet_handle_add_datafd(knet_h1, &datafd, &channel);
+	saved_errno = errno;
 
 	if (add_result == 0) {
 		log_test(logfd, "Successfully accepted character device, datafd: %d channel: %d", datafd, channel);
@@ -182,9 +192,7 @@ static void test(void)
 	}
 
 	log_test(logfd, "Test knet_handle_add_datafd with connected AF_INET SOCK_STREAM socket (should succeed)");
-	int listen_sock, client_sock, server_sock;
-	struct sockaddr_in addr;
-	socklen_t addrlen = sizeof(addr);
+	addrlen = sizeof(addr);
 
 	FAIL_ON_ERR_ONLY(listen_sock = socket(AF_INET, SOCK_STREAM, 0));
 	memset(&addr, 0, sizeof(addr));
@@ -209,11 +217,6 @@ static void test(void)
 	close(listen_sock);
 
 	log_test(logfd, "Test knet_handle_add_datafd with connected AF_INET SOCK_DGRAM socket (should succeed)");
-	int dgram_sock1, dgram_sock2;
-	struct sockaddr_in addr1, addr2;
-	char send_buf[4096];
-	char recv_buf[4096];
-	ssize_t send_len, recv_len;
 
 	FAIL_ON_ERR_ONLY(dgram_sock1 = socket(AF_INET, SOCK_DGRAM, 0));
 	FAIL_ON_ERR_ONLY(dgram_sock2 = socket(AF_INET, SOCK_DGRAM, 0));

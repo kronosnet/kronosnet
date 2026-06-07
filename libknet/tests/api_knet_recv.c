@@ -37,8 +37,6 @@ static void sock_notify(void *pvt_data,
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
@@ -46,6 +44,8 @@ static void test(void)
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t recv_len = 0;
 	struct sockaddr_storage lo;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_recv incorrect knet_h");
 	FAIL_ON_SUCCESS(knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);

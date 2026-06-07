@@ -381,8 +381,10 @@ char *find_plugins_path(int logfd)
 
 knet_handle_t _ts_knet_handle_start(int logfd, uint8_t log_level, knet_handle_t knet_h_array[])
 {
-	knet_handle_t knet_h = knet_handle_new_ex(1, logfd, log_level, 0);
+	knet_handle_t knet_h;
 	char *plugins_path;
+
+	knet_h = knet_handle_new_ex(1, logfd, log_level, 0);
 
 	if (knet_h) {
 		log_test(logfd, "knet_handle_new at %p", knet_h);

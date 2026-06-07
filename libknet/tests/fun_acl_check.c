@@ -206,9 +206,6 @@ static int dhost_filter(void *pvt_data,
 static void test(int transport)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
-	test_logfd = logfd;
 	knet_handle_t knet_h[TESTNODES+1];
 	struct sockaddr_storage lo0, lo1;
 	struct sockaddr_storage ss1, ss2;
@@ -217,6 +214,9 @@ static void test(int transport)
 	int datafd;
 	int8_t channel;
 	int seconds = 90; // dynamic tests take longer than normal tests
+
+	logfd = start_logging(stdout);
+	test_logfd = logfd;
 
 	memset(knet_h, 0, sizeof(knet_h));
 	memset(reply_pipe, 0, sizeof(reply_pipe));

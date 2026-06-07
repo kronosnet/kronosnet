@@ -26,12 +26,12 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	time_t interval = 0, timeout = 0;
 	unsigned int precision = 0;
 	struct sockaddr_storage lo;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_link_get_ping_timers incorrect knet_h");
 

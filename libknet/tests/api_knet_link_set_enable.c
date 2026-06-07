@@ -26,10 +26,10 @@
 static void test_udp(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct sockaddr_storage src, dst;
+
+	logfd = start_logging(stdout);
 
 	if (make_local_sockaddr(&src, 0, logfd) < 0) {
 		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));

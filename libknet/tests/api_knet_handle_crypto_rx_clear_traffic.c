@@ -25,9 +25,9 @@
 static void test()
 {
 	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic incorrect knet_h");
 
