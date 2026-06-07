@@ -66,8 +66,6 @@ static void test(void)
 		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	knet_host_remove(knet_h1, 2);
-
 	log_test(logfd, "Test knet_host_set_name with (too) long name");
 
 	memset(longhostname, 'a', sizeof(longhostname));
