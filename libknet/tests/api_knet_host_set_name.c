@@ -31,7 +31,6 @@ static void test(void)
 
 	log_test(logfd, "Test knet_host_set_name incorrect knet_h");
 
-	// coverity[CHECKED_RETURN:SUPPRESS] - it's a test , get over it
 	FAIL_ON_SUCCESS(knet_host_set_name(NULL, 1, "test"), EINVAL);
 
 
@@ -66,8 +65,6 @@ static void test(void)
 		log_test(logfd, "knet_host_set_name accepted duplicated name or returned incorrect error: %s", strerror(errno));
 		TEST_EXIT_CLEAN(FAIL);
 	}
-
-	knet_host_remove(knet_h1, 2);
 
 	log_test(logfd, "Test knet_host_set_name with (too) long name");
 
