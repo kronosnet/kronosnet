@@ -206,7 +206,7 @@ static int dhost_filter(void *pvt_data,
 static void test(int transport)
 {
 	int logfd;
-	knet_handle_t knet_h[TESTNODES+1];
+	knet_handle_t knet_h[TESTNODES+1] = {0};
 	struct sockaddr_storage lo0, lo1;
 	struct sockaddr_storage ss1, ss2;
 	pthread_t recv_thread = 0;

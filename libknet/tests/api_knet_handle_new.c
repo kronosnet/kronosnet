@@ -26,7 +26,7 @@
 static void test(void)
 {
 	int logfd;
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct rlimit cur;
 
 	logfd = start_logging(stdout);

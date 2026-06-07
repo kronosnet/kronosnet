@@ -30,7 +30,7 @@
 static void test(const char *model)
 {
 	int logfd;
-	knet_handle_t knet_h[TESTNODES + 1];
+	knet_handle_t knet_h[TESTNODES + 1] = {0};
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int i,x;
 	int seconds = 10;
