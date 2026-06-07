@@ -39,17 +39,11 @@ static void test(void)
 
 	log_test(logfd, "Test knet_get_transport_list with no transport_list (get number of entries)");
 
-	if (knet_get_transport_list(NULL, &transport_list_entries) < 0) {
-		log_test(logfd, "knet_get_transport_list returned error instead of number of entries: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR_NOCLEAN(knet_get_transport_list(NULL, &transport_list_entries));
 
 	log_test(logfd, "Test knet_get_transport_list with valid data");
 
-	if (knet_get_transport_list(transport_list, &transport_list_entries1) < 0) {
-		log_test(logfd, "knet_get_transport_list failed: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR_NOCLEAN(knet_get_transport_list(transport_list, &transport_list_entries1));
 
 	if (transport_list_entries != transport_list_entries1) {
 		log_test(logfd, "knet_get_transport_list returned a different number of entries: %d, %d",

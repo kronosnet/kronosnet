@@ -33,15 +33,9 @@ static void test(void)
 
 	logfd = start_logging(stdout);
 
-	if (make_local_sockaddr(&lo, 0, logfd) < 0) {
-		log_test(logfd, "Unable to convert loopback to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr(&lo, 0, logfd));
 
-	if (make_local_sockaddr6(&lo6, 0, logfd) < 0) {
-		log_test(logfd, "Unable to convert loopback to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr6(&lo6, 0, logfd));
 
 	log_test(logfd, "Test knet_link_insert_acl incorrect knet_h");
 

@@ -31,15 +31,9 @@ static void test(void)
 
 	logfd = start_logging(stdout);
 
-	if (make_local_sockaddr(&src, 0, logfd) < 0) {
-		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr(&src, 0, logfd));
 
-	if (make_local_sockaddr(&dst, 1, logfd) < 0) {
-		log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr(&dst, 1, logfd));
 
 	log_test(logfd, "Test knet_link_set_ping_timers incorrect knet_h");
 
