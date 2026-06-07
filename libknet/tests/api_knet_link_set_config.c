@@ -36,10 +36,7 @@ static void test(void)
 
 	logfd = start_logging(stdout);
 
-	if (make_local_sockaddr(&lo, -1, logfd) < 0) {
-		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr(&lo, -1, logfd));
 	snprintf(lo_portstr, sizeof(lo_portstr), "%d", ntohs(lo_in->sin_port));
 
 	log_test(logfd, "Test knet_link_set_config incorrect knet_h");

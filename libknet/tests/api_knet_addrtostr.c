@@ -66,12 +66,9 @@ static void test(void)
 
 	log_test(logfd, "Checking knet_addrtostr with valid data (192.168.0.1:50000)");
 
-	if (knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
+	FAIL_ON_ERR_NOCLEAN(knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
 			     addr_str, KNET_MAX_HOST_LEN,
-			     port_str, KNET_MAX_PORT_LEN) < 0) {
-		log_test(logfd, "Unable to convert 192.168.0.1:50000");
-		TEST_EXIT(FAIL);
-	}
+			     port_str, KNET_MAX_PORT_LEN));
 
 	if (strcmp(addr_str, "192.168.0.1") != 0) {
 		log_test(logfd, "Wrong address conversion. Expected: 192.168.0.1. Got:");
@@ -94,12 +91,9 @@ static void test(void)
 	addrv6->sin6_addr.s6_addr32[3] = htonl(0x00000001);
 	addrv6->sin6_port = htons(50000);
 
-	if (knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
+	FAIL_ON_ERR_NOCLEAN(knet_addrtostr(&addr, sizeof(struct sockaddr_storage),
 			     addr_str, KNET_MAX_HOST_LEN,
-			     port_str, KNET_MAX_PORT_LEN) < 0) {
-		log_test(logfd, "Unable to convert [fd00::1]:50000");
-		TEST_EXIT(FAIL);
-	}
+			     port_str, KNET_MAX_PORT_LEN));
 
 	if (strcmp(addr_str, "fd00::1") != 0) {
 		log_test(logfd, "Wrong address conversion. Expected: fd00::1. Got:");

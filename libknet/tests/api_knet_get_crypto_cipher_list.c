@@ -33,7 +33,6 @@ static void test(void)
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_crypto_cfg crypto_cfg;
 	unsigned char test_key[2000];
-	int ret;
 
 	logfd = start_logging(stdout);
 
@@ -45,17 +44,11 @@ static void test(void)
 
 	log_test(logfd, "Test knet_get_crypto_cipher_list with no cipher_list (get number of entries)");
 
-	if (knet_get_crypto_cipher_list(NULL, &cipher_list_entries) < 0) {
-		log_test(logfd, "knet_get_crypto_cipher_list returned error instead of number of entries: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(knet_get_crypto_cipher_list(NULL, &cipher_list_entries));
 
 	log_test(logfd, "Test knet_get_crypto_cipher_list with valid data");
 
-	if (knet_get_crypto_cipher_list(cipher_list, &cipher_list_entries1) < 0) {
-		log_test(logfd, "knet_get_crypto_cipher_list failed: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(knet_get_crypto_cipher_list(cipher_list, &cipher_list_entries1));
 
 	if (cipher_list_entries != cipher_list_entries1) {
 		log_test(logfd, "knet_get_crypto_cipher_list returned a different number of entries: %d, %d",
@@ -71,10 +64,7 @@ static void test(void)
 	log_test(logfd, "Test that all returned ciphers work with all crypto modules");
 
 	/* Get list of crypto modules */
-	if (knet_get_crypto_list(crypto_list, &crypto_list_entries) < 0) {
-		log_test(logfd, "knet_get_crypto_list failed: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(knet_get_crypto_list(crypto_list, &crypto_list_entries));
 
 	/* Prepare test key */
 	memset(test_key, 0x42, sizeof(test_key));
@@ -99,12 +89,7 @@ static void test(void)
 			memcpy(crypto_cfg.private_key, test_key, sizeof(test_key));
 			crypto_cfg.private_key_len = sizeof(test_key);
 
-			ret = knet_handle_crypto_set_config(knet_h1, &crypto_cfg, 1);
-			if (ret < 0) {
-				log_test(logfd, "  FAIL: %s - crypto configuration failed", cipher_list[j].name);
-				knet_handle_free(knet_h1);
-				TEST_EXIT(FAIL);
-			}
+			FAIL_ON_ERR(knet_handle_crypto_set_config(knet_h1, &crypto_cfg, 1));
 
 			log_test(logfd, "  PASS: %s", cipher_list[j].name);
 
