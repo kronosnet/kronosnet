@@ -358,6 +358,7 @@ fn recv_stuff(handle: &knet::Handle, host: knet::HostId) -> Result<()>
 	    Ok(len) => {
 		let recv_len = len as usize;
 		if recv_len == 0 {
+		    println!("recv_len == 0 quitting");
 		    break; // EOF??
 		} else {
 		    let s = String::from_utf8(buf[0..recv_len].to_vec()).unwrap();
@@ -457,6 +458,12 @@ fn set_crypto(handle: &knet::Handle) -> Result<()>
 	private_key: &private_key,
     };
 
+    // Make sure clear traffic is allowed until crypto is fully set up on both nodes
+    if let Err(e) = knet::handle_crypto_rx_clear_traffic(handle, knet::RxClearTraffic::Allow) {
+	println!("Error from handle_crypto_rx_clear_traffic: {e}");
+	return Err(e);
+    }
+
     if let Err(e) = knet::handle_crypto_set_config(handle, &crypto_config, 1) {
 	println!("Error from handle_crypto_set_config: {e}");
 	return Err(e);
@@ -467,10 +474,6 @@ fn set_crypto(handle: &knet::Handle) -> Result<()>
 	return Err(e);
     }
 
-    if let Err(e) = knet::handle_crypto_rx_clear_traffic(handle, knet::RxClearTraffic::Disallow) {
-	println!("Error from handle_crypto_rx_clear_traffic: {e}");
-	return Err(e);
-    }
     Ok(())
 }
 
@@ -846,6 +849,15 @@ fn test_acl(handle: &knet::Handle, host: &knet::HostId, low_port: u16) -> Result
     Ok(())
 }
 
+fn disable_clear_traffic(handle: &knet::Handle) -> Result<()>
+{
+    if let Err(e) = knet::handle_crypto_rx_clear_traffic(handle, knet::RxClearTraffic::Disallow) {
+	println!("Error from handle_crypto_rx_clear_traffic: {e}");
+	return Err(e);
+    }
+    Ok(())
+}
+
 fn main() -> Result<()>
 {
     // Start with some non-handle information
@@ -957,6 +969,9 @@ fn main() -> Result<()>
     set_compress(&handle2)?;
 
     thread::sleep(get_scaled_tmo(3000));
+
+    disable_clear_traffic(&handle1)?;
+    disable_clear_traffic(&handle2)?;
 
     send_messages(&handle1, true)?;
     send_messages(&handle2, true)?;
