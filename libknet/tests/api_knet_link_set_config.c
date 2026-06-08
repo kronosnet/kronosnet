@@ -26,8 +26,6 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_host *host;
 	struct knet_link *link;
@@ -36,10 +34,9 @@ static void test(void)
 	struct sockaddr_in *lo_in = (struct sockaddr_in *)&lo;
 	struct knet_link_status link_status;
 
-	if (make_local_sockaddr(&lo, -1, logfd) < 0) {
-		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	logfd = start_logging(stdout);
+
+	FAIL_ON_ERR(make_local_sockaddr(&lo, -1, logfd));
 	snprintf(lo_portstr, sizeof(lo_portstr), "%d", ntohs(lo_in->sin_port));
 
 	log_test(logfd, "Test knet_link_set_config incorrect knet_h");

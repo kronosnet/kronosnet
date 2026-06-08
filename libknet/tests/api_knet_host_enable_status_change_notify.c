@@ -35,9 +35,9 @@ static void host_notify(void *priv_data,
 static void test(void)
 {
 	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	log_test(logfd, "Test knet_host_enable_status_change_notify incorrect knet_h");
 

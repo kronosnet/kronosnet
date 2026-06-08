@@ -39,17 +39,11 @@ static void test(void)
 
 	log_test(logfd, "Test knet_get_crypto_list with no crypto_list (get number of entries)");
 
-	if (knet_get_crypto_list(NULL, &crypto_list_entries) < 0) {
-		log_test(logfd, "knet_handle_get_crypto_list returned error instead of number of entries: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR_NOCLEAN(knet_get_crypto_list(NULL, &crypto_list_entries));
 
 	log_test(logfd, "Test knet_get_crypto_list with valid data");
 
-	if (knet_get_crypto_list(crypto_list, &crypto_list_entries1) < 0) {
-		log_test(logfd, "knet_get_crypto_list failed: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR_NOCLEAN(knet_get_crypto_list(crypto_list, &crypto_list_entries1));
 
 	if (crypto_list_entries != crypto_list_entries1) {
 		log_test(logfd, "knet_get_crypto_list returned a different number of entries: %d, %d",

@@ -26,10 +26,10 @@
 static void test(void)
 {
 	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
+	struct rlimit cur;
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
-	struct rlimit cur;
 
 	log_test(logfd, "Test knet_handle_new hostid 1, no logging");
 

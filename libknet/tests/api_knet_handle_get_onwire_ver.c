@@ -24,10 +24,10 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t onwire_min_ver, onwire_max_ver, onwire_ver;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_handle_get_onwire_ver incorrect knet_h");
 

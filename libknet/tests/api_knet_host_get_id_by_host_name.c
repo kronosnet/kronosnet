@@ -24,10 +24,10 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	knet_node_id_t host_id;
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_host_get_id_by_host_name incorrect knet_h");
 

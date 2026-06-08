@@ -81,12 +81,12 @@ static void onwire_ver_callback_fn(void *private_data, uint8_t onwire_min_ver, u
 static void test(void)
 {
 	int logfd;
+	knet_handle_t knet_h[TESTNODES + 1] = {0};
+	int i,j;
+	int seconds = 10;
 
 	logfd = start_logging(stdout);
 	test_logfd = logfd;
-	knet_handle_t knet_h[TESTNODES + 1];
-	int i,j;
-	int seconds = 10;
 
 	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 

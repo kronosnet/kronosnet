@@ -103,7 +103,7 @@ out_clean:
 
 static void test_mtu(int logfd, const char *model, const char *crypto, const char *hash)
 {
-	knet_handle_t knet_h[TESTNODES+1];
+	knet_handle_t knet_h[TESTNODES+1] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	struct sockaddr_storage lo;

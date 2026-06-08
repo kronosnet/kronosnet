@@ -54,7 +54,7 @@ static void sock_notify(void *pvt_data,
 
 static void test_ctr_mode(const char *model, const char *cipher)
 {
-	knet_handle_t knet_h[2];
+	knet_handle_t knet_h[2] = {0};
 	int logfd;
 	struct knet_handle_crypto_cfg knet_handle_crypto_cfg;
 	int datafd = 0;

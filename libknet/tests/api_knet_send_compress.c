@@ -39,9 +39,7 @@ static void sock_notify(void *pvt_data,
 static void test(const char *model)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	struct knet_handle_stats stats;
@@ -52,6 +50,8 @@ static void test(const char *model)
 	int savederrno;
 	struct sockaddr_storage lo;
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
+
+	logfd = start_logging(stdout);
 
 	memset(send_buff, 0, sizeof(send_buff));
 

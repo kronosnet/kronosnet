@@ -24,10 +24,10 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	char longhostname[KNET_MAX_HOST_LEN+2];
+
+	logfd = start_logging(stdout);
 
 	log_test(logfd, "Test knet_host_set_name incorrect knet_h");
 
@@ -65,8 +65,6 @@ static void test(void)
 		log_test(logfd, "knet_host_set_name accepted duplicated name or returned incorrect error: %s", strerror(errno));
 		TEST_EXIT_CLEAN(FAIL);
 	}
-
-	knet_host_remove(knet_h1, 2);
 
 	log_test(logfd, "Test knet_host_set_name with (too) long name");
 

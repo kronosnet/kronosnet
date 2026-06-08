@@ -24,10 +24,10 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_compress_cfg knet_handle_compress_cfg;
+
+	logfd = start_logging(stdout);
 
 	memset(&knet_handle_compress_cfg, 0, sizeof(struct knet_handle_compress_cfg));
 

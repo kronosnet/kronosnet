@@ -26,22 +26,16 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_host *host;
 	struct knet_link *link;
 	struct sockaddr_storage lo, lo6;
 
-	if (make_local_sockaddr(&lo, 0, logfd) < 0) {
-		log_test(logfd, "Unable to convert loopback to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	logfd = start_logging(stdout);
 
-	if (make_local_sockaddr6(&lo6, 0, logfd) < 0) {
-		log_test(logfd, "Unable to convert loopback to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr(&lo, 0, logfd));
+
+	FAIL_ON_ERR(make_local_sockaddr6(&lo6, 0, logfd));
 
 	log_test(logfd, "Test knet_link_rm_acl incorrect knet_h");
 

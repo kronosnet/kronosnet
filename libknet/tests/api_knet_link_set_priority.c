@@ -26,20 +26,14 @@
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct sockaddr_storage src, dst;
 
-	if (make_local_sockaddr(&src, 0, logfd) < 0) {
-		log_test(logfd, "Unable to convert src to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	logfd = start_logging(stdout);
 
-	if (make_local_sockaddr(&dst, 1, logfd) < 0) {
-		log_test(logfd, "Unable to convert dst to sockaddr: %s", strerror(errno));
-		TEST_EXIT(FAIL);
-	}
+	FAIL_ON_ERR(make_local_sockaddr(&src, 0, logfd));
+
+	FAIL_ON_ERR(make_local_sockaddr(&dst, 1, logfd));
 
 	log_test(logfd, "Test knet_link_set_priority incorrect knet_h");
 

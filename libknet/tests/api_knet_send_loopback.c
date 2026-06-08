@@ -55,9 +55,7 @@ static int dhost_filter(void *pvt_data,
 static void test(void)
 {
 	int logfd;
-
-	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2];
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	struct knet_link_status link_status;
@@ -67,6 +65,8 @@ static void test(void)
 	int recv_len = 0;
 	int savederrno;
 	struct sockaddr_storage lo;
+
+	logfd = start_logging(stdout);
 
 	memset(send_buff, 0, sizeof(send_buff));
 

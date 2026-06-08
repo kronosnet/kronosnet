@@ -24,9 +24,9 @@
 static void test(void)
 {
 	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	logfd = start_logging(stdout);
-	knet_handle_t knet_h1, knet_h[2] = {0};
 
 	log_test(logfd, "Test knet_handle_set_onwire_ver incorrect knet_h");
 
@@ -45,10 +45,7 @@ static void test(void)
 	FAIL_ON_SUCCESS(knet_handle_set_onwire_ver(knet_h1, 4), EINVAL);
 
 	log_test(logfd, "Test knet_handle_set_onwire_ver with valid onwire_ver (2)");
-	if (knet_handle_set_onwire_ver(knet_h1, 2) < 0) {
-		log_test(logfd, "knet_handle_set_onwire_ver did not accepted valid onwire_ver");
-		TEST_EXIT_CLEAN(FAIL);
-	}
+	FAIL_ON_ERR(knet_handle_set_onwire_ver(knet_h1, 2));
 
 	if (knet_h1->onwire_force_ver != 2) {
 		log_test(logfd, "knet_handle_set_onwire_ver did not set correct onwire_ver");
