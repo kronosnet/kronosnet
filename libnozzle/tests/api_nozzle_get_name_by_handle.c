@@ -20,43 +20,35 @@ static int test(void)
 	char device_name[2*IFNAMSIZ];
 	const char *device_name_tmp;
 	size_t size = IFNAMSIZ;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	int err = 0;
 
 	printf("Testing get name by handle\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
 
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
+
+	printf("Getting name by handle\n");
 	device_name_tmp = nozzle_get_name_by_handle(nozzle);
 	if (!device_name_tmp) {
-		if (errno != ENOENT) {
-			printf("Unable to get name by handle\n");
-		} else {
-			printf("received incorrect errno!\n");
-		}
+		printf("*** FAIL on line %d. nozzle_get_name_by_handle failed: %s\n", __LINE__, strerror(errno));
 		err = -1;
 		goto out_clean;
 	}
 
+	printf("Verifying name matches\n");
 	if (strcmp(device_name, device_name_tmp)) {
-		printf("get name by handle returned different names for the same handle\n");
+		printf("*** FAIL on line %d. get name by handle returned different names for the same handle\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Testing error conditions\n");
 
-	device_name_tmp = nozzle_get_name_by_handle(NULL);
-	if ((device_name_tmp) || (errno != ENOENT)) {
-		printf("get name by handle returned wrong error\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing NULL handle\n");
+	FAIL_ON_NOT_NULL(device_name_tmp, nozzle_get_name_by_handle(NULL), ENOENT);
 
 out_clean:
 

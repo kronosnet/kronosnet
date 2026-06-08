@@ -37,42 +37,26 @@ static int test(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	char *current_mac = NULL, *temp_mac = NULL, *err_mac = NULL;
 	struct ether_addr *cur_mac, *tmp_mac;
 
 	printf("Testing get MAC\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Get current MAC\n");
-
-	if (nozzle_get_mac(nozzle, &current_mac) < 0) {
-		printf("Unable to get current MAC address.\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_get_mac(nozzle, &current_mac));
 
 	printf("Current MAC: %s\n", current_mac);
 
 	printf("Setting MAC: 00:01:01:01:01:01\n");
+	FAIL_ON_ERR(nozzle_set_mac(nozzle, "00:01:01:01:01:01"));
 
-	if (nozzle_set_mac(nozzle, "00:01:01:01:01:01") < 0) {
-		printf("Unable to set current MAC address.\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	if (nozzle_get_mac(nozzle, &temp_mac) < 0) {
-		printf("Unable to get current MAC address.\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Get current MAC after setting\n");
+	FAIL_ON_ERR(nozzle_get_mac(nozzle, &temp_mac));
 
 	printf("Current MAC: %s\n", temp_mac);
 
@@ -81,32 +65,24 @@ static int test(void)
 
 	printf("Comparing MAC addresses\n");
 	if (memcmp(cur_mac, tmp_mac, sizeof(struct ether_addr))) {
-		printf("Mac addresses are not the same?!\n");
+		printf("*** FAIL on line %d. Mac addresses are not the same?!\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Testing ERROR conditions\n");
 
-	printf("Pass NULL to get_mac (pass1)\n");
+	printf("Testing invalid nozzle handle\n");
 	errno = 0;
-	if ((nozzle_get_mac(NULL, &err_mac) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_get_mac sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_SUCCESS(nozzle_get_mac(NULL, &err_mac), EINVAL);
 
-	printf("Pass NULL to get_mac (pass2)\n");
+	printf("Testing NULL mac pointer\n");
 	errno = 0;
-	if ((nozzle_get_mac(nozzle, NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_get_mac sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_SUCCESS(nozzle_get_mac(nozzle, NULL), EINVAL);
 
 out_clean:
 	if (err_mac) {
-		printf("Something managed to set err_mac!\n");
+		printf("*** FAIL on line %d. Something managed to set err_mac!\n", __LINE__);
 		err = -1;
 		free(err_mac);
 	}

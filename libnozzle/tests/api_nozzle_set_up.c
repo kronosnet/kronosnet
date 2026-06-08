@@ -25,26 +25,20 @@ static int test(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	char *error_string = NULL;
 
 	printf("Testing interface up/down\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Put the interface up\n");
+	FAIL_ON_ERR(nozzle_set_up(nozzle));
 
-	if (nozzle_set_up(nozzle) < 0) {
-		printf("Unable to set interface up\n");
-		err = -1;
-		goto out_clean;
-	}
-
+	printf("Verifying interface is UP\n");
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
@@ -60,7 +54,7 @@ static int test(void)
 		error_string = NULL;
 	}
 	if (err < 0) {
-		printf("Unable to verify inteface UP\n");
+		printf("*** FAIL on line %d. Unable to verify inteface UP\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
@@ -68,23 +62,16 @@ static int test(void)
 	printf("Test ERROR conditions\n");
 
 	printf("Try to UP the same interface twice\n");
-	if (nozzle_set_up(nozzle) < 0) {
-		printf("Interface was already UP, spurious error received from nozzle_set_up\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_set_up(nozzle));
 
 	printf("Pass NULL to nozzle set_up\n");
-	errno = 0;
-	if ((nozzle_set_up(NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_set_up sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_SUCCESS(nozzle_set_up(NULL), EINVAL);
 
 out_clean:
-	nozzle_set_down(nozzle);
-	nozzle_close(nozzle);
+	if (nozzle) {
+		nozzle_set_down(nozzle);
+		nozzle_close(nozzle);
+	}
 
 	return err;
 }

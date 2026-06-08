@@ -29,7 +29,7 @@ static int test(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err = 0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	struct nozzle_ip *ip_list = NULL, *ip_list_tmp = NULL;
 	int ip_list_entries = 0, ipv4_list_entries = 0, ipv6_list_entries = 0;
 
@@ -37,73 +37,31 @@ static int test(void)
 
 	memset(device_name, 0, size);
 
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Testing error conditions\n");
 
-	printf("Testing invalid nozzle\n");
-	err = nozzle_get_ips(NULL, &ip_list);
-	if ((!err) || (errno != EINVAL)) {
-		printf("nozzle_get_ips accepted invalid nozzle\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing invalid nozzle handle\n");
+	FAIL_ON_SUCCESS(nozzle_get_ips(NULL, &ip_list), EINVAL);
 
-	printf("Testing invalid ip list\n");
-	err = nozzle_get_ips(nozzle, NULL);
-	if ((!err) || (errno != EINVAL)) {
-		printf("nozzle_get_ips accepted invalid ip list\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing NULL ip list pointer\n");
+	FAIL_ON_SUCCESS(nozzle_get_ips(nozzle, NULL), EINVAL);
 
 	printf("Adding ip: %s/24\n", testipv4_1);
-
-	err = nozzle_add_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv4_1, "24"));
 
 	printf("Adding ip: %s/24\n", testipv4_2);
-
-	err = nozzle_add_ip(nozzle, testipv4_2, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv4_2, "24"));
 
 	printf("Adding ip: %s/64\n", testipv6_1);
-
-	err = nozzle_add_ip(nozzle, testipv6_1, "64");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv6_1, "64"));
 
 	printf("Adding ip: %s/64\n", testipv6_2);
-
-	err = nozzle_add_ip(nozzle, testipv6_2, "64");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv6_2, "64"));
 
 	printf("Get ip list from libnozzle:\n");
-
-	if (nozzle_get_ips(nozzle, &ip_list) < 0) {
-		printf("Not enough mem?\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_get_ips(nozzle, &ip_list));
 
 	ip_list_tmp = ip_list;
 	ip_list_entries = 0;
@@ -122,49 +80,27 @@ static int test(void)
 	if ((ip_list_entries != 4) ||
 	    (ipv4_list_entries != 2) ||
 	    (ipv6_list_entries != 2)) {
-		printf("Didn't get enough ip back from libnozzle?\n");
+		printf("*** FAIL on line %d. Didn't get enough ip back from libnozzle?\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
-
-	err = nozzle_del_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv4_1, "24"));
 
 	printf("Deleting ip: %s/24\n", testipv4_2);
-
-	err = nozzle_del_ip(nozzle, testipv4_2, "24");
-	if (err < 0) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv4_2, "24"));
 
 	printf("Deleting ip: %s/64\n", testipv6_1);
-
-	err = nozzle_del_ip(nozzle, testipv6_1, "64");
-	if (err) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv6_1, "64"));
 
 	printf("Deleting ip: %s/64\n", testipv6_2);
-
-	err = nozzle_del_ip(nozzle, testipv6_2, "64");
-	if (err) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv6_2, "64"));
 
 out_clean:
-	nozzle_close(nozzle);
+	if (nozzle) {
+		nozzle_close(nozzle);
+	}
 
 	return err;
 }

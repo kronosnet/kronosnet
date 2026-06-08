@@ -27,20 +27,14 @@ static int test(void)
 	printf("Testing execute_bin_sh_command\n");
 
 	printf("command true\n");
-
-	err = execute_bin_sh_command("true", &error_string);
+	FAIL_ON_ERR(execute_bin_sh_command("true", &error_string));
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
-	if (err) {
-		printf("Unable to execute true ?!?!\n");
-		goto out_clean;
-	}
 
 	printf("command false\n");
-
 	err = execute_bin_sh_command("false", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -48,13 +42,12 @@ static int test(void)
 		error_string = NULL;
 	}
 	if (!err) {
-		printf("Can we really execute false successfully?!?!\n");
+		printf("*** FAIL on line %d. Can we really execute false successfully?!?!\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("command that outputs to stdout (enforcing redirect)\n");
-
 	err = execute_bin_sh_command("grep -h 2>&1", &error_string);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
@@ -62,7 +55,7 @@ static int test(void)
 		error_string = NULL;
 	}
 	if (!err) {
-		printf("Can we really execute grep -h successfully?!?\n");
+		printf("*** FAIL on line %d. Can we really execute grep -h successfully?!?\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
@@ -75,7 +68,7 @@ static int test(void)
 		error_string = NULL;
 	}
 	if (!err) {
-		printf("Can we really execute grep -h successfully?!?\n");
+		printf("*** FAIL on line %d. Can we really execute grep -h successfully?!?\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
@@ -83,25 +76,15 @@ static int test(void)
 	printf("Testing ERROR conditions\n");
 
 	printf("empty command\n");
-	err = execute_bin_sh_command(NULL, &error_string);
+	FAIL_ON_SUCCESS(execute_bin_sh_command(NULL, &error_string), EINVAL);
 	if (error_string) {
 		printf("Error string: %s\n", error_string);
 		free(error_string);
 		error_string = NULL;
 	}
-	if ((!err) || (errno != EINVAL)) {
-		printf("execute_bin_sh_command returned incorrect error or incorrect errno!\n");
-		err = -1;
-		goto out_clean;
-	}
 
 	printf("empty error\n");
-	err = execute_bin_sh_command("true", NULL);
-	if ((!err) || (errno != EINVAL)) {
-		printf("execute_bin_sh_command returned incorrect error or incorrect errno!\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_SUCCESS(execute_bin_sh_command("true", NULL), EINVAL);
 
 	err = 0;
 

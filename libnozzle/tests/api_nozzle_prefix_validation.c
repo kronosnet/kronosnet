@@ -41,20 +41,15 @@ static void test_prefix_validation(void)
 {
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
-	nozzle_t nozzle;
-	int err;
+	nozzle_t nozzle = NULL;
+	int err = 0;
 
 	printf("Test: Prefix validation\n\n");
 
 	printf("Step 1: Create nozzle device\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("SKIP: Unable to create nozzle device (requires root/CAP_NET_ADMIN)\n");
-		printf("      This is expected when not running as root.\n");
-		exit(SKIP);
-	}
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Created nozzle device: %s\n\n", device_name);
 
@@ -62,79 +57,28 @@ static void test_prefix_validation(void)
 	 * Test Case 1: Prefix = "0" (invalid, too small)
 	 */
 	printf("Step 2: Test invalid prefix \"0\" (should fail)\n");
-
-	err = nozzle_add_ip(nozzle, "192.168.1.1", "0");
-	if (err == 0) {
-		printf("FAIL: nozzle_add_ip() accepted prefix \"0\" (should reject)\n");
-		printf("      This would configure /0 netmask (security risk)\n");
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-	if (errno != EINVAL) {
-		printf("FAIL: Expected errno EINVAL, got %d (%s)\n", errno, strerror(errno));
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-
+	FAIL_ON_SUCCESS(nozzle_add_ip(nozzle, "192.168.1.1", "0"), EINVAL);
 	printf("Correctly rejected prefix \"0\" with EINVAL\n\n");
 
 	/*
 	 * Test Case 2: Prefix = "-1" (invalid, negative)
 	 */
 	printf("Step 3: Test invalid prefix \"-1\" (should fail)\n");
-
-	err = nozzle_add_ip(nozzle, "192.168.1.1", "-1");
-	if (err == 0) {
-		printf("FAIL: nozzle_add_ip() accepted prefix \"-1\" (should reject)\n");
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-	if (errno != EINVAL) {
-		printf("FAIL: Expected errno EINVAL, got %d (%s)\n", errno, strerror(errno));
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-
+	FAIL_ON_SUCCESS(nozzle_add_ip(nozzle, "192.168.1.1", "-1"), EINVAL);
 	printf("Correctly rejected prefix \"-1\" with EINVAL\n\n");
 
 	/*
 	 * Test Case 3: Prefix = "33" for IPv4 (invalid, too large)
 	 */
 	printf("Step 4: Test invalid IPv4 prefix \"33\" (should fail, max is 32)\n");
-
-	err = nozzle_add_ip(nozzle, "192.168.1.1", "33");
-	if (err == 0) {
-		printf("FAIL: nozzle_add_ip() accepted IPv4 prefix \"33\" (should reject)\n");
-		printf("      IPv4 prefix must be <= 32\n");
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-	if (errno != EINVAL) {
-		printf("FAIL: Expected errno EINVAL, got %d (%s)\n", errno, strerror(errno));
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-
+	FAIL_ON_SUCCESS(nozzle_add_ip(nozzle, "192.168.1.1", "33"), EINVAL);
 	printf("Correctly rejected IPv4 prefix \"33\" with EINVAL\n\n");
 
 	/*
 	 * Test Case 4: Prefix = "129" for IPv6 (invalid, too large)
 	 */
 	printf("Step 5: Test invalid IPv6 prefix \"129\" (should fail, max is 128)\n");
-
-	err = nozzle_add_ip(nozzle, "::1", "129");
-	if (err == 0) {
-		printf("FAIL: nozzle_add_ip() accepted IPv6 prefix \"129\" (should reject)\n");
-		printf("      IPv6 prefix must be <= 128\n");
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-	if (errno != EINVAL) {
-		printf("FAIL: Expected errno EINVAL, got %d (%s)\n", errno, strerror(errno));
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-
+	FAIL_ON_SUCCESS(nozzle_add_ip(nozzle, "::1", "129"), EINVAL);
 	printf("Correctly rejected IPv6 prefix \"129\" with EINVAL\n\n");
 
 	/*
@@ -142,21 +86,7 @@ static void test_prefix_validation(void)
 	 */
 	printf("Step 6: Test invalid prefix \"invalid\" (should fail)\n");
 	printf("        This tests the original vulnerability where atoi() returns 0\n");
-
-	err = nozzle_add_ip(nozzle, "192.168.1.1", "invalid");
-	if (err == 0) {
-		printf("FAIL: nozzle_add_ip() accepted prefix \"invalid\" (should reject)\n");
-		printf("      This is the original Prefix validation vulnerability!\n");
-		printf("      atoi(\"invalid\") returns 0, would configure /0 netmask\n");
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-	if (errno != EINVAL) {
-		printf("FAIL: Expected errno EINVAL, got %d (%s)\n", errno, strerror(errno));
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-
+	FAIL_ON_SUCCESS(nozzle_add_ip(nozzle, "192.168.1.1", "invalid"), EINVAL);
 	printf("Correctly rejected prefix \"invalid\" with EINVAL\n");
 	printf("Prefix validation vulnerability is FIXED (atoi(\"invalid\") = 0 now rejected)\n\n");
 
@@ -164,22 +94,11 @@ static void test_prefix_validation(void)
 	 * Test Case 6: Valid prefix should still work
 	 */
 	printf("Step 7: Test valid prefix \"24\" (should succeed)\n");
-
-	err = nozzle_add_ip(nozzle, "192.168.1.1", "24");
-	if (err != 0) {
-		printf("FAIL: nozzle_add_ip() rejected valid prefix \"24\": %s\n", strerror(errno));
-		printf("      Validation is too strict - valid prefixes should work\n");
-		nozzle_close(nozzle);
-		exit(FAIL);
-	}
-
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, "192.168.1.1", "24"));
 	printf("Correctly accepted valid prefix \"24\"\n\n");
 
 	/* Clean up the IP we just added */
-	err = nozzle_del_ip(nozzle, "192.168.1.1", "24");
-	if (err != 0) {
-		printf("WARNING: Failed to clean up IP 192.168.1.1/24: %s\n", strerror(errno));
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, "192.168.1.1", "24"));
 
 	/*
 	 * Test Case 7: Valid IPv6 prefix should work (if IPv6 is available)
@@ -194,10 +113,7 @@ static void test_prefix_validation(void)
 	} else {
 		printf("Correctly accepted valid IPv6 prefix \"64\"\n\n");
 		/* Clean up */
-		err = nozzle_del_ip(nozzle, "fd00::1", "64");
-		if (err != 0) {
-			printf("WARNING: Failed to clean up IP fd00::1/64: %s\n", strerror(errno));
-		}
+		FAIL_ON_ERR(nozzle_del_ip(nozzle, "fd00::1", "64"));
 	}
 
 	printf("=== Prefix validation test PASSED ===\n");
@@ -212,11 +128,17 @@ static void test_prefix_validation(void)
 	printf("All validation checks return EINVAL\n");
 	printf("Network misconfiguration prevented\n\n");
 
-	nozzle_close(nozzle);
+out_clean:
+	if (nozzle) {
+		nozzle_close(nozzle);
+	}
 }
 
 int main(void)
 {
+	need_root();
+	need_tun();
+
 	test_prefix_validation();
 
 	return PASS;

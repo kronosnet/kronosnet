@@ -28,7 +28,7 @@ static int test(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -36,21 +36,18 @@ static int test(void)
 	printf("Testing set MTU\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Comparing default MTU\n");
 	current_mtu = nozzle_get_mtu(nozzle);
 	if (current_mtu < 0) {
-		printf("Unable to get MTU\n");
+		printf("*** FAIL on line %d. Unable to get MTU\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 	if (current_mtu != expected_mtu) {
-		printf("current mtu [%d] does not match expected default [%d]\n", current_mtu, expected_mtu);
+		printf("*** FAIL on line %d. current mtu [%d] does not match expected default [%d]\n", __LINE__, current_mtu, expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
@@ -62,58 +59,43 @@ static int test(void)
 	expected_mtu = 9000;
 #endif
 	printf("Setting MTU to %d\n", expected_mtu);
-	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
-		printf("Unable to set MTU to %d\n", expected_mtu);
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_set_mtu(nozzle, expected_mtu));
 
 	current_mtu = nozzle_get_mtu(nozzle);
 	if (current_mtu < 0) {
-		printf("Unable to get MTU\n");
+		printf("*** FAIL on line %d. Unable to get MTU\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 	if (current_mtu != expected_mtu) {
-		printf("current mtu [%d] does not match expected value [%d]\n", current_mtu, expected_mtu);
+		printf("*** FAIL on line %d. current mtu [%d] does not match expected value [%d]\n", __LINE__, current_mtu, expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Restoring MTU to default\n");
 	expected_mtu = 1500;
-	if (nozzle_reset_mtu(nozzle) < 0) {
-		printf("Unable to reset mtu\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_reset_mtu(nozzle));
+
 	current_mtu = nozzle_get_mtu(nozzle);
 	if (current_mtu < 0) {
-		printf("Unable to get MTU\n");
+		printf("*** FAIL on line %d. Unable to get MTU\n", __LINE__);
 		err = -1;
 		goto out_clean;
 	}
 	if (current_mtu != expected_mtu) {
-		printf("current mtu [%d] does not match expected value [%d]\n", current_mtu, expected_mtu);
+		printf("*** FAIL on line %d. current mtu [%d] does not match expected value [%d]\n", __LINE__, current_mtu, expected_mtu);
 		err = -1;
 		goto out_clean;
 	}
 
 	printf("Testing ERROR conditions\n");
 
-	printf("Passing empty struct to set_mtu\n");
-	if (nozzle_set_mtu(NULL, 1500) == 0) {
-		printf("Something is wrong in nozzle_set_mtu sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing NULL nozzle handle\n");
+	FAIL_ON_SUCCESS(nozzle_set_mtu(NULL, 1500), EINVAL);
 
-	printf("Passing 0 mtu to set_mtu\n");
-	if (nozzle_set_mtu(nozzle, 0) == 0) {
-		printf("Something is wrong in nozzle_set_mtu sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing 0 mtu\n");
+	FAIL_ON_SUCCESS(nozzle_set_mtu(nozzle, 0), EINVAL);
 
 out_clean:
 	if (nozzle) {
@@ -129,7 +111,7 @@ static int test_ipv6(void)
 	size_t size = IFNAMSIZ;
 	char verifycmd[2048];
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	char *error_string = NULL;
 	int current_mtu = 0;
 
@@ -137,20 +119,11 @@ static int test_ipv6(void)
 
 	memset(device_name, 0, size);
 
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Adding ip: %s/64\n", testipv6_1);
-
-	err = nozzle_add_ip(nozzle, testipv6_1, "64");
-	if (err) {
-		printf("Unable to assign IP address\n");
-		err=-1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv6_1, "64"));
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
@@ -176,11 +149,7 @@ static int test_ipv6(void)
 	}
 
 	printf("Setting MTU to 1200\n");
-	if (nozzle_set_mtu(nozzle, 1200) < 0) {
-		printf("Unable to set MTU to 1200\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_set_mtu(nozzle, 1200));
 
 	err = execute_bin_sh_command(verifycmd, &error_string);
 	if (error_string) {
@@ -194,18 +163,13 @@ static int test_ipv6(void)
 #if defined(KNET_BSD) || defined(KNET_SOLARIS)
 	if (err) {
 #endif
-		printf("Unable to verify IP address\n");
+		printf("*** FAIL on line %d. Unable to verify IP address\n", __LINE__);
 		err=-1;
 		goto out_clean;
 	}
 
 	printf("Adding ip: %s/64\n", testipv6_2);
-	err = nozzle_add_ip(nozzle, testipv6_2, "64");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err=-1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv6_2, "64"));
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
@@ -231,15 +195,11 @@ static int test_ipv6(void)
 	}
 
 	printf("Restoring MTU to default\n");
-	if (nozzle_reset_mtu(nozzle) < 0) {
-		printf("Unable to reset mtu\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_reset_mtu(nozzle));
 
 	current_mtu = nozzle_get_mtu(nozzle);
 	if (current_mtu != 1500) {
-		printf("current mtu [%d] does not match expected value [1500]\n", current_mtu);
+		printf("*** FAIL on line %d. current mtu [%d] does not match expected value [1500]\n", __LINE__, current_mtu);
 		err = -1;
 		goto out_clean;
 	}
