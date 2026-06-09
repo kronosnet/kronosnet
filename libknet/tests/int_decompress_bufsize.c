@@ -17,7 +17,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#ifdef WITH_COMPRESS_ZLIB
+#if WITH_COMPRESS_ZLIB > 0
 #include <zlib.h>
 #endif
 
@@ -43,6 +43,7 @@
  * - Verify log contains "Rejecting packet"
  */
 
+#if WITH_COMPRESS_ZLIB > 0
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -64,10 +65,11 @@ static int filter_rejecting_packet(int logfd, const char *log_line, void *privat
 	}
 	return 0;
 }
+#endif
 
 static void test_decompress_bufsize(void)
 {
-#ifdef WITH_COMPRESS_ZLIB
+#if WITH_COMPRESS_ZLIB > 0
 	knet_handle_t knet_h1, knet_h[2] = {0};
 	int logfd;
 	int datafd = 0;
