@@ -296,6 +296,10 @@ int _platform_create_tap(nozzle_t nozzle, char *devname, size_t devname_size)
 	} else {
 		memmove(ifr.ifr_name, devname, IFNAMSIZ);
 		if (ioctl(lib_cfg.ioctlfd, SIOCIFCREATE2, &ifr) < 0) {
+			/* Translate EEXIST to EBUSY for consistency with Linux */
+			if (errno == EEXIST) {
+				errno = EBUSY;
+			}
 			return -1;
 		}
 		snprintf(curnozzle, sizeof(curnozzle) - 1, "/dev/%s", devname);
