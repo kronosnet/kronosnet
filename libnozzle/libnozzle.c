@@ -406,17 +406,17 @@ int nozzle_set_up(nozzle_t nozzle)
 		goto out_clean;
 	}
 
-	memset(&ifr, 0, sizeof(struct ifreq));
+	memset(&ifr, 0, sizeof(nozzle_ifreq));
 	memmove(ifname, nozzle->name, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
+	err = ioctl(NOZZLE_IOCTL_FD, SIOCGIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
 	}
 
 	ifflags |= IFF_UP | IFF_RUNNING;
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
+	err = ioctl(NOZZLE_IOCTL_FD, SIOCSIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -451,10 +451,10 @@ int nozzle_set_down(nozzle_t nozzle)
 		goto out_clean;
 	}
 
-	memset(&ifr, 0, sizeof(struct ifreq));
+	memset(&ifr, 0, sizeof(nozzle_ifreq));
 	memmove(ifname, nozzle->name, IFNAMSIZ);
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCGIFFLAGS, &ifr);
+	err = ioctl(NOZZLE_IOCTL_FD, SIOCGIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;
@@ -462,7 +462,7 @@ int nozzle_set_down(nozzle_t nozzle)
 
 	ifflags &= ~IFF_UP;
 
-	err = ioctl(lib_cfg.ioctlfd, SIOCSIFFLAGS, &ifr);
+	err = ioctl(NOZZLE_IOCTL_FD, SIOCSIFFLAGS, &ifr);
 	if (err) {
 		savederrno = errno;
 		goto out_clean;

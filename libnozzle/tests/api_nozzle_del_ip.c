@@ -30,54 +30,29 @@ static int test(void)
 	size_t size = IFNAMSIZ;
 	char verifycmd[2048];
 	int err = 0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	char *error_string = NULL;
 
 	printf("Testing interface del ip\n");
 
 	memset(device_name, 0, size);
 
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Testing error conditions\n");
 
 	printf("Testing invalid nozzle handle\n");
-	err = nozzle_del_ip(NULL, testipv4_1, "24");
-	if ((!err) || (errno != EINVAL)) {
-		printf("nozzle_del_ip accepted invalid nozzle handle\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_SUCCESS(nozzle_del_ip(NULL, testipv4_1, "24"), EINVAL);
 
-	printf("Testing empty ip address\n");
-	err = nozzle_del_ip(nozzle, NULL, "24");
-	if ((!err) || (errno != EINVAL)) {
-		printf("nozzle_del_ip accepted invalid ip address\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing NULL ip address\n");
+	FAIL_ON_SUCCESS(nozzle_del_ip(nozzle, NULL, "24"), EINVAL);
 
-
-	printf("Testing empty netmask\n");
-	err = nozzle_del_ip(nozzle, testipv4_1, NULL);
-	if ((!err) || (errno != EINVAL)) {
-		printf("nozzle_del_ip accepted invalid netmask\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Testing NULL netmask\n");
+	FAIL_ON_SUCCESS(nozzle_del_ip(nozzle, testipv4_1, NULL), EINVAL);
 
 	printf("Adding ip: %s/24\n", testipv4_1);
-
-	err = nozzle_add_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv4_1, "24"));
 
 	printf("Checking ip: %s/24\n", testipv4_1);
 
@@ -89,28 +64,12 @@ static int test(void)
 #if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (err) {
-		printf("Unable to verify IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_CMD(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify IP address");
 
 	printf("Deleting ip: %s/24\n", testipv4_1);
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv4_1, "24"));
 
-	err = nozzle_del_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
-
-	printf("Checking ip: %s/24\n", testipv4_1);
+	printf("Checking ip: %s/24 is removed\n", testipv4_1);
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
@@ -120,35 +79,13 @@ static int test(void)
 #if defined(KNET_BSD) || defined(KNET_SOLARIS)
 		 "ifconfig %s | grep -q %s", nozzle->name, testipv4_1);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (!err) {
-		printf("Unable to verify IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_CMD_SUCCESS(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify IP address removal");
 
 	printf("Deleting ip: %s/24 again\n", testipv4_1);
-
-	err = nozzle_del_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv4_1, "24"));
 
 	printf("Adding ip: %s/64\n", testipv6_1);
-
-	err = nozzle_add_ip(nozzle, testipv6_1, "64");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv6_1, "64"));
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
@@ -161,26 +98,12 @@ static int test(void)
 #ifdef KNET_SOLARIS
 		 "ifconfig %s:1 inet6 | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (err) {
-		printf("Unable to verify IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_CMD(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify IP address");
 
 	printf("Deleting ip: %s/64\n", testipv6_1);
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv6_1, "64"));
 
-	err = nozzle_del_ip(nozzle, testipv6_1, "64");
-	if (err) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Checking ip: %s/64 is removed\n", testipv6_1);
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
@@ -193,36 +116,14 @@ static int test(void)
 #ifdef KNET_SOLARIS
 		 "ifconfig %s inet6 | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (!err) {
-		printf("Unable to verify IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_CMD_SUCCESS(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify IP address removal");
 
 	printf("Testing deleting an IPv6 address with mtu < 1280 (in db, not on interface)\n");
 	printf("Lowering interface MTU\n");
-
-	err = nozzle_set_mtu(nozzle, 1200);
-	if (err) {
-		printf("Unable to set MTU to 1200\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_set_mtu(nozzle, 1200));
 
 	printf("Adding ip: %s/64\n", testipv6_1);
-
-	err = nozzle_add_ip(nozzle, testipv6_1, "64");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv6_1, "64"));
 
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
@@ -235,29 +136,15 @@ static int test(void)
 #ifdef KNET_SOLARIS
 		 "ifconfig %s inet6 | grep -q %s", nozzle->name, testipv6_1);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (!err) {
-		printf("Unable to verify IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_CMD_SUCCESS(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify IP address");
 
 	printf("Deleting ip: %s/64 with low mtu\n", testipv6_1);
-
-	err = nozzle_del_ip(nozzle, testipv6_1, "64");
-	if (err) {
-		printf("Unable to delete IP address\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_del_ip(nozzle, testipv6_1, "64"));
 
 out_clean:
-	nozzle_close(nozzle);
+	if (nozzle) {
+		nozzle_close(nozzle);
+	}
 
 	return err;
 }
