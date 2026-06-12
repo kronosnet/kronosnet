@@ -23,7 +23,7 @@ static int test(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 
 	int current_mtu = 0;
 	int expected_mtu = 1500;
@@ -31,24 +31,13 @@ static int test(void)
 	printf("Testing get MTU\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Comparing default MTU\n");
-	current_mtu = nozzle_get_mtu(nozzle);
-	if (current_mtu < 0) {
-		printf("Unable to get MTU\n");
-		err = -1;
-		goto out_clean;
-	}
-	if (current_mtu != expected_mtu) {
-		printf("current mtu [%d] does not match expected default [%d]\n", current_mtu, expected_mtu);
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR_ONLY(current_mtu = nozzle_get_mtu(nozzle), "nozzle_get_mtu failed");
+	FAIL_ON_NONZERO(current_mtu != expected_mtu, "current mtu does not match expected default");
 
 #ifdef KNET_SOLARIS
 	// Solaris doesn't allow MTU > 1500
@@ -57,32 +46,16 @@ static int test(void)
 	expected_mtu = 9000;
 #endif
 	printf("Setting MTU to %d\n", expected_mtu);
-	if (nozzle_set_mtu(nozzle, expected_mtu) < 0) {
-		printf("Unable to set MTU to %d\n", expected_mtu);
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_set_mtu(nozzle, expected_mtu));
 
-	current_mtu = nozzle_get_mtu(nozzle);
-	if (current_mtu < 0) {
-		printf("Unable to get MTU\n");
-		err = -1;
-		goto out_clean;
-	}
-	if (current_mtu != expected_mtu) {
-		printf("current mtu [%d] does not match expected value [%d]\n", current_mtu, expected_mtu);
-		err = -1;
-		goto out_clean;
-	}
+	printf("Verifying MTU was set correctly\n");
+	FAIL_ON_ERR_ONLY(current_mtu = nozzle_get_mtu(nozzle), "nozzle_get_mtu failed");
+	FAIL_ON_NONZERO(current_mtu != expected_mtu, "current mtu does not match expected value");
 
 	printf("Testing ERROR conditions\n");
 
-	printf("Passing empty struct to get_mtu\n");
-	if (nozzle_get_mtu(NULL) > 0) {
-		printf("Something is wrong in nozzle_get_mtu sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	printf("Passing NULL to get_mtu\n");
+	FAIL_ON_NOT_ERR_ONLY(nozzle_get_mtu(NULL), EINVAL, "nozzle_get_mtu(NULL) should have failed with EINVAL");
 
 out_clean:
 	if (nozzle) {
