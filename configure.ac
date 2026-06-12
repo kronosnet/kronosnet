@@ -175,6 +175,11 @@ AC_ARG_ENABLE([libnozzle],
 
 AM_CONDITIONAL([BUILD_LIBNOZZLE], [test x$enable_libnozzle = xyes])
 
+AC_ARG_ENABLE([wireshark-dissector],
+	      [AS_HELP_STRING([--enable-wireshark-dissector],[libknet wireshark dissector support])],,
+	      [ enable_wireshark_dissector="yes" ])
+AM_CONDITIONAL([BUILD_WSDISSECTOR], [test x$enable_wireshark_dissector = xyes])
+
 ## local helper functions
 # this function checks if CC support options passed as
 # args. Global CPPFLAGS are ignored during this test.
@@ -350,6 +355,19 @@ if test "x$enable_libnozzle" = xyes; then
 			;;
 	esac
 fi
+
+wireshark_INSTALL_PREFIX=""
+# checks for libknet wireshark dissector
+if test "x$enable_wireshark_dissector" = xyes; then
+	PKG_CHECK_MODULES([wireshark], [wireshark >= 4.6.0])
+	PKG_CHECK_VAR([wireshark_PLUGINDIR], [wireshark], [plugindir])
+	PKG_CHECK_VAR([wireshark_PREFIX], [wireshark], [prefix])
+	# workaround to make make distcheck happy
+	if test "x$wireshark_PREFIX" != "x${prefix}"; then
+		wireshark_INSTALL_PREFIX="${prefix}"
+	fi
+fi
+AC_SUBST([wireshark_INSTALL_PREFIX], [$wireshark_INSTALL_PREFIX])
 
 # local options
 AC_ARG_ENABLE([debug],
@@ -556,6 +574,7 @@ AC_CONFIG_FILES([
 		libknet/Makefile
 		libknet/libknet.pc
 		libknet/tests/Makefile
+		libknet/wireshark/Makefile
 		man/Makefile
 		man/Doxyfile-knet
 		man/Doxyfile-nozzle

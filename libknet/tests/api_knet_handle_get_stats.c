@@ -21,50 +21,51 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_get_stats"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_handle_stats test_byte_array[2];
 	struct knet_handle_stats ref_byte_array[2];
 	struct knet_handle_stats stats;
-	int res;
 
-	printf("Test knet_handle_get_stats incorrect knet_h\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Test knet_handle_get_stats incorrect knet_h");
 
 	memset(&stats, 0, sizeof(struct knet_handle_stats));
 
-	if ((!knet_handle_get_stats(NULL, &stats, sizeof(struct knet_handle_stats))) || (errno != EINVAL)) {
-		printf("knet_handle_get_stats accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_handle_get_stats(NULL, &stats, sizeof(struct knet_handle_stats)), EINVAL);
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_get_stats with NULL structure pointer\n");
+	log_test(logfd, "Test knet_handle_get_stats with NULL structure pointer");
 	FAIL_ON_SUCCESS(knet_handle_get_stats(knet_h1, NULL, 0), EINVAL);
 
-	printf("Test knet_handle_get_stats with small structure size\n");
+	log_test(logfd, "Test knet_handle_get_stats with small structure size");
 	memset(test_byte_array, 0x55, sizeof(struct knet_handle_stats) * 2);
 	memset(ref_byte_array, 0x55, sizeof(struct knet_handle_stats) * 2);
 	FAIL_ON_ERR(knet_handle_get_stats(knet_h1, (struct knet_handle_stats *)test_byte_array, sizeof(size_t)));
 
 	if (memcmp(&test_byte_array[1], ref_byte_array, sizeof(struct knet_handle_stats))) {
-		printf("knet_handle_get_stats corrupted memory after stats structure\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_get_stats corrupted memory after stats structure");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Test knet_handle_get_stats with valid input\n");
+	log_test(logfd, "Test knet_handle_get_stats with valid input");
 	FAIL_ON_ERR(knet_handle_get_stats(knet_h1, &stats, sizeof(struct knet_handle_stats)));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle get stats\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

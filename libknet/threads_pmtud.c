@@ -635,6 +635,14 @@ out_unlock:
 		if (pthread_mutex_lock(&knet_h->pmtud_mutex) != 0) {
 			log_debug(knet_h, KNET_SUB_PMTUD, "Unable to get mutex lock");
 		} else {
+			/*
+			 * If we were interrupted by a reschedule request (errno == EDEADLK),
+			 * force the next iteration to run immediately to complete PMTUD
+			 * on links that were interrupted or not yet checked.
+			 */
+			if (errno == EDEADLK) {
+				knet_h->pmtud_forcerun = 1;
+			}
 			knet_h->pmtud_running = 0;
 			pthread_mutex_unlock(&knet_h->pmtud_mutex);
 		}

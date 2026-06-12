@@ -11,6 +11,9 @@
 
 #include "config.h"
 
+#include <limits.h>
+#include <netinet/in.h>
+
 #ifdef KNET_LINUX
 #include <netlink/netlink.h>
 #endif
@@ -25,6 +28,10 @@ struct nozzle_lib_config {
 	int ioctlfd;
 #ifdef KNET_LINUX
 	struct nl_sock *nlsock;
+#endif
+#if defined(KNET_BSD) || defined(KNET_SOLARIS)
+	int ip_fd;
+	int ip6_fd;
 #endif
 };
 
@@ -59,20 +66,44 @@ struct nozzle_iface {
 	struct nozzle_iface *next;
 
 #ifdef KNET_SOLARIS
-	int ip_fd;
-	int ip6_fd;
+	int ip_fd;	/* STREAMS plumbing socket for IPv4 */
+	int ip6_fd;	/* STREAMS plumbing socket for IPv6 */
 #endif
 };
 
+/*
+ * Platform-specific type and macro abstractions
+ */
 #ifdef KNET_SOLARIS
+typedef struct lifreq nozzle_ifreq;
 #define ifname ifr.lifr_name
 #define ifmtu ifr.lifr_mtu
 #define ifflags ifr.lifr_flags
+#define NOZZLE_IOCTL_FD lib_cfg.ip_fd
+#define NOZZLE_SET_MTU SIOCSLIFMTU
+#define NOZZLE_SOCKET_DOMAIN AF_INET
+#define NOZZLE_IPV6_IS_SECONDARY(domain) ((domain) == AF_INET6)
 #else
+typedef struct ifreq nozzle_ifreq;
 #define ifname ifr.ifr_name
 #define ifmtu ifr.ifr_mtu
 #define ifflags ifr.ifr_flags
+#define NOZZLE_SET_MTU SIOCSIFMTU
+#define NOZZLE_SOCKET_DOMAIN AF_INET
+#define NOZZLE_IPV6_IS_SECONDARY(domain) 0
+#ifdef KNET_BSD
+#undef NOZZLE_SOCKET_DOMAIN
+#define NOZZLE_SOCKET_DOMAIN AF_LOCAL
+#define NOZZLE_IOCTL_FD lib_cfg.ioctlfd
+#else
+#define NOZZLE_IOCTL_FD lib_cfg.ioctlfd
 #endif
+#endif
+
+/*
+ * Global library configuration (defined in libnozzle.c)
+ */
+extern struct nozzle_lib_config lib_cfg;
 
 int execute_bin_sh_command(const char *command, char **error_string);
 
@@ -81,5 +112,27 @@ int find_ip(nozzle_t nozzle,
 	    struct nozzle_ip **ip, struct nozzle_ip **ip_prev);
 
 char *generate_v4_broadcast(const char *ipaddr, const char *prefix);
+
+int _determine_family(const char *ipaddr);
+int _validate_prefix(int family, const char *prefix);
+uint32_t _ipv4_prefix_to_netmask(int prefix_len);
+void _ipv6_prefix_to_mask(int prefix_len, struct in6_addr *mask);
+
+/*
+ * Platform-specific functions
+ */
+int _platform_init(struct nozzle_lib_config *lib_cfg);
+void _platform_fini(struct nozzle_lib_config *lib_cfg);
+
+int _platform_create_tap(nozzle_t nozzle, char *devname, size_t devname_size);
+void _platform_close_tap(nozzle_t nozzle);
+void _platform_destroy_tap(nozzle_t nozzle);
+
+int _platform_get_mac(const nozzle_t nozzle, char **ether_addr);
+int _platform_set_mac(nozzle_t nozzle, const char *ether_addr);
+int _platform_get_mtu(const nozzle_t nozzle);
+
+int _platform_add_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary);
+int _platform_del_ip(nozzle_t nozzle, const char *ipaddr, const char *prefix, int secondary);
 
 #endif

@@ -496,6 +496,20 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 			clock_gettime(CLOCK_MONOTONIC, &end_time);
 			timespec_diff(start_time, end_time, &compress_time);
 
+			/*
+			 * Sanity check decompressed size against buffer capacity
+			 */
+			if (!err) {
+				if ((size_t)decmp_outlen > KNET_DATABUFSIZE) {
+					log_warn(knet_h, KNET_SUB_COMPRESS,
+						 "Decompressed size %zd exceeds buffer size %zu, rejecting packet",
+						 decmp_outlen, (size_t)KNET_DATABUFSIZE);
+					pthread_mutex_unlock(&knet_h->handle_stats_mutex);
+					pthread_mutex_unlock(&src_link->link_stats_mutex);
+					return;
+				}
+			}
+
 			if (!err) {
 				/* Collect stats */
 				if (compress_time < knet_h->stats.rx_compress_time_min) {
@@ -856,6 +870,7 @@ out_pmtud:
 			log_debug(knet_h, KNET_SUB_RX, "Unable to get mutex lock");
 			break;
 		}
+		// coverity[INCONSISTENT_UNION_ACCESS:SUPPRESS] - switch/case ensures correct union field access
 		src_link->last_recv_mtu = inbuf->khp_pmtud_size;
 		pthread_cond_signal(&knet_h->pmtud_cond);
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);

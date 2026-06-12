@@ -21,52 +21,53 @@
 #include "netutils.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_link_get_pong_count"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t pong_count = 0;
 	struct sockaddr_storage lo;
 
-	printf("Test knet_link_get_pong_count incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_link_get_pong_count(NULL, 1, 0, &pong_count)) || (errno != EINVAL)) {
-		printf("knet_link_get_pong_count accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_link_get_pong_count incorrect knet_h");
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	FAIL_ON_SUCCESS(knet_link_get_pong_count(NULL, 1, 0, &pong_count), EINVAL);
 
-	printf("Test knet_link_get_pong_count with unconfigured host_id\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_link_get_pong_count with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_link_get_pong_count(knet_h1, 1, 0, &pong_count), EINVAL);
 
-	printf("Test knet_link_get_pong_count with incorrect linkid\n");
+	log_test(logfd, "Test knet_link_get_pong_count with incorrect linkid");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_link_get_pong_count(knet_h1, 1, KNET_MAX_LINK, &pong_count), EINVAL);
 
-	printf("Test knet_link_get_pong_count with incorrect pong count\n");
+	log_test(logfd, "Test knet_link_get_pong_count with incorrect pong count");
 	FAIL_ON_SUCCESS(knet_link_get_pong_count(knet_h1, 1, 0, NULL), EINVAL);
 
-	printf("Test knet_link_get_pong_count with unconfigured link\n");
+	log_test(logfd, "Test knet_link_get_pong_count with unconfigured link");
 	FAIL_ON_SUCCESS(knet_link_get_pong_count(knet_h1, 1, 0, &pong_count), EINVAL);
 
-	printf("Test knet_link_get_pong_count with correct values\n");
-	FAIL_ON_ERR(_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo));
+	log_test(logfd, "Test knet_link_get_pong_count with correct values");
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_UDP, 0, AF_INET, 0, &lo, logfd));
 	FAIL_ON_ERR(knet_link_set_pong_count(knet_h1, 1, 0, 3));
 	FAIL_ON_ERR(knet_link_get_pong_count(knet_h1, 1, 0, &pong_count));
 	if (pong_count != 3) {
-		printf("knet_link_get_pong_count failed to get correct values\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_link_get_pong_count failed to get correct values");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet link get pong count\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

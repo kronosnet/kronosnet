@@ -62,6 +62,34 @@ struct opensslcrypto_instance {
 static int openssl_is_init = 0;
 
 /*
+ * Helper function to log all errors from OpenSSL error stack
+ */
+static void log_openssl_errors(knet_handle_t knet_h, uint8_t log_level, const char *prefix)
+{
+	unsigned long err;
+	char sslerr[SSLERR_BUF_SIZE];
+	int first = 1;
+
+	while ((err = ERR_get_error()) != 0) {
+		ERR_error_string_n(err, sslerr, sizeof(sslerr));
+		if (first) {
+			if (log_level == KNET_LOG_DEBUG) {
+				log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "%s: %s", prefix, sslerr);
+			} else {
+				log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "%s: %s", prefix, sslerr);
+			}
+			first = 0;
+		} else {
+			if (log_level == KNET_LOG_DEBUG) {
+				log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "  additional error: %s", sslerr);
+			} else {
+				log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "  additional error: %s", sslerr);
+			}
+		}
+	}
+}
+
+/*
  * crypt/decrypt functions openssl1.0
  */
 
@@ -81,13 +109,11 @@ static int encrypt_openssl(
 	unsigned char	*data = buf_out + SALT_SIZE;
 	int		err = 0;
 	int		i;
-	char		sslerr[SSLERR_BUF_SIZE];
 
 	EVP_CIPHER_CTX_init(&ctx);
 
 	if (!RAND_bytes(salt, SALT_SIZE)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to get random salt data: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to get random salt data");
 		err = -1;
 		goto out;
 	}
@@ -101,8 +127,7 @@ static int encrypt_openssl(
 		if (!EVP_EncryptUpdate(&ctx,
 				       data + offset, &tmplen,
 				       (unsigned char *)iov[i].iov_base, iov[i].iov_len)) {
-			ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to encrypt: %s", sslerr);
+			log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to encrypt");
 			err = -1;
 			goto out;
 		}
@@ -110,8 +135,7 @@ static int encrypt_openssl(
 	}
 
 	if (!EVP_EncryptFinal_ex(&ctx, data + offset, &tmplen)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize encrypt: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to finalize encrypt");
 		err = -1;
 		goto out;
 	}
@@ -139,7 +163,6 @@ static int decrypt_openssl (
 	unsigned char	*data = salt + SALT_SIZE;
 	int		datalen = buf_in_len - SALT_SIZE;
 	int		err = 0;
-	char		sslerr[SSLERR_BUF_SIZE];
 
 	EVP_CIPHER_CTX_init(&ctx);
 
@@ -149,23 +172,13 @@ static int decrypt_openssl (
 	EVP_DecryptInit_ex(&ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt);
 
 	if (!EVP_DecryptUpdate(&ctx, buf_out, &tmplen1, data, datalen)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		if (log_level == KNET_LOG_DEBUG) {
-			log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to decrypt: %s", sslerr);
-		} else {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to decrypt: %s", sslerr);
-		}
+		log_openssl_errors(knet_h, log_level, "Unable to decrypt");
 		err = -1;
 		goto out;
 	}
 
 	if (!EVP_DecryptFinal_ex(&ctx, buf_out + tmplen1, &tmplen2)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		if (log_level == KNET_LOG_DEBUG) {
-			log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize decrypt: %s", sslerr);
-		} else {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize decrypt: %s", sslerr);
-		}
+		log_openssl_errors(knet_h, log_level, "Unable to finalize decrypt");
 		err = -1;
 		goto out;
 	}
@@ -192,19 +205,16 @@ static int encrypt_openssl(
 	unsigned char	*data = buf_out + SALT_SIZE;
 	int		err = 0;
 	int		i;
-	char		sslerr[SSLERR_BUF_SIZE];
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to allocate memory");
 		err = -1;
 		goto out;
 	}
 
 	if (!RAND_bytes(salt, SALT_SIZE)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to get random salt data: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to get random salt data");
 		err = -1;
 		goto out;
 	}
@@ -213,8 +223,7 @@ static int encrypt_openssl(
 	 * add warning re keylength
 	 */
 	if (EVP_EncryptInit_ex(ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt) <= 0) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "EVP_EncryptInit_ex failed: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "EVP_EncryptInit_ex failed");
 		err = -1;
 		goto out;
 	}
@@ -223,8 +232,7 @@ static int encrypt_openssl(
 		if (!EVP_EncryptUpdate(ctx,
 				       data + offset, &tmplen,
 				       (unsigned char *)iov[i].iov_base, iov[i].iov_len)) {
-			ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to encrypt: %s", sslerr);
+			log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to encrypt");
 			err = -1;
 			goto out;
 		}
@@ -232,8 +240,7 @@ static int encrypt_openssl(
 	}
 
 	if (!EVP_EncryptFinal_ex(ctx, data + offset, &tmplen)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize encrypt: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to finalize encrypt");
 		err = -1;
 		goto out;
 	}
@@ -261,7 +268,6 @@ static int decrypt_openssl (
 	unsigned char	*data = salt + SALT_SIZE;
 	int		datalen = buf_in_len - SALT_SIZE;
 	int		err = 0;
-	char		sslerr[SSLERR_BUF_SIZE];
 
 	if (datalen <= 0) {
 		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Packet is too short");
@@ -271,8 +277,7 @@ static int decrypt_openssl (
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate memory: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to allocate memory");
 		err = -1;
 		goto out;
 	}
@@ -282,30 +287,19 @@ static int decrypt_openssl (
 	 * add warning re keylength
 	 */
 	if (EVP_DecryptInit_ex(ctx, instance->crypto_cipher_type, NULL, instance->private_key, salt) <= 0) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "EVP_DecryptInit_ex failed: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "EVP_DecryptInit_ex failed");
 		err = -1;
 		goto out;
 	}
 
 	if (!EVP_DecryptUpdate(ctx, buf_out, &tmplen1, data, datalen)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		if (log_level == KNET_LOG_DEBUG) {
-			log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to decrypt: %s", sslerr);
-		} else {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to decrypt: %s", sslerr);
-		}
+		log_openssl_errors(knet_h, log_level, "Unable to decrypt");
 		err = -1;
 		goto out;
 	}
 
 	if (!EVP_DecryptFinal_ex(ctx, buf_out + tmplen1, &tmplen2)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		if (log_level == KNET_LOG_DEBUG) {
-			log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize decrypt: %s", sslerr);
-		} else {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize decrypt: %s", sslerr);
-		}
+		log_openssl_errors(knet_h, log_level, "Unable to finalize decrypt");
 		err = -1;
 		goto out;
 	}
@@ -336,7 +330,6 @@ static int calculate_openssl_hash(
 	struct opensslcrypto_instance *instance = crypto_instance->model_instance;
 	unsigned int hash_len = 0;
 	unsigned char *hash_out = NULL;
-	char sslerr[SSLERR_BUF_SIZE];
 
 	hash_out = HMAC(instance->crypto_hash_type,
 			instance->private_key, instance->private_key_len,
@@ -344,12 +337,7 @@ static int calculate_openssl_hash(
 			hash, &hash_len);
 
 	if ((!hash_out) || (hash_len != crypto_instance->sec_hash_size)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		if (log_level == KNET_LOG_DEBUG) {
-			log_debug(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to calculate hash: %s", sslerr);
-		} else {
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to calculate hash: %s", sslerr);
-		}
+		log_openssl_errors(knet_h, log_level, "Unable to calculate hash");
 		return -1;
 	}
 
@@ -366,35 +354,30 @@ static int calculate_openssl_hash(
 {
 	struct opensslcrypto_instance *instance = crypto_instance->model_instance;
 	EVP_MAC_CTX *ctx = NULL;
-	char sslerr[SSLERR_BUF_SIZE];
 	int err = 0;
 	size_t outlen = 0;
 
 	ctx = EVP_MAC_CTX_new(instance->crypto_hash_mac);
 	if (!ctx) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to allocate openssl context: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to allocate openssl context");
 		err = -1;
 		goto out_err;
 	}
 
 	if (!EVP_MAC_init(ctx, instance->private_key, instance->private_key_len, instance->params)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to set openssl context parameters: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to set openssl context parameters");
 		err = -1;
 		goto out_err;
 	}
 
 	if (!EVP_MAC_update(ctx, buf, buf_len)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to update hash: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to update hash");
 		err = -1;
 		goto out_err;
 	}
 
 	if (!EVP_MAC_final(ctx, hash, &outlen, crypto_instance->sec_hash_size)) {
-		ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-		log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "Unable to finalize hash: %s", sslerr);
+		log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to finalize hash");
 		err = -1;
 		goto out_err;
 	}
@@ -624,7 +607,6 @@ static int opensslcrypto_init(
 	struct opensslcrypto_instance *opensslcrypto_instance = NULL;
 	int savederrno;
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-	char sslerr[SSLERR_BUF_SIZE];
 	size_t params_n = 0;
 #endif
 
@@ -697,8 +679,7 @@ static int opensslcrypto_init(
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		opensslcrypto_instance->crypto_hash_mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
 		if (!opensslcrypto_instance->crypto_hash_mac) {
-			ERR_error_string_n(ERR_get_error(), sslerr, sizeof(sslerr));
-			log_err(knet_h, KNET_SUB_OPENSSLCRYPTO, "unable to fetch HMAC: %s", sslerr);
+			log_openssl_errors(knet_h, KNET_LOG_ERR, "Unable to fetch HMAC");
 			savederrno = ENXIO;
 			goto out_err;
 		}

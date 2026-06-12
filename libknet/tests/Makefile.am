@@ -37,7 +37,11 @@ endif
 
 int_checks		= \
 			  int_links_acl_ip_test \
-			  int_timediff_test
+			  int_timediff_test \
+			  int_decompress_bufsize_test \
+			  int_seq_wraparound_stress_test \
+			  int_defrag_edge_cases_test \
+			  int_buffer_management_test
 
 fun_checks		= \
 			  fun_config_crypto_test \
@@ -80,6 +84,7 @@ check-api-test-coverage:
 pckt_test_SOURCES	= pckt_test.c
 
 int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
+				test-common.c \
 				../common.c \
 				../compat.c \
 				../logging.c \
@@ -96,7 +101,13 @@ int_links_acl_ip_test_SOURCES = int_links_acl_ip.c \
 				../links_acl_loopback.c \
 				../lib_config.c
 
-int_timediff_test_SOURCES = int_timediff.c
+int_timediff_test_SOURCES = int_timediff.c \
+			    test-common.c
+
+int_decompress_bufsize_test_SOURCES = int_decompress_bufsize.c \
+				      test-common.c
+
+int_decompress_bufsize_test_LDADD = $(zlib_LIBS)
 
 knet_bench_test_SOURCES	= knet_bench.c \
 			  test-common.c \
@@ -120,3 +131,12 @@ fun_config_crypto_test_SOURCES = fun_config_crypto.c \
 
 fun_acl_check_test_SOURCES = fun_acl_check.c \
 			     test-common.c
+
+int_seq_wraparound_stress_test_SOURCES = int_seq_wraparound_stress.c \
+					  test-common.c
+
+int_defrag_edge_cases_test_SOURCES = int_defrag_edge_cases.c \
+				      test-common.c
+
+int_buffer_management_test_SOURCES = int_buffer_management.c \
+				      test-common.c

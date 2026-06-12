@@ -21,49 +21,50 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_set_loglevel"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	printf("Test knet_log_set_loglevel incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_log_set_loglevel(NULL, KNET_SUB_COMMON, KNET_LOG_DEBUG)) || (errno != EINVAL)) {
-		printf("knet_log_set_loglevel accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_log_set_loglevel incorrect knet_h");
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_INFO, knet_h);
+	FAIL_ON_SUCCESS(knet_log_set_loglevel(NULL, KNET_SUB_COMMON, KNET_LOG_DEBUG), EINVAL);
 
-	printf("Test knet_log_set_loglevel incorrect subsystem\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_INFO, knet_h);
+
+	log_test(logfd, "Test knet_log_set_loglevel incorrect subsystem");
 	FAIL_ON_SUCCESS(knet_log_set_loglevel(knet_h1, KNET_SUB_UNKNOWN - 1, KNET_LOG_DEBUG), EINVAL);
 
-	printf("Test knet_log_set_loglevel incorrect log level\n");
+	log_test(logfd, "Test knet_log_set_loglevel incorrect log level");
 	FAIL_ON_SUCCESS(knet_log_set_loglevel(knet_h1, KNET_SUB_UNKNOWN, KNET_LOG_TRACE + 1), EINVAL);
 
-	printf("Test knet_log_set_loglevel with valid parameters\n");
+	log_test(logfd, "Test knet_log_set_loglevel with valid parameters");
 	if (knet_h1->log_levels[KNET_SUB_UNKNOWN] != KNET_LOG_INFO) {
-		printf("knet_handle_new did not init log_levels correctly?\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_new did not init log_levels correctly?");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 	FAIL_ON_ERR(knet_log_set_loglevel(knet_h1, KNET_SUB_UNKNOWN, KNET_LOG_DEBUG));
 	if (knet_h1->log_levels[KNET_SUB_UNKNOWN] != KNET_LOG_DEBUG) {
-		printf("knet_log_set_loglevel did not set log level to DEBUG correctly\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_log_set_loglevel did not set log level to DEBUG correctly");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 	FAIL_ON_ERR(knet_log_set_loglevel(knet_h1, KNET_SUB_UNKNOWN, KNET_LOG_TRACE));
 	if (knet_h1->log_levels[KNET_SUB_UNKNOWN] != KNET_LOG_TRACE) {
-		printf("knet_log_set_loglevel did not set log level to TRACE correctly\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_log_set_loglevel did not set log level to TRACE correctly");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log set loglevel\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -20,6 +20,8 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_recv"
+
 static int private_data;
 
 static void sock_notify(void *pvt_data,
@@ -34,49 +36,46 @@ static void sock_notify(void *pvt_data,
 
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	int datafd = 0;
 	int8_t channel = 0;
 	char recv_buff[KNET_MAX_PACKET_SIZE];
 	char send_buff[KNET_MAX_PACKET_SIZE];
 	ssize_t recv_len = 0;
-	int res;
-	struct iovec iov_out[1];
+	struct sockaddr_storage lo;
 
-	printf("Test knet_recv incorrect knet_h\n");
-	if ((!knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel)) || (errno != EINVAL)) {
-		printf("knet_recv accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	logfd = start_logging(stdout);
 
-	setup_logpipes(logfds);
+	log_test(logfd, "Test knet_recv incorrect knet_h");
+	FAIL_ON_SUCCESS(knet_recv(NULL, recv_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_recv with no recv_buff\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_recv with no recv_buff");
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, NULL, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_recv with invalid recv_buff len (0)\n");
+	log_test(logfd, "Test knet_recv with invalid recv_buff len (0)");
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, 0, channel), EINVAL);
 
-	printf("Test knet_recv with invalid recv_buff len (> KNET_MAX_PACKET_SIZE)\n");
+	log_test(logfd, "Test knet_recv with invalid recv_buff len (> KNET_MAX_PACKET_SIZE)");
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE + 1, channel), EINVAL);
 
-	printf("Test knet_recv with invalid channel (-1)\n");
+	log_test(logfd, "Test knet_recv with invalid channel (-1)");
 	channel = -1;
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_recv with invalid channel (KNET_DATAFD_MAX)\n");
+	log_test(logfd, "Test knet_recv with invalid channel (KNET_DATAFD_MAX)");
 	channel = KNET_DATAFD_MAX;
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_recv with unconfigured channel\n");
+	log_test(logfd, "Test knet_recv with unconfigured channel");
 	channel = 0;
 
 	FAIL_ON_SUCCESS(knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel), EINVAL);
 
-	printf("Test knet_recv with valid data\n");
+	log_test(logfd, "Test knet_recv with valid data");
 	FAIL_ON_ERR(knet_handle_enable_sock_notify(knet_h1, &private_data, sock_notify));
 
 	datafd = 0;
@@ -84,38 +83,46 @@ static void test(void)
 
 	FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel));
 
+	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
+	FAIL_ON_ERR(_ts_knet_link_set_config(knet_h1, 1, 0, KNET_TRANSPORT_LOOPBACK, 0, AF_INET, 0, &lo, logfd));
+
+	FAIL_ON_ERR(knet_link_set_enable(knet_h1, 1, 0, 1));
+	FAIL_ON_ERR(knet_handle_setfwd(knet_h1, 1));
+	FAIL_ON_ERR(wait_for_host(knet_h1, 1, TEST_TIMEOUT_SHORT, logfd));
+
 	memset(recv_buff, 0, KNET_MAX_PACKET_SIZE);
 	memset(send_buff, 1, sizeof(send_buff));
 
-	iov_out[0].iov_base = (void *)send_buff;
-	iov_out[0].iov_len = sizeof(send_buff);
-
-	if (writev(knet_h1->sockfd[channel].sockfd[1], iov_out, 1) != sizeof(send_buff)) {
-		printf("Unable to write data: %s\n", strerror(errno));
-		CLEAN_EXIT(FAIL);
+	if (knet_send(knet_h1, send_buff, sizeof(send_buff), channel) != sizeof(send_buff)) {
+		log_test(logfd, "Unable to write data: %s", strerror(errno));
+		TEST_EXIT_CLEAN(FAIL);
 	}
+
+	FAIL_ON_ERR(wait_for_packet(knet_h1, TEST_TIMEOUT_SHORT, datafd, logfd));
 
 	recv_len = knet_recv(knet_h1, recv_buff, KNET_MAX_PACKET_SIZE, channel);
 	if (recv_len <= 0) {
-		printf("knet_recv failed: %s\n", strerror(errno));
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_recv failed: %s", strerror(errno));
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (recv_len != sizeof(send_buff)) {
-		printf("knet_recv received only %zd bytes: %s\n", recv_len, strerror(errno));
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_recv received only %zd bytes: %s", recv_len, strerror(errno));
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
 	if (memcmp(recv_buff, send_buff, KNET_MAX_PACKET_SIZE)) {
-		printf("knet_recv received bad data\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_recv received bad data");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet recv\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

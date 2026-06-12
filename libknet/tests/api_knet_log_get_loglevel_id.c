@@ -18,30 +18,39 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_loglevel_id"
+
 static void test(void)
 {
+	int logfd;
 	uint8_t res;
 
-	printf("Testing knet_log_get_loglevel_id normal lookup\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Testing knet_log_get_loglevel_id normal lookup");
 	res = knet_log_get_loglevel_id("debug");
 	if (res != KNET_LOG_DEBUG) {
-		printf("knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d\n",
+		log_test(logfd, "knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d",
 		       res, KNET_LOG_DEBUG);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Testing knet_log_get_loglevel_id bad lookup\n");
+	log_test(logfd, "Testing knet_log_get_loglevel_id bad lookup");
 	res = knet_log_get_loglevel_id("whatever");
 	if (res != KNET_LOG_ERR) {
-		printf("knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d\n",
+		log_test(logfd, "knet_log_get_loglevel_id failed to get correct log level id. got: %u expected: %d",
 		       res, KNET_LOG_ERR);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get loglevel id\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }
