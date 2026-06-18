@@ -1,0 +1,293 @@
+.TH KNETCTL 1 "2026-06-25" "knetd" "User Commands"
+.SH NAME
+knetctl \- control utility for knetd VPN daemon
+.SH SYNOPSIS
+.B knetctl
+[\fB\-\-socket\fR \fIPATH\fR]
+\fICOMMAND\fR [\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B knetctl
+is a command-line utility for controlling the
+.BR knetd (8)
+daemon via JSON-RPC over Unix domain sockets. It provides commands for
+managing VPN instances, hosts, links, encryption, compression, and events.
+
+.SH GLOBAL OPTIONS
+.TP
+.BR \-s ", " \-\-socket " " \fIPATH\fR
+Path to knetd Unix domain socket (default: /run/knetd/knetd.sock)
+
+.TP
+.BR \-h ", " \-\-help
+Print help information
+
+.TP
+.BR \-V ", " \-\-version
+Print version information
+
+.SH COMMANDS
+.SS Instance Management
+.TP
+.B instance create \-n \fINAME\fR \-H \fIHOST_ID\fR
+Create a new VPN instance
+.RS
+.TP
+\fB\-n\fR, \fB\-\-name\fR \fINAME\fR
+Instance name (required)
+.TP
+\fB\-H\fR, \fB\-\-host\-id\fR \fIID\fR
+Local host ID 1-65535 (required)
+.RE
+
+.TP
+.B instance destroy \-n \fINAME\fR
+Destroy a VPN instance
+
+.TP
+.B instance list
+List all VPN instances
+
+.TP
+.B instance start \-n \fINAME\fR
+Enable data forwarding for an instance
+
+.TP
+.B instance stop \-n \fINAME\fR
+Disable data forwarding for an instance
+
+.SS Host Management
+.TP
+.B host add \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR [\-n \fINAME\fR]
+Add a remote host to an instance
+.RS
+.TP
+\fB\-i\fR, \fB\-\-instance\fR \fINAME\fR
+Instance name (required)
+.TP
+\fB\-H\fR, \fB\-\-host\-id\fR \fIID\fR
+Remote host ID (required)
+.TP
+\fB\-n\fR, \fB\-\-name\fR \fINAME\fR
+Human-readable host name (optional)
+.RE
+
+.TP
+.B host remove \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR
+Remove a remote host
+
+.TP
+.B host list \-i \fIINSTANCE\fR
+List all hosts in an instance
+
+.TP
+.B host status \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR
+Show host status
+
+.SS Link Configuration
+.TP
+.B link config \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR \-l \fILINK_ID\fR \-t \fITRANSPORT\fR \-s \fISRC\fR [\-d \fIDST\fR]
+Configure a link to a remote host
+.RS
+.TP
+\fB\-i\fR, \fB\-\-instance\fR \fINAME\fR
+Instance name (required)
+.TP
+\fB\-H\fR, \fB\-\-host\-id\fR \fIID\fR
+Remote host ID (required)
+.TP
+\fB\-l\fR, \fB\-\-link\-id\fR \fIID\fR
+Link ID 0-7 (required)
+.TP
+\fB\-t\fR, \fB\-\-transport\fR \fITYPE\fR
+Transport type: udp, sctp, loopback (required)
+.TP
+\fB\-s\fR, \fB\-\-src\-addr\fR \fIADDR\fR
+Source address (IP:PORT) (required)
+.TP
+\fB\-d\fR, \fB\-\-dst\-addr\fR \fIADDR\fR
+Destination address (IP:PORT) (optional for loopback)
+.RE
+
+.TP
+.B link enable \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR \-l \fILINK_ID\fR
+Enable a link
+
+.TP
+.B link disable \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR \-l \fILINK_ID\fR
+Disable a link
+
+.TP
+.B link status \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR \-l \fILINK_ID\fR
+Show link status
+
+.TP
+.B link stats \-i \fIINSTANCE\fR \-H \fIHOST_ID\fR \-l \fILINK_ID\fR
+Show link statistics
+
+.SS Cryptography
+.TP
+.B crypto set-config \-i \fIINSTANCE\fR \-m \fIMODEL\fR \-c \fICIPHER\fR \-H \fIHASH\fR \-k \fIKEYFILE\fR [\-n \fICONFIG\fR]
+Configure encryption
+.RS
+.TP
+\fB\-m\fR, \fB\-\-model\fR \fINAME\fR
+Crypto model: openssl, nss, gcrypt
+.TP
+\fB\-c\fR, \fB\-\-cipher\fR \fINAME\fR
+Cipher: aes128, aes192, aes256, 3des
+.TP
+\fB\-H\fR, \fB\-\-hash\fR \fINAME\fR
+Hash: sha1, sha256, sha384, sha512
+.TP
+\fB\-k\fR, \fB\-\-key\-file\fR \fIPATH\fR
+Path to key file
+.TP
+\fB\-n\fR, \fB\-\-config\-num\fR \fINUM\fR
+Config slot 0 or 1 (default: 0, for key rotation)
+.RE
+
+.TP
+.B crypto use-config \-i \fIINSTANCE\fR \-n \fICONFIG\fR
+Activate a crypto configuration
+
+.SS Compression
+.TP
+.B compress set-config \-i \fIINSTANCE\fR \-m \fIMODEL\fR [\-t \fITHRESHOLD\fR] [\-l \fILEVEL\fR]
+Configure compression
+.RS
+.TP
+\fB\-m\fR, \fB\-\-model\fR \fINAME\fR
+Model: zlib, lz4, lzo2, lzma, bzip2, zstd, none
+.TP
+\fB\-t\fR, \fB\-\-threshold\fR \fIBYTES\fR
+Compress packets larger than this (default: 100)
+.TP
+\fB\-l\fR, \fB\-\-level\fR \fILEVEL\fR
+Compression level (model-specific)
+.RE
+
+.SS Event Monitoring
+.TP
+.B events watch \-i \fIINSTANCE\fR [\-p \fIINTERVAL\fR]
+Watch real-time events for an instance
+.RS
+.TP
+\fB\-i\fR, \fB\-\-instance\fR \fINAME\fR
+Instance name (required)
+.TP
+\fB\-p\fR, \fB\-\-poll\-interval\fR \fIMS\fR
+Poll interval in milliseconds (default: 500)
+.RE
+
+.SS Topology Visualization
+.TP
+.B topology show \-i \fIINSTANCE\fR [\-C]
+Display topology as ASCII art
+.RS
+.TP
+\fB\-i\fR, \fB\-\-instance\fR \fINAME\fR
+Instance name (required)
+.TP
+\fB\-C\fR, \fB\-\-no\-color\fR
+Disable color output
+.RE
+
+.TP
+.B topology export \-i \fIINSTANCE\fR \-f \fIFORMAT\fR \-o \fIFILE\fR
+Export topology to file
+.RS
+.TP
+\fB\-f\fR, \fB\-\-format\fR \fIFMT\fR
+Format: dot, svg
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fIPATH\fR
+Output file path
+.RE
+
+.SS Utility
+.TP
+.B ping
+Test daemon connectivity
+
+.SH EXAMPLES
+.SS Basic Setup
+.EX
+# Create instance
+knetctl instance create -n vpn1 -H 1
+
+# Add remote hosts
+knetctl host add -i vpn1 -H 2 -n node2
+knetctl host add -i vpn1 -H 3 -n node3
+
+# Configure links
+knetctl link config -i vpn1 -H 2 -l 0 \\
+    -t udp -s 10.0.0.1:5000 -d 10.0.0.2:5000
+knetctl link enable -i vpn1 -H 2 -l 0
+
+# Enable forwarding
+knetctl instance start -i vpn1
+.EE
+
+.SS Encryption
+.EX
+# Generate key
+dd if=/dev/urandom of=/tmp/vpn.key bs=1024 count=1
+
+# Configure crypto
+knetctl crypto set-config -i vpn1 \\
+    -m openssl -c aes256 -H sha256 -k /tmp/vpn.key
+
+# Activate
+knetctl crypto use-config -i vpn1 -n 0
+.EE
+
+.SS Monitoring
+.EX
+# Watch events
+knetctl events watch -i vpn1
+
+# Show topology
+knetctl topology show -i vpn1
+
+# Export to GraphViz
+knetctl topology export -i vpn1 -f dot -o net.dot
+dot -Tpng net.dot -o network.png
+.EE
+
+.SH FILES
+.TP
+.I /run/knetd/knetd.sock
+Default daemon socket
+
+.TP
+.I /run/knetd/knetd.sock
+System daemon socket
+
+.SH ENVIRONMENT
+.TP
+.B KNETCTL_SOCKET
+Path to knetd socket (overrides default)
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+
+.TP
+.B 1
+Command failed or daemon not responding
+
+.SH SEE ALSO
+.BR knetd (8),
+.BR knetd.conf (5)
+
+.SH AUTHORS
+Written as part of the Kronosnet project.
+
+.SH COPYRIGHT
+Copyright \(co 2024-2026 Kronosnet contributors.
+.br
+License: LGPL-2.1+
+
+.SH BUGS
+Report bugs to: https://github.com/kronosnet/kronosnet/issues

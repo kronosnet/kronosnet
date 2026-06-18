@@ -1,0 +1,281 @@
+# knetd Multi-Instance Example Configuration
+#
+# This file demonstrates running multiple VPN instances in a single knetd daemon.
+# Each instance creates an independent kronosnet handle with its own network and
+# nozzle device.
+
+# Global daemon settings
+socket_path = "/tmp/knetd.sock"  # Use /run/knetd/knetd.sock for production
+log_level = "info"                # trace, debug, info, warn, error
+colored_logs = false              # Enable colored log output
+# state_file = "/var/lib/knetd/state.json"  # Optional: persist state across restarts
+
+# ============================================================================
+# Instance 1: Production Cluster (Full-Mesh Mode)
+# ============================================================================
+# A 3-node production cluster using full-mesh mode where all nodes
+# automatically establish links to each other. Deploy this same config
+# to all 3 nodes and set KNETD_NODE_ID to identify each one.
+
+[[instances]]
+name = "prod-cluster"
+auto_start = true
+full_mesh = true  # Automatically create bidirectional links between all nodes
+
+# Cryptographic configuration (optional)
+# Available models: "openssl", "nss", "gcrypt", or "none" to disable
+# Available ciphers: "aes256", "aes128", "aes192", or "none"
+# Available hashes: "sha256", "sha512", "sha1", or "none"
+# key_file must contain at least 1024 bytes of key material
+# config_num is 0 or 1 (knet supports 2 concurrent configs for key rotation)
+#
+# Generate a key file with: dd if=/dev/urandom of=/etc/knetd/keys/prod-cluster.key bs=1024 count=1
+#
+[instances.crypto]
+model = "openssl"
+cipher = "aes256"
+hash = "sha256"
+key_file = "/etc/knetd/keys/prod-cluster.key"
+config_num = 1
+
+# Compression configuration (optional)
+# Available models: "zlib", "lz4", "lz4hc", "lzo2", "lzma", "bzip2", "zstd", or "none"
+# threshold: packets smaller than this (bytes) won't be compressed (default 100)
+# level: compression level, meaning varies by model (typically 1-9, higher = better compression)
+#
+[instances.compression]
+model = "lz4"      # Fast compression for low-latency networks
+threshold = 100    # Skip compressing small packets
+level = 1          # Low compression for speed (lz4 ignores this)
+
+# Nozzle (tap) device for this instance
+[instances.nozzle]
+name = "knet0"
+ip_addresses = ["10.0.1.1/24", "fd00::1/64"]  # IPv4 and IPv6
+mtu = 1400
+mac = "52:54:00:12:34:01"
+auto_up = true
+# updown_path = "/etc/knetd/updown.d/prod-cluster"  # Optional: up/down scripts
+
+# Node 1 (database server)
+[[instances.nodes]]
+host_id = 1
+name = "db-primary"
+link_addresses = [
+    "192.168.1.10:50001",  # Primary link
+    "10.20.0.10:50001",    # Backup link on different network
+]
+
+# Node 2 (database replica)
+[[instances.nodes]]
+host_id = 2
+name = "db-replica"
+link_addresses = [
+    "192.168.1.20:50001",
+    "10.20.0.20:50001",
+]
+
+# Node 3 (application server)
+[[instances.nodes]]
+host_id = 3
+name = "app-server"
+link_addresses = [
+    "192.168.1.30:50001",
+    "10.20.0.30:50001",
+]
+
+# ============================================================================
+# Instance 2: Test Network (Manual Link Configuration)
+# ============================================================================
+# A hub-and-spoke topology where node 1 is the hub and nodes 2-4 are spokes.
+# Links are configured manually for fine-grained control.
+
+[[instances]]
+name = "test-network"
+auto_start = true
+full_mesh = false  # Manual link configuration
+
+# Example: compression enabled for bandwidth-constrained test network
+# Use zstd for better compression ratio at the cost of some CPU
+[instances.compression]
+model = "zstd"
+threshold = 200
+level = 3
+
+# Nozzle device for test network
+[instances.nozzle]
+name = "knet1"
+ip_addresses = ["172.16.0.1/24"]
+mtu = 1500
+auto_up = true
+
+# Hub node
+[[instances.nodes]]
+host_id = 1
+name = "hub"
+link_addresses = ["192.168.100.1:60001"]
+
+# Spoke 1
+[[instances.nodes]]
+host_id = 2
+name = "spoke1"
+link_addresses = ["192.168.100.11:60001"]
+
+# Spoke 2
+[[instances.nodes]]
+host_id = 3
+name = "spoke2"
+link_addresses = ["192.168.100.12:60001"]
+
+# Spoke 3
+[[instances.nodes]]
+host_id = 4
+name = "spoke3"
+link_addresses = ["192.168.100.13:60001"]
+
+# Manual link configuration (hub-and-spoke topology)
+# Note: Each daemon only configures links where it is the source
+
+# Hub -> Spoke 1 (bidirectional)
+[[instances.links]]
+from_host = 1
+to_host = 2
+link_id = 0
+transport = "udp"
+src_addr = "192.168.100.1:60001"
+dst_addr = "192.168.100.11:60001"
+auto_enable = true
+
+[[instances.links]]
+from_host = 2
+to_host = 1
+link_id = 0
+transport = "udp"
+src_addr = "192.168.100.11:60001"
+dst_addr = "192.168.100.1:60001"
+auto_enable = true
+
+# Hub -> Spoke 2 (bidirectional)
+[[instances.links]]
+from_host = 1
+to_host = 3
+link_id = 0
+transport = "udp"
+src_addr = "192.168.100.1:60001"
+dst_addr = "192.168.100.12:60001"
+auto_enable = true
+
+[[instances.links]]
+from_host = 3
+to_host = 1
+link_id = 0
+transport = "udp"
+src_addr = "192.168.100.12:60001"
+dst_addr = "192.168.100.1:60001"
+auto_enable = true
+
+# Hub -> Spoke 3 (bidirectional)
+[[instances.links]]
+from_host = 1
+to_host = 4
+link_id = 0
+transport = "udp"
+src_addr = "192.168.100.1:60001"
+dst_addr = "192.168.100.13:60001"
+auto_enable = true
+
+[[instances.links]]
+from_host = 4
+to_host = 1
+link_id = 0
+transport = "udp"
+src_addr = "192.168.100.13:60001"
+dst_addr = "192.168.100.1:60001"
+auto_enable = true
+
+# ============================================================================
+# Crypto and Compression Configuration
+# ============================================================================
+#
+# Crypto Models (choose based on what's available on your system):
+# - "openssl" - OpenSSL/LibreSSL (most common)
+# - "nss"     - Mozilla Network Security Services
+# - "gcrypt"  - GNU libgcrypt
+# - "none"    - Disable encryption
+#
+# Ciphers (availability depends on crypto model):
+# - "aes256"  - AES 256-bit (recommended for production)
+# - "aes192"  - AES 192-bit
+# - "aes128"  - AES 128-bit (faster, still secure)
+# - "none"    - No encryption
+#
+# Hash Algorithms:
+# - "sha256"  - SHA-256 (recommended)
+# - "sha512"  - SHA-512 (more secure, slower)
+# - "sha1"    - SHA-1 (legacy, not recommended)
+# - "none"    - No hashing
+#
+# Crypto Key Management:
+# - Keys must be at least 1024 bytes
+# - knet supports 2 concurrent crypto configs (config_num 0 and 1)
+# - This allows runtime key rotation without downtime
+# - All nodes in a mesh must use the same crypto configuration
+#
+# Compression Models:
+# - "lz4"     - Very fast, low compression ratio (best for low-latency)
+# - "lz4hc"   - LZ4 high-compression mode (slower than lz4, better ratio)
+# - "zlib"    - Good balance of speed and compression
+# - "zstd"    - Modern, excellent compression/speed ratio (recommended)
+# - "lzo2"    - Fast compression, moderate ratio
+# - "lzma"    - High compression ratio, slower
+# - "bzip2"   - High compression ratio, slowest
+# - "none"    - Disable compression
+#
+# Compression Tuning:
+# - threshold: Skip compressing packets smaller than this (bytes)
+#   * Set to 0 for default (100 bytes)
+#   * Higher values save CPU on small packets
+#   * Lower values maximize bandwidth savings
+# - level: Compression effort (meaning varies by model)
+#   * lz4/lz4hc: mostly ignored, uses defaults
+#   * zlib: 1 (fast) to 9 (best compression)
+#   * zstd: 1 (fast) to 22 (best compression), recommend 1-3
+#   * bzip2/lzma: 1 to 9
+#
+# Performance Impact:
+# - Crypto adds ~5-15% CPU overhead depending on cipher
+# - Compression impact varies: lz4 (~2-5%), zstd (~5-10%), bzip2 (~20-40%)
+# - Test with your workload to find the right balance
+
+# ============================================================================
+# Usage Examples
+# ============================================================================
+#
+# 1. Deploy to production cluster node 1 (db-primary):
+#    export KNETD_NODE_ID=1
+#    knetd --config /etc/knetd/knetd.toml
+#
+# 2. Deploy to production cluster node 2 (db-replica):
+#    export KNETD_NODE_ID=2
+#    knetd --config /etc/knetd/knetd.toml
+#
+# 3. Test locally (single node running both instances):
+#    KNETD_NODE_ID=1 knetd --config knetd-multi-instance.toml
+#
+# 4. Generate crypto keys (do this before starting the daemon):
+#    mkdir -p /etc/knetd/keys
+#    dd if=/dev/urandom of=/etc/knetd/keys/prod-cluster.key bs=1024 count=1
+#    chmod 600 /etc/knetd/keys/prod-cluster.key
+#
+# 5. Configure crypto/compression at runtime (alternative to TOML config):
+#    knetctl --instance prod-cluster set-crypto \
+#      --model openssl --cipher aes256 --hash sha256 \
+#      --key-file /etc/knetd/keys/prod-cluster.key
+#    knetctl --instance prod-cluster set-compression \
+#      --model lz4 --threshold 100 --level 1
+#
+# Note: When running multiple instances, each gets its own:
+# - kronosnet handle with independent configuration
+# - nozzle device (knet0, knet1, etc.)
+# - datafd for receiving packets
+# - set of links and encryption/compression settings

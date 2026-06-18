@@ -1,0 +1,116 @@
+# Example configuration file for knetd daemon
+
+socket_path = "/run/knetd/knetd.sock"
+log_level = "info"
+colored_logs = false
+# state_file = "/var/lib/knetd/state.json"
+
+# Disable privileged mode even when running as root (default: false)
+# When false (default), running as root enables PRIVILEGED mode on knet handles
+# Set to true to disable privileged mode regardless of UID
+# disable_privileged = false
+
+# Example: Node-agnostic VPN instance configuration
+# This same config file can be deployed to all nodes in the cluster.
+# Each node identifies itself via --node-id command-line argument or KNETD_NODE_ID environment variable.
+#
+# Usage on each node:
+#   Node 1: knetd --node-id 1  (or KNETD_NODE_ID=1 knetd)
+#   Node 2: knetd --node-id 2  (or KNETD_NODE_ID=2 knetd)
+#   Node 3: knetd --node-id 3  (or KNETD_NODE_ID=3 knetd)
+
+[[instances]]
+name = "cluster"
+auto_start = true
+
+# Nozzle (tap device) configuration - REQUIRES ROOT
+# Uncomment to create a tap device for sending/receiving traffic
+# [instances.nozzle]
+# name = "knet0"
+# ip_addresses = ["192.168.100.1/24"]
+# mtu = 1400
+# auto_up = true
+
+# Define all nodes in the cluster
+# Each daemon will identify which one is "me" and add the others as remote hosts
+[[instances.nodes]]
+host_id = 1
+name = "node1"
+
+[[instances.nodes]]
+host_id = 2
+name = "node2"
+
+[[instances.nodes]]
+host_id = 3
+name = "node3"
+
+# Define all links in the cluster (bidirectional connectivity requires two links)
+# Each daemon will only configure links where it is the source (from_host matches its node_id)
+
+# Links from node1 to others
+[[instances.links]]
+from_host = 1
+to_host = 2
+link_id = 0
+transport = "udp"
+src_addr = "10.0.1.1:5000"
+dst_addr = "10.0.1.2:5000"
+auto_enable = true
+
+[[instances.links]]
+from_host = 1
+to_host = 3
+link_id = 0
+transport = "udp"
+src_addr = "10.0.1.1:5001"
+dst_addr = "10.0.1.3:5000"
+auto_enable = true
+
+# Links from node2 to others
+[[instances.links]]
+from_host = 2
+to_host = 1
+link_id = 0
+transport = "udp"
+src_addr = "10.0.1.2:5000"
+dst_addr = "10.0.1.1:5000"
+auto_enable = true
+
+[[instances.links]]
+from_host = 2
+to_host = 3
+link_id = 0
+transport = "udp"
+src_addr = "10.0.1.2:5001"
+dst_addr = "10.0.1.3:5001"
+auto_enable = true
+
+# Links from node3 to others
+[[instances.links]]
+from_host = 3
+to_host = 1
+link_id = 0
+transport = "udp"
+src_addr = "10.0.1.3:5000"
+dst_addr = "10.0.1.1:5001"
+auto_enable = true
+
+[[instances.links]]
+from_host = 3
+to_host = 2
+link_id = 0
+transport = "udp"
+src_addr = "10.0.1.3:5001"
+dst_addr = "10.0.1.2:5001"
+auto_enable = true
+
+# Example: Multi-link configuration (up to 8 links per host pair)
+# [[instances.links]]
+# from_host = 1
+# to_host = 2
+# link_id = 1
+# transport = "udp"
+# src_addr = "192.168.1.1:5000"
+# dst_addr = "192.168.1.2:5000"
+# auto_enable = true

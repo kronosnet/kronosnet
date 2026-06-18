@@ -1,0 +1,210 @@
+.TH KNETD 8 "2026-06-25" "knetd" "System Manager's Manual"
+.SH NAME
+knetd \- Kronosnet VPN daemon
+.SH SYNOPSIS
+.B knetd
+[\fB\-\-config\fR \fIFILE\fR]
+[\fB\-\-node\-id\fR \fIID\fR]
+[\fB\-\-help\fR]
+[\fB\-\-version\fR]
+.SH DESCRIPTION
+.B knetd
+is a daemon that manages libknet VPN instances for high-availability clustering
+and multi-link fault-tolerant networking. It provides JSON-RPC control over
+Unix domain sockets and supports automatic configuration from TOML files.
+
+The daemon can manage multiple VPN instances simultaneously, each with multiple
+remote hosts and redundant network links. It integrates with libnozzle for
+tap device management and supports encryption (via OpenSSL/NSS/gcrypt) and
+compression (via zlib/lz4/zstd/etc).
+
+.SH OPTIONS
+.TP
+.BR \-c ", " \-\-config " " \fIFILE\fR
+Path to configuration file (TOML format). Default search order:
+.RS
+.IP 1. 4
+Path from \fB\-\-config\fR
+.IP 2.
+Path from \fBKNETD_CONFIG\fR environment variable
+.IP 3.
+/etc/knetd/knetd.conf
+.IP 4.
+./knetd.toml
+.RE
+
+.TP
+.BR \-n ", " \-\-node\-id " " \fIID\fR
+Local node ID (1-65535) for node-agnostic configuration. Can also be set via
+\fBKNETD_NODE_ID\fR environment variable. Required when configuration defines
+multiple nodes.
+
+.TP
+.BR \-h ", " \-\-help
+Print help information and exit.
+
+.TP
+.BR \-V ", " \-\-version
+Print version information and exit.
+
+.SH CONFIGURATION
+The daemon uses TOML configuration files. See
+.BR knetd.conf (5)
+for complete documentation.
+
+.SS Minimal Configuration
+.EX
+socket_path = "/run/knetd/knetd.sock"
+log_level = "info"
+
+[[instances]]
+name = "cluster-net"
+auto_start = true
+.EE
+
+.SS Node-Agnostic Configuration
+The same configuration file can be deployed to all nodes in a cluster.
+Each node identifies itself via \fB\-\-node\-id\fR:
+
+.EX
+[[instances]]
+name = "ha-cluster"
+full_mesh = true
+
+[[instances.nodes]]
+host_id = 1
+name = "node1"
+link_addresses = ["192.168.1.1:5405"]
+
+[[instances.nodes]]
+host_id = 2
+name = "node2"
+link_addresses = ["192.168.1.2:5405"]
+.EE
+
+Start on each node:
+.EX
+# Node 1
+knetd --node-id 1
+
+# Node 2
+knetd --node-id 2
+.EE
+
+.SH SIGNALS
+.TP
+.B SIGINT, SIGTERM
+Graceful shutdown. Saves state (if configured) and cleans up all VPN instances.
+
+.TP
+.B SIGHUP
+Reload configuration (not yet implemented).
+
+.SH FILES
+.TP
+.I /etc/knetd/knetd.conf
+Default configuration file
+
+.TP
+.I /run/knetd/knetd.sock
+Default Unix domain socket for RPC
+
+.TP
+.I /var/lib/knetd/state.json
+Persistent state (if state_file configured)
+
+.TP
+.I /var/log/knetd/
+Log directory (if file logging enabled)
+
+.SH ENVIRONMENT
+.TP
+.B KNETD_CONFIG
+Path to configuration file (overrides default search)
+
+.TP
+.B KNETD_NODE_ID
+Local node ID for node-agnostic configuration
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+
+.TP
+.B 1
+Configuration error or runtime failure
+
+.SH EXAMPLES
+.SS Single Node
+.EX
+# Start with default config
+knetd
+
+# Start with custom config
+knetd --config /etc/cluster/vpn.toml
+.EE
+
+.SS Multi-Node Cluster
+.EX
+# Deploy same config to all nodes, start each with unique ID
+# On node 1:
+knetd --node-id 1 --config /etc/knetd/cluster.conf
+
+# On node 2:
+knetd --node-id 2 --config /etc/knetd/cluster.conf
+
+# On node 3:
+knetd --node-id 3 --config /etc/knetd/cluster.conf
+.EE
+
+.SS With Systemd
+.EX
+# Standard service
+systemctl start knetd
+
+# Per-node instance
+echo "NODE_ID=1" > /etc/knetd/cluster.env
+systemctl start knetd@cluster
+.EE
+
+.SH SECURITY
+The daemon requires elevated privileges for certain operations:
+.IP \(bu 2
+Creating nozzle (tap) devices requires \fBCAP_NET_ADMIN\fR or root
+.IP \(bu
+Binding to privileged ports requires \fBCAP_NET_BIND_SERVICE\fR
+.IP \(bu
+Setting socket buffer sizes may require \fBCAP_SYS_ADMIN\fR
+
+When run via systemd, the service is hardened with:
+.IP \(bu 2
+Minimal capabilities (NET_ADMIN, NET_RAW, SYS_ADMIN)
+.IP \(bu
+Read-only root filesystem
+.IP \(bu
+Restricted namespaces and address families
+.IP \(bu
+Private /tmp
+
+.SH SEE ALSO
+.BR knetctl (1),
+.BR knetd.conf (5),
+.BR systemd.service (5)
+
+.PP
+Full documentation: /usr/share/doc/knetd/
+
+.PP
+Project homepage: https://github.com/kronosnet/kronosnet
+
+.SH AUTHORS
+Written as part of the Kronosnet project.
+
+.SH COPYRIGHT
+Copyright \(co 2024-2026 Kronosnet contributors.
+.br
+License: LGPL-2.1+
+
+.SH BUGS
+Report bugs to: https://github.com/kronosnet/kronosnet/issues

@@ -1,0 +1,12 @@
+[workspace]
+members = ["knetd", "knetctl", "knetd-common"]
+resolver = "2"
+
+[workspace.dependencies]
+knet-bindings = { path = "../libknet/bindings/rust" }
+nozzle-bindings = { path = "../libnozzle/bindings/rust" }
+tokio = { version = "1.40", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"

@@ -1,0 +1,337 @@
+.TH KNETD.CONF 5 "2026-06-25" "knetd" "File Formats"
+.SH NAME
+knetd.conf \- configuration file for knetd daemon
+.SH SYNOPSIS
+.I /etc/knetd/knetd.conf
+.SH DESCRIPTION
+The
+.B knetd.conf
+file configures the knetd VPN daemon using TOML format. It defines daemon
+behavior, VPN instances, network topology, and security settings.
+
+.SH FILE FORMAT
+The configuration uses TOML (Tom's Obvious Minimal Language) syntax. See
+.I https://toml.io
+for format details.
+
+.SH GLOBAL SETTINGS
+.TP
+.B socket_path
+Path to Unix domain socket for RPC (default: /run/knetd/knetd.sock)
+
+.TP
+.B log_level
+Logging verbosity: trace, debug, info, warn, error (default: info)
+
+.TP
+.B colored_logs
+Enable colored log output: true/false (default: false)
+
+.TP
+.B disable_privileged
+Disable privileged mode even when running as root (default: false)
+
+.TP
+.B state_file
+Path to persistent state file for crash recovery (optional)
+
+.SH INSTANCE CONFIGURATION
+Instances are defined in
+.B [[instances]]
+array tables. Each instance represents an independent VPN network.
+
+.SS Instance Fields
+.TP
+.B name
+Unique instance name (required, string)
+
+.TP
+.B auto_start
+Automatically start instance on daemon startup (default: false)
+
+.TP
+.B full_mesh
+Enable automatic full-mesh link creation between all nodes (default: false)
+
+.SS Nodes
+Nodes are defined in
+.B [[instances.nodes]]
+array tables.
+
+.TP
+.B host_id
+Node's unique ID 1-65535 (required, integer)
+
+.TP
+.B name
+Human-readable node name (required, string)
+
+.TP
+.B link_addresses
+Array of addresses for full-mesh mode (e.g., ["10.0.0.1:5405", "10.1.0.1:5405"])
+
+.SS Links (Manual Mode)
+Links are defined in
+.B [[instances.links]]
+array tables when
+.B full_mesh
+is false.
+
+.TP
+.B link_id
+Link ID 0-7 (required, integer)
+
+.TP
+.B from_host
+Source host ID (required, integer)
+
+.TP
+.B to_host
+Destination host ID (required, integer)
+
+.TP
+.B transport
+Transport type: udp, sctp, loopback (required, string)
+
+.TP
+.B src_addr
+Source address IP:PORT (required, string)
+
+.TP
+.B dst_addr
+Destination address IP:PORT (optional for loopback, string)
+
+.TP
+.B auto_enable
+Automatically enable link on startup (default: false)
+
+.SS Nozzle (Tap Device)
+Nozzle configuration in
+.B [instances.nozzle]
+table.
+
+.TP
+.B name
+Tap device name (optional, generated if omitted)
+
+.TP
+.B ip_addresses
+Array of IP addresses in CIDR notation (required, e.g., ["192.168.100.0/24"])
+.RS
+.PP
+\fBIMPORTANT\fR: IP addresses are treated as \fIbase addresses\fR. The daemon
+automatically embeds the node ID into the host bits to ensure uniqueness across
+all nodes. For example, with base IP 192.168.100.0/24:
+.IP \(bu 2
+Node 1 gets 192.168.100.1/24
+.IP \(bu
+Node 2 gets 192.168.100.2/24
+.IP \(bu
+Node 3 gets 192.168.100.3/24
+.PP
+This allows the same config to be deployed to all nodes.
+.RE
+
+.TP
+.B mac
+Base MAC address (optional, e.g., "fe:54:00:00")
+.RS
+.PP
+\fBIMPORTANT\fR: The MAC address is treated as a \fIbase address\fR. The daemon
+automatically replaces the last 2 bytes with the node ID. For example:
+.IP \(bu 2
+Base MAC: fe:54:00:00
+.IP \(bu
+Node 1: fe:54:00:00:00:01
+.IP \(bu
+Node 2: fe:54:00:00:00:02
+.RE
+
+.TP
+.B mtu
+Maximum transmission unit in bytes (optional, integer)
+
+.TP
+.B updown_path
+Directory containing up/down scripts (optional, string)
+
+.TP
+.B auto_up
+Bring device up immediately (default: false)
+
+.SH EXAMPLES
+.SS Minimal Configuration
+.EX
+socket_path = "/run/knetd/knetd.sock"
+log_level = "info"
+
+[[instances]]
+name = "vpn1"
+.EE
+
+.SS Full-Mesh Cluster (Corosync-Style)
+.EX
+socket_path = "/run/knetd/knetd.sock"
+log_level = "info"
+state_file = "/var/lib/knetd/state.json"
+
+[[instances]]
+name = "ha-cluster"
+auto_start = true
+full_mesh = true
+
+[[instances.nodes]]
+host_id = 1
+name = "node1"
+link_addresses = ["192.168.1.1:5405", "10.0.0.1:5405"]
+
+[[instances.nodes]]
+host_id = 2
+name = "node2"
+link_addresses = ["192.168.1.2:5405", "10.0.0.2:5405"]
+
+[[instances.nodes]]
+host_id = 3
+name = "node3"
+link_addresses = ["192.168.1.3:5405", "10.0.0.3:5405"]
+
+[instances.nozzle]
+name = "knet0"
+ip_addresses = ["192.168.100.0/24"]
+mac = "fe:54:00:00"
+mtu = 1400
+auto_up = true
+.EE
+
+Deploy to all nodes:
+.EX
+# Node 1
+knetd --node-id 1 --config /etc/knetd/cluster.conf
+
+# Node 2
+knetd --node-id 2 --config /etc/knetd/cluster.conf
+
+# Node 3
+knetd --node-id 3 --config /etc/knetd/cluster.conf
+.EE
+
+Each node automatically gets unique MAC/IP:
+.IP \(bu 2
+Node 1: MAC fe:54:00:00:00:01, IP 192.168.100.1/24
+.IP \(bu
+Node 2: MAC fe:54:00:00:00:02, IP 192.168.100.2/24
+.IP \(bu
+Node 3: MAC fe:54:00:00:00:03, IP 192.168.100.3/24
+
+.SS Manual Link Configuration
+.EX
+[[instances]]
+name = "custom-net"
+auto_start = true
+
+[[instances.nodes]]
+host_id = 1
+name = "node1"
+
+[[instances.nodes]]
+host_id = 2
+name = "node2"
+
+# Link from node 1 to node 2
+[[instances.links]]
+link_id = 0
+from_host = 1
+to_host = 2
+transport = "udp"
+src_addr = "10.0.0.1:5000"
+dst_addr = "10.0.0.2:5000"
+auto_enable = true
+
+# Redundant link
+[[instances.links]]
+link_id = 1
+from_host = 1
+to_host = 2
+transport = "udp"
+src_addr = "10.1.0.1:5000"
+dst_addr = "10.1.0.2:5000"
+auto_enable = true
+.EE
+
+.SH NODE-AGNOSTIC CONFIGURATION
+The configuration file is designed to be \fInode-agnostic\fR \- the same file
+can be deployed to all nodes in a cluster. Each node identifies itself via:
+.IP 1. 4
+\fB\-\-node\-id\fR command-line argument
+.IP 2.
+\fBKNETD_NODE_ID\fR environment variable
+
+When the daemon starts, it:
+.IP \(bu 2
+Finds the node with matching host_id in the config
+.IP \(bu
+Creates instances with that node's host_id
+.IP \(bu
+Adds all other nodes as remote hosts
+.IP \(bu
+Only configures links where from_host matches the local node
+
+.SH NOZZLE UNIQUE ADDRESSING
+When using nozzle (tap) devices, MAC and IP addresses are automatically
+made unique per node:
+
+.SS MAC Address
+The configured MAC is a \fIbase address\fR. The last 2 bytes are replaced
+with the node ID:
+.IP \(bu 2
+Base: fe:54:00:00 (first 4 bytes)
+.IP \(bu
+Node 1: fe:54:00:00:00:01
+.IP \(bu
+Node 256: fe:54:00:00:01:00
+
+.SS IPv4 Address
+The configured IP is masked and combined with the node ID:
+.IP \(bu 2
+Base: 192.168.100.0/24
+.IP \(bu
+Prefix /24 leaves 8 bits for node ID
+.IP \(bu
+Node 1: 192.168.100.1
+.IP \(bu
+Node 254: 192.168.100.254
+
+.SS IPv6 Address
+The node ID is appended as hex after ::
+.IP \(bu 2
+Base: fd00::/64
+.IP \(bu
+Node 1: fd00::1
+.IP \(bu
+Node 256: fd00::100
+
+See
+.I /usr/share/doc/knetd/NOZZLE_UNIQUE_ADDRESSING.md
+for details.
+
+.SH FILES
+.TP
+.I /etc/knetd/knetd.conf
+Default configuration file
+
+.TP
+.I /var/lib/knetd/state.json
+Persistent state (if state_file configured)
+
+.SH SEE ALSO
+.BR knetd (8),
+.BR knetctl (1),
+.BR toml (5)
+
+.SH AUTHORS
+Written as part of the Kronosnet project.
+
+.SH COPYRIGHT
+Copyright \(co 2024-2026 Kronosnet contributors.
+.br
+License: LGPL-2.1+
