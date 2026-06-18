@@ -1,0 +1,19 @@
+[package]
+name = "knetctl"
+version = "0.1.0"
+edition = "2021"
+license = "LGPL-2.1+"
+
+[[bin]]
+name = "knetctl"
+path = "src/main.rs"
+
+[dependencies]
+knetd-common = { path = "../knetd-common" }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+clap = { version = "4.5", features = ["derive"] }
+jsonrpc-core-client = { version = "18.0", features = ["ipc"] }
+tabled = "0.16"
+colored = "2.1"

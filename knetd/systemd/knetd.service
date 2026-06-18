@@ -1,0 +1,46 @@
+[Unit]
+Description=Kronosnet VPN Daemon
+Documentation=man:knetd(8) man:knetd.conf(5)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/knetd --config /etc/knetd/knetd.conf
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+
+# Security hardening
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/knetd /run/knetd /var/log/knetd
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Resource limits
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+
+# State directory
+StateDirectory=knetd
+RuntimeDirectory=knetd
+LogsDirectory=knetd
+ConfigurationDirectory=knetd
+
+# Environment
+Environment="KNETD_CONFIG=/etc/knetd/knetd.conf"
+
+[Install]
+WantedBy=multi-user.target
