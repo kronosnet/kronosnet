@@ -259,6 +259,8 @@ AM_CONDITIONAL([BUILD_FOR_SOLARIS], [test "x$build_for_solaris" = "xyes"])
 # Checks for header files.
 AC_CHECK_HEADERS([sys/epoll.h])
 AC_CHECK_FUNCS([kevent])
+# Check for pthread_setname_np (glibc extension on Linux)
+AC_CHECK_FUNCS([pthread_setname_np])
 # if neither sys/epoll.h nor kevent are present, we should fail.
 
 if test "x$ac_cv_header_sys_epoll_h" = xno && test "x$ac_cv_func_kevent" = xno; then
