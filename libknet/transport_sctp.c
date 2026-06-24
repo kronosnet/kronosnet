@@ -1614,6 +1614,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(handle_info->listen_thread, "knet-sctp-lis");
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&handle_info->connect_thread, 0, _sctp_connect_thread, (void *) knet_h);
@@ -1623,6 +1624,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(handle_info->connect_thread, "knet-sctp-con");
 
 exit_fail:
 	if (err < 0) {

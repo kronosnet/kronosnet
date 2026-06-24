@@ -435,6 +435,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->pmtud_link_handler_thread, "knet-pmtud");
 
 	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->dst_link_handler_thread, &attr,
@@ -444,6 +445,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->dst_link_handler_thread, "knet-dstcache");
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->send_to_links_thread, &attr,
@@ -453,6 +455,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->send_to_links_thread, "knet-tx");
 
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->recv_from_links_thread, &attr,
@@ -462,6 +465,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->recv_from_links_thread, "knet-rx");
 
 	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->heartbt_thread, &attr,
@@ -471,7 +475,8 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
-
+	knet_thread_setname(knet_h->heartbt_thread, "knet-heartbt");
+	
 	savederrno = pthread_attr_destroy(&attr);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to destroy pthread attributes: %s",
