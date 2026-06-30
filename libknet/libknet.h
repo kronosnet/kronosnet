@@ -243,16 +243,31 @@ int knet_handle_enable_sock_notify(knet_handle_t knet_h,
  *            Applications using their own functions to write to the
  *            datafd should NOT write more than KNET_MAX_PACKET_SIZE.
  *
- *            Please refer to handle.c on how to set up a socketpair.
+ *            datafd can be 0, and knet_handle_add_datafd will create an internal
+ *            SOCK_DGRAM AF_UNIX socketpair for communication (valid for both
+ *            testing and production). SOCK_DGRAM provides atomic message boundaries,
+ *            ensuring each write becomes one distinct read on the other end.
+ *            A value higher than 0 provides a user-managed file descriptor.
+ *            A negative number will return an error.
+ *            On exit knet_handle_free will cleanup socketpairs created by
+ *            knet_handle_add_datafd, but will not close user-provided fds.
  *
- *            datafd can be 0, and knet_handle_add_datafd will create a properly
- *            populated socket pair the same way as ping_test, or a value
- *            higher than 0. A negative number will return an error.
- *            On exit knet_handle_free will take care to cleanup the
- *            socketpair only if they have been created by knet_handle_add_datafd.
+ *            SUPPORTED file descriptor types (user-provided):
+ *            - TAP devices (e.g., from libnozzle) - PRIMARY use case
+ *            - Regular sockets (must be bound or connected)
+ *            - Character devices (opened with O_RDWR)
+ *            - Any bidirectional file descriptor
  *
- *            It is possible to pass either sockets or normal fds.
- *            User provided datafd will be marked as non-blocking and close-on-exec.
+ *            UNSUPPORTED file descriptor types:
+ *            - User-created socketpairs - will NOT work (knet needs both ends
+ *              but API only accepts one fd). Use datafd=0 for knet-managed pairs.
+ *            - Pipes (all types) - each pipe fd only supports unidirectional
+ *              data flow, knet requires bidirectional I/O on the same fd
+ *            - Unconnected sockets
+ *
+ *            REQUIREMENT: The file descriptor MUST be bidirectional - knet needs
+ *            to both read and write using the SAME fd. User provided datafd will
+ *            be marked as non-blocking and close-on-exec.
  *
  * *channel - This value is analogous to the tag in VLAN tagging.
  *            A negative value will auto-allocate a channel.
@@ -1104,7 +1119,83 @@ struct knet_crypto_info {
 int knet_get_crypto_list(struct knet_crypto_info *crypto_list,
 			 size_t *crypto_list_entries);
 
+/**
+ * Structure returned from knet_get_crypto_cipher_list() containing
+ * information about supported cipher modes
+ */
+struct knet_crypto_cipher_info {
+	/** Cipher name (e.g., "aes-256-ctr", "aes256", "aes128-ctr") */
+	const char *name;
+	/** Cipher mode: "cbc" or "ctr" */
+	const char *mode;
+	/** Key size in bits (128, 192, or 256) */
+	int key_bits;
+	/** Currently unused padding */
+	char pad[256];
+};
 
+/**
+ * knet_get_crypto_cipher_list
+ *
+ * @brief Get a list of commonly supported cipher modes
+ *
+ * This function returns cipher modes that are supported across all
+ * crypto backends (OpenSSL, NSS, libgcrypt). The list represents the
+ * intersection of capabilities, not backend-specific features.
+ *
+ * cipher_list - array of struct knet_crypto_cipher_info
+ *               If NULL then only the number of structs is returned in cipher_list_entries
+ *               to allow the caller to allocate sufficient space.
+ *               It is safe to allocate 32 structs to avoid calling this function twice.
+ *
+ * cipher_list_entries - returns the number of ciphers in cipher_list
+ *
+ * @return
+ * knet_get_crypto_cipher_list returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_get_crypto_cipher_list(struct knet_crypto_cipher_info *cipher_list,
+				 size_t *cipher_list_entries);
+
+/**
+ * Structure returned from knet_get_crypto_hash_list() containing
+ * information about supported hash algorithms
+ */
+struct knet_crypto_hash_info {
+	/** Hash algorithm name (e.g., "sha256", "sha512") */
+	const char *name;
+	/** Hash output size in bits */
+	int hash_bits;
+	/** Currently unused padding */
+	char pad[256];
+};
+
+/**
+ * knet_get_crypto_hash_list
+ *
+ * @brief Get a list of commonly supported hash algorithms
+ *
+ * This function returns hash algorithms that are supported across all
+ * crypto backends (OpenSSL, NSS, libgcrypt). The list represents the
+ * intersection of capabilities, not backend-specific features.
+ *
+ * hash_list - array of struct knet_crypto_hash_info
+ *             If NULL then only the number of structs is returned in hash_list_entries
+ *             to allow the caller to allocate sufficient space.
+ *             It is safe to allocate 16 structs to avoid calling this function twice.
+ *
+ * hash_list_entries - returns the number of hash algorithms in hash_list
+ *
+ * @return
+ * knet_get_crypto_hash_list returns
+ * 0 on success
+ * -1 on error and errno is set.
+ */
+
+int knet_get_crypto_hash_list(struct knet_crypto_hash_info *hash_list,
+			       size_t *hash_list_entries);
 
 /**
  * Structure returned from get_compress_list() containing

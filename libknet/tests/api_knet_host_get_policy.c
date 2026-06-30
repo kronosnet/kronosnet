@@ -19,46 +19,46 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_get_policy"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	uint8_t policy;
 
-	printf("Test knet_host_get_policy incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_host_get_policy(NULL, 1, &policy)) || (errno != EINVAL)) {
-		printf("knet_host_get_policy accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_host_get_policy incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_host_get_policy(NULL, 1, &policy), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_host_get_policy incorrect host_id\n");
+
+	log_test(logfd, "Test knet_host_get_policy incorrect host_id");
 	FAIL_ON_SUCCESS(knet_host_get_policy(knet_h1, 1, &policy), EINVAL);
 
-	printf("Test knet_host_get_policy incorrect policy\n");
+	log_test(logfd, "Test knet_host_get_policy incorrect policy");
 	FAIL_ON_SUCCESS(knet_host_get_policy(knet_h1, 1, NULL), EINVAL);
 
-	printf("Test knet_host_get_policy correct policy\n");
+	log_test(logfd, "Test knet_host_get_policy correct policy");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_ERR(knet_host_set_policy(knet_h1, 1, KNET_LINK_POLICY_RR));
 	FAIL_ON_ERR(knet_host_get_policy(knet_h1, 1, &policy));
 	if (policy != KNET_LINK_POLICY_RR) {
-		printf("knet_host_get_policy policy for host 1 does not appear to be correct\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_host_get_policy policy for host 1 does not appear to be correct");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host get policy\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

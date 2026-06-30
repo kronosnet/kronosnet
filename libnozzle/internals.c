@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include "libnozzle.h"
@@ -157,6 +158,57 @@ char *generate_v4_broadcast(const char *ipaddr, const char *prefix)
 	broadcast.s_addr = (address.s_addr & mask.s_addr) | ~mask.s_addr;
 
 	return strdup(inet_ntop(AF_INET, (void *)&broadcast, buf, sizeof(buf)));
+}
+
+int _determine_family(const char *ipaddr)
+{
+	if (!strchr(ipaddr, ':')) {
+		return AF_INET;
+	}
+	return AF_INET6;
+}
+
+int _validate_prefix(int family, const char *prefix)
+{
+	int prefix_len;
+
+	prefix_len = atoi(prefix);
+
+	if (family == AF_INET) {
+		if (prefix_len <= 0 || prefix_len > 32) {
+			errno = EINVAL;
+			return -1;
+		}
+	} else {
+		if (prefix_len <= 0 || prefix_len > 128) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+
+	return prefix_len;
+}
+
+uint32_t _ipv4_prefix_to_netmask(int prefix_len)
+{
+	return htonl(~((1 << (32 - prefix_len)) - 1));
+}
+
+void _ipv6_prefix_to_mask(int prefix_len, struct in6_addr *mask)
+{
+	int i;
+
+	for (i = 0; i < (int)sizeof(struct in6_addr); i++) {
+		if (prefix_len >= 8) {
+			mask->s6_addr[i] = 0xff;
+			prefix_len -= 8;
+		} else if (prefix_len > 0) {
+			mask->s6_addr[i] = (0xff << (8 - prefix_len)) & 0xff;
+			prefix_len = 0;
+		} else {
+			mask->s6_addr[i] = 0;
+		}
+	}
 }
 
 int find_ip(nozzle_t nozzle,

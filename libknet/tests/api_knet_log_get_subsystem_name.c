@@ -18,38 +18,47 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_subsystem_name"
+
 static void test(void)
 {
+	int logfd;
 	const char *res;
 
-	printf("Testing knet_log_get_subsystem_name normal lookup\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Testing knet_log_get_subsystem_name normal lookup");
 	res = knet_log_get_subsystem_name(KNET_SUB_NSSCRYPTO);
 	if (strcmp(res, "nsscrypto")) {
-		printf("knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: nsscrypto\n",
+		log_test(logfd, "knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: nsscrypto",
 		       res);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Testing knet_log_get_subsystem_name bad lookup (within boundaries)\n");
+	log_test(logfd, "Testing knet_log_get_subsystem_name bad lookup (within boundaries)");
 	res = knet_log_get_subsystem_name(KNET_SUB_UNKNOWN - 1);
 	if (strcmp(res, "unknown")) {
-		printf("knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common\n",
+		log_test(logfd, "knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common",
 		       res);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Testing knet_log_get_subsystem_name bad lookup (outside boundaries)\n");
+	log_test(logfd, "Testing knet_log_get_subsystem_name bad lookup (outside boundaries)");
 	res = knet_log_get_subsystem_name(KNET_MAX_SUBSYSTEMS);
 	if (strcmp(res, "unknown")) {
-		printf("knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common\n",
+		log_test(logfd, "knet_log_get_subsystem_name failed to get correct log subsystem name. got: %s expected: common",
 		       res);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get subsystem name\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

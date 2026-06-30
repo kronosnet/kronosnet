@@ -10,6 +10,17 @@
 #ifndef __KNET_THREADS_COMMON_H__
 #define __KNET_THREADS_COMMON_H__
 
+#include "config.h"
+
+#include <pthread.h>
+
+#ifdef HAVE_PTHREAD_SETNAME_NP
+#define knet_thread_setname(tid, name) pthread_setname_np((tid), (name))
+#else
+#define knet_thread_setname(tid, name) ((void)0)
+#endif
+
+
 #include "internals.h"
 
 #define KNET_THREADS_TIMERES 200000

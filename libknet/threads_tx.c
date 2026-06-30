@@ -168,6 +168,7 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 	int data_compressed = 0;
 	size_t uncrypted_frag_size;
 	int stats_locked = 0, stats_err = 0;
+	int sockfd_idx;
 
 	inbuf = knet_h->recv_from_sock_buf;
 
@@ -239,7 +240,9 @@ static int _parse_recv_from_sock(knet_handle_t knet_h, size_t inlen, int8_t chan
 
 				local_retry:
 					// coverity[INTEGER_OVERFLOW:SUPPRESS] - buflen is passsed in as a size_t so can't be negative
-					err = write(knet_h->sockfd[channel].sockfd[knet_h->sockfd[channel].is_created], buf, buflen);
+					// coverity[MISSING_LOCK:SUPPRESS] - global_rwlock is held by caller
+					sockfd_idx = knet_h->sockfd[channel].is_created;
+					err = write(knet_h->sockfd[channel].sockfd[sockfd_idx], buf, buflen);
 					if (err < 0) {
 						log_err(knet_h, KNET_SUB_TRANSP_LOOPBACK, "send local failed. error=%s\n", strerror(errno));
 						local_link->status.stats.tx_data_errors++;

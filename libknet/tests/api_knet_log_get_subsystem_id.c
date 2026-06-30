@@ -18,30 +18,39 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_subsystem_id"
+
 static void test(void)
 {
+	int logfd;
 	uint8_t res;
 
-	printf("Testing knet_log_get_subsystem_id normal lookup\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Testing knet_log_get_subsystem_id normal lookup");
 	res = knet_log_get_subsystem_id("nsscrypto");
 	if (res != KNET_SUB_NSSCRYPTO) {
-		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d\n",
+		log_test(logfd, "knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d",
 		       res, KNET_SUB_NSSCRYPTO);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Testing knet_log_get_subsystem_id bad lookup\n");
+	log_test(logfd, "Testing knet_log_get_subsystem_id bad lookup");
 	res = knet_log_get_subsystem_id("whatever");
 	if (res != KNET_SUB_UNKNOWN) {
-		printf("knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d\n",
+		log_test(logfd, "knet_log_get_subsystem_id failed to get correct log subsystem id. got: %u expected: %d",
 		       res, KNET_SUB_UNKNOWN);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get subsystem id\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -19,45 +19,45 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_get_id_by_host_name"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	knet_node_id_t host_id;
 
-	printf("Test knet_host_get_id_by_host_name incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_host_get_id_by_host_name(NULL, "1", &host_id)) || (errno != EINVAL)) {
-		printf("knet_host_get_id_by_host_name accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_host_get_id_by_host_name incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_host_get_id_by_host_name(NULL, "1", &host_id), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_host_get_id_by_host_name with incorrect name 1\n");
+
+	log_test(logfd, "Test knet_host_get_id_by_host_name with incorrect name 1");
 	FAIL_ON_SUCCESS(knet_host_get_id_by_host_name(knet_h1, NULL, &host_id), EINVAL);
 
-	printf("Test knet_host_get_id_by_host_name with incorrect host_id\n");
+	log_test(logfd, "Test knet_host_get_id_by_host_name with incorrect host_id");
 	FAIL_ON_SUCCESS(knet_host_get_id_by_host_name(knet_h1, "1", NULL), EINVAL);
 
-	printf("Test knet_host_get_id_by_host_name with incorrect values for name\n");
+	log_test(logfd, "Test knet_host_get_id_by_host_name with incorrect values for name");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_host_get_id_by_host_name(knet_h1, "test", &host_id), ENOENT);
 
-	printf("Test knet_host_get_id_by_host_name with correct values\n");
+	log_test(logfd, "Test knet_host_get_id_by_host_name with correct values");
 	FAIL_ON_ERR(knet_host_get_id_by_host_name(knet_h1, "1", &host_id));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host get id by host name\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

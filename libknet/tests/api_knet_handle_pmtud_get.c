@@ -19,41 +19,41 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_pmtud_get"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	unsigned int data_mtu;
 
-	printf("Test knet_handle_pmtud_get incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_handle_pmtud_get(NULL, &data_mtu)) || (errno != EINVAL)) {
-		printf("knet_handle_pmtud_get accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_handle_pmtud_get incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_handle_pmtud_get(NULL, &data_mtu), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_pmtud_get with no data_mtu\n");
+
+	log_test(logfd, "Test knet_handle_pmtud_get with no data_mtu");
 	FAIL_ON_SUCCESS(knet_handle_pmtud_get(knet_h1, NULL), EINVAL);
 
 	FAIL_ON_ERR(knet_handle_pmtud_get(knet_h1, &data_mtu));
 
 	if (knet_h1->data_mtu != data_mtu) {
-		printf("knet_handle_pmtud_get failed to set the value\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_pmtud_get failed to set the value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle pmtud get\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

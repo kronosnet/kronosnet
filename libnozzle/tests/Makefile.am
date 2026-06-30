@@ -35,7 +35,8 @@ api_checks		= \
 			  api_nozzle_run_updown_test \
 			  api_nozzle_add_ip_test \
 			  api_nozzle_del_ip_test \
-			  api_nozzle_get_ips_test
+			  api_nozzle_get_ips_test \
+			  api_nozzle_prefix_validation_test
 
 int_checks		= \
 			  int_execute_bin_sh_command_test
@@ -56,6 +57,7 @@ noinst_PROGRAMS		= \
 noinst_SCRIPTS		= \
 			  api-test-coverage
 
+.NOTPARALLEL:
 TESTS			= $(check_PROGRAMS)
 
 if INSTALL_TESTS
@@ -127,4 +129,7 @@ api_nozzle_get_ips_test_SOURCES = api_nozzle_get_ips.c \
 int_execute_bin_sh_command_test_SOURCES = int_execute_bin_sh_command.c \
 					  test-common.c \
 					  ../internals.c
+
+api_nozzle_prefix_validation_test_SOURCES = api_nozzle_prefix_validation.c \
+					    test-common.c
 endif

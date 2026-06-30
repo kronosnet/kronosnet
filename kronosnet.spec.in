@@ -30,10 +30,15 @@
 %@rpmdebuginfo@ rpmdebuginfo
 %@overriderpmdebuginfo@ overriderpmdebuginfo
 %@buildman@ buildman
+%@buildwsdissector@ buildwsdissector
 %@installtests@ installtests
 
 %if %{with overriderpmdebuginfo}
 %undefine _enable_debug_packages
+%endif
+
+%if %{with buildwsdissector}
+%define wireshark_plugindir %(pkg-config --variable plugindir wireshark)/epan
 %endif
 
 # main (empty) package
@@ -102,6 +107,9 @@ BuildRequires: libnl3-devel
 %if %{with runautogen}
 BuildRequires: autoconf automake libtool
 %endif
+%if %{with buildwsdissector}
+BuildRequires: wireshark-devel >= 4.6
+%endif
 
 %prep
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -168,9 +176,14 @@ BuildRequires: autoconf automake libtool
 	--disable-compress-zstd \
 %endif
 %if %{with libnozzle}
-	--enable-libnozzle
+	--enable-libnozzle \
 %else
-	--disable-libnozzle
+	--disable-libnozzle \
+%endif
+%if %{with buildwsdissector}
+	--enable-wireshark-dissector
+%else
+	--disable-wireshark-dissector
 %endif
 
 make %{_smp_mflags}
@@ -450,6 +463,20 @@ Requires: libnozzle1%{_isa} = %{version}-%{release}
 
 %files -n kronosnet-tests
 %{_libdir}/kronosnet/tests/*
+%endif
+
+%if %{with buildwsdissector}
+%package -n kronosnet-wireshark
+Summary: Wireshark dissector plugin for kronosnet
+License: LGPL-2.1-or-later
+Requires: wireshark >= 4.6.0
+Requires: libknet1%{_isa} = %{version}-%{release}
+
+%description -n kronosnet-wireshark
+ Wireshark dissector plugin for better analysis of kronosnet / libknet traffic.
+
+%files -n kronosnet-wireshark
+%{wireshark_plugindir}/kronosnet.so
 %endif
 
 %if %{with rpmdebuginfo}

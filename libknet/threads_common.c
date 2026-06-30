@@ -227,6 +227,7 @@ int wait_all_threads_status(knet_handle_t knet_h, uint8_t status)
 	return 0;
 }
 
+#ifndef WIRESHARK_BUILD
 void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu, uint8_t force_restart)
 {
 	if (reset_mtu) {
@@ -261,3 +262,4 @@ void force_pmtud_run(knet_handle_t knet_h, uint8_t subsystem, uint8_t reset_mtu,
 		pthread_mutex_unlock(&knet_h->pmtud_mutex);
 	}
 }
+#endif

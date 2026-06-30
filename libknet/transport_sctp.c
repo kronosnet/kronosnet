@@ -688,6 +688,7 @@ static void *_sctp_connect_thread(void *data)
 {
 	int savederrno;
 	int i, nev;
+	uint32_t reconnect_interval;
 	knet_handle_t knet_h = (knet_handle_t) data;
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
@@ -738,13 +739,17 @@ static void *_sctp_connect_thread(void *data)
 				log_debug(knet_h, KNET_SUB_TRANSP_SCTP, "Received stray notification on connected sockfd %d\n", events[i].data.fd);
 			}
 		}
+		/*
+		 * Read reconnect_int while holding the lock
+		 */
+		reconnect_interval = knet_h->reconnect_int;
 		pthread_rwlock_unlock(&knet_h->global_rwlock);
 		/*
 		 * this thread can generate events for itself.
 		 * we need to sleep in between loops to allow other threads
 		 * to be scheduled
 		 */
-		usleep(knet_h->reconnect_int * 1000);
+		usleep(reconnect_interval * 1000);
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STOPPED);
@@ -1609,6 +1614,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(handle_info->listen_thread, "knet-sctp-lis");
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&handle_info->connect_thread, 0, _sctp_connect_thread, (void *) knet_h);
@@ -1618,6 +1624,7 @@ int sctp_transport_init(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(handle_info->connect_thread, "knet-sctp-con");
 
 exit_fail:
 	if (err < 0) {

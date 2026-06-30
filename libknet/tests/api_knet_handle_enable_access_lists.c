@@ -19,47 +19,48 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_enable_access_lists"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	printf("Test knet_handle_enable_access_lists with invalid knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_handle_enable_access_lists(NULL, 0)) || (errno != EINVAL)) {
-		printf("knet_handle_enable_access_lists accepted invalid knet_h parameter\n");
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_handle_enable_access_lists with invalid knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_handle_enable_access_lists(NULL, 0), EINVAL);
 
-	printf("Test knet_handle_enable_access_lists with invalid param (2) \n");
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_handle_enable_access_lists with invalid param (2) ");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 	FAIL_ON_SUCCESS(knet_handle_enable_access_lists(knet_h1, 2), EINVAL);
 
-	printf("Test knet_handle_enable_access_lists with valid param (1) \n");
+	log_test(logfd, "Test knet_handle_enable_access_lists with valid param (1) ");
 	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 1));
 
 	if (knet_h1->use_access_lists != 1) {
-		printf("knet_handle_enable_access_lists failed to set correct value");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_enable_access_lists failed to set correct value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Test knet_handle_enable_access_lists with valid param (0) \n");
+	log_test(logfd, "Test knet_handle_enable_access_lists with valid param (0) ");
 	FAIL_ON_ERR(knet_handle_enable_access_lists(knet_h1, 0));
 
 	if (knet_h1->use_access_lists != 0) {
-		printf("knet_handle_enable_access_lists failed to set correct value");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_enable_access_lists failed to set correct value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle enable access lists\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

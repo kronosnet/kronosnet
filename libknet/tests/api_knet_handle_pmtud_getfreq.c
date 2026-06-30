@@ -19,42 +19,42 @@
 #include "internals.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_pmtud_getfreq"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int logfds[2];
-	int res;
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	unsigned int interval;
 
-	printf("Test knet_handle_pmtud_getfreq incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_handle_pmtud_getfreq(NULL, &interval)) || (errno != EINVAL)) {
-		printf("knet_handle_pmtud_getfreq accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_handle_pmtud_getfreq incorrect knet_h");
 
-	setup_logpipes(logfds);
+	FAIL_ON_SUCCESS(knet_handle_pmtud_getfreq(NULL, &interval), EINVAL);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
 
-	flush_logs(logfds[0], stdout);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_handle_pmtud_getfreq with no interval\n");
+
+	log_test(logfd, "Test knet_handle_pmtud_getfreq with no interval");
 	FAIL_ON_SUCCESS(knet_handle_pmtud_getfreq(knet_h1, NULL), EINVAL);
 
 	FAIL_ON_ERR(knet_handle_pmtud_getfreq(knet_h1, &interval));
 
 	if (knet_h1->pmtud_interval != interval) {
-		printf("knet_handle_pmtud_getfreq failed to set the value\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_pmtud_getfreq failed to set the value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle pmtud getfreq\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

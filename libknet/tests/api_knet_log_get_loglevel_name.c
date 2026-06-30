@@ -18,37 +18,46 @@
 
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_log_get_loglevel_name"
+
 static void test(void)
 {
+	int logfd;
 	const char *res;
 
-	printf("Testing knet_log_get_loglevel_name normal lookup\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Testing knet_log_get_loglevel_name normal lookup");
 	res = knet_log_get_loglevel_name(KNET_LOG_DEBUG);
 	if (strcmp(res, "debug")) {
-		printf("knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: debug\n",
+		log_test(logfd, "knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: debug",
 		       res);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
 	res = knet_log_get_loglevel_name(KNET_LOG_TRACE);
 	if (strcmp(res, "trace")) {
-		printf("knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: debug\n",
+		log_test(logfd, "knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: debug",
 		       res);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
 
-	printf("Testing knet_log_get_loglevel_name bad lookup\n");
+	log_test(logfd, "Testing knet_log_get_loglevel_name bad lookup");
 	res = knet_log_get_loglevel_name(KNET_LOG_TRACE+1);
 	if (strcmp(res, "ERROR")) {
-		printf("knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: ERROR\n",
+		log_test(logfd, "knet_log_get_loglevel_name failed to get correct log level name. got: %s expected: ERROR",
 		       res);
-		exit(FAIL);
+		TEST_EXIT(FAIL);
 	}
+
+	stop_logging();
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet log get loglevel name\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

@@ -543,18 +543,25 @@ static void _reclaim_old_defrag_bufs(struct knet_host *host, seq_num_t seq_num)
 	tail = seq_num - (KNET_DEFRAG_BUFFERS + 1);
 
 	/*
-	 * expire old defrag buffers
+	 * Reclaim defrag buffers outside the valid window
 	 */
 	for (i = 0; i < KNET_DEFRAG_BUFFERS; i++) {
 		if (host->defrag_buf[i].in_use) {
 			/*
-			 * head has done a rollover to 0+
+			 * Wraparound case: tail wrapped due to subtraction underflow.
+			 * This occurs when seq_num < (KNET_DEFRAG_BUFFERS + 1).
+			 * Valid window wraps: [tail+1..SEQ_MAX] and [0..seq_num].
+			 * Reclaim the gap in the middle: [head..tail].
 			 */
 			if (tail > head) {
 				if ((host->defrag_buf[i].pckt_seq >= head) && (host->defrag_buf[i].pckt_seq <= tail)) {
 					host->defrag_buf[i].in_use = 0;
 				}
 			} else {
+				/*
+				 * Normal case: valid window is contiguous [tail+1..seq_num].
+				 * Reclaim outside the window: [head..SEQ_MAX] or [0..tail].
+				 */
 				if ((host->defrag_buf[i].pckt_seq >= head) || (host->defrag_buf[i].pckt_seq <= tail)){
 					host->defrag_buf[i].in_use = 0;
 				}
@@ -595,12 +602,18 @@ int _seq_num_lookup(struct knet_host *host, seq_num_t seq_num, int defrag_buf, i
 		_clear_cbuffers(host, seq_num);
 	}
 
-	_reclaim_old_defrag_bufs(host, *dst_seq_num);
+	_reclaim_old_defrag_bufs(host, seq_num);
 
+	/*
+	 * Calculate sequence distance with proper wraparound handling.
+	 * Use modular arithmetic to avoid overflow near SEQ_MAX boundary.
+	 */
 	if (seq_num < *dst_seq_num) {
-		seq_dist =  (SEQ_MAX - seq_num) + *dst_seq_num;
+		/* Wraparound case: seq_num wrapped to beginning of range */
+		seq_dist = (SEQ_MAX - *dst_seq_num) + seq_num + 1;
 	} else {
-		seq_dist = *dst_seq_num - seq_num;
+		/* Normal case: seq_num >= dst_seq_num */
+		seq_dist = seq_num - *dst_seq_num;
 	}
 
 	head = seq_num % KNET_CBUFFER_SIZE;

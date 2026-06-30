@@ -20,42 +20,43 @@
 #include "host.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_host_get_status"
+
 static void test(void)
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 	struct knet_host_status status;
 
-	printf("Test knet_host_get_status incorrect knet_h\n");
+	logfd = start_logging(stdout);
+
+	log_test(logfd, "Test knet_host_get_status incorrect knet_h");
 
 	memset(&status, 0, sizeof(struct knet_host_status));
 
-	if ((!knet_host_get_status(NULL, 1, &status)) || (errno != EINVAL)) {
-		printf("knet_host_get_status accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	FAIL_ON_SUCCESS(knet_host_get_status(NULL, 1, &status), EINVAL);
 
-	setup_logpipes(logfds);
 
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
 
-	printf("Test knet_host_get_status with unconfigured host_id\n");
+	log_test(logfd, "Test knet_host_get_status with unconfigured host_id");
 	FAIL_ON_SUCCESS(knet_host_get_status(knet_h1, 1, &status), EINVAL);
 
-	printf("Test knet_host_get_status with incorrect status\n");
+	log_test(logfd, "Test knet_host_get_status with incorrect status");
 	FAIL_ON_ERR(knet_host_add(knet_h1, 1));
 	FAIL_ON_SUCCESS(knet_host_get_status(knet_h1, 1, NULL), EINVAL);
 
-	printf("Test knet_host_get_status with correct values\n");
+	log_test(logfd, "Test knet_host_get_status with correct values");
 	FAIL_ON_ERR(knet_host_get_status(knet_h1, 1, &status));
 
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet host get status\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

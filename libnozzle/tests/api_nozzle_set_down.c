@@ -24,93 +24,61 @@ static int test(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 	char *error_string = NULL;
 
 	printf("Testing interface down\n");
 
 	memset(device_name, 0, size);
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Put the interface up\n");
+	FAIL_ON_ERR(nozzle_set_up(nozzle));
 
-	err = nozzle_set_up(nozzle);
-	if (err < 0) {
-		printf("Unable to set interface up\n");
-		err = -1;
-		goto out_clean;
-	}
-
+	printf("Verifying interface is UP\n");
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
-#if defined(KNET_BSD) || defined(KNET_SOLARIS)
+#ifdef KNET_BSD
 	         "ifconfig %s | sed -e 's/LOWER_UP/GROT/' | grep -q UP", nozzle->name);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (err < 0) {
-		printf("Unable to verify inteface UP\n");
-		err = -1;
-		goto out_clean;
-	}
+#ifdef KNET_SOLARIS
+                 "exit 0"); // No way to check this
+#endif
+
+        FAIL_ON_CMD(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify interface UP");
 
 	printf("Put the interface down\n");
+	FAIL_ON_ERR(nozzle_set_down(nozzle));
 
-	err = nozzle_set_down(nozzle);
-	if (err < 0) {
-		printf("Unable to put the interface down\n");
-		err = -1;
-		goto out_clean;
-	}
-
+	printf("Verifying interface is DOWN\n");
 	memset(verifycmd, 0, sizeof(verifycmd));
 	snprintf(verifycmd, sizeof(verifycmd)-1,
 #ifdef KNET_LINUX
 		 "ip addr show dev %s | grep -q UP", nozzle->name);
 #endif
-#if defined(KNET_BSD) || defined(KNET_SOLARIS)
+#ifdef KNET_BSD
 	         "ifconfig %s | sed -e 's/LOWER_UP/GROT/' | grep -q UP", nozzle->name);
 #endif
-	err = execute_bin_sh_command(verifycmd, &error_string);
-	if (error_string) {
-		printf("Error string: %s\n", error_string);
-		free(error_string);
-		error_string = NULL;
-	}
-	if (!err) {
-		printf("Unable to verify inteface DOWN\n");
-		err = -1;
-		goto out_clean;
-	}
+#ifdef KNET_SOLARIS
+                 "exit 1"); // No way to check this
+#endif
+	FAIL_ON_CMD_SUCCESS(err, execute_bin_sh_command(verifycmd, &error_string), error_string, "Unable to verify interface DOWN");
 
 	printf("Try to DOWN the same interface twice\n");
-	if (nozzle_set_down(nozzle) < 0) {
-		printf("Interface was already DOWN, spurious error received from nozzle_set_down\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_set_down(nozzle));
 
 	printf("Pass NULL to nozzle set_down\n");
-	errno = 0;
-	if ((nozzle_set_down(NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_set_down sanity checks\n");
-		err = -1;
-		goto out_clean;
-	}
+	FAIL_ON_SUCCESS(nozzle_set_down(NULL), EINVAL);
 
 out_clean:
-	nozzle_close(nozzle);
+	if (nozzle) {
+		nozzle_close(nozzle);
+	}
 
 	return err;
 }
@@ -122,6 +90,5 @@ int main(void)
 
 	if (test() < 0)
 		return FAIL;
-
 	return PASS;
 }

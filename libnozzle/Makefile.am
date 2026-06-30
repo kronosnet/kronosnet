@@ -21,6 +21,9 @@ SUBDIRS			= . tests
 libnozzleversion	= 1:0:0
 
 sources			= libnozzle.c \
+			  libnozzle_linux.c \
+			  libnozzle_bsd.c \
+			  libnozzle_solaris.c \
 			  internals.c
 
 include_HEADERS		= libnozzle.h

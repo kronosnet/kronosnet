@@ -20,44 +20,45 @@
 #include "crypto_model.h"
 #include "test-common.h"
 
+#define TEST_NAME "api_knet_handle_crypto_rx_clear_traffic"
+
 static void test()
 {
-	knet_handle_t knet_h1, knet_h[2];
-	int res;
-	int logfds[2];
+	int logfd;
+	knet_handle_t knet_h1, knet_h[2] = {0};
 
-	printf("Test knet_handle_crypto_rx_clear_traffic incorrect knet_h\n");
+	logfd = start_logging(stdout);
 
-	if ((!knet_handle_crypto_rx_clear_traffic(NULL, 1)) || (errno != EINVAL)) {
-		printf("knet_handle_crypto_rx_clear_traffic accepted invalid knet_h or returned incorrect error: %s\n", strerror(errno));
-		exit(FAIL);
-	}
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic incorrect knet_h");
 
-	setup_logpipes(logfds);
-	knet_h1 = knet_handle_start(logfds, KNET_LOG_DEBUG, knet_h);
+	FAIL_ON_SUCCESS(knet_handle_crypto_rx_clear_traffic(NULL, 1), EINVAL);
 
-	printf("Test knet_handle_crypto_rx_clear_traffic with invalid value\n");
+	knet_h1 = _ts_knet_handle_start(logfd, KNET_LOG_DEBUG, knet_h);
+
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic with invalid value");
 	FAIL_ON_SUCCESS(knet_handle_crypto_rx_clear_traffic(knet_h1, 2), EINVAL);
 
-	printf("Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC\n");
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC");
 	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h1, KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC));
 	if (knet_h1->crypto_only != KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC) {
-		printf("knet_handle_crypto_rx_clear_traffic failed to set correct value\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_crypto_rx_clear_traffic failed to set correct value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
 
-	printf("Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC\n");
+	log_test(logfd, "Test knet_handle_crypto_rx_clear_traffic with valid value KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC");
 	FAIL_ON_ERR(knet_handle_crypto_rx_clear_traffic(knet_h1, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC));
 	if (knet_h1->crypto_only != KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC) {
-		printf("knet_handle_crypto_rx_clear_traffic failed to set correct value\n");
-		CLEAN_EXIT(FAIL);
+		log_test(logfd, "knet_handle_crypto_rx_clear_traffic failed to set correct value");
+		TEST_EXIT_CLEAN(FAIL);
 	}
-	CLEAN_EXIT(CONTINUE);
+	TEST_EXIT_CLEAN(CONTINUE);
 }
 
 int main(int argc, char *argv[])
 {
+	printf("[TEST] %s: Test knet handle crypto rx clear traffic\n", TEST_NAME);
+
 	test();
 
-	return PASS;
+	TEST_EXIT(PASS);
 }

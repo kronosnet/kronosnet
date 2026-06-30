@@ -41,6 +41,7 @@ static int test(void)
 	char device_name[2*IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	nozzle_t nozzle;
+	int err = 0;
 
 	memset(device_name, 0, sizeof(device_name));
 
@@ -48,29 +49,21 @@ static int test(void)
 	 * this test is duplicated from api_nozzle_open.c
 	 */
 	printf("Testing random nozzle interface:\n");
-	if (test_iface(device_name, size,  NULL) < 0) {
-		printf("Unable to create random interface\n");
-		return -1;
-	}
+	FAIL_ON_ERR_ONLY(test_iface(device_name, size, NULL), "Unable to create random interface");
 
 	printf("Testing ERROR conditions\n");
 
 	printf("Testing nozzle_close with NULL nozzle\n");
-	if ((nozzle_close(NULL) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_close sanity checks\n");
-		return -1;
-	}
+	FAIL_ON_SUCCESS(nozzle_close(NULL), EINVAL);
 
 	printf("Testing nozzle_close with random bytes nozzle pointer\n");
-
 	nozzle = (nozzle_t)0x1;
-
-	if ((nozzle_close(nozzle) >= 0) || (errno != EINVAL)) {
-		printf("Something is wrong in nozzle_close sanity checks\n");
-		return -1;
-	}
+	FAIL_ON_SUCCESS(nozzle_close(nozzle), EINVAL);
 
 	return 0;
+
+out_clean:
+	return err;
 }
 
 /*
@@ -81,38 +74,25 @@ static int check_nozzle_close_leak(void)
 	char device_name[IFNAMSIZ];
 	size_t size = IFNAMSIZ;
 	int err=0;
-	nozzle_t nozzle;
+	nozzle_t nozzle = NULL;
 
 	printf("Testing close leak (needs valgrind)\n");
 
 	memset(device_name, 0, size);
 
-	nozzle = nozzle_open(device_name, size, NULL);
-	if (!nozzle) {
-		printf("Unable to init %s\n", device_name);
-		return -1;
-	}
+	printf("Creating nozzle interface\n");
+	FAIL_ON_NULL(nozzle, nozzle_open(device_name, size, NULL));
 
 	printf("Adding ip: %s/24\n", testipv4_1);
-
-	err = nozzle_add_ip(nozzle, testipv4_1, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err=-1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv4_1, "24"));
 
 	printf("Adding ip: %s/24\n", testipv4_2);
-
-	err = nozzle_add_ip(nozzle, testipv4_2, "24");
-	if (err < 0) {
-		printf("Unable to assign IP address\n");
-		err=-1;
-		goto out_clean;
-	}
+	FAIL_ON_ERR(nozzle_add_ip(nozzle, testipv4_2, "24"));
 
 out_clean:
-	nozzle_close(nozzle);
+	if (nozzle) {
+		nozzle_close(nozzle);
+	}
 
 	return err;
 }

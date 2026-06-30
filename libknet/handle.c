@@ -129,6 +129,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->handle_stats_mutex);
 }
 
+#ifndef WIRESHARK_BUILD
 static int _init_socks(knet_handle_t knet_h)
 {
 	int savederrno = 0;
@@ -151,6 +152,7 @@ static void _close_socks(knet_handle_t knet_h)
 {
 	_close_socketpair(knet_h, knet_h->dstsockfd);
 }
+#endif
 
 static int _init_buffers(knet_handle_t knet_h)
 {
@@ -240,7 +242,7 @@ static int _init_buffers(knet_handle_t knet_h)
 
 	knet_h->pingbuf_crypt = malloc(KNET_DATABUFSIZE_CRYPT);
 	if (!knet_h->pingbuf_crypt) {
-		savederrno = errno; 
+		savederrno = errno;
 		log_err(knet_h, KNET_SUB_CRYPTO, "Unable to allocate memory for crypto hearbeat buffer: %s",
 			strerror(savederrno));
 		goto exit_fail;
@@ -310,6 +312,7 @@ static void _destroy_buffers(knet_handle_t knet_h)
 	free(knet_h->pmtudbuf_crypt);
 }
 
+#ifndef WIRESHARK_BUILD
 static int _init_epolls(knet_handle_t knet_h)
 {
 	struct epoll_event ev;
@@ -346,21 +349,21 @@ static int _init_epolls(knet_handle_t knet_h)
 	if (_fdset_cloexec(knet_h->send_to_links_epollfd)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on datafd to link epoll fd: %s",
-			strerror(savederrno)); 
+			strerror(savederrno));
 		goto exit_fail;
 	}
 
 	if (_fdset_cloexec(knet_h->recv_from_links_epollfd)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on link to datafd epoll fd: %s",
-			strerror(savederrno)); 
+			strerror(savederrno));
 		goto exit_fail;
 	}
 
 	if (_fdset_cloexec(knet_h->dst_link_handler_epollfd)) {
 		savederrno = errno;
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to set CLOEXEC on dst cache epoll fd: %s",
-			strerror(savederrno)); 
+			strerror(savederrno));
 		goto exit_fail;
 	}
 
@@ -432,6 +435,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->pmtud_link_handler_thread, "knet-pmtud");
 
 	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->dst_link_handler_thread, &attr,
@@ -441,6 +445,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->dst_link_handler_thread, "knet-dstcache");
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->send_to_links_thread, &attr,
@@ -450,6 +455,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->send_to_links_thread, "knet-tx");
 
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->recv_from_links_thread, &attr,
@@ -459,6 +465,7 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
+	knet_thread_setname(knet_h->recv_from_links_thread, "knet-rx");
 
 	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_REGISTERED);
 	savederrno = pthread_create(&knet_h->heartbt_thread, &attr,
@@ -468,7 +475,8 @@ static int _start_threads(knet_handle_t knet_h)
 			strerror(savederrno));
 		goto exit_fail;
 	}
-
+	knet_thread_setname(knet_h->heartbt_thread, "knet-heartbt");
+	
 	savederrno = pthread_attr_destroy(&attr);
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to destroy pthread attributes: %s",
@@ -516,6 +524,7 @@ static void _stop_threads(knet_handle_t knet_h)
 		pthread_join(knet_h->pmtud_link_handler_thread, &retval);
 	}
 }
+#endif
 
 knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 				 int            log_fd,
@@ -649,10 +658,12 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	 * init sockets
 	 */
 
+#ifndef WIRESHARK_BUILD
 	if (_init_socks(knet_h)) {
 		savederrno = errno;
 		goto exit_fail;
 	}
+#endif
 
 	/*
 	 * allocate packet buffers
@@ -668,6 +679,7 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 		goto exit_fail;
 	}
 
+#ifndef WIRESHARK_BUILD
 	/*
 	 * create epoll fds
 	 */
@@ -696,7 +708,7 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	}
 
 	wait_all_threads_status(knet_h, KNET_THREAD_STARTED);
-
+#endif
 	errno = 0;
 	return knet_h;
 
@@ -743,11 +755,15 @@ int knet_handle_free(knet_handle_t knet_h)
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 
+#ifndef WIRESHARK_BUILD
 	_stop_threads(knet_h);
 	stop_all_transports(knet_h);
 	_close_epolls(knet_h);
+#endif
 	_destroy_buffers(knet_h);
+#ifndef WIRESHARK_BUILD
 	_close_socks(knet_h);
+#endif
 	crypto_fini(knet_h, KNET_MAX_CRYPTO_INSTANCES + 1); /* values above MAX_CRYPTO will release all crypto resources */
 	compress_fini(knet_h, 1);
 	_destroy_locks(knet_h);

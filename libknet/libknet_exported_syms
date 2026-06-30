@@ -11,6 +11,8 @@ LIBKNET {
 	global:
 		knet_addrtostr;
 		knet_get_compress_list;
+		knet_get_crypto_cipher_list;
+		knet_get_crypto_hash_list;
 		knet_get_crypto_list;
 		knet_get_transport_id_by_name;
 		knet_get_transport_list;
