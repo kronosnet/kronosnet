@@ -53,11 +53,14 @@ operations such as "ifconfig tap down".
 Building on Solaris / Illumos
 -----------------------------
 
-tested on SunOS openindiana-x86-64 5.11 illumos-5b6ecd7fe9:
+tested on SunOS 5.11 (OpenIndiana):
+
+Note: gcc-14 and clang-20 are minimum supported versions
 
 # pkg install autoconf automake libtool pkg-config \
-      gcc-14 gnu-binutils gnu-coreutils gnu-make \
-      check system/mozilla-nss doxygen \
+      gcc-14 gnu-binutils gnu-coreutils gnu-make check \
+      system/mozilla-nss system/library/mozilla-nss \
+      system/library/mozilla-nss/header-nss doxygen \
       header-tun tun
 
 optional:
@@ -68,11 +71,9 @@ GNU tools must be preferred:
 
 # export PATH=/usr/gnu/bin:$PATH
 
-mozilla-nss is currently broken in oi-userland and does not ship pkg-config files
+# ./autogen.sh && ./configure
 
-# ./autogen.sh && ./configure --disable-crypto-nss
-
-# make all -j && make check
+# make all -j && make check -j
 
 Running on Solaris / Illumos
 ----------------------------
