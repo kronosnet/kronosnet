@@ -26,6 +26,7 @@ TARGZFILE		= $(PACKAGE_NAME)-$(VERSION).tar.gz
 EXTRA_DIST		= autogen.sh .version \
 			  NOTES_TO_PACKAGE_MAINTAINERS \
 			  STYLE_GUIDE.md \
+			  CLAUDE.md \
 			  m4/pkg_check_var.m4 \
 			  $(SPEC).in build-aux
 
