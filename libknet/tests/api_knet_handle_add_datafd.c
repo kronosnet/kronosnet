@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 
 #include "libknet.h"
 
@@ -189,6 +190,45 @@ static void test(void)
 		log_test(logfd, "*** FAIL: Unexpected error adding character device: errno=%d (%s)", saved_errno, strerror(saved_errno));
 		close(chardev_fd);
 		TEST_EXIT_CLEAN(FAIL);
+	}
+
+	log_test(logfd, "Test knet_handle_add_datafd with connected named AF_UNIX SOCK_STREAM socket (should succeed)");
+	int unix_listen_sock, unix_client_sock, unix_server_sock;
+	struct sockaddr_un unix_addr;
+	char socket_path[PATH_MAX];
+	int socket_path_len;
+
+	snprintf(socket_path, sizeof(socket_path), ABSBUILDDIR "/knet_test_unix_stream.XXXXXX");
+	socket_path_len = strlen(socket_path);
+
+	if (socket_path_len >= (int)sizeof(unix_addr.sun_path)) {
+		log_test(logfd, "Skipping AF_UNIX SOCK_STREAM test: build path too long (%d >= %zu)", socket_path_len, sizeof(unix_addr.sun_path));
+	} else {
+		mode_t old_umask = umask(0077);  /* Secure the temp file */
+		FAIL_ON_ERR_ONLY(mkstemp(socket_path));
+		umask(old_umask);  /* Restore original umask */
+		unlink(socket_path);  /* Remove the file, we just need a unique name */
+
+		FAIL_ON_ERR_ONLY(unix_listen_sock = socket(AF_UNIX, SOCK_STREAM, 0));
+		memset(&unix_addr, 0, sizeof(unix_addr));
+		unix_addr.sun_family = AF_UNIX;
+		memcpy(unix_addr.sun_path, socket_path, socket_path_len + 1);
+		FAIL_ON_ERR(bind(unix_listen_sock, (struct sockaddr *)&unix_addr, sizeof(unix_addr)));
+		FAIL_ON_ERR(listen(unix_listen_sock, 1));
+
+		FAIL_ON_ERR_ONLY(unix_client_sock = socket(AF_UNIX, SOCK_STREAM, 0));
+		FAIL_ON_ERR(connect(unix_client_sock, (struct sockaddr *)&unix_addr, sizeof(unix_addr)));
+		FAIL_ON_ERR_ONLY(unix_server_sock = accept(unix_listen_sock, NULL, NULL));
+
+		datafd = unix_client_sock;
+		channel = -1;
+		FAIL_ON_ERR(knet_handle_add_datafd(knet_h1, &datafd, &channel, 0));
+		log_test(logfd, "Successfully accepted connected named AF_UNIX SOCK_STREAM socket, datafd: %d channel: %d", datafd, channel);
+		FAIL_ON_ERR(knet_handle_remove_datafd(knet_h1, datafd));
+		close(unix_client_sock);
+		close(unix_server_sock);
+		close(unix_listen_sock);
+		unlink(socket_path);
 	}
 
 	log_test(logfd, "Test knet_handle_add_datafd with connected AF_INET SOCK_STREAM socket (should succeed)");
