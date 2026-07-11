@@ -15,7 +15,7 @@ EXTRA_DIST		= \
 			  api-test-coverage \
 			  api-check.mk
 
-AM_CPPFLAGS		= -I$(top_srcdir)/libknet $(XOPEN_CPPFLAGS)
+AM_CPPFLAGS		= -I$(top_srcdir)/libknet -DABSBUILDDIR=\"$(abs_builddir)\" $(XOPEN_CPPFLAGS)
 AM_CFLAGS		+= $(PTHREAD_CFLAGS) $(libqb_CFLAGS)
 LIBS			= $(top_builddir)/libknet/libknet.la \
 			  $(PTHREAD_LIBS) $(dl_LIBS)
@@ -140,3 +140,5 @@ int_defrag_edge_cases_test_SOURCES = int_defrag_edge_cases.c \
 
 int_buffer_management_test_SOURCES = int_buffer_management.c \
 				      test-common.c
+
+CLEANFILES = knet_test_unix_stream.*
