@@ -14,6 +14,13 @@ include $(top_srcdir)/build-aux/check.mk
 EXTRA_DIST	= \
 		  api-to-man-page-coverage
 
+if BUILD_KNETD
+EXTRA_DIST	+= \
+		  $(top_srcdir)/knetd/man/knetctl.1 \
+		  $(top_srcdir)/knetd/man/knetd.8 \
+		  $(top_srcdir)/knetd/man/knetd.conf.5
+endif
+
 if BUILD_MAN
 
 knet_man3_MANS = \
@@ -116,7 +123,21 @@ nozzle_man3_MANS = \
 		nozzle_set_up.3
 endif
 
+if BUILD_KNETD
+knetd_man1_MANS = \
+		knetctl.1
+
+knetd_man5_MANS = \
+		knetd.conf.5
+
+knetd_man8_MANS = \
+		knetd.8
+endif
+
+man1_MANS = $(knetd_man1_MANS)
 man3_MANS = $(knet_man3_MANS) $(nozzle_man3_MANS)
+man5_MANS = $(knetd_man5_MANS)
+man8_MANS = $(knetd_man8_MANS)
 
 $(MANS): doxyfile-knet.stamp doxyfile-nozzle.stamp
 
@@ -152,5 +173,20 @@ check-api-to-man-page-coverage-libknet:
 
 endif
 
+if BUILD_KNETD
+# Install knetd man pages from source tree
+knetctl.1: $(top_srcdir)/knetd/man/knetctl.1
+	cp -f $< $@
+
+knetd.8: $(top_srcdir)/knetd/man/knetd.8
+	cp -f $< $@
+
+knetd.conf.5: $(top_srcdir)/knetd/man/knetd.conf.5
+	cp -f $< $@
+endif
+
 clean-local:
 	rm -rf doxyfile*.stamp xml* *.3
+if BUILD_KNETD
+	rm -f knetctl.1 knetd.8 knetd.conf.5
+endif

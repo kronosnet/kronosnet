@@ -186,7 +186,22 @@ AM_CONDITIONAL([BUILD_WSDISSECTOR], [test x$enable_wireshark_dissector = xyes])
 AC_ARG_ENABLE([rust-bindings],
 	[AS_HELP_STRING([--enable-rust-bindings],[rust bindings support])],,
 	[ enable_rust_bindings="no" ])
+
+AC_ARG_ENABLE([knetd],
+	[AS_HELP_STRING([--enable-knetd],[knetd daemon support])],,
+	[ enable_knetd="no" ])
+
+# knetd requires rust-bindings
+if test "x$enable_knetd" = "xyes"; then
+	if test "x$enable_rust_bindings" != "xyes"; then
+		AC_MSG_NOTICE([knetd requires rust-bindings, enabling automatically])
+		enable_rust_bindings="yes"
+	fi
+fi
+
+# Set conditionals after knetd may have enabled rust-bindings
 AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
+AM_CONDITIONAL([BUILD_KNETD], [test x$enable_knetd = xyes])
 
 ## local helper functions
 # this function checks if CC support options passed as
@@ -352,6 +367,9 @@ if test "x$enable_rust_bindings" = "xyes"; then
 		AC_MSG_ERROR(["rustfmt command not found (optional)"])
 	fi
 fi
+
+# NOTE: knetd requires rust-bindings, which is automatically enabled above
+# and includes all necessary rust tool checks (cargo, rustc, etc.)
 
 # checks for libnozzle
 if test "x$enable_libnozzle" = xyes; then
@@ -680,6 +698,7 @@ AC_CONFIG_FILES([
 		libknet/bindings/rust/tests/Makefile
 		libknet/bindings/rust/tests/Cargo.toml
 		libknet/wireshark/Makefile
+		knetd/Makefile
 		man/Makefile
 		man/Doxyfile-knet
 		man/Doxyfile-nozzle

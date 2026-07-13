@@ -32,6 +32,10 @@ EXTRA_DIST		= autogen.sh .version \
 
 SUBDIRS			= libnozzle libknet
 
+if BUILD_KNETD
+SUBDIRS			+= knetd
+endif
+
 if BUILD_MAN
 SUBDIRS			+= man
 endif
