@@ -107,7 +107,7 @@ fn main() -> Result<()>
     }
     match File::create(&up_filename) {
 	Err(e) => {
-	    println!("Cannot create up.d file {}: {}", &up_filename, e);
+	    println!("Cannot create up.d file {}: {}", up_filename, e);
 	    return Err(e);
         }
         Ok(fl) => {
