@@ -13,7 +13,7 @@ use knetd_common::{DaemonEvent, HostId, InstanceName};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Event subscription tracking.
 pub struct EventSubscription {
@@ -234,6 +234,66 @@ fn configure_instance(
     Ok(())
 }
 
+/// Look up the numeric UID for a username using getpwnam_r(3).
+fn lookup_uid(username: &str) -> Option<u32> {
+    use std::ffi::CString;
+
+    let c_name = CString::new(username).ok()?;
+    // Use a 4 KiB stack buffer; fall back gracefully if it is too small.
+    let mut buf = vec![0u8; 4096];
+    let mut result: *mut libc::passwd = std::ptr::null_mut();
+    let mut pw: libc::passwd = unsafe { std::mem::zeroed() };
+
+    let ret = unsafe {
+        libc::getpwnam_r(
+            c_name.as_ptr(),
+            &mut pw,
+            buf.as_mut_ptr() as *mut libc::c_char,
+            buf.len(),
+            &mut result,
+        )
+    };
+
+    if ret == 0 && !result.is_null() {
+        Some(unsafe { (*result).pw_uid })
+    } else {
+        None
+    }
+}
+
+/// Resolve `allowed_users` from the config into a deduplicated list of UIDs.
+///
+/// Root (UID 0) is always prepended so it can never be locked out.
+/// Each entry is interpreted as a numeric UID if it parses as `u32`,
+/// otherwise as a username that is looked up via the system password database.
+fn resolve_allowed_uids(allowed_users: &[String]) -> Vec<u32> {
+    let mut uids: Vec<u32> = vec![0]; // root is always allowed
+
+    for entry in allowed_users {
+        let entry = entry.trim();
+        if entry.is_empty() {
+            continue;
+        }
+        if let Ok(uid) = entry.parse::<u32>() {
+            uids.push(uid);
+        } else {
+            match lookup_uid(entry) {
+                Some(uid) => {
+                    info!("Resolved allowed_user '{}' to UID {}", entry, uid);
+                    uids.push(uid);
+                }
+                None => {
+                    warn!("Could not resolve allowed_user '{}' to a UID — entry ignored", entry);
+                }
+            }
+        }
+    }
+
+    uids.sort_unstable();
+    uids.dedup();
+    uids
+}
+
 /// Run the daemon main loop.
 ///
 /// This function:
@@ -381,7 +441,8 @@ pub async fn run(config: DaemonConfig, local_node_id: Option<u16>) -> Result<()>
 
     info!("Starting RPC server on {}", config.socket_path);
 
-    let rpc_server = RpcServer::new(config.socket_path.clone(), state.clone());
+    let allowed_uids = resolve_allowed_uids(&config.allowed_users);
+    let rpc_server = RpcServer::new(config.socket_path.clone(), state.clone(), allowed_uids);
     let _server = rpc_server.start().await?;
 
     info!("Daemon ready, waiting for signals...");

@@ -41,6 +41,12 @@ pub struct DaemonConfig {
     #[serde(default = "default_disable_privileged")]
     pub disable_privileged: bool,
 
+    /// Users allowed to connect to the RPC socket, in addition to root (UID 0)
+    /// Each entry is either a username (resolved to UID at startup) or a numeric UID
+    /// If empty, only root may connect
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+
     /// Pre-configured VPN instances to create on daemon startup
     #[serde(default)]
     pub instances: Vec<InstanceConfig>,
@@ -228,6 +234,7 @@ impl Default for DaemonConfig {
             colored_logs: default_colored_logs(),
             state_file: None,
             disable_privileged: default_disable_privileged(),
+            allowed_users: Vec::new(),
             instances: Vec::new(),
         }
     }

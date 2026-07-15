@@ -10,6 +10,11 @@ colored_logs = false
 # Set to true to disable privileged mode regardless of UID
 # disable_privileged = false
 
+# Users allowed to connect to the RPC socket, in addition to root (UID 0)
+# Each entry is a username (resolved to UID at daemon startup) or a numeric UID
+# Root is always permitted regardless of this list
+# allowed_users = ["knetadmin", "1000"]
+
 # Example: Node-agnostic VPN instance configuration
 # This same config file can be deployed to all nodes in the cluster.
 # Each node identifies itself via --node-id command-line argument or KNETD_NODE_ID environment variable.

@@ -7,22 +7,27 @@ use crate::daemon::{DaemonState, EventSubscription};
 use crate::vpn_instance::VpnInstance;
 use anyhow::Result;
 use jsonrpc_core::{IoHandler, Params, Value, Error as RpcError, ErrorCode};
-use jsonrpc_ipc_server::{Server, ServerBuilder};
 use knetd_common::*;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::net::UnixListener;
 use tokio::sync::broadcast;
-use tracing::info;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 /// RPC server that listens on a Unix domain socket.
 pub struct RpcServer {
     socket_path: String,
     state: DaemonState,
+    /// UIDs permitted to connect; root (0) is always included.
+    allowed_uids: Vec<u32>,
 }
 
 impl RpcServer {
-    pub fn new(socket_path: String, state: DaemonState) -> Self {
-        Self { socket_path, state }
+    pub fn new(socket_path: String, state: DaemonState, allowed_uids: Vec<u32>) -> Self {
+        Self { socket_path, state, allowed_uids }
     }
 
     /// Start the RPC server.
@@ -30,11 +35,10 @@ impl RpcServer {
     /// This method:
     /// 1. Registers all RPC method handlers
     /// 2. Removes any existing socket file at the configured path
-    /// 3. Binds to the Unix socket
-    /// 4. Returns the Server handle which must be kept alive
-    ///
-    /// The server will continue running as long as the returned Server is alive.
-    pub async fn start(self) -> Result<Server> {
+    /// 3. Binds to the Unix socket with 0660 permissions
+    /// 4. Spawns an accept loop that checks SO_PEERCRED on every connection
+    /// 5. Returns a JoinHandle that must be kept alive for the server to run
+    pub async fn start(self) -> Result<tokio::task::JoinHandle<()>> {
         let mut io = IoHandler::new();
 
         // Register RPC methods
@@ -217,16 +221,109 @@ impl RpcServer {
             std::fs::remove_file(&self.socket_path)?;
         }
 
-        // Bind to Unix socket
+        // Bind the Unix socket
         info!("Binding to socket {}", self.socket_path);
-        let server = ServerBuilder::new(io)
-            .start(&self.socket_path)?;
+        let listener = UnixListener::bind(&self.socket_path)
+            .map_err(|e| anyhow::anyhow!("Failed to bind socket '{}': {}", self.socket_path, e))?;
 
-        info!("RPC server listening on {}", self.socket_path);
+        // Restrict to owner+group rw only; peercred checking is the real gate
+        std::fs::set_permissions(
+            &self.socket_path,
+            std::fs::Permissions::from_mode(0o660),
+        ).map_err(|e| anyhow::anyhow!("Failed to set socket permissions: {}", e))?;
 
-        // Return the server handle - caller must keep it alive
-        // The server runs in background threads managed by jsonrpc-ipc-server
-        Ok(server)
+        let io = Arc::new(io);
+        let allowed_uids = Arc::new(self.allowed_uids);
+        info!("RPC server listening on {} (allowed UIDs: {:?})", self.socket_path, allowed_uids);
+
+        let handle = tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((stream, _)) => {
+                        let uid = match stream.peer_cred() {
+                            Ok(cred) => cred.uid(),
+                            Err(e) => {
+                                warn!("Rejected connection: could not read peer credentials: {}", e);
+                                continue;
+                            }
+                        };
+
+                        if !allowed_uids.contains(&uid) {
+                            warn!("Rejected connection from UID {} (not in allowed_users)", uid);
+                            continue;
+                        }
+
+                        info!("Accepted RPC connection from UID {}", uid);
+                        let io = io.clone();
+                        tokio::spawn(async move {
+                            handle_connection(stream, io).await;
+                        });
+                    }
+                    Err(e) => {
+                        error!("Socket accept error: {}", e);
+                    }
+                }
+            }
+        });
+
+        Ok(handle)
+    }
+}
+
+// ============================================================================
+// Connection Handler
+// ============================================================================
+
+/// Drive one client connection: read newline-delimited JSON-RPC requests,
+/// dispatch each through the IoHandler, write the response.
+///
+/// The protocol is newline-delimited JSON (same as parity-tokio-ipc / LinesCodec),
+/// so existing knetctl clients built against jsonrpc-core-client remain compatible.
+///
+/// Each request is handled in a tokio::task::spawn_blocking call so that the
+/// jsonrpc-core executor can drive async handlers that use tokio primitives
+/// (e.g. tokio::sync::Mutex) without blocking the async runtime's worker threads.
+async fn handle_connection(stream: tokio::net::UnixStream, io: Arc<IoHandler>) {
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+
+    loop {
+        line.clear();
+        match reader.read_line(&mut line).await {
+            Ok(0) => break, // EOF: client disconnected
+            Ok(_) => {
+                let req = line.trim().to_owned();
+                if req.is_empty() {
+                    continue;
+                }
+
+                let io = io.clone();
+                // handle_request_sync drives async handlers via futures::executor::block_on.
+                // Running it on the blocking thread pool avoids blocking a tokio worker,
+                // and gives the internal executor a thread context where the tokio runtime
+                // handle is still reachable, so tokio::sync primitives wake correctly.
+                let response = tokio::task::spawn_blocking(move || {
+                    io.handle_request_sync(&req)
+                })
+                .await
+                .ok()
+                .flatten();
+
+                if let Some(resp) = response {
+                    if writer.write_all(resp.as_bytes()).await.is_err() {
+                        break;
+                    }
+                    if writer.write_all(b"\n").await.is_err() {
+                        break;
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Connection read error: {}", e);
+                break;
+            }
+        }
     }
 }
 
