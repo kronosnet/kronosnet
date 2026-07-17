@@ -22,7 +22,8 @@ EXTRA_DIST		= \
 			  knetd/knetd.toml.example \
 			  knetd-multi-instance.toml.example \
 			  man \
-			  systemd
+			  systemd \
+			  tests/test_knetd.sh
 
 if BUILD_KNETD
 
@@ -57,5 +58,10 @@ uninstall-local:
 
 clean-local:
 	-$(CARGO) clean --manifest-path=$(srcdir)/Cargo.toml
+
+check-local:
+	KNETD_BIN="$(srcdir)/target/$(RUST_TARGET_DIR)/knetd" \
+	KNETCTL_BIN="$(srcdir)/target/$(RUST_TARGET_DIR)/knetctl" \
+	$(SHELL) $(srcdir)/tests/test_knetd.sh
 
 endif

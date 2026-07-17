@@ -741,9 +741,9 @@ impl VpnInstance {
             config_num
         );
 
-        // Validate config_num
-        if config_num > 1 {
-            return Err(anyhow::anyhow!("config_num must be 0 or 1"));
+        // Validate config_num (knet requires 1 or 2; 0 is not valid)
+        if config_num < 1 || config_num > 2 {
+            return Err(anyhow::anyhow!("config_num must be 1 or 2"));
         }
 
         // Validate key length (knet requires at least KNET_MIN_KEY_LEN = 1024 bytes)
@@ -763,16 +763,13 @@ impl VpnInstance {
 
         knet::handle_crypto_set_config(&self.handle, &crypto_config, config_num)?;
 
-        // Store metadata for state persistence (only if key_file is provided)
-        if let Some(key_file_path) = key_file {
-            self.crypto_config = Some(CryptoMetadata {
-                model: model.to_string(),
-                cipher: cipher.to_string(),
-                hash: hash.to_string(),
-                key_file: key_file_path,
-                config_num,
-            });
-        }
+        self.crypto_config = Some(CryptoMetadata {
+            model: model.to_string(),
+            cipher: cipher.to_string(),
+            hash: hash.to_string(),
+            key_file: key_file.unwrap_or_default(),
+            config_num,
+        });
 
         info!(
             "Crypto configured successfully for instance '{}'",
@@ -796,8 +793,8 @@ impl VpnInstance {
             self.name.as_str()
         );
 
-        if config_num > 1 {
-            return Err(anyhow::anyhow!("config_num must be 0 or 1"));
+        if config_num < 1 || config_num > 2 {
+            return Err(anyhow::anyhow!("config_num must be 1 or 2"));
         }
 
         knet::handle_crypto_use_config(&self.handle, config_num)?;

@@ -101,6 +101,14 @@ pub async fn handle_command(client: &RpcClient, cmd: InstanceCommands) -> Result
                              instance.name.as_str(),
                              instance.host_id.to_u16(),
                              status);
+                    if let Some(ref crypto) = instance.crypto {
+                        println!("    crypto: model={} cipher={} hash={}",
+                                 crypto.model, crypto.cipher, crypto.hash);
+                    }
+                    if let Some(ref compression) = instance.compression {
+                        println!("    compress: model={} threshold={} level={}",
+                                 compression.model, compression.threshold, compression.level);
+                    }
                 }
                 println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 println!("Total: {}", resp.instances.len());
