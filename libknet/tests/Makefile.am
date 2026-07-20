@@ -29,7 +29,8 @@ noinst_HEADERS		= \
 
 check_PROGRAMS		= \
 			  $(api_checks) \
-			  $(int_checks)
+			  $(int_checks) \
+			  $(sec_checks)
 
 if RUN_FUN_TESTS
 check_PROGRAMS		+= $(fun_checks)
@@ -42,6 +43,10 @@ int_checks		= \
 			  int_seq_wraparound_stress_test \
 			  int_defrag_edge_cases_test \
 			  int_buffer_management_test
+
+sec_checks		= \
+			  sec_acl_link_id_spoofing_test \
+			  sec_frag_sequence_test
 
 fun_checks		= \
 			  fun_config_crypto_test \
@@ -65,7 +70,8 @@ noinst_PROGRAMS		= \
 			  $(long_run_checks) \
 			  $(api_checks) \
 			  $(int_checks) \
-			  $(fun_checks)
+			  $(fun_checks) \
+			  $(sec_checks)
 
 noinst_SCRIPTS		= \
 			  api-test-coverage
@@ -145,5 +151,11 @@ int_defrag_edge_cases_test_SOURCES = int_defrag_edge_cases.c \
 
 int_buffer_management_test_SOURCES = int_buffer_management.c \
 				      test-common.c
+
+sec_acl_link_id_spoofing_test_SOURCES = sec_acl_link_id_spoofing.c \
+					test-common.c
+
+sec_frag_sequence_test_SOURCES = sec_frag_sequence.c \
+				 test-common.c
 
 CLEANFILES = knet_test_unix_stream.*

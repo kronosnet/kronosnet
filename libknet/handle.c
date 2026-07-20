@@ -638,6 +638,12 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	log_info(knet_h, KNET_SUB_HANDLE, "Default onwire version: %u", knet_h->onwire_ver);
 
 	/*
+	 * Enable ACL validation by default for security (CVE-2026-15812)
+	 * Users can explicitly disable with knet_handle_enable_access_lists(0)
+	 */
+	knet_h->use_access_lists = 1;
+
+	/*
 	 * set default buffers
 	 */
 

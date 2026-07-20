@@ -336,6 +336,33 @@ static int _pckt_defrag(knet_handle_t knet_h, struct knet_host *src_host, seq_nu
 	struct knet_host_defrag_buf *defrag_buf;
 	int defrag_buf_idx;
 
+	/*
+	 * Validate total fragment count
+	 * frag_map array has PCKT_FRAG_MAX (255) elements indexed 0-254.
+	 * Since frag_seq is 1-based and used as array index, maximum valid
+	 * value is PCKT_FRAG_MAX-1 (254).
+	 */
+	if (frags == 0 || frags >= PCKT_FRAG_MAX) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Invalid fragment count: %u (valid range: 1-%u)",
+			 frags, PCKT_FRAG_MAX - 1);
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*
+	 * Validate fragment sequence number to prevent buffer overflow.
+	 * frag_seq is used as array index into frag_map[PCKT_FRAG_MAX].
+	 * Also ensure frag_seq is within the declared fragment count.
+	 */
+	if (frag_seq == 0 || frag_seq > frags) {
+		log_warn(knet_h, KNET_SUB_RX,
+			 "Invalid fragment sequence %u (total frags: %u)",
+			 frag_seq, frags);
+		errno = EINVAL;
+		return -1;
+	}
+
 	defrag_buf_idx = _find_pckt_defrag_buf(knet_h, src_host, seq_num);
 	if (defrag_buf_idx < 0) {
 		return 1;
@@ -884,23 +911,71 @@ static void _handle_dynip(knet_handle_t knet_h, struct knet_host *src_host, stru
  */
 static int _check_rx_acl(knet_handle_t knet_h, struct knet_link *src_link, const struct knet_mmsghdr *msg)
 {
-	if (knet_h->use_access_lists) {
-		if (!check_validate(knet_h, src_link, msg->msg_hdr.msg_name)) {
-			char src_ipaddr[KNET_MAX_HOST_LEN];
-			char src_port[KNET_MAX_PORT_LEN];
+	const struct sockaddr_storage *src_addr = msg->msg_hdr.msg_name;
+	char src_ipaddr[KNET_MAX_HOST_LEN];
+	char src_port[KNET_MAX_PORT_LEN];
+	int has_acl;
 
-			memset(src_ipaddr, 0, KNET_MAX_HOST_LEN);
-			memset(src_port, 0, KNET_MAX_PORT_LEN);
-			if (knet_addrtostr(msg->msg_hdr.msg_name, sockaddr_len(msg->msg_hdr.msg_name),
+	/*
+	 * ACL validation to prevent link ID spoofing (CVE-2026-15812)
+	 *
+	 * Static links (KNET_LINK_STATIC):
+	 *   Always validate - dst_addr is auto-configured in ACL during knet_link_set_config()
+	 *
+	 * Dynamic links (KNET_LINK_DYNIP):
+	 *   - If use_access_lists = 0: skip validation (user explicitly disabled)
+	 *   - If use_access_lists = 1 (default):
+	 *     - If no ACL configured: reject with specific message
+	 *     - If ACL configured: validate source address
+	 *
+	 * This ensures all links require proper ACL configuration unless explicitly opted out.
+	 */
+
+	if (src_link->dynamic == KNET_LINK_STATIC) {
+		/* Static links: always validate */
+		if (!check_validate(knet_h, src_link, (struct sockaddr_storage *)src_addr)) {
+			if (knet_addrtostr(src_addr, sockaddr_len(src_addr),
 					   src_ipaddr, KNET_MAX_HOST_LEN,
 					   src_port, KNET_MAX_PORT_LEN) < 0) {
-
 				log_warn(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
 			} else {
 				log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s", src_ipaddr, src_port);
 			}
 			return 0;
 		}
+	} else {
+		/* Dynamic links */
+		if (knet_h->use_access_lists) {
+			/* Check if link has ACL configured */
+			has_acl = (src_link->access_list_match_entry_head != NULL) &&
+				  (*(void **)src_link->access_list_match_entry_head != NULL);
+
+			if (!has_acl) {
+				/* No ACL configured - reject */
+				if (knet_addrtostr(src_addr, sockaddr_len(src_addr),
+						   src_ipaddr, KNET_MAX_HOST_LEN,
+						   src_port, KNET_MAX_PORT_LEN) < 0) {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected: dynamic link has no ACL configured");
+				} else {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s: dynamic link has no ACL configured",
+						 src_ipaddr, src_port);
+				}
+				return 0;
+			}
+
+			/* ACL configured - validate */
+			if (!check_validate(knet_h, src_link, (struct sockaddr_storage *)src_addr)) {
+				if (knet_addrtostr(src_addr, sockaddr_len(src_addr),
+						   src_ipaddr, KNET_MAX_HOST_LEN,
+						   src_port, KNET_MAX_PORT_LEN) < 0) {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected: unable to resolve host/port");
+				} else {
+					log_warn(knet_h, KNET_SUB_RX, "Packet rejected from %s:%s", src_ipaddr, src_port);
+				}
+				return 0;
+			}
+		}
+		/* else: use_access_lists = 0, skip validation */
 	}
 	return 1;
 }
@@ -972,6 +1047,14 @@ static void _parse_recv_from_links(knet_handle_t knet_h, int sockfd, const struc
 					return;
 					break;
 			}
+		}
+
+		/*
+		 * Validate link_id bounds and configuration (CVE-2026-15812)
+		 * Logging is done in get_link_from_pong_v1() to distinguish failure cases
+		 */
+		if (!src_link) {
+			return;
 		}
 		if (!_check_rx_acl(knet_h, src_link, msg)) {
 			return;
