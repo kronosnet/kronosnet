@@ -227,6 +227,13 @@ static void test(int transport)
 	msgs_recvd = 0;
 	_ts_knet_handle_start_nodes(knet_h, TESTNODES, logfd, KNET_LOG_DEBUG);
 
+	/*
+	 * Disable use_access_lists initially (CVE-2026-15812 changed default to enabled)
+	 * This test explicitly enables ACLs later to test ACL functionality
+	 */
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[2], 0));
+
 	FAIL_ON_ERR_THR(knet_host_add(knet_h[2], 1));
 	FAIL_ON_ERR_THR(knet_host_add(knet_h[1], 2));
 
@@ -288,6 +295,8 @@ static void test(int transport)
 	// Unblock and check again
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd));
+	// Disable ACL validation temporarily while nodes reconnect after ACL change
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
 	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, NULL, CHECK_TYPE_ADDRESS, CHECK_REJECT));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
@@ -295,6 +304,9 @@ static void test(int transport)
 	log_test(logfd, "Testing Address unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Address unblocked - this should get through"));
 	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
+
+	// Re-enable ACL validation for next test
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 1));
 
 	// Block traffic using a netmask
 	knet_strtoaddr("127.0.0.1","0", &ss1, sizeof(ss1));
@@ -307,6 +319,8 @@ static void test(int transport)
 	// Unblock and check again
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd));
+	// Disable ACL validation temporarily while nodes reconnect after ACL change
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
 	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_MASK, CHECK_REJECT));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
@@ -314,6 +328,9 @@ static void test(int transport)
 	log_test(logfd, "Testing Netmask unblocked - this should get through");
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Netmask unblocked - this should get through"));
 	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
+
+	// Re-enable ACL validation for next test
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 1));
 
 	// Block traffic from a range
 	knet_strtoaddr("127.0.0.0", "0", &ss1, sizeof(ss1));
@@ -326,6 +343,8 @@ static void test(int transport)
 	// Unblock and check again
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 0, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 0, seconds, logfd));
+	// Disable ACL validation temporarily while nodes reconnect after ACL change
+	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
 	FAIL_ON_ERR_THR(knet_link_rm_acl(knet_h[1], 2, 0, &ss1, &ss2, CHECK_TYPE_RANGE, CHECK_REJECT));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));
@@ -334,7 +353,8 @@ static void test(int transport)
 	FAIL_ON_ERR_THR(knet_send_str(knet_h[2], "1Range unblocked - this should get through"));
 	FAIL_ON_ERR_THR(wait_for_reply(seconds, reply_pipe[0], test_logfd));
 
-	// Finish up - disable ACLS to make sure the QUIT message gets through
+	// Finish up - disable ACLs to make sure messages get through
+	// With secure-by-default (use_access_lists=1), need to disable for dynamic link without ACL
 	FAIL_ON_ERR_THR(knet_handle_enable_access_lists(knet_h[1], 0));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[1], TESTNODES, 1, seconds, logfd));
 	FAIL_ON_ERR_THR(wait_for_nodes_state(knet_h[2], TESTNODES, 1, seconds, logfd));

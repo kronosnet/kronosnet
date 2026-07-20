@@ -612,6 +612,12 @@ knet_handle_t knet_handle_new_ex(knet_node_id_t host_id,
 	knet_h->stats.rx_crypt_time_min = UINT64_MAX;
 
 	/*
+	 * Enable ACL validation by default for security (CVE-2026-15812)
+	 * Users can explicitly disable with knet_handle_enable_access_lists(0)
+	 */
+	knet_h->use_access_lists = 1;
+
+	/*
 	 * init global shared bits
 	 */
 	savederrno = pthread_mutex_lock(&handle_config_mutex);
