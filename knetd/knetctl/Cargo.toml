@@ -17,3 +17,5 @@ clap = { version = "4.5", features = ["derive"] }
 jsonrpc-core-client = { version = "18.0", features = ["ipc"] }
 tabled = "0.16"
 colored = "2.1"
+rustyline = "14"
+shlex = "1"

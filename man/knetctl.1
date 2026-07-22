@@ -4,7 +4,7 @@ knetctl \- control utility for knetd VPN daemon
 .SH SYNOPSIS
 .B knetctl
 [\fB\-\-socket\fR \fIPATH\fR]
-\fICOMMAND\fR [\fIOPTIONS\fR]
+{\fICOMMAND\fR [\fIOPTIONS\fR] | \fB\-\-interactive\fR}
 .SH DESCRIPTION
 .B knetctl
 is a command-line utility for controlling the
@@ -16,6 +16,23 @@ managing VPN instances, hosts, links, encryption, compression, and events.
 .TP
 .BR \-s ", " \-\-socket " " \fIPATH\fR
 Path to knetd Unix domain socket (default: /run/knetd/knetd.sock)
+
+.TP
+.BR \-i ", " \-\-interactive
+Start an interactive shell. The shell connects to the daemon once and allows
+multiple commands to be entered without spawning a new process each time.
+GNU readline is used for line editing and command history, which is persisted
+to
+.I ~/.knetctl_history
+between sessions. Type
+.B help
+or
+.B ?
+for available commands,
+.B exit
+or
+.B quit
+(or Ctrl-D) to leave the shell, and Ctrl-C to cancel the current input line.
 
 .TP
 .BR \-h ", " \-\-help
@@ -239,6 +256,17 @@ knetctl crypto set-config -i vpn1 \\
 
 # Activate
 knetctl crypto use-config -i vpn1 -n 0
+.EE
+
+.SS Interactive Shell
+.EX
+# Start interactive session
+knetctl --interactive
+
+knetctl> instance list
+knetctl> host list -i vpn1
+knetctl> link status -i vpn1 -H 2 -l 0
+knetctl> exit
 .EE
 
 .SS Monitoring
