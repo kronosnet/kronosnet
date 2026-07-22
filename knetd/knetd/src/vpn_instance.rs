@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use knet_bindings::knet_bindings as knet;
 use nozzle_bindings::nozzle_bindings as nozzle;
-use knetd_common::{DaemonEvent, HostId, InstanceName, LinkId};
+use knetd_common::{DaemonEvent, HostId, InstanceName, LinkId, NozzleInfo};
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Mutex as StdMutex, OnceLock};
@@ -166,16 +166,28 @@ pub struct VpnInstance {
     /// Event broadcaster for async notifications
     event_tx: broadcast::Sender<DaemonEvent>,
 
-    /// Nozzle (tap device) name (optional)
-    /// We store just the name because nozzle::Handle is not Send (contains raw pointer)
-    /// The handle is closed during cleanup by name lookup
-    nozzle_name: Option<String>,
+    /// Nozzle (tap device) metadata; None if no tap device is attached.
+    nozzle_meta: Option<NozzleMetadata>,
 
     /// Current crypto configuration (for state persistence)
     crypto_config: Option<CryptoMetadata>,
 
     /// Current compression configuration (for state persistence)
     compression_config: Option<CompressionMetadata>,
+}
+
+/// Metadata stored for a nozzle device after creation.
+#[derive(Debug, Clone)]
+struct NozzleMetadata {
+    device_name: String,
+    /// Original "IP/PREFIX" strings as supplied by the caller (before node-ID embedding)
+    ip_addresses: Vec<String>,
+    mtu: Option<i32>,
+    mac: Option<String>,
+    updown_path: Option<String>,
+    auto_up: bool,
+    /// The knet datafd assigned when the nozzle FD was registered; needed for removal.
+    datafd: i32,
 }
 
 /// Metadata for crypto configuration.
@@ -272,8 +284,11 @@ impl VpnInstance {
         // Create event broadcaster (capacity of 100 events)
         let (event_tx, _event_rx) = broadcast::channel(100);
 
-        // Register event callbacks with knet
-        let handle_ptr = &handle as *const knet::Handle as usize;
+        // Register event callbacks with knet.
+        // Use handle.knet_handle (the underlying C pointer value, a stable u64) as
+        // the registry key — this value is unchanged by Rust struct moves, so Drop
+        // can remove the entry by self.handle.knet_handle even after the move into Self.
+        let handle_ptr = handle.knet_handle as usize;
 
         // Register in global registry
         {
@@ -304,7 +319,7 @@ impl VpnInstance {
             forwarding_enabled: false,
             data_fds: Vec::new(),
             event_tx,
-            nozzle_name: None,
+            nozzle_meta: None,
             crypto_config: None,
             compression_config: None,
         })
@@ -332,7 +347,8 @@ impl VpnInstance {
         self.forwarding_enabled = enabled;
 
         // If we have a nozzle device, bring it up/down in sync
-        if let Some(ref devname) = self.nozzle_name {
+        if let Some(ref meta) = self.nozzle_meta {
+            let devname = &meta.device_name;
             let registry = get_nozzle_registry().lock().unwrap();
             if let Some(handle_wrapper) = registry.get(devname) {
                 // SAFETY: We control all access to this pointer and ensure it's valid
@@ -425,12 +441,34 @@ impl VpnInstance {
         updown_path: Option<&str>,
         auto_up: bool,
     ) -> Result<String> {
-        if self.nozzle_name.is_some() {
+        if self.nozzle_meta.is_some() {
             anyhow::bail!("Nozzle device already exists for instance '{}'", self.name.as_str());
         }
 
         let mut name = devname.unwrap_or("").to_string();
         let path = updown_path.unwrap_or("");
+
+        // Validate updown_path before use: libnozzle executes scripts found there,
+        // so an unprivileged allowed_user could escalate to root by pointing this at
+        // a directory they control.
+        if !path.is_empty() {
+            use std::os::unix::fs::PermissionsExt;
+            let p = std::path::Path::new(path);
+            if !p.is_absolute() {
+                anyhow::bail!("updown_path '{}' must be an absolute path", path);
+            }
+            if p.components().any(|c| c == std::path::Component::ParentDir) {
+                anyhow::bail!("updown_path '{}' must not contain '..' components", path);
+            }
+            let meta = std::fs::metadata(p)
+                .with_context(|| format!("updown_path '{}' is not accessible", path))?;
+            if !meta.is_dir() {
+                anyhow::bail!("updown_path '{}' must be a directory", path);
+            }
+            if meta.permissions().mode() & 0o002 != 0 {
+                anyhow::bail!("updown_path '{}' must not be world-writable", path);
+            }
+        }
 
         info!("Creating nozzle device for instance '{}' (requested name: '{}')",
               self.name.as_str(), if name.is_empty() { "<auto>" } else { &name });
@@ -497,11 +535,16 @@ impl VpnInstance {
         info!("Registered nozzle FD {} with knet (datafd={}, channel={})", fd, datafd, channel);
         self.data_fds.push(datafd);
 
-        // Bring the device up if requested AND forwarding is already enabled
-        // Otherwise, it will be brought up when set_forwarding(true) is called
+        // Bring the device up if requested AND forwarding is already enabled.
+        // On failure, roll back the knet datafd registration before returning so
+        // that knet's rx/tx threads don't poll a stale (soon-to-be-closed) fd.
         if auto_up && self.forwarding_enabled {
             info!("Bringing nozzle '{}' up (forwarding already enabled)", actual_name);
-            nozzle::set_up(&handle)?;
+            if let Err(e) = nozzle::set_up(&handle) {
+                let _ = knet::handle_remove_datafd(&self.handle, datafd);
+                self.data_fds.retain(|&f| f != datafd);
+                return Err(e.into());
+            }
         } else if auto_up {
             info!("Nozzle '{}' created but left down (forwarding not enabled yet)", actual_name);
         }
@@ -515,10 +558,64 @@ impl VpnInstance {
             registry.insert(actual_name.clone(), SendNozzleHandle(handle_ptr));
         }
 
-        // Store the device name
-        self.nozzle_name = Some(actual_name.clone());
+        self.nozzle_meta = Some(NozzleMetadata {
+            device_name: actual_name.clone(),
+            ip_addresses: ip_addresses.to_vec(),
+            mtu,
+            mac: mac.map(|s| s.to_string()),
+            updown_path: updown_path.map(|s| s.to_string()),
+            auto_up,
+            datafd,
+        });
 
         Ok(actual_name)
+    }
+
+    /// Remove the nozzle (tap) device from this instance.
+    ///
+    /// Closes the tap device, removes its FD from knet, and clears all nozzle state.
+    /// The instance itself remains running; only the tap interface is destroyed.
+    pub fn destroy_nozzle(&mut self) -> Result<()> {
+        let meta = self.nozzle_meta.take()
+            .ok_or_else(|| anyhow::anyhow!("No nozzle device attached to instance '{}'", self.name.as_str()))?;
+
+        info!("Destroying nozzle device '{}' for instance '{}'", meta.device_name, self.name.as_str());
+
+        // Remove the datafd from knet first (before closing the nozzle FD)
+        if let Err(e) = knet::handle_remove_datafd(&self.handle, meta.datafd) {
+            error!("Failed to remove nozzle datafd {}: {}", meta.datafd, e);
+        }
+        self.data_fds.retain(|&fd| fd != meta.datafd);
+
+        // Close the nozzle device (this destroys the tap interface)
+        let mut registry = get_nozzle_registry().lock().unwrap();
+        if let Some(handle_wrapper) = registry.remove(&meta.device_name) {
+            // SAFETY: We're taking ownership back from the raw pointer.
+            // We call nozzle::close() explicitly, then forget the Box to prevent
+            // Handle::drop() from calling nozzle_close a second time (double-free).
+            let handle = unsafe { Box::from_raw(handle_wrapper.0) };
+            let close_result = nozzle::close(handle.as_ref());
+            std::mem::forget(handle);
+            close_result.with_context(|| format!("Failed to close nozzle device '{}'", meta.device_name))?;
+        } else {
+            warn!("Nozzle '{}' not found in registry during destroy", meta.device_name);
+        }
+
+        info!("Nozzle device '{}' destroyed", meta.device_name);
+        Ok(())
+    }
+
+    /// Return status information about the attached nozzle device, if any.
+    pub fn nozzle_info(&self) -> Option<NozzleInfo> {
+        self.nozzle_meta.as_ref().map(|meta| NozzleInfo {
+            device_name: meta.device_name.clone(),
+            ip_addresses: meta.ip_addresses.clone(),
+            mtu: meta.mtu,
+            mac: meta.mac.clone(),
+            updown_path: meta.updown_path.clone(),
+            auto_up: meta.auto_up,
+            is_up: self.forwarding_enabled,
+        })
     }
 
     /// Add a remote host to this VPN instance.
@@ -579,6 +676,37 @@ impl VpnInstance {
             .and_then(|m| m.name.as_deref())
     }
 
+    /// Return the link IDs configured for a host.
+    pub fn list_host_links(&self, host_id: HostId) -> Vec<u8> {
+        self.hosts
+            .get(&host_id)
+            .map(|h| h.links.keys().copied().collect())
+            .unwrap_or_default()
+    }
+
+    /// Return the configuration for one link as (transport, src_addr, dst_addr, enabled).
+    ///
+    /// Returns None if the host or link is not tracked, or if knet cannot
+    /// return the config (which would indicate an internal inconsistency).
+    pub fn get_link_config(
+        &self,
+        host_id: HostId,
+        link_id: u8,
+    ) -> Option<(String, String, Option<String>, bool)> {
+        let host = self.hosts.get(&host_id)?;
+        let link_meta = host.links.get(&link_id)?;
+        let knet_host_id = knet::HostId::from(host_id);
+        let (transport, src_addr, dst_addr, _flags) =
+            knet::link_get_config(&self.handle, &knet_host_id, link_id).ok()?;
+        let src = src_addr?.to_string();
+        Some((
+            transport.to_string(),
+            src,
+            dst_addr.map(|a| a.to_string()),
+            link_meta.enabled,
+        ))
+    }
+
     /// Track a link configuration.
     pub fn track_link(&mut self, host_id: HostId, link_id: u8, enabled: bool) -> Result<()> {
         let host = self.hosts.get_mut(&host_id)
@@ -596,12 +724,10 @@ impl VpnInstance {
         let knet_host_id = knet::HostId::from(host_id);
 
         // Disable if enabled
-        if let Some(host) = self.hosts.get(&host_id) {
-            if let Some(link) = host.links.get(&link_id) {
-                if link.enabled {
-                    knet::link_set_enable(&self.handle, &knet_host_id, link_id, false)?;
-                }
-            }
+        if let Some(host) = self.hosts.get(&host_id)
+            && let Some(link) = host.links.get(&link_id)
+            && link.enabled {
+            knet::link_set_enable(&self.handle, &knet_host_id, link_id, false)?;
         }
 
         // Clear configuration
@@ -683,10 +809,9 @@ impl VpnInstance {
         knet::link_set_enable(&self.handle, &knet_host_id, link_id, enable)?;
 
         // Update tracking
-        if let Some(host) = self.hosts.get_mut(&host_id) {
-            if let Some(link) = host.links.get_mut(&link_id) {
-                link.enabled = enable;
-            }
+        if let Some(host) = self.hosts.get_mut(&host_id)
+            && let Some(link) = host.links.get_mut(&link_id) {
+            link.enabled = enable;
         }
 
         Ok(())
@@ -742,7 +867,7 @@ impl VpnInstance {
         );
 
         // Validate config_num (knet requires 1 or 2; 0 is not valid)
-        if config_num < 1 || config_num > 2 {
+        if !(1..=2).contains(&config_num) {
             return Err(anyhow::anyhow!("config_num must be 1 or 2"));
         }
 
@@ -793,7 +918,7 @@ impl VpnInstance {
             self.name.as_str()
         );
 
-        if config_num < 1 || config_num > 2 {
+        if !(1..=2).contains(&config_num) {
             return Err(anyhow::anyhow!("config_num must be 1 or 2"));
         }
 
@@ -889,35 +1014,36 @@ impl Drop for VpnInstance {
     fn drop(&mut self) {
         info!("Cleaning up VPN instance '{}'", self.name.as_str());
 
-        // Unregister from event registry
-        let handle_ptr = &self.handle as *const knet::Handle as usize;
+        // Unregister from event registry using the same stable key used in new().
+        let handle_ptr = self.handle.knet_handle as usize;
         {
             let mut registry = get_event_registry().lock().unwrap();
             registry.remove(&handle_ptr);
         }
 
         // 0. Close nozzle device (if any)
-        if let Some(ref devname) = self.nozzle_name {
+        if let Some(ref meta) = self.nozzle_meta {
+            let devname = &meta.device_name;
             info!("Closing nozzle device '{}' for instance '{}'", devname, self.name.as_str());
-            // Remove from registry and close (which destroys the device)
             let mut registry = get_nozzle_registry().lock().unwrap();
             if let Some(handle_wrapper) = registry.remove(devname) {
-                // SAFETY: We're taking ownership back from the raw pointer
+                // SAFETY: We're taking ownership back from the raw pointer.
+                // Forget the Box after explicit close to prevent Handle::drop()
+                // from calling nozzle_close a second time (double-free).
                 let handle = unsafe { Box::from_raw(handle_wrapper.0) };
                 if let Err(e) = nozzle::close(handle.as_ref()) {
                     error!("Failed to close nozzle device '{}': {}", devname, e);
                 }
-                // Box is dropped here, freeing the memory
+                std::mem::forget(handle);
             } else {
                 warn!("Nozzle '{}' not found in registry during cleanup", devname);
             }
         }
 
         // 1. Stop forwarding
-        if self.forwarding_enabled {
-            if let Err(e) = knet::handle_setfwd(&self.handle, false) {
-                error!("Failed to stop forwarding: {}", e);
-            }
+        if self.forwarding_enabled
+            && let Err(e) = knet::handle_setfwd(&self.handle, false) {
+            error!("Failed to stop forwarding: {}", e);
         }
 
         // 2. Remove data FDs

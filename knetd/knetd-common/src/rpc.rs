@@ -4,7 +4,27 @@
 //! These are serialized to/from JSON for communication between knetctl and knetd.
 
 use serde::{Deserialize, Serialize};
-use crate::{InstanceName, HostId, LinkId, InstanceInfo, HostInfo, LinkInfo, LinkStats};
+use crate::{InstanceName, HostId, LinkId, InstanceInfo, HostInfo, LinkInfo, LinkStats, NozzleInfo};
+
+fn default_true() -> bool { true }
+
+/// Serde helper: encode `Vec<u8>` as a base64 string on the wire instead of
+/// a JSON integer array.  A 1 KiB key as integers is ~5 KiB of JSON; as
+/// base64 it is ~1.4 KiB and survives round-trips through any JSON parser.
+mod base64_bytes {
+    use base64::Engine as _;
+    use serde::{Deserializer, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&base64::engine::general_purpose::STANDARD.encode(bytes))
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
+        let s = <String as serde::Deserialize>::deserialize(d)?;
+        base64::engine::general_purpose::STANDARD.decode(s.as_bytes())
+            .map_err(|e| D::Error::custom(format!("invalid base64: {e}")))
+    }
+}
 
 // ============================================================================
 // Instance Management
@@ -174,7 +194,8 @@ pub struct SetCryptoConfigRequest {
     pub cipher: String,
     /// Hash type (e.g., "sha256", "sha512", "sha1", or "none" to disable hashing)
     pub hash: String,
-    /// Private key bytes (must be at least 1024 bytes for knet)
+    /// Private key bytes (must be at least 1024 bytes for knet), base64-encoded on the wire
+    #[serde(with = "base64_bytes")]
     pub key: Vec<u8>,
     /// Configuration slot number (0 or 1) - knet supports 2 concurrent configs
     #[serde(default)]
@@ -215,6 +236,57 @@ pub struct SetCompressionConfigResponse {
 }
 
 // ============================================================================
+// Nozzle (tap device) Management
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateNozzleRequest {
+    pub instance: InstanceName,
+    /// Desired tap device name; None lets the kernel assign one
+    pub name: Option<String>,
+    /// IP addresses to assign, as "IP/PREFIX" strings
+    #[serde(default)]
+    pub ip_addresses: Vec<String>,
+    /// MTU override; None keeps the default
+    pub mtu: Option<i32>,
+    /// Base MAC address ("XX:XX:XX:XX"); the daemon embeds the node ID in the last two bytes
+    pub mac: Option<String>,
+    /// Path to up/down scripts directory
+    pub updown_path: Option<String>,
+    /// Bring the device up automatically when forwarding is enabled
+    #[serde(default = "default_true")]
+    pub auto_up: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateNozzleResponse {
+    pub success: bool,
+    /// Actual kernel device name that was assigned
+    pub device_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DestroyNozzleRequest {
+    pub instance: InstanceName,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DestroyNozzleResponse {
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetNozzleStatusRequest {
+    pub instance: InstanceName,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetNozzleStatusResponse {
+    /// None if no nozzle device is attached to the instance
+    pub nozzle: Option<NozzleInfo>,
+}
+
+// ============================================================================
 // Event Subscription
 // ============================================================================
 
@@ -249,6 +321,20 @@ pub struct UnsubscribeEventsRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnsubscribeEventsResponse {
     pub success: bool,
+}
+
+// ============================================================================
+// State dump
+// ============================================================================
+
+/// Request a snapshot of the daemon's current state as an opaque JSON value.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DumpStateRequest {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DumpStateResponse {
+    /// Complete daemon state in the same JSON format as the knetd state file.
+    pub state: serde_json::Value,
 }
 
 // ============================================================================

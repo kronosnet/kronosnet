@@ -10,6 +10,8 @@ pub mod events;
 pub mod topology;
 pub mod crypto;
 pub mod compress;
+pub mod nozzle;
+pub mod state;
 
 use crate::client::RpcClient;
 use anyhow::Result;

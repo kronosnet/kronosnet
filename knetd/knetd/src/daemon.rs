@@ -8,7 +8,7 @@
 use crate::config::{DaemonConfig, InstanceConfig};
 use crate::rpc_server::RpcServer;
 use crate::vpn_instance::VpnInstance;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use knetd_common::{DaemonEvent, HostId, InstanceName};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ use tracing::{error, info, warn};
 /// Event subscription tracking.
 pub struct EventSubscription {
     pub receiver: broadcast::Receiver<DaemonEvent>,
+    pub instance_name: InstanceName,
 }
 
 /// Shared daemon state containing all VPN instances.
@@ -142,11 +143,10 @@ fn configure_instance(
                 continue;
             }
 
-            if link_config.auto_enable {
-                if let Err(e) = instance.set_link_enable(to_host, link_config.link_id, true) {
-                    error!("Failed to enable link {} to host {}: {}",
-                           link_config.link_id, link_config.to_host, e);
-                }
+            if link_config.auto_enable
+                && let Err(e) = instance.set_link_enable(to_host, link_config.link_id, true) {
+                error!("Failed to enable link {} to host {}: {}",
+                       link_config.link_id, link_config.to_host, e);
             }
         }
     }
@@ -156,37 +156,30 @@ fn configure_instance(
         info!("Configuring crypto for instance '{}': model={}, cipher={}, hash={}",
               instance_config.name, crypto_config.model, crypto_config.cipher, crypto_config.hash);
 
-        // Read the key file
-        match std::fs::read(&crypto_config.key_file) {
-            Ok(key) => {
-                if key.len() < 1024 {
-                    error!("Crypto key file '{}' is too small ({} bytes, need at least 1024)",
-                           crypto_config.key_file, key.len());
-                } else {
-                    if let Err(e) = instance.set_crypto_config_with_file(
-                        &crypto_config.model,
-                        &crypto_config.cipher,
-                        &crypto_config.hash,
-                        &key,
-                        crypto_config.config_num,
-                        Some(crypto_config.key_file.clone()),
-                    ) {
-                        error!("Failed to configure crypto for instance '{}': {}", instance_config.name, e);
-                    } else {
-                        // Activate the crypto config
-                        if let Err(e) = instance.use_crypto_config(crypto_config.config_num) {
-                            error!("Failed to activate crypto config {} for instance '{}': {}",
-                                   crypto_config.config_num, instance_config.name, e);
-                        } else {
-                            info!("Crypto enabled for instance '{}'", instance_config.name);
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Failed to read crypto key file '{}': {}", crypto_config.key_file, e);
-            }
+        let key = std::fs::read(&crypto_config.key_file)
+            .map_err(|e| anyhow::anyhow!("Failed to read crypto key file '{}': {}", crypto_config.key_file, e))?;
+
+        if key.len() < 1024 {
+            return Err(anyhow::anyhow!(
+                "Crypto key file '{}' is too small ({} bytes, need at least 1024)",
+                crypto_config.key_file, key.len()
+            ));
         }
+
+        instance.set_crypto_config_with_file(
+            &crypto_config.model,
+            &crypto_config.cipher,
+            &crypto_config.hash,
+            &key,
+            crypto_config.config_num,
+            Some(crypto_config.key_file.clone()),
+        ).map_err(|e| anyhow::anyhow!("Failed to configure crypto for instance '{}': {}", instance_config.name, e))?;
+
+        instance.use_crypto_config(crypto_config.config_num)
+            .map_err(|e| anyhow::anyhow!("Failed to activate crypto config {} for instance '{}': {}",
+                crypto_config.config_num, instance_config.name, e))?;
+
+        info!("Crypto enabled for instance '{}'", instance_config.name);
     }
 
     // Configure compression if specified
@@ -209,27 +202,21 @@ fn configure_instance(
     if let Some(ref nozzle_config) = instance_config.nozzle {
         info!("Creating nozzle device for instance '{}'", instance_config.name);
 
-        match instance.create_nozzle(
+        let devname = instance.create_nozzle(
             nozzle_config.name.as_deref(),
             &nozzle_config.ip_addresses,
             nozzle_config.mtu,
             nozzle_config.mac.as_deref(),
             nozzle_config.updown_path.as_deref(),
             nozzle_config.auto_up,
-        ) {
-            Ok(devname) => {
-                info!("Created nozzle device '{}' for instance '{}'", devname, instance_config.name);
-            }
-            Err(e) => {
-                error!("Failed to create nozzle device for instance '{}': {}", instance_config.name, e);
-            }
-        }
+        ).map_err(|e| anyhow::anyhow!("Failed to create nozzle device for instance '{}': {}", instance_config.name, e))?;
+
+        info!("Created nozzle device '{}' for instance '{}'", devname, instance_config.name);
     }
 
-    // Enable forwarding for auto_start instances (brings nozzle up too)
-    if let Err(e) = instance.set_forwarding(true) {
-        error!("Failed to enable forwarding for instance '{}': {}", instance_config.name, e);
-    }
+    // Enable forwarding (brings nozzle up too if configured)
+    instance.set_forwarding(true)
+        .map_err(|e| anyhow::anyhow!("Failed to enable forwarding for instance '{}': {}", instance_config.name, e))?;
 
     Ok(())
 }
@@ -307,7 +294,10 @@ fn resolve_allowed_uids(allowed_users: &[String]) -> Vec<u32> {
 /// # Parameters
 /// * `config` - Daemon configuration (may define multiple nodes and links)
 /// * `local_node_id` - This node's host ID (filters config to relevant parts)
-pub async fn run(config: DaemonConfig, local_node_id: Option<u16>) -> Result<()> {
+pub async fn run(
+    config: DaemonConfig,
+    local_node_id: Option<u16>,
+) -> Result<()> {
     // Determine whether to use privileged mode based on:
     // 1. If daemon is running as root (UID 0)
     // 2. Unless disabled via config
@@ -414,31 +404,6 @@ pub async fn run(config: DaemonConfig, local_node_id: Option<u16>) -> Result<()>
         log_level: config.log_level.clone(),
     }));
 
-    // Set up signal handling BEFORE starting the RPC server
-    // Use a channel to communicate from signal thread to main thread
-    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel();
-
-    std::thread::spawn(move || {
-        use signal_hook::consts::signal::*;
-        use signal_hook::iterator::Signals;
-
-        let mut signals = Signals::new([SIGINT, SIGTERM])
-            .expect("Failed to register signal handlers");
-
-        info!("Signal handler thread started, waiting for SIGINT/SIGTERM...");
-
-        // Block until we receive a signal
-        if let Some(sig) = signals.forever().next() {
-            info!("Received signal: {}", sig);
-            match sig {
-                SIGINT => info!("Got SIGINT, shutting down"),
-                SIGTERM => info!("Got SIGTERM, shutting down"),
-                _ => unreachable!(),
-            }
-            let _ = shutdown_tx.send(());
-        }
-    });
-
     info!("Starting RPC server on {}", config.socket_path);
 
     let allowed_uids = resolve_allowed_uids(&config.allowed_users);
@@ -447,13 +412,31 @@ pub async fn run(config: DaemonConfig, local_node_id: Option<u16>) -> Result<()>
 
     info!("Daemon ready, waiting for signals...");
 
-    // Wait for shutdown signal from the signal handler thread
-    // Poll the channel periodically without blocking the runtime
-    loop {
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        if shutdown_rx.try_recv().is_ok() {
-            break;
+    // Wait for SIGINT or SIGTERM using tokio's signal infrastructure.
+    // This is integrated with tokio's I/O driver and works correctly even
+    // when blocking tasks (spawn_blocking) are running concurrently.
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        let mut sigterm = signal(SignalKind::terminate())
+            .context("Failed to install SIGTERM handler")?;
+        tokio::select! {
+            result = tokio::signal::ctrl_c() => {
+                if let Err(e) = result {
+                    warn!("SIGINT handler error: {}", e);
+                }
+                info!("Received SIGINT, shutting down");
+            }
+            _ = sigterm.recv() => {
+                info!("Received SIGTERM, shutting down");
+            }
         }
+    }
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c().await
+            .context("Failed to listen for ctrl-c")?;
+        info!("Received Ctrl-C, shutting down");
     }
 
     // RPC server will be dropped automatically, which triggers cleanup

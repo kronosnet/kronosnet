@@ -134,6 +134,25 @@ pub struct LinkInfo {
     pub connected: bool,
 }
 
+/// Information about a nozzle (tap) device attached to a VPN instance.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NozzleInfo {
+    /// Actual kernel device name (e.g. "knet0")
+    pub device_name: String,
+    /// IP address/prefix pairs as originally supplied (before node-ID embedding)
+    pub ip_addresses: Vec<String>,
+    /// MTU, if explicitly set
+    pub mtu: Option<i32>,
+    /// Base MAC address as originally supplied
+    pub mac: Option<String>,
+    /// Path to up/down scripts directory, if set
+    pub updown_path: Option<String>,
+    /// Whether the device is brought up automatically with forwarding
+    pub auto_up: bool,
+    /// Whether the device is currently up (mirrors forwarding state)
+    pub is_up: bool,
+}
+
 /// Statistics for a link.
 ///
 /// These counters are cumulative since the link was configured.

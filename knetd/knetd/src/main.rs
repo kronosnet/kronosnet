@@ -107,6 +107,21 @@ fn main() -> Result<()> {
 
     info!("Loaded configuration: socket_path={}", config.socket_path);
 
+    // When started as a background process a shell may have set SIGINT to
+    // SIG_IGN.  tokio::signal refuses to install handlers over SIG_IGN, so
+    // reset it to SIG_DFL first.  For foreground processes this is a no-op.
+    #[cfg(unix)]
+    unsafe {
+        let mut old: libc::sigaction = std::mem::zeroed();
+        libc::sigaction(libc::SIGINT, std::ptr::null(), &mut old);
+        if old.sa_sigaction == libc::SIG_IGN {
+            let mut action: libc::sigaction = std::mem::zeroed();
+            action.sa_sigaction = libc::SIG_DFL;
+            libc::sigemptyset(&mut action.sa_mask);
+            libc::sigaction(libc::SIGINT, &action, std::ptr::null_mut());
+        }
+    }
+
     // Create tokio runtime manually so we can block on it properly
     let runtime = tokio::runtime::Runtime::new()?;
     let result = runtime.block_on(async {

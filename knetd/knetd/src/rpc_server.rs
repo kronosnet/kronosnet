@@ -203,16 +203,48 @@ impl RpcServer {
             }
         });
 
-        // Ensure parent directory exists
-        if let Some(parent) = Path::new(&self.socket_path).parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| anyhow::anyhow!(
-                        "Failed to create socket directory '{}': {}. \
-                         Try using a socket path in a writable directory (e.g., /tmp/knetd.sock)",
-                        parent.display(), e
-                    ))?;
+        // Nozzle (tap device) management methods
+        let state = self.state.clone();
+        io.add_method("nozzle.create", move |params: Params| {
+            let state = state.clone();
+            async move {
+                handle_nozzle_create(state, params).await
             }
+        });
+
+        let state = self.state.clone();
+        io.add_method("nozzle.destroy", move |params: Params| {
+            let state = state.clone();
+            async move {
+                handle_nozzle_destroy(state, params).await
+            }
+        });
+
+        let state = self.state.clone();
+        io.add_method("nozzle.status", move |params: Params| {
+            let state = state.clone();
+            async move {
+                handle_nozzle_status(state, params).await
+            }
+        });
+
+        let state = self.state.clone();
+        io.add_method("state.dump", move |params: Params| {
+            let state = state.clone();
+            async move {
+                handle_state_dump(state, params).await
+            }
+        });
+
+        // Ensure parent directory exists
+        if let Some(parent) = Path::new(&self.socket_path).parent()
+            && !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| anyhow::anyhow!(
+                    "Failed to create socket directory '{}': {}. \
+                     Try using a socket path in a writable directory (e.g., /tmp/knetd.sock)",
+                    parent.display(), e
+                ))?;
         }
 
         // Remove stale socket file if it exists
@@ -401,6 +433,10 @@ async fn handle_instance_destroy(state: DaemonState, params: Params) -> Result<V
             data: None,
         });
     }
+
+    // Purge subscriptions that belong to the destroyed instance; they are now
+    // orphaned (the broadcast::Sender has been dropped with the instance).
+    state.subscriptions.retain(|_, sub| sub.instance_name != req.name);
 
     let response = DestroyInstanceResponse { success: true };
     Ok(serde_json::to_value(response).unwrap())
@@ -834,6 +870,7 @@ async fn handle_events_subscribe(state: DaemonState, params: Params) -> Result<V
         subscription_id.clone(),
         EventSubscription {
             receiver,
+            instance_name: req.instance.clone(),
         },
     );
 
@@ -1020,4 +1057,119 @@ async fn handle_compress_set_config(state: DaemonState, params: Params) -> Resul
 
     let response = SetCompressionConfigResponse { success: true };
     Ok(serde_json::to_value(response).unwrap())
+}
+
+// ============================================================================
+// Nozzle (tap device) Management
+// ============================================================================
+
+/// Handle nozzle.create RPC call.
+async fn handle_nozzle_create(state: DaemonState, params: Params) -> Result<Value, RpcError> {
+    let req: CreateNozzleRequest = params.parse()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", e),
+            data: None,
+        })?;
+
+    info!("RPC: Creating nozzle device for instance '{}'", req.instance.as_str());
+
+    let mut state = state.lock().await;
+
+    let instance = state.instances.get_mut(&req.instance)
+        .ok_or_else(|| RpcError {
+            code: ErrorCode::ServerError(-32001),
+            message: format!("Instance '{}' not found", req.instance.as_str()),
+            data: None,
+        })?;
+
+    let device_name = instance.create_nozzle(
+        req.name.as_deref(),
+        &req.ip_addresses,
+        req.mtu,
+        req.mac.as_deref(),
+        req.updown_path.as_deref(),
+        req.auto_up,
+    ).map_err(|e| RpcError {
+        code: ErrorCode::InternalError,
+        message: format!("Failed to create nozzle device: {}", e),
+        data: None,
+    })?;
+
+    let response = CreateNozzleResponse { success: true, device_name };
+    Ok(serde_json::to_value(response).unwrap())
+}
+
+/// Handle nozzle.destroy RPC call.
+async fn handle_nozzle_destroy(state: DaemonState, params: Params) -> Result<Value, RpcError> {
+    let req: DestroyNozzleRequest = params.parse()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", e),
+            data: None,
+        })?;
+
+    info!("RPC: Destroying nozzle device for instance '{}'", req.instance.as_str());
+
+    let mut state = state.lock().await;
+
+    let instance = state.instances.get_mut(&req.instance)
+        .ok_or_else(|| RpcError {
+            code: ErrorCode::ServerError(-32001),
+            message: format!("Instance '{}' not found", req.instance.as_str()),
+            data: None,
+        })?;
+
+    instance.destroy_nozzle()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InternalError,
+            message: format!("Failed to destroy nozzle device: {}", e),
+            data: None,
+        })?;
+
+    let response = DestroyNozzleResponse { success: true };
+    Ok(serde_json::to_value(response).unwrap())
+}
+
+/// Handle nozzle.status RPC call.
+async fn handle_nozzle_status(state: DaemonState, params: Params) -> Result<Value, RpcError> {
+    let req: GetNozzleStatusRequest = params.parse()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", e),
+            data: None,
+        })?;
+
+    let state = state.lock().await;
+
+    let instance = state.instances.get(&req.instance)
+        .ok_or_else(|| RpcError {
+            code: ErrorCode::ServerError(-32001),
+            message: format!("Instance '{}' not found", req.instance.as_str()),
+            data: None,
+        })?;
+
+    let response = GetNozzleStatusResponse { nozzle: instance.nozzle_info() };
+    Ok(serde_json::to_value(response).unwrap())
+}
+
+/// Handle state.dump RPC call.
+async fn handle_state_dump(state: DaemonState, params: Params) -> Result<Value, RpcError> {
+    let _req: DumpStateRequest = params.parse()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", e),
+            data: None,
+        })?;
+
+    let state = state.lock().await;
+    let daemon_state = crate::state::collect_state(&state.instances);
+    let state_value = serde_json::to_value(&daemon_state)
+        .map_err(|e| RpcError {
+            code: ErrorCode::InternalError,
+            message: format!("Failed to serialise state: {}", e),
+            data: None,
+        })?;
+
+    Ok(serde_json::to_value(DumpStateResponse { state: state_value }).unwrap())
 }

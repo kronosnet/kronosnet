@@ -24,6 +24,8 @@ pub struct InstanceState {
     pub forwarding_enabled: bool,
     pub hosts: Vec<HostState>,
     #[serde(default)]
+    pub nozzle: Option<NozzleState>,
+    #[serde(default)]
     pub crypto: Option<CryptoState>,
     #[serde(default)]
     pub compression: Option<CompressionState>,
@@ -34,6 +36,34 @@ pub struct InstanceState {
 pub struct HostState {
     pub host_id: u16,
     pub name: Option<String>,
+    #[serde(default)]
+    pub links: Vec<LinkState>,
+}
+
+/// Serializable configuration for one link to a remote host.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LinkState {
+    pub link_id: u8,
+    pub transport: String,
+    pub src_addr: String,
+    #[serde(default)]
+    pub dst_addr: Option<String>,
+    pub enabled: bool,
+}
+
+/// Serializable nozzle (tap device) configuration state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NozzleState {
+    pub device_name: String,
+    #[serde(default)]
+    pub ip_addresses: Vec<String>,
+    #[serde(default)]
+    pub mtu: Option<i32>,
+    #[serde(default)]
+    pub mac: Option<String>,
+    #[serde(default)]
+    pub updown_path: Option<String>,
+    pub auto_up: bool,
 }
 
 /// Serializable crypto configuration state.
@@ -73,31 +103,32 @@ impl DaemonState {
     }
 }
 
-/// Save daemon state to a JSON file.
+/// Collect current daemon state into a serialisable snapshot.
 ///
-/// # Arguments
-/// * `path` - Path to the state file
-/// * `instances` - Map of active VPN instances
-///
-/// # Errors
-/// Returns an error if serialization or file write fails.
-pub fn save_state(
-    path: impl AsRef<Path>,
-    instances: &HashMap<InstanceName, VpnInstance>,
-) -> Result<()> {
-    let path = path.as_ref();
-    info!("Saving daemon state to {:?}", path);
-
-    // Convert instances to serializable format
+/// Extracted so both `save_state()` and the `state.dump` RPC handler can
+/// share the same serialisation logic without duplicating the instance loop.
+pub fn collect_state(instances: &HashMap<InstanceName, VpnInstance>) -> DaemonState {
     let instance_states: Vec<InstanceState> = instances
         .iter()
         .map(|(name, instance)| {
             let hosts: Vec<HostState> = instance
                 .list_hosts()
                 .into_iter()
-                .map(|host_id| HostState {
-                    host_id: host_id.to_u16(),
-                    name: instance.get_host_name(host_id).map(String::from),
+                .map(|host_id| {
+                    let links = instance
+                        .list_host_links(host_id)
+                        .into_iter()
+                        .filter_map(|link_id| {
+                            let (transport, src_addr, dst_addr, enabled) =
+                                instance.get_link_config(host_id, link_id)?;
+                            Some(LinkState { link_id, transport, src_addr, dst_addr, enabled })
+                        })
+                        .collect();
+                    HostState {
+                        host_id: host_id.to_u16(),
+                        name: instance.get_host_name(host_id).map(String::from),
+                        links,
+                    }
                 })
                 .collect();
 
@@ -119,21 +150,49 @@ pub fn save_state(
                 }
             });
 
+            let nozzle = instance.nozzle_info().map(|n| NozzleState {
+                device_name: n.device_name,
+                ip_addresses: n.ip_addresses,
+                mtu: n.mtu,
+                mac: n.mac,
+                updown_path: n.updown_path,
+                auto_up: n.auto_up,
+            });
+
             InstanceState {
                 name: name.as_str().to_string(),
                 host_id: instance.host_id().to_u16(),
                 forwarding_enabled: instance.is_forwarding(),
                 hosts,
+                nozzle,
                 crypto,
                 compression,
             }
         })
         .collect();
 
-    let state = DaemonState {
+    DaemonState {
         version: DaemonState::CURRENT_VERSION,
         instances: instance_states,
-    };
+    }
+}
+
+/// Save daemon state to a JSON file.
+///
+/// # Arguments
+/// * `path` - Path to the state file
+/// * `instances` - Map of active VPN instances
+///
+/// # Errors
+/// Returns an error if serialization or file write fails.
+pub fn save_state(
+    path: impl AsRef<Path>,
+    instances: &HashMap<InstanceName, VpnInstance>,
+) -> Result<()> {
+    let path = path.as_ref();
+    info!("Saving daemon state to {:?}", path);
+
+    let state = collect_state(instances);
 
     // Serialize to JSON with pretty printing
     let json = serde_json::to_string_pretty(&state)
@@ -217,7 +276,7 @@ pub fn restore_instances(state: DaemonState, use_privileged: bool, log_level: &s
         let mut instance = VpnInstance::new(name.clone(), host_id, use_privileged, log_level)
             .with_context(|| format!("Failed to create instance '{}'", instance_state.name))?;
 
-        // Restore hosts
+        // Restore hosts and their links
         for host_state in instance_state.hosts {
             let host_id = HostId::new(host_state.host_id);
             if let Err(e) = instance.add_host(host_id, host_state.name.clone()) {
@@ -225,7 +284,30 @@ pub fn restore_instances(state: DaemonState, use_privileged: bool, log_level: &s
                     "Failed to restore host {} for instance '{}': {}",
                     host_state.host_id, instance_state.name, e
                 );
-                // Continue with other hosts
+                continue;
+            }
+
+            for link_state in host_state.links {
+                if let Err(e) = instance.set_link_config(
+                    host_id,
+                    link_state.link_id,
+                    &link_state.transport,
+                    &link_state.src_addr,
+                    link_state.dst_addr.as_deref(),
+                ) {
+                    error!(
+                        "Failed to restore link {} for host {} in instance '{}': {}",
+                        link_state.link_id, host_state.host_id, instance_state.name, e
+                    );
+                    continue;
+                }
+                if link_state.enabled
+                    && let Err(e) = instance.set_link_enable(host_id, link_state.link_id, true) {
+                    error!(
+                        "Failed to enable link {} for host {} in instance '{}': {}",
+                        link_state.link_id, host_state.host_id, instance_state.name, e
+                    );
+                }
             }
         }
 
@@ -282,14 +364,32 @@ pub fn restore_instances(state: DaemonState, use_privileged: bool, log_level: &s
             }
         }
 
-        // Restore forwarding state
-        if instance_state.forwarding_enabled {
-            if let Err(e) = instance.set_forwarding(true) {
-                error!(
-                    "Failed to enable forwarding for instance '{}': {}",
-                    instance_state.name, e
-                );
+        // Restore nozzle device if one was attached
+        if let Some(nozzle_state) = instance_state.nozzle {
+            info!("Restoring nozzle device '{}' for instance '{}'",
+                  nozzle_state.device_name, instance_state.name);
+            match instance.create_nozzle(
+                Some(&nozzle_state.device_name),
+                &nozzle_state.ip_addresses,
+                nozzle_state.mtu,
+                nozzle_state.mac.as_deref(),
+                nozzle_state.updown_path.as_deref(),
+                nozzle_state.auto_up,
+            ) {
+                Ok(dev) => info!("Restored nozzle device '{}' for instance '{}'",
+                                 dev, instance_state.name),
+                Err(e) => error!("Failed to restore nozzle device for instance '{}': {}",
+                                 instance_state.name, e),
             }
+        }
+
+        // Restore forwarding state
+        if instance_state.forwarding_enabled
+            && let Err(e) = instance.set_forwarding(true) {
+            error!(
+                "Failed to enable forwarding for instance '{}': {}",
+                instance_state.name, e
+            );
         }
 
         instances.insert(name, instance);

@@ -422,9 +422,102 @@ ctl_fail "topology nonexistent instance"      topology show -i noexist
 echo ""
 
 # ============================================================================
-# Section 9: Instance teardown
+# Section 9: Nozzle (tap device) management
 # ============================================================================
-echo "=== 9. Instance teardown ==="
+echo "=== 9. Nozzle (tap device) management ==="
+
+# Status when no nozzle is attached returns success with an informational message.
+ctl_ok   "nozzle status (none attached)"          nozzle status -i test1
+contains "nozzle status: no device message"       "No tap device"
+
+# Destroy when no nozzle is attached must fail.
+ctl_fail "nozzle destroy when none attached"      nozzle destroy -i test1
+
+# All commands must fail on a nonexistent instance.
+ctl_fail "nozzle status nonexistent instance"     nozzle status  -i noexist
+ctl_fail "nozzle destroy nonexistent instance"    nozzle destroy -i noexist
+ctl_fail "nozzle create nonexistent instance"     nozzle create  -i noexist
+
+# Security: updown_path validation is enforced server-side before any device
+# creation, so these rejections do not require root.
+
+WORLD_WRITABLE_DIR="${TESTDIR}/hooks_ww"
+mkdir -p "$WORLD_WRITABLE_DIR"
+chmod 777 "$WORLD_WRITABLE_DIR"
+ctl_fail "nozzle create: world-writable updown_path rejected" \
+         nozzle create -i test1 --updown-path "$WORLD_WRITABLE_DIR"
+
+ctl_fail "nozzle create: relative updown_path rejected" \
+         nozzle create -i test1 --updown-path "relative/hooks"
+
+ctl_fail "nozzle create: updown_path with '..' rejected" \
+         nozzle create -i test1 --updown-path "/etc/../tmp"
+
+# Device creation / lifecycle require CAP_NET_ADMIN; skip when not root.
+if [ "$(id -u)" -eq 0 ]; then
+    UPDOWN_DIR="${TESTDIR}/hooks"
+    mkdir -p "$UPDOWN_DIR"
+    chmod 750 "$UPDOWN_DIR"   # not world-writable; readable by root only
+
+    ctl_ok   "nozzle create"                           \
+             nozzle create -i test1 --updown-path "$UPDOWN_DIR"
+    contains "nozzle create: success message"          "Created tap device"
+
+    # Status must now show the device.
+    ctl_ok   "nozzle status (device present)"          nozzle status -i test1
+    contains "nozzle status: device line present"      "Device:"
+    contains "nozzle status: scripts path shown"       "$UPDOWN_DIR"
+
+    # A second create on the same instance must fail.
+    ctl_fail "nozzle create when already attached"     nozzle create -i test1
+
+    # Destroy removes the device.
+    ctl_ok   "nozzle destroy"                          nozzle destroy -i test1
+    contains "nozzle destroy: success message"         "Tap device removed"
+
+    # Status after destroy returns the no-device message.
+    ctl_ok   "nozzle status after destroy"             nozzle status -i test1
+    contains "nozzle status after destroy: no device"  "No tap device"
+
+    # Second destroy must fail (nothing to remove).
+    ctl_fail "nozzle destroy after destroy"            nozzle destroy -i test1
+else
+    printf "INFO: skipping nozzle device creation tests (requires root/CAP_NET_ADMIN)\n"
+fi
+
+echo ""
+
+# ============================================================================
+# Section 10: State dump
+# ============================================================================
+echo "=== 10. State dump ==="
+
+# Dump to stdout — must succeed and contain the expected top-level fields.
+ctl_ok   "state save (stdout)"               state save
+contains "state: version field present"      '"version"'
+contains "state: instances field present"    '"instances"'
+
+# Dump to a file.
+STATE_FILE="${TESTDIR}/state.json"
+ctl_ok   "state save -o FILE"                state save -o "$STATE_FILE"
+contains "state save: reports path"          "State saved to"
+
+# The written file must be valid JSON.
+if python3 -m json.tool "$STATE_FILE" > /dev/null 2>&1; then
+	pass "state: saved file is valid JSON"
+else
+	fail "state: saved file is valid JSON" "file: $STATE_FILE"
+fi
+
+# Idempotent: a second save must overwrite cleanly without error.
+ctl_ok   "state save idempotent"             state save -o "$STATE_FILE"
+
+echo ""
+
+# ============================================================================
+# Section 11: Instance teardown
+# ============================================================================
+echo "=== 11. Instance teardown ==="
 
 ctl_ok   "instance destroy test2"             instance destroy -n test2
 contains "destroy test2: success"             "Destroyed instance"

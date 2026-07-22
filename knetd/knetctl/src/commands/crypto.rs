@@ -35,8 +35,8 @@ pub enum CryptoCommands {
         #[arg(short = 'k', long)]
         key_file: PathBuf,
 
-        /// Configuration slot (0 or 1) - knet supports 2 concurrent configs
-        #[arg(short = 'n', long, default_value = "0")]
+        /// Configuration slot (1 or 2) - knet supports 2 concurrent configs for key rotation
+        #[arg(short = 'n', long, default_value = "1")]
         config_num: u8,
     },
 

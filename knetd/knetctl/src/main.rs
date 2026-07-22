@@ -71,6 +71,14 @@ enum Commands {
     /// Configure packet compression
     #[command(subcommand)]
     Compress(commands::compress::CompressCommands),
+
+    /// Manage the tap (nozzle) device attached to a VPN instance
+    #[command(subcommand)]
+    Nozzle(commands::nozzle::NozzleCommands),
+
+    /// Manage daemon state snapshots
+    #[command(subcommand)]
+    State(commands::state::StateCommands),
 }
 
 async fn dispatch(client: &client::RpcClient, command: Commands) -> Result<()> {
@@ -83,6 +91,8 @@ async fn dispatch(client: &client::RpcClient, command: Commands) -> Result<()> {
         Commands::Crypto(cmd) => commands::crypto::execute(cmd, client).await?,
         Commands::Compress(cmd) => commands::compress::execute(cmd, client).await?,
         Commands::Topology(cmd) => commands::topology::handle_command(client, cmd).await?,
+        Commands::Nozzle(cmd) => commands::nozzle::handle_command(client, cmd).await?,
+        Commands::State(cmd) => commands::state::execute(cmd, client).await?,
     }
     Ok(())
 }

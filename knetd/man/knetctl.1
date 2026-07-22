@@ -160,7 +160,7 @@ Hash: sha1, sha256, sha384, sha512
 Path to key file
 .TP
 \fB\-n\fR, \fB\-\-config\-num\fR \fINUM\fR
-Config slot 0 or 1 (default: 0, for key rotation)
+Config slot 1 or 2 (default: 1, for key rotation)
 .RE
 
 .TP
@@ -182,6 +182,43 @@ Compress packets larger than this (default: 100)
 \fB\-l\fR, \fB\-\-level\fR \fILEVEL\fR
 Compression level (model-specific)
 .RE
+
+.SS Nozzle (Tap Device) Management
+.TP
+.B nozzle create \-i \fIINSTANCE\fR [\-n \fINAME\fR] [\-a \fIIP/PREFIX\fR]... [\-\-mtu \fIMTU\fR] [\-\-mac \fIMAC\fR] [\-\-updown\-path \fIPATH\fR] [\-\-no\-auto\-up]
+Create a tap (Ethernet) device for a VPN instance.
+The daemon embeds the local node ID into the host portion of each IP address and the last two bytes of the MAC so that every node derives a unique address from the same base.
+.RS
+.TP
+\fB\-i\fR, \fB\-\-instance\fR \fINAME\fR
+Instance name (required)
+.TP
+\fB\-n\fR, \fB\-\-name\fR \fIDEVICE\fR
+Tap device name (e.g. knet0); kernel assigns if omitted
+.TP
+\fB\-a\fR, \fB\-\-ip\-address\fR \fIIP/PREFIX\fR
+IP address to assign, in IP/PREFIX format (may be repeated for multiple addresses)
+.TP
+\fB\-\-mtu\fR \fIMTU\fR
+MTU for the tap device
+.TP
+\fB\-\-mac\fR \fIMAC\fR
+Base MAC address (4 bytes, e.g. fe:54:00:00); node ID is appended as the last two bytes
+.TP
+\fB\-\-updown\-path\fR \fIPATH\fR
+Directory containing nozzle up/down hook scripts
+.TP
+\fB\-\-no\-auto\-up\fR
+Do not bring the device up automatically when forwarding is enabled
+.RE
+
+.TP
+.B nozzle destroy \-i \fIINSTANCE\fR
+Remove the tap device from a VPN instance (the instance itself continues running)
+
+.TP
+.B nozzle status \-i \fIINSTANCE\fR
+Show tap device status for a VPN instance
 
 .SS Event Monitoring
 .TP
@@ -219,6 +256,18 @@ Format: dot, svg
 .TP
 \fB\-o\fR, \fB\-\-output\fR \fIPATH\fR
 Output file path
+.RE
+
+.SS State Management
+.TP
+.B state save [\-o \fIFILE\fR]
+Dump the current daemon state to FILE as JSON (stdout if omitted).
+The output uses the same format as the knetd state file and can be
+used to inspect running configuration or feed an external monitoring tool.
+.RS
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fIFILE\fR
+Write to this file (overwriting if it exists)
 .RE
 
 .SS Utility

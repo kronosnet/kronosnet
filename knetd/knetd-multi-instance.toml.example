@@ -8,7 +8,7 @@
 socket_path = "/tmp/knetd.sock"  # Use /run/knetd/knetd.sock for production
 log_level = "info"                # trace, debug, info, warn, error
 colored_logs = false              # Enable colored log output
-# state_file = "/var/lib/knetd/state.json"  # Optional: persist state across restarts
+state_file = "/var/lib/knetd/state.json"  # Optional: persist state across restarts
 
 # ============================================================================
 # Instance 1: Production Cluster (Full-Mesh Mode)
