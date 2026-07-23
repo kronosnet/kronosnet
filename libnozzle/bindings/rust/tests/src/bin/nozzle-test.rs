@@ -24,6 +24,23 @@ fn main() -> Result<()>
 	std::process::exit(SKIP);
     }
 
+    // Test an empty dirname
+    let mut nozzle_name = String::from("tap0");
+    let handle = match nozzle::open(&mut nozzle_name, "") {
+	Ok(h) => {
+	    println!("Opened device specified {nozzle_name} with empty path");
+	    h
+	},
+	Err(e) => {
+	    println!("Error opening {nozzle_name} with no path: {e}");
+	    return Err(e);
+	}
+    };
+    if let Err(e) = nozzle::close(&handle) {
+	println!("Error from close: {e}");
+	return Err(e);
+    }
+
     // Run in a random tmpdir so we don't clash with other instances
     let tmp_path = tempdir()?;
     let tmp_dir = match tmp_path.path().to_str() {
