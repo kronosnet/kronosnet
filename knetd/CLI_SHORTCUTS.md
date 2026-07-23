@@ -127,6 +127,108 @@ knetctl link stats -i <INSTANCE> -H <HOST_ID> -l <LINK_ID>
 | `-H`  | `--host-id`  | Remote host ID                     |
 | `-l`  | `--link-id`  | Link ID (0-7)                      |
 
+## Event Commands
+
+### `events watch`
+```bash
+knetctl events watch -i <INSTANCE> [-p <POLL_INTERVAL>]
+```
+| Short | Long              | Description                              |
+|-------|-------------------|------------------------------------------|
+| `-i`  | `--instance`      | VPN instance name                        |
+| `-p`  | `--poll-interval` | Poll interval in milliseconds (default: 500) |
+
+## Crypto Commands
+
+### `crypto list`
+```bash
+knetctl crypto list
+```
+No options required. Prints available models, ciphers, and hashes compiled into libknet.
+
+### `crypto set-config`
+```bash
+knetctl crypto set-config -i <INSTANCE> -m <MODEL> -c <CIPHER> -H <HASH> -k <KEY_FILE> [-n <CONFIG_NUM>]
+```
+| Short | Long           | Description                                |
+|-------|----------------|--------------------------------------------|
+| `-i`  | `--instance`   | VPN instance name                          |
+| `-m`  | `--model`      | Crypto model (openssl, nss, gcrypt, none); default: openssl |
+| `-c`  | `--cipher`     | Cipher type (aes256, aes128, aes192, none); default: aes256 |
+| `-H`  | `--hash`       | Hash type (sha256, sha512, sha1, none); default: sha256 |
+| `-k`  | `--key-file`   | Path to key file (must be at least 1024 bytes) |
+| `-n`  | `--config-num` | Configuration slot (1 or 2); default: 1   |
+
+### `crypto use-config`
+```bash
+knetctl crypto use-config -i <INSTANCE> -n <CONFIG_NUM>
+```
+| Short | Long           | Description                                |
+|-------|----------------|--------------------------------------------|
+| `-i`  | `--instance`   | VPN instance name                          |
+| `-n`  | `--config-num` | Configuration slot to activate (1 or 2)   |
+
+## Compress Commands
+
+### `compress list`
+```bash
+knetctl compress list
+```
+No options required. Prints compression models compiled into libknet.
+
+### `compress set-config`
+```bash
+knetctl compress set-config -i <INSTANCE> -m <MODEL> [-t <THRESHOLD>] [-l <LEVEL>]
+```
+| Short | Long          | Description                                               |
+|-------|---------------|-----------------------------------------------------------|
+| `-i`  | `--instance`  | VPN instance name                                         |
+| `-m`  | `--model`     | Compression model (zlib, lz4, lz4hc, lzo2, lzma, bzip2, zstd, none) |
+| `-t`  | `--threshold` | Threshold in bytes; packets smaller won't be compressed (default: 100, 1 = compress everything) |
+| `-l`  | `--level`     | Compression level (model-dependent; default: 6)           |
+
+## Nozzle Commands
+
+### `nozzle create`
+```bash
+knetctl nozzle create -i <INSTANCE> [-n <NAME>] [-a <IP/PREFIX>]... [--mtu <MTU>] [--mac <MAC>] [--updown-path <PATH>] [--no-auto-up]
+```
+| Short | Long             | Description                                                |
+|-------|------------------|------------------------------------------------------------|
+| `-i`  | `--instance`     | VPN instance name                                          |
+| `-n`  | `--name`         | Desired tap device name (kernel assigns one if omitted)    |
+| `-a`  | `--ip-address`   | IP address in IP/PREFIX format (may be repeated)           |
+| (none)| `--mtu`          | MTU for the tap device (default: inherits from knet)       |
+| (none)| `--mac`          | Base MAC address (first 4 bytes, e.g. fe:54:00:00)         |
+| (none)| `--updown-path`  | Directory containing nozzle up/down scripts                |
+| (none)| `--no-auto-up`   | Do not bring device up automatically when forwarding starts |
+
+### `nozzle destroy`
+```bash
+knetctl nozzle destroy -i <INSTANCE>
+```
+| Short | Long         | Description                        |
+|-------|--------------|------------------------------------|
+| `-i`  | `--instance` | VPN instance name                  |
+
+### `nozzle status`
+```bash
+knetctl nozzle status -i <INSTANCE>
+```
+| Short | Long         | Description                        |
+|-------|--------------|------------------------------------|
+| `-i`  | `--instance` | VPN instance name                  |
+
+## State Commands
+
+### `state save`
+```bash
+knetctl state save [-o <OUTPUT>]
+```
+| Short | Long       | Description                                        |
+|-------|------------|----------------------------------------------------|
+| `-o`  | `--output` | Write JSON state to this file instead of stdout    |
+
 ## Topology Commands
 
 ### `topology show`
@@ -235,11 +337,11 @@ We use uppercase `-H` instead of lowercase `-h` because:
 - Uppercase is visually distinct and emphasizes "Host ID"
 - Consistent with conventions in networking tools (e.g., `ssh -H`)
 
-### Future Commands
+### Adding New Commands
 
-When adding new commands (crypto, compression, events), follow these conventions:
+When adding new commands, follow these conventions:
 - `-i` for instance name (consistent across all commands)
 - `-l` for link-id
-- `-c` for crypto/compression config
 - Use uppercase for less common options to avoid conflicts
 - Always provide both short and long forms for discoverability
+- Long-form-only options (`--option`) are acceptable for infrequently used flags

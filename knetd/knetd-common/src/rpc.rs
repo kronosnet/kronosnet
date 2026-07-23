@@ -236,6 +236,53 @@ pub struct SetCompressionConfigResponse {
 }
 
 // ============================================================================
+// Crypto and Compression Option Queries
+// ============================================================================
+
+/// Query available crypto libraries (models).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetCryptoOptionsRequest {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CryptoModelOption {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CryptoCipherOption {
+    pub name: String,
+    pub mode: String,
+    pub key_bits: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CryptoHashOption {
+    pub name: String,
+    pub hash_bits: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetCryptoOptionsResponse {
+    pub models: Vec<CryptoModelOption>,
+    pub ciphers: Vec<CryptoCipherOption>,
+    pub hashes: Vec<CryptoHashOption>,
+}
+
+/// Query available compression libraries (models).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetCompressOptionsRequest {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompressModelOption {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetCompressOptionsResponse {
+    pub models: Vec<CompressModelOption>,
+}
+
+// ============================================================================
 // Nozzle (tap device) Management
 // ============================================================================
 

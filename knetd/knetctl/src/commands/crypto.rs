@@ -40,6 +40,9 @@ pub enum CryptoCommands {
         config_num: u8,
     },
 
+    /// List crypto libraries, ciphers, and hashes available in this build
+    List,
+
     /// Activate a crypto configuration for transmission
     #[command(override_usage = "knetctl crypto use-config -i|--instance <INSTANCE> -n|--config-num <CONFIG_NUM>")]
     UseConfig {
@@ -56,6 +59,36 @@ pub enum CryptoCommands {
 /// Execute a crypto command.
 pub async fn execute(cmd: CryptoCommands, client: &RpcClient) -> Result<()> {
     match cmd {
+        CryptoCommands::List => {
+            let request = GetCryptoOptionsRequest {};
+            let response = client.call("crypto.get_options", serde_json::to_value(request)?).await?;
+            let resp: GetCryptoOptionsResponse = serde_json::from_value(response)?;
+
+            println!("Available crypto options:");
+            if resp.models.is_empty() {
+                println!("  Models:  (none)");
+            } else {
+                let names: Vec<&str> = resp.models.iter().map(|m| m.name.as_str()).collect();
+                println!("  Models:  {}", names.join(", "));
+            }
+            if resp.ciphers.is_empty() {
+                println!("  Ciphers: (none)");
+            } else {
+                let descs: Vec<String> = resp.ciphers.iter()
+                    .map(|c| format!("{} ({}, {}-bit)", c.name, c.mode, c.key_bits))
+                    .collect();
+                println!("  Ciphers: {}", descs.join(", "));
+            }
+            if resp.hashes.is_empty() {
+                println!("  Hashes:  (none)");
+            } else {
+                let descs: Vec<String> = resp.hashes.iter()
+                    .map(|h| format!("{} ({}-bit)", h.name, h.hash_bits))
+                    .collect();
+                println!("  Hashes:  {}", descs.join(", "));
+            }
+        }
+
         CryptoCommands::SetConfig {
             instance,
             model,

@@ -10,6 +10,9 @@ use knetd_common::*;
 /// Compress subcommands.
 #[derive(Subcommand)]
 pub enum CompressCommands {
+    /// List compression models available in this build
+    List,
+
     /// Configure packet compression
     #[command(override_usage = "knetctl compress set-config -i|--instance <INSTANCE> -m|--model <MODEL> [-t|--threshold <THRESHOLD>] [-l|--level <LEVEL>]")]
     SetConfig {
@@ -42,6 +45,19 @@ pub enum CompressCommands {
 /// Execute a compress command.
 pub async fn execute(cmd: CompressCommands, client: &RpcClient) -> Result<()> {
     match cmd {
+        CompressCommands::List => {
+            let request = GetCompressOptionsRequest {};
+            let response = client.call("compress.get_options", serde_json::to_value(request)?).await?;
+            let resp: GetCompressOptionsResponse = serde_json::from_value(response)?;
+
+            if resp.models.is_empty() {
+                println!("Available compression models: (none)");
+            } else {
+                let names: Vec<&str> = resp.models.iter().map(|m| m.name.as_str()).collect();
+                println!("Available compression models: {}", names.join(", "));
+            }
+        }
+
         CompressCommands::SetConfig {
             instance,
             model,

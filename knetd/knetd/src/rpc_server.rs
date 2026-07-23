@@ -7,6 +7,7 @@ use crate::daemon::{DaemonState, EventSubscription};
 use crate::vpn_instance::VpnInstance;
 use anyhow::Result;
 use jsonrpc_core::{IoHandler, Params, Value, Error as RpcError, ErrorCode};
+use knet_bindings::knet_bindings as knet;
 use knetd_common::*;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -200,6 +201,18 @@ impl RpcServer {
             let state = state.clone();
             async move {
                 handle_compress_set_config(state, params).await
+            }
+        });
+
+        io.add_method("crypto.get_options", move |params: Params| {
+            async move {
+                handle_crypto_get_options(params).await
+            }
+        });
+
+        io.add_method("compress.get_options", move |params: Params| {
+            async move {
+                handle_compress_get_options(params).await
             }
         });
 
@@ -1150,6 +1163,82 @@ async fn handle_nozzle_status(state: DaemonState, params: Params) -> Result<Valu
         })?;
 
     let response = GetNozzleStatusResponse { nozzle: instance.nozzle_info() };
+    Ok(serde_json::to_value(response).unwrap())
+}
+
+// ============================================================================
+// Crypto and Compression Option Query Handlers
+// ============================================================================
+
+/// Handle crypto.get_options RPC call.
+///
+/// Returns the crypto libraries, ciphers, and hashes that are available in
+/// this build of libknet. These are global (no handle required).
+async fn handle_crypto_get_options(params: Params) -> Result<Value, RpcError> {
+    let _req: GetCryptoOptionsRequest = params.parse()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", e),
+            data: None,
+        })?;
+
+    let models = knet::get_crypto_list()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InternalError,
+            message: format!("Failed to query crypto models: {}", e),
+            data: None,
+        })?
+        .into_iter()
+        .map(|i| CryptoModelOption { name: i.name })
+        .collect();
+
+    let ciphers = knet::get_crypto_cipher_list()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InternalError,
+            message: format!("Failed to query crypto ciphers: {}", e),
+            data: None,
+        })?
+        .into_iter()
+        .map(|i| CryptoCipherOption { name: i.name, mode: i.mode, key_bits: i.key_bits })
+        .collect();
+
+    let hashes = knet::get_crypto_hash_list()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InternalError,
+            message: format!("Failed to query crypto hashes: {}", e),
+            data: None,
+        })?
+        .into_iter()
+        .map(|i| CryptoHashOption { name: i.name, hash_bits: i.hash_bits })
+        .collect();
+
+    let response = GetCryptoOptionsResponse { models, ciphers, hashes };
+    Ok(serde_json::to_value(response).unwrap())
+}
+
+/// Handle compress.get_options RPC call.
+///
+/// Returns the compression libraries available in this build of libknet.
+/// These are global (no handle required).
+async fn handle_compress_get_options(params: Params) -> Result<Value, RpcError> {
+    let _req: GetCompressOptionsRequest = params.parse()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InvalidParams,
+            message: format!("Invalid parameters: {}", e),
+            data: None,
+        })?;
+
+    let models = knet::get_compress_list()
+        .map_err(|e| RpcError {
+            code: ErrorCode::InternalError,
+            message: format!("Failed to query compress models: {}", e),
+            data: None,
+        })?
+        .into_iter()
+        .map(|i| CompressModelOption { name: i.name })
+        .collect();
+
+    let response = GetCompressOptionsResponse { models };
     Ok(serde_json::to_value(response).unwrap())
 }
 

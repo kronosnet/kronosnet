@@ -96,11 +96,14 @@ knetctl events watch -i <instance> -p <milliseconds>
 
 **Options:**
 - `-i, --instance` - Instance name
-- `-p, --poll-interval` - Poll interval in milliseconds (default: 100)
+- `-p, --poll-interval` - Poll interval in milliseconds (default: 500)
 
 ### Crypto Configuration
 
 ```bash
+# List available crypto models, ciphers, and hashes (reflects what's compiled in)
+knetctl crypto list
+
 # Set crypto configuration
 knetctl crypto set-config -i <instance> -m <model> \
     -c <cipher> -H <hash> -k <key-file> [-n <config-num>]
@@ -109,17 +112,20 @@ knetctl crypto set-config -i <instance> -m <model> \
 knetctl crypto use-config -i <instance> -n <config-num>
 ```
 
-**Options:**
+**Options (set-config / use-config):**
 - `-i, --instance` - Instance name
 - `-m, --model` - Crypto model (openssl, nss, gcrypt, or none)
 - `-c, --cipher` - Cipher type (aes256, aes128, aes192, or none)
 - `-H, --hash` - Hash type (sha256, sha512, sha1, or none)
 - `-k, --key-file` - Path to key file (min 1024 bytes)
-- `-n, --config-num` - Configuration slot (0 or 1)
+- `-n, --config-num` - Configuration slot (1 or 2)
 
 ### Compression Configuration
 
 ```bash
+# List available compression models (reflects what's compiled in)
+knetctl compress list
+
 # Set compression
 knetctl compress set-config -i <instance> -m <model> \
     [-t <threshold>] [-l <level>]
@@ -128,11 +134,46 @@ knetctl compress set-config -i <instance> -m <model> \
 knetctl compress set-config -i <instance> -m none
 ```
 
+**Options (set-config):**
+- `-i, --instance` - Instance name
+- `-m, --model` - Compression model (zlib, lz4, lz4hc, lzo2, lzma, bzip2, zstd, none)
+- `-t, --threshold` - Compression threshold in bytes (default: 100; use 1 to compress everything)
+- `-l, --level` - Compression level (model-dependent, default: 6)
+
+### Nozzle (Tap Device) Management
+
+```bash
+# Create a tap device for an instance
+knetctl nozzle create -i <instance> [-n <dev-name>] [-a <ip/prefix>]... [--mtu <mtu>] [--mac <mac>] [--updown-path <path>] [--no-auto-up]
+
+# Destroy the tap device
+knetctl nozzle destroy -i <instance>
+
+# Show tap device status
+knetctl nozzle status -i <instance>
+```
+
 **Options:**
 - `-i, --instance` - Instance name
-- `-m, --model` - Compression model (zlib, lz4, lzo2, lzma, bzip2, zstd, none)
-- `-t, --threshold` - Compression threshold in bytes
-- `-l, --level` - Compression level (1-9, model-dependent)
+- `-n, --name` - Desired tap device name (e.g. knet0); kernel assigns one if omitted
+- `-a, --ip-address` - IP address in IP/PREFIX format to assign (repeatable); the daemon embeds the node ID into the host portion for uniqueness
+- `--mtu` - MTU for the tap device (default: inherits from knet)
+- `--mac` - Base MAC address (first 4 bytes, e.g. fe:54:00:00); daemon appends node ID as last two bytes
+- `--updown-path` - Directory containing nozzle up/down scripts (pre-up.d, up.d, down.d, post-down.d)
+- `--no-auto-up` - Do not bring the device up automatically when forwarding is enabled
+
+### State Management
+
+```bash
+# Dump current daemon state as JSON to stdout
+knetctl state save
+
+# Save state to a file
+knetctl state save -o <file>
+```
+
+**Options:**
+- `-o, --output` - Write to this file instead of stdout
 
 ### Topology Visualization
 
