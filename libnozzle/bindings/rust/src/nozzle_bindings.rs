@@ -46,10 +46,18 @@ pub fn open(devname: &mut String, updownpath: &str) -> Result<Handle>
     let c_devname_size = IFNAMSZ;
 
     crate::string_to_bytes(devname, &mut c_devname)?;
-    crate::string_to_bytes(updownpath, &mut c_updownpath)?;
+
+    // If the string is empty then pass NULL to nozzle_open
+    // to indicate that no path is required.
+    let updownpath_ptr = if updownpath.is_empty() {
+        std::ptr::null()
+    } else {
+        crate::string_to_bytes(updownpath, &mut c_updownpath)?;
+        c_updownpath.as_ptr()
+    };
 
     let res = unsafe {
-	ffi::nozzle_open(c_devname.as_mut_ptr(), c_devname_size, c_updownpath.as_ptr())
+	ffi::nozzle_open(c_devname.as_mut_ptr(), c_devname_size, updownpath_ptr)
     };
 
     if res.is_null() {
