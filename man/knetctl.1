@@ -160,7 +160,7 @@ Hash: sha1, sha256, sha384, sha512
 Path to key file
 .TP
 \fB\-n\fR, \fB\-\-config\-num\fR \fINUM\fR
-Config slot 0 or 1 (default: 0, for key rotation)
+Config slot 1 or 2 (default: 1, for key rotation)
 .RE
 
 .TP
@@ -256,6 +256,18 @@ Format: dot, svg
 .TP
 \fB\-o\fR, \fB\-\-output\fR \fIPATH\fR
 Output file path
+.RE
+
+.SS State Management
+.TP
+.B state save [\-o \fIFILE\fR]
+Dump the current daemon state to FILE as JSON (stdout if omitted).
+The output uses the same format as the knetd state file and can be
+used to inspect running configuration or feed an external monitoring tool.
+.RS
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fIFILE\fR
+Write to this file (overwriting if it exists)
 .RE
 
 .SS Utility
