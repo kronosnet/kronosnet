@@ -214,7 +214,11 @@ AC_SEARCH_LIBS([dlopen], [dl dld], , [AC_MSG_ERROR([dlopen not found])])
 AC_SUBST([dl_LIBS], [$LIBS])
 LIBS="$saved_LIBS"
 
-# Check RTLD_DI_ORIGIN (not decalred by musl. glibc has it as an enum so cannot use ifdef)
+# Check RTLD_DI_ORIGIN_PATH (not declared by musl. glibc has it as an enum so cannot use ifdef)
+AC_CHECK_DECL([RTLD_DI_ORIGIN_PATH], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN_PATH], 1,
+    [define when RTLD_DI_ORIGIN_PATH is declared])], ,[[#include <dlfcn.h>]])
+
+# Check RTLD_DI_ORIGIN (not declared by musl. glibc has it as an enum so cannot use ifdef)
 AC_CHECK_DECL([RTLD_DI_ORIGIN], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN], 1,
     [define when RTLD_DI_ORIGIN is declared])], ,[[#include <dlfcn.h>]])
 
@@ -354,6 +358,12 @@ if test "x$enable_libnozzle" = xyes; then
 			;;
 		*solaris*)
 			saved_LIBS="$LIBS"
+			AC_CHECK_SIZEOF([void *])
+			if test "$ac_cv_sizeof_void_p" = "8"; then
+				LDFLAGS="-L/lib/amd64 $LDFLAGS"
+			else
+				LDFLAGS="-L/lib $LDFLAGS"
+			fi
 			AC_SEARCH_LIBS([dlpi_open], [dlpi], , [AC_MSG_ERROR([dlpi_open not found])])
 			AC_SUBST([dlpi_LIBS], [$LIBS])
 			LIBS="$saved_LIBS"
