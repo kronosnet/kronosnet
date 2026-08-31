@@ -368,6 +368,12 @@ if test "x$enable_libnozzle" = xyes; then
 			;;
 		*solaris*)
 			saved_LIBS="$LIBS"
+			AC_CHECK_SIZEOF([void *])
+			if test "$ac_cv_sizeof_void_p" = "8"; then
+				LDFLAGS="-L/lib/amd64 $LDFLAGS"
+			else
+				LDFLAGS="-L/lib $LDFLAGS"
+			fi
 			AC_SEARCH_LIBS([dlpi_open], [dlpi], , [AC_MSG_ERROR([dlpi_open not found])])
 			AC_SUBST([dlpi_LIBS], [$LIBS])
 			LIBS="$saved_LIBS"
