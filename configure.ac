@@ -222,7 +222,11 @@ AC_SEARCH_LIBS([dlopen], [dl dld], , [AC_MSG_ERROR([dlopen not found])])
 AC_SUBST([dl_LIBS], [$LIBS])
 LIBS="$saved_LIBS"
 
-# Check RTLD_DI_ORIGIN (not decalred by musl. glibc has it as an enum so cannot use ifdef)
+# Check RTLD_DI_ORIGIN_PATH (not declared by musl. glibc has it as an enum so cannot use ifdef)
+AC_CHECK_DECL([RTLD_DI_ORIGIN_PATH], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN_PATH], 1,
+    [define when RTLD_DI_ORIGIN_PATH is declared])], ,[[#include <dlfcn.h>]])
+
+# Check RTLD_DI_ORIGIN (not declared by musl. glibc has it as an enum so cannot use ifdef)
 AC_CHECK_DECL([RTLD_DI_ORIGIN], [AC_DEFINE([HAVE_RTLD_DI_ORIGIN], 1,
     [define when RTLD_DI_ORIGIN is declared])], ,[[#include <dlfcn.h>]])
 

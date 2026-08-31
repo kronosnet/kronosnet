@@ -56,16 +56,24 @@ int _fdset_nonblock(int fd)
 	return 0;
 }
 
+#ifdef HAVE_RTLD_DI_ORIGIN_PATH
+#define KNET_RTLD_DI_ORIGIN RTLD_DI_ORIGIN_PATH
+#else
+#ifdef HAVE_RTLD_DI_ORIGIN
+#define KNET_RTLD_DI_ORIGIN RTLD_DI_ORIGIN
+#endif
+#endif
+
 static int get_lib_dir(void *lib_handle, char dir[MAXPATHLEN])
 {
 	int res;
-#ifndef HAVE_RTLD_DI_ORIGIN
+#ifndef KNET_RTLD_DI_ORIGIN
 	struct link_map *lm;
 	char l_name[MAXPATHLEN];
 #endif
 
-#ifdef HAVE_RTLD_DI_ORIGIN
-	res = dlinfo(lib_handle, RTLD_DI_ORIGIN, dir);
+#ifdef KNET_RTLD_DI_ORIGIN
+	res = dlinfo(lib_handle, KNET_RTLD_DI_ORIGIN, dir);
 #else
 	/*
 	 * musl libc doesn't support RTLD_DI_ORIGIN
