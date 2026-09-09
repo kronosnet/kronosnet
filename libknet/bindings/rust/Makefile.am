@@ -30,7 +30,7 @@ RUST_BUILT_SRCS		= \
 			  src/sys/libknet.rs
 
 src/sys/libknet.rs: cargo-tree-prep ../../libknet.h
-	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/libknet/libknet.h $@ KNET
+	$(top_srcdir)/build-aux/rust-regen.sh $(BINDGEN) $(top_srcdir)/libknet/libknet.h $@ KNET
 
 all-local: target/$(RUST_TARGET_DIR)/knet_bindings.rlib
 

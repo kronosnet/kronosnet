@@ -11,17 +11,18 @@
 # Regerate the FFI bindings in src/sys from the current headers
 #
 
-srcheader="$1"
-dstrs="$2"
-filter="$3"
+bindgen="$1"
+srcheader="$2"
+dstrs="$3"
+filter="$4"
 
-bindgen \
+"$bindgen" \
 	--no-prepend-enum-name \
 	--no-layout-tests \
 	--no-doc-comments \
 	--generate functions,types,vars \
 	--fit-macro-constant-types \
-	--allowlist-var=$filter.*  \
+	--allowlist-var="^(${filter}_.*)" \
 	--allowlist-type=.* \
 	--allowlist-function=.* \
-	$srcheader -o $dstrs
+	"$srcheader" -o "$dstrs"
