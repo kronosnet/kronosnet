@@ -14,7 +14,8 @@
 bindgen="$1"
 srcheader="$2"
 dstrs="$3"
-filter="$4"
+filter_var="$4"
+filter_type_func="$5"
 
 "$bindgen" \
 	--no-prepend-enum-name \
@@ -22,7 +23,7 @@ filter="$4"
 	--no-doc-comments \
 	--generate functions,types,vars \
 	--fit-macro-constant-types \
-	--allowlist-var="^(${filter}_.*)" \
-	--allowlist-type=.* \
-	--allowlist-function=.* \
+	--allowlist-var="^(${filter_var}_.*)" \
+	--allowlist-type="^(${filter_type_func}_.*)" \
+	--allowlist-function="^(${filter_type_func}_.*)" \
 	"$srcheader" -o "$dstrs"
