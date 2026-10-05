@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under LGPL-2.0+
+ * This software licensed under LGPL-2.1+
  */
 #define KNET_MODULE
 #define LZO2_COMPRESS_DEFAULT 1

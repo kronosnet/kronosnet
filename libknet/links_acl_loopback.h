@@ -3,7 +3,7 @@
  *
  * Author: Christine Caulfield <ccaulfie@redhat.com>
  *
- * This software licensed under LGPL-2.0+
+ * This software licensed under LGPL-2.1+
  */
 
 #ifndef __KNET_LINKS_ACL_LOOPBACK_H__
