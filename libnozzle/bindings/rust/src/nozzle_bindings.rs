@@ -1,9 +1,9 @@
 // libnozzle interface for Rust
-// Copyright (C) 2021-2026 Red Hat, Inc.
+// Copyright (C) 2021-2026 Red Hat, Inc.  All rights reserved.
 //
-// All rights reserved.
+// Author: Christine Caulfield <ccaulfie@redhat.com>
 //
-// Author: Christine Caulfield (ccaulfi@redhat.com)
+// This software licensed under LGPL-2.1+
 //
 
 

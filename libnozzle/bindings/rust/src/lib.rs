@@ -2,7 +2,7 @@
 //
 // Authors: Christine Caulfield <ccaulfie@redhat.com>
 //
-// This software licensed under LGPL-2.0+
+// This software licensed under LGPL-2.1+
 //
 
 //! This crate provides access to the kronosnet libraries libknet and libnozzle

@@ -3,7 +3,7 @@
  *
  * Authors: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under LGPL-2.0+
+ * This software licensed under LGPL-2.1+
  */
 
 #ifndef __KNET_ONWIRE_V1_H__

@@ -1,5 +1,15 @@
 # CLAUDE.md
 
+> Copyright (C) 2026 Red Hat, Inc.  All rights reserved.
+>
+> Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
+>
+> This software licensed under GPL-2.0+ and LGPL-2.1+
+>
+> The libraries (libknet and libnozzle) are licensed under LGPL-2.1+, the
+> applications, tests and build infrastructure are licensed under GPL-2.0+.
+> See README.licence for details.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
