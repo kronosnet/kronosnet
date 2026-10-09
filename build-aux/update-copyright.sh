@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (C) 2017-2024 Red Hat, Inc.  All rights reserved.
+# Copyright (C) 2017-2026 Red Hat, Inc.  All rights reserved.
 #
 # Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
 #
@@ -11,7 +11,7 @@
 
 enddate=$(date +%Y)
 
-input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp |grep -v update-copyright)
+input=$(grep -ril -e "Copyright.*Red Hat" |grep -v .swp |grep -v update-copyright |grep -v "^\.claude/")
 for i in $input; do
 	startdate=$(git log --follow "$i" | grep ^Date: | tail -n 1 | awk '{print $6}')
 	if [ "$startdate" != "$enddate" ]; then
@@ -21,7 +21,7 @@ for i in $input; do
 	fi
 done
 
-input=$(find . -type f |grep -v ".git")
+input=$(find . -type f |grep -v ".git" |grep -v "^\./\.claude/")
 for i in $input; do
 	if [ -z "$(grep -i "Copyright" $i)" ]; then
 		echo "WARNING: $i appears to be missing Copyright information"
