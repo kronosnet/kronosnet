@@ -1,5 +1,13 @@
 # Kronosnet Style Guide
 
+> Copyright (C) 2025-2026 Red Hat, Inc.  All rights reserved.
+>
+> Author: Jules <AI Agent>
+>
+> AI Driver Seat: Fabio M. Di Nitto <fabbione@kronosnet.org>
+>
+> This software licensed under GPL-2.0+
+
 This document outlines the coding style and conventions to be followed when contributing to the kronosnet project.
 
 ## General Principles
@@ -64,13 +72,3 @@ While this is a preference, it is understood that this limit may be exceeded in 
 
 ## Best Practices
 * API Changes Require Tests: Any modification to an internal or external API must be accompanied by new or updated tests in the project's test suite. These tests must validate the behavior of the changed API.
-
----
-## Copyright
-
-Copyright (C) 2025-2026 Red Hat, Inc.  All rights reserved.
-
-Author: Jules <AI Agent>
-AI Driver Seat: Fabio M. Di Nitto <fabbione@kronosnet.org>
-
-This software licensed under GPL-2.0+

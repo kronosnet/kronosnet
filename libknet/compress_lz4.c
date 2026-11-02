@@ -3,7 +3,7 @@
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under LGPL-2.0+
+ * This software licensed under LGPL-2.1+
  */
 #define KNET_MODULE
 #define ACCELERATION_DEFAULT 1 /* lz4 default compression level from lz4.c */

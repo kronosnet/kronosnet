@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2010-2026 Red Hat, Inc.  All rights reserved.
+ * Copyright (C) 2026 Red Hat, Inc.  All rights reserved.
  *
  * Author: Fabio M. Di Nitto <fabbione@kronosnet.org>
  *
- * This software licensed under LGPL-2.0+
+ * This software licensed under LGPL-2.1+
  */
 
 #include "config.h"
